@@ -1,0 +1,120 @@
+{
+  "defaultProjectId": "102035",
+  "shellTemplates": {
+    "spa": "./_102033_/l2/shared/spa/index.html",
+    "pwa": "./_102033_/l2/shared/pwa/index.html"
+  },
+  "publication": {
+    "defaultTarget": "local",
+    "targets": {
+      "local": {
+        "assetBaseUrl": "",
+        "serveStaticFromServer": true,
+        "minify": false,
+        "sourcemap": true
+      },
+      "cdncloudflare": {
+        "assetBaseUrl": "https://cdn.example.com",
+        "serveStaticFromServer": false,
+        "minify": true,
+        "sourcemap": false
+      }
+    }
+  },
+  "workspaceDependencies": {
+    "102029": {
+      "repo": "https://github.com/expansiva/mls-102029.git",
+      "commit": "df672f8fefc28293a9beab9a320604ecd841b5a6"
+    },
+    "102033": {
+      "repo": "https://github.com/expansiva/mls-102033.git",
+      "commit": "33134618aeff3c5d26be74d448d8fdffd083436e"
+    },
+    "102034": {
+      "repo": "https://github.com/expansiva/mls-102034.git",
+      "commit": "752302fa5a64619d73b4492356f57682736d0820"
+    },
+    "102020": {
+      "repo": "https://github.com/expansiva/mls-102020.git",
+      "commit": "721b2375c1a06ebc6e076e4a9c376176e8104779"
+    },
+    "102027": {
+      "repo": "https://github.com/expansiva/mls-102027.git",
+      "commit": "d6b164152882a57ea0b35b8db09ded3edec373fd"
+    }
+  },
+  "projects": {
+    "102035": {
+      "root": ".",
+      "type": "client",
+      "persistenceModules": [
+        {
+          "moduleId": "pizzaria",
+          "persistenceEntrypoint": "./_102035_/l1/pizzaria/layer_1_external/persistence.js"
+        }
+      ],
+      "modules": [
+        {
+          "moduleId": "pizzaria",
+          "basePath": "/pizzaria",
+          "shellMode": "spa",
+          "backendRouter": "./_102035_/l1/pizzaria/layer_2_controller/router.js"
+        }
+      ]
+    },
+    "102033": {
+      "root": "./_102033_",
+      "type": "master frontend"
+    },
+    "102034": {
+      "root": "./_102034_",
+      "type": "master backend",
+      "modules": [
+        {
+          "moduleId": "mdm",
+          "basePath": "/mdm",
+          "shellMode": "spa",
+          "backendRouter": "./_102034_/l1/mdm/layer_2_controllers/router.js"
+        },
+        {
+          "moduleId": "monitor",
+          "basePath": "/monitor",
+          "shellMode": "spa",
+          "backendRouter": "./_102034_/l1/monitor/layer_2_controllers/router.js"
+        },
+        {
+          "moduleId": "audit",
+          "basePath": "/audit",
+          "shellMode": "spa",
+          "backendRouter": "./_102034_/l1/audit/layer_2_controllers/router.js"
+        }
+      ],
+      "persistenceModules": [
+        {
+          "moduleId": "platform",
+          "persistenceEntrypoint": "./_102034_/l1/server/persistence.js"
+        },
+        {
+          "moduleId": "mdm",
+          "persistenceEntrypoint": "./_102034_/l1/mdm/persistence.js"
+        },
+        {
+          "moduleId": "monitor",
+          "persistenceEntrypoint": "./_102034_/l1/monitor/persistence.js"
+        }
+      ]
+    },
+    "102029": {
+      "root": "./_102029_",
+      "type": "lib"
+    },
+    "102020": {
+      "root": "./_102020_",
+      "type": "enhancement"
+    },
+    "102027": {
+      "root": "./_102027_",
+      "type": "enhancement"
+    }
+  }
+}
