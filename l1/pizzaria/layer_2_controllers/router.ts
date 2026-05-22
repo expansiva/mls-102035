@@ -2,6 +2,16 @@
 import type { BffHandler } from '_102034_/l1/server/layer_2_controllers/contracts.js';
 
 
+import {
+  displayCozinhaGetResumoProducaoCozinhaHandler,
+  displayCozinhaListarPedidosCozinhaHandler,
+  displayCozinhaGetPedidoCozinhaDetalheHandler,
+} from '/_102035_/l1/pizzaria/layer_2_controller/displayCozinha.js';
+
 export function createPizzariaRouter(): Map<string, BffHandler> {
-  return new Map<string, BffHandler>([]);
+  return new Map<string, BffHandler>([
+    ['pizzaria.getResumoProducaoCozinha', displayCozinhaGetResumoProducaoCozinhaHandler],
+    ['pizzaria.listarPedidosCozinha', displayCozinhaListarPedidosCozinhaHandler],
+    ['pizzaria.getPedidoCozinhaDetalhe', displayCozinhaGetPedidoCozinhaDetalheHandler],
+  ]);
 }

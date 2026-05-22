@@ -28,7 +28,20 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
   pageTitle: 'pizzaria',
   device: 'desktop',
   navigation: [
+    {
+      id: 'displayCozinha',
+      label: 'displayCozinha',
+      href: '/pizzaria/displayCozinha',
+      description: 'displayCozinha',
+    },
   ],
   routes: [
+    {
+      path: '/pizzaria/displayCozinha',
+      aliases: [],
+      entrypoint: '_102035_/l2/pizzaria/web/desktop/page11/displayCozinha.js',
+      tag: 'pizzaria--web--desktop--page11--display-cozinha-102035',
+      title: 'displayCozinha',
+    },
   ],
 };
