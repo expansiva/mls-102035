@@ -178,5 +178,3 @@ export class PizzariaWebDesktopConfirmacaoImpressaoComandaPage extends PizzariaC
     `;
   }
 }
-
-customElements.define('pizzaria--web--desktop--page11--confirmacao-impressao-comanda-102035', PizzariaWebDesktopConfirmacaoImpressaoComandaPage);

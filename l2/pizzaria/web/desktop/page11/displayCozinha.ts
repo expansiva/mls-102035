@@ -400,4 +400,3 @@ export class PizzariaWebDesktopDisplayCozinhaPage extends PizzariaDisplayCozinha
   }
 }
 
-customElements.define('pizzaria--web--desktop--page11--display-cozinha-102035', PizzariaWebDesktopDisplayCozinhaPage);

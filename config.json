@@ -58,7 +58,7 @@
           "moduleId": "pizzaria",
           "basePath": "/pizzaria",
           "shellMode": "spa",
-          "backendRouter": "./_102035_/l1/pizzaria/layer_2_controller/router.js"
+          "backendRouter": "./_102035_/l1/pizzaria/layer_2_controllers/router.js"
         }
       ]
     },

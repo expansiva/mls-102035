@@ -169,4 +169,62 @@ export const tableDefinitions: TableDefinition[] = [
     },
     version: 1,
   },
+  {
+    moduleId: 'pizzaria',
+    repositoryName: 'pizzariaMetasTempo',
+    tableName: 'MetasTempo',
+    purpose: 'cadastro',
+    description: 'Metas de tempo para configuração.',
+    backupHot: true,
+    storageProfile: 'postgresHotBackup',
+    writeMode: 'writeBehind',
+    columns: [
+      { name: 'id', postgresType: 'TEXT' },
+      { name: 'metaRecebidoMin', postgresType: 'NUMBER' },
+      { name: 'metaProntoMin', postgresType: 'NUMBER' },
+      { name: 'metaEntregueMin', postgresType: 'NUMBER' },
+      { name: 'observacao', postgresType: 'TEXT' },
+      { name: 'atualizadoEm', postgresType: 'TIMESTAMPTZ' },
+      { name: 'atualizadoPor', postgresType: 'TEXT' },
+    ],
+    primaryKey: ['id'],
+    indexes: [
+      { name: 'idx_MetasTempo_perfil', columns: ['perfil'] },
+    ],
+    dynamo: {
+      tableNameByEnv: {
+        development: 'MetasTempo_documents',
+        staging: 'MetasTempo_documents_test',
+        production: 'MetasTempo_documents',
+      },
+      partitionKey: 'id',
+    },
+    version: 1,
+  },
+  {
+    moduleId: 'pizzaria',
+    repositoryName: 'pizzariaDesvioTempo',
+    tableName: 'DesvioTempo',
+    purpose: 'cadastro',
+    description: 'Desvios de tempo para configuração.',
+    backupHot: true,
+    storageProfile: 'postgresHotBackup',
+    writeMode: 'writeBehind',
+    columns: [
+      { name: 'id', postgresType: 'TEXT' },
+    ],
+    primaryKey: ['id'],
+    indexes: [
+      { name: 'idx_DesvioTempo_perfil', columns: ['perfil'] },
+    ],
+    dynamo: {
+      tableNameByEnv: {
+        development: 'DesvioTempo_documents',
+        staging: 'DesvioTempo_documents_test',
+        production: 'DesvioTempo_documents',
+      },
+      partitionKey: 'id',
+    },
+    version: 1,
+  },
 ];

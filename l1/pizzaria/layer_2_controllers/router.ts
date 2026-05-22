@@ -6,11 +6,11 @@ import {
   displayCozinhaGetResumoProducaoCozinhaHandler,
   displayCozinhaListarPedidosCozinhaHandler,
   displayCozinhaGetPedidoCozinhaDetalheHandler,
-} from '/_102035_/l1/pizzaria/layer_2_controller/displayCozinha.js';
+} from '/_102035_/l1/pizzaria/layer_2_controllers/displayCozinha.js';
 
 import {
   confirmacaoImpressaoComandaGetPedidoResumoImpressaoHandler,
-} from '/_102035_/l1/pizzaria/layer_2_controller/confirmacaoImpressaoComanda.js';
+} from '/_102035_/l1/pizzaria/layer_2_controllers/confirmacaoImpressaoComanda.js';
 
 import {
   metasTempoConfiguracaoGetMetasTempoEtapasHandler,
