@@ -100,3 +100,28 @@ export interface PizzariaSeedResult {
   totalCount: number;
   seededAt: string;
 }
+
+export interface PizzariaDesvioTempo {
+
+}
+
+export interface PizzariaMetasTempo {
+  id: string,
+  metaRecebidoMin: number;
+  metaProntoMin: number;
+  metaEntregueMin: number;
+  observacao: string;
+  atualizadoEm: string;
+  atualizadoPor: string;
+}
+
+export interface PizzariaUpdateMetasTempoParams {
+  id: string,
+  metaRecebidoMin: number;
+  metaProntoMin: number;
+  metaEntregueMin: number;
+  observacao: string;
+  atualizadoEm: string;
+  atualizadoPor: string;
+
+}
