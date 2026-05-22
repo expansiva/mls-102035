@@ -34,6 +34,18 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       href: '/pizzaria/displayCozinha',
       description: 'displayCozinha',
     },
+    {
+      id: 'confirmacaoImpressaoComanda',
+      label: 'confirmacaoImpressaoComanda',
+      href: '/pizzaria/confirmacaoImpressaoComanda',
+      description: 'confirmacaoImpressaoComanda',
+    },
+    {
+      id: 'metasTempoConfiguracao',
+      label: 'metasTempoConfiguracao',
+      href: '/pizzaria/metasTempoConfiguracao',
+      description: 'metasTempoConfiguracao',
+    },
   ],
   routes: [
     {
@@ -42,6 +54,20 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       entrypoint: '_102035_/l2/pizzaria/web/desktop/page11/displayCozinha.js',
       tag: 'pizzaria--web--desktop--page11--display-cozinha-102035',
       title: 'displayCozinha',
+    },
+    {
+      path: '/pizzaria/confirmacaoImpressaoComanda',
+      aliases: [],
+      entrypoint: '_102035_/l2/pizzaria/web/desktop/page11/confirmacaoImpressaoComanda.js',
+      tag: 'pizzaria--web--desktop--page11--confirmacao-impressao-comanda-102035',
+      title: 'confirmacaoImpressaoComanda',
+    },
+    {
+      path: '/pizzaria/metasTempoConfiguracao',
+      aliases: [],
+      entrypoint: '_102035_/l2/pizzaria/web/desktop/page11/metasTempoConfiguracao.js',
+      tag: 'pizzaria--web--desktop--page11--metas-tempo-configuracao-102035',
+      title: 'metasTempoConfiguracao',
     },
   ],
 };

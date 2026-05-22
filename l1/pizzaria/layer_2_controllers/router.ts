@@ -8,10 +8,21 @@ import {
   displayCozinhaGetPedidoCozinhaDetalheHandler,
 } from '/_102035_/l1/pizzaria/layer_2_controller/displayCozinha.js';
 
+import {
+  confirmacaoImpressaoComandaGetPedidoResumoImpressaoHandler,
+} from '/_102035_/l1/pizzaria/layer_2_controller/confirmacaoImpressaoComanda.js';
+
+import {
+  metasTempoConfiguracaoGetMetasTempoEtapasHandler,
+  metasTempoConfiguracaoListDesviosTempoHandler,
+} from '/_102035_/l1/pizzaria/layer_2_controllers/metasTempoConfiguracao.js';
 export function createPizzariaRouter(): Map<string, BffHandler> {
   return new Map<string, BffHandler>([
     ['pizzaria.getResumoProducaoCozinha', displayCozinhaGetResumoProducaoCozinhaHandler],
     ['pizzaria.listarPedidosCozinha', displayCozinhaListarPedidosCozinhaHandler],
     ['pizzaria.getPedidoCozinhaDetalhe', displayCozinhaGetPedidoCozinhaDetalheHandler],
+    ['pizzaria.getPedidoResumoImpressao', confirmacaoImpressaoComandaGetPedidoResumoImpressaoHandler],
+    ['pizzaria.getMetasTempoEtapas', metasTempoConfiguracaoGetMetasTempoEtapasHandler],
+    ['pizzaria.listDesviosTempo', metasTempoConfiguracaoListDesviosTempoHandler],
   ]);
 }
