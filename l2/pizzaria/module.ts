@@ -28,7 +28,20 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
   pageTitle: 'pizzaria',
   device: 'desktop',
   navigation: [
+    {
+      id: 'areaPublicaAcompanhamento',
+      label: 'areaPublicaAcompanhamento',
+      href: '/pizzaria/areaPublicaAcompanhamento',
+      description: 'areaPublicaAcompanhamento',
+    },
   ],
   routes: [
+    {
+      path: '/pizzaria/areaPublicaAcompanhamento',
+      aliases: [],
+      entrypoint: '/_102035_/l2/pizzaria/web/desktop/page11/areaPublicaAcompanhamento.js',
+      tag: 'pizzaria--web--desktop--page11--area-publica-acompanhamento-102035',
+      title: 'areaPublicaAcompanhamento',
+    },
   ],
 };

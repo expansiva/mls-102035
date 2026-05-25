@@ -8,6 +8,14 @@ void bootstrapCollabApp({
   shellMode: 'spa',
   navigation: [
     { label: 'Monitor', href: '/monitor' },
+    { label: 'areaPublicaAcompanhamento', href: '/pizzaria/areaPublicaAcompanhamento' },
   ],
-  pages: [],
+  pages: [
+    {
+      path: '/pizzaria/areaPublicaAcompanhamento',
+      title: 'areaPublicaAcompanhamento',
+      tagName: 'pizzaria--web--desktop--page11--area-publica-acompanhamento-102035',
+      loader: () => import('/_102035_/l2/pizzaria/web/desktop/page11/areaPublicaAcompanhamento.js'),
+    },
+  ],
 });
