@@ -38,6 +38,18 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       href: '/pizzaria/areaPublicaAcompanhamento',
       description: 'areaPublicaAcompanhamento',
     },
+    {
+      id: 'areaPublicaCardapio',
+      label: 'areaPublicaCardapio',
+      href: '/pizzaria/areaPublicaCardapio',
+      description: 'areaPublicaCardapio',
+    },
+    {
+      id: 'areaPublicaCheckout',
+      label: 'areaPublicaCheckout',
+      href: '/pizzaria/areaPublicaCheckout',
+      description: 'areaPublicaCheckout',
+    },
   ],
   routes: [
     {
@@ -46,6 +58,20 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       entrypoint: '/_102035_/l2/pizzaria/web/desktop/page11/areaPublicaAcompanhamento.js',
       tag: 'pizzaria--web--desktop--page11--area-publica-acompanhamento-102035',
       title: 'areaPublicaAcompanhamento',
+    },
+    {
+      path: '/pizzaria/areaPublicaCardapio',
+      aliases: [],
+      entrypoint: '/_102035_/l2/pizzaria/web/desktop/page11/areaPublicaCardapio.js',
+      tag: 'pizzaria--web--desktop--page11--area-publica-cardapio-102035',
+      title: 'areaPublicaCardapio',
+    },
+    {
+      path: '/pizzaria/areaPublicaCheckout',
+      aliases: [],
+      entrypoint: '/_102035_/l2/pizzaria/web/desktop/page11/areaPublicaCheckout.js',
+      tag: 'pizzaria--web--desktop--page11--area-publica-checkout-102035',
+      title: 'areaPublicaCheckout',
     },
   ],
 };
