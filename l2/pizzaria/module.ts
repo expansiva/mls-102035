@@ -1,19 +1,23 @@
 /// <mls fileReference="_102035_/l2/pizzaria/module.ts" enhancement="_blank" />
-import type { AuraModuleFrontendDefinition } from '/_102029_/l2/contracts/bootstrap.js';
+import type { AuraModuleFrontendDefinition, IGenomeConfig, IPaths } from '/_102029_/l2/contracts/bootstrap.js';
 
-export const moduleGenome = {
-  page11: {
+export const moduleGenome: Record<string, IGenomeConfig> = {
+  'web/desktop/page11': {
+    designSystem: 'default',
+    designSystemSkill:  '_102020_/l2/agents/newModule/skills/defaultDs.js',
     device: 'desktop',
-    layout: 'standard',
-  },
-  page21: {
-    device: 'mobile',
-    layout: 'standard',
-  },
+    layout: 'standart',
+    layoutSkill: '_102020_/l2/agents/newModule/skills/genPageRender.ts',
+  }
 } as const;
+  
+export const skills: IPaths = {
+  web: {
+    sharedPath: 'web/shared',
+    sharedSkill: '/_102020_/l2/agents/newModule/skills/genPageShared.ts'
+  }
+}
 
-export const moduleStates = {
-} as const;
 
 export const moduleShellPreferences = {
   layout: {
