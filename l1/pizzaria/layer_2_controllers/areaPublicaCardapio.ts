@@ -151,11 +151,11 @@ export const areaPublicaCardapioCreateOrderHandler: BffHandler = async ({ reques
   const params = (request.params ?? {}) as Record<string, unknown>;
   return ok(await createOrder(ctx, {
     id: typeof params.id === 'string' ? params.id : '',
-    tipo: typeof params.tipo === 'string' ? params.tipo : undefined,
-    status: typeof params.status === 'string' ? params.status : undefined,
+    tipo: typeof params.tipo === 'string' ? params.tipo as any : undefined,
+    status: typeof params.status === 'string' ? params.status as any : undefined,
     itens: params.itens !== undefined ? params.itens : undefined,
     total: typeof params.total === 'number' ? params.total : undefined,
-    origem: typeof params.origem === 'string' ? params.origem : undefined,
+    origem: typeof params.origem === 'string' ? params.origem  as any : undefined,
     cliente: typeof params.cliente === 'string' ? params.cliente : undefined,
     enderecoEntrega: typeof params.enderecoEntrega === 'string' ? params.enderecoEntrega : undefined,
     zonaEntregaId: typeof params.zonaEntregaId === 'string' ? params.zonaEntregaId : undefined,
