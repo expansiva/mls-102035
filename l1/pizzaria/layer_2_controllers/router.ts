@@ -21,6 +21,11 @@ import {
   areaPublicaCheckoutListarCombosAtivosHandler,
   areaPublicaCheckoutListarPoliticasCancelamentoAtivasHandler,
 } from '/_102035_/l1/pizzaria/layer_2_controllers/areaPublicaCheckout.js';
+import {
+  caixaPagamentosListPagamentosHandler,
+  caixaPagamentosGetPoliticaCancelamentoReembolsoHandler,
+} from '/_102035_/l1/pizzaria/layer_2_controllers/caixaPagamentos.js';
+
 export function createPizzariaRouter(): Map<string, BffHandler> {
   return new Map<string, BffHandler>([
     ['pizzaria.getPedidoResumoPublico', areaPublicaAcompanhamentoGetPedidoResumoPublicoHandler],
@@ -36,5 +41,7 @@ export function createPizzariaRouter(): Map<string, BffHandler> {
     ['pizzaria.listarItensPedido', areaPublicaCheckoutListarItensPedidoHandler],
     ['pizzaria.listarCombosAtivos', areaPublicaCheckoutListarCombosAtivosHandler],
     ['pizzaria.listarPoliticasCancelamentoAtivas', areaPublicaCheckoutListarPoliticasCancelamentoAtivasHandler],
+    ['pizzaria.listPagamentos', caixaPagamentosListPagamentosHandler],
+    ['pizzaria.getPoliticaCancelamentoReembolso', caixaPagamentosGetPoliticaCancelamentoReembolsoHandler],
   ]);
 }

@@ -11,6 +11,7 @@ void bootstrapCollabApp({
     { label: 'areaPublicaAcompanhamento', href: '/pizzaria/areaPublicaAcompanhamento' },
     { label: 'areaPublicaCardapio', href: '/pizzaria/areaPublicaCardapio' },
     { label: 'areaPublicaCheckout', href: '/pizzaria/areaPublicaCheckout' },
+    { label: 'caixaPagamentos', href: '/pizzaria/caixaPagamentos' },
   ],
   pages: [
     {
@@ -30,6 +31,12 @@ void bootstrapCollabApp({
       title: 'areaPublicaCheckout',
       tagName: 'pizzaria--web--desktop--page11--area-publica-checkout-102035',
       loader: () => import('/_102035_/l2/pizzaria/web/desktop/page11/areaPublicaCheckout.js'),
+    },
+    {
+      path: '/pizzaria/caixaPagamentos',
+      title: 'caixaPagamentos',
+      tagName: 'pizzaria--web--desktop--page11--caixa-pagamentos-102035',
+      loader: () => import('/_102035_/l2/pizzaria/web/desktop/page11/caixaPagamentos.js'),
     },
   ],
 });
