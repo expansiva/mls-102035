@@ -1,0 +1,125 @@
+/// <mls fileReference="_102035_/l1/locadora/persistence.ts" enhancement="_blank" />
+import type { TableDefinition } from '/_102034_/l1/server/layer_1_external/persistence/contracts.js';
+
+export const tableDefinitions: TableDefinition[] = [
+    {
+        moduleId: 'locadora',
+        repositoryName: 'locadoraVeiculo',
+        tableName: 'veiculo',
+        purpose: 'cadastro',
+        description: 'Veículo da frota da locadora.',
+        backupHot: true,
+        storageProfile: 'postgresHotBackup',
+        writeMode: 'writeBehind',
+        columns: [
+            { name: 'placa', postgresType: 'TEXT' },
+            { name: 'modelo', postgresType: 'TEXT' },
+            { name: 'ano', postgresType: 'INTEGER' },
+            { name: 'categoria', postgresType: 'TEXT' },
+            { name: 'status', postgresType: 'TEXT' },
+            { name: 'quilometragem', postgresType: 'INTEGER' },
+        ],
+        primaryKey: ['placa'],
+        indexes: [
+            { name: 'idx_veiculo_status', columns: ['status'] },
+            { name: 'idx_veiculo_ano', columns: [{ name: 'ano', direction: 'desc' }] },
+            { name: 'idx_veiculo_quilometragem', columns: [{ name: 'quilometragem', direction: 'desc' }] },
+        ],
+        dynamo: {
+            tableNameByEnv: {
+                development: 'veiculo_documents',
+                staging: 'veiculo_documents_test',
+                production: 'veiculo_documents',
+            },
+            partitionKey: 'placa',
+        },
+        version: 1,
+    },
+    {
+        moduleId: 'locadora',
+        repositoryName: 'locadoraCliente',
+        tableName: 'cliente',
+        purpose: 'cadastro',
+        description: 'Cliente cadastrado para locações.',
+        backupHot: true,
+        storageProfile: 'postgresHotBackup',
+        writeMode: 'writeBehind',
+        columns: [
+            { name: 'nome', postgresType: 'TEXT' },
+            { name: 'cpf', postgresType: 'TEXT' },
+            { name: 'cnh', postgresType: 'TEXT' },
+            { name: 'telefone', postgresType: 'TEXT' },
+            { name: 'email', postgresType: 'TEXT' },
+        ],
+        primaryKey: ['nome'],
+        indexes: [],
+        dynamo: {
+            tableNameByEnv: {
+                development: 'cliente_documents',
+                staging: 'cliente_documents_test',
+                production: 'cliente_documents',
+            },
+            partitionKey: 'nome',
+        },
+        version: 1,
+    },
+    {
+        moduleId: 'locadora',
+        repositoryName: 'locadoraLocacao',
+        tableName: 'locacao',
+        purpose: 'cadastro',
+        description: 'Registro de locação de veículo.',
+        backupHot: true,
+        storageProfile: 'postgresHotBackup',
+        writeMode: 'writeBehind',
+        columns: [
+            { name: 'dataRetirada', postgresType: 'TEXT' },
+            { name: 'dataDevolucao', postgresType: 'TEXT' },
+            { name: 'valorDiario', postgresType: 'INTEGER' },
+            { name: 'seguroOpcional', postgresType: 'BOOLEAN' },
+            { name: 'formaPagamento', postgresType: 'TEXT' },
+            { name: 'devolucaoPrevista', postgresType: 'TEXT' },
+            { name: 'placaVeiculo', postgresType: 'TEXT' }
+        ],
+        primaryKey: ['dataRetirada'],
+        indexes: [
+            { name: 'idx_locacao_dataDevolucao', columns: [{ name: 'dataDevolucao', direction: 'desc' }] },
+            { name: 'idx_locacao_valorDiario', columns: [{ name: 'valorDiario', direction: 'desc' }] },
+        ],
+        dynamo: {
+            tableNameByEnv: {
+                development: 'locacao_documents',
+                staging: 'locacao_documents_test',
+                production: 'locacao_documents',
+            },
+            partitionKey: 'dataRetirada',
+        },
+        version: 1,
+    },
+    {
+        moduleId: 'locadora',
+        repositoryName: 'locadoraUsuarioAdmin',
+        tableName: 'usuarioAdmin',
+        purpose: 'cadastro',
+        description: 'Usuário administrador que acessa o sistema interno.',
+        backupHot: true,
+        storageProfile: 'postgresHotBackup',
+        writeMode: 'writeBehind',
+        columns: [
+            { name: 'id', postgresType: 'TEXT' },
+            { name: 'usuario', postgresType: 'TEXT' },
+            { name: 'senha', postgresType: 'TEXT' },
+        ],
+        primaryKey: ['id'],
+        indexes: [],
+        dynamo: {
+            tableNameByEnv: {
+                development: 'usuarioAdmin_documents',
+                staging: 'usuarioAdmin_documents_test',
+                production: 'usuarioAdmin_documents',
+            },
+            partitionKey: 'id',
+        },
+        version: 1,
+    },
+];
