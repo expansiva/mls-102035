@@ -44,6 +44,12 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       href: '/locadora/veiculosLista',
       description: 'veiculosLista',
     },
+    {
+      id: 'locacoesCadastro',
+      label: 'locacoesCadastro',
+      href: '/locadora/locacoesCadastro',
+      description: 'locacoesCadastro',
+    },
   ],
   routes: [
     {
@@ -59,6 +65,13 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       entrypoint: '/_102035_/l2/locadora/web/desktop/page11/veiculosLista.js',
       tag: 'locadora--web--desktop--page11--veiculos-lista-102035',
       title: 'veiculosLista',
+    },
+    {
+      path: '/locadora/locacoesCadastro',
+      aliases: [],
+      entrypoint: '/_102035_/l2/locadora/web/desktop/page11/locacoesCadastro.js',
+      tag: 'locadora--web--desktop--page11--locacoes-cadastro-102035',
+      title: 'locacoesCadastro',
     },
   ],
 };
