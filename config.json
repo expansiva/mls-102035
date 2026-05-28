@@ -24,7 +24,7 @@
   "workspaceDependencies": {
     "102029": {
       "repo": "https://github.com/expansiva/mls-102029.git",
-      "commit": "7b65a3cac3969eeaa511de67ffcabfc859288b4d"
+      "commit": "df672f8fefc28293a9beab9a320604ecd841b5a6"
     },
     "102033": {
       "repo": "https://github.com/expansiva/mls-102033.git",
@@ -49,16 +49,16 @@
       "type": "client",
       "persistenceModules": [
         {
-          "moduleId": "pizzaria",
-          "persistenceEntrypoint": "./_102035_/l1/pizzaria/layer_1_external/persistence.js"
+          "moduleId": "locadora",
+          "persistenceEntrypoint": "./_102035_/l1/locadora/layer_1_external/persistence.js"
         }
       ],
       "modules": [
         {
-          "moduleId": "pizzaria",
-          "basePath": "/pizzaria",
+          "moduleId": "locadora",
+          "basePath": "/locadora",
           "shellMode": "spa",
-          "backendRouter": "./_102035_/l1/pizzaria/layer_2_controllers/router.js"
+          "backendRouter": "./_102035_/l1/locadora/layer_2_controllers/router.js"
         }
       ]
     },
