@@ -169,6 +169,7 @@ export class LocadoraWebDesktopLocacoesListaPage extends LocadoraLocacoesListaBa
                     <th class="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">${this.msg.colValorDiario}</th>
                     <th class="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">${this.msg.colSeguroOpcional}</th>
                     <th class="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">${this.msg.colFormaPagamento}</th>
+                    <th class="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">${this.msg.colCpf}</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white">
@@ -199,6 +200,7 @@ export class LocadoraWebDesktopLocacoesListaPage extends LocadoraLocacoesListaBa
                         <td class="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-700">${l.valorDiario}</td>
                         <td class="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-700">${l.seguroOpcional ?? ''}</td>
                         <td class="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">${l.formaPagamento}</td>
+                        <td class="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">${l.cpf}</td>
                       </tr>
                     `;
                   })}

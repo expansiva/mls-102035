@@ -12,7 +12,22 @@ async function getClienteRepository(ctx: RequestContext) {
 export async function save(ctx: RequestContext, input: LocadoraUpdateClienteRequest): Promise<LocadoraClienteResponse> {
   const repo = await getClienteRepository(ctx);
   const existing = await repo.findOne({ where: { nome: input.nome } });
-  if (!existing) throw new AppError("NOT_FOUND", "Cliente not found", 404);
+  if (!existing) {
+    await repo.upsert({ record: {
+      nome: input.nome,
+      cpf: input.cpf ?? '',
+      cnh: input.cnh ?? '',
+      telefone: input.telefone ?? '',
+      email: input.email ?? '',
+    } });         
+    return {
+      nome: input.nome,
+      cpf: input.cpf ?? '',
+      cnh: input.cnh ?? '',
+      telefone: input.telefone ?? '',       
+      email: input.email ?? '',
+    };  
+  }
   const merged: LocadoraClienteResponse = {
     ...existing,
     ...(input.cpf !== undefined ? { cpf: input.cpf } : {}),

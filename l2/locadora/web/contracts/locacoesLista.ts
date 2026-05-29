@@ -8,6 +8,7 @@ export interface LocadoraLocacaoResponse {
   formaPagamento: string;
   devolucaoPrevista: string;
   placaVeiculo: string;
+  cpf: string;
 }
 
 export interface LocadoraUpdateLocacaoRequest {
@@ -18,5 +19,6 @@ export interface LocadoraUpdateLocacaoRequest {
   formaPagamento?: LocadoraLocacaoResponse["formaPagamento"];
   devolucaoPrevista?: LocadoraLocacaoResponse["devolucaoPrevista"];
   placaVeiculo?: LocadoraLocacaoResponse["placaVeiculo"];
+  cpf: LocadoraLocacaoResponse["cpf"];
   author?: string;
 }

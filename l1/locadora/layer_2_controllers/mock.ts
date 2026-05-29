@@ -11,8 +11,8 @@ const mockStore = {
     { nome: 'Raul', cpf: '88888888888', cnh: '88888888', telefone: '(88)8888-888', email: 'emailb@gmail.com' },
   ] as any[],
   locadoraLocacao: [
-    { dataRetirada: '01/05/2026', dataDevolucao: '03/05/2026', valorDiario: 10, seguroOpcional: true, formaPagamento: 'dinheiro', devolucaoPrevista: '03/05/2026', placaVeiculo:"BBB2" },
-    { dataRetirada: '03/05/2026', dataDevolucao: '08/05/2026', valorDiario: 20, seguroOpcional: false, formaPagamento: 'dinheiro', devolucaoPrevista: '08/05/2026', placaVeiculo:"AAA1" },
+    { dataRetirada: '01/05/2026', dataDevolucao: '03/05/2026', valorDiario: 10, seguroOpcional: true, formaPagamento: 'dinheiro', devolucaoPrevista: '03/05/2026', placaVeiculo:"BBB2", cpf:"99999999999" },
+    { dataRetirada: '03/05/2026', dataDevolucao: '08/05/2026', valorDiario: 20, seguroOpcional: false, formaPagamento: 'dinheiro', devolucaoPrevista: '08/05/2026', placaVeiculo:"AAA1", cpf:"88888888888" },
   ] as any[],
   locadoraUsuarioAdmin: [
     { id: 'id-001', usuario: 'user1', senha: '123456' },

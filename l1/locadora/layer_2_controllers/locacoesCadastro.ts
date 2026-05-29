@@ -2,7 +2,7 @@
 
 import { LocadoraClienteResponse, LocadoraLocacaoResponse, LocadoraUpdateLocacaoRequest, LocadoraUpdateVeiculoRequest, LocadoraVeiculoResponse } from "/_102035_/l2/locadora/web/contracts/locacoesCadastro.js";
 import { AppError, ok, type BffHandler, type RequestContext } from "/_102034_/l1/server/layer_2_controllers/contracts.js";
-import { USE_MOCK, getMockClienteRepository, getMockLocacaoRepository, getMockVeiculoRepository } from "_102035_/l1/locadora/layer_2_controllers/mock.js"; 
+import { USE_MOCK, getMockClienteRepository, getMockLocacaoRepository, getMockVeiculoRepository } from "/_102035_/l1/locadora/layer_2_controllers/mock.js"; 
 
 async function getLocacaoRepository(ctx: RequestContext) {
   if (USE_MOCK) return getMockLocacaoRepository();
@@ -47,7 +47,28 @@ export async function save(ctx: RequestContext, input?: LocadoraUpdateLocacaoReq
   if (!input || input.dataRetirada === undefined) throw new AppError('VALIDATION_ERROR', 'dataRetirada is required', 400);
   const repo = await getLocacaoRepository(ctx);
   const existing = await repo.findOne({ where: { dataRetirada: input.dataRetirada } });
-  if (!existing) throw new AppError('NOT_FOUND', 'Locacao not found', 404);
+  if (!existing) {
+    await repo.upsert({ record: {
+      dataRetirada: input.dataRetirada,
+      dataDevolucao: input.dataDevolucao ?? '',
+      valorDiario: input.valorDiario ?? 0,
+      seguroOpcional: input.seguroOpcional ?? false,
+      formaPagamento: input.formaPagamento ?? '',
+      devolucaoPrevista: input.devolucaoPrevista ?? '',
+      placaVeiculo: input.placaVeiculo ?? '',
+      cpf: input.cpf ?? '',
+    } });
+    return {
+      dataRetirada: input.dataRetirada,
+      dataDevolucao: input.dataDevolucao ?? '',
+      valorDiario: input.valorDiario ?? 0,
+      seguroOpcional: input.seguroOpcional ?? false,          
+      formaPagamento: input.formaPagamento ?? '',
+      devolucaoPrevista: input.devolucaoPrevista ?? '',
+      placaVeiculo: input.placaVeiculo ?? '',
+      cpf: input.cpf ?? ''
+    };
+  }
   const merged: LocadoraLocacaoResponse = {
     ...existing,
     ...(input.dataDevolucao !== undefined ? { dataDevolucao: input.dataDevolucao } : {}),

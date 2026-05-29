@@ -44,6 +44,7 @@ export interface LocadoraLocacaoResponse {
   formaPagamento: string;
   devolucaoPrevista: string;
   placaVeiculo: string;
+  cpf: string;
 }
 
 export interface LocadoraUpdateLocacaoRequest {
@@ -54,5 +55,6 @@ export interface LocadoraUpdateLocacaoRequest {
   formaPagamento?: string;
   devolucaoPrevista?: string;
   placaVeiculo?: string;
+  cpf: string;
   author?: string;
 }

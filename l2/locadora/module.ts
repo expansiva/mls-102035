@@ -33,6 +33,18 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
   device: 'desktop',
   navigation: [
     {
+      id: 'clientesCadastro',
+      label: 'clientesCadastro',
+      href: '/locadora/clientesCadastro',
+      description: 'clientesCadastro',
+    },
+    {
+      id: 'clientesLista',
+      label: 'clientesLista',
+      href: '/locadora/clientesLista',
+      description: 'clientesLista',
+    },
+    {
       id: 'veiculosCadastro',
       label: 'veiculosCadastro',
       href: '/locadora/veiculosCadastro',
@@ -50,8 +62,28 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       href: '/locadora/locacoesCadastro',
       description: 'locacoesCadastro',
     },
+    {
+      id: 'locacoesLista',
+      label: 'locacoesLista',
+      href: '/locadora/locacoesLista',
+      description: 'locacoesLista',
+    },
   ],
   routes: [
+    {
+      path: '/locadora/clientesCadastro',
+      aliases: [],
+      entrypoint: '/_102035_/l2/locadora/web/desktop/page11/clientesCadastro.js',
+      tag: 'locadora--web--desktop--page11--clientes-cadastro-102035',
+      title: 'clientesCadastro',
+    },
+    {
+      path: '/locadora/clientesLista',
+      aliases: [],
+      entrypoint: '/_102035_/l2/locadora/web/desktop/page11/clientesLista.js',
+      tag: 'locadora--web--desktop--page11--clientes-lista-102035',
+      title: 'clientesLista',
+    },
     {
       path: '/locadora/veiculosCadastro',
       aliases: [],
@@ -72,6 +104,13 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       entrypoint: '/_102035_/l2/locadora/web/desktop/page11/locacoesCadastro.js',
       tag: 'locadora--web--desktop--page11--locacoes-cadastro-102035',
       title: 'locacoesCadastro',
+    },
+    {
+      path: '/locadora/locacoesLista',
+      aliases: [],
+      entrypoint: '/_102035_/l2/locadora/web/desktop/page11/locacoesLista.js',
+      tag: 'locadora--web--desktop--page11--locacoes-lista-102035',
+      title: 'locacoesLista',
     },
   ],
 };

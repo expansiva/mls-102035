@@ -140,8 +140,9 @@ export class LocadoraWebDesktopLocacoesCadastroPage extends LocadoraLocacoesCada
                       <input
                         name="clienteId"
                         type="text"
-                        class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 focus:ring"
-                        value=""
+                        class="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 focus:ring" 
+                        .value=${this.novaLocacao?.cpf ?? ''}
+                        required
                       />
                     </label>
                   </div>

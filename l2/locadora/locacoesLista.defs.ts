@@ -110,6 +110,13 @@ export const definitionPage = {
                     "priority": "required",
                     "usage": "display",
                     "priorityReason": "Identifica o veículo locado."
+                  },
+                  {
+                    "entityField": "cpf",
+                    "entity": "locacao",
+                    "priority": "required",
+                    "usage": "display",
+                    "priorityReason": "Identifica o cliente que realizou a locação."
                   }
                 ],
                 "params": [

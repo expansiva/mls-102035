@@ -123,6 +123,13 @@ export const definitionPage = {
                     "priority": "required",
                     "usage": "edit",
                     "priorityReason": "Vincula locação ao veículo da frota"
+                  },
+                  {
+                    "entityField": "cpf",
+                    "entity": "locacao",
+                    "priority": "required",
+                    "usage": "edit",
+                    "priorityReason": "Identifica o cliente que realizou a locação e é necessário para validação de CPF/CNH"
                   }
                 ],
                 "params": []

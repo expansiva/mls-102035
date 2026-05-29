@@ -27,6 +27,7 @@ import {
   locacoesCadastroCreateLocacaoHandler,
   locacoesCadastroValidateClienteHandler,
   locacoesCadastroCheckVeiculoAvailabilityHandler,
+  locacoesCadastroSaveHandler,
 } from '/_102035_/l1/locadora/layer_2_controllers/locacoesCadastro.js';
 export function createPizzariaRouter(): Map<string, BffHandler> {
   return new Map<string, BffHandler>([
@@ -41,6 +42,7 @@ export function createPizzariaRouter(): Map<string, BffHandler> {
     ['locadora.locacoesCadastro.createLocacao', locacoesCadastroCreateLocacaoHandler],
     ['locadora.locacoesCadastro.validateCliente', locacoesCadastroValidateClienteHandler],
     ['locadora.locacoesCadastro.checkVeiculoAvailability', locacoesCadastroCheckVeiculoAvailabilityHandler],
+    ['locadora.locacoesCadastro.save', locacoesCadastroSaveHandler],
     
     
   ]);

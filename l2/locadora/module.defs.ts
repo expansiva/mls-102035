@@ -113,6 +113,11 @@ export const ontology = {
           "placaVeiculo": {
             "type": "string",
             "required": true
+          },
+          "cpf": {
+            "type": "string",
+            "required": true,
+            "constraints": "Locação é bloqueada para clientes com CPF inválido ou CNH inválida/vencida."
           }
         },
         "rules": [

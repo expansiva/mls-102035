@@ -79,7 +79,8 @@ export const tableDefinitions: TableDefinition[] = [
             { name: 'seguroOpcional', postgresType: 'BOOLEAN' },
             { name: 'formaPagamento', postgresType: 'TEXT' },
             { name: 'devolucaoPrevista', postgresType: 'TEXT' },
-            { name: 'placaVeiculo', postgresType: 'TEXT' }
+            { name: 'placaVeiculo', postgresType: 'TEXT' },
+            { name: 'cpf', postgresType: 'TEXT' },
         ],
         primaryKey: ['dataRetirada'],
         indexes: [
