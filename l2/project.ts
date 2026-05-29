@@ -2,7 +2,7 @@
 
 export const projectConfig = {
   modules: [
-    { name: "pizzaria", path: "pizzaria", auth: "admin" }
+    { name: "locadora", path: "locadora", auth: "admin" }
   ],
 
   layouts: {
