@@ -68,6 +68,12 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       href: '/locadora/locacoesLista',
       description: 'locacoesLista',
     },
+    {
+      id: 'adminDashboard',
+      label: 'adminDashboard',
+      href: '/locadora/adminDashboard',
+      description: 'adminDashboard',
+    },
   ],
   routes: [
     {
@@ -111,6 +117,13 @@ export const moduleFrontendDefinition: AuraModuleFrontendDefinition = {
       entrypoint: '/_102035_/l2/locadora/web/desktop/page11/locacoesLista.js',
       tag: 'locadora--web--desktop--page11--locacoes-lista-102035',
       title: 'locacoesLista',
+    },
+    {
+      path: '/locadora/adminDashboard',
+      aliases: [],
+      entrypoint: '/_102035_/l2/locadora/web/desktop/page11/adminDashboard.js',
+      tag: 'locadora--web--desktop--page11--admin-dashboard-102035',
+      title: 'adminDashboard',
     },
   ],
 };

@@ -29,6 +29,11 @@ import {
   locacoesCadastroCheckVeiculoAvailabilityHandler,
   locacoesCadastroSaveHandler,
 } from '/_102035_/l1/locadora/layer_2_controllers/locacoesCadastro.js';
+import {
+  adminDashboardGetQuickAccessHandler,
+  adminDashboardGetSummaryHandler
+} from '/_102035_/l1/locadora/layer_2_controllers/adminDashboard.js';
+
 export function createPizzariaRouter(): Map<string, BffHandler> {
   return new Map<string, BffHandler>([
     ['locadora.veiculosCadastro.getStatusVeiculoOptions', veiculosCadastroGetStatusVeiculoOptionsHandler],
@@ -43,6 +48,8 @@ export function createPizzariaRouter(): Map<string, BffHandler> {
     ['locadora.locacoesCadastro.validateCliente', locacoesCadastroValidateClienteHandler],
     ['locadora.locacoesCadastro.checkVeiculoAvailability', locacoesCadastroCheckVeiculoAvailabilityHandler],
     ['locadora.locacoesCadastro.save', locacoesCadastroSaveHandler],
+    ['locadora.adminDashboard.getQuickAccess', adminDashboardGetQuickAccessHandler],
+    ['locadora.adminDashboard.getSummary', adminDashboardGetSummaryHandler],
     
     
   ]);
