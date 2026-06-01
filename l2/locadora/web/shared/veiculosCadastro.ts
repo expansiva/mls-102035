@@ -1,6 +1,7 @@
-/// <mls fileReference="_102035_/l2/locadora/web/shared/veiculosCadastro.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/locadora/web/shared/veiculosCadastro.ts" enhancement="_102027_/l2/enhancementLit.ts" />
 
 import { CollabLitElement } from '/_102029_/l2/collabLitElement.js';
+import { property } from 'lit/decorators.js';
 import type { AuraNormalizedError } from '/_102029_/l2/contracts/bootstrap.js';
 import type { BffClientOptions } from '/_102029_/l2/bffClient.js';
 import { execBff } from '/_102029_/l2/bffClient.js';
@@ -9,17 +10,18 @@ import {
     consumeExpectedNavigationLoad,
     runBlockingUiAction,
 } from '/_102029_/l2/interactionRuntime.js';
-import type { LocadoraUpdateVeiculoRequest } from '/_102035_/l2/locadora/web/contracts/veiculosCadastro.js';
+import { subscribe, unsubscribe, getState, setState, initState } from '/_102029_/l2/collabState.js';
+import type { LocadoraVeiculoResponse } from '/_102035_/l2/locadora/web/contracts/veiculosCadastro.js';
 
 /// **collab_i18n_start**
 const message_pt = {
     brand: 'Locadora',
     pageTitle: 'Cadastro de veiculos',
     pageSubtitle: 'Cadastrar veiculo da frota com dados obrigatorios.',
-    loadingStatusVeiculoOptions: 'Carregando opcoes de status do veiculo...',
+    loadingStatusOptions: 'Carregando opcoes de status...',
     couldNotLoad: 'Nao foi possivel carregar os dados.',
-    couldNotSave: 'Nao foi possivel salvar o veiculo.',
-    savedSuccessfully: 'Veiculo salvo com sucesso.',
+    couldNotSave: 'Nao foi possivel salvar.',
+    savedSuccessfully: 'Salvo com sucesso.',
     reload: 'Recarregar',
     save: 'Salvar',
     saving: 'Salvando...',
@@ -34,14 +36,14 @@ const message_en = {
     brand: 'Car rental',
     pageTitle: 'Vehicle registration',
     pageSubtitle: 'Register a fleet vehicle with required data.',
-    loadingStatusVeiculoOptions: 'Loading vehicle status options...',
+    loadingStatusOptions: 'Loading status options...',
     couldNotLoad: 'Could not load data.',
-    couldNotSave: 'Could not save vehicle.',
-    savedSuccessfully: 'Vehicle saved successfully.',
+    couldNotSave: 'Could not save.',
+    savedSuccessfully: 'Saved successfully.',
     reload: 'Reload',
     save: 'Save',
     saving: 'Saving...',
-    placa: 'License plate',
+    placa: 'Plate',
     modelo: 'Model',
     ano: 'Year',
     categoria: 'Category',
@@ -53,100 +55,210 @@ const messages: { [key: string]: MessageType } = { en: message_en, pt: message_p
 /// **collab_i18n_end**
 
 export class LocadoraVeiculosCadastroBase extends CollabLitElement {
-    static properties = {
-        statusVeiculoOptions: { state: true },
-        placa: { state: true },
-        modelo: { state: true },
-        ano: { state: true },
-        categoria: { state: true },
-        statusVeiculo: { state: true },
-        quilometragem: { state: true },
-        formErrors: { state: true },
-        formDirty: { state: true },
-        status: { state: true },
-    };
+    private readonly _stateKeys = [
+        'db.veiculo.placa',
+        'db.veiculo.modelo',
+        'db.veiculo.ano',
+        'db.veiculo.categoria',
+        'db.veiculo.status',
+        'db.veiculo.quilometragem',
+        'config.locadora.statusVeiculoOptions',
+        'ui.veiculosCadastro.form.errors',
+        'ui.veiculosCadastro.form.dirty',
+        'ui.veiculosCadastro.statusOptions',
+        '*ui.veiculosCadastro.saveVeiculo',
+        '*ui.veiculosCadastro.loadStatusOptions',
+    ] as const;
 
-    declare statusVeiculoOptions: string[];
-    declare placa: string;
-    declare modelo: string;
-    declare ano: number | undefined;
-    declare categoria: string;
-    declare statusVeiculo: string;
-    declare quilometragem: number | undefined;
-    declare formErrors: Record<string, string>;
-    declare formDirty: boolean;
-    declare status: string;
+    @property() placa: string = '';
+    @property() modelo: string = '';
+    @property() ano: number = 0;
+    @property() categoria: string = '';
+    @property() statusVeiculo: string = '';
+    @property() quilometragem: number = 0;
+
+    @property() statusVeiculoOptions: { values: LocadoraVeiculoResponse['status'][] } | undefined = undefined;
+
+    @property() formErrors: Record<string, string> = {};
+    @property() formDirty: boolean = false;
+    @property() statusOptions: string[] = [];
+
+    @property() saveVeiculo: 'idle' | 'loading' | 'success' | 'error' = 'idle';
+    @property() loadStatusOptions: 'idle' | 'loading' | 'success' | 'error' = 'idle';
+
+    @property() status: string = '';
 
     protected msg: MessageType = messages['en'];
 
-    constructor() {
-        super();
-        this.statusVeiculoOptions = [];
-        this.placa = '';
-        this.modelo = '';
-        this.ano = undefined;
-        this.categoria = '';
-        this.statusVeiculo = '';
-        this.quilometragem = undefined;
-        this.formErrors = {};
-        this.formDirty = false;
-        this.status = '';
+    createRenderRoot() {
+        return this;
     }
-
-    createRenderRoot() { return this; }
 
     connectedCallback() {
         super.connectedCallback();
+
         const pendingLoad = consumeExpectedNavigationLoad();
         const task = this.loadInitialData(undefined, {
-            // mode: pendingLoad ? 'blocking' : 'silent',
             mode: 'silent',
             signal: pendingLoad?.signal,
         });
         bindExpectedNavigationLoad(pendingLoad, task);
         void task.catch(() => undefined);
+
         const lang: string = this.getMessageKey(messages);
         this.msg = messages[lang] || messages['en'];
+
+        initState('ui.veiculosCadastro.form.dirty', false);
+        initState('ui.veiculosCadastro.statusOptions', ['disponível', 'locado', 'manutenção']);
+
+        subscribe(this._stateKeys as unknown as string[], this);
+
+        (this._stateKeys as unknown as string[]).forEach((key) => {
+            const k = key.startsWith('*') ? key.slice(1) : key;
+            const v = getState(k);
+            if (v !== undefined) this.handleIcaStateChange(k, v);
+        });
     }
 
-    protected async loadInitialData(_params?: undefined, options?: BffClientOptions): Promise<void> {
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        unsubscribe(this._stateKeys as unknown as string[], this);
+    }
+
+    handleIcaStateChange(key: string, value: any): void {
+        switch (key) {
+            case 'db.veiculo.placa':
+                this.placa = value ?? '';
+                break;
+            case 'db.veiculo.modelo':
+                this.modelo = value ?? '';
+                break;
+            case 'db.veiculo.ano':
+                this.ano = value ?? 0;
+                break;
+            case 'db.veiculo.categoria':
+                this.categoria = value ?? '';
+                break;
+            case 'db.veiculo.status':
+                this.statusVeiculo = value ?? '';
+                break;
+            case 'db.veiculo.quilometragem':
+                this.quilometragem = value ?? 0;
+                break;
+            case 'config.locadora.statusVeiculoOptions':
+                this.statusVeiculoOptions = value ?? undefined;
+                break;
+            case 'ui.veiculosCadastro.form.errors':
+                this.formErrors = value ?? {};
+                break;
+            case 'ui.veiculosCadastro.form.dirty':
+                this.formDirty = value ?? false;
+                break;
+            case 'ui.veiculosCadastro.statusOptions':
+                this.statusOptions = value ?? [];
+                break;
+            case 'ui.veiculosCadastro.saveVeiculo':
+                this.saveVeiculo = value ?? 'idle';
+                break;
+            case 'ui.veiculosCadastro.loadStatusOptions':
+                this.loadStatusOptions = value ?? 'idle';
+                break;
+            default:
+                break;
+        }
+    }
+
+    async loadInitialData(_params?: unknown, options?: BffClientOptions): Promise<void> {
         await this.loadGetStatusVeiculoOptions(undefined, options);
     }
 
-    // ── load methods (one per read routine) ──
-    async loadGetStatusVeiculoOptions(_params?: undefined, options?: BffClientOptions): Promise<void> {
-        this.status = this.msg.loadingStatusVeiculoOptions;
+    async loadGetStatusVeiculoOptions(
+        _params?: {},
+        options?: BffClientOptions,
+    ): Promise<void> {
+        setState('ui.veiculosCadastro.loadStatusOptions', 'loading');
+        try {
+            if ((window as any).mls) {
+                const mockValues: LocadoraVeiculoResponse['status'][] = ['disponível', 'locado', 'manutenção'];
+                this.statusVeiculoOptions = { values: mockValues };
+                this.statusOptions = [...mockValues];
+                setState('config.locadora.statusVeiculoOptions', this.statusVeiculoOptions);
+                setState('ui.veiculosCadastro.statusOptions', this.statusOptions);
+                this.status = `${this.statusOptions.length} ${this.msg.status}`;
+                setState('ui.veiculosCadastro.loadStatusOptions', 'success');
+                return;
+            }
 
-        this.statusVeiculoOptions = ['disponivel', 'locado', 'manutencao'];
-        this.status = '';
-        return;
+            const response = await execBff<{ values: LocadoraVeiculoResponse['status'][] }>(
+                'locadora.veiculosCadastro.getStatusVeiculoOptions',
+                _params,
+                options,
+            );
 
+            if (!response.ok || !response.data) {
+                setState('ui.veiculosCadastro.loadStatusOptions', 'error');
+                if (options?.mode === 'blocking') {
+                    throw (response.error ?? {
+                        code: 'UNEXPECTED_ERROR',
+                        message: this.msg.couldNotLoad,
+                    }) satisfies AuraNormalizedError;
+                }
+                this.status = this.msg.couldNotLoad;
+                this.statusVeiculoOptions = undefined;
+                this.statusOptions = [];
+                setState('config.locadora.statusVeiculoOptions', this.statusVeiculoOptions);
+                setState('ui.veiculosCadastro.statusOptions', this.statusOptions);
+                return;
+            }
+
+            this.statusVeiculoOptions = response.data;
+            this.statusOptions = [...(response.data.values ?? [])];
+            setState('config.locadora.statusVeiculoOptions', this.statusVeiculoOptions);
+            setState('ui.veiculosCadastro.statusOptions', this.statusOptions);
+            this.status = `${this.statusOptions.length} ${this.msg.status}`;
+            setState('ui.veiculosCadastro.loadStatusOptions', 'success');
+        } catch (e) {
+            setState('ui.veiculosCadastro.loadStatusOptions', 'error');
+            throw e;
+        }
     }
 
-    // ── action methods (one per write routine) ──
-    async save(params: LocadoraUpdateVeiculoRequest, signal?: AbortSignal): Promise<void> {
-        const options: BffClientOptions | undefined = signal ? { mode: 'blocking', signal } : { mode: 'blocking' };
+    async saveVeiculoAction(params: LocadoraUpdateVeiculoRequest, signal?: AbortSignal): Promise<void> {
+        setState('ui.veiculosCadastro.saveVeiculo', 'loading');
+        try {
+            if ((window as any).mls) {
+                console.log('[mls mock] locadora.veiculosCadastro.saveVeiculo', params);
+                this.status = this.msg.savedSuccessfully;
+                setState('ui.veiculosCadastro.saveVeiculo', 'success');
+                return;
+            }
 
-        if ((window as any).mls) {
-            console.log('[mls mock] locadora.veiculosCadastro.saveVeiculo', params);
+            const response = await execBff<LocadoraVeiculoResponse>(
+                'locadora.veiculosCadastro.saveVeiculo',
+                params,
+                { mode: 'blocking', signal },
+            );
+
+            if (!response.ok || !response.data) {
+                setState('ui.veiculosCadastro.saveVeiculo', 'error');
+                throw (response.error ?? {
+                    code: 'UNEXPECTED_ERROR',
+                    message: this.msg.couldNotSave,
+                }) satisfies AuraNormalizedError;
+            }
+
             this.status = this.msg.savedSuccessfully;
-            return;
-        }
+            setState('ui.veiculosCadastro.saveVeiculo', 'success');
 
-        const response = await execBff<unknown>('locadora.veiculosCadastro.saveVeiculo', params, options);
-        if (!response.ok) {
-            throw (response.error ?? {
-                code: 'UNEXPECTED_ERROR',
-                message: this.msg.couldNotSave,
-            }) satisfies AuraNormalizedError;
+            // Refresh dependent data if needed
+            await this.loadGetStatusVeiculoOptions(undefined, { mode: 'silent', signal });
+        } catch (e) {
+            setState('ui.veiculosCadastro.saveVeiculo', 'error');
+            throw e;
         }
-
-        this.status = this.msg.savedSuccessfully;
-        await this.loadGetStatusVeiculoOptions(undefined, { mode: 'silent' });
     }
 
-    // ── form submit handlers (one per write routine that originates from a form) ──
-    handleSaveSubmit(event: SubmitEvent): void {
+    handleSaveVeiculoSubmit(event: SubmitEvent): void {
         event.preventDefault();
 
         const params: LocadoraUpdateVeiculoRequest = {
@@ -154,17 +266,30 @@ export class LocadoraVeiculosCadastroBase extends CollabLitElement {
             modelo: this.modelo,
             ano: this.ano,
             categoria: this.categoria,
-            status: (this.statusVeiculo as any),
+            status: (this.statusVeiculo as LocadoraVeiculoResponse['status']) || undefined,
             quilometragem: this.quilometragem,
+            author: 'admin',
         };
 
         void runBlockingUiAction(
-            async (signal: AbortSignal) => { await this.save(params, signal); },
+            async (signal: AbortSignal) => {
+                await this.saveVeiculoAction(params, signal);
+            },
             {
                 busyLabel: this.msg.saving,
                 errorTitle: this.msg.couldNotSave,
-                retry: () => this.save(params),
+                retry: () => this.saveVeiculoAction(params),
             },
         );
     }
 }
+
+type LocadoraUpdateVeiculoRequest = {
+    placa: string;
+    modelo?: string;
+    ano?: number;
+    categoria?: string;
+    status?: LocadoraVeiculoResponse['status'];
+    quilometragem?: number;
+    author?: string;
+};
