@@ -6,72 +6,85 @@ import type { AuraNormalizedError } from '/_102029_/l2/contracts/bootstrap.js';
 import type { BffClientOptions } from '/_102029_/l2/bffClient.js';
 import { execBff } from '/_102029_/l2/bffClient.js';
 import {
-    bindExpectedNavigationLoad,
-    consumeExpectedNavigationLoad,
-    runBlockingUiAction,
+  bindExpectedNavigationLoad,
+  consumeExpectedNavigationLoad,
+  runBlockingUiAction,
 } from '/_102029_/l2/interactionRuntime.js';
+import {
+  subscribe,
+  unsubscribe,
+  getState,
+  setState,
+  initState,
+} from '/_102029_/l2/collabState.js';
 import type {
-    LocadoraClienteResponse,
-    LocadoraUpdateClienteRequest,
+  LocadoraClienteResponse,
+  LocadoraUpdateClienteRequest,
 } from '/_102035_/l2/locadora/web/contracts/clientesCadastro.js';
 
 /// **collab_i18n_start**
 const message_pt = {
-    brand: 'Locadora',
-    pageTitle: 'Cadastro de clientes',
-    pageSubtitle: 'Cadastrar cliente com validacao de CPF e CNH.',
-    loadingCliente: 'Carregando cliente...',
-    couldNotLoad: 'Nao foi possivel carregar os dados.',
+  brand: 'Locadora',
+  pageTitle: 'clientesCadastro',
+  pageSubtitle: 'Cadastrar cliente com validacao de CPF e CNH.',
 
-    save: 'Salvar',
-    saving: 'Salvando...',
-    couldNotSave: 'Nao foi possivel salvar.',
-    savedSuccessfully: 'Salvo com sucesso.',
+  loadingCliente: 'Carregando dados do cliente...',
+  couldNotLoad: 'Nao foi possivel carregar os dados.',
 
-    confirm: 'Confirmar',
-    confirming: 'Confirmando...',
-    couldNotConfirm: 'Nao foi possivel confirmar.',
-    confirmedSuccessfully: 'Confirmado com sucesso.',
+  reload: 'Recarregar',
+  save: 'Salvar',
+  saving: 'Salvando...',
+  confirm: 'Confirmar',
+  confirming: 'Confirmando...',
 
-    reload: 'Recarregar',
+  couldNotSave: 'Nao foi possivel salvar.',
+  savedSuccessfully: 'Salvo com sucesso.',
 
-    nome: 'Nome',
-    cpf: 'CPF',
-    cnh: 'CNH',
-    telefone: 'Telefone',
-    email: 'E-mail',
+  couldNotCancel: 'Nao foi possivel cancelar.',
+  cancelledSuccessfully: 'Cancelado com sucesso.',
 
-    cpfInvalido: 'CPF invalido.',
-    cnhInvalida: 'CNH invalida ou vencida.',
+  couldNotValidate: 'Nao foi possivel validar CPF/CNH.',
+  validatedSuccessfully: 'Validado com sucesso.',
+
+  labelNome: 'Nome',
+  labelCpf: 'CPF',
+  labelCnh: 'CNH',
+  labelTelefone: 'Telefone',
+  labelEmail: 'E-mail',
+
+  statusReady: 'Pronto.',
 };
 
 const message_en = {
-    brand: 'Car rental',
-    pageTitle: 'Customer registration',
-    pageSubtitle: 'Register a customer with CPF and CNH validation.',
-    loadingCliente: 'Loading customer...',
-    couldNotLoad: 'Could not load data.',
+  brand: 'Rental',
+  pageTitle: 'clientesCadastro',
+  pageSubtitle: 'Register customer with CPF and CNH validation.',
 
-    save: 'Save',
-    saving: 'Saving...',
-    couldNotSave: 'Could not save.',
-    savedSuccessfully: 'Saved successfully.',
+  loadingCliente: 'Loading customer data...',
+  couldNotLoad: 'Could not load data.',
 
-    confirm: 'Confirm',
-    confirming: 'Confirming...',
-    couldNotConfirm: 'Could not confirm.',
-    confirmedSuccessfully: 'Confirmed successfully.',
+  reload: 'Reload',
+  save: 'Save',
+  saving: 'Saving...',
+  confirm: 'Confirm',
+  confirming: 'Confirming...',
 
-    reload: 'Reload',
+  couldNotSave: 'Could not save.',
+  savedSuccessfully: 'Saved successfully.',
 
-    nome: 'Name',
-    cpf: 'CPF',
-    cnh: 'Driver license (CNH)',
-    telefone: 'Phone',
-    email: 'Email',
+  couldNotCancel: 'Could not cancel.',
+  cancelledSuccessfully: 'Cancelled successfully.',
 
-    cpfInvalido: 'Invalid CPF.',
-    cnhInvalida: 'Invalid or expired CNH.',
+  couldNotValidate: 'Could not validate CPF/CNH.',
+  validatedSuccessfully: 'Validated successfully.',
+
+  labelNome: 'Name',
+  labelCpf: 'CPF',
+  labelCnh: 'CNH',
+  labelTelefone: 'Phone',
+  labelEmail: 'Email',
+
+  statusReady: 'Ready.',
 };
 
 type MessageType = typeof message_en;
@@ -79,190 +92,296 @@ const messages: { [key: string]: MessageType } = { en: message_en, pt: message_p
 /// **collab_i18n_end**
 
 export class LocadoraClientesCadastroBase extends CollabLitElement {
-    @property() cliente: LocadoraClienteResponse | undefined = undefined;
-    @property() status: string = '';
+  private readonly _stateKeys = [
+    'db.cliente.nome',
+    'db.cliente.cpf',
+    'db.cliente.cnh',
+    'db.cliente.telefone',
+    'db.cliente.email',
 
-    protected msg: MessageType = messages['en'];
+    'ui.clientesCadastro.cpfMask',
+    'ui.clientesCadastro.cnhMask',
+    'ui.clientesCadastro.formDirty',
+    'ui.clientesCadastro.showValidationHint',
+    'ui.clientesCadastro.activeTab',
 
-    createRenderRoot() {
-        return this;
+    '*ui.clientesCadastro.save',
+    '*ui.clientesCadastro.cancel',
+    '*ui.clientesCadastro.validate',
+  ] as const;
+
+  @property() nome: string = '';
+  @property() cpf: string = '';
+  @property() cnh: string = '';
+  @property() telefone: string = '';
+  @property() email: string = '';
+
+  @property() cpfMask: string = '000.000.000-00';
+  @property() cnhMask: string = '00000000000';
+  @property() formDirty: boolean = false;
+  @property() showValidationHint: boolean = true;
+  @property() activeTab: string = 'dados';
+
+  @property() save: 'idle' | 'loading' | 'success' | 'error' = 'idle';
+  @property() cancel: 'idle' | 'loading' | 'success' | 'error' = 'idle';
+  @property() validate: 'idle' | 'loading' | 'success' | 'error' = 'idle';
+
+  @property() status: string = '';
+
+  protected msg: MessageType = messages['en'];
+
+  createRenderRoot() {
+    return this;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+
+    const pendingLoad = consumeExpectedNavigationLoad();
+    const task = this.loadInitialData(undefined, {
+      // mode: pendingLoad ? 'blocking' : 'silent',
+      mode: 'silent',
+      signal: pendingLoad?.signal,
+    });
+    bindExpectedNavigationLoad(pendingLoad, task);
+    void task.catch(() => undefined);
+
+    const lang: string = this.getMessageKey(messages);
+    this.msg = messages[lang] || messages['en'];
+
+    initState('ui.clientesCadastro.cpfMask', '000.000.000-00');
+    initState('ui.clientesCadastro.cnhMask', '00000000000');
+    initState('ui.clientesCadastro.formDirty', false);
+    initState('ui.clientesCadastro.showValidationHint', true);
+    initState('ui.clientesCadastro.activeTab', 'dados');
+
+    subscribe(this._stateKeys as unknown as string[], this);
+
+    (this._stateKeys as unknown as string[]).forEach((key) => {
+      const k = key.startsWith('*') ? key.slice(1) : key;
+      const v = getState(k);
+      if (v !== undefined) this.handleIcaStateChange(k, v);
+    });
+
+    if (!this.status) this.status = this.msg.statusReady;
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    unsubscribe(this._stateKeys as unknown as string[], this);
+  }
+
+  handleIcaStateChange(key: string, value: any): void {
+    switch (key) {
+      case 'db.cliente.nome':
+        this.nome = value ?? '';
+        break;
+      case 'db.cliente.cpf':
+        this.cpf = value ?? '';
+        break;
+      case 'db.cliente.cnh':
+        this.cnh = value ?? '';
+        break;
+      case 'db.cliente.telefone':
+        this.telefone = value ?? '';
+        break;
+      case 'db.cliente.email':
+        this.email = value ?? '';
+        break;
+
+      case 'ui.clientesCadastro.cpfMask':
+        this.cpfMask = value ?? '000.000.000-00';
+        break;
+      case 'ui.clientesCadastro.cnhMask':
+        this.cnhMask = value ?? '00000000000';
+        break;
+      case 'ui.clientesCadastro.formDirty':
+        this.formDirty = value ?? false;
+        break;
+      case 'ui.clientesCadastro.showValidationHint':
+        this.showValidationHint = value ?? true;
+        break;
+      case 'ui.clientesCadastro.activeTab':
+        this.activeTab = value ?? 'dados';
+        break;
+
+      case 'ui.clientesCadastro.save':
+        this.save = value ?? 'idle';
+        break;
+      case 'ui.clientesCadastro.cancel':
+        this.cancel = value ?? 'idle';
+        break;
+      case 'ui.clientesCadastro.validate':
+        this.validate = value ?? 'idle';
+        break;
     }
+  }
 
-    connectedCallback() {
-        super.connectedCallback();
-        const pendingLoad = consumeExpectedNavigationLoad();
-        const task = this.loadInitialData(undefined, {
-            // mode: pendingLoad ? 'blocking' : 'silent',
-            mode: 'silent',
-            signal: pendingLoad?.signal,
-        });
-        bindExpectedNavigationLoad(pendingLoad, task);
-        void task.catch(() => undefined);
-        const lang: string = this.getMessageKey(messages);
-        this.msg = messages[lang] || messages['en'];
-    }
+  async loadInitialData(_params?: undefined, options?: BffClientOptions): Promise<void> {
+    // Page has no read routines; keep as a no-op for consistency
+    this.status = this.msg.statusReady;
+    void options;
+  }
 
-    // ── load methods (one per read routine) ──
-    protected async loadInitialData(
-        _params?: Record<string, unknown>,
-        options?: BffClientOptions,
-    ): Promise<void> {
-        await this.loadCliente(undefined, options);
-    }
+  async saveCliente(params: LocadoraUpdateClienteRequest, signal?: AbortSignal): Promise<void> {
+    setState('ui.clientesCadastro.save', 'loading');
+    try {
+      const options: BffClientOptions | undefined = signal ? { mode: 'blocking', signal } : { mode: 'blocking' };
 
-    public async loadCliente(
-        _params?: Record<string, unknown>,
-        options?: BffClientOptions,
-    ): Promise<void> {
-        this.status = this.msg.loadingCliente;
-
-        if ((window as any).mls) {
-            this.cliente = {
-                nome: 'Joao Silva',
-                cpf: '123.456.789-09',
-                cnh: '01234567890',
-                telefone: '(11) 98888-7777',
-                email: 'joao.silva@exemplo.com',
-            };
-            this.status = '';
-            return;
-        } else {
-            const response = await execBff<LocadoraClienteResponse>(
-                'locadora.cliente.get',
-                _params ?? {},
-                options,
-            );
-            if (!response.ok || !response.data) {
-                if (options?.mode === 'blocking') {
-                    throw (
-                        response.error ?? {
-                            code: 'UNEXPECTED_ERROR',
-                            message: this.msg.couldNotLoad,
-                        }
-                    ) satisfies AuraNormalizedError;
-                }
-                this.status = this.msg.couldNotLoad;
-                this.cliente = undefined;
-                return;
-            }
-            this.cliente = response.data;
-            this.status = '';
-        }
-    }
-
-    // ── action methods (one per write routine) ──
-    public async save(params: LocadoraUpdateClienteRequest, signal?: AbortSignal): Promise<void> {
-        if ((window as any).mls) {
-            console.log('[mls mock] locadora.cliente.save', params);
-            this.status = this.msg.savedSuccessfully;
-            await this.loadCliente(undefined, { mode: 'silent', signal });
-            return;
-        }
-
-        const response = await execBff<{ ok: true }>(
-            'locadora.clientesCadastro.save',
-            params,
-            { mode: 'blocking', signal },
-        );
-
-        if (!response.ok) {
-            throw (
-                response.error ?? {
-                    code: 'UNEXPECTED_ERROR',
-                    message: this.msg.couldNotSave,
-                }
-            ) satisfies AuraNormalizedError;
-        }
-
+      if ((window as any).mls) {
+        console.log('[mls mock] locadora.clientesCadastro.save', params);
         this.status = this.msg.savedSuccessfully;
-        await this.loadCliente(undefined, { mode: 'silent', signal });
+        setState('ui.clientesCadastro.save', 'success');
+        return;
+      }
+
+      const response = await execBff<LocadoraClienteResponse>('locadora.clientesCadastro.save', params, options);
+      if (!response.ok || !response.data) {
+        const err =
+          (response.error ?? {
+            code: 'UNEXPECTED_ERROR',
+            message: this.msg.couldNotSave,
+          }) satisfies AuraNormalizedError;
+        setState('ui.clientesCadastro.save', 'error');
+        throw err;
+      }
+
+      const saved = response.data;
+      this.nome = saved.nome ?? '';
+      this.cpf = saved.cpf ?? '';
+      this.cnh = saved.cnh ?? '';
+      this.telefone = saved.telefone ?? '';
+      this.email = saved.email ?? '';
+
+      setState('db.cliente.nome', this.nome);
+      setState('db.cliente.cpf', this.cpf);
+      setState('db.cliente.cnh', this.cnh);
+      setState('db.cliente.telefone', this.telefone);
+      setState('db.cliente.email', this.email);
+
+      this.formDirty = false;
+      setState('ui.clientesCadastro.formDirty', false);
+
+      this.status = this.msg.savedSuccessfully;
+      setState('ui.clientesCadastro.save', 'success');
+    } catch (e) {
+      setState('ui.clientesCadastro.save', 'error');
+      throw e;
     }
+  }
 
-    public handleSaveSubmit(event: SubmitEvent): void {
-        event.preventDefault();
-        const form = event.target as HTMLFormElement;
-        const fd = new FormData(form);
+  handleSaveClienteSubmit(event: SubmitEvent) {
+    event.preventDefault();
 
-        const params: LocadoraUpdateClienteRequest = {
-            nome: String(fd.get('nome') ?? ''),
-            cpf: String(fd.get('cpf') ?? ''),
-            cnh: String(fd.get('cnh') ?? ''),
-            telefone: String(fd.get('telefone') ?? ''),
-            email: String(fd.get('email') ?? ''),
-        };
+    const params: LocadoraUpdateClienteRequest = {
+      nome: this.nome,
+      cpf: this.cpf,
+      cnh: this.cnh,
+      telefone: this.telefone,
+      email: this.email,
+    };
 
-        void runBlockingUiAction(
-            async (signal: AbortSignal) => {
-                await this.save(params, signal);
-            },
-            {
-                busyLabel: this.msg.saving,
-                errorTitle: this.msg.couldNotSave,
-                retry: () => this.save(params),
-            },
-        );
+    void runBlockingUiAction(
+      async (signal: AbortSignal) => {
+        await this.saveCliente(params, signal);
+      },
+      {
+        busyLabel: this.msg.saving,
+        errorTitle: this.msg.couldNotSave,
+        retry: () => this.saveCliente(params),
+      },
+    );
+  }
+
+  async cancelCadastro(params: Record<string, never> = {}, signal?: AbortSignal): Promise<void> {
+    setState('ui.clientesCadastro.cancel', 'loading');
+    try {
+      const options: BffClientOptions | undefined = signal ? { mode: 'blocking', signal } : { mode: 'blocking' };
+
+      if ((window as any).mls) {
+        console.log('[mls mock] locadora.clientesCadastro.cancel', params);
+        this.status = this.msg.cancelledSuccessfully;
+        setState('ui.clientesCadastro.cancel', 'success');
+        return;
+      }
+
+      const response = await execBff<{ ok: boolean }>('locadora.clientesCadastro.cancel', params, options);
+      if (!response.ok) {
+        const err =
+          (response.error ?? {
+            code: 'UNEXPECTED_ERROR',
+            message: this.msg.couldNotCancel,
+          }) satisfies AuraNormalizedError;
+        setState('ui.clientesCadastro.cancel', 'error');
+        throw err;
+      }
+
+      this.status = this.msg.cancelledSuccessfully;
+      setState('ui.clientesCadastro.cancel', 'success');
+    } catch (e) {
+      setState('ui.clientesCadastro.cancel', 'error');
+      throw e;
     }
+  }
 
-    public async cancel(params: Record<string, unknown> = {}, signal?: AbortSignal): Promise<void> {
-        if ((window as any).mls) {
-            console.log('[mls mock] locadora.cliente.cancel', params);
-            this.status = this.msg.confirmedSuccessfully;
-            return;
-        }
+  handleCancelCadastroClick() {
+    const params: Record<string, never> = {};
 
-        const response = await execBff<{ ok: true }>(
-            'locadora.clientesCadastro.cancel',
-            params,
-            { mode: 'blocking', signal },
-        );
+    void runBlockingUiAction(
+      async (signal: AbortSignal) => {
+        await this.cancelCadastro(params, signal);
+      },
+      {
+        busyLabel: this.msg.confirming,
+        errorTitle: this.msg.couldNotCancel,
+        retry: () => this.cancelCadastro(params),
+      },
+    );
+  }
 
-        if (!response.ok) {
-            throw (
-                response.error ?? {
-                    code: 'UNEXPECTED_ERROR',
-                    message: this.msg.couldNotConfirm,
-                }
-            ) satisfies AuraNormalizedError;
-        }
+  async validateCpfCnh(params: { cpf: string; cnh: string }, signal?: AbortSignal): Promise<void> {
+    setState('ui.clientesCadastro.validate', 'loading');
+    try {
+      const options: BffClientOptions | undefined = signal ? { mode: 'blocking', signal } : { mode: 'blocking' };
 
-        this.status = this.msg.confirmedSuccessfully;
+      if ((window as any).mls) {
+        console.log('[mls mock] locadora.clientesCadastro.validate', params);
+        this.status = this.msg.validatedSuccessfully;
+        setState('ui.clientesCadastro.validate', 'success');
+        return;
+      }
+
+      const response = await execBff<{ ok: boolean }>('locadora.clientesCadastro.validate', params, options);
+      if (!response.ok) {
+        const err =
+          (response.error ?? {
+            code: 'UNEXPECTED_ERROR',
+            message: this.msg.couldNotValidate,
+          }) satisfies AuraNormalizedError;
+        setState('ui.clientesCadastro.validate', 'error');
+        throw err;
+      }
+
+      this.status = this.msg.validatedSuccessfully;
+      setState('ui.clientesCadastro.validate', 'success');
+    } catch (e) {
+      setState('ui.clientesCadastro.validate', 'error');
+      throw e;
     }
+  }
 
-    public handleCancelClick(): void {
-        void runBlockingUiAction(
-            async (signal: AbortSignal) => {
-                await this.cancel({}, signal);
-            },
-            {
-                busyLabel: this.msg.confirming,
-                errorTitle: this.msg.couldNotConfirm,
-                retry: () => this.cancel({}),
-            },
-        );
-    }
+  handleValidateCpfCnhClick() {
+    const params = { cpf: this.cpf, cnh: this.cnh };
 
-    public async validate(params: Pick<LocadoraUpdateClienteRequest, 'cpf' | 'cnh'>, signal?: AbortSignal): Promise<void> {
-        if ((window as any).mls) {
-            console.log('[mls mock] locadora.cliente.validate', params);
-            this.status = this.msg.confirmedSuccessfully;
-            return;
-        }
-
-        const response = await execBff<{ ok: true }>(
-            'locadora.cliente.validate',
-            params,
-            { mode: 'blocking', signal },
-        );
-
-        if (!response.ok) {
-            throw (
-                response.error ?? {
-                    code: 'UNEXPECTED_ERROR',
-                    message: this.msg.couldNotConfirm,
-                }
-            ) satisfies AuraNormalizedError;
-        }
-
-        this.status = this.msg.confirmedSuccessfully;
-    }
+    void runBlockingUiAction(
+      async (signal: AbortSignal) => {
+        await this.validateCpfCnh(params, signal);
+      },
+      {
+        busyLabel: this.msg.confirming,
+        errorTitle: this.msg.couldNotValidate,
+        retry: () => this.validateCpfCnh(params),
+      },
+    );
+  }
 }

@@ -14,6 +14,7 @@ void bootstrapCollabApp({
     { label:'veiculosLista', href: '/locadora/veiculosLista' },
     { label:'locacoesLista', href: '/locadora/locacoesLista' },
     { label:'locacoesCadastro', href: '/locadora/locacoesCadastro' },
+    { label: 'adminDashboard', href: '/locadora/adminDashboard' },
   ],
   pages: [
     {
@@ -51,6 +52,12 @@ void bootstrapCollabApp({
       title: 'locacoesCadastro',
       tagName: 'locadora--web--desktop--page11--locacoes-cadastro-102035',
       loader: () => import('/_102035_/l2/locadora/web/desktop/page11/locacoesCadastro.js'),
+    },
+    {
+      path: '/locadora/adminDashboard',
+      title: 'adminDashboard',
+      tagName: 'locadora--web--desktop--page11--admin-dashboard-102035',
+      loader: () => import('/_102035_/l2/locadora/web/desktop/page11/adminDashboard.js'),
     },
     
   ],
