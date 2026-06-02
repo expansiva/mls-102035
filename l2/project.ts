@@ -10,6 +10,6 @@ export const projectConfig = {
   },
 
   designSystems: {
-    1: { name: 'default', skill: '/_102029_/l2/skills/ds/default.js' },
+    1: { name: 'default', skill: '_102020_/l2/agents/newModule/skills/genPageDS.ts' },
   }
 }
