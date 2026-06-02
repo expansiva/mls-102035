@@ -9,10 +9,8 @@ async function getVeiculoRepository(ctx: RequestContext) {
   return ctx.data.moduleData.getTable<LocadoraVeiculoResponse>('locadoraVeiculo');
 }
 
-export async function getStatusVeiculoOptions(ctx: RequestContext, input?: {}): Promise<LocadoraVeiculoResponse[]> {
-  const repo = await getVeiculoRepository(ctx);
-  const rows = await repo.findMany();
-  return rows;
+export async function getStatusVeiculoOptions(ctx: RequestContext, input?: {}): Promise<{ values: LocadoraVeiculoResponse['status'][] }> {
+  return { values: ['disponível', 'locado', 'manutenção'] };
 }
 
 export async function saveVeiculo(ctx: RequestContext, input: LocadoraUpdateVeiculoRequest): Promise<LocadoraVeiculoResponse> {

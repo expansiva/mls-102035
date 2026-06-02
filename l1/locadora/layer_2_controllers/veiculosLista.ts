@@ -21,6 +21,6 @@ export async function listVeiculos(ctx: RequestContext, input?: { status?: strin
 export const veiculosListaListVeiculosHandler: BffHandler = async ({ request, ctx }) => {
   const params = (request.params ?? {}) as Record<string, unknown>;
   return ok(await listVeiculos(ctx, {
-    status: typeof params.status === 'string' ? params.status : ''
+    status: typeof params.status === 'string' && params.status !== 'todos'? params.status : ''
   }));
 };
