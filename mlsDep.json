@@ -1,0 +1,19 @@
+{
+  "workspaceDependencies": {
+    "102029": {
+      "repo": "https://github.com/expansiva/mls-102029.git"
+    },
+    "102033": {
+      "repo": "https://github.com/expansiva/mls-102033.git"
+    },
+    "102034": {
+      "repo": "https://github.com/expansiva/mls-102034.git"
+    },
+    "102020": {
+      "repo": "https://github.com/expansiva/mls-102020.git"
+    },
+    "102027": {
+      "repo": "https://github.com/expansiva/mls-102027.git"
+    }
+  }
+}
