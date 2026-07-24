@@ -23,7 +23,7 @@
     "after_build": "node scripts/after_build_workspace.mjs",
     "test": "npm run build && node --test $(find dist/local -name '*.test.js' | sort)",
     "test:integration": "npm run build && RUN_INTEGRATION_TESTS=true node --test $(find dist/local -name '*.integration.test.js' | sort)",
-    "buildCI": "node -e \"require('mls-ci').runCI()\""
+    "buildCI": "node ../scripts/buildCI/buildCI.mjs 102035"
   },
   "author": "",
   "license": "ISC",
@@ -32,7 +32,12 @@
     "@aws-sdk/lib-dynamodb": "^3.922.0",
     "fastify": "^5.6.1",
     "lit": "^3.3.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "mls-102029": "git+https://github.com/expansiva/mls-102029.git",
+    "mls-102033": "git+https://github.com/expansiva/mls-102033.git",
+    "mls-102034": "git+https://github.com/expansiva/mls-102034.git",
+    "mls-102020": "git+https://github.com/expansiva/mls-102020.git",
+    "mls-102027": "git+https://github.com/expansiva/mls-102027.git"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.2",
