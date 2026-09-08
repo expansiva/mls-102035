@@ -2,60 +2,17 @@
   "name": "102035",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
   "scripts": {
-    "postinstall": "node scripts/sync_workspace_deps.mjs",
-    "deps:sync": "node scripts/sync_workspace_deps.mjs",
-    "build": "node scripts/build_workspace.mjs; node scripts/after_build_workspace.mjs",
-    "dev": "node scripts/build_workspace.mjs --watch-tsc",
-    "start": "npm run start:dev",
-    "start:dev": "APP_ENV=development node dist/local/_102034_/l1/server/layer_1_external/transport/http/startServer.js",
-    "start:staging": "APP_ENV=staging node dist/local/_102034_/l1/server/layer_1_external/transport/http/startServer.js",
-    "start:prod": "APP_ENV=production node dist/local/_102034_/l1/server/layer_1_external/transport/http/startServer.js",
-    "setup:server": "node dist/local/_102034_/l1/scripts/setupServer.js",
-    "dynamo:ensure-table": "node dist/local/_102034_/l1/scripts/ensureDynamoTable.js",
-    "db:init": "node dist/local/_102034_/l1/scripts/dbInit.js",
-    "db:migrate": "node dist/local/_102034_/l1/scripts/migrate.js",
-    "db:delete": "node dist/local/_102034_/l1/scripts/dbDelete.js",
-    "db:reset-local": "node dist/local/_102034_/l1/scripts/resetLocalDb.js",
-    "worker:write-behind": "node dist/local/_102034_/l1/scripts/runWriteBehindWorker.js",
-    "restore:from-dynamo": "node dist/local/_102034_/l1/scripts/restoreFromDynamo.js",
-    "after_build": "node scripts/after_build_workspace.mjs",
-    "test": "npm run build && node --test $(find dist/local -name '*.test.js' | sort)",
-    "test:integration": "npm run build && RUN_INTEGRATION_TESTS=true node --test $(find dist/local -name '*.integration.test.js' | sort)",
     "buildCI": "node ../scripts/buildCI/buildCI.mjs 102035"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.922.0",
-    "@aws-sdk/lib-dynamodb": "^3.922.0",
-    "fastify": "^5.6.1",
-    "lit": "^3.3.2",
-    "pg": "^8.16.3",
+  "actionDependencies": {
+    "mls-102025": "git+https://github.com/expansiva/mls-102025.git",
+    "mls-102027": "git+https://github.com/expansiva/mls-102027.git",
     "mls-102029": "git+https://github.com/expansiva/mls-102029.git",
     "mls-102033": "git+https://github.com/expansiva/mls-102033.git",
-    "mls-102034": "git+https://github.com/expansiva/mls-102034.git",
-    "mls-102020": "git+https://github.com/expansiva/mls-102020.git",
-    "mls-102027": "git+https://github.com/expansiva/mls-102027.git"
-  },
-  "devDependencies": {
-    "@tailwindcss/cli": "^4.2.2",
-    "@types/node": "^24.5.2",
-    "@types/pg": "^8.18.0",
-    "esbuild": "^0.27.4",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^5.9.2",
-    "mls-ci": "git+https://github.com/expansiva/mls-ci.git",
-    "node-fetch": "^2.7.0",
-    "less": "^4.6.4",
-    "adm-zip": "0.5.16"
-  },
-  "actionDependencies":{
-    "mls-102029": "git+https://github.com/expansiva/mls-102029.git",
-    "mls-102033": "git+https://github.com/expansiva/mls-102033.git",
-    "mls-102034": "git+https://github.com/expansiva/mls-102034.git",
-    "mls-102020": "git+https://github.com/expansiva/mls-102020.git",
-    "mls-102027": "git+https://github.com/expansiva/mls-102027.git"
+    "mls-102036": "git+https://github.com/expansiva/mls-102036.git",
+    "mls-102021": "git+https://github.com/expansiva/mls-102021.git"
   }
 }
