@@ -1630,6 +1630,17 @@ test('no example in E4 derivation prompts names a real field or enum code', () =
   assert.doesNotMatch(entityPrompt, /\bdirection:\s*in\|out\b/);
 });
 
+test('E4 exposes the level-1 catalog as placeholders without mdmSubtype semantics', () => {
+  const overview = readFileSync(new URL('prompt.md', import.meta.url), 'utf8');
+  const entityPrompt = readFileSync(new URL('promptEntity.md', import.meta.url), 'utf8');
+  const agent = readFileSync(new URL('agentNs4E4.ts', import.meta.url), 'utf8');
+  assert.match(overview, /<Person>/);
+  assert.match(entityPrompt, /<Person>/);
+  assert.match(agent, /formatNs4Level1CatalogPrompt/);
+  assert.doesNotMatch(overview, /\bmdmSubtype\b/);
+  assert.doesNotMatch(entityPrompt, /\bmdmSubtype\b/);
+});
+
 test('E4 derivation binding files keep English comments and identifiers', () => {
   const agent = readFileSync(new URL('agentNs4E4.ts', import.meta.url), 'utf8');
   const prompt = readFileSync(new URL('promptDerivations.md', import.meta.url), 'utf8');

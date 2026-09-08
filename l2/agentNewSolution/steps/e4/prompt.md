@@ -11,6 +11,8 @@ text in the user's language. This run is `solutionMode: new`; never claim discov
 
 {{platformSkill}}
 
+The human prompt includes the platform level-1 catalog (subtypes and base fields as placeholders such as `<Person>`). It is context for what the platform already stores; do not copy those names as entities of this module.
+
 ## Sources and connected-system contract
 
 - Cover every E2 journey, every `now` feature and every E3 authority with `informationNeeds` through

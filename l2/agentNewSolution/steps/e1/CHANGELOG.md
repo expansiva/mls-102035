@@ -1,5 +1,8 @@
 # E1 changelog
 
+- 2026-09-08: The human prompt receives sibling modules and actors from
+  `l4/organization/registry.defs.ts` as context. No new E1 rule.
+
 - 2026-09-07: E1-E6 clarification widgets read chrome from `presentation.phrases`
   (`widget.<name>.*`). The intake widget receives `plan.presentation` at mount.
 

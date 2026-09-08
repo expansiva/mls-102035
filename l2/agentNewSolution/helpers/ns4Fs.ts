@@ -26,6 +26,7 @@ import type {
   Ns4L5TodoFrontendArtifact,
   Ns4L5TodoBackendArtifact,
   Ns4L5ProcessArtifact,
+  Ns4SolutionRegistryArtifact,
 } from '/_102035_/l2/agentNewSolution/types.js';
 
 export type Ns4FileInfo = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
@@ -39,6 +40,18 @@ export function ns4AgentFile(folder: string, shortName: string, extension: strin
 
 export function ns4ModuleFile(moduleName: string): Ns4FileInfo {
   return { project: mls.actualProject || 0, level: 4, folder: normalizeNs4ModuleName(moduleName), shortName: 'module', extension: '.defs.ts' };
+}
+
+export function ns4SolutionRegistryFile(): Ns4FileInfo {
+  return { project: mls.actualProject || 0, level: 4, folder: 'organization', shortName: 'registry', extension: '.defs.ts' };
+}
+
+export function ns4Level1IndexFile(): Ns4FileInfo {
+  return { project: AGENT_PROJECT, level: 4, folder: 'organization/ontology', shortName: 'index', extension: '.defs.ts' };
+}
+
+export function ns4Level1EntityFile(subtype: string): Ns4FileInfo {
+  return { project: AGENT_PROJECT, level: 4, folder: 'organization/ontology', shortName: subtype, extension: '.defs.ts' };
 }
 
 export function ns4PipelineFile(moduleName: string): Ns4FileInfo {
@@ -458,6 +471,16 @@ export async function writeNs4Process(moduleName: string, artifact: Ns4L5Process
   const fileInfo = ns4ProcessFile(moduleName); await writeNs4Defs(fileInfo, `${normalizeNs4ModuleName(moduleName)}Process`, artifact, 'Ns4L5ProcessArtifact'); return displayPath(fileInfo);
 }
 
+export async function readNs4SolutionRegistry(): Promise<Ns4SolutionRegistryArtifact | null> {
+  return readNs4DefsJson<Ns4SolutionRegistryArtifact>(ns4SolutionRegistryFile(), false);
+}
+
+export async function writeNs4SolutionRegistry(artifact: Ns4SolutionRegistryArtifact): Promise<string> {
+  const fileInfo = ns4SolutionRegistryFile();
+  await writeNs4Defs(fileInfo, 'solutionRegistry', artifact, 'Ns4SolutionRegistryArtifact');
+  return displayPath(fileInfo);
+}
+
 export async function writeNs4Journey(moduleName: string, journeyId: string, artifact: Ns4JourneyArtifact): Promise<string> {
   const fileInfo = ns4JourneyFile(moduleName, journeyId);
   await writeNs4Defs(fileInfo, `${journeyId}Journey`, artifact, 'Ns4JourneyArtifact');
@@ -598,7 +621,7 @@ function displayPath(fileInfo: Ns4FileInfo): string {
 }
 
 function isGlobalFolder(level: number, folder: string): boolean {
-  return level === 4 && ['actors', 'operations', 'rules', 'trace', 'workflows'].includes(folder);
+  return level === 4 && ['actors', 'operations', 'organization', 'rules', 'trace', 'workflows'].includes(folder);
 }
 
 /**

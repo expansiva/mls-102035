@@ -7,6 +7,7 @@
 Generate fields, constraints and entity-local rule references only for the requested entity. The supplied
 overview is frozen: do not rename the entity, change its kind/storage/lifecycle/source references,
 cardinality, mutability, `derivation`, add entities or change relationships. Write human-facing text in the user's language.
+The human prompt includes the platform level-1 catalog as placeholders (`<Person>`). It is context, not a list of fields to copy onto this entity.
 If the overview stored an on-demand export/report/file as `derived`, do not invent line-item records
 to persist its composition. When the frozen overview carries `derivation`, emit output fields whose
 `fieldId`s match `derivation.aggregate[].fieldId` — do not invent a second formula.

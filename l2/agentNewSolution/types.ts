@@ -27,6 +27,11 @@ import type {
 import type {
   Ns4L5ProcessArtifact, Ns4L5TodoBackendArtifact, Ns4L5TodoFrontendArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e10/contracts.js';
+import type {
+  Ns4Level1EntityArtifact,
+  Ns4Level1IndexArtifact,
+  Ns4SolutionRegistryArtifact,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
 export type {
   Ns4ApprovedBy,
@@ -201,6 +206,24 @@ export type {
   Ns4L5TodoFrontendArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e10/contracts.js';
 
+export type {
+  Ns4Level1AllowedRelationship,
+  Ns4Level1EntityArtifact,
+  Ns4Level1Field,
+  Ns4Level1IndexArtifact,
+  Ns4Level1RelationshipRef,
+  Ns4SolutionRegistryActor,
+  Ns4SolutionRegistryArtifact,
+  Ns4SolutionRegistryGeneralField,
+  Ns4SolutionRegistryModule,
+  Ns4SolutionRegistryRole,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+
+export {
+  NS4_LEVEL1_SCHEMA_VERSION,
+  NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+
 export const NS4_PERMANENT_ARTIFACT_TYPE_NAMES = [
   'Ns4ModuleArtifact',
   'Ns4JourneyArtifact',
@@ -222,6 +245,9 @@ export const NS4_PERMANENT_ARTIFACT_TYPE_NAMES = [
   'Ns4L5TodoFrontendArtifact',
   'Ns4L5TodoBackendArtifact',
   'Ns4L5ProcessArtifact',
+  'Ns4Level1EntityArtifact',
+  'Ns4Level1IndexArtifact',
+  'Ns4SolutionRegistryArtifact',
 ] as const;
 
 export type Ns4PermanentArtifactTypeName = typeof NS4_PERMANENT_ARTIFACT_TYPE_NAMES[number];
@@ -247,4 +273,7 @@ export interface Ns4PermanentArtifactByType {
   Ns4L5TodoFrontendArtifact: Ns4L5TodoFrontendArtifact;
   Ns4L5TodoBackendArtifact: Ns4L5TodoBackendArtifact;
   Ns4L5ProcessArtifact: Ns4L5ProcessArtifact;
+  Ns4Level1EntityArtifact: Ns4Level1EntityArtifact;
+  Ns4Level1IndexArtifact: Ns4Level1IndexArtifact;
+  Ns4SolutionRegistryArtifact: Ns4SolutionRegistryArtifact;
 }

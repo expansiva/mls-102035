@@ -1,5 +1,8 @@
 # E4 changelog
 
+- 2026-09-08: Overview and entity prompts load the platform level-1 catalog
+  (`l4/organization/ontology/*`) as placeholders. No `mdmSubtype` semantics yet.
+
 - 2026-09-07: The ontology widget reads chrome from `presentation.phrases` (`widget.ontology.*`).
 
 - 2026-09-07: Removed `NS4_E4_PROJECT_PROJECTION_ORPHAN` — name-keyed special case of

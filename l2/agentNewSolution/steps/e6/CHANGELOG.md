@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-08 — sibling registry
+
+- Human prompt lists sibling `roles` and `generalFields`. Prompt paragraph: reuse as
+  `horizontalModule` with `existing: true`. No empty-platform phrase was present to subtract.
+
 ## 2026-09-07 — widget phrases
 
 - The composition widget reads chrome from `presentation.phrases` (`widget.composition.*`).

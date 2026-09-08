@@ -11,6 +11,8 @@ export interface Ns4AdditionalCapability {
   title: string;
   purpose: string;
   decision: Ns4AdditionalCapabilityDecision;
+  /** True when the capability is already realized by a sibling module (reuse, never a new module). */
+  existing?: boolean;
 }
 
 export interface Ns4E6Review {
@@ -62,6 +64,7 @@ export function normalizeNs4E6Review(value: unknown, fallbackModule = ''): Ns4E6
         title: text(recommendation.title),
         purpose: text(recommendation.purpose),
         decision: text(recommendation.decision) as Ns4AdditionalCapabilityDecision,
+        ...(recommendation.existing === true ? { existing: true } : {}),
       };
     }),
     changeSummary: strings(root.changeSummary),

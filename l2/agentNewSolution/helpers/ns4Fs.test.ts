@@ -102,6 +102,9 @@ test('every ns4Fs *File builder shortName is free of dots', async () => {
     ns4JourneyFile: ns4.ns4JourneyFile(m, 'buyProduct'),
     ns4JourneyIndexFile: ns4.ns4JourneyIndexFile(m),
     ns4L5ProjectFile: ns4.ns4L5ProjectFile(102047),
+    ns4SolutionRegistryFile: ns4.ns4SolutionRegistryFile(),
+    ns4Level1IndexFile: ns4.ns4Level1IndexFile(),
+    ns4Level1EntityFile: ns4.ns4Level1EntityFile('Person'),
   };
   const exportedFileBuilders = Object.keys(ns4).filter(name => name.endsWith('File') && typeof (ns4 as Record<string, unknown>)[name] === 'function');
   for (const name of exportedFileBuilders) {
@@ -114,4 +117,15 @@ test('every ns4Fs *File builder shortName is free of dots', async () => {
   assert.equal(built.ns4E2VersionedDraftFile.shortName, 'e2-journeys-draft-v2');
   assert.equal('ns4L5PublishConfFile' in ns4, false);
   assert.equal('writeNs4L5PublishExample' in ns4, false);
+});
+
+test('organization registry is not listed as a client module', async () => {
+  const ns4 = await loadNs4Fs();
+  const g = globalThis as unknown as Record<string, any>;
+  g.mls.actualProject = 102047;
+  g.mls.stor.files = {
+    r: { project: 102047, level: 4, folder: 'organization', shortName: 'registry', extension: '.defs.ts', status: 'changed' },
+    m: { project: 102047, level: 4, folder: 'petShop', shortName: 'module', extension: '.defs.ts', status: 'changed' },
+  };
+  assert.deepEqual([...ns4.listNs4ModuleFolders()], ['petShop']);
 });

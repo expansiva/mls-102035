@@ -93,6 +93,8 @@ import {
 } from '/_102035_/l2/agentNewSolution/steps/e4/gate.js';
 import { resolveNs4E4HookArgs, resolveNs4E4InvocationArgs } from '/_102035_/l2/agentNewSolution/steps/e4/hookArgs.js';
 import { decideNs4LaterCheckpoint, ns4E4SmartSignal } from '/_102035_/l2/agentNewSolution/helpers/ns4ReviewPolicy.js';
+import { ns4Level1Catalog } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
+import { formatNs4Level1CatalogPrompt } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
 
 interface Ns4E4Args {
   planId: 'e4-ontology';
@@ -198,6 +200,7 @@ async function buildPlanPrompt(
   const humanPrompt = [
     '## Explicit delivery mode\nnew solution; new persistence design; no legacy database contract',
     `## Required review round\n${reviewRound}`,
+    formatNs4Level1CatalogPrompt(ns4Level1Catalog()),
     '## Approved module contract', JSON.stringify(moduleArtifact),
     '## Approved E2 journeys', JSON.stringify(journeys),
     '## Approved E3 access matrix', JSON.stringify(access),
@@ -280,6 +283,7 @@ async function buildEntityPrompt(
   ].filter(Boolean).join('\n');
   const humanPrompt = [
     '## Frozen target entity overview', JSON.stringify(target),
+    formatNs4Level1CatalogPrompt(ns4Level1Catalog()),
     '## All valid entity ids and storage targets', JSON.stringify(plan.entities.map(entity => ({ entityId: entity.entityId, storage: entity.storage.target }))),
     '## Relationships touching this entity', JSON.stringify(touchingRelationships),
     '## Related E2 journeys and features', JSON.stringify({ journeys: relatedJourneys, features: relatedFeatures }),

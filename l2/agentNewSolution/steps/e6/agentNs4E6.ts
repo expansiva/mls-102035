@@ -18,9 +18,10 @@ import {
 } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import {
   ns4E6DraftFile, ns4RulesFile, readNs4AgentText, readNs4DefsJson, readNs4Module,
-  readNs4Pipeline, readNs4Text, writeNs4Composition, writeNs4E6Approved, writeNs4E6Draft,
+  readNs4Pipeline, readNs4Text, readNs4SolutionRegistry, writeNs4Composition, writeNs4E6Approved, writeNs4E6Draft,
   writeNs4Module, writeNs4Pipeline,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+import { formatNs4E6OrganizationContext } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
 import { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import {
   buildNs4CompositionArtifact, normalizeNs4E6Review, Ns4E6Review, Ns4E6ReviewEvent,
@@ -58,13 +59,15 @@ export async function beforeNs4E6PromptStep(
     const parsed = resolveArgs(context, args || step.prompt); moduleName = parsed.moduleName;
     const pipeline = await requirePipeline(moduleName);
     if (pipeline.steps.e5?.status !== 'approved') throw new Error(`E5 approved pipeline not found for ${moduleName}.`);
-    const [source, prompt, previous] = await Promise.all([
+    const [source, prompt, previous, registry] = await Promise.all([
       readCompactSource(moduleName), readNs4AgentText('steps/e6', 'prompt'), readDraft(moduleName),
+      readNs4SolutionRegistry(),
     ]);
     const round = parsed.reviewRound || pipeline.steps.e6?.reviewRound || 1;
     const humanPrompt = [
       `## Required identity\nmoduleName=${moduleName}; reviewRound=${round}; userLanguage=${source.userLanguage}`,
       `## Compact approved L4\n${JSON.stringify(source)}`,
+      formatNs4E6OrganizationContext(registry),
       parsed.adjustment ? `## Human change request\n${parsed.adjustment}` : '',
       parsed.gateFeedback ? `## Deterministic repair required\n${parsed.gateFeedback}` : '',
       previous ? `## Current proposal; preserve unrelated items\n${JSON.stringify(previous)}` : '',
