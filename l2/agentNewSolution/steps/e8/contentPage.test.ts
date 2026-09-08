@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import type { Ns4AccessGrant } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import { deriveNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/tiers.js';
 import { validateNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/modelGate.js';
 import { ns4E8CompositionProfile } from '/_102035_/l2/agentNewSolution/steps/e8/compositionProfiles.js';
@@ -183,7 +184,7 @@ test('without the E1 content phrase the public singleton still gets a contentPag
 
 test('a content phrase is not enough when the public singleton read is missing', () => {
   const sources = listaSources();
-  sources.access.grants = sources.access.grants.filter(grant => grant.dataScope?.mode !== 'public');
+  sources.access.grants = sources.access.grants.filter((grant: Ns4AccessGrant) => grant.dataScope?.mode !== 'public');
   const model = deriveNs4E8Model(sources);
   assert.equal(model.workspaces.some(workspace => workspace.tier === 'contentPage'), false);
 });
