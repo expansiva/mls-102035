@@ -127,7 +127,9 @@ function validateOutputShapeTypes(sources: Ns4E10Sources, add: Add): void {
       const dot = ref.indexOf('.');
       if (dot <= 0) continue;
       const entity = entities.get(ref.slice(0, dot));
-      const ont = entity?.fields.find(item => item.fieldId === ref.slice(dot + 1));
+      const fieldId = ref.slice(dot + 1);
+      const ont = entity?.fields.find(item => item.fieldId === fieldId)
+        ?? (entity?.storage?.idField === fieldId ? { type: 'uuid' as const } : undefined);
       if (!ont) continue;
       if (ont.type === 'json' && field.type !== 'json') {
         add('errors', {

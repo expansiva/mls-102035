@@ -79,6 +79,43 @@ test('E10 passes over a module E8 approved and E9 emitted, and previews the menu
   assert.equal(report.checks.find(check => check.checkId === 'A6-staleness')?.status, 'passed');
 });
 
+test('mdm storage.idField is a resolvable outputShape fieldRef even when absent from fields[]', async () => {
+  const input = await sources();
+  input.ontology.entities.push({
+    entityId: 'ItemCardapio',
+    kind: 'mdm',
+    fields: [{ fieldId: 'nome', title: 'Nome', type: 'string', required: true, description: '', constraints: [] }],
+    storage: { target: 'mdm', idField: 'itemCardapioId' },
+    lifecycleStates: [],
+  } as any);
+  const operation = input.saved.operations[0];
+  operation.outputShape = {
+    kind: operation.outputShape?.kind ?? 'object',
+    fields: [
+      { name: 'itemCardapioId', type: 'string', required: true, fieldRef: 'ItemCardapio.itemCardapioId' },
+    ],
+  };
+  const report = await validateNs4E10(input);
+  assert.equal(report.errors.some(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE'), false,
+    report.errors.filter(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE').map(issue => issue.message).join('; '));
+});
+
+test('an outputShape fieldRef that is neither a real field nor storage.idField is not treated as ontology json', async () => {
+  const input = await sources();
+  const operation = input.saved.operations[0];
+  const entity = input.ontology.entities.find((item: { entityId: string }) => item.entityId === operation.entity)
+    ?? input.ontology.entities[0];
+  operation.outputShape = {
+    kind: operation.outputShape?.kind ?? 'object',
+    fields: [
+      { name: 'campoInexistente', type: 'string', required: false, fieldRef: `${entity.entityId}.campoInexistente` },
+    ],
+  };
+  const report = await validateNs4E10(input);
+  assert.equal(report.errors.some(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE'), false,
+    report.errors.filter(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE').map(issue => issue.message).join('; '));
+});
+
 test('R6-3: e10 rejects outputShape string for an ontology json field', async () => {
   const input = await sources();
   const operation = input.saved.operations[0];

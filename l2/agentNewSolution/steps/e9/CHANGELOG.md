@@ -1,5 +1,12 @@
 # E9 changelog
 
+## 2026-09-09 — mdm storage.idField is a resolvable outputRef
+
+`resolveOutputRef` and `fieldTypeOf` treat `${entityId}.${storage.idField}` as a synthetic
+uuid field when it is absent from `fields[]` (n04: mdm namespace-only). Catalogue commands
+emit that ref as the identity; it was `NS4_E9_OUTPUT_REF_UNKNOWN`. A ref that is neither a
+real field nor the idField is still rejected. Wire type stays `string` (`classicType` of uuid).
+
 ## 2026-09-09 — classic `writes` come from the usecase
 
 `transposeNs4ClassicOperation` copies `usecase.writes[].entityId` (dedup) onto the classic

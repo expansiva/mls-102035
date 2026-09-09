@@ -263,9 +263,23 @@ function inputSourceOf(call: Ns4E8BffCall, inputId: string): string {
   return (call.inputSources || []).find(entry => entry.inputId === inputId)?.bffId || '';
 }
 
-function fieldTypeOf(ontology: Ns4E4Review, entityId: string, fieldId: string): Ns4OntologyField['type'] {
-  return ontology.entities.find(entity => entity.entityId === entityId)
-    ?.fields.find(field => field.fieldId === fieldId)?.type || 'string';
+/**
+ * mdm fields[] is namespace-only (n04); storage.idField is the logical record id and is
+ * resolvable. The engine stores it as UUID (mdmId). A miss that is not the idField stays a miss.
+ */
+function ontologyFieldOf(
+  ontology: Ns4E4Review, entityId: string, fieldId: string,
+): Pick<Ns4OntologyField, 'type' | 'required'> | undefined {
+  const entity = ontology.entities.find(item => item.entityId === entityId);
+  if (!entity) return undefined;
+  const field = entity.fields.find(item => item.fieldId === fieldId);
+  if (field) return field;
+  if (entity.storage?.idField === fieldId) return { type: 'uuid', required: true };
+  return undefined;
+}
+
+export function fieldTypeOf(ontology: Ns4E4Review, entityId: string, fieldId: string): Ns4OntologyField['type'] {
+  return ontologyFieldOf(ontology, entityId, fieldId)?.type || 'string';
 }
 
 type ClassicOutputField = { name: string; type: string; required: boolean; fieldRef: string };
@@ -300,8 +314,7 @@ function resolveOutputRef(ref: string, ontology: Ns4E4Review): ClassicOutputFiel
   if (dot <= 0) throw new Ns4E9OutputRefError(ref);
   const entityId = ref.slice(0, dot);
   const fieldId = ref.slice(dot + 1);
-  const field = ontology.entities.find(entity => entity.entityId === entityId)
-    ?.fields.find(item => item.fieldId === fieldId);
+  const field = ontologyFieldOf(ontology, entityId, fieldId);
   if (!field) throw new Ns4E9OutputRefError(ref);
   return { name: fieldId, type: classicType(field.type), required: field.required, fieldRef: ref };
 }

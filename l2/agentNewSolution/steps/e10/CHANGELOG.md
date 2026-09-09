@@ -1,5 +1,11 @@
 # E10 changelog
 
+## 2026-09-09 — mdm storage.idField is a resolvable outputShape fieldRef
+
+`validateOutputShapeTypes` resolves `storage.idField` as uuid when it is absent from
+`fields[]`, same class as the E8/E9 idField lookups. A fieldRef that is neither a real
+field nor the idField is still skipped (not invented as json).
+
 ## 2026-09-09 — A8 fails actor/command without a transition; time passes
 
 `NS4_E10_STATE_UNREACHABLE` is an A8 error when an actor/command state has no reachable
