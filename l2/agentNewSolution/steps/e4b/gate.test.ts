@@ -5,8 +5,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
-  compileNs4AccessBindings, NS4_PERSON_LOGIN_FIELD, ns4CatalogueProfileIds, ns4SynthesizedAuthorityRef,
-  type Ns4E4BSources,
+  compileNs4AccessBindings, NS4_PERSON_LOGIN_FIELD, ns4CatalogueProfileIds, ns4DisclosureProjectionId,
+  ns4SynthesizedAuthorityRef,
+  type Ns4E4BProposal, type Ns4E4BSources,
 } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import { validateNs4AccessBindings } from '/_102035_/l2/agentNewSolution/steps/e4b/gate.js';
 import { deriveNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/tiers.js';
@@ -25,11 +26,27 @@ function asSources(fixture: typeof ce05): Ns4E4BSources {
     journeys: fixture.journeys,
     accessHash: fixture.accessHash,
     ontologyHash: fixture.ontologyHash,
+    ...((fixture as { rules?: Ns4E4BSources['rules'] }).rules
+      ? { rules: (fixture as { rules: Ns4E4BSources['rules'] }).rules }
+      : {}),
+  };
+}
+
+const CE05_VISIBLE = ['ordenServicioId', 'clienteId', 'estado', 'diagnostico', 'valorPresupuesto'];
+const CE05_EXCLUDED = ['costoInterno', 'anotacionesTecnicas'];
+
+function ce05DisclosureProposal(): Ns4E4BProposal {
+  return {
+    profileRef: 'cliente',
+    authorityRef: 'svc:own-orders',
+    entityRef: 'OrdenServicio',
+    hops: [],
+    projection: { fields: CE05_VISIBLE, excludedFields: CE05_EXCLUDED },
   };
 }
 
 test('ce05-like own grant anchors OrdenServicio.clienteId to Person.platformUserId', async () => {
-  const compiled = await compileNs4AccessBindings(asSources(ce05));
+  const compiled = await compileNs4AccessBindings(asSources(ce05), [ce05DisclosureProposal()]);
   assert.deepEqual(compiled.findings, []);
   const own = compiled.artifact.bindings.find(item => item.profileRef === 'cliente')!;
   assert.equal(own.dataScope.mode, 'own');
@@ -39,8 +56,47 @@ test('ce05-like own grant anchors OrdenServicio.clienteId to Person.platformUser
   assert.equal(own.anchor?.terminus.entityRef, 'Cliente');
   const org = compiled.artifact.bindings.find(item => item.profileRef === 'recepcionista')!;
   assert.equal(org.anchor, null);
-  const gate = validateNs4AccessBindings(compiled.artifact, asSources(ce05));
+  const gate = validateNs4AccessBindings(compiled.artifact, asSources(ce05), compiled.projections);
   assert.equal(gate.ok, true);
+});
+
+test('ce05-like fieldsOnly external grant compiles a disclosure projection with excludedFields', async () => {
+  const compiled = await compileNs4AccessBindings(asSources(ce05), [ce05DisclosureProposal()]);
+  assert.deepEqual(compiled.findings, []);
+  const own = compiled.artifact.bindings.find(item => item.profileRef === 'cliente')!;
+  assert.equal(own.projectionRef, ns4DisclosureProjectionId('OrdenServicio', 'cliente'));
+  assert.equal(own.projectionRef, 'OrdenServicioClienteView');
+  assert.ok(CE05_EXCLUDED.every(fieldId => own.excludedFields?.includes(fieldId)));
+  const projection = compiled.projections.find(item => item.entityId === own.projectionRef)!;
+  assert.equal(projection.kind, 'projection');
+  assert.equal(projection.ownership, 'derived');
+  assert.equal(projection.storage.target, 'derived');
+  assert.equal(projection.derivation?.from, 'OrdenServicio');
+  assert.deepEqual(projection.fields.map(field => field.fieldId), CE05_VISIBLE);
+  assert.equal(projection.fields.some(field => CE05_EXCLUDED.includes(field.fieldId)), false);
+  const gate = validateNs4AccessBindings(compiled.artifact, asSources(ce05), compiled.projections);
+  assert.equal(gate.ok, true);
+});
+
+test('limited external grant without a projection is NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED', async () => {
+  const compiled = await compileNs4AccessBindings(asSources(ce05));
+  assert.ok(compiled.findings.some(finding => finding.code === 'NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED'));
+  const gate = validateNs4AccessBindings(compiled.artifact, asSources(ce05), compiled.projections);
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED'));
+});
+
+test('disclosure projection that keeps every source field fails as not a proper subset', async () => {
+  const sourceFields = ce05.ontology.entities
+    .find((entity: { entityId: string }) => entity.entityId === 'OrdenServicio')!
+    .fields.map((field: { fieldId: string }) => field.fieldId);
+  const compiled = await compileNs4AccessBindings(asSources(ce05), [{
+    ...ce05DisclosureProposal(),
+    projection: { fields: sourceFields, excludedFields: [] },
+  }]);
+  const gate = validateNs4AccessBindings(compiled.artifact, asSources(ce05), compiled.projections);
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS4_E4B_DISCLOSURE_NOT_PROPER_SUBSET'));
 });
 
 test('ce05-like catalogue profileRefs exclude the external own profile', () => {
@@ -182,6 +238,7 @@ test('e4b sources stay English in comments and identifiers', () => {
     readFileSync(new URL('gate.ts', import.meta.url), 'utf8'),
     readFileSync(new URL('agentNs4E4B.ts', import.meta.url), 'utf8'),
     readFileSync(new URL('gate.test.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('prompt.md', import.meta.url), 'utf8'),
   ];
   for (const source of files) {
     assert.doesNotMatch(source, /portuguese\s*\?/);
@@ -192,4 +249,5 @@ test('e4b sources stay English in comments and identifiers', () => {
       assert.doesNotMatch(line, /[À-ÿ]/, trimmed);
     }
   }
+  assert.doesNotMatch(readFileSync(new URL('prompt.md', import.meta.url), 'utf8'), /[À-ÿ]/);
 });

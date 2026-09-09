@@ -137,3 +137,20 @@ test('n04 keys mdmSubtype and displayField are in the entity ratchet with E4 gat
   assert.doesNotMatch(readFileSync(new URL('nsArtifactFieldRatchet.test.ts', import.meta.url), 'utf8'), /\/todo\//);
   assert.doesNotMatch(AGENT_ROOT, /[À-ÿ]/);
 });
+
+test('n08a projectionRef and excludedFields stay off the human grant', () => {
+  assert.equal('projectionRef' in KEYS.Ns4AccessGrant, false);
+  assert.equal('excludedFields' in KEYS.Ns4AccessGrant, false);
+  const grant = keysOf(interfaceBody(
+    readFileSync(new URL('steps/e3/contracts.ts', import.meta.url), 'utf8'),
+    'Ns4AccessGrant',
+  ));
+  assert.equal(grant.includes('projectionRef'), false);
+  assert.equal(grant.includes('excludedFields'), false);
+  const binding = keysOf(interfaceBody(
+    readFileSync(new URL('steps/e4b/contracts.ts', import.meta.url), 'utf8'),
+    'Ns4AccessBinding',
+  ));
+  assert.ok(binding.includes('projectionRef'));
+  assert.ok(binding.includes('excludedFields'));
+});

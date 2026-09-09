@@ -48,8 +48,13 @@
         "authorityRef": "svc:own-orders",
         "reason": "portal of own orders",
         "dataScope": { "mode": "own", "description": "only the signed-in customer's orders" },
-        "disclosure": { "mode": "fieldsOnly", "description": "no internal cost", "allowedInformation": [], "deniedInformation": ["costoInterno"] },
-        "useRules": []
+        "disclosure": {
+          "mode": "fieldsOnly",
+          "description": "portal sees status, diagnosis and quote; never internal cost or technician notes",
+          "allowedInformation": ["status", "diagnosis", "quote value"],
+          "deniedInformation": ["Costo interno de las piezas", "Anotaciones tecnicas internas"]
+        },
+        "useRules": ["clienteSoloConsultaSusOrdenes"]
       }
     ]
   },
@@ -71,7 +76,12 @@
         "kind": "core",
         "fields": [
           { "fieldId": "ordenServicioId", "type": "uuid", "required": true },
-          { "fieldId": "clienteId", "type": "uuid", "required": true }
+          { "fieldId": "clienteId", "type": "uuid", "required": true },
+          { "fieldId": "estado", "type": "string", "required": true },
+          { "fieldId": "diagnostico", "type": "text", "required": false },
+          { "fieldId": "valorPresupuesto", "type": "money", "required": false },
+          { "fieldId": "costoInterno", "type": "money", "required": false },
+          { "fieldId": "anotacionesTecnicas", "type": "text", "required": false }
         ],
         "storage": { "target": "moduleDatabase", "scope": "module", "idField": "ordenServicioId", "notes": "" }
       }
@@ -94,5 +104,11 @@
         }
       }
     ]
-  }
+  },
+  "rules": [
+    {
+      "id": "clienteSoloConsultaSusOrdenes",
+      "description": "The signed-in customer consults only their own orders, without access to internal part costs or internal technical notes."
+    }
+  ]
 }

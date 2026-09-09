@@ -16,4 +16,13 @@ against the ontology. A field the ontology does not have is `NS4_E4B_ANCHOR_FIEL
 inheriting `dataScope` and `disclosure` from the covering grant. E8 puts those ids on catalogue
 operations. Journey operations inherit the E3 authorities of their compiled steps.
 
-Disclosure projections for external `fieldsOnly` grants are a later pass on this same step.
+For each external grant with `fieldsOnly`, `summaryOnly` or `aggregateOnly`, the LLM extracts a
+disclosure projection `<Entity><Profile>View` from grant prose and referenced rule descriptions.
+The gate checks form only: the projection exists (`NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED`), its
+fields are a proper subset of the source entity (plus optional level-1 base fields), and
+`excludedFields[]` is declared. Prose stays the source; the gate does not match text to field ids.
+
+`projectionRef` and `excludedFields` live on the access-binding (machine artifact), not on the
+human grant. The projection is written as `ontology/<Entity><Profile>View.defs.ts` and is **not**
+added to the E4 ontology index (that index is hash-frozen at E4 approval). Downstream readers
+load it by `projectionRef`.

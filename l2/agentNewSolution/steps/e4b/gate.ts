@@ -2,15 +2,17 @@
 
 import type { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4E3Review } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
-import type { Ns4E4Review } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import type { Ns4E4Review, Ns4OntologyEntity } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import { ns4Level1FieldIds } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
 import {
   checkAnchorPath, isPersonEntity, missingFieldFinding, NS4_ACCESS_BINDINGS_SCHEMA_VERSION,
-  NS4_PERSON_LOGIN_FIELD, ns4AccessFieldGraph, ns4EntityIdsCoveredByGrant, ns4SynthesizedAuthorityRef,
-  type Ns4AccessBindingsArtifact, type Ns4E4BFinding,
+  NS4_PERSON_LOGIN_FIELD, ns4AccessFieldGraph, ns4DisclosureProjectionId, ns4EntityIdsCoveredByGrant,
+  ns4NeedsDisclosureProjection, ns4SynthesizedAuthorityRef,
+  type Ns4AccessBinding, type Ns4AccessBindingsArtifact, type Ns4E4BFinding,
 } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 
 export interface Ns4E4BGateSources {
-  access: Pick<Ns4E3Review, 'moduleName' | 'grants' | 'authorities'>;
+  access: Pick<Ns4E3Review, 'moduleName' | 'grants' | 'authorities' | 'profiles'>;
   ontology: Pick<Ns4E4Review, 'moduleName' | 'entities' | 'relationships'>;
   journeys: Pick<Ns4E2Review, 'journeys'>;
 }
@@ -23,6 +25,7 @@ export interface Ns4E4BGateResult {
 export function validateNs4AccessBindings(
   artifact: Ns4AccessBindingsArtifact,
   sources: Ns4E4BGateSources,
+  projections: readonly Ns4OntologyEntity[] = [],
 ): Ns4E4BGateResult {
   const issues: Ns4E4BFinding[] = [];
   if (artifact.schemaVersion !== NS4_ACCESS_BINDINGS_SCHEMA_VERSION) {
@@ -100,6 +103,7 @@ export function validateNs4AccessBindings(
     const checked = checkAnchorPath(binding.anchor.hops, binding.entityRef, graph, personEntities, path);
     if (checked.finding) issues.push(checked.finding);
   }
+  issues.push(...validateDisclosureProjections(artifact.bindings, sources, projections));
   for (const key of expectedKeys) {
     if (!seen.has(key)) {
       issues.push({
@@ -136,4 +140,94 @@ export function validateNs4AccessBindings(
   }
 
   return { ok: issues.length === 0, issues };
+}
+
+function validateDisclosureProjections(
+  bindings: Ns4AccessBinding[],
+  sources: Ns4E4BGateSources,
+  projections: readonly Ns4OntologyEntity[],
+): Ns4E4BFinding[] {
+  const issues: Ns4E4BFinding[] = [];
+  const profileById = new Map(sources.access.profiles.map(profile => [profile.profileId, profile]));
+  const entityById = new Map(sources.ontology.entities.map(entity => [entity.entityId, entity]));
+  const projectionById = new Map<string, Ns4OntologyEntity>();
+  for (const entity of sources.ontology.entities) projectionById.set(entity.entityId, entity);
+  for (const entity of projections) projectionById.set(entity.entityId, entity);
+  const grantByKey = new Map(sources.access.grants.map(grant => [`${grant.profileRef}|${grant.authorityRef}`, grant]));
+
+  for (const binding of bindings) {
+    const grant = grantByKey.get(`${binding.profileRef}|${binding.authorityRef}`);
+    const profileKind = profileById.get(binding.profileRef)?.kind;
+    if (!grant || !ns4NeedsDisclosureProjection(grant, profileKind)) continue;
+    const path = `bindings.${binding.profileRef}.${binding.authorityRef}.${binding.entityRef}`;
+    const expectedId = ns4DisclosureProjectionId(binding.entityRef, binding.profileRef);
+    const projection = (binding.projectionRef && projectionById.get(binding.projectionRef))
+      || projectionById.get(expectedId);
+    if (!binding.projectionRef || !projection) {
+      issues.push({
+        code: 'NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED',
+        path,
+        message: `External ${binding.disclosure.mode} grant needs a disclosure projection ${expectedId}.`,
+        repairStep: 'e4b-access-realization',
+      });
+      continue;
+    }
+    if (binding.projectionRef !== expectedId) {
+      issues.push({
+        code: 'NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED',
+        path: `${path}.projectionRef`,
+        message: `Disclosure projection id must be ${expectedId}.`,
+        repairStep: 'e4b-access-realization',
+      });
+    }
+    const source = entityById.get(binding.entityRef);
+    if (!source) continue;
+    const sourceFieldIds = source.fields.map(field => field.fieldId);
+    const sourceSet = new Set(sourceFieldIds);
+    const allowed = allowedDisclosureFieldIds(source, sources.ontology);
+    const projectedIds = projection.fields.map(field => field.fieldId);
+    for (const fieldId of projectedIds) {
+      if (!allowed.has(fieldId)) {
+        issues.push({
+          code: 'NS4_E4B_DISCLOSURE_FIELD_UNKNOWN',
+          path: `${path}.projection.fields`,
+          message: `Disclosure projection field ${fieldId} is not a field of ${source.entityId} or level-1 base.`,
+          repairStep: 'e4b-access-realization',
+        });
+      }
+    }
+    if (binding.disclosure.mode !== 'aggregateOnly') {
+      const fromSource = projectedIds.filter(fieldId => sourceSet.has(fieldId));
+      if (!fromSource.length || fromSource.length >= sourceFieldIds.length) {
+        issues.push({
+          code: 'NS4_E4B_DISCLOSURE_NOT_PROPER_SUBSET',
+          path: `${path}.projection.fields`,
+          message: `Disclosure projection must be a proper subset of ${source.entityId} fields.`,
+          repairStep: 'e4b-access-realization',
+        });
+      }
+    }
+    const excluded = binding.excludedFields || [];
+    if (!excluded.length) {
+      issues.push({
+        code: 'NS4_E4B_DISCLOSURE_EXCLUDED_FIELDS_REQUIRED',
+        path: `${path}.excludedFields`,
+        message: 'Disclosure projection must declare excludedFields (field ids the model left out).',
+        repairStep: 'e4b-access-realization',
+      });
+    }
+  }
+  return issues;
+}
+
+function allowedDisclosureFieldIds(
+  entity: Ns4OntologyEntity,
+  ontology: Pick<Ns4E4Review, 'entities'>,
+): Set<string> {
+  const allowed = new Set(entity.fields.map(field => field.fieldId));
+  for (const other of ontology.entities) {
+    if (!other.mdmSubtype) continue;
+    for (const fieldId of ns4Level1FieldIds(other.mdmSubtype)) allowed.add(fieldId);
+  }
+  return allowed;
 }

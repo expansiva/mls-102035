@@ -342,9 +342,10 @@
       "dependsOn": [
         "e4-result"
       ],
-      "goal": "Reconcile the approved access matrix with the ontology: person-scope anchors and a synthesized authority per entity x profile.",
+      "goal": "Reconcile the approved access matrix with the ontology: person-scope anchors, a synthesized authority per entity x profile, and a disclosure projection for each limited external grant.",
       "output": [
-        "l4/{module}/access/access-bindings.defs.ts"
+        "l4/{module}/access/access-bindings.defs.ts",
+        "l4/{module}/ontology/{Entity}{Profile}View.defs.ts"
       ],
       "outputAnchor": "e4b-result",
       "gate": "steps/e4b/gate.ts",
@@ -354,7 +355,9 @@
         "For own, assigned and related grants the LLM may propose a field path to a Person; the gate validates every hop against the ontology. Organization, public and custom grants carry anchor: null with a reason.",
         "A path that needs a field the ontology does not have is NS4_E4B_ANCHOR_FIELD_MISSING with repairStep e4-ontology.",
         "synthesizedAuthorities[] is one authority per (entity x profile), id synth:<entity>:<profile>, inheriting dataScope and disclosure from the covering grant.",
-        "One transport retry is not used; one bounded LLM repair is allowed for invalid hops. A missing field does not consume that budget and returns ownership to E4."
+        "For an external grant with fieldsOnly, summaryOnly or aggregateOnly, the LLM extracts a disclosure projection <Entity><Profile>View from grant prose and referenced rule descriptions. Bindings carry projectionRef and excludedFields (machine fields, not on the human grant). The projection file is written; the E4 ontology index is not mutated.",
+        "The disclosure gate checks form only: the projection exists (NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED), fields are a proper subset of the source entity plus optional level-1 base, and excludedFields is declared. It does not match deniedInformation prose to field ids.",
+        "One transport retry is not used; one bounded LLM repair is allowed for invalid hops or an invalid projection. A missing ontology field does not consume that budget and returns ownership to E4."
       ]
     },
     {

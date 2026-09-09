@@ -10,11 +10,14 @@ import type { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contrac
 import type {
   Ns4AccessGrant, Ns4AccessScopeMode, Ns4DisclosureMode, Ns4E3Review,
 } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
-import type { Ns4E4Review, Ns4OntologyEntity, Ns4OntologyRelationship } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import type {
+  Ns4DerivationAggregate, Ns4E4Review, Ns4OntologyEntity, Ns4OntologyField, Ns4OntologyRelationship,
+} from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 
 export const NS4_ACCESS_BINDINGS_SCHEMA_VERSION = '2026-09-08-ns4-access-bindings-v1' as const;
 export const NS4_PERSON_LOGIN_FIELD = 'platformUserId' as const;
 export const NS4_SYNTH_AUTHORITY_PREFIX = 'synth:' as const;
+export const NS4_LIMITED_DISCLOSURE_MODES: readonly Ns4DisclosureMode[] = ['fieldsOnly', 'summaryOnly', 'aggregateOnly'];
 const MAX_ANCHOR_HOPS = 3;
 
 export type Ns4AnchorDirection = 'forward' | 'incoming';
@@ -45,6 +48,16 @@ export interface Ns4AccessBinding {
   anchor: Ns4AccessAnchor | null;
   /** Present when `anchor` is null: organization / custom / public have no person path. */
   anchorReason?: string;
+  /**
+   * Machine artifact (E4B): entityId of the disclosure projection for a limited external grant.
+   * Not a field on the human grant.
+   */
+  projectionRef?: string;
+  /**
+   * Machine artifact (E4B): field ids the model excluded from the disclosure view, for a human to read.
+   * Not a field on the human grant.
+   */
+  excludedFields?: string[];
 }
 
 export interface Ns4SynthesizedAuthority {
@@ -67,6 +80,13 @@ export interface Ns4AccessBindingsArtifact {
   bindingsHash: string;
 }
 
+export interface Ns4E4BProjectionProposal {
+  fields: string[];
+  excludedFields: string[];
+  /** aggregateOnly: derivation ops. Absent for a field-subset view (`op: first` per field). */
+  aggregate?: Ns4DerivationAggregate[];
+}
+
 export interface Ns4E4BProposal {
   profileRef: string;
   authorityRef: string;
@@ -74,6 +94,8 @@ export interface Ns4E4BProposal {
   hops: Ns4AccessAnchorHop[];
   /** The model names a field the ontology does not have; the gate turns this into a finding. */
   missingField?: { entityRef: string; fieldId: string };
+  /** Disclosure view extracted from grant prose. Machine artifact, not a human grant field. */
+  projection?: Ns4E4BProjectionProposal;
 }
 
 export interface Ns4E4BSources {
@@ -83,6 +105,8 @@ export interface Ns4E4BSources {
   journeys: Ns4E2Review;
   accessHash: string;
   ontologyHash: string;
+  /** Optional: E5 has not run yet on a first pass; present on resume/rebuild. */
+  rules?: Array<{ id: string; description: string }>;
 }
 
 export interface Ns4E4BFinding {
@@ -94,11 +118,25 @@ export interface Ns4E4BFinding {
 
 export interface Ns4E4BCompileResult {
   artifact: Ns4AccessBindingsArtifact;
+  /** Disclosure views to persist as `ontology/<Entity><Profile>View.defs.ts`. Not added to the E4 index. */
+  projections: Ns4OntologyEntity[];
   findings: Ns4E4BFinding[];
 }
 
 export function ns4SynthesizedAuthorityRef(entityRef: string, profileRef: string): string {
   return `${NS4_SYNTH_AUTHORITY_PREFIX}${entityRef}:${profileRef}`;
+}
+
+export function ns4DisclosureProjectionId(entityRef: string, profileRef: string): string {
+  return `${entityRef}${pascalIdent(profileRef)}View`;
+}
+
+export function ns4NeedsDisclosureProjection(
+  grant: Ns4AccessGrant,
+  profileKind: string | undefined,
+): boolean {
+  if (profileKind !== 'external') return false;
+  return (NS4_LIMITED_DISCLOSURE_MODES as readonly string[]).includes(grant.disclosure.mode);
 }
 
 export function ns4GrantCoversEntity(
@@ -164,11 +202,16 @@ export async function compileNs4AccessBindings(
   const personEntities = new Set(sources.ontology.entities.filter(isPersonEntity).map(entity => entity.entityId));
   const proposalByKey = new Map(proposals.map(item => [proposalKey(item), item]));
   const bindings: Ns4AccessBinding[] = [];
+  const projectionsById = new Map<string, Ns4OntologyEntity>();
+  const profileById = new Map(sources.access.profiles.map(profile => [profile.profileId, profile]));
+  const entityById = new Map(sources.ontology.entities.map(entity => [entity.entityId, entity]));
 
   for (const grant of sources.access.grants) {
     const entityRefs = ns4EntityIdsCoveredByGrant(grant, sources.access, sources.journeys);
+    const profileKind = profileById.get(grant.profileRef)?.kind;
     for (const entityRef of entityRefs) {
       const path = `bindings.${grant.profileRef}.${grant.authorityRef}.${entityRef}`;
+      const proposal = proposalByKey.get(proposalKey({ profileRef: grant.profileRef, authorityRef: grant.authorityRef, entityRef }));
       const needsAnchor = grant.dataScope.mode === 'own'
         || grant.dataScope.mode === 'assigned'
         || grant.dataScope.mode === 'related';
@@ -177,7 +220,6 @@ export async function compileNs4AccessBindings(
       if (!needsAnchor) {
         anchorReason = anchorReasonFor(grant.dataScope.mode);
       } else {
-        const proposal = proposalByKey.get(proposalKey({ profileRef: grant.profileRef, authorityRef: grant.authorityRef, entityRef }));
         if (proposal?.missingField) {
           findings.push(missingFieldFinding(path, proposal.missingField.entityRef, proposal.missingField.fieldId));
         } else if (proposal?.hops.length) {
@@ -193,6 +235,27 @@ export async function compileNs4AccessBindings(
           }
         }
       }
+      let projectionRef: string | undefined;
+      let excludedFields: string[] | undefined;
+      if (ns4NeedsDisclosureProjection(grant, profileKind)) {
+        const projectionId = ns4DisclosureProjectionId(entityRef, grant.profileRef);
+        if (!proposal?.projection) {
+          findings.push({
+            code: 'NS4_E4B_DISCLOSURE_PROJECTION_REQUIRED',
+            path,
+            message: `External ${grant.disclosure.mode} grant needs a disclosure projection ${projectionId}.`,
+            repairStep: 'e4b-access-realization',
+          });
+        } else {
+          const source = entityById.get(entityRef);
+          const entity = buildDisclosureProjectionEntity(
+            projectionId, source, entityRef, grant, proposal.projection, sources.moduleName,
+          );
+          projectionsById.set(entity.entityId, entity);
+          projectionRef = entity.entityId;
+          excludedFields = uniqueIds(proposal.projection.excludedFields);
+        }
+      }
       bindings.push({
         profileRef: grant.profileRef,
         authorityRef: grant.authorityRef,
@@ -206,6 +269,8 @@ export async function compileNs4AccessBindings(
         },
         anchor,
         ...(anchorReason ? { anchorReason } : {}),
+        ...(projectionRef ? { projectionRef } : {}),
+        ...(excludedFields ? { excludedFields } : {}),
       });
     }
   }
@@ -227,7 +292,8 @@ export async function compileNs4AccessBindings(
     ...contract,
     bindingsHash: await sha256Ns4(contract),
   };
-  return { artifact, findings };
+  const projections = [...projectionsById.values()].sort((left, right) => left.entityId.localeCompare(right.entityId));
+  return { artifact, projections, findings };
 }
 
 function synthesizeAuthorities(bindings: Ns4AccessBinding[]): Ns4SynthesizedAuthority[] {
@@ -415,6 +481,86 @@ export function missingFieldFinding(path: string, entityRef: string, fieldId: st
 
 function proposalKey(item: { profileRef: string; authorityRef: string; entityRef: string }): string {
   return `${item.profileRef}|${item.authorityRef}|${item.entityRef}`;
+}
+
+function pascalIdent(value: string): string {
+  return value
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map(part => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+function uniqueIds(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function copyOntologyField(field: Ns4OntologyField): Ns4OntologyField {
+  return {
+    fieldId: field.fieldId,
+    title: field.title || field.fieldId,
+    type: field.type || 'string',
+    required: Boolean(field.required),
+    description: field.description || '',
+    constraints: Array.isArray(field.constraints) ? field.constraints : [],
+    ...(field.enum ? { enum: field.enum } : {}),
+    ...(field.enumLabels ? { enumLabels: field.enumLabels } : {}),
+  };
+}
+
+function projectionField(source: Ns4OntologyEntity | undefined, fieldId: string): Ns4OntologyField {
+  const existing = source?.fields.find(field => field.fieldId === fieldId);
+  if (existing) return copyOntologyField(existing);
+  return {
+    fieldId,
+    title: fieldId,
+    type: 'string',
+    required: false,
+    description: '',
+    constraints: [],
+  };
+}
+
+function buildDisclosureProjectionEntity(
+  entityId: string,
+  source: Ns4OntologyEntity | undefined,
+  sourceEntityRef: string,
+  grant: Ns4AccessGrant,
+  proposal: Ns4E4BProjectionProposal,
+  moduleName: string,
+): Ns4OntologyEntity {
+  const fieldIds = uniqueIds(proposal.fields.length
+    ? proposal.fields
+    : (proposal.aggregate || []).map(entry => entry.fieldId));
+  const aggregate: Ns4DerivationAggregate[] = proposal.aggregate?.length
+    ? proposal.aggregate.map(entry => ({
+      fieldId: entry.fieldId,
+      op: entry.op,
+      ...(entry.sourceField ? { sourceField: entry.sourceField } : {}),
+      ...(entry.signBy ? { signBy: entry.signBy } : {}),
+    }))
+    : fieldIds.map(fieldId => ({ fieldId, op: 'first' as const, sourceField: fieldId }));
+  const fields = fieldIds.map(fieldId => projectionField(source, fieldId));
+  const displayField = (source?.displayField && fieldIds.includes(source.displayField))
+    ? source.displayField
+    : fieldIds[0];
+  return {
+    entityId,
+    title: entityId,
+    description: `Disclosure projection of ${sourceEntityRef} for profile ${grant.profileRef}.`,
+    kind: 'projection',
+    ownership: 'derived',
+    party: 'none',
+    derivation: { from: sourceEntityRef, filter: '', aggregate },
+    role: `${moduleName}.${entityId}`,
+    ...(displayField ? { displayField } : {}),
+    sourceRefs: { journeyIds: [], featureIds: [], authorityRefs: [grant.authorityRef] },
+    fields,
+    lifecycleStates: [],
+    lifecyclePredicates: [],
+    useRules: [...grant.useRules],
+    storage: { target: 'derived', scope: 'none', notes: 'Disclosure projection for a limited external grant.' },
+  };
 }
 
 function anchorReasonFor(mode: Ns4AccessScopeMode): string {
