@@ -29,6 +29,11 @@ export interface Ns4JourneyStep {
   stepId: string;
   kind: Ns4JourneyStepKind;
   entity: string;
+  /**
+   * Other business objects this act also changes. Same vocabulary as `entity`
+   * (PascalCase ids, no fields, no transition). Absent when the step records only `entity`.
+   */
+  affects?: string[];
   title: string;
   description: string;
   featureRefs: string[];
@@ -423,10 +428,12 @@ function normalizeJourney(value: unknown): Ns4JourneyProposal {
       steps: array(business.steps).map(item => {
         const step = record(item);
         const targetProfile = text(step.targetProfile);
+        const affects = uniquePascalIds(step.affects);
         return {
           stepId: text(step.stepId),
           kind: stepKind(step.kind),
           entity: normalizeNs4BusinessObjectId(step.entity),
+          ...(affects.length ? { affects } : {}),
           title: text(step.title),
           description: text(step.description),
           featureRefs: strings(step.featureRefs),
@@ -515,6 +522,10 @@ function stepKind(value: unknown): Ns4JourneyStepKind {
 
 function featurePriority(value: unknown): Ns4FeaturePriority {
   return value === 'next' || value === 'later' ? value : 'now';
+}
+
+function uniquePascalIds(value: unknown): string[] {
+  return [...new Set(strings(value).map(normalizeNs4BusinessObjectId).filter(Boolean))];
 }
 
 function record(value: unknown): Record<string, unknown> {

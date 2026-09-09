@@ -25,6 +25,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     stepId: { reader: 'helpers/ns4Context.ts', since: '2026-09-08' },
     kind: { reader: 'helpers/ns4Context.ts', since: '2026-09-08' },
     entity: { reader: 'helpers/ns4Context.ts', since: '2026-09-08' },
+    affects: { reader: 'steps/e2/coverageSignals.ts, steps/e7/gate.ts', since: '2026-09-09' },
     title: { reader: 'widgets/widgetNs4Journeys.ts', since: '2026-09-08' },
     description: { reader: 'steps/e8/tiers.ts', since: '2026-09-08' },
     featureRefs: { reader: 'steps/e2/gate.ts', since: '2026-09-08' },
@@ -136,6 +137,16 @@ test('n04 keys mdmSubtype and displayField are in the entity ratchet with E4 gat
   assert.equal(KEYS.Ns4OntologyEntity.mdmSubtype.since, '2026-09-08');
   assert.doesNotMatch(readFileSync(new URL('nsArtifactFieldRatchet.test.ts', import.meta.url), 'utf8'), /\/todo\//);
   assert.doesNotMatch(AGENT_ROOT, /[À-ÿ]/);
+});
+
+test('n10 affects is on the journey step ratchet with coverage and E7 gate readers', () => {
+  assert.equal(KEYS.Ns4JourneyStep.affects.reader, 'steps/e2/coverageSignals.ts, steps/e7/gate.ts');
+  assert.equal(KEYS.Ns4JourneyStep.affects.since, '2026-09-09');
+  const step = keysOf(interfaceBody(
+    readFileSync(new URL('steps/e2/contracts.ts', import.meta.url), 'utf8'),
+    'Ns4JourneyStep',
+  ));
+  assert.ok(step.includes('affects'));
 });
 
 test('n08a projectionRef and excludedFields stay off the human grant', () => {

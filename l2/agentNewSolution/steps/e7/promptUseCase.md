@@ -15,13 +15,15 @@ architecture. It does not prescribe how frontend or backend code is organized.
   behavior resolves the caller and scope for each journey usage.
 - Never include pages, routes, filters for a particular screen, pagination, ordering, selection, projections,
   slices or invalidations. Those belong to E8 operations.
-- Never include repositories, ports, adapters, MDM routing, plugins, transactions, idempotency, reads,
-  writes or framework terms.
+- Never include repositories, ports, adapters, MDM routing, plugins, transactions, idempotency or
+  framework terms.
 - `contexts.requires` and `contexts.provides` are frozen mechanically in the supplied plan from exact E2
   context ids. Preserve those ids; do not copy context text, origins or business objects.
-- `entityRefs` names only the E4 business entities that participate in this behavior. Do not select fields,
-  storage destinations, tables or read/write directions. E4 owns structure and storage; downstream generators
-  decide their DTOs, queries and persistence from the description, contexts, rules and ontology.
+- `entityRefs` names only the E4 business entities that participate in this behavior. Do not select
+  storage destinations or tables.
+- `writes` names the business entities this behavior records: the step entity, every `affects` on the
+  compiled act steps, and every transition entity. Optional `fieldRefs` lists field ids when only some
+  fields change. Do not infer extra entities by name. A query has `writes: []`.
 - Reference only E5 rules enforced by this behavior. A rule is a candidate, not automatically applicable
   because an entity or journey mentions it. Never copy a rule description.
 - Add a lifecycle transition only when this behavior actually changes an E4 state. Creation and ordinary
@@ -35,7 +37,7 @@ Return exactly one `{ "type": "flexible", "result": { ... } }` object without Ma
 value must be the use case artifact below.
 
 {
-  "draftVersion": "2026-08-10-ns4-usecase-draft-minimal-v3",
+  "draftVersion": "2026-09-09-ns4-usecase-draft-v4",
   "planId": "e7-usecase",
   "moduleName": "lowerCamelModule",
   "useCaseId": "locateProject",
@@ -48,6 +50,7 @@ value must be the use case artifact below.
     "provides": ["selectedProject"]
   },
   "entityRefs": ["Project"],
+  "writes": [],
   "useRules": [],
   "transitions": []
 }
@@ -55,6 +58,10 @@ value must be the use case artifact below.
 A real state-changing behavior may use:
 
 {
+  "writes": [
+    { "entityId": "<PrimaryEntity>" },
+    { "entityId": "<AffectedEntity>" }
+  ],
   "transitions": [{
     "transitionId": "approveChangeOrder",
     "entityRef": "ChangeOrder",

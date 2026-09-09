@@ -316,6 +316,39 @@ test('a journey with no decision, no handoff and one entity is recorded as a dem
   assert.equal(validateNs4E2PolicySelections(demoted, kept, true).ok, true);
 });
 
+test('an act with affects is not demoted; without affects it still is', () => {
+  const closeTab: any = {
+    planId: 'e2-review', moduleName: 'closeTabModule', userLanguage: 'en', title: 'Close tab', reviewRound: 1,
+    journeys: [{
+      journeyId: 'closeTab',
+      business: {
+        actorRef: 'cashier', title: 'Close tab', goal: 'Close the tab and free the table.',
+        entry: { mode: 'coldStart' },
+        steps: [
+          { stepId: 'locateTab', kind: 'locate', entity: 'Tab', title: 'Find the tab.', description: 'The tab is selected.', featureRefs: ['closeTab'] },
+          { stepId: 'inspectTab', kind: 'inspect', entity: 'Tab', title: 'Read the tab.', description: 'The tab totals are visible.', featureRefs: ['closeTab'] },
+          { stepId: 'closeTab', kind: 'act', entity: 'Tab', affects: ['Table'], title: 'Close the tab.', description: 'The tab is closed.', featureRefs: ['closeTab'] },
+        ],
+        outcome: { statement: 'The tab is closed and the table is free.', evidence: ['The table is free.'] },
+        useRules: [],
+      },
+      policyDecisions: [],
+    }],
+    features: [{ featureId: 'closeTab', title: 'Close tab', priority: 'now', journeyStepRefs: ['closeTab.locateTab', 'closeTab.inspectTab', 'closeTab.closeTab'] }],
+  };
+  const withAffects = normalizeNs4E2Review(closeTab);
+  assert.deepEqual(analyzeNs4E2MechanicalCoverage(withAffects).captureOnlyJourneys, []);
+  assert.deepEqual(collectNs4DemotedJourneyIds(withAffects), []);
+  assert.deepEqual(validateNs4E2Review(withAffects), { ok: true, issues: [] });
+
+  delete closeTab.journeys[0].business.steps[2].affects;
+  const withoutAffects = normalizeNs4E2Review(closeTab);
+  assert.deepEqual(analyzeNs4E2MechanicalCoverage(withoutAffects).captureOnlyJourneys, [
+    { journeyId: 'closeTab', entity: 'Tab' },
+  ]);
+  assert.deepEqual(collectNs4DemotedJourneyIds(withoutAffects), ['closeTab']);
+});
+
 test('a journey with a decide step is never demoted', () => {
   const withDecision: any = structuredClone(reviewInput);
   withDecision.journeys[1].business.steps.push({

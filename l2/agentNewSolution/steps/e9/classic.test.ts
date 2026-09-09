@@ -172,6 +172,27 @@ test('R6-3: ontology json stays json on classic outputShape and on the TS contra
   assert.equal(classic.inputs[0].fieldRef, 'ServiceExecution.beforeImages');
 });
 
+test('E9 copies usecase writes onto the classic operation and reads the rest', () => {
+  const ontology = { entities: [
+    { entityId: 'Tab', fields: [{ fieldId: 'tabId', type: 'string', required: true }], storage: { idField: 'tabId' } },
+    { entityId: 'Table', fields: [{ fieldId: 'tableId', type: 'string', required: true }], storage: { idField: 'tableId' } },
+    { entityId: 'TabClose', fields: [{ fieldId: 'tabCloseId', type: 'string', required: true }], storage: { idField: 'tabCloseId' } },
+  ] } as any;
+  const operation = {
+    operationId: 'closeTab', title: 'Close tab', entityRef: 'Tab',
+    entityRefs: ['Tab', 'TabClose', 'Table'], kind: 'command', useCaseId: 'closeTab',
+    useRules: [], story: ['Close the tab'], accessPattern: { kind: 'update' }, inputs: [],
+  };
+  const classic = transposeNs4ClassicOperation(
+    { workspaces: [], moduleName: 'closeTabModule' } as any,
+    operation as any,
+    ontology,
+    [{ useCaseId: 'closeTab', writes: [{ entityId: 'Tab' }, { entityId: 'TabClose' }, { entityId: 'Table' }] }],
+  );
+  assert.deepEqual(classic.writes, ['Tab', 'TabClose', 'Table']);
+  assert.deepEqual(classic.reads, []);
+});
+
 test('each bffCall emits one contract file, named and routed the way the consumers expect', async () => {
   const { model, l4 } = await compile();
   const expected = l4.workspaces.flatMap(workspace => workspace.bffCalls.length);

@@ -97,8 +97,14 @@ export function ns4ClassicFrom(operationId: string, member: string): string {
   return `${operationId}.${member}`;
 }
 
+export type Ns4ClassicUseCaseWrites = Array<{
+  useCaseId: string;
+  writes?: Array<{ entityId: string }>;
+}>;
+
 export function transposeNs4ClassicOperation(
   model: Ns4E8Model, operation: Ns4E8Operation, ontology: Ns4E4Review,
+  useCases: Ns4ClassicUseCaseWrites = [],
 ): Ns4ClassicOperation {
   const entity = ontology.entities.find(item => item.entityId === operation.entityRef);
   const owner = model.workspaces.find(workspace => workspace.bffCalls.some(call => call.operationId === operation.operationId));
@@ -106,14 +112,16 @@ export function transposeNs4ClassicOperation(
   const list = operation.accessPattern.kind === 'list';
   const paginated = isPaginated(operation.accessPattern.pagination, call?.outputKind);
   const outputFields = resolveClassicOutputFields(operation, ontology);
+  const writeIds = classicWriteIds(operation, useCases);
+  const writeSet = new Set(writeIds);
   return {
     operationId: operation.operationId,
     title: operation.title,
     actors: owner?.actors || [],
     entity: operation.entityRef,
     kind: operation.kind === 'query' ? 'query' : operation.accessPattern.kind,
-    reads: operation.entityRefs,
-    writes: operation.kind === 'command' ? [operation.entityRef] : [],
+    reads: uniqueStrings(operation.entityRefs.filter(id => !writeSet.has(id))),
+    writes: writeIds,
     rulesApplied: operation.useRules,
     story: {
       actor: owner?.actors[0] || '', goal: operation.title,
@@ -479,7 +487,9 @@ export async function buildNs4NavigationRealizedAccess(
 }
 
 /** The whole transposition: what E9 writes to L4 from an approved E8 model. */
-export async function compileNs4ClassicL4(model: Ns4E8Model, ontology: Ns4E4Review): Promise<Ns4ClassicL4> {
+export async function compileNs4ClassicL4(
+  model: Ns4E8Model, ontology: Ns4E4Review, useCases: Ns4ClassicUseCaseWrites = [],
+): Promise<Ns4ClassicL4> {
   const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
   const workspaces: Ns4ClassicWorkspace[] = [];
   for (const workspace of model.workspaces) {
@@ -496,10 +506,23 @@ export async function compileNs4ClassicL4(model: Ns4E8Model, ontology: Ns4E4Revi
   })));
   return {
     workspaces,
-    operations: model.operations.map(operation => transposeNs4ClassicOperation(model, operation, ontology)),
+    operations: model.operations.map(operation => transposeNs4ClassicOperation(model, operation, ontology, useCases)),
     contracts,
     siteMap: buildNs4ClassicSiteMap(model, workspaces),
   };
+}
+
+function classicWriteIds(operation: Ns4E8Operation, useCases: Ns4ClassicUseCaseWrites): string[] {
+  if (operation.kind !== 'command') return [];
+  const useCase = operation.useCaseId
+    ? useCases.find(item => item.useCaseId === operation.useCaseId)
+    : undefined;
+  const declared = (useCase?.writes || []).map(item => item.entityId).filter(Boolean);
+  return uniqueStrings(declared.length ? declared : [operation.entityRef]);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 async function hashNs4Slice(value: unknown): Promise<string> {

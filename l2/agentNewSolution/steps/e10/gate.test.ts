@@ -116,6 +116,26 @@ test('a journey decision without its persisted selection sends the repair back t
   assert.equal(report.repairStep, 'e2-journeys');
 });
 
+test('a state reached only by a transition whose use case does not write the entity fails A8', async () => {
+  const input = await sources();
+  const host = input.useCases.find(useCase => useCase.kind === 'command') || input.useCases[0];
+  host.writes = [{ entityId: host.entityRefs?.[0] || host.useCaseId }];
+  input.workflows = [{
+    workflowId: 'tableLifecycle', entityRef: 'Table', initialState: 'occupied', terminalStates: ['free'],
+    states: ['occupied', 'free'],
+    transitions: [{
+      transitionId: 'freeTable', entityRef: 'Table', fromStates: ['occupied'], toState: 'free',
+      useRules: [], useCaseId: host.useCaseId,
+    }],
+  } as any];
+  const report = await validateNs4E10(input);
+  assert.equal(report.finalStatus, 'failed');
+  assert.ok(report.errors.some(issue => issue.code === 'NS4_E10_DORMANT_COMMAND' && /Table/.test(issue.message)),
+    report.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(report.checks.find(check => check.checkId === 'A8-dormant-commands')?.status, 'failed');
+  assert.equal(report.repairStep, 'e7-realization');
+});
+
 test('a command whose transitions no longer exist stays visible as a registrar, never a failure', async () => {
   const input = await sources();
   const decide = input.model.operations.find(operation => operation.accessPattern.kind === 'transition')!;

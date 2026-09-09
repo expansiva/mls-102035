@@ -1,5 +1,13 @@
 # E7 changelog
 
+## 2026-09-09 — usecase v4 `writes[]`
+
+The draft/artifact persist `writes: Array<{ entityId, fieldRefs? }>`. The gate requires
+`writes ⊇` the compiled act entity, its `affects`, and every transition entity
+(`NS4_E7_WRITES_MISSING_AFFECT`). Extra entities become a visible `writesBeyondIntent<UseCase>`
+system decision (alternative `drop`). Schema `2026-09-09-ns4-usecase-v4`. Queries have
+`writes: []`. TypeScript name remains `Ns4UseCaseArtifactV3`.
+
 ## 2026-09-08 — V3 no longer writes empty operationAuthorityRefs
 
 E7 leaves operation-to-authority pending. E9 writes V4 `operationAuthorityRefs`.

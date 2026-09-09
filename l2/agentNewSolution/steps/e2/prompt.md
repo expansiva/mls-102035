@@ -28,6 +28,8 @@ approved ontology. Your job is the narrative and the right entity — nothing ab
 1. Every step declares `entity`: the exact future ontology entity or projection id, in stable
    PascalCase (`<EntityId>`, never the display label). `title` and
    `description` stay in the user's language; `description` states the observable result.
+   When an act step also changes another business object, list it in `affects`. Do not encode
+   that second object only in the description.
 2. Step `kind` is exactly one of `locate`, `inspect`, `act`, `decide` or `handoff`. Use `inspect`
    for reviewing ONE existing record; never invent synonyms such as `review`. Totals, counts and
    indicators of a listing are not an inspect of that record — they live on the listing, derived
@@ -187,6 +189,7 @@ Return exactly one JSON object (no markdown):
               "stepId": "recordFact",
               "kind": "act",
               "entity": "<FactEntity>",
+              "affects": ["<RelatedBusinessObject>"],
               "title": "<localized title>",
               "description": "<observable result in the user's language>",
               "featureRefs": ["<featureId>"]

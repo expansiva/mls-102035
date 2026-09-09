@@ -41,6 +41,7 @@ export async function validateNs4E10(sources: Ns4E10Sources): Promise<Ns4E10Vali
   const systemDecisions = uniqueDecisions([
     ...(sources.journeyIndex.systemDecisions || []),
     ...('systemDecisions' in sources.workflowIndex ? sources.workflowIndex.systemDecisions || [] : []),
+    ...('systemDecisions' in sources.useCaseIndex ? sources.useCaseIndex.systemDecisions || [] : []),
     ...sources.model.systemDecisions,
     ...dormantDecisions,
   ]);
@@ -88,7 +89,7 @@ function validateModel(sources: Ns4E10Sources, add: Add): void {
 
 /** Recompile and compare: an artifact on disk that differs from its source is stale, not a variant. */
 async function validateEmissionFreshness(sources: Ns4E10Sources, add: Add): Promise<void> {
-  const expected = await compileNs4ClassicL4(sources.model, ns4OntologyWithDisclosure(sources.ontology, sources.disclosureProjections));
+  const expected = await compileNs4ClassicL4(sources.model, ns4OntologyWithDisclosure(sources.ontology, sources.disclosureProjections), sources.useCases);
   const stale = (code: string, path: string, message: string) => add('errors', { code, path, message, repairStep: 'e9-navigation-compiler' });
 
   compare(expected.workspaces, sources.saved.workspaces, item => item.workspaceId, 'workspace',
@@ -297,7 +298,42 @@ function dormantCommandDecisions(sources: Ns4E10Sources, add: Add): Ns4SystemDec
     decisions.push(decision);
     add('registrars', { code: 'NS4_E10_DORMANT_COMMAND', path: decision.findingRef, message: decision.question });
   }
+  unwrittenReachedStates(sources, add);
   return decisions;
+}
+
+/**
+ * A lifecycle state reached only by transitions whose use case does not write the entity
+ * is a missing command, not a registrar.
+ */
+function unwrittenReachedStates(sources: Ns4E10Sources, add: Add): void {
+  const useCaseById = new Map(sources.useCases.map(useCase => [useCase.useCaseId, useCase]));
+  for (const workflow of sources.workflows) {
+    const incoming = new Map<string, Array<{ useCaseId?: string }>>();
+    for (const transition of workflow.transitions) {
+      const list = incoming.get(transition.toState) || [];
+      list.push({ useCaseId: transition.useCaseId });
+      incoming.set(transition.toState, list);
+    }
+    for (const state of workflow.states) {
+      if (state === workflow.initialState) continue;
+      const edges = incoming.get(state) || [];
+      if (!edges.length) continue;
+      const allUnwritten = edges.every(edge => {
+        if (!edge.useCaseId) return false;
+        const writes = useCaseById.get(edge.useCaseId)?.writes;
+        if (!writes) return false;
+        return !writes.some(write => write.entityId === workflow.entityRef);
+      });
+      if (!allUnwritten) continue;
+      add('errors', {
+        code: 'NS4_E10_DORMANT_COMMAND',
+        path: `workflows.${workflow.workflowId}.states.${state}`,
+        message: ns4Text(sources.presentation, 'dormant.unwritten.question', { entity: workflow.entityRef, state }),
+        repairStep: 'e7-realization',
+      });
+    }
+  }
 }
 
 function validateAuthority(sources: Ns4E10Sources, add: Add): void {

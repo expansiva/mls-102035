@@ -3,9 +3,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["draftVersion", "planId", "moduleName", "useCaseId", "title", "kind", "compiledFrom", "description", "contexts", "entityRefs", "useRules", "transitions"],
+  "required": ["draftVersion", "planId", "moduleName", "useCaseId", "title", "kind", "compiledFrom", "description", "contexts", "entityRefs", "writes", "useRules", "transitions"],
   "properties": {
-    "draftVersion": { "type": "string", "const": "2026-08-10-ns4-usecase-draft-minimal-v3" },
+    "draftVersion": { "type": "string", "const": "2026-09-09-ns4-usecase-draft-v4" },
     "planId": { "type": "string", "const": "e7-usecase" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "useCaseId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
@@ -15,6 +15,7 @@
     "description": { "type": "string", "minLength": 1 },
     "contexts": { "$ref": "#/$defs/contexts" },
     "entityRefs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" } },
+    "writes": { "type": "array", "items": { "$ref": "#/$defs/write" } },
     "useRules": { "type": "array", "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" } },
     "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } }
   },
@@ -24,6 +25,14 @@
       "properties": {
         "requires": { "type": "array", "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" } },
         "provides": { "type": "array", "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" } }
+      }
+    },
+    "write": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entityId"],
+      "properties": {
+        "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "fieldRefs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
       }
     },
     "transition": {

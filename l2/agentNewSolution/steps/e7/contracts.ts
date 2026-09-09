@@ -16,9 +16,9 @@ import { shrinkNs4WorkflowToReachable } from '/_102035_/l2/agentNewSolution/step
 import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 
-export const NS4_USE_CASE_DRAFT_VERSION = '2026-08-10-ns4-usecase-draft-minimal-v3' as const;
-export const NS4_USE_CASE_SCHEMA_VERSION = '2026-08-10-ns4-usecase-v3' as const;
-export const NS4_USE_CASE_INDEX_SCHEMA_VERSION = '2026-08-10-ns4-usecase-index-v3' as const;
+export const NS4_USE_CASE_DRAFT_VERSION = '2026-09-09-ns4-usecase-draft-v4' as const;
+export const NS4_USE_CASE_SCHEMA_VERSION = '2026-09-09-ns4-usecase-v4' as const;
+export const NS4_USE_CASE_INDEX_SCHEMA_VERSION = '2026-09-09-ns4-usecase-index-v4' as const;
 export const NS4_WORKFLOW_SCHEMA_VERSION = '2026-08-11-ns4-workflow-v4' as const;
 export const NS4_WORKFLOW_INDEX_SCHEMA_VERSION = '2026-08-12-ns4-workflow-index-v5' as const;
 
@@ -75,6 +75,12 @@ export interface Ns4UseCaseEntityAccess {
   fieldRefs: string[];
 }
 
+/** Entities this behavior records. fieldRefs optional: omit when the whole record is written. */
+export interface Ns4UseCaseWrite {
+  entityId: string;
+  fieldRefs?: string[];
+}
+
 export interface Ns4UseCaseTransition {
   transitionId: string;
   entityRef: string;
@@ -100,6 +106,7 @@ export interface Ns4UseCaseDraft extends Ns4E7PlanUseCase {
     provides: string[];
   };
   entityRefs: string[];
+  writes: Ns4UseCaseWrite[];
   useRules: string[];
   transitions: Ns4UseCaseTransition[];
 }
@@ -125,6 +132,7 @@ export interface Ns4UseCaseIndexArtifactV3 {
   }>;
   realizationHash: string;
   generatedAt: string;
+  systemDecisions: Ns4SystemDecision[];
 }
 
 export interface Ns4WorkflowTransition extends Ns4UseCaseTransition {
@@ -272,7 +280,8 @@ export function normalizeNs4UseCaseDraft(
     title: text(root.title) || target.title, kind: target.kind,
     compiledFrom: [...target.compiledFrom], description: text(root.description),
     contexts: { requires: [...target.contexts.requires], provides: [...target.contexts.provides] },
-    entityRefs: uniqueStrings(root.entityRefs), useRules: uniqueStrings(root.useRules),
+    entityRefs: uniqueStrings(root.entityRefs), writes: normalizeWrites(root.writes),
+    useRules: uniqueStrings(root.useRules),
     transitions: array(root.transitions).map(normalizeTransition),
   };
 }
@@ -281,6 +290,7 @@ export async function buildNs4UseCaseArtifacts(
   plan: Ns4E7PlanDraft,
   drafts: Ns4UseCaseDraft[],
   generatedAt: string,
+  systemDecisions: Ns4SystemDecision[] = [],
 ): Promise<{ artifacts: Ns4UseCaseArtifactV3[]; index: Ns4UseCaseIndexArtifactV3 }> {
   const artifacts = await Promise.all(drafts.map(async draft => {
     const { planId: _planId, draftVersion: _draftVersion, transitions, ...contract } = draft;
@@ -299,7 +309,7 @@ export async function buildNs4UseCaseArtifacts(
       useCases: artifacts.map(item => ({ useCaseId: item.useCaseId, title: item.title, kind: item.kind,
         compiledFrom: item.compiledFrom, useCaseHash: item.useCaseHash,
         artifactPath: `l4/${plan.moduleName}/usecases/${item.useCaseId}.defs.ts` })),
-      realizationHash, generatedAt,
+      realizationHash, generatedAt, systemDecisions,
     },
   };
 }
@@ -476,6 +486,17 @@ function normalizeTransition(value: unknown): Ns4UseCaseTransition {
     transitionId: text(transition.transitionId), entityRef: text(transition.entityRef),
     fromStates: strings(transition.fromStates), toState: text(transition.toState), useRules: strings(transition.useRules),
   };
+}
+function normalizeWrites(value: unknown): Ns4UseCaseWrite[] {
+  const byId = new Map<string, Ns4UseCaseWrite>();
+  for (const item of array(value)) {
+    const row = record(item);
+    const entityId = text(row.entityId);
+    if (!entityId || byId.has(entityId)) continue;
+    const fieldRefs = uniqueStrings(row.fieldRefs);
+    byId.set(entityId, fieldRefs.length ? { entityId, fieldRefs } : { entityId });
+  }
+  return [...byId.values()].sort((left, right) => left.entityId.localeCompare(right.entityId));
 }
 function record(value: unknown): Record<string, unknown> { return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function array(value: unknown): unknown[] { return Array.isArray(value) ? value : []; }

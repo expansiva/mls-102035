@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import {
   createNs4E7Step, createNs4Pipeline, markNs4E6Approved, markNs4E7Approved,
@@ -16,7 +17,7 @@ import {
 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import { deriveNs4Contexts } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import { createNs4E7LifecycleResolutionReview } from '/_102035_/l2/agentNewSolution/steps/e7/lifecycleResolution.js';
-import { validateNs4E7Plan, validateNs4UseCaseDraft, validateNs4Workflows } from '/_102035_/l2/agentNewSolution/steps/e7/gate.js';
+import { ns4E7WriteIntentDecisions, validateNs4E7Plan, validateNs4UseCaseDraft, validateNs4Workflows } from '/_102035_/l2/agentNewSolution/steps/e7/gate.js';
 import { shrinkNs4WorkflowToReachable } from '/_102035_/l2/agentNewSolution/steps/e7/reachability.js';
 import {
   isNs4E7ValidationReport, mergeNs4E7ValidationAttempts, NS4_E7_VALIDATION_REPORT_VERSION,
@@ -95,7 +96,7 @@ test('E7 validates a minimal behavior contract without backend field instruction
   const plan = buildNs4E7Plan('buildFlowFsm', 'pt-BR', journeys, sourceHashes, derivedContexts);
   const draft = normalizeNs4UseCaseDraft({ title: 'Localizar projeto', description: 'Localiza projetos.',
     contexts: { requires: [], provides: ['selectedProject'] }, entityRefs: ['Project'],
-    useRules: [], transitions: [] }, plan, 'locateProject');
+    writes: [], useRules: [], transitions: [] }, plan, 'locateProject');
   assert.deepEqual(validateNs4UseCaseDraft(plan, draft, sources), { ok: true, issues: [] });
   assert.equal('actorRefs' in draft, false);
   assert.equal('authorityRefs' in draft, false);
@@ -105,7 +106,7 @@ test('E7 validates a minimal behavior contract without backend field instruction
   assert.equal('inputs' in draft, false);
   assert.equal('outputs' in draft, false);
   assert.equal('reads' in draft, false);
-  assert.equal('writes' in draft, false);
+  assert.deepEqual(draft.writes, []);
   assert.equal('errors' in draft, false);
 });
 
@@ -134,9 +135,10 @@ test('E7 emits typed use cases, workflows and realization metadata without chang
   const plan = buildNs4E7Plan('buildFlowFsm', 'pt-BR', journeys, sourceHashes, derivedContexts);
   const drafts = plan.useCases.map(target => normalizeNs4UseCaseDraft(target.kind === 'query' ? {
     title: target.title, description: 'Localiza projetos.', contexts: { requires: [], provides: ['selectedProject'] },
-    entityRefs: ['Project'], useRules: [], transitions: [] } : {
+    entityRefs: ['Project'], writes: [], useRules: [], transitions: [] } : {
     title: target.title, description: 'Cria tarefa.', contexts: { requires: ['selectedProject'], provides: ['createdTask'] },
-    entityRefs: ['Project', 'WorkTask'], useRules: [], transitions: [{ transitionId: 'completeTask', entityRef: 'WorkTask', fromStates: ['open'], toState: 'done', useRules: [] }] }, plan, target.useCaseId));
+    entityRefs: ['Project', 'WorkTask'], writes: [{ entityId: 'WorkTask' }], useRules: [],
+    transitions: [{ transitionId: 'completeTask', entityRef: 'WorkTask', fromStates: ['open'], toState: 'done', useRules: [] }] }, plan, target.useCaseId));
   drafts.forEach(draft => assert.equal(validateNs4UseCaseDraft(plan, draft, sources).ok, true));
   const generatedAt = '2026-08-10T01:00:00.000Z';
   const built = await buildNs4UseCaseArtifacts(plan, drafts, generatedAt);
@@ -151,6 +153,8 @@ test('E7 emits typed use cases, workflows and realization metadata without chang
   assert.ok(createTask);
   assert.equal('transitions' in createTask, false);
   assert.deepEqual(createTask.transitionRefs, ['completeTask']);
+  assert.deepEqual(createTask.writes, [{ entityId: 'WorkTask' }]);
+  assert.deepEqual(built.index.systemDecisions, []);
   const sourceJourneys = await buildNs4JourneyArtifacts(journeys);
   const realized = await buildNs4RealizedJourneyArtifact(sourceJourneys[1], built.artifacts, derivedContexts);
   assert.equal(realized.businessHash, sourceJourneys[1].businessHash);
@@ -160,6 +164,66 @@ test('E7 emits typed use cases, workflows and realization metadata without chang
   assert.equal(realizedAccess.realization.status, 'useCasesCompiled');
   assert.ok(realizedAccess.realization.useCaseAuthorityRefs.length >= 2);
   assert.equal(buildNs4JourneyIndex('buildFlowFsm', journeys, sourceJourneys, sourceJourneys.map(item => `l4/buildFlowFsm/journeys/${item.journeyId}.defs.ts`), 'auto', generatedAt).journeys.length, 2);
+});
+
+test('E7 requires writes to cover the act entity, affects and transitions', () => {
+  const closeJourneys = normalizeNs4E2Review({
+    moduleName: 'buildFlowFsm', userLanguage: 'en', reviewRound: 1,
+    journeys: [{
+      journeyId: 'closeTab',
+      business: {
+        actorRef: 'cashier', title: 'Close tab', goal: 'Close the tab.',
+        entry: { mode: 'coldStart' }, useRules: [],
+        steps: [
+          { stepId: 'locateTab', kind: 'locate', entity: 'Project', title: 'Find tab.', description: 'Selected.', featureRefs: ['closeTab'] },
+          { stepId: 'closeTab', kind: 'act', entity: 'WorkTask', affects: ['Project'], title: 'Close.', description: 'Closed.', featureRefs: ['closeTab'] },
+        ],
+        outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+      },
+    }],
+    features: [{ featureId: 'closeTab', title: 'Close', priority: 'now', journeyStepRefs: ['closeTab.locateTab', 'closeTab.closeTab'] }],
+  });
+  const closeSources = { ...sources, journeys: closeJourneys };
+  const plan = buildNs4E7Plan('buildFlowFsm', 'en', closeJourneys, sourceHashes, deriveNs4Contexts(closeSources));
+  const target = plan.useCases.find(item => item.useCaseId === 'closeTab')!;
+  const missing = normalizeNs4UseCaseDraft({
+    title: target.title, description: 'Closes the tab.',
+    contexts: target.contexts,
+    entityRefs: ['WorkTask'], writes: [{ entityId: 'WorkTask' }], useRules: [], transitions: [],
+  }, plan, 'closeTab');
+  const missingGate = validateNs4UseCaseDraft(plan, missing, closeSources);
+  assert.equal(missingGate.ok, false);
+  assert.ok(missingGate.issues.some(issue => issue.code === 'NS4_E7_WRITES_MISSING_AFFECT' && /Project/.test(issue.message)),
+    missingGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+
+  const complete = normalizeNs4UseCaseDraft({
+    title: target.title, description: 'Closes the tab and frees the table.',
+    contexts: target.contexts,
+    entityRefs: ['WorkTask', 'Project'],
+    writes: [{ entityId: 'WorkTask' }, { entityId: 'Project' }],
+    useRules: [],
+    transitions: [{ transitionId: 'completeTask', entityRef: 'WorkTask', fromStates: ['open'], toState: 'done', useRules: [] }],
+  }, plan, 'closeTab');
+  assert.equal(validateNs4UseCaseDraft(plan, complete, closeSources).ok, true, JSON.stringify(validateNs4UseCaseDraft(plan, complete, closeSources).issues));
+});
+
+test('E7 records writesBeyondIntent when the model writes an entity the journey did not name', () => {
+  const plan = buildNs4E7Plan('buildFlowFsm', 'en', journeys, sourceHashes, derivedContexts);
+  const draft = normalizeNs4UseCaseDraft({
+    title: 'Create task', description: 'Creates a task.',
+    contexts: { requires: ['selectedProject'], provides: ['createdTask'] },
+    entityRefs: ['Project', 'WorkTask'],
+    writes: [{ entityId: 'WorkTask' }, { entityId: 'Project' }],
+    useRules: [],
+    transitions: [{ transitionId: 'completeTask', entityRef: 'WorkTask', fromStates: ['open'], toState: 'done', useRules: [] }],
+  }, plan, 'createWorkTask');
+  assert.equal(validateNs4UseCaseDraft(plan, draft, sources).ok, true);
+  const decisions = ns4E7WriteIntentDecisions([draft], sources);
+  assert.equal(decisions.length, 1);
+  assert.equal(decisions[0].decisionId, 'writesBeyondIntentCreateWorkTask');
+  assert.equal(decisions[0].chosen, 'keep');
+  assert.ok(decisions[0].alternatives.includes('drop'));
+  assert.match(decisions[0].question, /Project/);
 });
 
 test('E7 rejects a declared lifecycle state without an incoming transition', () => {
@@ -334,4 +398,34 @@ test('E7 validation report replay replaces only the matching round', () => {
   );
   assert.deepEqual(attempts.map(attempt => attempt.round), [0, 1]);
   assert.equal(attempts[1].invalid, 1);
+});
+
+test('touched E7 files stay English in comments and identifiers', () => {
+  const files = [
+    fileURLToPath(new URL('./contracts.ts', import.meta.url)),
+    fileURLToPath(new URL('./gate.ts', import.meta.url)),
+    fileURLToPath(new URL('./promptUseCase.md', import.meta.url)),
+    fileURLToPath(new URL('./agentNs4E7.ts', import.meta.url)),
+  ];
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /portuguese\s*\?/, file);
+    for (const line of source.split('\n')) {
+      const trimmed = line.trim();
+      const isComment = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('<!--');
+      if (!isComment) continue;
+      assert.doesNotMatch(line, /[À-ÿ]/, `${file}: ${trimmed}`);
+    }
+    const stripped = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/`(?:\\.|[^`])*`/g, '')
+      .replace(/'(?:\\.|[^'\\])*'/g, '')
+      .replace(/"(?:\\.|[^"\\])*"/g, '');
+    assert.doesNotMatch(stripped, /[À-ÿ]/, file);
+  }
+  const prompt = readFileSync(fileURLToPath(new URL('./promptUseCase.md', import.meta.url)), 'utf8');
+  assert.match(prompt, /When an act step also changes another business object|writes` names the business entities this behavior records/);
+  assert.match(prompt, /2026-09-09-ns4-usecase-draft-v4/);
 });

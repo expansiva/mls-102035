@@ -1,5 +1,11 @@
 # E9 changelog
 
+## 2026-09-09 — classic `writes` come from the usecase
+
+`transposeNs4ClassicOperation` copies `usecase.writes[].entityId` (dedup) onto the classic
+operation. `reads` is `entityRefs − writes`. Catalogue operations without a use case still
+write `[entityRef]`. Contract shape unchanged (`writes: string[]`).
+
 ## 2026-09-08 — writes V4 operationAuthorityRefs
 
 `buildNs4NavigationRealizedAccess` maps every emitted bffCall route to the E8 operation's

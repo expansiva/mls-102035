@@ -8,9 +8,11 @@ import {
   NS4_USE_CASE_DRAFT_VERSION,
 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import type {
-  Ns4E7PlanDraft, Ns4E7SourceHashes, Ns4UseCaseDraft, Ns4WorkflowArtifactV2,
+  Ns4E7PlanDraft, Ns4E7SourceHashes, Ns4UseCaseDraft, Ns4UseCaseWrite, Ns4WorkflowArtifactV2,
 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
+import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 import { deriveNs4Contexts, type Ns4DerivedStepContexts } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import { collectNs4ReachableWorkflowStates } from '/_102035_/l2/agentNewSolution/steps/e7/reachability.js';
 
@@ -138,7 +140,83 @@ export function validateNs4UseCaseDraft(
     if (!MEMBER_ID.test(transition.transitionId)) add('NS4_E7_TRANSITION_ID', 'transitions', 'Transition id must be lower-camel.');
     if (!transition.fromStates.length || !transition.toState) add('NS4_E7_TRANSITION_BOUNDS', 'transitions', 'Transition needs at least one from state and one target state.');
   }
+
+  const writeIds = ns4E7DeclaredWriteEntities(draft.writes);
+  const requiredWrites = ns4E7RequiredWriteEntities(draft, sources);
+  for (const write of draft.writes || []) {
+    const entity = entities.get(write.entityId);
+    if (!entity) add('NS4_E7_WRITE_ENTITY', 'writes', `Unknown write entity ${write.entityId}.`);
+    else if (write.fieldRefs?.length) {
+      const known = new Set(entity.fields.map(field => field.fieldId));
+      for (const fieldId of write.fieldRefs) if (!known.has(fieldId)) {
+        add('NS4_E7_WRITE_FIELD', 'writes', `Unknown field ${write.entityId}.${fieldId}.`);
+      }
+    }
+    if (write.entityId && !draft.entityRefs.includes(write.entityId)) {
+      add('NS4_E7_WRITE_REF', 'entityRefs', `Write entity ${write.entityId} must be referenced by the behavior.`);
+    }
+  }
+  const missingAffect = requiredWrites.filter(entityId => !writeIds.includes(entityId));
+  if (missingAffect.length) {
+    add('NS4_E7_WRITES_MISSING_AFFECT', 'writes',
+      `writes must include ${missingAffect.join(', ')} (step entity, affects, and transition entities).`);
+  }
   return { ok: issues.every(issue => issue.severity === 'warning'), issues };
+}
+
+/** Entities the journey and the transitions already named as recorded by this behavior. */
+export function ns4E7RequiredWriteEntities(
+  draft: Pick<Ns4UseCaseDraft, 'kind' | 'compiledFrom' | 'transitions'>,
+  sources: Ns4E7Sources,
+): string[] {
+  if (draft.kind === 'query') return [];
+  const ids = new Set<string>();
+  for (const ref of draft.compiledFrom) {
+    const dot = ref.indexOf('.');
+    const journeyId = dot < 0 ? ref : ref.slice(0, dot);
+    const stepId = dot < 0 ? '' : ref.slice(dot + 1);
+    const step = sources.journeys.journeys
+      .find(journey => journey.journeyId === journeyId)
+      ?.business.steps.find(item => item.stepId === stepId);
+    if (!step) continue;
+    if (step.kind !== 'act' && step.kind !== 'decide' && step.kind !== 'handoff') continue;
+    if (step.entity) ids.add(step.entity);
+    for (const affect of step.affects || []) if (affect) ids.add(affect);
+  }
+  for (const transition of draft.transitions) if (transition.entityRef) ids.add(transition.entityRef);
+  return [...ids].sort();
+}
+
+export function ns4E7DeclaredWriteEntities(writes: Ns4UseCaseWrite[] | undefined): string[] {
+  return [...new Set((writes || []).map(item => item.entityId).filter(Boolean))].sort();
+}
+
+/** Extra writes the model recorded beyond journey intent; visible, alternative "drop". */
+export function ns4E7WriteIntentDecisions(
+  drafts: Ns4UseCaseDraft[],
+  sources: Ns4E7Sources,
+  presentation?: Ns4Presentation,
+): Ns4SystemDecision[] {
+  return drafts.flatMap(draft => {
+    const allowed = new Set(ns4E7RequiredWriteEntities(draft, sources));
+    const extra = ns4E7DeclaredWriteEntities(draft.writes).filter(entityId => !allowed.has(entityId));
+    if (!extra.length) return [];
+    const entities = extra.join(', ');
+    return [{
+      decisionId: `writesBeyondIntent${upperCamel(draft.useCaseId)}`,
+      stage: 'e7',
+      question: ns4Text(presentation, 'writes.beyond.question', { useCase: draft.useCaseId, entities }),
+      chosen: 'keep',
+      alternatives: ['keep', 'drop'],
+      decidedBy: 'system' as const,
+      findingRef: `writes.beyond:${draft.useCaseId}`,
+      changeHint: ns4Text(presentation, 'writes.beyond.changeHint', { useCase: draft.useCaseId, entities }),
+    }];
+  });
+}
+
+function upperCamel(value: string): string {
+  return value ? value.slice(0, 1).toUpperCase() + value.slice(1) : '';
 }
 
 export function validateNs4Workflows(

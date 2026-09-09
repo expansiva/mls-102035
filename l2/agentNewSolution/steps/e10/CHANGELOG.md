@@ -1,6 +1,10 @@
 # E10 changelog
 
-## 2026-09-09 — A4 disclosure is a real check
+## 2026-09-09 — A8 unwritten state is an error; A4 disclosure is a real check
+
+A lifecycle state reached only by transitions whose use case does not list that entity in
+`writes` is `NS4_E10_DORMANT_COMMAND` as an **error** (repair E7). Commands whose
+`transitionRefs` are missing from compiled workflows stay a registrar.
 
 `validateDisclosureRegistrars` became `validateDisclosure`. A limited external grant without
 `projectionRef`, or an operation of that authority that still reads the source entity, is an

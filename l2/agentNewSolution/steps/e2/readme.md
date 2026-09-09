@@ -46,7 +46,8 @@ start pending so later steps can add ontology and implementation bindings withou
 human-approved business intent.
 
 E2 declares no context graph. A step is `{stepId, kind, entity, title, description, featureRefs}`
-plus `targetProfile` on a handoff, and every context is derived downstream by
+plus optional `affects[]` on an `act` (other business objects the step also changes) and
+`targetProfile` on a handoff, and every context is derived downstream by
 `helpers/ns4Context.ts` from that entity, the step kind, the order of the steps and the approved
 ontology. The gate is therefore structural only: identity, kind, a stable PascalCase `entity`,
 business-facing text that never asks for a raw id, feature references, the ordering of a preferred

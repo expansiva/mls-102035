@@ -1,5 +1,10 @@
 # E2 changelog
 
+- 2026-09-09: An `act` step may list `affects[]` — other business objects it also changes.
+  Demotion (`captureOnlyJourneys`) unions `entity` with `affects`, so a close-tab step that
+  also frees a table is not capture-only. Prompt: one sentence; do not encode the second
+  object only in the description.
+
 - 2026-09-07: The journeys widget reads chrome from `presentation.phrases` (`widget.journeys.*`).
 
 - 2026-09-07: Capture-only demotion `question`/`chosen`/`alternatives` come from `ns4Text`

@@ -30,12 +30,44 @@ test('a module with at least one decide step emits no S1 finding', () => {
   assert.deepEqual(result.findings, []);
 });
 
+test('an act that also lists affects is not capture-only', () => {
+  const closeTab = {
+    journeys: [{
+      journeyId: 'closeTab',
+      business: {
+        steps: [
+          { kind: 'locate', entity: 'Tab' },
+          { kind: 'inspect', entity: 'Tab' },
+          { kind: 'act', entity: 'Tab', affects: ['Table'] },
+        ],
+      },
+    }],
+  };
+  assert.deepEqual(analyzeNs4E2MechanicalCoverage(closeTab).captureOnlyJourneys, []);
+  const withoutAffects = {
+    journeys: [{
+      journeyId: 'closeTab',
+      business: {
+        steps: [
+          { kind: 'locate', entity: 'Tab' },
+          { kind: 'inspect', entity: 'Tab' },
+          { kind: 'act', entity: 'Tab' },
+        ],
+      },
+    }],
+  };
+  assert.deepEqual(analyzeNs4E2MechanicalCoverage(withoutAffects).captureOnlyJourneys, [
+    { journeyId: 'closeTab', entity: 'Tab' },
+  ]);
+});
+
 test('touched E2 files stay English in comments and identifiers', () => {
   const files = [
     fileURLToPath(new URL('./coverageSignals.ts', import.meta.url)),
     fileURLToPath(new URL('./coverageJudge.ts', import.meta.url)),
     fileURLToPath(new URL('./agentNs4E2.ts', import.meta.url)),
     fileURLToPath(new URL('./gate.ts', import.meta.url)),
+    fileURLToPath(new URL('./contracts.ts', import.meta.url)),
     fileURLToPath(new URL('./prompt.md', import.meta.url)),
     fileURLToPath(new URL('./coverageJudge.md', import.meta.url)),
   ];
@@ -72,6 +104,8 @@ test('touched E2 files stay English in comments and identifiers', () => {
   assert.match(prompt, /A decision is not a confirmation/);
   assert.match(prompt, /<MasterDataEntity>/);
   assert.match(prompt, /<FactEntity>/);
+  assert.match(prompt, /When an act step also changes another business object, list it in `affects`/);
+  assert.match(prompt, /<RelatedBusinessObject>/);
   const judgePrompt = readFileSync(fileURLToPath(new URL('./coverageJudge.md', import.meta.url)), 'utf8');
   assert.doesNotMatch(judgePrompt, /emit exactly one blocking issue/);
 });

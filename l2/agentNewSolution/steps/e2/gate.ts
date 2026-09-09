@@ -46,7 +46,9 @@ export function ns4E2DecideOnReadModelSteps(review: Ns4E2Review): Ns4E2DecideOnR
   const written = new Set<string>();
   review.journeys.forEach(journey => {
     journey.business.steps.forEach(step => {
-      if (step.kind === 'act' && step.entity) written.add(step.entity);
+      if (step.kind !== 'act') return;
+      if (step.entity) written.add(step.entity);
+      for (const affect of step.affects || []) if (affect) written.add(affect);
     });
   });
   const hits: Ns4E2DecideOnReadModelStep[] = [];
@@ -139,6 +141,21 @@ export function validateNs4E2Review(review: Ns4E2Review): Ns4E2GateResult {
       }
       if (step.kind !== 'handoff' && step.targetProfile) {
         add('NS4_E2_STEP_TARGET_PROFILE', `${path}.targetProfile`, 'Only a handoff step names a receiving profile.');
+      }
+      if (step.affects?.length) {
+        if (step.kind !== 'act') {
+          add('NS4_E2_STEP_AFFECTS_KIND', `${path}.affects`, 'Only an act step lists other business objects in affects.');
+        }
+        const seenAffects = new Set<string>();
+        step.affects.forEach((affect, affectPosition) => {
+          const affectPath = `${path}.affects[${affectPosition}]`;
+          if (!affect) add('NS4_E2_STEP_AFFECTS', affectPath, 'affects entries cannot be empty.');
+          else if (!ENTITY_PATTERN.test(affect)) {
+            add('NS4_E2_STEP_AFFECTS_ID', affectPath, 'affects must be a stable PascalCase identifier, not a display label.');
+          }
+          else if (seenAffects.has(affect)) add('NS4_E2_STEP_AFFECTS_DUPLICATE', affectPath, `Duplicate affects entry ${affect}.`);
+          else seenAffects.add(affect);
+        });
       }
       step.featureRefs.forEach(featureRef => {
         if (!featureIds.has(featureRef)) add('NS4_E2_FEATURE_REF', `${path}.featureRefs`, `Unknown featureRef ${featureRef}.`);

@@ -39,6 +39,7 @@ export interface Ns4ContextJourneyStep {
   stepId: string;
   kind: Ns4ContextStepKind;
   entity: string;
+  affects?: string[];
   targetProfile?: string;
 }
 
@@ -165,7 +166,10 @@ export function deriveNs4Contexts(sources: Ns4ContextSources): Ns4DerivedContext
 
 /** Business objects the ontology must realize: exactly the entities the journeys operate on. */
 export function collectNs4JourneyEntities(journeys: { journeys: Ns4ContextJourney[] }): string[] {
-  return [...new Set(journeys.journeys.flatMap(journey => journey.business.steps.map(step => step.entity)).filter(Boolean))].sort();
+  return [...new Set(journeys.journeys.flatMap(journey => journey.business.steps.flatMap(step => [
+    step.entity,
+    ...(step.affects || []),
+  ])).filter(Boolean))].sort();
 }
 
 function handoffTarget(sources: Ns4ContextSources, stepRef: string): string {

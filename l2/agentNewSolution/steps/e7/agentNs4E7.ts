@@ -32,7 +32,7 @@ import {
   normalizeNs4UseCaseDraft, NS4_USE_CASE_DRAFT_VERSION, Ns4E7PlanDraft, Ns4E7SourceHashes, Ns4UseCaseDraft,
 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import {
-  Ns4E7GateIssue, Ns4E7Sources, validateNs4E7Plan, validateNs4UseCaseDraft, validateNs4Workflows,
+  Ns4E7GateIssue, Ns4E7Sources, ns4E7WriteIntentDecisions, validateNs4E7Plan, validateNs4UseCaseDraft, validateNs4Workflows,
 } from '/_102035_/l2/agentNewSolution/steps/e7/gate.js';
 import { deriveNs4Contexts } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import { createNs4E7LifecycleResolutionReview } from '/_102035_/l2/agentNewSolution/steps/e7/lifecycleResolution.js';
@@ -267,7 +267,8 @@ async function finalizeE7(
   }
 
   const generatedAt = new Date().toISOString();
-  const { artifacts: useCases, index: useCaseIndex } = await buildNs4UseCaseArtifacts(plan, valid, generatedAt);
+  const writeDecisions = ns4E7WriteIntentDecisions(valid, bundle, plan.presentation);
+  const { artifacts: useCases, index: useCaseIndex } = await buildNs4UseCaseArtifacts(plan, valid, generatedAt, writeDecisions);
   const ontologyLifecycles = new Map(bundle.ontology.entities.map(entity => [entity.entityId, {
     states: entity.lifecycleStates,
     initialState: entity.initialState,
