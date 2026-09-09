@@ -92,7 +92,7 @@ const reviewInput = {
       fields: [
         { fieldId: 'projectId', title: 'Project id', type: 'uuid', required: true, description: 'Stable id.', constraints: [{ constraintId: 'uniqueProjectId', kind: 'unique', value: 'true', description: 'Unique id.', source: 'inferred' }] },
         { fieldId: 'name', title: 'Name', type: 'string', required: true, description: 'Project name.', constraints: [] },
-      ], lifecycleStates: [], useRules: [], storage: {
+      ], lifecycleStates: [], useRules: [], displayField: 'name', storage: {
         target: 'moduleDatabase', scope: 'module', idField: 'projectId', notes: 'Transactional module persistence.',
       },
     },
@@ -100,7 +100,7 @@ const reviewInput = {
       entityId: 'ClientProjectSummary', title: 'Client project summary', description: 'Published related-project projection.', kind: 'projection', ownership: 'derived', party: 'none',
       sourceRefs: { journeyIds: [], featureIds: [], authorityRefs: ['buildflow:clientprojectview'] },
       fields: [{ fieldId: 'projectId', title: 'Project id', type: 'uuid', required: true, description: 'Related project.', constraints: [] }],
-      lifecycleStates: [], useRules: [],
+      lifecycleStates: [], useRules: [], displayField: 'projectId',
       derivation: { from: 'Project', filter: '', aggregate: [{ fieldId: 'projectId', op: 'groupKey', sourceField: 'projectId' }] },
       storage: { target: 'derived', scope: 'none', notes: 'Derived from published project data.' },
     },
@@ -449,6 +449,7 @@ test('E4 accepts a required foreign-key binding owned by either semantic endpoin
     { fieldId: 'summaryId', title: 'Summary id', type: 'uuid', required: true, description: 'Stable summary id.', constraints: [] },
     { fieldId: 'projectRef', title: 'Project reference', type: 'uuid', required: true, description: 'Owning project.', constraints: [] },
   ];
+  input.entities[1].displayField = 'summaryId';
   input.entities[1].storage = {
     target: 'moduleDatabase', scope: 'module', idField: 'summaryId', notes: 'Module-owned published snapshot.',
   };
@@ -565,6 +566,13 @@ test('E4 creates one entity artifact plus an index with the same frozen hash', a
 test('E4 accepts explicit organization MDM routing and exposes it in the ontology index', async () => {
   const mdmInput = structuredClone(reviewInput) as any;
   mdmInput.entities[0].kind = 'mdm';
+  mdmInput.entities[0].mdmSubtype = 'AssetGeneric';
+  mdmInput.entities[0].displayField = 'name';
+  mdmInput.entities[0].fields = mdmInput.entities[0].fields.filter((field: { fieldId: string }) => field.fieldId !== 'name');
+  mdmInput.entities[0].fields.push({
+    fieldId: 'projectCode', title: 'Project code', type: 'string', required: true, description: 'Module code.', constraints: [],
+  });
+  mdmInput.entities[0].displayField = 'projectCode';
   mdmInput.entities[0].storage = {
     target: 'mdm', scope: 'organization', idField: 'projectId', mdmType: 'buildFlowFsm.Project',
     notes: 'Stable organization project master reused by transactions and reports.',
@@ -771,7 +779,7 @@ function persistedExportReview() {
   review.entities.push({
     entityId: 'SignatureExportItem', title: 'Item da exportação',
     description: 'Permite auditar quais assinaturas válidas formaram cada arquivo gerado.',
-    kind: 'core', ownership: 'moduleOwned', party: 'none',
+    kind: 'core', ownership: 'moduleOwned', party: 'none', displayField: 'signatureExportItemId',
     sourceRefs: exported.sourceRefs, lifecycleStates: [], lifecyclePredicates: [], useRules: [],
     fields: [
       {
@@ -809,27 +817,12 @@ function persistedExportReview() {
   return normalizeNs4E4Review(review);
 }
 
-test('E4 flags persisted SignatureExport and SignatureExportItem from the listaAssinatura fixture', () => {
+test('E4 does not classify a persisted artifact by name (lexical DERIVED_PERSISTED removed)', () => {
   const clean = validateNs4E4Review(normalizeNs4E4Review(LISTA_ASSINATURA_ONTOLOGY), undefined, undefined, { requestText: LISTA_REQUEST });
   assert.equal(clean.issues.some(issue => issue.code === 'NS4_E4_DERIVED_PERSISTED'), false, JSON.stringify(clean.issues));
-  assert.ok(!clean.issues.some(issue => issue.message.includes('PetitionSignature') && issue.code === 'NS4_E4_DERIVED_PERSISTED'));
-  assert.ok(!clean.issues.some(issue => issue.message.includes('PetitionSignatureCount')));
 
   const gate = validateNs4E4Review(persistedExportReview(), undefined, undefined, {
     requireRelationshipRealization: false, requestText: LISTA_REQUEST,
-  });
-  const flagged = gate.issues.filter(issue => issue.code === 'NS4_E4_DERIVED_PERSISTED').map(issue => issue.message);
-  assert.equal(flagged.some(message => message.includes('SignatureExport') && !message.includes('SignatureExportItem')), true, flagged.join('\n'));
-  assert.equal(flagged.some(message => message.includes('SignatureExportItem')), true, flagged.join('\n'));
-  assert.equal(flagged.some(message => message.includes('PetitionSignature') && !message.includes('Export')), false);
-  assert.match(flagged[0], /derived/);
-  assert.match(flagged[0], /history\/audit\/versioning\/reprocessing/);
-});
-
-test('E4 accepts an *Export entity when the request asks to keep its history', () => {
-  const gate = validateNs4E4Review(persistedExportReview(), undefined, undefined, {
-    requireRelationshipRealization: false,
-    requestText: `${LISTA_REQUEST}\nmanter o histórico e a auditoria de cada exportação gerada`,
   });
   assert.equal(gate.issues.some(issue => issue.code === 'NS4_E4_DERIVED_PERSISTED'), false, JSON.stringify(gate.issues));
 });
@@ -853,14 +846,18 @@ function ownershipEntity(spec: {
   const kind = spec.kind || 'core';
   const isMdm = kind === 'mdm';
   const isProjection = kind === 'projection';
+  const party = spec.party || 'none';
   const fieldIds = spec.fieldIds || [idField];
+  const mdmSubtype = party === 'person' ? 'Person' : party === 'organization' ? 'Company' : 'Animal';
   return {
     entityId: spec.entityId,
     title: spec.entityId,
     description: `${spec.entityId} record.`,
     kind,
     ownership: isProjection ? 'derived' : 'moduleOwned',
-    party: spec.party || 'none',
+    party,
+    ...(isMdm ? { mdmSubtype } : {}),
+    displayField: isMdm ? 'name' : (fieldIds[1] || idField),
     sourceRefs: { journeyIds: ['manageProjects'], featureIds: ['projectManagement'], authorityRefs: ['buildflow:projectread'] },
     fields: fieldIds.map(fieldId => ({
       fieldId, title: fieldId, type: 'uuid', required: true, description: `${fieldId} field.`, constraints: [],
@@ -917,7 +914,7 @@ function ownerIssues(review: ReturnType<typeof ownershipReview>) {
 test('E4 treats an MDM relationship to a party as ownership', () => {
   const review = ownershipReview([
     ownershipEntity({ entityId: 'CustomerProfile', kind: 'mdm', party: 'person' }),
-    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'name'], useRules: ['customerCanViewOnlyOwnPets'] }),
+    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'ownerId'], useRules: ['customerCanViewOnlyOwnPets'] }),
   ], [
     ownershipRel({
       relationshipId: 'petBelongsToCustomerProfile', fromEntity: 'Pet', toEntity: 'CustomerProfile',
@@ -945,7 +942,7 @@ test('E4 accepts a compound party name via fieldReference, not a hardcoded Custo
 test('E4 ownership is transitive through a field hop then an MDM relationship', () => {
   const review = ownershipReview([
     ownershipEntity({ entityId: 'CustomerProfile', kind: 'mdm', party: 'person' }),
-    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'name'] }),
+    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'ownerId'] }),
     ownershipEntity({
       entityId: 'ServiceAppointment', fieldIds: ['serviceAppointmentId', 'petId'],
       useRules: ['appointmentMustReferenceOwnPet'],
@@ -966,7 +963,7 @@ test('E4 ownership is transitive through a field hop then an MDM relationship', 
 test('E4 flags a missing path to a declared party and names both legal repairs', () => {
   const review = ownershipReview([
     ownershipEntity({ entityId: 'CustomerProfile', kind: 'mdm', party: 'person' }),
-    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'name'], useRules: ['customerCanViewOnlyOwnPets'] }),
+    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'ownerId'], useRules: ['customerCanViewOnlyOwnPets'] }),
   ], [
     ownershipRel({
       relationshipId: 'petBelongsToCustomerProfile', fromEntity: 'Pet', toEntity: 'CustomerProfile',
@@ -1015,7 +1012,7 @@ test('E4 flags an ownership rule when no party entity is declared', () => {
 test('E4 does not count derived or externalReference as an ownership path', () => {
   const derivedOnly = ownershipReview([
     ownershipEntity({ entityId: 'CustomerProfile', kind: 'mdm', party: 'person' }),
-    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'name'], useRules: ['customerCanViewOnlyOwnPets'] }),
+    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'ownerId'], useRules: ['customerCanViewOnlyOwnPets'] }),
   ], [
     ownershipRel({
       relationshipId: 'petDerivedFromProfile', fromEntity: 'Pet', toEntity: 'CustomerProfile',
@@ -1027,7 +1024,7 @@ test('E4 does not count derived or externalReference as an ownership path', () =
   const externalOnly = ownershipReview([
     ownershipEntity({ entityId: 'CustomerProfile', kind: 'mdm', party: 'person' }),
     ownershipEntity({
-      entityId: 'Pet', fieldIds: ['petId', 'name'], useRules: ['customerCanViewOnlyOwnPets'],
+      entityId: 'Pet', fieldIds: ['petId', 'ownerId'], useRules: ['customerCanViewOnlyOwnPets'],
     }),
   ], [
     ownershipRel({
@@ -1041,7 +1038,7 @@ test('E4 does not count derived or externalReference as an ownership path', () =
 test('E4 binding owner-relation exhaustion escalates typed entity feedback instead of failing', () => {
   const review = ownershipReview([
     ownershipEntity({ entityId: 'CustomerProfile', kind: 'mdm', party: 'person' }),
-    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'name'], useRules: ['customerCanViewOnlyOwnPets'] }),
+    ownershipEntity({ entityId: 'Pet', kind: 'mdm', fieldIds: ['petId', 'ownerId'], useRules: ['customerCanViewOnlyOwnPets'] }),
   ], [
     ownershipRel({
       relationshipId: 'petBelongsToCustomerProfile', fromEntity: 'Pet', toEntity: 'CustomerProfile',
@@ -1065,6 +1062,9 @@ test('E4 carries the party declaration into the entity artifact', async () => {
   const input = structuredClone(reviewInput) as any;
   input.entities[0].kind = 'mdm';
   input.entities[0].party = 'organization';
+  input.entities[0].mdmSubtype = 'Company';
+  input.entities[0].displayField = 'name';
+  input.entities[0].fields = input.entities[0].fields.filter((field: { fieldId: string }) => field.fieldId !== 'name');
   input.entities[0].storage = {
     target: 'mdm', scope: 'organization', idField: 'projectId', mdmType: 'buildFlowFsm.Project',
     notes: 'Organization master record.',
@@ -1630,15 +1630,19 @@ test('no example in E4 derivation prompts names a real field or enum code', () =
   assert.doesNotMatch(entityPrompt, /\bdirection:\s*in\|out\b/);
 });
 
-test('E4 exposes the level-1 catalog as placeholders without mdmSubtype semantics', () => {
+test('E4 exposes the level-1 catalog as placeholders and asks for mdmSubtype by subtraction', () => {
   const overview = readFileSync(new URL('prompt.md', import.meta.url), 'utf8');
   const entityPrompt = readFileSync(new URL('promptEntity.md', import.meta.url), 'utf8');
   const agent = readFileSync(new URL('agentNs4E4.ts', import.meta.url), 'utf8');
   assert.match(overview, /<Person>/);
   assert.match(entityPrompt, /<Person>/);
   assert.match(agent, /formatNs4Level1CatalogPrompt/);
-  assert.doesNotMatch(overview, /\bmdmSubtype\b/);
-  assert.doesNotMatch(entityPrompt, /\bmdmSubtype\b/);
+  assert.match(agent, /formatNs4E4OrganizationContext/);
+  assert.match(overview, /\bmdmSubtype\b/);
+  assert.match(overview, /fields the level 1 already has are not declared here/);
+  assert.match(overview, /promoteToGeneral/);
+  assert.match(entityPrompt, /fields the level 1 already has are not declared here/);
+  assert.doesNotMatch(overview, /mdmType exactly/);
 });
 
 test('E4 derivation binding files keep English comments and identifiers', () => {
@@ -1657,11 +1661,8 @@ test('touched E4 gate and overview prompt stay English in comments and identifie
   const files = [
     { name: 'gate.ts', source: readFileSync(new URL('gate.ts', import.meta.url), 'utf8') },
     { name: 'prompt.md', source: readFileSync(new URL('prompt.md', import.meta.url), 'utf8') },
-  ];
-  // Named leftover: lexical DERIVED_* regexes (2026-08-29). Kept by ns08 T3; not rewritten here.
-  const legacyIdentifierExceptions = [
-    { file: 'gate.ts', includes: 'const DERIVED_HISTORY', since: '2026-08-29' },
-    { file: 'gate.ts', includes: 'const DERIVED_ARTIFACT_WORD', since: '2026-08-29' },
+    { name: 'promptEntity.md', source: readFileSync(new URL('promptEntity.md', import.meta.url), 'utf8') },
+    { name: 'contracts.ts', source: readFileSync(new URL('contracts.ts', import.meta.url), 'utf8') },
   ];
   for (const { name, source } of files) {
     assert.doesNotMatch(source, /portuguese\s*\?/);
@@ -1679,7 +1680,6 @@ test('touched E4 gate and overview prompt stay English in comments and identifie
       .replace(/'(?:\\.|[^'\\])*'/g, '')
       .replace(/"(?:\\.|[^"\\])*"/g, '')
       .split('\n')
-      .filter(line => !legacyIdentifierExceptions.some(item => item.file === name && line.includes(item.includes)))
       .join('\n');
     assert.doesNotMatch(stripped, /[À-ÿ]/, name);
   }
@@ -1739,37 +1739,42 @@ test('E4 CORE_READ_ONLY does not fire without journeys, on a singleton, or on an
   assert.deepEqual(coreReadOnlyEntityIds(input, journeys), []);
 });
 
-test('E4 lexical DERIVED_PERSISTED vs structural CORE_READ_ONLY recall on known fixtures', () => {
-  const listaJourneys = JSON.parse(readFileSync(new URL('../e8/fixtures/listaAssinatura-e8-sources.json', import.meta.url), 'utf8')).journeys;
-  const persisted = structuredClone(normalizeNs4E4Review(LISTA_ASSINATURA_ONTOLOGY)) as any;
-  const exported = persisted.entities.find((entity: { entityId: string }) => entity.entityId === 'PetitionSignatureExport');
-  exported.kind = 'core';
-  exported.ownership = 'moduleOwned';
-  exported.derivation = undefined;
-  exported.fields.unshift({
-    fieldId: 'petitionSignatureExportId', title: 'Export id', type: 'uuid', required: true,
-    description: 'Stable export id.', constraints: [],
+test('E4 Receipt append-only written by an act step is not CORE_READ_ONLY (ce12 class)', () => {
+  const receiptReview = normalizeNs4E4Review({
+    planId: 'e4-ontology-review', moduleName: 'compras', userLanguage: 'en', title: 'Purchasing',
+    reviewRound: 1, solutionMode: 'new', businessDomain: 'Goods receipt',
+    entities: [{
+      entityId: 'Receipt', title: 'Goods receipt', description: 'Record of a delivery against an order.',
+      kind: 'core', ownership: 'moduleOwned', party: 'none', mutability: 'appendOnly', displayField: 'receiptId',
+      sourceRefs: { journeyIds: ['registrarRecebimento'], featureIds: [], authorityRefs: [] },
+      fields: [
+        { fieldId: 'receiptId', title: 'Receipt id', type: 'uuid', required: true, description: 'Stable id.', constraints: [] },
+        { fieldId: 'receivedQuantity', title: 'Received quantity', type: 'number', required: true, description: 'Quantity received.', constraints: [] },
+      ],
+      lifecycleStates: [], useRules: [],
+      storage: { target: 'moduleDatabase', scope: 'module', idField: 'receiptId', notes: 'Append-only goods receipt fact.' },
+    }],
+    relationships: [], changeSummary: [],
   });
-  exported.storage = {
-    target: 'moduleDatabase', scope: 'module', idField: 'petitionSignatureExportId',
-    notes: 'Persisted on-demand artifact.',
-  };
-  const lexical = validateNs4E4Review(persisted, normalizeNs4E2Review(listaJourneys), undefined, {
-    requireRelationshipRealization: false, requestText: LISTA_REQUEST,
+  const receiptJourneys = normalizeNs4E2Review({
+    moduleName: 'compras', userLanguage: 'en', reviewRound: 1,
+    journeys: [{
+      journeyId: 'registrarRecebimento', business: {
+        actorRef: 'storekeeper', title: 'Register receipt', goal: 'Record a delivery.',
+        entry: { mode: 'coldStart' }, useRules: [],
+        steps: [{
+          stepId: 'recordReceipt', kind: 'act', entity: 'Receipt', title: 'Record the receipt.',
+          description: 'Receipt registered.', featureRefs: [],
+        }],
+        outcome: { statement: 'Receipt exists.', evidence: ['Receipt registered.'] },
+      },
+    }],
+    features: [],
   });
-  const lexicalIds = lexical.issues.filter(issue => issue.code === 'NS4_E4_DERIVED_PERSISTED')
-    .map(issue => ns4E4EntityIdFromIssuePath(persisted, issue.path)).sort();
-  const structuralIds = lexical.issues.filter(issue => issue.code === 'NS4_E4_CORE_READ_ONLY')
-    .map(issue => ns4E4EntityIdFromIssuePath(persisted, issue.path)).sort();
-  assert.deepEqual(lexicalIds, ['PetitionSignatureExport']);
-  assert.deepEqual(structuralIds, [], 'export is written by generateSignatureExport; structural registrar does not fire');
-
-  const petShop = JSON.parse(readFileSync(new URL('fixtures/petShop-e4-ontology-draft.json', import.meta.url), 'utf8'));
-  const petShopLexical = validateNs4E4Review(normalizeNs4E4Review(petShop), undefined, undefined, {
-    requireRelationshipRealization: false, requestText: 'pet shop appointments and services',
-  });
-  assert.equal(petShopLexical.issues.some(issue => issue.code === 'NS4_E4_DERIVED_PERSISTED'), false);
-  assert.equal(petShopLexical.issues.some(issue => issue.code === 'NS4_E4_CORE_READ_ONLY'), false);
+  const gate = validateNs4E4Review(receiptReview, receiptJourneys, undefined, { requireRelationshipRealization: false });
+  assert.equal(gate.issues.some(issue => issue.code === 'NS4_E4_DERIVED_PERSISTED'), false);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS4_E4_CORE_READ_ONLY'), false, JSON.stringify(gate.issues));
+  assert.ok(gate.ok, JSON.stringify(gate.issues));
 });
 
 test('E4 CORE_READ_ONLY does not add warnings on entities that a journey writes in older fixtures', () => {
@@ -1789,4 +1794,88 @@ test('E4 CORE_READ_ONLY does not add warnings on entities that a journey writes 
     controleEstoque: [],
     listaAssinatura: [],
   }, JSON.stringify(table));
+});
+
+const V7_MDM = JSON.parse(
+  readFileSync(new URL('fixtures/v7-mdm-layers.json', import.meta.url), 'utf8'),
+) as unknown;
+
+test('E4 v7 fixture accepts Person, Company, Product and AssetVehicle without base fields or lifecycle', () => {
+  const review = normalizeNs4E4Review(V7_MDM);
+  const byId = new Map(review.entities.map(entity => [entity.entityId, entity]));
+  assert.equal(byId.get('Cliente')?.mdmSubtype, 'Person');
+  assert.equal(byId.get('Cliente')?.role, 'sampleModule.Cliente');
+  assert.equal(byId.get('Cliente')?.displayField, 'name');
+  assert.deepEqual(byId.get('Cliente')?.lifecycleStates, []);
+  assert.equal(byId.get('Cliente')?.fields.some(field => field.fieldId === 'name'), false);
+  assert.equal(byId.get('Supplier')?.mdmSubtype, 'Company');
+  assert.equal(byId.get('Product')?.mdmSubtype, 'Product');
+  assert.equal(byId.get('FleetVehicle')?.mdmSubtype, 'AssetVehicle');
+  const gate = validateNs4E4Review(review, undefined, undefined, { requireRelationshipRealization: false });
+  assert.equal(gate.ok, true, JSON.stringify(gate.issues));
+});
+
+test('E4 requires mdmSubtype on kind mdm and rejects an unknown or party-mismatched value', () => {
+  const missing = structuredClone(normalizeNs4E4Review(V7_MDM)) as any;
+  delete missing.entities[0].mdmSubtype;
+  const required = validateNs4E4Review(missing, undefined, undefined, { requireRelationshipRealization: false });
+  assert.ok(required.issues.some(issue => issue.code === 'NS4_E4_MDM_SUBTYPE_REQUIRED'), JSON.stringify(required.issues));
+
+  missing.entities[0].mdmSubtype = 'Category';
+  const unknown = validateNs4E4Review(missing, undefined, undefined, { requireRelationshipRealization: false });
+  assert.ok(unknown.issues.some(issue => issue.code === 'NS4_E4_MDM_SUBTYPE_UNKNOWN'), JSON.stringify(unknown.issues));
+
+  const mismatched = structuredClone(normalizeNs4E4Review(V7_MDM)) as any;
+  mismatched.entities[0].mdmSubtype = 'Company';
+  const party = validateNs4E4Review(mismatched, undefined, undefined, { requireRelationshipRealization: false });
+  assert.ok(party.issues.some(issue => issue.code === 'NS4_E4_MDM_SUBTYPE_PARTY'), JSON.stringify(party.issues));
+});
+
+test('E4 rejects MDM lifecycle and a redeclared level-1 field', () => {
+  const input = structuredClone(normalizeNs4E4Review(V7_MDM)) as any;
+  input.entities[0].lifecycleStates = ['active', 'inactive'];
+  input.entities[0].initialState = 'active';
+  const lifecycle = validateNs4E4Review(input, undefined, undefined, { requireRelationshipRealization: false });
+  assert.ok(lifecycle.issues.some(issue => issue.code === 'NS4_E4_MDM_LIFECYCLE'), JSON.stringify(lifecycle.issues));
+
+  const redeclared = structuredClone(normalizeNs4E4Review(V7_MDM)) as any;
+  redeclared.entities[0].fields.push({
+    fieldId: 'birthDate', title: 'Birth date', type: 'date', required: false, description: 'Base field.', constraints: [],
+  });
+  const gate = validateNs4E4Review(redeclared, undefined, undefined, { requireRelationshipRealization: false });
+  const issue = gate.issues.find(item => item.code === 'NS4_E4_MDM_BASE_FIELD_REDECLARED');
+  assert.ok(issue, JSON.stringify(gate.issues));
+  assert.match(issue!.message, /birthDate/);
+  assert.match(issue!.message, /base/);
+  assert.match(issue!.message, /Person/);
+});
+
+test('E4 requires displayField and a declared idField with no Id-suffix fallback', () => {
+  const input = structuredClone(reviewInput) as any;
+  delete input.entities[0].displayField;
+  const display = validateNs4E4Review(normalizeNs4E4Review(input), journeys, access);
+  assert.ok(display.issues.some(issue => issue.code === 'NS4_E4_DISPLAY_FIELD'), JSON.stringify(display.issues));
+
+  const stored = structuredClone(reviewInput) as any;
+  delete stored.entities[0].storage.idField;
+  const normalized = normalizeNs4E4Review(stored);
+  assert.equal(normalized.entities[0].storage.idField, undefined);
+  const idGate = validateNs4E4Review(normalized, journeys, access);
+  assert.ok(idGate.issues.some(issue => issue.code === 'NS4_E4_STORAGE_ID_FIELD'), JSON.stringify(idGate.issues));
+  assert.equal(idGate.issues.some(issue => issue.code === 'NS4_E4_ENTITY_IDENTIFIER'), false);
+});
+
+test('E4 records promoteToGeneral as a Type B systemDecision', () => {
+  const input = structuredClone(V7_MDM) as any;
+  input.entities[0].promoteToGeneral = ['loyaltyTier'];
+  const review = normalizeNs4E4Review(input);
+  const decision = review.systemDecisions?.find(item => item.decisionId === 'promoteToGeneralLoyaltyTier');
+  assert.ok(decision, JSON.stringify(review.systemDecisions));
+  assert.equal(decision!.chosen, 'general');
+  assert.ok(decision!.alternatives.includes('moduleNamespace'));
+  assert.equal(decision!.decidedBy, 'system');
+  assert.match(decision!.findingRef, /Cliente\.loyaltyTier/);
+  assert.doesNotMatch(JSON.stringify(decision), /[À-ÿ]/);
+  const gate = validateNs4E4Review(review, undefined, undefined, { requireRelationshipRealization: false });
+  assert.equal(gate.ok, true, JSON.stringify(gate.issues));
 });

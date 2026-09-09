@@ -212,6 +212,7 @@ export type {
   Ns4Level1Field,
   Ns4Level1IndexArtifact,
   Ns4Level1RelationshipRef,
+  Ns4Level1Subtype,
   Ns4SolutionRegistryActor,
   Ns4SolutionRegistryArtifact,
   Ns4SolutionRegistryGeneralField,
@@ -221,6 +222,7 @@ export type {
 
 export {
   NS4_LEVEL1_SCHEMA_VERSION,
+  NS4_LEVEL1_SUBTYPE_VALUES,
   NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 

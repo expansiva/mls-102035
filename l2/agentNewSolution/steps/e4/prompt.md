@@ -11,7 +11,7 @@ text in the user's language. This run is `solutionMode: new`; never claim discov
 
 {{platformSkill}}
 
-The human prompt includes the platform level-1 catalog (subtypes and base fields as placeholders such as `<Person>`). It is context for what the platform already stores; do not copy those names as entities of this module.
+The human prompt includes the platform level-1 catalog (subtypes and base fields as placeholders such as `<Person>`). It is context for what the platform already stores; do not copy those names as entities of this module. A party or a catalogue thing is a role on a level-1 subtype; declare `mdmSubtype` and list only the fields this module adds; fields the level 1 already has are not declared here.
 
 ## Sources and connected-system contract
 
@@ -23,7 +23,8 @@ The human prompt includes the platform level-1 catalog (subtypes and base fields
   step entities are L4 contracts, not optional examples.
 - Relationships are how coordination is compiled: a step that operates a record additionally requires
   every parent reached by a `required` `manyToOne`/`oneToOne` relationship, so declare those exactly.
-- Freeze every entity id, kind, ownership, optional `cardinality`, optional `mutability`, lifecycle, source references and persistence decision here.
+- Freeze every entity id, kind, ownership, optional `cardinality`, optional `mutability`, `mdmSubtype` (when `kind` is `mdm`), `displayField`, lifecycle, source references and persistence decision here.
+- `displayField` is the field a person reads to recognise the record: one `fieldId` of this entity, or of the level-1 subtype when `kind` is `mdm`. Never guess it from a name suffix.
 - For every entity with lifecycle states, declare the single state in which a record is born as `initialState` and every state that ends its lifecycle as `terminalStates`; use only declared lifecycle state ids and never infer either meaning from the order of the list or from missing transitions.
 - Lifecycle states and every other closed-domain value (`initialState`, `terminalStates`, enum constraint values) are **stable English codes**: lowerCamel ASCII, no accent, no space, no hyphen (`active`, `inactive`, `cancelled`, `monday`). They are identifiers, not user-facing text. Never write them in the user's language (`ativo`, `vigente`, `segunda-feira`). Titles and descriptions stay in the user's language — that is what is translated.
 - Next to `lifecycleStates`, emit `lifecycleLabels` as an array of `{ "code", "label" }` objects — one per state, `code` equal to the state id, `label` in the user's language (`userLanguage`, default `en`). Example: `{ "code": "active", "label": "Ativo" }`. Do not put the label in the state id.
@@ -45,19 +46,34 @@ Declare `party` for EVERY entity: `person` when it is a natural person, `organiz
 company or institution, `none` for anything else. It is not a label — it decides the storage:
 
 - **Every party is MDM.** A worker, a supplier, a contact, a carrier, a coordinator: `party` is
-  `person` or `organization`, so `kind` is `mdm`, `ownership` `moduleOwned`, scope `organization`, with
-  `mdmType`. The record belongs to the organization and is reused across modules — a CRM built later reads
+  `person` or `organization`, so `kind` is `mdm`, `ownership` `moduleOwned`, scope `organization`.
+  The record belongs to the organization and is reused across modules — a CRM built later reads
   the same registry. There is no exception for "this person also uses the platform".
-- **A login is never duplicated.** When the party also signs in, the MDM record carries an external
-  reference FIELD (`platformUserId`, a required uuid whose description says it points at the platform
-  directory). The person lives in MDM; the login is an attribute of the person. Do NOT model the platform
+- **`party: person` ⇒ `mdmSubtype: Person`. `party: organization` ⇒ `mdmSubtype: Company`.** For
+  `party: none` with `kind: mdm` (a catalogue thing), pick `mdmSubtype` from the level-1 catalog.
+- **A login is never duplicated.** The person lives in MDM; the login is an attribute of the person
+  at level 1 / `general`, never a module field and never a separate entity. Do NOT model the platform
   user as an entity of its own, and never use `ownership: external` for a person or an organization.
+
+Three layers, base first. The gate enforces the first two; the third is a recorded decision:
+
+1. Level 1 already has the slot (`<name>`, `<contacts>`, `<addresses>`, `<docId>`, …) ⇒ **base**.
+   Do not declare it on this entity.
+2. The organization registry already has the same field in `general` ⇒ **reuse**. Do not redeclare.
+3. It is person-registration data useful beyond this module, and neither 1 nor 2 holds ⇒ list its
+   `fieldId` in `promoteToGeneral` on the entity. E4 records `promoteToGeneral<Field>` (`chosen`:
+   `general`, alternative: `moduleNamespace`).
+4. Otherwise ⇒ **this module's namespace**: the only fields this entity lists.
+
+An MDM entity has **no** `lifecycleStates` in this module (engine status is Active|Inactive|Blocked).
+A module-specific person state is a projection (`kind: projection`, `reachedBy: time` is later).
 
 Choose exactly one `storage.target` per entity:
 
 - `mdm`: stable organization registrations reused by transactions and reports — parties, catalogs and
   units. Use kind `mdm`, ownership `moduleOwned`, scope
-  `organization`, required uuid `idField`, and `mdmType` exactly `<moduleName>.<EntityId>`.
+  `organization`, required uuid `idField`, and `mdmSubtype` from the catalog. `storage.mdmType` is the
+  module role tag (filled as `<moduleName>.<EntityId>`).
 - `moduleDatabase`: transactional/operational records — orders, executions, time logs,
   movements and decisions. Use scope `module` and a uuid `idField`.
 - `derived`: calculated projection, kind `projection`, ownership `derived`, scope `none`.
@@ -153,26 +169,16 @@ only ids that exist in this module.
     "description": "An organization registration reused by later records.",
     "kind": "mdm",
     "ownership": "moduleOwned",
+    "party": "none",
+    "mdmSubtype": "Product",
+    "displayField": "name",
     "sourceRefs": {
       "journeyIds": ["<journeyId>"],
       "featureIds": ["<featureId>"],
       "authorityRefs": ["<authorityRef>"]
     },
-    "lifecycleStates": ["planned", "active", "completed", "cancelled"],
-    "lifecycleLabels": [
-      { "code": "planned", "label": "Planned" },
-      { "code": "active", "label": "Active" },
-      { "code": "completed", "label": "Completed" },
-      { "code": "cancelled", "label": "Cancelled" }
-    ],
-    "initialState": "planned",
-    "terminalStates": ["completed", "cancelled"],
-    "lifecyclePredicates": [{
-      "predicateId": "ongoing",
-      "description": "A record is ongoing while planned or active.",
-      "stateIds": ["planned", "active"],
-      "source": "journey"
-    }],
+    "lifecycleStates": [],
+    "lifecyclePredicates": [],
     "storage": {
       "target": "mdm",
       "scope": "organization",
@@ -187,6 +193,7 @@ only ids that exist in this module.
     "kind": "projection",
     "ownership": "derived",
     "party": "none",
+    "displayField": "activeCount",
     "sourceRefs": {
       "journeyIds": ["<journeyId>"],
       "featureIds": ["<featureId>"],

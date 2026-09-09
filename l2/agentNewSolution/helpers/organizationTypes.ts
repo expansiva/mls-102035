@@ -6,6 +6,15 @@ export const NS4_LEVEL1_SCHEMA_VERSION = 'ns4-level1-v1' as const;
 /** Schema of the per-project solution registry written by E10. */
 export const NS4_SOLUTION_REGISTRY_SCHEMA_VERSION = 'ns4-solution-registry-v1' as const;
 
+/** Closed platform subtype set. Grows only on a platform release, never per module. */
+export const NS4_LEVEL1_SUBTYPE_VALUES = [
+  'Person', 'Company', 'Product', 'Service', 'Location',
+  'AssetGeneric', 'AssetVehicle', 'AssetProperty', 'AssetEquipment',
+  'Animal', 'BankAccount', 'Document', 'ContactChannel',
+] as const;
+
+export type Ns4Level1Subtype = typeof NS4_LEVEL1_SUBTYPE_VALUES[number];
+
 export interface Ns4Level1Field {
   fieldId: string;
   type: string;
@@ -36,7 +45,7 @@ export interface Ns4Level1EntityArtifact {
 export interface Ns4Level1IndexArtifact {
   schemaVersion: typeof NS4_LEVEL1_SCHEMA_VERSION;
   level1SchemaVersion: typeof NS4_LEVEL1_SCHEMA_VERSION;
-  subtypes: readonly string[];
+  subtypes: readonly Ns4Level1Subtype[];
   docTypes: readonly string[];
   mdmStatuses: readonly string[];
   relationshipTypes: readonly Ns4Level1RelationshipRef[];

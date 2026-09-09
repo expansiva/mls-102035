@@ -2,6 +2,11 @@
 
 import { deriveNs4Contexts } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import {
+  ns4Level1FieldIds,
+  ns4Level1FieldSlot,
+  ns4Level1IsSubtype,
+} from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
+import {
   collectNs4RequiredJourneyBusinessObjects,
   Ns4E2Review,
 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
@@ -26,15 +31,11 @@ export interface Ns4E4GateIssue { code: string; path: string; message: string; s
 export interface Ns4E4GateResult { ok: boolean; issues: Ns4E4GateIssue[] }
 export interface Ns4E4GateOptions {
   requireRelationshipRealization?: boolean;
-  /** E1 prompt + scope. The user request, not the ontology notes the model wrote about itself. */
+  /** E1 prompt + scope. Kept for callers; lexical derived-artifact classification was removed. */
   requestText?: string;
+  /** Overview has placeholder fields; skip checks that need the entity worker's field list. */
+  planOverview?: boolean;
 }
-
-/** Suffixes of an on-demand artifact. `ExportItem` is the composition-only companion of `Export`. */
-// Legacy lexical trigger; superseded by NS4_E4_CORE_READ_ONLY once the bench proves recall — see CHANGELOG 2026-09-06.
-const DERIVED_ARTIFACT_ID = /(?:Export|Report|Receipt|Snapshot|Csv|File)(?:Item)?$/u;
-const DERIVED_HISTORY = /hist[oó]rico|auditoria|versionamento|reprocesso|\baudit\b|\bhistory\b|\bversioning\b|\breprocess(?:ing)?\b/iu;
-const DERIVED_ARTIFACT_WORD = /exporta[cç][aã]o|\bexport\b|relat[oó]rio|\breport\b|recibo|\breceipt\b|snapshot|\bcsv\b|\bfile\b/iu;
 
 const MODULE_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
@@ -90,7 +91,9 @@ export function validateNs4E4Review(
     if (entity.entityId) entityIds.add(entity.entityId);
     if (!entity.title) add('NS4_E4_ENTITY_TITLE', `${path}.title`, 'Entity title is required.');
     if (!entity.description) add('NS4_E4_ENTITY_DESCRIPTION', `${path}.description`, 'Entity description is required.');
-    if (!entity.fields.length) add('NS4_E4_ENTITY_FIELDS', `${path}.fields`, 'Every entity must define its useful fields.');
+    if (!entity.fields.length && entity.kind !== 'mdm' && !options.planOverview) {
+      add('NS4_E4_ENTITY_FIELDS', `${path}.fields`, 'Every entity must define its useful fields.');
+    }
     if (!entity.storage.notes) add('NS4_E4_STORAGE_NOTES', `${path}.storage.notes`, 'Every persistence decision needs a human-readable reason.');
     if (!entity.sourceRefs.journeyIds.length && !entity.sourceRefs.featureIds.length && !entity.sourceRefs.authorityRefs.length) {
       add('NS4_E4_ENTITY_SOURCE', `${path}.sourceRefs`, 'Every entity must be traceable to a journey, feature or access authority.');
@@ -170,6 +173,50 @@ export function validateNs4E4Review(
     } else if (entity.party !== 'none' && entity.storage.target !== 'mdm') {
       add('NS4_E4_PARTY_STORAGE', `${path}.storage.target`, `A ${entity.party} is master data of the organization: use kind 'mdm', ownership 'moduleOwned', scope 'organization' and storage.target 'mdm' (not '${entity.storage.target}'). If the person also signs in, keep the login as an external-reference field (platformUserId) ON the MDM record — never a separate entity.`);
     }
+    if (entity.kind === 'mdm') {
+      if (!entity.mdmSubtype) {
+        add('NS4_E4_MDM_SUBTYPE_REQUIRED', `${path}.mdmSubtype`, `MDM entity ${entity.entityId} must declare mdmSubtype from the platform level-1 catalog.`);
+      } else if (!ns4Level1IsSubtype(entity.mdmSubtype)) {
+        add('NS4_E4_MDM_SUBTYPE_UNKNOWN', `${path}.mdmSubtype`, `mdmSubtype '${entity.mdmSubtype}' is not a platform level-1 subtype.`);
+      } else {
+        const expectedSubtype = entity.party === 'person' ? 'Person'
+          : entity.party === 'organization' ? 'Company'
+          : undefined;
+        if (expectedSubtype && entity.mdmSubtype !== expectedSubtype) {
+          add(
+            'NS4_E4_MDM_SUBTYPE_PARTY',
+            `${path}.mdmSubtype`,
+            `party '${entity.party}' requires mdmSubtype '${expectedSubtype}', not '${entity.mdmSubtype}'.`,
+          );
+        }
+        if (entity.party === 'none' && (entity.mdmSubtype === 'Person' || entity.mdmSubtype === 'Company')) {
+          add(
+            'NS4_E4_MDM_SUBTYPE_PARTY',
+            `${path}.party`,
+            `mdmSubtype '${entity.mdmSubtype}' requires party '${entity.mdmSubtype === 'Person' ? 'person' : 'organization'}', not 'none'.`,
+          );
+        }
+        if (!options.planOverview) {
+          const baseIds = ns4Level1FieldIds(entity.mdmSubtype);
+          entity.fields.forEach((field, fieldIndex) => {
+            if (!baseIds.has(field.fieldId)) return;
+            const slot = ns4Level1FieldSlot(entity.mdmSubtype!, field.fieldId);
+            add(
+              'NS4_E4_MDM_BASE_FIELD_REDECLARED',
+              `${path}.fields[${fieldIndex}].fieldId`,
+              `Field '${field.fieldId}' is a ${slot} field of ${entity.mdmSubtype} and must not be redeclared on this module entity.`,
+            );
+          });
+        }
+      }
+      if (entity.lifecycleStates.length) {
+        add(
+          'NS4_E4_MDM_LIFECYCLE',
+          `${path}.lifecycleStates`,
+          `MDM entity ${entity.entityId} must not declare module lifecycleStates; engine status is Active|Inactive|Blocked, and a module-specific person state is a projection.`,
+        );
+      }
+    }
     // `core` + `external` is a combination the policy does not define, and it is exactly what FieldWorker
     // used: read as `core`, the backend materialized a local table of PEOPLE and seeded it.
     if (entity.kind === 'core' && entity.ownership === 'external') {
@@ -205,15 +252,6 @@ export function validateNs4E4Review(
     if (entity.storage.target !== expectedTarget) {
       add('NS4_E4_STORAGE_TARGET', `${path}.storage.target`, `${entity.kind}/${entity.ownership} must use storage target ${expectedTarget}, not ${entity.storage.target}.`);
     }
-    if (options.requestText !== undefined
-      && entity.storage.target === 'moduleDatabase' && DERIVED_ARTIFACT_ID.test(entity.entityId)
-      && !requestPersistsDerivedArtifact(entity, options.requestText)) {
-      add(
-        'NS4_E4_DERIVED_PERSISTED',
-        `${path}.storage.target`,
-        `${entity.entityId} is an on-demand artifact (export/report/file/receipt/snapshot) stored as moduleDatabase. Use storage.target 'derived' (kind projection), or declare history/audit/versioning/reprocessing of that artifact in the request. An entity that only composes another derived artifact must not exist.`,
-      );
-    }
     if (entity.kind === 'core'
       && entity.storage.target === 'moduleDatabase'
       && entity.cardinality !== 'singleton') {
@@ -235,17 +273,26 @@ export function validateNs4E4Review(
     if (entity.storage.scope !== expectedScope) {
       add('NS4_E4_STORAGE_SCOPE', `${path}.storage.scope`, `${expectedTarget} storage must use scope ${expectedScope}.`);
     }
-    if ((entity.storage.target === 'mdm' || entity.storage.target === 'moduleDatabase')
-      && !entity.fields.some(field => field.required && /Id$/.test(field.fieldId))) {
-      add('NS4_E4_ENTITY_IDENTIFIER', `${path}.fields`, 'Stored business entities need a required identifier field ending in Id.');
-    }
     if (entity.storage.target === 'mdm' || entity.storage.target === 'moduleDatabase') {
       const idField = entity.fields.find(field => field.fieldId === entity.storage.idField);
-      if (!entity.storage.idField || !idField || !idField.required || idField.type !== 'uuid') {
+      if (!entity.storage.idField) {
         add('NS4_E4_STORAGE_ID_FIELD', `${path}.storage.idField`, 'Stored entities must name an existing required uuid idField.');
+      } else if (!options.planOverview) {
+        if (idField) {
+          if (!idField.required || idField.type !== 'uuid') {
+            add('NS4_E4_STORAGE_ID_FIELD', `${path}.storage.idField`, 'Stored entities must name an existing required uuid idField.');
+          }
+        } else if (entity.kind !== 'mdm') {
+          add('NS4_E4_STORAGE_ID_FIELD', `${path}.storage.idField`, 'Stored entities must name an existing required uuid idField.');
+        }
       }
     } else if (entity.storage.idField) {
       add('NS4_E4_STORAGE_ID_UNUSED', `${path}.storage.idField`, `${entity.storage.target} entities must not declare a persisted idField.`);
+    }
+    if (!entity.displayField) {
+      add('NS4_E4_DISPLAY_FIELD', `${path}.displayField`, 'Every entity must name displayField, the field a person reads to recognise the record.');
+    } else if (!options.planOverview && !displayFieldExists(entity)) {
+      add('NS4_E4_DISPLAY_FIELD', `${path}.displayField`, `displayField '${entity.displayField}' is not a field of ${entity.entityId}${entity.kind === 'mdm' && entity.mdmSubtype ? ` or of level-1 ${entity.mdmSubtype}` : ''}.`);
     }
     if (entity.storage.target === 'mdm') {
       if (!entity.storage.mdmType || !MDM_TYPE.test(entity.storage.mdmType)) {
@@ -408,7 +455,11 @@ export function validateNs4E4Plan(
       useRules: [],
     })),
   };
-  return validateNs4E4Review(review, journeys, access, { requireRelationshipRealization: false, requestText: options.requestText });
+  return validateNs4E4Review(review, journeys, access, {
+    requireRelationshipRealization: false,
+    requestText: options.requestText,
+    planOverview: true,
+  });
 }
 
 /** Validates that the binding pass covered every frozen semantic relationship exactly once. */
@@ -676,7 +727,16 @@ export function ns4E4BindingOwnerEscalation(
 }
 
 function entityIdField(entity: { entityId: string; storage: { idField?: string } }): string {
-  return entity.storage.idField || `${entity.entityId.slice(0, 1).toLowerCase()}${entity.entityId.slice(1)}Id`;
+  return entity.storage.idField || '';
+}
+
+function displayFieldExists(entity: Ns4OntologyEntity): boolean {
+  if (!entity.displayField) return false;
+  if (entity.fields.some(field => field.fieldId === entity.displayField)) return true;
+  if (entity.kind === 'mdm' && entity.mdmSubtype && ns4Level1IsSubtype(entity.mdmSubtype)) {
+    return ns4Level1FieldIds(entity.mdmSubtype).has(entity.displayField);
+  }
+  return false;
 }
 
 function entityReachesParty(entityId: string, review: Ns4E4Review, partyIds: Set<string>): boolean {
@@ -992,8 +1052,8 @@ function placeholderFields(entityId: string, idField: string | undefined, needsS
 }
 
 /**
- * The E1 request the derived-artifact guard classifies against. Ontology notes are not the request:
- * the model that invented an audit table will also invent audit prose about it.
+ * The E1 request text (prompt + scope). Kept as a typed reader for callers that still pass it
+ * through gate options; classification by artifact name was removed.
  */
 export function ns4E4RequestText(module: {
   designContext?: { initialPrompt?: string; clarification?: { mainGoal?: string; boundaries?: string } };
@@ -1014,15 +1074,4 @@ export function ns4E4RequestText(module: {
     ...(module.businessScope?.inScope || []),
     ...outcomes,
   ].filter(Boolean).join('\n');
-}
-
-function requestPersistsDerivedArtifact(entity: Ns4OntologyEntity, requestText: string): boolean {
-  if (!requestText || !DERIVED_HISTORY.test(requestText)) return false;
-  const blob = requestText.toLowerCase();
-  const needles = [
-    entity.entityId.toLowerCase(),
-    entity.title.toLowerCase(),
-  ].filter(Boolean);
-  if (needles.some(needle => blob.includes(needle))) return true;
-  return DERIVED_ARTIFACT_WORD.test(requestText);
 }

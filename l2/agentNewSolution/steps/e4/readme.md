@@ -36,12 +36,12 @@ is explicit and closed: `mdm` for organization master records, `moduleDatabase` 
 must name its account (`derivation.from` / `filter` / `aggregate`); `sourceField` and `filter`
 must be declared fields of `from`, and a `sum` whose sign depends on an enum uses `signBy`
 instead of inventing a column. `NS4_E4_DERIVATION_MISSING` and
-`NS4_E4_DERIVATION_SOURCE_FIELD_UNKNOWN` are the backstop. An on-demand export,
-report, file, receipt or snapshot is `derived` unless the request asks to persist its history;
-`NS4_E4_DERIVED_PERSISTED` is the lexical backstop. A core `moduleDatabase` entity that some journey
+`NS4_E4_DERIVATION_SOURCE_FIELD_UNKNOWN` are the backstop. A core `moduleDatabase` entity that some journey
 reads and no journey writes is recorded as `NS4_E4_CORE_READ_ONLY` (warning + systemDecision
-`keepCore` / `projection` / `masterData`) and does not block the run. Kind, scope, idField and
-mdmType must agree. A value recomputable from other records is a projection.
+`keepCore` / `projection` / `masterData`) and does not block the run. Kind, scope, idField,
+`displayField` and `mdmType` must agree. `kind: mdm` requires `mdmSubtype` from the platform
+catalog, empty `lifecycleStates`, and `fields` that do not redeclare level-1 identification or
+base fields. A value recomputable from other records is a projection.
 The widget groups entities by this destination, marks relationships that cross stores and displays the
 exact fields implementing every edge.
 

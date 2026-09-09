@@ -14,6 +14,8 @@
       "kind": "mdm",
       "ownership": "moduleOwned",
       "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
       "sourceRefs": {
         "journeyIds": [
           "registerProduct",
@@ -50,6 +52,7 @@
       "kind": "core",
       "ownership": "moduleOwned",
       "party": "none",
+      "displayField": "stockMovementId",
       "mutability": "appendOnly",
       "sourceRefs": {
         "journeyIds": [
@@ -102,6 +105,7 @@
       "kind": "projection",
       "ownership": "derived",
       "party": "none",
+      "displayField": "productId",
       "derivation": {
         "from": "StockMovement",
         "filter": "",

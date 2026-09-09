@@ -338,7 +338,6 @@
         },
         "fields": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "$ref": "#/$defs/field"
           }
@@ -385,6 +384,35 @@
         },
         "derivation": {
           "$ref": "#/$defs/derivation"
+        },
+        "mdmSubtype": {
+          "type": "string",
+          "enum": [
+            "Person",
+            "Company",
+            "Product",
+            "Service",
+            "Location",
+            "AssetGeneric",
+            "AssetVehicle",
+            "AssetProperty",
+            "AssetEquipment",
+            "Animal",
+            "BankAccount",
+            "Document",
+            "ContactChannel"
+          ]
+        },
+        "displayField": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]*$"
+        },
+        "promoteToGeneral": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          }
         },
         "storage": {
           "type": "object",

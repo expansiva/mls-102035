@@ -43,6 +43,7 @@ import {
   readNs4AgentText,
   readNs4Module,
   readNs4Pipeline,
+  readNs4SolutionRegistry,
   readNs4Text,
   writeNs4E4Draft,
   writeNs4E4EntityDraft,
@@ -94,7 +95,7 @@ import {
 import { resolveNs4E4HookArgs, resolveNs4E4InvocationArgs } from '/_102035_/l2/agentNewSolution/steps/e4/hookArgs.js';
 import { decideNs4LaterCheckpoint, ns4E4SmartSignal } from '/_102035_/l2/agentNewSolution/helpers/ns4ReviewPolicy.js';
 import { ns4Level1Catalog } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
-import { formatNs4Level1CatalogPrompt } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
+import { formatNs4E4OrganizationContext, formatNs4Level1CatalogPrompt } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
 
 interface Ns4E4Args {
   planId: 'e4-ontology';
@@ -181,12 +182,13 @@ async function buildPlanPrompt(
     pipeline = markNs4E3Approved(pipeline, handoff.approvedBy, handoff.artifactPath, handoff.approvedAt);
     await writeNs4Pipeline(pipeline);
   }
-  const [moduleArtifact, journeys, access, prompt, platform] = await Promise.all([
+  const [moduleArtifact, journeys, access, prompt, platform, registry] = await Promise.all([
     readNs4Module(args.moduleName),
     readNs4ApprovedJourneys(args.moduleName),
     handoff?.approvedReview ? Promise.resolve(handoff.approvedReview) : readNs4ApprovedAccess(args.moduleName),
     readNs4AgentText('steps/e4', 'prompt'),
     readNs4AgentText('skills', 'platform'),
+    readNs4SolutionRegistry(),
   ]);
   if (!moduleArtifact) throw new Error(`E3 approved artifacts not found for ${args.moduleName}.`);
   if (moduleArtifact.solutionStrategy.mode !== 'newSolution') {
@@ -201,6 +203,7 @@ async function buildPlanPrompt(
     '## Explicit delivery mode\nnew solution; new persistence design; no legacy database contract',
     `## Required review round\n${reviewRound}`,
     formatNs4Level1CatalogPrompt(ns4Level1Catalog()),
+    formatNs4E4OrganizationContext(registry),
     '## Approved module contract', JSON.stringify(moduleArtifact),
     '## Approved E2 journeys', JSON.stringify(journeys),
     '## Approved E3 access matrix', JSON.stringify(access),
@@ -264,10 +267,11 @@ async function buildEntityPrompt(
   const plan = await readPlanDraft(args.moduleName);
   const target = plan.entities.find(entity => entity.entityId === entityId);
   if (!target) throw new Error(`Entity ${entityId} is not present in the E4 overview.`);
-  const [journeys, access, prompt, previousEntity, currentDetail, tool] = await Promise.all([
+  const [journeys, access, prompt, previousEntity, currentDetail, tool, registry] = await Promise.all([
     readNs4ApprovedJourneys(args.moduleName), readNs4ApprovedAccess(args.moduleName),
     readNs4AgentText('steps/e4', 'promptEntity'), readNs4ApprovedOntologyEntity(args.moduleName, entityId), readEntityDraft(args.moduleName, entityId),
     readNs4EntityWorkerTool(),
+    readNs4SolutionRegistry(),
   ]);
   const relatedJourneys = journeys.journeys.filter(journey => target.sourceRefs.journeyIds.includes(journey.journeyId));
   const relatedFeatures = journeys.features.filter(feature => target.sourceRefs.featureIds.includes(feature.featureId));
@@ -284,6 +288,7 @@ async function buildEntityPrompt(
   const humanPrompt = [
     '## Frozen target entity overview', JSON.stringify(target),
     formatNs4Level1CatalogPrompt(ns4Level1Catalog()),
+    formatNs4E4OrganizationContext(registry),
     '## All valid entity ids and storage targets', JSON.stringify(plan.entities.map(entity => ({ entityId: entity.entityId, storage: entity.storage.target }))),
     '## Relationships touching this entity', JSON.stringify(touchingRelationships),
     '## Related E2 journeys and features', JSON.stringify({ journeys: relatedJourneys, features: relatedFeatures }),

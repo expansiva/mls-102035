@@ -27,6 +27,15 @@ export function formatNs4E6OrganizationContext(registry: Ns4SolutionRegistryArti
   ].join('\n');
 }
 
+export function formatNs4E4OrganizationContext(registry: Ns4SolutionRegistryArtifact | null): string {
+  const fields = registry?.modules.flatMap(block => block.generalFields) || [];
+  if (!fields.length) return '';
+  return [
+    '## Organization general fields already in the registry (placeholders — reuse, do not redeclare)',
+    ...fields.map(field => `- <${field.fieldId}> (${field.type})`),
+  ].join('\n');
+}
+
 export function formatNs4Level1CatalogPrompt(catalog: {
   index: Ns4Level1IndexArtifact;
   entities: readonly Ns4Level1EntityArtifact[];

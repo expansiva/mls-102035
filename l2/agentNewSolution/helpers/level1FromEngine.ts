@@ -7,6 +7,7 @@ import {
   type Ns4Level1Field,
   type Ns4Level1IndexArtifact,
   type Ns4Level1RelationshipRef,
+  type Ns4Level1Subtype,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
 /** Indexed identification columns the platform owns. Must stay aligned with BaseMdmDetailRecord. */
@@ -85,7 +86,7 @@ export function buildNs4Level1Artifacts(input: {
   ontologySource: string;
   moduleSource: string;
 }): { index: Ns4Level1IndexArtifact; entities: Ns4Level1EntityArtifact[] } {
-  const subtypes = parseEngineTypeUnion(input.ontologySource, 'MdmSubtype');
+  const subtypes = parseEngineTypeUnion(input.ontologySource, 'MdmSubtype') as Ns4Level1Subtype[];
   const docTypes = parseEngineTypeUnion(input.ontologySource, 'DocType');
   const mdmStatuses = parseEngineTypeUnion(input.ontologySource, 'MdmStatus');
   const relationshipTypes = parseEngineRelationshipCatalog(input.ontologySource, subtypes);

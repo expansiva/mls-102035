@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import {
   formatNs4E1OrganizationContext,
+  formatNs4E4OrganizationContext,
   formatNs4E6OrganizationContext,
   formatNs4Level1CatalogPrompt,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
@@ -51,6 +52,13 @@ test('E6 context exposes sibling roles and generalFields for reuse', () => {
   assert.match(text, /moduleOne\.Party/);
   assert.match(text, /moduleTwo\.Party/);
   assert.match(text, /"fieldId": "segment"/);
+});
+
+test('E4 context lists general fields as placeholders', () => {
+  assert.equal(formatNs4E4OrganizationContext(emptyRegistry), '');
+  const text = formatNs4E4OrganizationContext(twoModules);
+  assert.match(text, /<segment>/);
+  assert.doesNotMatch(text, /\b(Cliente|Customer|Patient|Aluno)\b/);
 });
 
 test('level-1 catalog prompt uses placeholders and no domain nouns', () => {

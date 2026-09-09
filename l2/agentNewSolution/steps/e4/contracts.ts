@@ -6,8 +6,11 @@ import {
   type Ns4ResolutionFinding,
   type Ns4SystemDecision,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
+import type { Ns4Level1Subtype } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
-export const NS4_ONTOLOGY_SCHEMA_VERSION = '2026-08-11-ns4-ontology-v6' as const;
+export const NS4_ONTOLOGY_SCHEMA_VERSION = '2026-09-08-ns4-ontology-v7' as const;
+export const NS4_ONTOLOGY_SCHEMA_VERSION_V6 = '2026-08-11-ns4-ontology-v6' as const;
+export type { Ns4Level1Subtype };
 
 export type Ns4EntityKind = 'core' | 'event' | 'supporting' | 'mdm' | 'projection' | 'valueObject';
 /**
@@ -141,6 +144,21 @@ export interface Ns4OntologyEntity {
    * type so L4 written before this field keeps compiling — nothing is ever migrated.
    */
   derivation?: Ns4EntityDerivation;
+  /**
+   * Required by the gate when `kind === 'mdm'`; OPTIONAL in the type so L4 written before this field
+   * (schema v6) keeps compiling — nothing is ever migrated.
+   */
+  mdmSubtype?: Ns4Level1Subtype;
+  /**
+   * Module role tag `<moduleName>.<EntityId>`. Derived by the generator; not authored by the model.
+   * OPTIONAL so L4 written before this field keeps compiling.
+   */
+  role?: string;
+  /**
+   * The field a person reads to recognise the record. A fieldId of this entity, or of the level-1
+   * subtype when `kind === 'mdm'`. OPTIONAL in the type so v6 L4 keeps compiling; the gate requires it.
+   */
+  displayField?: string;
   sourceRefs: {
     journeyIds: string[];
     featureIds: string[];
@@ -203,6 +221,8 @@ export interface Ns4E4EntityDraft {
   entityId: string;
   fields: Ns4OntologyField[];
   useRules: string[];
+  /** Field ids the model proposes for the organization `general` layer. Not stored on the entity. */
+  promoteToGeneral?: string[];
 }
 
 export interface Ns4E4RelationshipBinding {
@@ -279,6 +299,11 @@ export interface Ns4OntologyEntityArtifactV5 extends Ns4OntologyEntity {
   approvedAt: string;
 }
 
+/** Compile-only compatibility for L4 written against ontology v6. Nothing is migrated. */
+export interface Ns4OntologyEntityArtifactV6 extends Omit<Ns4OntologyEntityArtifactV5, 'schemaVersion'> {
+  schemaVersion: typeof NS4_ONTOLOGY_SCHEMA_VERSION_V6;
+}
+
 /** Compile-only compatibility for already generated v3 L4 artifacts. */
 export interface Ns4OntologyEntityArtifactV4 extends Omit<Ns4OntologyEntityArtifactV5, 'schemaVersion'> {
   schemaVersion: '2026-08-09-ns4-ontology-v4';
@@ -289,7 +314,11 @@ export interface Ns4OntologyEntityArtifactV3 extends Omit<Ns4OntologyEntityArtif
   invariants: Array<{ invariantId: string; description: string; source: Ns4ConstraintSource }>;
 }
 
-export type Ns4OntologyEntityArtifact = Ns4OntologyEntityArtifactV5 | Ns4OntologyEntityArtifactV4 | Ns4OntologyEntityArtifactV3;
+export type Ns4OntologyEntityArtifact =
+  | Ns4OntologyEntityArtifactV5
+  | Ns4OntologyEntityArtifactV6
+  | Ns4OntologyEntityArtifactV4
+  | Ns4OntologyEntityArtifactV3;
 
 interface Ns4OntologyIndexArtifactBase {
   moduleName: string;
@@ -316,19 +345,31 @@ export interface Ns4OntologyIndexArtifactV5 extends Ns4OntologyIndexArtifactBase
   relationships: Ns4ResolvedOntologyRelationship[];
 }
 
+/** Compile-only compatibility for L4 written against ontology v6. Nothing is migrated. */
+export interface Ns4OntologyIndexArtifactV6 extends Omit<Ns4OntologyIndexArtifactV5, 'schemaVersion'> {
+  schemaVersion: typeof NS4_ONTOLOGY_SCHEMA_VERSION_V6;
+}
+
 /** Compile-only compatibility for already generated v3/v4 L4 artifacts. */
 export interface Ns4OntologyIndexArtifactLegacy extends Ns4OntologyIndexArtifactBase {
   schemaVersion: '2026-08-09-ns4-ontology-v4' | '2026-08-08-ns4-ontology-v3';
   relationships: Ns4OntologyRelationship[];
 }
 
-export type Ns4OntologyIndexArtifact = Ns4OntologyIndexArtifactV5 | Ns4OntologyIndexArtifactLegacy;
+export type Ns4OntologyIndexArtifact =
+  | Ns4OntologyIndexArtifactV5
+  | Ns4OntologyIndexArtifactV6
+  | Ns4OntologyIndexArtifactLegacy;
 
 export function normalizeNs4E4Review(value: unknown, fallbackModule = ''): Ns4E4Review {
   const root = record(value);
   const moduleName = text(root.moduleName) || fallbackModule;
-  const entities = array(root.entities).map(item => normalizeEntity(item, moduleName));
-  const incoming = normalizeSystemDecisions(root.systemDecisions);
+  const rawEntities = array(root.entities);
+  const entities = rawEntities.map(item => normalizeEntity(item, moduleName));
+  const incoming = mergeSystemDecisions(
+    normalizeSystemDecisions(root.systemDecisions),
+    promoteToGeneralDecisions(rawEntities, moduleName),
+  );
   const review: Ns4E4Review = {
     planId: 'e4-ontology-review',
     moduleName,
@@ -476,6 +517,47 @@ function normalizeSystemDecisions(value: unknown): Ns4SystemDecision[] {
   }).filter(decision => decision.decisionId && decision.stage && decision.question && decision.chosen && decision.findingRef);
 }
 
+function mergeSystemDecisions(...lists: Ns4SystemDecision[][]): Ns4SystemDecision[] {
+  const byId = new Map<string, Ns4SystemDecision>();
+  for (const list of lists) {
+    for (const decision of list) {
+      if (decision.decisionId) byId.set(decision.decisionId, decision);
+    }
+  }
+  return [...byId.values()];
+}
+
+function pascalIdent(value: string): string {
+  return value ? value.slice(0, 1).toUpperCase() + value.slice(1) : '';
+}
+
+/** Type B registrar: a person-registration field the model proposes for the organization `general` layer. */
+function promoteToGeneralDecisions(rawEntities: unknown[], moduleName: string): Ns4SystemDecision[] {
+  const decisions: Ns4SystemDecision[] = [];
+  const seen = new Set<string>();
+  for (const item of rawEntities) {
+    const entity = record(item);
+    const entityId = text(entity.entityId);
+    if (!entityId) continue;
+    for (const fieldId of strings(entity.promoteToGeneral)) {
+      const decisionId = `promoteToGeneral${pascalIdent(fieldId)}`;
+      if (seen.has(decisionId)) continue;
+      seen.add(decisionId);
+      decisions.push({
+        decisionId,
+        stage: 'e4',
+        question: `Field ${fieldId} on ${entityId} is person-registration data that level 1 does not already store. Keep it on the organization general layer, or on this module namespace?`,
+        chosen: 'general',
+        alternatives: ['general', 'moduleNamespace'],
+        decidedBy: 'system',
+        findingRef: `NS4_E4_PROMOTE_TO_GENERAL:${entityId}.${fieldId}`,
+        changeHint: `E10 writes ${fieldId} onto the solution registry generalFields for ${moduleName}. Alternative: keep it as a module-namespace field of ${entityId}.`,
+      });
+    }
+  }
+  return decisions;
+}
+
 export function normalizeNs4E4PlanDraft(value: unknown, fallbackModule = ''): Ns4E4PlanDraft {
   const root = record(value);
   const moduleName = text(root.moduleName) || fallbackModule;
@@ -510,6 +592,7 @@ export function normalizeNs4E4EntityDraft(
     fields: root.fields,
     useRules: root.useRules,
   }, moduleName);
+  const promoteToGeneral = strings(root.promoteToGeneral);
   return {
     planId: 'e4-ontology-entity',
     moduleName,
@@ -519,6 +602,7 @@ export function normalizeNs4E4EntityDraft(
     // contract, so the derived union is stripped back out here and lives only in the review artifact.
     fields: stripNs4DerivedFieldUnions(normalized.fields),
     useRules: normalized.useRules,
+    ...(promoteToGeneral.length ? { promoteToGeneral } : {}),
   };
 }
 
@@ -550,11 +634,15 @@ export function assembleNs4E4Review(
   return normalizeNs4E4Review({
     ...plan,
     planId: 'e4-ontology-review',
-    entities: plan.entities.map(entity => ({
-      ...entity,
-      fields: byEntity.get(entity.entityId)?.fields || [],
-      useRules: byEntity.get(entity.entityId)?.useRules || [],
-    })),
+    entities: plan.entities.map(entity => {
+      const detail = byEntity.get(entity.entityId);
+      return {
+        ...entity,
+        fields: detail?.fields || [],
+        useRules: detail?.useRules || [],
+        ...(detail?.promoteToGeneral?.length ? { promoteToGeneral: detail.promoteToGeneral } : {}),
+      };
+    }),
   }, plan.moduleName);
 }
 
@@ -848,10 +936,10 @@ function normalizeEntity(value: unknown, moduleName: string): Ns4OntologyEntity 
     };
   });
   const target = storageTarget(storage.target, kind, entityOwnership);
-  const idField = text(storage.idField)
-    || fields.find(field => field.required && /Id$/.test(field.fieldId))?.fieldId
-    || '';
+  const idField = text(storage.idField);
   const derivation = normalizeDerivation(entity.derivation);
+  const subtype = text(entity.mdmSubtype);
+  const displayField = text(entity.displayField);
   return {
     entityId,
     title: text(entity.title),
@@ -865,6 +953,9 @@ function normalizeEntity(value: unknown, moduleName: string): Ns4OntologyEntity 
     ...(entity.cardinality === 'singleton' ? { cardinality: 'singleton' as const } : {}),
     ...(mutability(entity.mutability) ? { mutability: mutability(entity.mutability) } : {}),
     ...(derivation ? { derivation } : {}),
+    ...(subtype ? { mdmSubtype: subtype as Ns4Level1Subtype } : {}),
+    ...(kind === 'mdm' && entityId ? { role: `${moduleName}.${entityId}` } : {}),
+    ...(displayField ? { displayField } : {}),
     sourceRefs: {
       journeyIds: strings(sourceRefs.journeyIds),
       featureIds: strings(sourceRefs.featureIds),

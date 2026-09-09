@@ -7,7 +7,7 @@
 Generate fields, constraints and entity-local rule references only for the requested entity. The supplied
 overview is frozen: do not rename the entity, change its kind/storage/lifecycle/source references,
 cardinality, mutability, `derivation`, add entities or change relationships. Write human-facing text in the user's language.
-The human prompt includes the platform level-1 catalog as placeholders (`<Person>`). It is context, not a list of fields to copy onto this entity.
+The human prompt includes the platform level-1 catalog as placeholders (`<Person>`). It is context, not a list of fields to copy onto this entity. A party or a catalogue thing is a role on a level-1 subtype; declare only the fields this module adds; fields the level 1 already has are not declared here. When `kind` is `mdm`, `fields` is the module namespace (it may be empty). When a person-registration field is in neither level 1 nor the registry `general` list, put its `fieldId` in `promoteToGeneral` (E4 records `promoteToGeneral<Field>`, chosen `general`, alternative `moduleNamespace`).
 If the overview stored an on-demand export/report/file as `derived`, do not invent line-item records
 to persist its composition. When the frozen overview carries `derivation`, emit output fields whose
 `fieldId`s match `derivation.aggregate[].fieldId` — do not invent a second formula.
@@ -16,7 +16,8 @@ to persist its composition. When the frozen overview carries `derivation`, emit 
 
 - Field, constraint and invariant ids are lowerCamel.
 - Types: `uuid`, `string`, `text`, `number`, `integer`, `boolean`, `money`, `date`, `datetime`, `json`.
-- A stored entity must contain the overview's `idField` as required `uuid`.
+- A stored entity must contain the overview's `idField` as required `uuid`, unless `kind` is `mdm` and `fields` is an empty namespace (identity lives at level 1).
+- Honour the frozen overview `displayField`. Do not invent a second identifying field from a name suffix.
 - Lifecycle states require a `status` field with an `enum` constraint whose value is a compact JSON
   array string containing exactly those states.
 - Those states, and every other enum constraint value, are **stable English codes**: lowerCamel ASCII
@@ -86,5 +87,6 @@ value must be the entity artifact below.
       { "code": "high", "label": "High" }
     ]
   }],
-  "useRules": ["projectHasClient"]
+  "useRules": ["projectHasClient"],
+  "promoteToGeneral": []
 }

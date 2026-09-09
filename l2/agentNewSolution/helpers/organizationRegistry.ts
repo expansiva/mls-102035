@@ -35,7 +35,9 @@ export function upsertNs4SolutionRegistryModule(
 
 export function inferNs4RegistryMdmSubtype(entity: {
   party?: string;
+  mdmSubtype?: string;
 }): string | null {
+  if (entity.mdmSubtype) return entity.mdmSubtype;
   if (entity.party === 'person') return 'Person';
   if (entity.party === 'organization') return 'Company';
   return null;
@@ -48,6 +50,7 @@ export function buildNs4SolutionRegistryModuleBlock(input: {
     entityId: string;
     kind?: string;
     party?: string;
+    mdmSubtype?: string;
     storage?: { target?: string; mdmType?: string };
   }>;
   generalFields?: Ns4SolutionRegistryModule['generalFields'];

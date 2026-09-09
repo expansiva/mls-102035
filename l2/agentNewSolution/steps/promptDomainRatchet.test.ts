@@ -164,8 +164,7 @@ function generatorTsFiles(): string[] {
     && !relative.startsWith('fixtures/'));
 }
 
-/** ns08 leftover domain regex; ns11 does not touch it. */
-const ACCENT_FILE_EXCEPTIONS = new Set(['steps/e4/gate.ts']);
+const ACCENT_FILE_EXCEPTIONS = new Set<string>();
 
 test('NS generator code does not gain accented lines or portuguese ternaries (one-way ratchet)', () => {
   let accentLines = 0;

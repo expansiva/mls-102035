@@ -1,5 +1,13 @@
 # E4 changelog
 
+- 2026-09-08: Ontology schema `2026-09-08-ns4-ontology-v7`. `kind: mdm` declares `mdmSubtype`
+  from the platform catalog, derived `role` `<moduleName>.<EntityId>`, and `displayField`.
+  MDM entities list only namespace fields (level-1 identification/base are not redeclared) and
+  have empty `lifecycleStates`. `storage.idField` is required with no `/Id$/` fallback.
+  `promoteToGeneral<Field>` is a Type B systemDecision (`general` / `moduleNamespace`).
+  Lexical `NS4_E4_DERIVED_PERSISTED` is removed; `NS4_E4_CORE_READ_ONLY` is the structural
+  registrar. v6 L4 keeps compiling — nothing is migrated.
+
 - 2026-09-08: Overview and entity prompts load the platform level-1 catalog
   (`l4/organization/ontology/*`) as placeholders. No `mdmSubtype` semantics yet.
 

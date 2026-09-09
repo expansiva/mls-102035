@@ -14,9 +14,11 @@ import level1Location from '/_102035_/l4/organization/ontology/Location.defs.js'
 import level1Person from '/_102035_/l4/organization/ontology/Person.defs.js';
 import level1Product from '/_102035_/l4/organization/ontology/Product.defs.js';
 import level1Service from '/_102035_/l4/organization/ontology/Service.defs.js';
-import type {
-  Ns4Level1EntityArtifact,
-  Ns4Level1IndexArtifact,
+import {
+  NS4_LEVEL1_SUBTYPE_VALUES,
+  type Ns4Level1EntityArtifact,
+  type Ns4Level1IndexArtifact,
+  type Ns4Level1Subtype,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
 const ENTITIES: readonly Ns4Level1EntityArtifact[] = [
@@ -32,6 +34,32 @@ export function ns4Level1Catalog(): {
   return { index: organizationLevel1Index, entities: ENTITIES };
 }
 
-export function ns4Level1Subtypes(): readonly string[] {
+export function ns4Level1Subtypes(): readonly Ns4Level1Subtype[] {
   return organizationLevel1Index.subtypes;
+}
+
+export function ns4Level1IsSubtype(value: string): value is Ns4Level1Subtype {
+  return (NS4_LEVEL1_SUBTYPE_VALUES as readonly string[]).includes(value);
+}
+
+export function ns4Level1Entity(subtype: string): Ns4Level1EntityArtifact | undefined {
+  return ENTITIES.find(entity => entity.subtype === subtype);
+}
+
+/** Identification ∪ base field ids of a level-1 subtype. Empty when the subtype is unknown. */
+export function ns4Level1FieldIds(subtype: string): ReadonlySet<string> {
+  const entity = ns4Level1Entity(subtype);
+  if (!entity) return new Set();
+  return new Set([
+    ...entity.identification.map(field => field.fieldId),
+    ...entity.baseFields.map(field => field.fieldId),
+  ]);
+}
+
+export function ns4Level1FieldSlot(subtype: string, fieldId: string): 'identification' | 'base' | undefined {
+  const entity = ns4Level1Entity(subtype);
+  if (!entity) return undefined;
+  if (entity.identification.some(field => field.fieldId === fieldId)) return 'identification';
+  if (entity.baseFields.some(field => field.fieldId === fieldId)) return 'base';
+  return undefined;
 }

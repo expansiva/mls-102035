@@ -84,4 +84,19 @@ test('party none MDM is omitted until a structural subtype exists', () => {
     updatedAt: '2026-09-08T10:00:00.000Z',
   });
   assert.deepEqual(block.roles, []);
+
+  const withSubtype = buildNs4SolutionRegistryModuleBlock({
+    moduleName: 'moduleOne',
+    actors: [{ actorId: 'clerk', kind: 'internal' }],
+    entities: [
+      {
+        entityId: 'CatalogItem', kind: 'mdm', party: 'none', mdmSubtype: 'Product',
+        storage: { target: 'mdm', mdmType: 'moduleOne.CatalogItem' },
+      },
+    ],
+    updatedAt: '2026-09-08T10:00:00.000Z',
+  });
+  assert.deepEqual(withSubtype.roles, [
+    { mdmSubtype: 'Product', role: 'moduleOne.CatalogItem', namespace: 'moduleOne' },
+  ]);
 });
