@@ -5,12 +5,13 @@ import {
   createNs4E8HubCompositionRepairStep, isNs4Pipeline, ns4E8HubRepairPlanId, markNs4E8Approved, markNs4E8Failed, markNs4E8Running,
   markNs4ModuleE8Approved, Ns4ApprovedBy, Ns4PipelineState,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { readNs4ApprovedAccess, readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import { readNs4ApprovedAccess, readNs4ApprovedJourneys, readNs4ApprovedOntology, readNs4DisclosureProjections } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import {
-  ns4AgentFile, ns4WorkspaceModelFile, ns4E8ValidationReportFile, ns4JourneyIndexFile, ns4UseCaseFile, ns4UseCaseIndexFile, ns4WorkflowFile, ns4WorkflowIndexFile,
+  ns4AccessBindingsFile, ns4AgentFile, ns4WorkspaceModelFile, ns4E8ValidationReportFile, ns4JourneyIndexFile, ns4UseCaseFile, ns4UseCaseIndexFile, ns4WorkflowFile, ns4WorkflowIndexFile,
   readNs4AgentText, readNs4DefsJson, readNs4Module, readNs4Pipeline, readNs4Text,
   writeNs4WorkspaceModel, writeNs4E8ValidationReport, writeNs4Module, writeNs4Pipeline,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import type { Ns4JourneyIndex } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4UseCaseArtifactV3, Ns4UseCaseIndexArtifactV3, Ns4WorkflowArtifactV2, Ns4WorkflowIndexArtifactV2, Ns4WorkflowIndexArtifactV3 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
@@ -155,7 +156,30 @@ function countTiers(model: Ns4E8Model): string {
 function uniqueDecisions(decisions: Ns4SystemDecision[]): Ns4SystemDecision[] {
   return [...new Map(decisions.map(decision => [decision.decisionId, decision])).values()];
 }
-async function loadSources(moduleName: string): Promise<Ns4E8Sources> { const [journeys, access, ontology, journeyIndex, useCaseIndex, workflowIndex, module] = await Promise.all([readNs4ApprovedJourneys(moduleName), readNs4ApprovedAccess(moduleName), readNs4ApprovedOntology(moduleName), readNs4DefsJson<Ns4JourneyIndex>(ns4JourneyIndexFile(moduleName), true), readNs4DefsJson<Ns4UseCaseIndexArtifactV3>(ns4UseCaseIndexFile(moduleName), true), readNs4DefsJson<Ns4WorkflowIndexArtifactV2 | Ns4WorkflowIndexArtifactV3>(ns4WorkflowIndexFile(moduleName), true), readNs4Module(moduleName)]); if (!journeyIndex || !useCaseIndex || !workflowIndex) throw new Error(`Approved E7 artifacts not found for ${moduleName}.`); const [useCases, workflows] = await Promise.all([Promise.all(useCaseIndex.useCases.map(entry => readNs4DefsJson<Ns4UseCaseArtifactV3>(ns4UseCaseFile(moduleName, entry.useCaseId), true))), Promise.all(workflowIndex.workflows.map(entry => readNs4DefsJson<Ns4WorkflowArtifactV2>(ns4WorkflowFile(moduleName, entry.workflowId), true)))]); if (useCases.some(item => !item) || workflows.some(item => !item)) throw new Error(`Incomplete E7 artifacts for ${moduleName}.`); return { journeys, access, ontology, useCases: useCases as Ns4UseCaseArtifactV3[], workflows: workflows as Ns4WorkflowArtifactV2[], policyDecisionSelections: journeyIndex.policyDecisionSelections || [], ...(module ? { module: { title: module.module.title, purpose: module.module.purpose, mainGoal: module.businessScope.mainGoal, expectedOutcomes: module.businessScope.expectedOutcomes, inScope: module.businessScope.inScope, outOfScope: module.businessScope.outOfScope, boundaries: module.designContext.clarification.boundaries }, presentation: module.presentation } : {}) }; }
+async function loadSources(moduleName: string): Promise<Ns4E8Sources> {
+  const [journeys, access, ontology, journeyIndex, useCaseIndex, workflowIndex, module] = await Promise.all([
+    readNs4ApprovedJourneys(moduleName), readNs4ApprovedAccess(moduleName), readNs4ApprovedOntology(moduleName),
+    readNs4DefsJson<Ns4JourneyIndex>(ns4JourneyIndexFile(moduleName), true),
+    readNs4DefsJson<Ns4UseCaseIndexArtifactV3>(ns4UseCaseIndexFile(moduleName), true),
+    readNs4DefsJson<Ns4WorkflowIndexArtifactV2 | Ns4WorkflowIndexArtifactV3>(ns4WorkflowIndexFile(moduleName), true),
+    readNs4Module(moduleName),
+  ]);
+  if (!journeyIndex || !useCaseIndex || !workflowIndex) throw new Error(`Approved E7 artifacts not found for ${moduleName}.`);
+  const [useCases, workflows] = await Promise.all([
+    Promise.all(useCaseIndex.useCases.map(entry => readNs4DefsJson<Ns4UseCaseArtifactV3>(ns4UseCaseFile(moduleName, entry.useCaseId), true))),
+    Promise.all(workflowIndex.workflows.map(entry => readNs4DefsJson<Ns4WorkflowArtifactV2>(ns4WorkflowFile(moduleName, entry.workflowId), true))),
+  ]);
+  if (useCases.some(item => !item) || workflows.some(item => !item)) throw new Error(`Incomplete E7 artifacts for ${moduleName}.`);
+  const accessBindings = await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined;
+  const disclosureProjections = await readNs4DisclosureProjections(moduleName, accessBindings);
+  return {
+    journeys, access, ontology, useCases: useCases as Ns4UseCaseArtifactV3[], workflows: workflows as Ns4WorkflowArtifactV2[],
+    policyDecisionSelections: journeyIndex.policyDecisionSelections || [],
+    ...(accessBindings ? { accessBindings } : {}),
+    ...(disclosureProjections.length ? { disclosureProjections } : {}),
+    ...(module ? { module: { title: module.module.title, purpose: module.module.purpose, mainGoal: module.businessScope.mainGoal, expectedOutcomes: module.businessScope.expectedOutcomes, inScope: module.businessScope.inScope, outOfScope: module.businessScope.outOfScope, boundaries: module.designContext.clarification.boundaries }, presentation: module.presentation } : {}),
+  };
+}
 function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): Ns4E8Args & { moduleName: string; approvedBy?: Ns4ApprovedBy } { const root = parse(value); if (!isRecord(root) || root.planId !== 'e8-workspaces') throw new Error('Invalid E8 step arguments.'); const moduleName = text(root.moduleName) || findE7Module(context) || memory(context, 'resumeModule'); if (!moduleName) throw new Error('E7 module result not found for E8.'); return { planId: 'e8-workspaces', moduleName, ...(integer(root.reviewRound) ? { reviewRound: integer(root.reviewRound) } : {}), ...(text(root.adjustment) ? { adjustment: text(root.adjustment) } : {}), ...(integer(root.presentationAttempt) ? { presentationAttempt: integer(root.presentationAttempt) } : {}), ...(text(root.gateFeedback) ? { gateFeedback: text(root.gateFeedback) } : {}), ...(root.approvedBy === 'auto' || root.approvedBy === 'human' ? { approvedBy: root.approvedBy } : {}) }; }
 function findE7Module(context: mls.msg.ExecutionContext): string { const item = getAllSteps(context.task?.iaCompressed?.nextSteps).find(step => step.planning?.planId === 'e7-result'); const parsed = item?.type === 'result' ? parse(item.result) : null; return isRecord(parsed) ? text(parsed.moduleName) : ''; }
 async function requirePipeline(moduleName: string): Promise<Ns4PipelineState> { const pipeline = await readNs4Pipeline(moduleName); if (!isNs4Pipeline(pipeline)) throw new Error(`agentNewSolution pipeline not found for ${moduleName}.`); return pipeline; }

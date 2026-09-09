@@ -110,5 +110,25 @@
       "id": "clienteSoloConsultaSusOrdenes",
       "description": "The signed-in customer consults only their own orders, without access to internal part costs or internal technical notes."
     }
+  ],
+  "useCases": [
+    {
+      "useCaseId": "captureOrden",
+      "compiledFrom": ["abrirOrden.captureOrden"],
+      "entityRefs": ["OrdenServicio"],
+      "useRules": [],
+      "transitionRefs": [],
+      "kind": "command",
+      "title": "Open"
+    },
+    {
+      "useCaseId": "inspectOrden",
+      "compiledFrom": ["consultarMisOrdenes.inspectOrden"],
+      "entityRefs": ["OrdenServicio"],
+      "useRules": [],
+      "transitionRefs": [],
+      "kind": "query",
+      "title": "Inspect"
+    }
   ]
 }

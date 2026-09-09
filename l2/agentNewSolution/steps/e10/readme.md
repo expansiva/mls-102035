@@ -6,10 +6,22 @@ E10 is the final NS4 stage. Its compile phase is fully deterministic and consume
 
 The gate recompiles E9 in memory and validates the complete saved graph. Blocking findings cover unresolved contexts, journey reachability, policy/system-decision contradictions, compiled-workflow reachability and stale source hashes. Every blocking finding names the earliest owning E2–E9 repair step.
 
-Disclosure and dormant commands are registrars:
+### A4 — disclosure
 
-- `fieldsOnly` verifies only whether the matching E8 disclosure decision was recorded. E3 prose is never compared with ontology field ids.
-- a command whose `transitionRefs` are absent from compiled E7 workflows remains visible and receives a deterministic E10 system decision.
+A4 is a blocking check, not a registrar. It runs when `access-bindings` exists (a module
+that compiled E4B). For every external grant with `fieldsOnly` / `summaryOnly` / `aggregateOnly`:
+
+- the access-binding must carry `projectionRef` (`NS4_E10_DISCLOSURE_PROJECTION_MISSING`, repair E4B);
+- every operation that lists that grant's `authorityRef` must read the disclosure projection
+  (`NS4_E10_DISCLOSURE_OPERATION_UNPROJECTED`, repair E8).
+
+E3 `allowedInformation` / `deniedInformation` stay prose and are never matched to field ids.
+The projection is the machine fact E4B extracted; A4 only checks that E8 used it.
+
+Picker-source leftovers (`NS4_E8_PICKER_SOURCE`) stay registrars on A4.
+
+A command whose `transitionRefs` are absent from compiled E7 workflows remains visible and
+receives a deterministic E10 system decision (A8).
 
 The versioned report is written to `l4/<module>/pipeline/e10-validation-report.json`. A failed report is durable and no L5 file is created or updated.
 

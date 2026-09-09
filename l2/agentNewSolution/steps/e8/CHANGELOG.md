@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-09 — journey operations of a limited external profile read the disclosure projection
+
+When an access-binding carries `projectionRef`, the journey read for that authority uses the
+disclosure view as `entityRef` (`outputRefs` are the view fields). Writes keep the source entity
+and only the view's fields as inputs. A step that also serves a full-record audience emits a
+second operation, not a union of fields. The view is loaded by `projectionRef`; it is not in the
+E4 ontology index.
+
 ## 2026-09-08 — catalogue audience is organization grants; every operation has authorityRefs
 
 `catalogueProfiles` is profiles with an organization-scope grant covering the entity, not

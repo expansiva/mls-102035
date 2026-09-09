@@ -1,5 +1,12 @@
 # E10 changelog
 
+## 2026-09-09 — A4 disclosure is a real check
+
+`validateDisclosureRegistrars` became `validateDisclosure`. A limited external grant without
+`projectionRef`, or an operation of that authority that still reads the source entity, is an
+error (`NS4_E10_DISCLOSURE_PROJECTION_MISSING` / `NS4_E10_DISCLOSURE_OPERATION_UNPROJECTED`).
+E3 prose is still not matched to field ids. Picker-source leftovers stay registrars.
+
 ## 2026-09-08 — A9 authority and A6 access-bindings
 
 A9 fails when an operation has empty `authorityRefs`, when a V4 row has none, or when an

@@ -32,9 +32,12 @@ singleton core entity does not get a record catalogue. `NS4_E8_CONTENT_ORGANISM`
 organism outside a `contentPage`.
 
 The gate rejects unhosted use cases, empty workspaces, unresolved page context, unbounded menu
-sections, invalid queues, skeleton drift and invented fields. Until E3 binds its business-language
-`allowedInformation` to ontology field refs, `fieldsOnly` projections are recorder warnings and
-durable system decisions; the backend remains responsible for enforcing the E3 projection.
+sections, invalid queues, skeleton drift and invented fields. A limited external grant is an E4B
+disclosure projection (`<Entity><Profile>View`, linked by `projectionRef` on the access-binding).
+Journey reads of that audience use the view as `entityRef` (fields loaded by
+`readNs4ApprovedOntologyEntity`, because the E4 index does not list it). Writes keep the source
+entity and only the view's fields as inputs. A step that serves a full-record audience and a limited
+external one emits two operations. E10 A4 fails when that wiring is missing.
 A review or a form backed by a command with declared `contexts.requires` still needs a frozen slice,
 workspace path or scenario context. A recognized context-free command, including a cold-start creation, may render a
 form from user-entered values; E8 does not invent a pre-existing record solely to satisfy the gate.

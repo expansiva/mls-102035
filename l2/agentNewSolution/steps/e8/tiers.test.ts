@@ -7,6 +7,7 @@ import test from 'node:test';
 import { normalizeNs4E4Review } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import { NS4_DEFAULT_TITLES } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 import { NS4_PHRASES } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+import { compileNs4AccessBindings, ns4DisclosureProjectionId, type Ns4E4BProposal } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import { deriveNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/tiers.js';
 import { resolveNs4E8ModelFindings, validateNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/modelGate.js';
 import {
@@ -735,6 +736,114 @@ test('a delete over an mdm entity is a blocking finding even if it arrives from 
   assert.notEqual(finding!.severity, 'warning', 'it blocks: a broken reference is not a product');
   // And the untouched model stays clean.
   assert.equal(validateNs4E8Model(model, input).issues.some(issue => issue.code === 'NS4_E8_MDM_DELETE'), false);
+});
+
+const ce05 = JSON.parse(readFileSync(new URL('../e4b/fixtures/ce05-like.json', import.meta.url), 'utf8'));
+const CE05_VISIBLE = ['ordenServicioId', 'clienteId', 'estado', 'diagnostico', 'valorPresupuesto'];
+const CE05_EXCLUDED = ['costoInterno', 'anotacionesTecnicas'];
+
+function ce05DisclosureProposal(): Ns4E4BProposal {
+  return {
+    profileRef: 'cliente', authorityRef: 'svc:own-orders', entityRef: 'OrdenServicio', hops: [],
+    projection: { fields: CE05_VISIBLE, excludedFields: CE05_EXCLUDED },
+  };
+}
+
+function ce05E8Sources(extra: Record<string, unknown> = {}): any {
+  return {
+    journeys: {
+      ...ce05.journeys, features: [], userLanguage: 'es', planId: 'e2-review', title: 'J', reviewRound: 1,
+      journeys: ce05.journeys.journeys.map((journey: any) => ({
+        ...journey,
+        business: {
+          ...journey.business, title: journey.journeyId, goal: journey.journeyId,
+          steps: journey.business.steps.map((step: any) => ({
+            ...step, title: step.stepId, description: step.stepId, featureRefs: [],
+          })),
+        },
+      })),
+    },
+    access: { ...ce05.access, planId: 'e3-access-review', title: 'A', reviewRound: 1, changeSummary: [] },
+    ontology: {
+      ...ce05.ontology, planId: 'e4-ontology-review', title: 'O', reviewRound: 1, userLanguage: 'es', changeSummary: [],
+      entities: ce05.ontology.entities.map((entity: any) => ({
+        ...entity, description: entity.title, ownership: entity.ownership || 'moduleOwned',
+        sourceRefs: { journeyIds: [], featureIds: [], authorityRefs: [] },
+        lifecycleStates: entity.lifecycleStates || [], lifecyclePredicates: entity.lifecyclePredicates || [],
+        useRules: entity.useRules || [],
+      })),
+    },
+    useCases: ce05.useCases,
+    workflows: [],
+    ...extra,
+  };
+}
+
+test('ce05-like portal inspect reads the disclosure projection, not denied fields', async () => {
+  const compiled = await compileNs4AccessBindings({
+    moduleName: ce05.moduleName, access: ce05.access, ontology: ce05.ontology, journeys: ce05.journeys,
+    accessHash: ce05.accessHash, ontologyHash: ce05.ontologyHash, rules: ce05.rules,
+  }, [ce05DisclosureProposal()]);
+  const input = ce05E8Sources({ accessBindings: compiled.artifact, disclosureProjections: compiled.projections });
+  const model = deriveNs4E8Model(input);
+  const portal = model.operations.find(operation => operation.useCaseId === 'inspectOrden')!;
+  const projectionId = ns4DisclosureProjectionId('OrdenServicio', 'cliente');
+  assert.equal(portal.entityRef, projectionId);
+  assert.equal(portal.outputRefs.some(ref => ref.endsWith('.costoInterno') || ref.endsWith('.anotacionesTecnicas')), false);
+  assert.ok(CE05_VISIBLE.every(fieldId => portal.outputRefs.includes(`${projectionId}.${fieldId}`)));
+  const call = model.workspaces.flatMap(workspace => workspace.bffCalls).find(item => item.operationId === portal.operationId);
+  assert.equal(call?.entityRef, projectionId);
+  const gate = validateNs4E8Model(model, input);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS4_E8_OPERATION_ENTITY'), false, gate.issues.map(issue => issue.code).join(','));
+});
+
+test('a step that serves internal and limited-external audiences emits two operations', async () => {
+  const access = structuredClone(ce05.access);
+  access.authorities.push({ authorityRef: 'svc:staff-orders', journeyStepRefs: ['consultarMisOrdenes.inspectOrden'] });
+  access.grants.push({
+    profileRef: 'recepcionista', authorityRef: 'svc:staff-orders', reason: 'staff reads every order',
+    dataScope: { mode: 'organization', description: 'all orders' },
+    disclosure: { mode: 'fullRecord', description: 'full', allowedInformation: [], deniedInformation: [] },
+    useRules: [],
+  });
+  const compiled = await compileNs4AccessBindings({
+    moduleName: ce05.moduleName, access, ontology: ce05.ontology, journeys: ce05.journeys,
+    accessHash: ce05.accessHash, ontologyHash: ce05.ontologyHash, rules: ce05.rules,
+  }, [ce05DisclosureProposal()]);
+  const input = ce05E8Sources({
+    access, accessBindings: compiled.artifact, disclosureProjections: compiled.projections,
+    useCases: ce05.useCases,
+  });
+  const model = deriveNs4E8Model(input);
+  const full = model.operations.find(operation => operation.operationId === 'inspectOrden')!;
+  const limited = model.operations.find(operation => operation.entityRef === ns4DisclosureProjectionId('OrdenServicio', 'cliente'))!;
+  assert.ok(full);
+  assert.ok(limited);
+  assert.notEqual(full.operationId, limited.operationId);
+  assert.equal(full.entityRef, 'OrdenServicio');
+  assert.ok(full.outputRefs.includes('OrdenServicio.costoInterno'));
+  assert.equal(limited.outputRefs.some(ref => ref.endsWith('.costoInterno')), false);
+  assert.ok(full.authorityRefs.includes('svc:staff-orders'));
+  assert.ok(limited.authorityRefs.includes('svc:own-orders'));
+  assert.equal(full.authorityRefs.includes('svc:own-orders'), false);
+});
+
+test('e8 disclosure wiring stays English in comments', () => {
+  const files = [
+    readFileSync(new URL('tiers.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('contracts.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('modelGate.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('agentNs4E8.ts', import.meta.url), 'utf8'),
+  ];
+  for (const source of files) {
+    assert.doesNotMatch(source, /portuguese\s*\?/);
+    for (const line of source.split('\n')) {
+      const trimmed = line.trim();
+      const isComment = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
+      if (!isComment) continue;
+      assert.doesNotMatch(line, /[À-ÿ]/, trimmed);
+    }
+  }
 });
 
 const ptPhrases = JSON.parse(readFileSync(new URL('../../helpers/fixtures/ns4-phrases-pt.json', import.meta.url), 'utf8'));

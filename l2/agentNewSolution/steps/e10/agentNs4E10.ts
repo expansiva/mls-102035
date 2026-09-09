@@ -5,7 +5,7 @@ import {
   isNs4Pipeline, markNs4E10Approved, markNs4E10Failed, markNs4E10PipelineDefect, markNs4E10Running, markNs4E10RuntimeFailed,
   markNs4FastHandoff, markNs4ModuleE10Approved, type Ns4ModuleArtifact, type Ns4PipelineState,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import { readNs4ApprovedJourneys, readNs4ApprovedOntology, readNs4DisclosureProjections } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import {
   ns4ClassicContractFile, ns4WorkspaceModelFile, ns4OperationFile, ns4SiteMapFile, readNs4Text,
   ns4AccessBindingsFile, ns4AccessMatrixFile, ns4JourneyIndexFile, ns4OntologyIndexFile, ns4RulesFile, ns4UseCaseFile, ns4UseCaseIndexFile,
@@ -196,10 +196,13 @@ async function loadSources(moduleName: string): Promise<Ns4E10Sources> {
     })))),
     siteMap: await readRequired<Ns4ClassicSiteMap>(ns4SiteMapFile(moduleName), 'site map'),
   };
+  const accessBindings = await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined;
+  const disclosureProjections = await readNs4DisclosureProjections(moduleName, accessBindings);
   return {
     moduleName, userLanguage: model.userLanguage, ...(module?.presentation ? { presentation: module.presentation } : {}),
     journeys, journeyIndex, ontology, ontologyIndex, rules, access,
-    accessBindings: await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined,
+    ...(accessBindings ? { accessBindings } : {}),
+    ...(disclosureProjections.length ? { disclosureProjections } : {}),
     useCases, useCaseIndex, workflows, workflowIndex, model, saved,
   };
 }

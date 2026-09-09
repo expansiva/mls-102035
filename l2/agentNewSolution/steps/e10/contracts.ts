@@ -9,7 +9,7 @@ import type {
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import type { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
-import type { Ns4E4Review } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import type { Ns4E4Review, Ns4OntologyEntity } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4UseCaseArtifactV3, Ns4WorkflowArtifactV2 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import type { Ns4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
 import type { Ns4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
@@ -35,6 +35,7 @@ export interface Ns4E10Sources {
   rules: Ns4RulesArtifact;
   access: Ns4AccessMatrixArtifact;
   accessBindings?: Ns4AccessBindingsArtifact;
+  disclosureProjections?: Ns4OntologyEntity[];
   useCases: Ns4UseCaseArtifactV3[];
   useCaseIndex: Ns4UseCaseIndexArtifactV3;
   workflows: Ns4WorkflowArtifactV2[];

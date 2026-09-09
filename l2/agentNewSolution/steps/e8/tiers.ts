@@ -126,6 +126,9 @@ interface Ns4E8TierContext {
 
 function buildContext(sources: Ns4E8Sources, derived: Ns4DerivedContextGraph): Ns4E8TierContext {
   const entities = new Map(sources.ontology.entities.map(entity => [entity.entityId, entity]));
+  for (const projection of sources.disclosureProjections || []) {
+    if (!entities.has(projection.entityId)) entities.set(projection.entityId, projection);
+  }
   const demoted = new Set(collectNs4DemotedJourneyIds(sources.journeys, sources.policyDecisionSelections || []));
   const useCaseByStepRef = new Map<string, Ns4UseCaseArtifactV3>();
   for (const useCase of sources.useCases) for (const ref of useCase.compiledFrom) useCaseByStepRef.set(ref, useCase);
@@ -917,16 +920,26 @@ function buildJourneyWorkspace(
     if (!useCase) continue;
     const collection = isNs4CollectionInspect(steps, index);
     const query = step.kind === 'locate' || step.kind === 'inspect';
-    const bffId = `${query ? 'qry' : 'cmd'}${upperCamel(step.stepId)}`;
-    bffCalls.push({
-      bffId, kind: query ? 'query' : 'command', operationId: useCase.useCaseId,
-      outputKind: step.kind === 'locate' || collection ? 'paginated' : 'object', entityRef: step.entity,
-    });
-    operations.push(buildJourneyOperation(journey, step, useCase, context, providedEarlier, index, decisions));
+    const builtOps = buildJourneyOperations(journey, step, useCase, context, providedEarlier, index, decisions);
+    operations.push(...builtOps);
+    const actorProjection = disclosureProjectionForActor(journey.business.actorRef, step.entity, context);
+    const surface = (actorProjection && builtOps.find(operation => operation.entityRef === actorProjection.entityId))
+      || builtOps.find(operation => operation.operationId === useCase.useCaseId)
+      || builtOps[0];
+    const outputKind = step.kind === 'locate' || collection ? 'paginated' as const : 'object' as const;
+    const stepBffId = `${query ? 'qry' : 'cmd'}${upperCamel(step.stepId)}`;
+    for (const operation of builtOps) {
+      const bffId = operation.operationId === surface.operationId ? stepBffId : `${query ? 'qry' : 'cmd'}${upperCamel(operation.operationId)}`;
+      bffCalls.push({
+        bffId, kind: query ? 'query' : 'command', operationId: operation.operationId,
+        outputKind, entityRef: operation.entityRef,
+      });
+    }
+    const surfaceCall = bffCalls.find(call => call.operationId === surface.operationId);
     sections.push({
       sectionId: step.stepId,
       intent: step.description || step.title,
-      organisms: [journeyOrganism(step, bffId, collection)],
+      organisms: [journeyOrganism(step, surfaceCall?.bffId || stepBffId, collection)],
     });
     providedEarlier.add(step.entity);
   }
@@ -959,14 +972,47 @@ function journeyOrganism(step: Ns4JourneyStep, bffId: string, collection = false
   return { role: 'primarySurface', action: bffId };
 }
 
+function buildJourneyOperations(
+  journey: Ns4JourneyProposal, step: Ns4JourneyStep, useCase: Ns4UseCaseArtifactV3,
+  context: Ns4E8TierContext, providedEarlier: Set<string>, stepIndex: number,
+  decisions: Ns4SystemDecision[],
+): Ns4E8Operation[] {
+  const authorityRefs = ns4JourneyAuthorityRefs(useCase.compiledFrom, context.sources.access);
+  const audiences = disclosureAudiences(step.entity, authorityRefs, context);
+  const operations: Ns4E8Operation[] = [];
+  if (audiences.full.length) {
+    operations.push(buildJourneyOperation(journey, step, useCase, context, providedEarlier, stepIndex, decisions, {
+      operationId: useCase.useCaseId, authorityRefs: audiences.full,
+    }));
+  }
+  for (const limited of audiences.limited) {
+    const operationId = audiences.full.length || audiences.limited.length > 1
+      ? `${useCase.useCaseId}${limited.projection.entityId}`
+      : useCase.useCaseId;
+    operations.push(buildJourneyOperation(journey, step, useCase, context, providedEarlier, stepIndex, decisions, {
+      operationId, authorityRefs: limited.authorityRefs, projection: limited.projection,
+    }));
+  }
+  if (operations.length) return operations;
+  return [buildJourneyOperation(journey, step, useCase, context, providedEarlier, stepIndex, decisions, {
+    operationId: useCase.useCaseId, authorityRefs,
+  })];
+}
+
 function buildJourneyOperation(
   journey: Ns4JourneyProposal, step: Ns4JourneyStep, useCase: Ns4UseCaseArtifactV3,
   context: Ns4E8TierContext, providedEarlier: Set<string>, stepIndex = 0,
   decisions: Ns4SystemDecision[] = [],
+  audience: { operationId: string; authorityRefs: string[]; projection?: Ns4OntologyEntity } = {
+    operationId: '', authorityRefs: [],
+  },
 ): Ns4E8Operation {
   const stepRef = `${journey.journeyId}.${step.stepId}`;
-  const entity = context.entities.get(step.entity);
+  const source = context.entities.get(step.entity);
   const query = step.kind === 'locate' || step.kind === 'inspect';
+  const readEntity = query && audience.projection ? audience.projection : source;
+  const entityRef = query && audience.projection ? audience.projection.entityId : step.entity;
+  const allowedFields = audience.projection ? new Set(audience.projection.fields.map(field => field.fieldId)) : null;
   const inputs: Ns4E8Input[] = [];
   for (const required of context.derived.byStepRef.get(stepRef)?.requires || []) {
     const parent = context.entities.get(required.businessObject);
@@ -980,20 +1026,63 @@ function buildJourneyOperation(
       description: parent?.title || required.businessObject,
     });
   }
-  if (!query && entity) inputs.push(...journeyFormInputs(entity, step, useCase, context));
+  if (!query && source) inputs.push(...journeyFormInputs(source, step, useCase, context, allowedFields));
+  const commandOutputs = (source?.fields || [])
+    .filter(field => !allowedFields || allowedFields.has(field.fieldId))
+    .map(field => `${step.entity}.${field.fieldId}`);
   return {
-    operationId: useCase.useCaseId, title: useCase.title || step.title, kind: query ? 'query' : 'command',
-    entityRef: step.entity, entityRefs: useCase.entityRefs,
+    operationId: audience.operationId || useCase.useCaseId, title: useCase.title || step.title, kind: query ? 'query' : 'command',
+    entityRef, entityRefs: query && audience.projection
+      ? [audience.projection.entityId, ...useCase.entityRefs.filter(id => id !== step.entity && id !== audience.projection!.entityId)]
+      : useCase.entityRefs,
     accessPattern: journeyAccessPattern(step, journey.business.steps, stepIndex),
     inputs: uniqueBy(assignInputIds(inputs), input => input.inputId),
     outputRefs: query
-      ? queryOutputRefs(step, useCase, entity, context, decisions)
-      : (entity?.fields || []).map(field => `${step.entity}.${field.fieldId}`),
+      ? queryOutputRefs(step, useCase, readEntity, context, decisions)
+      : commandOutputs,
     useRules: useCase.useRules, transitionRefs: useCase.transitionRefs,
-    authorityRefs: ns4JourneyAuthorityRefs(useCase.compiledFrom, context.sources.access),
+    authorityRefs: audience.authorityRefs.length ? audience.authorityRefs : ns4JourneyAuthorityRefs(useCase.compiledFrom, context.sources.access),
     story: [step.title, step.description].filter(Boolean),
     useCaseId: useCase.useCaseId,
   };
+}
+
+function disclosureAudiences(
+  entityId: string, authorityRefs: string[], context: Ns4E8TierContext,
+): { full: string[]; limited: Array<{ projection: Ns4OntologyEntity; authorityRefs: string[] }> } {
+  const bindings = context.sources.accessBindings?.bindings || [];
+  const full: string[] = [];
+  const limitedById = new Map<string, { projection: Ns4OntologyEntity; authorityRefs: string[] }>();
+  for (const authorityRef of authorityRefs) {
+    const matches = bindings.filter(binding => binding.authorityRef === authorityRef && binding.entityRef === entityId);
+    const projected = matches.filter(binding => binding.projectionRef && context.entities.get(binding.projectionRef));
+    if (!projected.length) {
+      full.push(authorityRef);
+      continue;
+    }
+    for (const binding of projected) {
+      const projection = context.entities.get(binding.projectionRef!)!;
+      const entry = limitedById.get(projection.entityId) || { projection, authorityRefs: [] };
+      if (!entry.authorityRefs.includes(authorityRef)) entry.authorityRefs.push(authorityRef);
+      limitedById.set(projection.entityId, entry);
+    }
+  }
+  return { full, limited: [...limitedById.values()] };
+}
+
+function disclosureProjectionForActor(
+  actorRef: string, entityId: string, context: Ns4E8TierContext,
+): Ns4OntologyEntity | undefined {
+  const profileIds = [
+    actorRef,
+    ...[...context.actorsByProfile.entries()].filter(([, actors]) => actors.includes(actorRef)).map(([profileId]) => profileId),
+  ];
+  for (const profileId of profileIds) {
+    const binding = (context.sources.accessBindings?.bindings || [])
+      .find(item => item.profileRef === profileId && item.entityRef === entityId && item.projectionRef);
+    const projection = binding?.projectionRef ? context.entities.get(binding.projectionRef) : undefined;
+    if (projection) return projection;
+  }
 }
 
 /**
@@ -1005,7 +1094,8 @@ function queryOutputRefs(
   step: Ns4JourneyStep, useCase: Ns4UseCaseArtifactV3, entity: Ns4OntologyEntity | undefined,
   context: Ns4E8TierContext, decisions: Ns4SystemDecision[],
 ): string[] {
-  const refs = (entity?.fields || []).map(field => `${step.entity}.${field.fieldId}`);
+  const prefix = entity?.entityId || step.entity;
+  const refs = (entity?.fields || []).map(field => `${prefix}.${field.fieldId}`);
   for (const entityId of useCase.entityRefs) {
     if (entityId === step.entity) continue;
     const candidate = context.entities.get(entityId);
@@ -1106,6 +1196,7 @@ function journeyInputSource(
  */
 function journeyFormInputs(
   entity: Ns4OntologyEntity, step: Ns4JourneyStep, useCase: Ns4UseCaseArtifactV3, context: Ns4E8TierContext,
+  allowedFields: Set<string> | null = null,
 ): Ns4E8Input[] {
   const idField = identityFieldOf(entity);
   const parents = new Set((context.parentsOf.get(entity.entityId) || []).map(parent => parent.fieldId));
@@ -1124,7 +1215,8 @@ function journeyFormInputs(
   const statusFieldIds = new Set(statusFields.map(field => field.fieldId));
   return entity.fields
     .filter(field => field.fieldId !== idField && !parents.has(field.fieldId)
-      && !statusFieldIds.has(field.fieldId) && !TIMESTAMP_FIELD.test(field.fieldId))
+      && !statusFieldIds.has(field.fieldId) && !TIMESTAMP_FIELD.test(field.fieldId)
+      && (!allowedFields || allowedFields.has(field.fieldId)))
     .map(field => ({
       inputId: field.fieldId, fieldRef: { entityId: entity.entityId, fieldId: field.fieldId },
       source: (isRecordOwnerSessionField(entity, field, context) ? 'actorSession' : 'userInput') as Ns4E8InputSource,

@@ -9,6 +9,8 @@
 import { sha256Ns4, type Ns4PolicyDecision } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+import { ns4NeedsDisclosureProjection } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
+import { ns4OntologyWithDisclosure } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
 import { validateNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/modelGate.js';
 import { compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
 import {
@@ -29,7 +31,7 @@ export async function validateNs4E10(sources: Ns4E10Sources): Promise<Ns4E10Vali
   await validateEmissionFreshness(sources, add);
   validateOutputShapeTypes(sources, add);
   validateDecisionCoherence(sources, add);
-  validateDisclosureRegistrars(sources, add);
+  validateDisclosure(sources, add);
   validateWorkflows(sources, add);
   validateSourceHashes(sources, add);
   validateAuthority(sources, add);
@@ -77,6 +79,8 @@ function validateModel(sources: Ns4E10Sources, add: Add): void {
     ontology: sources.ontology,
     useCases: sources.useCases, workflows: sources.workflows,
     policyDecisionSelections: sources.journeyIndex.policyDecisionSelections || [],
+    ...(sources.accessBindings ? { accessBindings: sources.accessBindings } : {}),
+    ...(sources.disclosureProjections?.length ? { disclosureProjections: sources.disclosureProjections } : {}),
   });
   gate.issues.forEach(issue => add(issue.severity === 'warning' ? 'registrars' : 'errors',
     { code: issue.code, path: issue.path, message: issue.message, ...(issue.severity === 'warning' ? {} : { repairStep: 'e8-workspaces' as const }) }));
@@ -84,7 +88,7 @@ function validateModel(sources: Ns4E10Sources, add: Add): void {
 
 /** Recompile and compare: an artifact on disk that differs from its source is stale, not a variant. */
 async function validateEmissionFreshness(sources: Ns4E10Sources, add: Add): Promise<void> {
-  const expected = await compileNs4ClassicL4(sources.model, sources.ontology);
+  const expected = await compileNs4ClassicL4(sources.model, ns4OntologyWithDisclosure(sources.ontology, sources.disclosureProjections));
   const stale = (code: string, path: string, message: string) => add('errors', { code, path, message, repairStep: 'e9-navigation-compiler' });
 
   compare(expected.workspaces, sources.saved.workspaces, item => item.workspaceId, 'workspace',
@@ -111,7 +115,7 @@ function compare<T>(expected: T[], saved: T[], key: (item: T) => string, label: 
 
 /** outputShape field type must match the ontology fieldRef (json stays json, never flattened to string). */
 function validateOutputShapeTypes(sources: Ns4E10Sources, add: Add): void {
-  const entities = new Map(sources.ontology.entities.map(entity => [entity.entityId, entity]));
+  const entities = new Map([...sources.ontology.entities, ...(sources.disclosureProjections || [])].map(entity => [entity.entityId, entity]));
   for (const operation of sources.saved.operations) {
     for (const field of operation.outputShape?.fields ?? []) {
       const ref = field.fieldRef || '';
@@ -163,11 +167,65 @@ function validateDecisionCoherence(sources: Ns4E10Sources, add: Add): void {
   }
 }
 
-/** Disclosure stays a registrar: E3 allowedInformation is prose and is never matched to field ids. */
-function validateDisclosureRegistrars(sources: Ns4E10Sources, add: Add): void {
+function validateDisclosure(sources: Ns4E10Sources, add: Add): void {
   sources.model.systemDecisions
-    .filter(decision => decision.findingRef.startsWith('NS4_E8_DISCLOSURE') || decision.findingRef.startsWith('NS4_E8_PICKER_SOURCE'))
+    .filter(decision => decision.findingRef.startsWith('NS4_E8_PICKER_SOURCE'))
     .forEach(decision => add('registrars', { code: decision.findingRef.split(':')[0], path: decision.findingRef, message: decision.question }));
+  // Pre-E4B L4 has no bindings artifact; alpha, nothing is migrated. A4 is the wiring check
+  // for a module that already compiled access-bindings.
+  if (!sources.accessBindings) return;
+  const profileById = new Map(sources.access.profiles.map(profile => [profile.profileId, profile]));
+  const bindings = sources.accessBindings.bindings;
+  const projectionById = new Map((sources.disclosureProjections || []).map(entity => [entity.entityId, entity]));
+  for (const entity of sources.ontology.entities) projectionById.set(entity.entityId, entity);
+  for (const grant of sources.access.grants) {
+    const withRules = 'useRules' in grant ? grant : { ...grant, useRules: [] };
+    if (!ns4NeedsDisclosureProjection(withRules, profileById.get(grant.profileRef)?.kind)) continue;
+    const grantBindings = bindings.filter(binding => binding.profileRef === grant.profileRef && binding.authorityRef === grant.authorityRef);
+    const projectionRefs = uniqueStrings(grantBindings.map(binding => binding.projectionRef || '').filter(Boolean));
+    if (!projectionRefs.length) {
+      add('errors', {
+        code: 'NS4_E10_DISCLOSURE_PROJECTION_MISSING',
+        path: `access.bindings.${grant.profileRef}.${grant.authorityRef}`,
+        message: `Limited external grant ${grant.profileRef}/${grant.authorityRef} has no disclosure projectionRef.`,
+        repairStep: 'e4b-access-realization',
+      });
+      continue;
+    }
+    for (const operation of sources.model.operations) {
+      if (!operation.authorityRefs.includes(grant.authorityRef)) continue;
+      if (operation.kind === 'query') {
+        if (!projectionRefs.includes(operation.entityRef)) {
+          add('errors', {
+            code: 'NS4_E10_DISCLOSURE_OPERATION_UNPROJECTED',
+            path: `operations.${operation.operationId}.entityRef`,
+            message: `Operation ${operation.operationId} for limited authority ${grant.authorityRef} reads ${operation.entityRef} instead of disclosure projection ${projectionRefs.join(', ')}.`,
+            repairStep: 'e8-workspaces',
+          });
+        }
+        continue;
+      }
+      for (const binding of grantBindings) {
+        if (!binding.projectionRef) continue;
+        const projection = projectionById.get(binding.projectionRef);
+        if (!projection) continue;
+        const allowed = new Set(projection.fields.map(field => field.fieldId));
+        const leakedInput = operation.inputs.some(input => input.fieldRef.entityId === binding.entityRef && !allowed.has(input.fieldRef.fieldId));
+        const leakedOutput = operation.outputRefs.some(ref => {
+          const dot = ref.indexOf('.');
+          return dot > 0 && ref.slice(0, dot) === binding.entityRef && !allowed.has(ref.slice(dot + 1));
+        });
+        if (leakedInput || leakedOutput) {
+          add('errors', {
+            code: 'NS4_E10_DISCLOSURE_OPERATION_UNPROJECTED',
+            path: `operations.${operation.operationId}`,
+            message: `Command ${operation.operationId} for limited authority ${grant.authorityRef} exposes fields outside disclosure projection ${binding.projectionRef}.`,
+            repairStep: 'e8-workspaces',
+          });
+        }
+      }
+    }
+  }
 }
 
 function validateWorkflows(sources: Ns4E10Sources, add: Add): void {
@@ -318,6 +376,7 @@ function earliestRepair(steps: Ns4E10RepairStep[]): Ns4E10RepairStep | undefined
 const CHECK_OF: Array<[RegExp, Ns4E10CheckSummary['checkId']]> = [
   [/^NS4_E8_(MENU|LANDING|STEP_UNHOSTED|USECASE_UNHOSTED|EMPTY_JOURNEY)/, 'A2-journeys'],
   [/^NS4_E10_POLICY/, 'A3-decisions'],
+  [/^NS4_E10_DISCLOSURE/, 'A4-disclosure'],
   [/^NS4_E8_(DISCLOSURE|PICKER_SOURCE)/, 'A4-disclosure'],
   [/^NS4_E10_FSM/, 'A5-fsm'],
   [/^NS4_E10_(WORKSPACE_STALE|OPERATION_STALE|CONTRACT_STALE|SITEMAP_STALE|JOURNEY_STALE|ONTOLOGY_STALE|RULES_STALE|USECASE_STALE|WORKFLOW_STALE|OUTPUT_SHAPE_TYPE|ACCESS_BINDINGS_STALE)/, 'A6-staleness'],

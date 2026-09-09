@@ -5,15 +5,17 @@ import {
   isNs4Pipeline, markNs4E9Approved, markNs4E9Failed, markNs4E9Running, markNs4ModuleE9Approved,
   type Ns4PipelineState,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import { readNs4ApprovedJourneys, readNs4DisclosureProjections } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import {
-  listNs4E7UseCaseDraftFiles, ns4AccessMatrixFile, ns4WorkspaceModelFile, readNs4DefsJson, readNs4Module, readNs4Pipeline,
+  listNs4E7UseCaseDraftFiles, ns4AccessBindingsFile, ns4AccessMatrixFile, ns4WorkspaceModelFile, readNs4DefsJson, readNs4Module, readNs4Pipeline,
   readNs4Text, writeNs4AccessMatrix, writeNs4ClassicContract, writeNs4ClassicWorkspace, writeNs4Module, writeNs4Operation,
   writeNs4Pipeline, writeNs4SiteMap,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
 import { readNs4ApprovedOntology as readOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import type { Ns4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
+import { ns4OntologyWithDisclosure } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
 import { buildNs4NavigationRealizedAccess, compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
 import {
   applyNs4UseCaseCoverage, compareE7ToOperations, useCaseCoverageLogLine,
@@ -36,7 +38,8 @@ export async function beforeNs4E9PromptStep(
     await writeNs4Pipeline(markNs4E9Running(pipeline));
     // E9 takes no screen decision: it transposes the approved E8 model into the classic L4 format.
     const [model, ontology] = await Promise.all([readApprovedModel(moduleName), readOntology(moduleName)]);
-    const l4 = await compileNs4ClassicL4(model, ontology);
+    const accessBindings = await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined;
+    const l4 = await compileNs4ClassicL4(model, ns4OntologyWithDisclosure(ontology, await readNs4DisclosureProjections(moduleName, accessBindings)));
     const artifactPaths: string[] = [];
     for (const workspace of l4.workspaces) artifactPaths.push(await writeNs4ClassicWorkspace(moduleName, workspace.workspaceId, workspace));
     for (const operation of l4.operations) artifactPaths.push(await writeNs4Operation(moduleName, operation.operationId, operation));

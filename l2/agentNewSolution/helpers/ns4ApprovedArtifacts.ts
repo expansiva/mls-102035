@@ -5,6 +5,7 @@ import {
   ns4AccessMatrixFile, ns4JourneyFile, ns4JourneyIndexFile, ns4OntologyEntityFile,
   ns4OntologyIndexFile, Ns4FileInfo, readNs4DefsJson, readNs4Module, readNs4Pipeline,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import {
   isNs4CurrentJourneyBusiness, normalizeNs4E2Review, Ns4E2Review, Ns4JourneyArtifact, Ns4JourneyIndex,
 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
@@ -12,7 +13,7 @@ import {
   normalizeNs4E3Review, Ns4AccessMatrixArtifact, Ns4E3Review,
 } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import {
-  normalizeNs4E4Review, Ns4E4Review, Ns4OntologyEntityArtifact, Ns4OntologyIndexArtifact,
+  normalizeNs4E4Review, Ns4E4Review, Ns4OntologyEntity, Ns4OntologyEntityArtifact, Ns4OntologyIndexArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 
 export async function readNs4ApprovedJourneys(moduleName: string): Promise<Ns4E2Review> {
@@ -99,6 +100,16 @@ export async function readNs4ApprovedOntologyEntity(
     ns4OntologyEntityFile(moduleName, entityId), `ontology entity ${entityId}`,
   );
   return artifact?.moduleName === moduleName ? artifact : null;
+}
+
+/** Disclosure views live as ontology defs but are absent from the E4 index; load them by projectionRef. */
+export async function readNs4DisclosureProjections(
+  moduleName: string,
+  accessBindings: Ns4AccessBindingsArtifact | undefined,
+): Promise<Ns4OntologyEntity[]> {
+  const ids = [...new Set((accessBindings?.bindings || []).map(binding => binding.projectionRef).filter((id): id is string => !!id))];
+  const loaded = await Promise.all(ids.map(entityId => readNs4ApprovedOntologyEntity(moduleName, entityId)));
+  return loaded.filter(entity => !!entity) as Ns4OntologyEntity[];
 }
 
 async function readRequiredDefs<T>(fileInfo: Ns4FileInfo, label: string): Promise<T> {

@@ -76,8 +76,9 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
   }
   const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
   const parentIndex = buildNs4ParentIndex(sources.ontology.relationships);
-  const fields = new Set(sources.ontology.entities.flatMap(entity => entity.fields.map(field => `${entity.entityId}.${field.fieldId}`)));
-  const entities = new Set(sources.ontology.entities.map(entity => entity.entityId));
+  const knownEntities = [...sources.ontology.entities, ...(sources.disclosureProjections || [])];
+  const fields = new Set(knownEntities.flatMap(entity => entity.fields.map(field => `${entity.entityId}.${field.fieldId}`)));
+  const entities = new Set(knownEntities.map(entity => entity.entityId));
   // Master data is referenced by other records: removing the row breaks those
   // references, so the catalogue deactivates instead of deleting.
   const masterDataEntities = new Set(sources.ontology.entities
