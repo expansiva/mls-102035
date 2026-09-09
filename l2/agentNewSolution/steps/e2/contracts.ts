@@ -248,7 +248,7 @@ export interface Ns4E2ImpactReport {
   generatedAt: string;
   stepKindHistogram: Ns4E2StepKindHistogram;
   changes: Array<{ journeyId: string; reason: 'hashDivergent' | 'journeyNew' | 'journeyRemoved' }>;
-  affectedSteps: Array<'e3-access-matrix' | 'e4-ontology' | 'e5-rules' | 'e7-realization'>;
+  affectedSteps: Array<'e3-access-matrix' | 'e4-ontology' | 'e4b-access-realization' | 'e5-rules' | 'e7-realization'>;
 }
 
 export function normalizeNs4E2Review(value: unknown, fallbackModule = '', presentation?: Ns4Presentation): Ns4E2Review {
@@ -372,7 +372,7 @@ export function buildNs4E2ImpactReport(
     generatedAt,
     stepKindHistogram: analyzeNs4E2MechanicalCoverage(review).stepKindHistogram,
     changes: changes.sort((left, right) => left.journeyId.localeCompare(right.journeyId) || left.reason.localeCompare(right.reason)),
-    affectedSteps: changes.length ? ['e3-access-matrix', 'e4-ontology', 'e5-rules', 'e7-realization'] : [],
+    affectedSteps: changes.length ? ['e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e7-realization'] : [],
   };
 }
 

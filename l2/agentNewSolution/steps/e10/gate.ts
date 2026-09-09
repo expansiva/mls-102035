@@ -32,6 +32,7 @@ export async function validateNs4E10(sources: Ns4E10Sources): Promise<Ns4E10Vali
   validateDisclosureRegistrars(sources, add);
   validateWorkflows(sources, add);
   validateSourceHashes(sources, add);
+  validateAuthority(sources, add);
   const dormantDecisions = dormantCommandDecisions(sources, add);
 
   const policyDecisions = [...(sources.journeyIndex.policyDecisionSelections || [])].sort((left, right) => left.decisionId.localeCompare(right.decisionId));
@@ -199,6 +200,14 @@ function validateSourceHashes(sources: Ns4E10Sources, add: Add): void {
   }
   if (hashes.ontologyHash !== sources.ontologyIndex.ontologyHash) add('errors', { code: 'NS4_E10_ONTOLOGY_STALE', path: 'useCaseIndex.sourceHashes.ontologyHash', message: 'Compiled use cases were built from a different ontology hash.', repairStep: 'e7-realization' });
   if (hashes.rulesHash !== sources.rules.rulesHash) add('errors', { code: 'NS4_E10_RULES_STALE', path: 'useCaseIndex.sourceHashes.rulesHash', message: 'Compiled use cases were built from a different rules hash.', repairStep: 'e7-realization' });
+  if (sources.accessBindings) {
+    if (sources.accessBindings.compiledFromAccessHash !== sources.access.accessHash) {
+      add('errors', { code: 'NS4_E10_ACCESS_BINDINGS_STALE', path: 'access.access-bindings', message: 'Access bindings were compiled from a different access-matrix hash.', repairStep: 'e4b-access-realization' });
+    }
+    if (sources.accessBindings.compiledFromOntologyHash !== sources.ontologyIndex.ontologyHash) {
+      add('errors', { code: 'NS4_E10_ACCESS_BINDINGS_STALE', path: 'access.access-bindings', message: 'Access bindings were compiled from a different ontology hash.', repairStep: 'e4b-access-realization' });
+    }
+  }
   const useCaseById = new Map(sources.useCases.map(useCase => [useCase.useCaseId, useCase]));
   sources.useCaseIndex.useCases.forEach(entry => {
     if (useCaseById.get(entry.useCaseId)?.useCaseHash !== entry.useCaseHash) add('errors', { code: 'NS4_E10_USECASE_STALE', path: `useCases.${entry.useCaseId}`, message: `Saved use case ${entry.useCaseId} does not match its index hash.`, repairStep: 'e7-realization' });
@@ -233,7 +242,75 @@ function dormantCommandDecisions(sources: Ns4E10Sources, add: Add): Ns4SystemDec
   return decisions;
 }
 
-const REPAIR_ORDER: Ns4E10RepairStep[] = ['e2-journeys', 'e3-access-matrix', 'e4-ontology', 'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler'];
+function validateAuthority(sources: Ns4E10Sources, add: Add): void {
+  for (const operation of sources.model.operations) {
+    if (!operation.authorityRefs?.length) {
+      add('errors', {
+        code: 'NS4_E10_OPERATION_WITHOUT_AUTHORITY',
+        path: `operations.${operation.operationId}.authorityRefs`,
+        message: `Operation ${operation.operationId} has no authorityRefs; authority may be anonymous, never undefined.`,
+        repairStep: 'e8-workspaces',
+      });
+    }
+  }
+  const realization = 'realization' in sources.access ? sources.access.realization : undefined;
+  if (realization && realization.status === 'navigationCompiled' && 'operationAuthorityRefs' in realization) {
+    for (const row of realization.operationAuthorityRefs) {
+      if (!row.authorityRefs.length) {
+        add('errors', {
+          code: 'NS4_E10_OPERATION_WITHOUT_AUTHORITY',
+          path: `access.realization.operationAuthorityRefs.${row.operationRef}`,
+          message: `V4 operation ${row.operationRef} has no authorityRef.`,
+          repairStep: 'e9-navigation-compiler',
+        });
+      }
+    }
+  }
+  const grantedEntities = new Map<string, Set<string>>();
+  for (const grant of sources.access.grants) {
+    const authority = sources.access.authorities.find(item => item.authorityRef === grant.authorityRef);
+    const entities = new Set<string>();
+    for (const ref of authority?.journeyStepRefs || []) {
+      const journeyId = ref.slice(0, ref.indexOf('.'));
+      const stepId = ref.slice(ref.indexOf('.') + 1);
+      const journey = sources.journeys.journeys.find(item => item.journeyId === journeyId);
+      const entity = journey?.business.steps.find(step => step.stepId === stepId)?.entity;
+      if (entity) entities.add(entity);
+    }
+    const current = grantedEntities.get(grant.profileRef) || new Set<string>();
+    for (const entity of entities) current.add(entity);
+    grantedEntities.set(grant.profileRef, current);
+  }
+  const profileById = new Map(sources.access.profiles.map(profile => [profile.profileId, profile]));
+  const workspaceByOp = new Map<string, string[]>();
+  for (const workspace of sources.model.workspaces) {
+    for (const call of workspace.bffCalls) {
+      workspaceByOp.set(call.operationId, uniqueStrings([...(workspaceByOp.get(call.operationId) || []), ...workspace.profileRefs]));
+    }
+  }
+  for (const operation of sources.model.operations) {
+    if (operation.kind !== 'command') continue;
+    const profiles = workspaceByOp.get(operation.operationId) || [];
+    for (const profileRef of profiles) {
+      if (profileById.get(profileRef)?.kind !== 'external') continue;
+      const granted = grantedEntities.get(profileRef);
+      if (granted && !granted.has(operation.entityRef)) {
+        add('errors', {
+          code: 'NS4_E10_EXTERNAL_WRITE_WITHOUT_GRANT',
+          path: `operations.${operation.operationId}`,
+          message: `External profile ${profileRef} has a write operation on ${operation.entityRef} without a grant.`,
+          repairStep: 'e8-workspaces',
+        });
+      }
+    }
+  }
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+const REPAIR_ORDER: Ns4E10RepairStep[] = ['e2-journeys', 'e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler'];
 function earliestRepair(steps: Ns4E10RepairStep[]): Ns4E10RepairStep | undefined {
   return REPAIR_ORDER.find(step => steps.includes(step));
 }
@@ -243,14 +320,15 @@ const CHECK_OF: Array<[RegExp, Ns4E10CheckSummary['checkId']]> = [
   [/^NS4_E10_POLICY/, 'A3-decisions'],
   [/^NS4_E8_(DISCLOSURE|PICKER_SOURCE)/, 'A4-disclosure'],
   [/^NS4_E10_FSM/, 'A5-fsm'],
-  [/^NS4_E10_(WORKSPACE_STALE|OPERATION_STALE|CONTRACT_STALE|SITEMAP_STALE|JOURNEY_STALE|ONTOLOGY_STALE|RULES_STALE|USECASE_STALE|WORKFLOW_STALE|OUTPUT_SHAPE_TYPE)/, 'A6-staleness'],
+  [/^NS4_E10_(WORKSPACE_STALE|OPERATION_STALE|CONTRACT_STALE|SITEMAP_STALE|JOURNEY_STALE|ONTOLOGY_STALE|RULES_STALE|USECASE_STALE|WORKFLOW_STALE|OUTPUT_SHAPE_TYPE|ACCESS_BINDINGS_STALE)/, 'A6-staleness'],
   [/^NS4_E10_DORMANT_COMMAND/, 'A8-dormant-commands'],
+  [/^NS4_E10_(OPERATION_WITHOUT_AUTHORITY|EXTERNAL_WRITE_WITHOUT_GRANT)/, 'A9-authority'],
 ];
 function checkOf(code: string): Ns4E10CheckSummary['checkId'] {
   return CHECK_OF.find(([pattern]) => pattern.test(code))?.[1] || 'A1-resolution';
 }
 function summarizeChecks(errors: Ns4E10Issue[], warnings: Ns4E10Issue[], registrars: Ns4E10Issue[]): Ns4E10CheckSummary[] {
-  const ids: Ns4E10CheckSummary['checkId'][] = ['A1-resolution', 'A2-journeys', 'A3-decisions', 'A4-disclosure', 'A5-fsm', 'A6-staleness', 'A7-warnings', 'A8-dormant-commands'];
+  const ids: Ns4E10CheckSummary['checkId'][] = ['A1-resolution', 'A2-journeys', 'A3-decisions', 'A4-disclosure', 'A5-fsm', 'A6-staleness', 'A7-warnings', 'A8-dormant-commands', 'A9-authority'];
   return ids.map(checkId => {
     const errorCount = errors.filter(issue => checkOf(issue.code) === checkId).length;
     const warningCount = checkId === 'A7-warnings' ? warnings.length : warnings.filter(issue => checkOf(issue.code) === checkId).length;

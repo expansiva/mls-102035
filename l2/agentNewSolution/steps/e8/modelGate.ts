@@ -93,6 +93,10 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
     if (operation.useCaseId && !useCases.has(operation.useCaseId)) {
       add('NS4_E8_OPERATION_USECASE', `${path}.useCaseId`, `Unknown compiled use case ${operation.useCaseId}.`);
     }
+    if (Array.isArray(operation.authorityRefs) && operation.authorityRefs.length === 0) {
+      add('NS4_E8_OPERATION_WITHOUT_AUTHORITY', `${path}.authorityRefs`,
+        `Operation ${operation.operationId} has no authorityRefs; authority may be anonymous, never undefined.`);
+    }
     operation.inputs.forEach(input => {
       if (!fields.has(`${input.fieldRef.entityId}.${input.fieldRef.fieldId}`)) {
         add('NS4_E8_INPUT_FIELD', `${path}.inputs.${input.inputId}`, `Input ${input.inputId} has no resolvable ontology field (${input.fieldRef.entityId}.${input.fieldRef.fieldId}).`);

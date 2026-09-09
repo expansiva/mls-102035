@@ -11,6 +11,12 @@
  * cfeL4Contract.bffCallCommandShape).
  */
 
+import { sha256Ns4 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
+import {
+  NS4_NAVIGATION_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION,
+  type Ns4AccessMatrixArtifact, type Ns4AccessMatrixArtifactV4, type Ns4AccessOperationAuthorityRef,
+  type Ns4AccessUseCaseAuthorityRef,
+} from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import type { Ns4E4Review, Ns4OntologyEntity, Ns4OntologyField } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type {
   Ns4E8BffCall, Ns4E8Input, Ns4E8MdmSemantics, Ns4E8Model, Ns4E8ModelWorkspace, Ns4E8Operation,
@@ -417,6 +423,59 @@ export interface Ns4ClassicL4 {
   operations: Ns4ClassicOperation[];
   contracts: Array<{ workspaceId: string; bffId: string; route: string; source: string }>;
   siteMap: Ns4ClassicSiteMap;
+}
+
+export async function buildNs4NavigationRealizedAccess(
+  source: Ns4AccessMatrixArtifact,
+  model: Ns4E8Model,
+  classic: Ns4ClassicL4,
+): Promise<Ns4AccessMatrixArtifactV4> {
+  if (source.grants.some(grant => !('useRules' in grant))) throw new Error('E9 does not migrate a legacy access matrix.');
+  const grants = source.grants as Ns4AccessMatrixArtifactV4['grants'];
+  const useCaseAuthorityRefs: Ns4AccessUseCaseAuthorityRef[] = 'realization' in source
+    && source.realization
+    && 'useCaseAuthorityRefs' in source.realization
+    ? [...source.realization.useCaseAuthorityRefs]
+    : [];
+  const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
+  const operationAuthorityRefs: Ns4AccessOperationAuthorityRef[] = [];
+  for (const workspace of classic.workspaces) {
+    for (const call of workspace.bffCalls) {
+      const operation = operations.get(call.uses[0]?.operationId || call.bffId);
+      operationAuthorityRefs.push({
+        operationRef: call.uses[0]?.operationId || call.bffId,
+        route: call.route,
+        workspaceId: workspace.workspaceId,
+        functionId: call.bffId,
+        ...(operation?.useCaseId ? { useCaseId: operation.useCaseId } : {}),
+        authorityRefs: [...(operation?.authorityRefs || [])],
+      });
+    }
+  }
+  operationAuthorityRefs.sort((left, right) =>
+    `${left.route}|${left.operationRef}`.localeCompare(`${right.route}|${right.operationRef}`));
+  const realizationHash = await sha256Ns4({
+    accessHash: source.accessHash, useCaseAuthorityRefs, operationAuthorityRefs,
+  });
+  return {
+    schemaVersion: NS4_NAVIGATION_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION,
+    moduleName: source.moduleName,
+    userLanguage: source.userLanguage,
+    title: source.title,
+    profiles: source.profiles,
+    authorities: source.authorities,
+    grants,
+    accessHash: source.accessHash,
+    approvedBy: source.approvedBy,
+    approvedAt: source.approvedAt,
+    realization: {
+      status: 'navigationCompiled',
+      compiledFromAccessHash: source.accessHash,
+      useCaseAuthorityRefs,
+      operationAuthorityRefs,
+      realizationHash,
+    },
+  };
 }
 
 /** The whole transposition: what E9 writes to L4 from an approved E8 model. */

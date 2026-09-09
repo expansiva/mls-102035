@@ -1,6 +1,6 @@
 {
   "flowId": "agentNewSolution",
-  "schemaVersion": "2026-08-14-ns4-flow-v40",
+  "schemaVersion": "2026-09-08-ns4-flow-v41",
   "status": "e1-e10",
   "description": "Localized, dependency-driven compiler for permanent L4 product contracts and deterministic L5 delivery contracts.",
   "canonicalReferences": [
@@ -117,6 +117,7 @@
     "journeyIndex": "l4/{module}/journeys/index.defs.ts",
     "accessDraft": "l4/{module}/pipeline/e3-access-matrix.draft.json",
     "accessMatrix": "l4/{module}/access/access-matrix.defs.ts",
+    "accessBindings": "l4/{module}/access/access-bindings.defs.ts",
     "ontologyDraft": "l4/{module}/pipeline/e4-ontology.draft.json",
     "ontologyPlanDraft": "l4/{module}/pipeline/e4-ontology-plan.draft.json",
     "ontologyEntityDraft": "l4/{module}/pipeline/e4-entities/{EntityId}.draft.json",
@@ -173,6 +174,8 @@
       "e3-result",
       "e4-ontology",
       "e4-result",
+      "e4b-access-realization",
+      "e4b-result",
       "e5-rules",
       "e5-result",
       "e6-behaviors",
@@ -187,7 +190,7 @@
       "e10-result"
     ],
     "roadmap": [],
-    "roadmapExecution": "E1 through E10 are implemented. E1 through E6 are the six human checkpoints; E7 through E10 run automatically, and a successful E10 compile completes the pipeline."
+    "roadmapExecution": "E1 through E10 are implemented. E1 through E6 are the six human checkpoints; E4B and E7 through E10 run automatically, and a successful E10 compile completes the pipeline."
   },
   "steps": [
     {
@@ -279,7 +282,7 @@
         "External grants cannot use organization-wide scope.",
         "Limited disclosure records an enforceable projection intent; hiding fields in the frontend is insufficient.",
         "The /fast path, and reviewPolicy.mode automatic, validates and approves the same E3 contract without opening the widget. smart still opens E3: the access review has no A/B/C signal on the contract, and missing signal never hides a checkpoint.",
-        "The e3-result handoff carries the approved review, approval metadata and permanent artifact path for the immediately unlocked E4 hook.",
+        "The e3-result handoff carries the approved review, approval metadata and permanent artifact path for the immediately unlocked E4 hook. E4B then reconciles that matrix with the ontology.",
         "Late or duplicate callbacks cannot regress an approved E3 pipeline state to running, waitingHuman or failed.",
         "A deterministic gate failure persists the invalid draft and may schedule one bounded structural repair for the current proposal cycle; the repair reads the persisted draft plus the numbered findings and returns a complete corrected matrix through the same gate. Exhausting the single attempt keeps the original terminal failure.",
         "The gate repair round never merges duplicate grants deterministically: overlapping scope modes have no total order, so resolving them is a model decision taken under gate feedback.",
@@ -334,11 +337,32 @@
       ]
     },
     {
+      "planId": "e4b-access-realization",
+      "type": "automated-realization-compiler",
+      "dependsOn": [
+        "e4-result"
+      ],
+      "goal": "Reconcile the approved access matrix with the ontology: person-scope anchors and a synthesized authority per entity x profile.",
+      "output": [
+        "l4/{module}/access/access-bindings.defs.ts"
+      ],
+      "outputAnchor": "e4b-result",
+      "gate": "steps/e4b/gate.ts",
+      "runtimeNotes": [
+        "E4B has no human checkpoint. It is realization, like E7.",
+        "Inputs are the approved E3 access matrix, E4 ontology, journeys, and the platform Person login field platformUserId.",
+        "For own, assigned and related grants the LLM may propose a field path to a Person; the gate validates every hop against the ontology. Organization, public and custom grants carry anchor: null with a reason.",
+        "A path that needs a field the ontology does not have is NS4_E4B_ANCHOR_FIELD_MISSING with repairStep e4-ontology.",
+        "synthesizedAuthorities[] is one authority per (entity x profile), id synth:<entity>:<profile>, inheriting dataScope and disclosure from the covering grant.",
+        "One transport retry is not used; one bounded LLM repair is allowed for invalid hops. A missing field does not consume that budget and returns ownership to E4."
+      ]
+    },
+    {
       "planId": "e5-rules",
       "runtimePlanIdPattern": "e5-rules-round-{reviewRound}",
       "type": "agent-human-checkpoint-loop",
       "dependsOn": [
-        "e4-result"
+        "e4b-result"
       ],
       "goal": "Create one human-readable source of truth for every business-rule id referenced by L4.",
       "output": [
@@ -445,7 +469,7 @@
         "An invalid composition receives one constrained repair through the existing presentation-repair plan id; after that the derived order wins with a recorded system decision and the run continues.",
         "Code compiles every workspace of the module from the approved contracts: one record catalogue per persisted business entity, one workspace per approved journey that E2 did not demote, the hub of the dominant anchor and one page per standalone projection. There is no clustering and no invented partition.",
         "A journey workspace emits one query call per locate/inspect step and one command call per act/decide/handoff step, and one section per step in the order of the journey; the locate section renders the picker.",
-        "A record catalogue synthesizes its five operations from the ontology, because E7 compiles journeys and a catalogue is not a journey: list, getById, create, update, and delete (or inactivate/reactivate for mdm). getById is emitted for every catalogue entity even when no page consumes it. The catalogue list also synthesizes optional search (title/name) and sortBy/sortOrder (closed enum of date/*At/enum fields) — listing controls do not travel through E6, which only names additional modules and plugins. Its write inputs are classified structurally: identity and foreign keys are chosen, a platform-owned parent is the session, a lifecycle status and a timestamp are set by the server, everything else is typed. A state transition never belongs to a catalogue. If a journey already produced the same operationId, uniqueBy keeps the later (journey) operation.",
+        "A record catalogue synthesizes its five operations from the ontology, because E7 compiles journeys and a catalogue is not a journey: list, getById, create, update, and delete (or inactivate/reactivate for mdm). getById is emitted for every catalogue entity even when no page consumes it. The catalogue list also synthesizes optional search (title/name) and sortBy/sortOrder (closed enum of date/*At/enum fields) — listing controls do not travel through E6, which only names additional modules and plugins. Its write inputs are classified structurally: identity and foreign keys are chosen, a platform-owned parent is the session, a lifecycle status and a timestamp are set by the server, everything else is typed. A state transition never belongs to a catalogue. If a journey already produced the same operationId, uniqueBy keeps the later (journey) operation. Catalogue profileRefs are profiles with an organization-scope grant covering the entity; synthesized operations carry synth:<entity>:<profile> authority refs. Journey operations inherit the E3 authorities of their compiled steps. No operation leaves with empty authorityRefs.",
         "An entity no journey operates still gets its catalogue; the audience falls back to the internal profiles and the choice is recorded as a system decision instead of leaving the data unreachable.",
         "The validation report is persisted before any throw, so an irrecoverable model stays auditable.",
         "A broken organism reference is detected exactly as before and resolved deterministically instead of ending the run: a source that names another workspace's query becomes a local call over the same shared operation, an action that names a journey becomes a navigation target of the site map, and a reference that resolves to nothing drops its organism with a recorded decision. Only a model that cannot render at all stays terminal.",
@@ -485,7 +509,7 @@
         "Handoff and eventDriven delivery is compiled into notifications from the handoff targetProfile and the sending step entity, with a route-backed deep link. Notification delivery is not kept as a navigation edge.",
         "One view contract per workspace plus one command contract per hosted command records exact typed inputs, projected outputs, business errors, source metadata, routePattern, skeletonHash and workspaceHash. Data inputs require ontology field refs, even when their interaction source is userDecision. Verb decisions are identified by policy sourceRef plus absent fieldRef, carry E7 transitionIds as literalUnion metadata and never fabricate a fieldRef. JSON fields and decisions without transitions become unknown with a warning.",
         "Empty organism labels resolve from the approved E4 field title. A missing title records a non-blocking warning without inventing localized text.",
-        "Access realization maps every emitted operation route to its exact E3 authority refs through frozen scenario step/use-case ownership.",
+        "Access realization writes V4: every emitted operation route maps to authorityRefs from the E8 model (journey authorities or synthesized catalogue authorities). E7 leaves operationAuthorityRefs pending.",
         "All emitted arrays and file order are stable, hashes are source hashes only, and no generated timestamp is written, making a no-change rerun byte-identical.",
         "Every gate issue records origin=skeleton or origin=compiler. A skeleton failure marks E8 stale and repairs e8-workspaces; a compiler failure leaves E8 approved and repairs e9-navigation-compiler. Neither failure adds e9-result. A successful compile atomically advances module/pipeline ownership to E10.",
         "Each bffCall input carries `sourceRef` — the call the picker reads from — whenever the workspace declares one: `source: 'selectedEntity'` without it tells the consumer that a record must be chosen and not where to choose it from.",
@@ -515,7 +539,7 @@
       "gate": "steps/e10/gate.ts",
       "runtimeNotes": [
         "E10 validates the approved workspace model and the classic L4 that E9 wrote. Its authority over E8 and E9 is recompilation: the model is compiled again and compared with the saved artifacts, so a file edited by hand is stale, not a variant.",
-        "The named checks keep their contract: A1 model integrity, A2 journey hosting, A3 decision coherence, A4 disclosure registrar, A5 lifecycle health, A6 staleness, A7 warnings and A8 dormant commands.",
+        "The named checks keep their contract: A1 model integrity, A2 journey hosting, A3 decision coherence, A4 disclosure registrar, A5 lifecycle health, A6 staleness (including access-bindings hashes), A7 warnings, A8 dormant commands and A9 authority (every V4 operationRef has at least one authorityRef; an external profile cannot write an entity it has no grant over).",
         "beforePromptStep performs validate-all and L5 compilation without an LLM. afterPromptStep is an invariant failure path.",
         "Blocking validation persists the report, marks its earliest owning step stale and does not write or update L5 files.",
         "The L5 config merger updates only the current module navigation/headerLinks in an existing client project or top-level module seed. Unrelated keys and modules are preserved; identical inputs produce byte-identical config JSON.",

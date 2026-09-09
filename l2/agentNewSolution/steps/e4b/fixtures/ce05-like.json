@@ -1,0 +1,98 @@
+{
+  "moduleName": "ordenServicioLike",
+  "accessHash": "sha256:access-ce05",
+  "ontologyHash": "sha256:ontology-ce05",
+  "journeys": {
+    "moduleName": "ordenServicioLike",
+    "journeys": [
+      {
+        "journeyId": "abrirOrden",
+        "business": {
+          "actorRef": "recepcionista",
+          "entry": { "mode": "coldStart" },
+          "steps": [{ "stepId": "captureOrden", "kind": "act", "entity": "OrdenServicio" }]
+        }
+      },
+      {
+        "journeyId": "consultarMisOrdenes",
+        "business": {
+          "actorRef": "cliente",
+          "entry": { "mode": "coldStart" },
+          "steps": [{ "stepId": "inspectOrden", "kind": "inspect", "entity": "OrdenServicio" }]
+        }
+      }
+    ]
+  },
+  "access": {
+    "moduleName": "ordenServicioLike",
+    "userLanguage": "es",
+    "profiles": [
+      { "profileId": "recepcionista", "kind": "internal", "actorRefs": ["recepcionista"] },
+      { "profileId": "cliente", "kind": "external", "actorRefs": ["cliente"] }
+    ],
+    "authorities": [
+      { "authorityRef": "svc:open-order", "journeyStepRefs": ["abrirOrden.captureOrden"] },
+      { "authorityRef": "svc:own-orders", "journeyStepRefs": ["consultarMisOrdenes.inspectOrden"] }
+    ],
+    "grants": [
+      {
+        "profileRef": "recepcionista",
+        "authorityRef": "svc:open-order",
+        "reason": "front desk opens every order",
+        "dataScope": { "mode": "organization", "description": "all orders" },
+        "disclosure": { "mode": "fullRecord", "description": "full", "allowedInformation": [], "deniedInformation": [] },
+        "useRules": []
+      },
+      {
+        "profileRef": "cliente",
+        "authorityRef": "svc:own-orders",
+        "reason": "portal of own orders",
+        "dataScope": { "mode": "own", "description": "only the signed-in customer's orders" },
+        "disclosure": { "mode": "fieldsOnly", "description": "no internal cost", "allowedInformation": [], "deniedInformation": ["costoInterno"] },
+        "useRules": []
+      }
+    ]
+  },
+  "ontology": {
+    "moduleName": "ordenServicioLike",
+    "entities": [
+      {
+        "entityId": "Cliente",
+        "title": "Cliente",
+        "kind": "mdm",
+        "party": "person",
+        "mdmSubtype": "Person",
+        "fields": [{ "fieldId": "clienteId", "type": "uuid", "required": true }],
+        "storage": { "target": "mdm", "scope": "organization", "idField": "clienteId", "notes": "" }
+      },
+      {
+        "entityId": "OrdenServicio",
+        "title": "Orden",
+        "kind": "core",
+        "fields": [
+          { "fieldId": "ordenServicioId", "type": "uuid", "required": true },
+          { "fieldId": "clienteId", "type": "uuid", "required": true }
+        ],
+        "storage": { "target": "moduleDatabase", "scope": "module", "idField": "ordenServicioId", "notes": "" }
+      }
+    ],
+    "relationships": [
+      {
+        "relationshipId": "ordenBelongsToCliente",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Cliente",
+        "type": "manyToOne",
+        "required": true,
+        "description": "order owner",
+        "persistence": { "mode": "crossStoreReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "OrdenServicio",
+          "from": { "entityId": "OrdenServicio", "fieldIds": ["clienteId"] },
+          "to": { "entityId": "Cliente", "fieldIds": ["clienteId"] },
+          "description": "OrdenServicio.clienteId"
+        }
+      }
+    ]
+  }
+}

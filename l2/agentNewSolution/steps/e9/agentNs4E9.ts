@@ -6,13 +6,15 @@ import {
   type Ns4PipelineState,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 import { readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import {
-  listNs4E7UseCaseDraftFiles, ns4WorkspaceModelFile, readNs4DefsJson, readNs4Module, readNs4Pipeline, readNs4Text,
-  writeNs4ClassicContract, writeNs4ClassicWorkspace, writeNs4Module, writeNs4Operation, writeNs4Pipeline, writeNs4SiteMap,
+  listNs4E7UseCaseDraftFiles, ns4AccessMatrixFile, ns4WorkspaceModelFile, readNs4DefsJson, readNs4Module, readNs4Pipeline,
+  readNs4Text, writeNs4AccessMatrix, writeNs4ClassicContract, writeNs4ClassicWorkspace, writeNs4Module, writeNs4Operation,
+  writeNs4Pipeline, writeNs4SiteMap,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
 import { readNs4ApprovedOntology as readOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import type { Ns4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
-import { compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
+import { buildNs4NavigationRealizedAccess, compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
 import {
   applyNs4UseCaseCoverage, compareE7ToOperations, useCaseCoverageLogLine,
   type Ns4ApprovedUseCase, type Ns4UseCaseCoverageVerdict,
@@ -40,6 +42,11 @@ export async function beforeNs4E9PromptStep(
     for (const operation of l4.operations) artifactPaths.push(await writeNs4Operation(moduleName, operation.operationId, operation));
     for (const contract of l4.contracts) artifactPaths.push(await writeNs4ClassicContract(moduleName, contract.workspaceId, contract.bffId, contract.source));
     artifactPaths.push(await writeNs4SiteMap(moduleName, l4.siteMap));
+    const access = await readNs4DefsJson<Ns4AccessMatrixArtifact>(ns4AccessMatrixFile(moduleName), true);
+    if (access) {
+      const realized = await buildNs4NavigationRealizedAccess(access, model, l4);
+      artifactPaths.push(await writeNs4AccessMatrix(moduleName, realized));
+    }
     const module = await readNs4Module(moduleName); if (!module) throw new Error(`Module artifact not found for ${moduleName}.`);
     const approvedAt = new Date().toISOString();
     await writeNs4Module(moduleName, markNs4ModuleE9Approved(module, approvedAt));

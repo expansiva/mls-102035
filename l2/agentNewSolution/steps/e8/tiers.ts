@@ -25,6 +25,9 @@ import {
 import { ns4E8CompositionProfile } from '/_102035_/l2/agentNewSolution/steps/e8/compositionProfiles.js';
 import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+import {
+  ns4CatalogueProfileIds, ns4JourneyAuthorityRefs, ns4SynthesizedAuthorityRef,
+} from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 
 const CATEGORY_RECORD_CATALOGUE = 'entityRecordManagement';
 const CATEGORY_APPROVAL = 'approvalWorkflow';
@@ -279,6 +282,7 @@ function buildRecordCatalogue(
   // `actors` are E1/E2 actor ids and `profileRefs` are E3 profiles: the backend derives its route
   // scopes from actors, so a profile id there would fabricate a scope collab-auth never issued.
   const actors = unique(profileRefs.flatMap(profileRef => context.actorsByProfile.get(profileRef) || []));
+  const authorityRefs = unique(profileRefs.map(profileRef => ns4SynthesizedAuthorityRef(entity.entityId, profileRef)));
   const idField = identityFieldOf(entity);
   const listInputs = catalogueListInputs(entity, context);
   const appendOnly = entity.mutability === 'appendOnly';
@@ -287,7 +291,7 @@ function buildRecordCatalogue(
     kind: 'query', entityRef: entity.entityId, entityRefs: [entity.entityId],
     accessPattern: { kind: 'list', pagination: 'optional' }, inputs: listInputs,
     outputRefs: entity.fields.map(field => `${entity.entityId}.${field.fieldId}`),
-    useRules: [], transitionRefs: [], story: [ns4Text(context.presentation, 'catalogue.list.story')],
+    useRules: [], transitionRefs: [], authorityRefs, story: [ns4Text(context.presentation, 'catalogue.list.story')],
     // Master data lists hide deactivated records unless the caller asks for them,
     // which is what makes every foreign-key picker active-only for free.
     ...(isMdmEntity(entity)
@@ -298,23 +302,23 @@ function buildRecordCatalogue(
     operationId: `create${entity.entityId}`, title: ns4Text(context.presentation, 'catalogue.create.title', { entity: entity.title }),
     kind: 'command', entityRef: entity.entityId, entityRefs: catalogueEntityRefs(entity, context),
     accessPattern: { kind: 'create' }, inputs: catalogueInputs(entity, context, 'create'),
-    outputRefs: [`${entity.entityId}.${idField}`], useRules: entity.useRules, transitionRefs: [],
+    outputRefs: [`${entity.entityId}.${idField}`], useRules: entity.useRules, transitionRefs: [], authorityRefs,
     story: [ns4Text(context.presentation, 'catalogue.create.story')],
   };
   const updateOperation: Ns4E8Operation | undefined = appendOnly ? undefined : {
     operationId: `update${entity.entityId}`, title: ns4Text(context.presentation, 'catalogue.update.title', { entity: entity.title }),
     kind: 'command', entityRef: entity.entityId, entityRefs: catalogueEntityRefs(entity, context),
     accessPattern: { kind: 'update' }, inputs: catalogueInputs(entity, context, 'update'),
-    outputRefs: [`${entity.entityId}.${idField}`], useRules: entity.useRules, transitionRefs: [],
+    outputRefs: [`${entity.entityId}.${idField}`], useRules: entity.useRules, transitionRefs: [], authorityRefs,
     story: [ns4Text(context.presentation, 'catalogue.update.story')],
   };
-  const removals = appendOnly ? [] : removalOperations(entity, context);
+  const removals = appendOnly ? [] : removalOperations(entity, context, authorityRefs);
   const operations: Ns4E8Operation[] = [
     listOperation,
     createOperation,
     ...(updateOperation ? [updateOperation] : []),
     ...removals,
-    getByIdOperation(entity, context),
+    getByIdOperation(entity, context, authorityRefs),
   ];
   const listCall: Ns4E8BffCall = {
     bffId: `qryList${entity.entityId}`, kind: 'query', operationId: `list${entity.entityId}`,
@@ -382,12 +386,13 @@ function upperFirst(value: string): string {
  * can be reactivated, and never gains a delete. Every other storage target keeps
  * the delete it always had.
  */
-function removalOperations(entity: Ns4OntologyEntity, context: Ns4E8TierContext): Ns4E8Operation[] {
+function removalOperations(entity: Ns4OntologyEntity, context: Ns4E8TierContext, authorityRefs: string[]): Ns4E8Operation[] {
   const idField = identityFieldOf(entity);
   const base = {
     kind: 'command' as const, entityRef: entity.entityId, entityRefs: [entity.entityId],
     inputs: catalogueInputs(entity, context, 'identityOnly'),
     outputRefs: [`${entity.entityId}.${idField}`], useRules: [], transitionRefs: [],
+    authorityRefs,
   };
   if (!isMdmEntity(entity)) {
     return [{
@@ -420,28 +425,28 @@ function removalOperations(entity: Ns4OntologyEntity, context: Ns4E8TierContext)
  * Row lookup by identity. A catalogue always emits it, even when no page calls it — the
  * future LLM harness reads the table by id. A lookup still resolves an inactive mdm record.
  */
-function getByIdOperation(entity: Ns4OntologyEntity, context: Ns4E8TierContext): Ns4E8Operation {
+function getByIdOperation(entity: Ns4OntologyEntity, context: Ns4E8TierContext, authorityRefs: string[]): Ns4E8Operation {
   return {
     operationId: `get${entity.entityId}`, title: ns4Text(context.presentation, 'catalogue.get.title', { entity: entity.title }),
     kind: 'query', entityRef: entity.entityId, entityRefs: [entity.entityId],
     accessPattern: { kind: 'getById' }, inputs: catalogueInputs(entity, context, 'identityOnly'),
     outputRefs: entity.fields.map(field => `${entity.entityId}.${field.fieldId}`),
-    useRules: [], transitionRefs: [],
+    useRules: [], transitionRefs: [], authorityRefs,
     story: [ns4Text(context.presentation, 'catalogue.get.story')],
     ...(isMdmEntity(entity) ? { mdm: { situationOutput: 'active' as const } } : {}),
   };
 }
 
 /**
- * A catalogue is visible to the profiles that already operate the entity somewhere. An entity no
- * journey touches still needs a maintenance screen, so it falls back to the internal profiles and
- * the module records the choice instead of leaving the data unreachable.
+ * A catalogue is visible to the profiles with an organization-scope grant covering the entity.
+ * own/assigned/related/public stay on journey screens with their own authority. An entity no
+ * organization grant covers still needs a maintenance screen, so it falls back to the internal
+ * profiles and the module records the choice instead of leaving the data unreachable.
  */
 function catalogueProfiles(
   entity: Ns4OntologyEntity, context: Ns4E8TierContext, workspaceId: string, decisions: Ns4SystemDecision[],
 ): string[] {
-  const touching = context.derived.steps.filter(step => step.entity === entity.entityId);
-  const profiles = unique(touching.flatMap(step => context.profilesByStepRef.get(step.stepRef) || []));
+  const profiles = ns4CatalogueProfileIds(entity.entityId, context.sources.access, context.sources.journeys);
   if (profiles.length) return profiles;
   const internal = context.sources.access.profiles.filter(profile => profile.kind === 'internal').map(profile => profile.profileId).sort();
   decisions.push({
@@ -851,6 +856,7 @@ function attachSynthesizedProjectionTile(
       outputRefs: projection.fields.map(field => `${projection.entityId}.${field.fieldId}`),
       useRules: [],
       transitionRefs: [],
+      authorityRefs: unique(owner.profileRefs.map(profileRef => ns4SynthesizedAuthorityRef(projection.entityId, profileRef))),
       story: [projection.description || projection.title],
     });
   }
@@ -984,6 +990,7 @@ function buildJourneyOperation(
       ? queryOutputRefs(step, useCase, entity, context, decisions)
       : (entity?.fields || []).map(field => `${step.entity}.${field.fieldId}`),
     useRules: useCase.useRules, transitionRefs: useCase.transitionRefs,
+    authorityRefs: ns4JourneyAuthorityRefs(useCase.compiledFrom, context.sources.access),
     story: [step.title, step.description].filter(Boolean),
     useCaseId: useCase.useCaseId,
   };

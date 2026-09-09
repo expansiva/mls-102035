@@ -60,7 +60,9 @@ export async function beforeNs4E5PromptStep(
   try {
     const parsed = resolveArgs(context, args || step.prompt); moduleName = parsed.moduleName;
     const pipeline = await requirePipeline(moduleName);
-    if (pipeline.steps.e4?.status !== 'approved') throw new Error(`E4 approved pipeline not found for ${moduleName}.`);
+    if (pipeline.steps.e4b?.status !== 'approved' && pipeline.steps.e4?.status !== 'approved') {
+      throw new Error(`E4B approved pipeline not found for ${moduleName}.`);
+    }
     const [sources, prompt, previous] = await Promise.all([
       readSources(moduleName), readNs4AgentText('steps/e5', 'prompt'), readDraft(moduleName),
     ]);
@@ -237,7 +239,7 @@ async function recordFailure(moduleName: string, error: string): Promise<void> {
 function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): Ns4E5Args & { moduleName: string } {
   const root = parse(value); if (!isRecord(root) || root.planId !== 'e5-rules') throw new Error('Invalid E5 step arguments.');
   const moduleName = text(root.moduleName) || findE4Module(context) || memoryString(context, 'resumeModule');
-  if (!moduleName) throw new Error('E4 module result not found for E5.');
+  if (!moduleName) throw new Error('E4B module result not found for E5.');
   return { planId: 'e5-rules', moduleName,
     ...(number(root.reviewRound) ? { reviewRound: number(root.reviewRound) } : {}),
     ...(text(root.adjustment) ? { adjustment: text(root.adjustment) } : {}),
@@ -246,7 +248,9 @@ function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): Ns4E5Ar
     ...(number(root.transportRetryAttempt) ? { transportRetryAttempt: number(root.transportRetryAttempt) } : {}) };
 }
 function findE4Module(context: mls.msg.ExecutionContext): string {
-  const result = getAllSteps(context.task?.iaCompressed?.nextSteps).find(step => step.planning?.planId === 'e4-result');
+  const steps = getAllSteps(context.task?.iaCompressed?.nextSteps);
+  const result = steps.find(step => step.planning?.planId === 'e4b-result')
+    || steps.find(step => step.planning?.planId === 'e4-result');
   const parsed = result?.type === 'result' ? parse(result.result) : null; return isRecord(parsed) ? text(parsed.moduleName) : '';
 }
 function findParent(context: mls.msg.ExecutionContext, parentStep: mls.msg.AIAgentStep, phaseStep?: mls.msg.AIAgentStep): mls.msg.AIAgentStep {

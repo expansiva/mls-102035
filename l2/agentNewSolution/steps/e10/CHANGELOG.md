@@ -1,5 +1,11 @@
 # E10 changelog
 
+## 2026-09-08 — A9 authority and A6 access-bindings
+
+A9 fails when an operation has empty `authorityRefs`, when a V4 row has none, or when an
+external profile writes an entity it has no grant over. A6 compares `access-bindings`
+source hashes with the approved access matrix and ontology.
+
 ## 2026-09-08 — solution registry
 
 After `passed`, E10 upserts only this module's block in `l4/organization/registry.defs.ts`.

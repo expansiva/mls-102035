@@ -8,7 +8,7 @@ import {
 import { readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import {
   ns4ClassicContractFile, ns4WorkspaceModelFile, ns4OperationFile, ns4SiteMapFile, readNs4Text,
-  ns4AccessMatrixFile, ns4JourneyIndexFile, ns4OntologyIndexFile, ns4RulesFile, ns4UseCaseFile, ns4UseCaseIndexFile,
+  ns4AccessBindingsFile, ns4AccessMatrixFile, ns4JourneyIndexFile, ns4OntologyIndexFile, ns4RulesFile, ns4UseCaseFile, ns4UseCaseIndexFile,
   ns4WorkflowFile, ns4WorkflowIndexFile, ns4WorkspaceFile, readNs4DefsJson, readNs4L5Config,
   readNs4Module, readNs4Pipeline, writeNs4E10ValidationReport, writeNs4L5Config, writeNs4Module, writeNs4Pipeline,
   writeNs4Process, writeNs4TodoBackend, writeNs4TodoFrontend,
@@ -21,6 +21,7 @@ import {
 } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
 import type { Ns4JourneyIndex } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import type { Ns4OntologyIndexArtifact } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import type {
@@ -198,6 +199,7 @@ async function loadSources(moduleName: string): Promise<Ns4E10Sources> {
   return {
     moduleName, userLanguage: model.userLanguage, ...(module?.presentation ? { presentation: module.presentation } : {}),
     journeys, journeyIndex, ontology, ontologyIndex, rules, access,
+    accessBindings: await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined,
     useCases, useCaseIndex, workflows, workflowIndex, model, saved,
   };
 }

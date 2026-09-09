@@ -1,5 +1,9 @@
 # E7 changelog
 
+## 2026-09-08 — V3 no longer writes empty operationAuthorityRefs
+
+E7 leaves operation-to-authority pending. E9 writes V4 `operationAuthorityRefs`.
+
 ## 2026-09-07 — lifecycle systemDecision copy from the phrase catalogue
 
 Unreachable-state, dormant-predicate and omitted-workflow `question`/`changeHint` read

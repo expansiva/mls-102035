@@ -139,6 +139,18 @@ test('a record catalogue classifies its inputs structurally and never transition
   assert.deepEqual(remove.inputs.map(input => input.inputId), ['changeOrderId']);
 });
 
+test('every operation carries authorityRefs and catalogues drop related/own/assigned profiles', () => {
+  const model = deriveNs4E8Model(sources());
+  assert.equal(model.operations.every(operation => operation.authorityRefs.length > 0), true);
+  const projectCatalogue = model.workspaces.find(workspace => workspace.workspaceId === 'projectCatalogue');
+  assert.ok(projectCatalogue);
+  assert.equal(projectCatalogue!.profileRefs.includes('client'), false);
+  const workTaskCatalogue = model.workspaces.find(workspace => workspace.workspaceId === 'workTaskCatalogue');
+  assert.ok(workTaskCatalogue);
+  assert.equal(workTaskCatalogue!.profileRefs.includes('fieldWorker'), false);
+  assert.equal(workTaskCatalogue!.profileRefs.includes('subcontractor'), false);
+});
+
 test('an entity no journey operates still gets a catalogue, and the audience is a recorded decision', () => {
   const input = sources();
   input.access.authorities = [];

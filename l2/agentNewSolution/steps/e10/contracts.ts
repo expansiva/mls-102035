@@ -1,5 +1,6 @@
 import { sha256Ns4, type Ns4JourneyIndex, type Ns4PolicyDecisionSelection } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4AccessMatrixArtifactV4 } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import type { Ns4OntologyIndexArtifact } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import type {
@@ -20,7 +21,7 @@ export const NS4_L5_TODO_BACKEND_VERSION = '2026-08-13-ns4-todo-backend-v1' as c
 export const NS4_L5_PROCESS_VERSION = '2026-08-13-ns4-process-v1' as const;
 export const NS4_E10_MENU_LIMIT = 7 as const;
 
-export type Ns4E10RepairStep = 'e2-journeys' | 'e3-access-matrix' | 'e4-ontology' | 'e5-rules' | 'e6-behaviors' | 'e7-realization' | 'e8-workspaces' | 'e9-navigation-compiler';
+export type Ns4E10RepairStep = 'e2-journeys' | 'e3-access-matrix' | 'e4-ontology' | 'e4b-access-realization' | 'e5-rules' | 'e6-behaviors' | 'e7-realization' | 'e8-workspaces' | 'e9-navigation-compiler';
 
 /** E10 validates the approved E8 model against the classic L4 that E9 actually wrote to disk. */
 export interface Ns4E10Sources {
@@ -33,6 +34,7 @@ export interface Ns4E10Sources {
   ontologyIndex: Ns4OntologyIndexArtifact;
   rules: Ns4RulesArtifact;
   access: Ns4AccessMatrixArtifact;
+  accessBindings?: Ns4AccessBindingsArtifact;
   useCases: Ns4UseCaseArtifactV3[];
   useCaseIndex: Ns4UseCaseIndexArtifactV3;
   workflows: Ns4WorkflowArtifactV2[];
@@ -50,7 +52,7 @@ export interface Ns4E10Issue {
 }
 
 export interface Ns4E10CheckSummary {
-  checkId: 'A1-resolution' | 'A2-journeys' | 'A3-decisions' | 'A4-disclosure' | 'A5-fsm' | 'A6-staleness' | 'A7-warnings' | 'A8-dormant-commands';
+  checkId: 'A1-resolution' | 'A2-journeys' | 'A3-decisions' | 'A4-disclosure' | 'A5-fsm' | 'A6-staleness' | 'A7-warnings' | 'A8-dormant-commands' | 'A9-authority';
   status: 'passed' | 'failed' | 'reported';
   errorCount: number;
   warningCount: number;

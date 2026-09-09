@@ -144,6 +144,8 @@ export interface Ns4E8Operation {
   story: string[];
   /** Present when the operation is an approved E7 use case; absent when the catalogue derived it. */
   useCaseId?: string;
+  /** E3 authority refs or synthesized `synth:<entity>:<profile>` ids. Never empty. */
+  authorityRefs: string[];
   /** Present only on a catalogue operation of an entity whose storage.target is mdm. */
   mdm?: Ns4E8MdmSemantics;
 }

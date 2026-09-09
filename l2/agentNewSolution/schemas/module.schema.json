@@ -15,13 +15,14 @@
         "stepTitles": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["e1-clarification", "e1-compile", "e2-journeys", "e3-access-matrix", "e4-ontology", "e5-rules", "e6-behaviors", "e7-realization", "e8-workspaces", "e9-navigation-compiler", "e10-validation"],
+          "required": ["e1-clarification", "e1-compile", "e2-journeys", "e3-access-matrix", "e4-ontology", "e4b-access-realization", "e5-rules", "e6-behaviors", "e7-realization", "e8-workspaces", "e9-navigation-compiler", "e10-validation"],
           "properties": {
             "e1-clarification": { "type": "string", "minLength": 1 },
             "e1-compile": { "type": "string", "minLength": 1 },
             "e2-journeys": { "type": "string", "minLength": 1 },
             "e3-access-matrix": { "type": "string", "minLength": 1 },
             "e4-ontology": { "type": "string", "minLength": 1 },
+            "e4b-access-realization": { "type": "string", "minLength": 1 },
             "e5-rules": { "type": "string", "minLength": 1 },
             "e6-behaviors": { "type": "string", "minLength": 1 },
             "e7-realization": { "type": "string", "minLength": 1 },
@@ -142,7 +143,7 @@
             "additionalProperties": false,
             "required": ["stepId", "status", "approvedBy", "approvedAt"],
             "properties": {
-              "stepId": { "type": "string", "enum": ["e1", "e2-journeys", "e3-access-matrix", "e4-ontology", "e5-rules", "e6-behaviors", "e7-realization"] },
+              "stepId": { "type": "string", "enum": ["e1", "e2-journeys", "e3-access-matrix", "e4-ontology", "e4b-access-realization", "e5-rules", "e6-behaviors", "e7-realization"] },
               "status": { "type": "string", "const": "approved" },
               "approvedBy": { "type": "string", "enum": ["human", "auto"] },
               "approvedAt": { "type": "string", "minLength": 10 },
@@ -150,7 +151,7 @@
             }
           }
         },
-        "nextStep": { "type": "string", "enum": ["e2-journeys", "e3-access-matrix", "e4-ontology", "e5-rules", "e6-behaviors", "e7-realization", "e8-workspaces"] },
+        "nextStep": { "type": "string", "enum": ["e2-journeys", "e3-access-matrix", "e4-ontology", "e4b-access-realization", "e5-rules", "e6-behaviors", "e7-realization", "e8-workspaces"] },
         "updatedAt": { "type": "string", "minLength": 10 }
       }
     }

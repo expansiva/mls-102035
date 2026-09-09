@@ -1,0 +1,75 @@
+{
+  "moduleName": "agendaClinicaLike",
+  "accessHash": "sha256:access-ce01",
+  "ontologyHash": "sha256:ontology-ce01",
+  "journeys": {
+    "moduleName": "agendaClinicaLike",
+    "journeys": [
+      {
+        "journeyId": "attendAppointment",
+        "business": {
+          "actorRef": "profissional",
+          "steps": [{ "stepId": "inspectAppointment", "kind": "inspect", "entity": "Appointment" }]
+        }
+      }
+    ]
+  },
+  "access": {
+    "moduleName": "agendaClinicaLike",
+    "userLanguage": "pt-BR",
+    "profiles": [{ "profileId": "profissional", "kind": "internal", "actorRefs": ["profissional"] }],
+    "authorities": [{ "authorityRef": "clinic:assigned-appointments", "journeyStepRefs": ["attendAppointment.inspectAppointment"] }],
+    "grants": [
+      {
+        "profileRef": "profissional",
+        "authorityRef": "clinic:assigned-appointments",
+        "reason": "sees assigned appointments",
+        "dataScope": { "mode": "assigned", "description": "appointments assigned to the signed-in professional" },
+        "disclosure": { "mode": "fullRecord", "description": "full", "allowedInformation": [], "deniedInformation": [] },
+        "useRules": []
+      }
+    ]
+  },
+  "ontology": {
+    "moduleName": "agendaClinicaLike",
+    "entities": [
+      {
+        "entityId": "Professional",
+        "title": "Professional",
+        "kind": "mdm",
+        "party": "person",
+        "mdmSubtype": "Person",
+        "fields": [{ "fieldId": "professionalId", "type": "uuid", "required": true }],
+        "storage": { "target": "mdm", "scope": "organization", "idField": "professionalId", "notes": "" }
+      },
+      {
+        "entityId": "Appointment",
+        "title": "Appointment",
+        "kind": "core",
+        "fields": [
+          { "fieldId": "appointmentId", "type": "uuid", "required": true },
+          { "fieldId": "professionalId", "type": "uuid", "required": true }
+        ],
+        "storage": { "target": "moduleDatabase", "scope": "module", "idField": "appointmentId", "notes": "" }
+      }
+    ],
+    "relationships": [
+      {
+        "relationshipId": "appointmentAssignedToProfessional",
+        "fromEntity": "Appointment",
+        "toEntity": "Professional",
+        "type": "manyToOne",
+        "required": true,
+        "description": "assignee",
+        "persistence": { "mode": "crossStoreReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "Appointment",
+          "from": { "entityId": "Appointment", "fieldIds": ["professionalId"] },
+          "to": { "entityId": "Professional", "fieldIds": ["professionalId"] },
+          "description": "Appointment.professionalId"
+        }
+      }
+    ]
+  }
+}

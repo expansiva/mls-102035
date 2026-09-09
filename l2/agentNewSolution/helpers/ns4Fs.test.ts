@@ -67,6 +67,7 @@ test('every ns4Fs *File builder shortName is free of dots', async () => {
     ns4E2ImpactReportFile: ns4.ns4E2ImpactReportFile(m),
     ns4E3DraftFile: ns4.ns4E3DraftFile(m),
     ns4AccessMatrixFile: ns4.ns4AccessMatrixFile(m),
+    ns4AccessBindingsFile: ns4.ns4AccessBindingsFile(m),
     ns4E4DraftFile: ns4.ns4E4DraftFile(m),
     ns4E4PlanDraftFile: ns4.ns4E4PlanDraftFile(m),
     ns4E4EntityDraftFile: ns4.ns4E4EntityDraftFile(m, 'Pet'),

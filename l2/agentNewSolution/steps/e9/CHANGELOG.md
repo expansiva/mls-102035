@@ -1,5 +1,10 @@
 # E9 changelog
 
+## 2026-09-08 — writes V4 operationAuthorityRefs
+
+`buildNs4NavigationRealizedAccess` maps every emitted bffCall route to the E8 operation's
+`authorityRefs` and writes `access-matrix.defs.ts` as `navigationCompiled`.
+
 ## 2026-09-07 — generated contract comments in English
 
 Empty input/output blocks emit `// no public inputs (resolved from context)` and

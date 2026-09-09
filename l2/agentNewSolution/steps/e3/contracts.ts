@@ -92,7 +92,6 @@ export interface Ns4AccessMatrixArtifactV3 extends Omit<Ns4AccessMatrixArtifactV
     status: 'useCasesCompiled';
     compiledFromAccessHash: string;
     useCaseAuthorityRefs: Ns4AccessUseCaseAuthorityRef[];
-    operationAuthorityRefs: never[];
     realizationHash: string;
   };
 }

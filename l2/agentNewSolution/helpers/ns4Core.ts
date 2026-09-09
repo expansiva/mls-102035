@@ -3,13 +3,13 @@
 import { normalizeNs4Phrases, type Ns4PhraseKey } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 
 export const NS4_FLOW_ID = 'agentNewSolution' as const;
-export const NS4_FLOW_VERSION = '2026-08-14-ns4-flow-v40' as const;
+export const NS4_FLOW_VERSION = '2026-09-08-ns4-flow-v41' as const;
 export const NS4_E4_MAX_PARALLEL = 20 as const;
 export const NS4_E7_MAX_PARALLEL = 20 as const;
 export const NS4_E8_MAX_PARALLEL = 20 as const;
 export const NS4_MODULE_SCHEMA_VERSION = '2026-08-06-ns4-module-v4' as const;
 export const NS4_PIPELINE_SCHEMA_VERSION = '2026-08-06-ns4-pipeline-v5' as const;
-export type Ns4PermanentFlowVersion = typeof NS4_FLOW_VERSION | '2026-08-14-ns4-flow-v39' | '2026-08-14-ns4-flow-v38' | '2026-08-14-ns4-flow-v37' | '2026-08-14-ns4-flow-v36' | '2026-08-14-ns4-flow-v35' | '2026-08-14-ns4-flow-v34' | '2026-08-13-ns4-flow-v33' | '2026-08-13-ns4-flow-v32' | '2026-08-13-ns4-flow-v31' | '2026-08-12-ns4-flow-v30' | '2026-08-11-ns4-flow-v24' | '2026-08-11-ns4-flow-v22' | '2026-08-10-ns4-flow-v21' | '2026-08-10-ns4-flow-v20' | '2026-08-09-ns4-flow-v19' | '2026-08-09-ns4-flow-v18' | '2026-08-08-ns4-flow-v17';
+export type Ns4PermanentFlowVersion = typeof NS4_FLOW_VERSION | '2026-08-14-ns4-flow-v40' | '2026-08-14-ns4-flow-v39' | '2026-08-14-ns4-flow-v38' | '2026-08-14-ns4-flow-v37' | '2026-08-14-ns4-flow-v36' | '2026-08-14-ns4-flow-v35' | '2026-08-14-ns4-flow-v34' | '2026-08-13-ns4-flow-v33' | '2026-08-13-ns4-flow-v32' | '2026-08-13-ns4-flow-v31' | '2026-08-12-ns4-flow-v30' | '2026-08-11-ns4-flow-v24' | '2026-08-11-ns4-flow-v22' | '2026-08-10-ns4-flow-v21' | '2026-08-10-ns4-flow-v20' | '2026-08-09-ns4-flow-v19' | '2026-08-09-ns4-flow-v18' | '2026-08-08-ns4-flow-v17';
 
 export const NS4_PLAN_IDS = [
   'e1-clarification',
@@ -17,6 +17,7 @@ export const NS4_PLAN_IDS = [
   'e2-journeys',
   'e3-access-matrix',
   'e4-ontology',
+  'e4b-access-realization',
   'e5-rules',
   'e6-behaviors',
   'e7-realization',
@@ -44,14 +45,15 @@ export type Ns4E1Status = 'running' | 'approved' | 'failed';
 export type Ns4E2Status = 'running' | 'waitingHuman' | 'approved' | 'failed' | 'stale';
 export type Ns4E3Status = 'running' | 'waitingHuman' | 'approved' | 'failed' | 'stale';
 export type Ns4E4Status = 'running' | 'waitingHuman' | 'approved' | 'failed' | 'stale';
+export type Ns4E4BStatus = 'running' | 'approved' | 'failed' | 'stale';
 export type Ns4E5Status = 'running' | 'waitingHuman' | 'approved' | 'failed' | 'stale';
 export type Ns4E6Status = 'running' | 'waitingHuman' | 'approved' | 'failed' | 'stale';
 export type Ns4E7Status = 'running' | 'approved' | 'failed' | 'stale';
 export type Ns4E8Status = 'running' | 'approved' | 'failed' | 'stale';
 export type Ns4E9Status = 'running' | 'approved' | 'failed' | 'stale';
 export type Ns4E10Status = 'running' | 'approved' | 'failed';
-export type Ns4CompletedStepId = 'e1' | 'e2-journeys' | 'e3-access-matrix' | 'e4-ontology' | 'e5-rules' | 'e6-behaviors' | 'e7-realization' | 'e8-workspaces' | 'e9-navigation-compiler' | 'e10-validation';
-export type Ns4NextStep = 'e2-journeys' | 'e3-access-matrix' | 'e4-ontology' | 'e5-rules' | 'e6-behaviors' | 'e7-realization' | 'e8-workspaces' | 'e9-navigation-compiler' | 'e10-validation' | 'complete';
+export type Ns4CompletedStepId = 'e1' | 'e2-journeys' | 'e3-access-matrix' | 'e4-ontology' | 'e4b-access-realization' | 'e5-rules' | 'e6-behaviors' | 'e7-realization' | 'e8-workspaces' | 'e9-navigation-compiler' | 'e10-validation';
+export type Ns4NextStep = 'e2-journeys' | 'e3-access-matrix' | 'e4-ontology' | 'e4b-access-realization' | 'e5-rules' | 'e6-behaviors' | 'e7-realization' | 'e8-workspaces' | 'e9-navigation-compiler' | 'e10-validation' | 'complete';
 
 export interface Ns4ClarificationQuestion {
   type: 'open';
@@ -231,6 +233,15 @@ export interface Ns4PipelineState {
       failedAt?: string;
       updatedAt: string;
     };
+    e4b?: {
+      status: Ns4E4BStatus;
+      artifactPaths?: string[];
+      approvedAt?: string;
+      error?: string;
+      failedAt?: string;
+      repairStep?: 'e4-ontology' | 'e4b-access-realization';
+      updatedAt: string;
+    };
     e5?: {
       status: Ns4E5Status;
       reviewRound: number;
@@ -314,10 +325,10 @@ export interface Ns4PipelineState {
   fastHandoff?: { to: string; message: string; at: string };
 }
 
-export type Ns4ExistingAction = 'new' | 'resume-e1' | 'resume-e2' | 'resume-e3' | 'resume-e4' | 'resume-e5' | 'resume-e6' | 'resume-e7' | 'resume-e8' | 'resume-e9' | 'resume-e10' | 'resume-next' | 'collision';
+export type Ns4ExistingAction = 'new' | 'resume-e1' | 'resume-e2' | 'resume-e3' | 'resume-e4' | 'resume-e4b' | 'resume-e5' | 'resume-e6' | 'resume-e7' | 'resume-e8' | 'resume-e9' | 'resume-e10' | 'resume-next' | 'collision';
 
 /** Steps a partial rebuild can start from. e1 is not one of them: restarting at e1 IS a total rebuild. */
-export type Ns4RebuildFrom = 'e2' | 'e3' | 'e4' | 'e5' | 'e6' | 'e7' | 'e8' | 'e9' | 'e10';
+export type Ns4RebuildFrom = 'e2' | 'e3' | 'e4' | 'e4b' | 'e5' | 'e6' | 'e7' | 'e8' | 'e9' | 'e10';
 /** `/rebuild all` is its own mode: wipe l1/l2/l4 of the module, then regenerate from the stored prompt. */
 export type Ns4RebuildArg = Ns4RebuildFrom | 'all';
 
@@ -327,7 +338,7 @@ export interface Ns4RebuildAllReport {
   sanitized: { projectJsonRemoved: number; configJsonRemoved: number };
 }
 
-const NS4_REBUILD_RE = /(^|\s)\/rebuild(?:\s+(all|e[2-9]|e10))?(?=\s|$)/i;
+const NS4_REBUILD_RE = /(^|\s)\/rebuild(?:\s+(all|e10|e4b|e[2-9]))?(?=\s|$)/i;
 
 export interface Ns4Invocation {
   fast: boolean;
@@ -665,6 +676,30 @@ export function createNs4E4DerivationBindingStep(
   );
 }
 
+export function createNs4E4BStep(
+  moduleName = '',
+  dependsOn: string[] = [],
+  stepTitle = NS4_DEFAULT_TITLES['e4b-access-realization'],
+  gateFeedback = '',
+  repairAttempt = 0,
+): mls.msg.AIAgentStep {
+  const planId = repairAttempt
+    ? `e4b-access-realization-repair-${repairAttempt}`
+    : 'e4b-access-realization';
+  return createNs4AgentStep(
+    planId,
+    repairAttempt ? plainNs4StepTitle(`${stepTitle} · R${repairAttempt}`) : plainNs4StepTitle(stepTitle),
+    dependsOn,
+    dependsOn.length ? 'waiting_dependency' : 'waiting_human_input',
+    {
+      planId: 'e4b-access-realization',
+      ...(moduleName ? { moduleName } : {}),
+      ...(gateFeedback ? { gateFeedback } : {}),
+      ...(repairAttempt ? { repairAttempt } : {}),
+    },
+  );
+}
+
 export function createNs4E5Step(
   moduleName = '',
   reviewRound = 1,
@@ -739,7 +774,7 @@ export function createNs4E7Step(
   );
 }
 
-export type Ns4StepOwner = 'e1' | 'e2' | 'e3' | 'e4' | 'e5' | 'e6' | 'e7' | 'e8' | 'e9' | 'e10';
+export type Ns4StepOwner = 'e1' | 'e2' | 'e3' | 'e4' | 'e4b' | 'e5' | 'e6' | 'e7' | 'e8' | 'e9' | 'e10';
 
 /**
  * The dispatch table, next to the factories that mint the plan ids it matches. The router and the
@@ -752,6 +787,7 @@ export function resolveNs4StepOwner(planId: string): Ns4StepOwner | '' {
   if (planId.startsWith('e2-journeys-round-')) return 'e2';
   if (planId.startsWith('e3-access-matrix-round-')) return 'e3';
   if (planId.startsWith('e4-ontology-round-')) return 'e4';
+  if (planId === 'e4b-access-realization' || planId.startsWith('e4b-access-realization-')) return 'e4b';
   if (planId.startsWith('e5-rules-round-')) return 'e5';
   if (planId.startsWith('e6-behaviors-round-')) return 'e6';
   if (planId === 'e7-realization' || planId.startsWith('e7-realization-finalize-')) return 'e7';
@@ -836,6 +872,7 @@ export const NS4_DEFAULT_TITLES: Record<Ns4PlanId, string> = {
   'e2-journeys': 'Define and approve business journeys',
   'e3-access-matrix': 'Review the access matrix',
   'e4-ontology': 'Define the business ontology',
+  'e4b-access-realization': 'Bind access to the ontology',
   'e5-rules': 'Organize business rules',
   'e6-behaviors': 'Review additional modules and plugins',
   'e7-realization': 'Connect journeys to system behavior',
@@ -927,7 +964,8 @@ export function buildNs4PlannedSteps(plan: Ns4RootPlan): mls.msg.AIAgentStep[] {
     createNs4E2Step('', 1, '', ['e1-result'], title('e2-journeys')),
     createNs4E3Step('', 1, '', ['e2-result'], title('e3-access-matrix')),
     createNs4E4Step('', 1, '', ['e3-result'], title('e4-ontology')),
-    createNs4E5Step('', 1, '', ['e4-result'], title('e5-rules')),
+    createNs4E4BStep('', ['e4-result'], title('e4b-access-realization')),
+    createNs4E5Step('', 1, '', ['e4b-result'], title('e5-rules')),
     createNs4E6Step('', 1, '', ['e5-result'], title('e6-behaviors')),
     createNs4E7Step('', ['e6-result'], title('e7-realization')),
     createNs4E8Step('', 1, '', ['e7-result'], title('e8-workspaces')),
@@ -959,6 +997,8 @@ function createNs4AgentStep(
     || planningPlanId.startsWith('e2-journeys-round-')
     || planningPlanId.startsWith('e3-access-matrix-round-')
     || planningPlanId.startsWith('e4-ontology-round-')
+    || planningPlanId === 'e4b-access-realization'
+    || planningPlanId.startsWith('e4b-access-realization-')
     || planningPlanId.startsWith('e5-rules-round-')
     || planningPlanId.startsWith('e6-behaviors-round-')) {
     step.onFailure = 'wait_after_prompt';
@@ -1279,7 +1319,7 @@ export function markNs4ModuleE2Approved(
   autoReason?: string,
 ): Ns4ModuleArtifact {
   const invalidated = new Set<Ns4CompletedStepId>(invalidateDownstream
-    ? ['e2-journeys', 'e3-access-matrix', 'e4-ontology', 'e5-rules', 'e7-realization']
+    ? ['e2-journeys', 'e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e7-realization']
     : ['e2-journeys']);
   const completedSteps = artifact.specStatus.completedSteps.filter(step => !invalidated.has(step.stepId));
   completedSteps.push({ stepId: 'e2-journeys', status: 'approved', approvedBy, approvedAt: now, ...ns4AutoReason(autoReason) });
@@ -1465,7 +1505,7 @@ export function markNs4E4Approved(
         status: 'approved', reviewRound, solutionMode: 'new', artifactPaths: [...artifactPaths], approvedBy, approvedAt: now, ...ns4AutoReason(autoReason), updatedAt: now,
       },
     },
-    nextStep: 'e5-rules',
+    nextStep: 'e4b-access-realization',
     updatedAt: now,
   };
 }
@@ -1478,6 +1518,85 @@ export function markNs4ModuleE4Approved(
 ): Ns4ModuleArtifact {
   const completedSteps = artifact.specStatus.completedSteps.filter(step => step.stepId !== 'e4-ontology');
   completedSteps.push({ stepId: 'e4-ontology', status: 'approved', approvedBy, approvedAt: now, ...ns4AutoReason(autoReason) });
+  return {
+    ...artifact,
+    specStatus: { ...artifact.specStatus, completedSteps, nextStep: 'e4b-access-realization', updatedAt: now },
+  };
+}
+
+export function markNs4E4Stale(
+  state: Ns4PipelineState,
+  failure: unknown,
+  now = new Date().toISOString(),
+): Ns4PipelineState {
+  if (!state.steps.e4) return state;
+  return {
+    ...state,
+    status: 'failed',
+    steps: {
+      ...state.steps,
+      e4: { ...state.steps.e4, status: 'stale', error: normalizeNs4Failure(failure), failedAt: now, updatedAt: now },
+    },
+    nextStep: 'e4-ontology',
+    updatedAt: now,
+  };
+}
+
+export function markNs4E4BRunning(
+  state: Ns4PipelineState,
+  now = new Date().toISOString(),
+): Ns4PipelineState {
+  if (state.steps.e4b?.status === 'approved') return state;
+  return {
+    ...state,
+    status: 'inProgress',
+    steps: { ...state.steps, e4b: { status: 'running', updatedAt: now } },
+    nextStep: 'e4b-access-realization',
+    updatedAt: now,
+  };
+}
+
+export function markNs4E4BFailed(
+  state: Ns4PipelineState,
+  failure: unknown,
+  now = new Date().toISOString(),
+): Ns4PipelineState {
+  if (state.steps.e4b?.status === 'approved') return state;
+  return {
+    ...state,
+    status: 'failed',
+    steps: {
+      ...state.steps,
+      e4b: { status: 'failed', error: normalizeNs4Failure(failure), failedAt: now, updatedAt: now },
+    },
+    nextStep: 'e4b-access-realization',
+    updatedAt: now,
+  };
+}
+
+export function markNs4E4BApproved(
+  state: Ns4PipelineState,
+  artifactPaths: string[],
+  now = new Date().toISOString(),
+): Ns4PipelineState {
+  return {
+    ...state,
+    status: 'inProgress',
+    steps: {
+      ...state.steps,
+      e4b: { status: 'approved', artifactPaths: [...artifactPaths], approvedAt: now, updatedAt: now },
+    },
+    nextStep: 'e5-rules',
+    updatedAt: now,
+  };
+}
+
+export function markNs4ModuleE4BApproved(
+  artifact: Ns4ModuleArtifact,
+  now = new Date().toISOString(),
+): Ns4ModuleArtifact {
+  const completedSteps = artifact.specStatus.completedSteps.filter(step => step.stepId !== 'e4b-access-realization');
+  completedSteps.push({ stepId: 'e4b-access-realization', status: 'approved', approvedBy: 'auto', approvedAt: now });
   return {
     ...artifact,
     specStatus: { ...artifact.specStatus, completedSteps, nextStep: 'e5-rules', updatedAt: now },
@@ -1780,17 +1899,18 @@ export function markNs4E10Failed(
 ): Ns4PipelineState {
   if (state.steps.e10?.status === 'approved') return state;
   const order: Array<Exclude<Ns4NextStep, 'complete' | 'e10-validation'>> = [
-    'e2-journeys', 'e3-access-matrix', 'e4-ontology', 'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler',
+    'e2-journeys', 'e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler',
   ];
   const start = order.indexOf(repairStep); const steps = { ...state.steps };
   if (start <= 0 && steps.e2) steps.e2 = { ...steps.e2, status: 'stale', updatedAt: now };
   if (start <= 1 && steps.e3) steps.e3 = { ...steps.e3, status: 'stale', updatedAt: now };
   if (start <= 2 && steps.e4) steps.e4 = { ...steps.e4, status: 'stale', updatedAt: now };
-  if (start <= 3 && steps.e5) steps.e5 = { ...steps.e5, status: 'stale', updatedAt: now };
-  if (start <= 4 && steps.e6) steps.e6 = { ...steps.e6, status: 'stale', updatedAt: now };
-  if (start <= 5 && steps.e7) steps.e7 = { ...steps.e7, status: 'stale', updatedAt: now };
-  if (start <= 6 && steps.e8) steps.e8 = { ...steps.e8, status: 'stale', updatedAt: now };
-  if (start <= 7 && steps.e9) steps.e9 = { ...steps.e9, status: 'stale', updatedAt: now };
+  if (start <= 3 && steps.e4b) steps.e4b = { ...steps.e4b, status: 'stale', updatedAt: now };
+  if (start <= 4 && steps.e5) steps.e5 = { ...steps.e5, status: 'stale', updatedAt: now };
+  if (start <= 5 && steps.e6) steps.e6 = { ...steps.e6, status: 'stale', updatedAt: now };
+  if (start <= 6 && steps.e7) steps.e7 = { ...steps.e7, status: 'stale', updatedAt: now };
+  if (start <= 7 && steps.e8) steps.e8 = { ...steps.e8, status: 'stale', updatedAt: now };
+  if (start <= 8 && steps.e9) steps.e9 = { ...steps.e9, status: 'stale', updatedAt: now };
   steps.e10 = { status: 'failed', ...(reportPath ? { reportPath } : {}), repairStep,
     error: normalizeNs4Failure(failure), failedAt: now, updatedAt: now };
   return { ...state, status: 'failed', steps, nextStep: repairStep, updatedAt: now };
@@ -1843,7 +1963,8 @@ export function resolveNs4ExistingAction(
   if (pipeline.steps.e7?.status === 'approved' && moduleArtifactExists) return 'resume-e8';
   if (pipeline.steps.e6?.status === 'approved' && moduleArtifactExists) return 'resume-e7';
   if (pipeline.steps.e5?.status === 'approved' && moduleArtifactExists) return 'resume-e6';
-  if (pipeline.steps.e4?.status === 'approved' && moduleArtifactExists) return 'resume-e5';
+  if (pipeline.steps.e4b?.status === 'approved' && moduleArtifactExists) return 'resume-e5';
+  if (pipeline.steps.e4?.status === 'approved' && moduleArtifactExists) return 'resume-e4b';
   if (pipeline.steps.e3?.status === 'approved' && moduleArtifactExists) return 'resume-e4';
   if (pipeline.steps.e2?.status === 'approved' && moduleArtifactExists) return 'resume-e3';
   if (pipeline.steps.e1.status === 'approved' && moduleArtifactExists) return 'resume-e2';
@@ -1879,10 +2000,10 @@ export function listNs4RebuildDeletionKeys(
   return keys;
 }
 
-const NS4_REBUILD_ORDER: Ns4RebuildFrom[] = ['e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'e9', 'e10'];
+const NS4_REBUILD_ORDER: Ns4RebuildFrom[] = ['e2', 'e3', 'e4', 'e4b', 'e5', 'e6', 'e7', 'e8', 'e9', 'e10'];
 
 const NS4_COMPLETED_STEP_BY_KEY: Record<Ns4RebuildFrom, Ns4CompletedStepId & Ns4NextStep> = {
-  e2: 'e2-journeys', e3: 'e3-access-matrix', e4: 'e4-ontology', e5: 'e5-rules', e6: 'e6-behaviors',
+  e2: 'e2-journeys', e3: 'e3-access-matrix', e4: 'e4-ontology', e4b: 'e4b-access-realization', e5: 'e5-rules', e6: 'e6-behaviors',
   e7: 'e7-realization', e8: 'e8-workspaces', e9: 'e9-navigation-compiler', e10: 'e10-validation',
 };
 

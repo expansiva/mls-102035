@@ -257,7 +257,7 @@ test('E2 impact report records changed, new and removed journeys', () => {
     { journeyId: 'newJourney', reason: 'journeyNew' },
     { journeyId: 'removedJourney', reason: 'journeyRemoved' },
   ]);
-  assert.deepEqual(report.affectedSteps, ['e3-access-matrix', 'e4-ontology', 'e5-rules', 'e7-realization']);
+  assert.deepEqual(report.affectedSteps, ['e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e7-realization']);
   assert.deepEqual(report.stepKindHistogram, { locate: 1, inspect: 0, act: 0, decide: 1, handoff: 0 });
 });
 

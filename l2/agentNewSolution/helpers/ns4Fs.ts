@@ -7,6 +7,7 @@ import { planNs4RebuildAll } from '/_102035_/l2/agentNewSolution/helpers/ns4Rebu
 import { readNs4AvailableContent } from '/_102035_/l2/agentNewSolution/helpers/ns4ContentRead.js';
 import { renderNs4TypedDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4TypedDefs.js';
 import type {
+  Ns4AccessBindingsArtifact,
   Ns4AccessMatrixArtifact,
   Ns4CompositionArtifact,
   Ns4JourneyArtifact,
@@ -103,6 +104,10 @@ export function ns4E3DraftFile(moduleName: string): Ns4FileInfo {
 
 export function ns4AccessMatrixFile(moduleName: string): Ns4FileInfo {
   return { project: mls.actualProject || 0, level: 4, folder: `${normalizeNs4ModuleName(moduleName)}/access`, shortName: 'access-matrix', extension: '.defs.ts' };
+}
+
+export function ns4AccessBindingsFile(moduleName: string): Ns4FileInfo {
+  return { project: mls.actualProject || 0, level: 4, folder: `${normalizeNs4ModuleName(moduleName)}/access`, shortName: 'access-bindings', extension: '.defs.ts' };
 }
 
 export function ns4E4DraftFile(moduleName: string): Ns4FileInfo {
@@ -375,6 +380,12 @@ export async function writeNs4E8ValidationReport(moduleName: string, report: unk
 export async function writeNs4AccessMatrix(moduleName: string, artifact: Ns4AccessMatrixArtifact): Promise<string> {
   const fileInfo = ns4AccessMatrixFile(moduleName);
   await writeNs4Defs(fileInfo, `${normalizeNs4ModuleName(moduleName)}AccessMatrix`, artifact, 'Ns4AccessMatrixArtifact');
+  return displayPath(fileInfo);
+}
+
+export async function writeNs4AccessBindings(moduleName: string, artifact: Ns4AccessBindingsArtifact): Promise<string> {
+  const fileInfo = ns4AccessBindingsFile(moduleName);
+  await writeNs4Defs(fileInfo, `${normalizeNs4ModuleName(moduleName)}AccessBindings`, artifact, 'Ns4AccessBindingsArtifact');
   return displayPath(fileInfo);
 }
 

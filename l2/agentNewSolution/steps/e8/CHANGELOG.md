@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-08 — catalogue audience is organization grants; every operation has authorityRefs
+
+`catalogueProfiles` is profiles with an organization-scope grant covering the entity, not
+"who touches" via derived steps. Catalogue operations carry `synth:<entity>:<profile>`.
+Journey operations inherit E3 authorities of `compiledFrom`. The model gate fails
+`NS4_E8_OPERATION_WITHOUT_AUTHORITY` when `authorityRefs` is empty.
+
 ## 2026-09-07 — catalogue and hub copy read `presentation.phrases`
 
 Synthesized operation `title`/`story`/`description`, section intents, hub purpose and

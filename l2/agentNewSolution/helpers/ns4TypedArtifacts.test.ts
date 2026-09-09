@@ -25,6 +25,7 @@ test('permanent artifact registry covers every implemented E1-E10 defs contract'
     'Ns4JourneyArtifact',
     'Ns4JourneyIndex',
     'Ns4AccessMatrixArtifact',
+    'Ns4AccessBindingsArtifact',
     'Ns4OntologyEntityArtifact',
     'Ns4OntologyIndexArtifact',
     'Ns4RulesArtifact',

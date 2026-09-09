@@ -11,6 +11,7 @@ import type {
   Ns4OntologyEntityArtifact,
   Ns4OntologyIndexArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import type { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import type { Ns4CompositionArtifact } from '/_102035_/l2/agentNewSolution/steps/e6/contracts.js';
 import type {
@@ -40,6 +41,7 @@ export type {
   Ns4E2Status,
   Ns4E3Status,
   Ns4E4Status,
+  Ns4E4BStatus,
   Ns4E5Status,
   Ns4E6Status,
   Ns4E7Status,
@@ -114,6 +116,14 @@ export type {
   Ns4StorageScope,
   Ns4StorageTarget,
 } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+
+export type {
+  Ns4AccessAnchor,
+  Ns4AccessAnchorHop,
+  Ns4AccessBinding,
+  Ns4AccessBindingsArtifact,
+  Ns4SynthesizedAuthority,
+} from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 
 export type {
   Ns4E5Review,
@@ -231,6 +241,7 @@ export const NS4_PERMANENT_ARTIFACT_TYPE_NAMES = [
   'Ns4JourneyArtifact',
   'Ns4JourneyIndex',
   'Ns4AccessMatrixArtifact',
+  'Ns4AccessBindingsArtifact',
   'Ns4OntologyEntityArtifact',
   'Ns4OntologyIndexArtifact',
   'Ns4RulesArtifact',
@@ -259,6 +270,7 @@ export interface Ns4PermanentArtifactByType {
   Ns4JourneyArtifact: Ns4JourneyArtifact;
   Ns4JourneyIndex: Ns4JourneyIndex;
   Ns4AccessMatrixArtifact: Ns4AccessMatrixArtifact;
+  Ns4AccessBindingsArtifact: Ns4AccessBindingsArtifact;
   Ns4OntologyEntityArtifact: Ns4OntologyEntityArtifact;
   Ns4OntologyIndexArtifact: Ns4OntologyIndexArtifact;
   Ns4RulesArtifact: Ns4RulesArtifact;

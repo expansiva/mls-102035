@@ -967,7 +967,7 @@ function clarificationReviewStep(
 function resultStep(context: mls.msg.ExecutionContext, parentStep: mls.msg.AIAgentStep, saved: Ns4PersistedE4, title: string): mls.msg.AgentIntentAddStep {
   return addStep(context, parentStep, {
     type: 'result', stepId: 0, interaction: null, stepTitle: title, status: 'completed', nextSteps: [],
-    result: JSON.stringify({ ...saved, completedStep: 'e4-ontology', nextStep: 'e5-rules' }, null, 2),
+    result: JSON.stringify({ ...saved, completedStep: 'e4-ontology', nextStep: 'e4b-access-realization' }, null, 2),
     planning: { planId: 'e4-result', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
 }

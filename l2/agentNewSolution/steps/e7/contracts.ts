@@ -467,7 +467,7 @@ export async function buildNs4RealizedAccessArtifact(
     authorities: source.authorities, grants, accessHash: source.accessHash,
     approvedBy: source.approvedBy, approvedAt: source.approvedAt,
     realization: { status: 'useCasesCompiled', compiledFromAccessHash: source.accessHash,
-      useCaseAuthorityRefs, operationAuthorityRefs: [], realizationHash },
+      useCaseAuthorityRefs, realizationHash },
   };
 }
 
