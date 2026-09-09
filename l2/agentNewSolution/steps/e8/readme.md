@@ -18,7 +18,15 @@ form input, actor session or the unique scenario target. The strict L1 call is p
 invalid presentation gets one constrained repair and then keeps the mechanical defaults, so presentation
 variance never blocks the run. E8 preview and E9 compilation both use the total `helpers/routeOf.ts`.
 
-A workspace is a place. A journey of the same actor on an entity the catalogue already shows is
+A workspace is a place. Each E3 profile lands on one workspace, chosen without an LLM and without
+reading `landingIntent`: the exclusive non-journey whose `profileRefs` is exactly that profile
+(by `tierRank`, then id); else the `tier: journey` workspace that hosts the first step of that
+profile's first journey (`hostedStepRefs`, journeys/index order); else the previous rank fallback
+(first non-journey that includes the profile). `landings[].reason` records which step fired
+(`exclusive | firstJourney | rank`). A profile that has a workspace and no landing fails
+`NS4_E8_PROFILE_WITHOUT_LANDING`.
+
+A journey of the same actor on an entity the catalogue already shows is
 hosted on that catalogue (`hostedStepRefs`) instead of becoming a second page. A hub is emitted only
 when its closed catalogue has a `relatedList` or `projectionTile`. `NS4_E8_STEP_UNHOSTED` requires
 every non-demoted journey step to be hosted somewhere; `NS4_E8_USECASE_UNHOSTED` is the same

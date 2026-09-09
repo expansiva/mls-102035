@@ -19,7 +19,7 @@ import { applyNs4HubComposition, defaultNs4HubComposition } from '/_102035_/l2/a
 import {
   NS4_E8_MODEL_VERSION, isNs4OwnerHandleInput,
   type Ns4E8BffCall, type Ns4E8ContentRole, type Ns4E8HubCatalogue, type Ns4E8HubCatalogueItem, type Ns4E8Input,
-  type Ns4E8InputSource, type Ns4E8MenuEntry, type Ns4E8Model, type Ns4E8ModelWorkspace,
+  type Ns4E8InputSource, type Ns4E8Landing, type Ns4E8MenuEntry, type Ns4E8Model, type Ns4E8ModelWorkspace,
   type Ns4E8Operation, type Ns4E8Organism, type Ns4E8Section,
 } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
 import { ns4E8CompositionProfile } from '/_102035_/l2/agentNewSolution/steps/e8/compositionProfiles.js';
@@ -1342,13 +1342,49 @@ function buildMenu(workspaces: Ns4E8ModelWorkspace[], sources: Ns4E8Sources): Ns
     }));
 }
 
-function buildLandings(workspaces: Ns4E8ModelWorkspace[], sources: Ns4E8Sources): Array<{ profileRef: string; workspaceId: string }> {
-  const ordered = [...workspaces].sort((left, right) => tierRank(left.tier) - tierRank(right.tier)
+/**
+ * Per profile, in this order, with no LLM and without reading `landingIntent`:
+ * 1. exclusive — non-journey whose profileRefs is exactly [profile], by tierRank then id
+ * 2. firstJourney — journey workspace that hosts the first step of that profile's first journey
+ *    (journeys/index order)
+ * 3. rank — first non-journey that includes the profile, by the same tierRank as before
+ */
+export function buildLandings(workspaces: Ns4E8ModelWorkspace[], sources: Ns4E8Sources): Ns4E8Landing[] {
+  const byRank = [...workspaces].sort((left, right) => tierRank(left.tier) - tierRank(right.tier)
     || left.workspaceId.localeCompare(right.workspaceId));
-  return sources.access.profiles.flatMap(profile => {
-    const target = ordered.find(workspace => workspace.tier !== 'journey' && workspace.profileRefs.includes(profile.profileId));
-    return target ? [{ profileRef: profile.profileId, workspaceId: target.workspaceId }] : [];
+  return sources.access.profiles.flatMap((profile): Ns4E8Landing[] => {
+    const exclusive = byRank.find(workspace =>
+      workspace.tier !== 'journey' && sameValues(unique(workspace.profileRefs), [profile.profileId]));
+    if (exclusive) {
+      return [{ profileRef: profile.profileId, workspaceId: exclusive.workspaceId, reason: 'exclusive' }];
+    }
+    const firstJourney = firstJourneyHost(profile, workspaces, sources);
+    if (firstJourney) {
+      return [{ profileRef: profile.profileId, workspaceId: firstJourney.workspaceId, reason: 'firstJourney' }];
+    }
+    const ranked = byRank.find(workspace =>
+      workspace.tier !== 'journey' && workspace.profileRefs.includes(profile.profileId));
+    return ranked ? [{ profileRef: profile.profileId, workspaceId: ranked.workspaceId, reason: 'rank' }] : [];
   });
+}
+
+function firstJourneyHost(
+  profile: { profileId: string; actorRefs?: string[] },
+  workspaces: Ns4E8ModelWorkspace[],
+  sources: Ns4E8Sources,
+): Ns4E8ModelWorkspace | undefined {
+  const actorIds = new Set(profile.actorRefs || []);
+  const first = sources.journeys.journeys.find(journey => {
+    if (actorIds.has(journey.business.actorRef)) return true;
+    const stepRefs = new Set(journey.business.steps.map(step => `${journey.journeyId}.${step.stepId}`));
+    return workspaces.some(workspace =>
+      workspace.profileRefs.includes(profile.profileId)
+      && workspace.hostedStepRefs.some(ref => stepRefs.has(ref)));
+  });
+  const step = first?.business.steps[0];
+  if (!first || !step) return undefined;
+  const stepRef = `${first.journeyId}.${step.stepId}`;
+  return workspaces.find(workspace => workspace.tier === 'journey' && workspace.hostedStepRefs.includes(stepRef));
 }
 
 function tierRank(tier: Ns4WorkspaceTierValue): number {

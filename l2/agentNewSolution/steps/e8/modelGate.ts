@@ -357,6 +357,13 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
     if (!profiles.has(landing.profileRef)) add('NS4_E8_LANDING_PROFILE', `landings[${index}]`, `Unknown E3 profile ${landing.profileRef}.`);
     if (!workspaceIds.has(landing.workspaceId)) add('NS4_E8_LANDING_WORKSPACE', `landings[${index}]`, `Unknown workspace ${landing.workspaceId}.`);
   });
+  const landed = new Set(model.landings.map(landing => landing.profileRef));
+  sources.access.profiles.forEach(profile => {
+    if (landed.has(profile.profileId)) return;
+    if (!model.workspaces.some(workspace => workspace.profileRefs.includes(profile.profileId))) return;
+    add('NS4_E8_PROFILE_WITHOUT_LANDING', 'landings',
+      `E3 profile ${profile.profileId} has a workspace but no landing.`);
+  });
 
   return { ok: issues.every(issue => issue.severity === 'warning'), issues };
 }

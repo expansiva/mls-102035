@@ -79,8 +79,12 @@ test('the menu lists places only: a journey is reached from the hub, never from 
   assert.equal(model.menu.length, run44.expected.menuPlaces);
   assert.equal(model.menu.filter(entry => entry.tier === 'journey').length, run44.expected.journeysInMenu);
   assert.ok(model.landings.length, 'every profile lands on a place');
-  assert.equal(model.landings.every(landing => model.workspaces.some(workspace =>
-    workspace.workspaceId === landing.workspaceId && workspace.tier !== 'journey')), true);
+  for (const landing of model.landings) {
+    const workspace = model.workspaces.find(item => item.workspaceId === landing.workspaceId);
+    assert.ok(workspace, `${landing.profileRef} -> ${landing.workspaceId}`);
+    if (landing.reason === 'firstJourney') assert.equal(workspace!.tier, 'journey');
+    else assert.notEqual(workspace!.tier, 'journey');
+  }
 });
 
 test('a journey compiles one query per locate/inspect step and one command per act/decide step', () => {

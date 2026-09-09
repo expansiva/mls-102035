@@ -205,14 +205,21 @@ test('each bffCall emits one contract file, named and routed the way the consume
   assert.match(contract.source, new RegExp(`export const cmdApproveChangeOrderRoute = '${contract.route}' as const;`));
 });
 
-test('the site map indexes every place and lands every profile without ever naming a journey', async () => {
+test('the site map indexes every place and lands every profile', async () => {
   const { model, l4 } = await compile();
   assert.deepEqual(l4.siteMap.workspaceIds, l4.workspaces.map(workspace => workspace.workspaceId));
   assert.equal(l4.siteMap.landings.length, model.landings.length);
   const journeys = new Set(model.workspaces.filter(workspace => workspace.tier === 'journey').map(workspace => workspace.workspaceId));
-  assert.equal(l4.siteMap.landings.some(landing => journeys.has(landing.workspaceId)), false);
-  // A journey is reachable: the hub edges are how you get there.
-  assert.ok(l4.siteMap.navigationEdges.some(edge => journeys.has(edge.to)));
+  for (const landing of l4.siteMap.landings) {
+    const workspace = model.workspaces.find(item => item.workspaceId === landing.workspaceId);
+    assert.ok(workspace, landing.actorId);
+    const e8 = model.landings.find(item => item.profileRef === landing.actorId);
+    if (e8?.reason === 'firstJourney') assert.equal(workspace!.tier, 'journey');
+    else assert.notEqual(workspace!.tier, 'journey');
+  }
+  // A journey is reachable: the hub edges are how you get there (and a firstJourney landing is itself one).
+  assert.ok(l4.siteMap.navigationEdges.some(edge => journeys.has(edge.to)) || [...journeys].some(id =>
+    l4.siteMap.landings.some(landing => landing.workspaceId === id)));
 });
 
 test('the transposition is canonical: the same approved model emits byte-identical L4', async () => {

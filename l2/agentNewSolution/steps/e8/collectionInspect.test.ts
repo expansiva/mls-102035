@@ -138,7 +138,7 @@ test('leftover getById on a collection inspect is a registrar, never a failure',
       outputRefs: ['Task.taskId'], useRules: [], transitionRefs: [], story: [], useCaseId: 'inspectTaskDetails',
     }],
     menu: [],
-    landings: [],
+    landings: [{ profileRef: 'taskOwner', workspaceId: 'taskCatalogue', reason: 'rank' }],
     systemDecisions: [],
   };
   const gate = validateNs4E8Model(model, sources);

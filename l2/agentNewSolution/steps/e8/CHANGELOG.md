@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-09 — landing is exclusive workspace, else first journey, else rank
+
+`buildLandings` no longer sends every profile to the first non-journey by `tierRank`. Per profile:
+exclusive non-journey (`profileRefs` exactly `[profile]`) → journey workspace hosting the first step
+of that profile's first journey → the previous rank fallback. `landings[].reason` is the closed
+token `exclusive | firstJourney | rank`. `landingIntent` is not read. Gate
+`NS4_E8_PROFILE_WITHOUT_LANDING` fails when a profile has a workspace and no landing.
+
 ## 2026-09-09 — journey operations of a limited external profile read the disclosure projection
 
 When an access-binding carries `projectionRef`, the journey read for that authority uses the

@@ -272,7 +272,19 @@ export interface Ns4E8Model {
   operations: Ns4E8Operation[];
   /** The menu lists places only: catalogues, hubs, projections and content pages. A journey is never a menu item. */
   menu: Ns4E8MenuEntry[];
-  landings: Array<{ profileRef: string; workspaceId: string }>;
+  landings: Ns4E8Landing[];
   systemDecisions: Ns4SystemDecision[];
   modelHash?: string;
+}
+
+/**
+ * Why this profile lands on this workspace. Closed machine token — never prose, never
+ * `landingIntent` (that stays E3 copy for the human and the CF).
+ */
+export type Ns4E8LandingReason = 'exclusive' | 'firstJourney' | 'rank';
+
+export interface Ns4E8Landing {
+  profileRef: string;
+  workspaceId: string;
+  reason: Ns4E8LandingReason;
 }
