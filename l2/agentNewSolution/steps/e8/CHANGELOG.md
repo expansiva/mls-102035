@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-09 — mdm storage.idField is a resolvable E8 input
+
+`validateNs4E8Model` includes `${entityId}.${storage.idField}` in the resolvable-field set.
+After n04, mdm `fields[]` is namespace-only, so a picker/FK that names the logical id
+(`ItemCardapio.itemCardapioId`, `Produto.produtoId`) was `NS4_E8_INPUT_FIELD`. A field that is
+neither in `fields[]` nor `storage.idField` is still rejected.
+
 ## 2026-09-09 — profile without workspace is a gate error
 
 `NS4_E8_PROFILE_WITHOUT_WORKSPACE` fails when an E3 profile is absent from every workspace

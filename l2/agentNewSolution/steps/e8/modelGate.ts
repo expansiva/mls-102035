@@ -77,7 +77,12 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
   const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
   const parentIndex = buildNs4ParentIndex(sources.ontology.relationships);
   const knownEntities = [...sources.ontology.entities, ...(sources.disclosureProjections || [])];
-  const fields = new Set(knownEntities.flatMap(entity => entity.fields.map(field => `${entity.entityId}.${field.fieldId}`)));
+  // mdm fields[] is namespace-only (n04); storage.idField is the logical record id and is a
+  // resolvable input (picker/FK). Duplicate with a real field is harmless.
+  const fields = new Set(knownEntities.flatMap(entity => [
+    ...entity.fields.map(field => `${entity.entityId}.${field.fieldId}`),
+    ...(entity.storage.idField ? [`${entity.entityId}.${entity.storage.idField}`] : []),
+  ]));
   const entities = new Set(knownEntities.map(entity => entity.entityId));
   // Master data is referenced by other records: removing the row breaks those
   // references, so the catalogue deactivates instead of deleting.
