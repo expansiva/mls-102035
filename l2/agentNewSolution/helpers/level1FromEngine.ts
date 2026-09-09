@@ -150,6 +150,11 @@ function parseObjectFieldEntries(body: string): Ns4Level1Field[] {
   const fields: Ns4Level1Field[] = [];
   let index = 0;
   while (index < body.length) {
+    const afterComment = skipComment(body, index);
+    if (afterComment !== index) {
+      index = afterComment;
+      continue;
+    }
     const rest = body.slice(index);
     const nameMatch = rest.match(/^\s*([A-Za-z][A-Za-z0-9]*)\s*:\s*/);
     if (!nameMatch) {
@@ -177,6 +182,20 @@ function parseObjectFieldEntries(body: string): Ns4Level1Field[] {
   return fields;
 }
 
+function skipComment(source: string, index: number): number {
+  if (source[index] !== '/') return index;
+  const next = source[index + 1];
+  if (next === '/') {
+    const end = source.indexOf('\n', index + 2);
+    return end < 0 ? source.length : end;
+  }
+  if (next === '*') {
+    const end = source.indexOf('*/', index + 2);
+    return end < 0 ? source.length : end + 2;
+  }
+  return index;
+}
+
 function braceBlock(source: string, openIndex: number): string {
   if (source[openIndex] !== '{') throw new Error('expected {');
   let depth = 0;
@@ -188,6 +207,11 @@ function braceBlock(source: string, openIndex: number): string {
       if (escaped) { escaped = false; continue; }
       if (char === '\\') { escaped = true; continue; }
       if (char === inString) inString = null;
+      continue;
+    }
+    const afterComment = skipComment(source, index);
+    if (afterComment !== index) {
+      index = afterComment - 1;
       continue;
     }
     if (char === '"' || char === "'") { inString = char; continue; }

@@ -10,6 +10,7 @@ import { parseNs4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers
 import {
   buildNs4Level1Artifacts,
   NS4_LEVEL1_IDENTIFICATION_FIELD_IDS,
+  parseEngineInterfaceFields,
   parseEngineTypeUnion,
 } from '/_102035_/l2/agentNewSolution/helpers/level1FromEngine.js';
 import { ns4Level1Catalog } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
@@ -54,6 +55,26 @@ test('level-1 defs match the engine subtype union and field catalogs', () => {
     assert.deepEqual(written, built);
     assert.deepEqual(written.identification.map(field => field.fieldId), [...NS4_LEVEL1_IDENTIFICATION_FIELD_IDS]);
   }
+});
+
+test('parseEngineInterfaceFields skips comments that contain an apostrophe', () => {
+  const source = [
+    'export interface SampleRecord {',
+    "  /** contains an apostrophe's mark */",
+    '  name: string;',
+    "  // it's a person's field",
+    '  tags: string[];',
+    '  /*',
+    "   * other modules' namespace keys",
+    '   */',
+    '  aliases: string[];',
+    '}',
+  ].join('\n');
+  assert.deepEqual(parseEngineInterfaceFields(source, 'SampleRecord'), [
+    { fieldId: 'name', type: 'string', required: true },
+    { fieldId: 'tags', type: 'string[]', required: true },
+    { fieldId: 'aliases', type: 'string[]', required: true },
+  ]);
 });
 
 test('level-1 catalog loader exposes every engine subtype', () => {
