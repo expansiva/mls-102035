@@ -244,6 +244,12 @@ export {
   NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
+export {
+  TEXT_PATHS_BY_SCHEMA,
+  TEXT_PATHS_VERSION,
+  textPathsForArtifact,
+} from '/_102035_/l2/agentNewSolution/helpers/ns4TextPaths.js';
+
 export const NS4_PERMANENT_ARTIFACT_TYPE_NAMES = [
   'Ns4ModuleArtifact',
   'Ns4JourneyArtifact',

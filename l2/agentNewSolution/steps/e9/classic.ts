@@ -25,6 +25,30 @@ import type {
 export const NS4_CLASSIC_WORKSPACE_VERSION = '2026-08-14-ns4-classic-workspace-v6' as const;
 export const NS4_E9_OUTPUT_REF_UNKNOWN = 'NS4_E9_OUTPUT_REF_UNKNOWN' as const;
 
+/** Human-text JSON paths the importer may rewrite. Classic L4 has no schemaVersion on operations/siteMap. */
+export const TEXT_PATHS_2026_08_14_ns4_classic_workspace_v6: string[] = [
+  'title',
+  'purpose',
+  'sections[].intent',
+  'presentation.classificationNote',
+];
+export const TEXT_PATHS_CLASSIC_WORKSPACE = TEXT_PATHS_2026_08_14_ns4_classic_workspace_v6;
+export const TEXT_PATHS_CLASSIC_OPERATION: string[] = [
+  'title',
+  'story.goal',
+  'story.steps[]',
+  'story.outcome',
+  'accessPattern.description',
+  'inputs[].description',
+];
+export const TEXT_PATHS_CLASSIC_SITE_MAP: string[] = [
+  'note',
+  'workspaces[].title',
+  'workspaces[].purpose',
+  'landings[].reason',
+  'navigationEdges[].description',
+];
+
 export class Ns4E9OutputRefError extends Error {
   readonly code = NS4_E9_OUTPUT_REF_UNKNOWN;
   constructor(ref: string) {

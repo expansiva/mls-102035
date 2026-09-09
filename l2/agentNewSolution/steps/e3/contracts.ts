@@ -6,6 +6,25 @@ export const NS4_ACCESS_MATRIX_SCHEMA_VERSION = '2026-08-09-ns4-access-matrix-v2
 export const NS4_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION = '2026-08-10-ns4-access-matrix-v3' as const;
 export const NS4_NAVIGATION_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION = '2026-08-13-ns4-access-matrix-v4' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_09_ns4_access_matrix_v2: string[] = [
+  'title',
+  'profiles[].title',
+  'profiles[].description',
+  'profiles[].landingIntent',
+  'authorities[].title',
+  'authorities[].description',
+  'authorities[].informationNeeds[]',
+  'grants[].reason',
+  'grants[].dataScope.description',
+  'grants[].disclosure.description',
+  'grants[].disclosure.allowedInformation[]',
+  'grants[].disclosure.deniedInformation[]',
+];
+export const TEXT_PATHS_2026_08_10_ns4_access_matrix_v3 = TEXT_PATHS_2026_08_09_ns4_access_matrix_v2;
+export const TEXT_PATHS_2026_08_13_ns4_access_matrix_v4 = TEXT_PATHS_2026_08_09_ns4_access_matrix_v2;
+export const TEXT_PATHS_2026_08_05_ns4_access_matrix_v1 = TEXT_PATHS_2026_08_09_ns4_access_matrix_v2;
+
 export type Ns4AccessProfileKind = 'internal' | 'external';
 export type Ns4AccessScopeMode = 'organization' | 'assigned' | 'own' | 'related' | 'public' | 'custom';
 export type Ns4DisclosureMode = 'fullRecord' | 'summaryOnly' | 'fieldsOnly' | 'aggregateOnly';

@@ -12,6 +12,38 @@ export const NS4_ONTOLOGY_SCHEMA_VERSION = '2026-09-08-ns4-ontology-v7' as const
 export const NS4_ONTOLOGY_SCHEMA_VERSION_V6 = '2026-08-11-ns4-ontology-v6' as const;
 export type { Ns4Level1Subtype };
 
+/** Human-text JSON paths the importer may rewrite. Union of entity + index shapes that share this schemaVersion. */
+export const TEXT_PATHS_2026_09_08_ns4_ontology_v7: string[] = [
+  'title',
+  'description',
+  'businessDomain',
+  'fields[].title',
+  'fields[].description',
+  'fields[].constraints[].description',
+  'fields[].enumLabels[].label',
+  'lifecyclePredicates[].description',
+  'lifecycleLabels[].label',
+  'storage.notes',
+  'entities[].title',
+  'entities[].description',
+  'entities[].fields[].title',
+  'entities[].fields[].description',
+  'entities[].fields[].constraints[].description',
+  'entities[].fields[].enumLabels[].label',
+  'entities[].lifecyclePredicates[].description',
+  'entities[].lifecycleLabels[].label',
+  'entities[].storage.notes',
+  'relationships[].description',
+  'relationships[].realization.description',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_11_ns4_ontology_v6 = TEXT_PATHS_2026_09_08_ns4_ontology_v7;
+export const TEXT_PATHS_2026_08_09_ns4_ontology_v4 = TEXT_PATHS_2026_09_08_ns4_ontology_v7;
+export const TEXT_PATHS_2026_08_08_ns4_ontology_v3 = TEXT_PATHS_2026_09_08_ns4_ontology_v7;
+
 export type Ns4EntityKind = 'core' | 'event' | 'supporting' | 'mdm' | 'projection' | 'valueObject';
 /**
  * Is this entity a PARTY — a natural person or an organization?

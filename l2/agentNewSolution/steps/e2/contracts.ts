@@ -16,6 +16,58 @@ export const NS4_JOURNEY_INDEX_SCHEMA_VERSION = '2026-08-15-ns4-journey-index-v7
 export const NS4_REALIZED_JOURNEY_SCHEMA_VERSION = '2026-08-14-ns4-journey-realized-v5' as const;
 export const NS4_E2_IMPACT_REPORT_SCHEMA_VERSION = '2026-08-13-ns4-e2-impact-report-v2' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_14_ns4_journey_v5: string[] = [
+  'business.title',
+  'business.goal',
+  'business.steps[].title',
+  'business.steps[].description',
+  'business.outcome.statement',
+  'business.outcome.evidence[]',
+  'policyDecisions[].question',
+  'policyDecisions[].chosen',
+  'policyDecisions[].alternatives[]',
+  'policyDecisions[].impact',
+];
+export const TEXT_PATHS_2026_08_14_ns4_journey_realized_v5 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_10_ns4_journey_v4 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_10_ns4_journey_v3 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_09_ns4_journey_v2 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_04_ns4_journey_v1: string[] = [
+  'business.title',
+  'business.goal',
+  'business.prerequisites[].reason',
+  'business.entry.carries[].description',
+  'business.steps[].intent',
+  'business.steps[].result',
+  'business.outcome.statement',
+  'business.outcome.evidence[]',
+  'business.businessRules[].statement',
+  'policyDecisions[].question',
+  'policyDecisions[].chosen',
+  'policyDecisions[].alternatives[]',
+  'policyDecisions[].impact',
+];
+export const TEXT_PATHS_2026_08_15_ns4_journey_index_v7: string[] = [
+  'journeys[].title',
+  'journeys[].goal',
+  'features[].title',
+  'policyDecisions[].question',
+  'policyDecisions[].chosen',
+  'policyDecisions[].alternatives[]',
+  'policyDecisions[].impact',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_14_ns4_journey_index_v6 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_12_ns4_journey_index_v5 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_10_ns4_journey_index_v4 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_10_ns4_journey_index_v3 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_09_ns4_journey_index_v2 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_04_ns4_journey_index_v1 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+
 export type Ns4JourneyEntryMode = 'coldStart' | 'contextRequired' | 'contextOrLookup' | 'eventDriven';
 export type Ns4JourneyStepKind = 'locate' | 'inspect' | 'act' | 'decide' | 'handoff';
 export type Ns4FeaturePriority = 'now' | 'next' | 'later';

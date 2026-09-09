@@ -16,6 +16,19 @@ import type {
 
 export const NS4_ACCESS_BINDINGS_SCHEMA_VERSION = '2026-09-08-ns4-access-bindings-v1' as const;
 export const NS4_PERSON_LOGIN_FIELD = 'platformUserId' as const;
+
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_09_08_ns4_access_bindings_v1: string[] = [
+  'bindings[].dataScope.description',
+  'bindings[].disclosure.description',
+  'bindings[].disclosure.allowedInformation[]',
+  'bindings[].disclosure.deniedInformation[]',
+  'bindings[].anchorReason',
+  'synthesizedAuthorities[].dataScope.description',
+  'synthesizedAuthorities[].disclosure.description',
+  'synthesizedAuthorities[].disclosure.allowedInformation[]',
+  'synthesizedAuthorities[].disclosure.deniedInformation[]',
+];
 export const NS4_SYNTH_AUTHORITY_PREFIX = 'synth:' as const;
 export const NS4_LIMITED_DISCLOSURE_MODES: readonly Ns4DisclosureMode[] = ['fieldsOnly', 'summaryOnly', 'aggregateOnly'];
 const MAX_ANCHOR_HOPS = 3;

@@ -18,6 +18,24 @@ import type { Ns4E8Sources } from '/_102035_/l2/agentNewSolution/steps/e8/contra
 
 export const NS4_E8_MODEL_VERSION = '2026-08-14-ns4-e8-model-v1' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_14_ns4_e8_model_v1: string[] = [
+  'title',
+  'workspaces[].title',
+  'workspaces[].purpose',
+  'workspaces[].sections[].intent',
+  'workspaces[].hubCatalogue.items[].label',
+  'workspaces[].navigation[].label',
+  'operations[].title',
+  'operations[].inputs[].description',
+  'operations[].story[]',
+  'menu[].label',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+
 export type Ns4WorkspaceTier = 'recordCatalogue' | 'journey' | 'hub' | 'projection' | 'contentPage';
 
 /** Organisms of type `content` use these roles; they exist only on a `contentPage`. */

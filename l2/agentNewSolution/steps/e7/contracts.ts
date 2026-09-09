@@ -20,6 +20,37 @@ export const NS4_USE_CASE_INDEX_SCHEMA_VERSION = '2026-09-09-ns4-usecase-index-v
 export const NS4_WORKFLOW_SCHEMA_VERSION = '2026-08-11-ns4-workflow-v4' as const;
 export const NS4_WORKFLOW_INDEX_SCHEMA_VERSION = '2026-08-12-ns4-workflow-index-v5' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_09_09_ns4_usecase_v4: string[] = [
+  'title',
+  'description',
+  'inputs[].description',
+  'outputs[].description',
+  'errors[].description',
+  'errors[].when',
+];
+export const TEXT_PATHS_2026_08_10_ns4_usecase_v3 = TEXT_PATHS_2026_09_09_ns4_usecase_v4;
+export const TEXT_PATHS_2026_08_10_ns4_usecase_v2 = TEXT_PATHS_2026_09_09_ns4_usecase_v4;
+export const TEXT_PATHS_2026_09_09_ns4_usecase_index_v4: string[] = [
+  'useCases[].title',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_10_ns4_usecase_index_v2 = TEXT_PATHS_2026_09_09_ns4_usecase_index_v4;
+/** Workflow artifacts are ids and transitions; no human prose. */
+export const TEXT_PATHS_2026_08_11_ns4_workflow_v4: string[] = [];
+export const TEXT_PATHS_2026_08_10_ns4_workflow_v1 = TEXT_PATHS_2026_08_11_ns4_workflow_v4;
+export const TEXT_PATHS_2026_08_12_ns4_workflow_index_v5: string[] = [
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_11_ns4_workflow_index_v4 = TEXT_PATHS_2026_08_12_ns4_workflow_index_v5;
+export const TEXT_PATHS_2026_08_10_ns4_workflow_index_v1 = TEXT_PATHS_2026_08_12_ns4_workflow_index_v5;
+
 export type Ns4UseCaseKind = 'query' | 'command';
 export type Ns4UseCaseFieldType = Ns4OntologyField['type'];
 

@@ -8,6 +8,8 @@ import type { Ns4E4Review, Ns4OntologyEntity } from '/_102035_/l2/agentNewSoluti
 import type { Ns4UseCaseArtifactV3, Ns4WorkflowArtifactV2 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 
+export { TEXT_PATHS_2026_08_14_ns4_e8_model_v1 } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
+
 
 export interface Ns4E8HubScore {
   entityRef: string;

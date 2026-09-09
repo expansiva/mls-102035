@@ -15,6 +15,8 @@ const files = [
   fileURLToPath(new URL('./level1Catalog.ts', import.meta.url)),
   fileURLToPath(new URL('./ns4Fs.ts', import.meta.url)),
   fileURLToPath(new URL('../types.ts', import.meta.url)),
+  fileURLToPath(new URL('./ns4TextPaths.ts', import.meta.url)),
+  fileURLToPath(new URL('./ns4TextPaths.test.ts', import.meta.url)),
   fileURLToPath(new URL('../steps/e1/agentNs4E1.ts', import.meta.url)),
   fileURLToPath(new URL('../steps/e4/agentNs4E4.ts', import.meta.url)),
   fileURLToPath(new URL('../steps/e4b/contracts.ts', import.meta.url)),

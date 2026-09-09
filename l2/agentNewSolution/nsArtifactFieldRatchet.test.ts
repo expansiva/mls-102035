@@ -184,6 +184,17 @@ test('n10 affects is on the journey step ratchet with coverage and E7 gate reade
   assert.ok(step.includes('affects'));
 });
 
+test('n14 adds no structured key on human-facing artifacts (textPaths are contract metadata)', () => {
+  assert.equal('textPaths' in KEYS.Ns4Rule, false);
+  assert.equal('textPaths' in KEYS.Ns4JourneyStep, false);
+  assert.equal('textPaths' in KEYS.Ns4AccessGrant, false);
+  const rule = keysOf(interfaceBody(
+    readFileSync(new URL('steps/e5/contracts.ts', import.meta.url), 'utf8'),
+    'Ns4RuleDefinition',
+  ));
+  assert.equal(rule.includes('textPaths'), false);
+});
+
 test('n08a projectionRef and excludedFields stay off the human grant', () => {
   assert.equal('projectionRef' in KEYS.Ns4AccessGrant, false);
   assert.equal('excludedFields' in KEYS.Ns4AccessGrant, false);

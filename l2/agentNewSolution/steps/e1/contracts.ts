@@ -19,6 +19,34 @@ export type Ns4DatabaseChangePolicy = 'new' | 'forbidden' | 'additiveControlled'
 export type Ns4ActorKind = 'internal' | 'external' | 'system';
 export type Ns4ActorOrigin = 'named' | 'inferred';
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_06_ns4_module_v4: string[] = [
+  'module.title',
+  'module.purpose',
+  'designContext.initialPrompt',
+  'designContext.clarification.mainActors',
+  'designContext.clarification.mainGoal',
+  'designContext.clarification.boundaries',
+  'solutionStrategy.rationale',
+  'solutionStrategy.modernization.sourceSystemName',
+  'solutionStrategy.modernization.sourceTechnology',
+  'solutionStrategy.modernization.notes',
+  'businessScope.mainGoal',
+  'businessScope.actors[].title',
+  'businessScope.actors[].expectedOutcome',
+  'businessScope.expectedOutcomes[].title',
+  'businessScope.expectedOutcomes[].description',
+  'businessScope.inScope[]',
+  'businessScope.outOfScope[]',
+  'localization.primaryMarket',
+  'declaredConstraints.mandatoryIntegrations[].title',
+  'declaredConstraints.mandatoryIntegrations[].reason',
+  'declaredConstraints.regulatoryNotes',
+  'declaredConstraints.criticalNotes',
+  'presentation.stepTitles.*',
+  'presentation.phrases.*',
+];
+
 /** E1 business actor. `origin` is `named` only when the request itself names the profile. */
 export interface Ns4BusinessActor {
   actorId: string;
