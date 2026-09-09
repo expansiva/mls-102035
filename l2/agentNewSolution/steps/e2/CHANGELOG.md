@@ -1,5 +1,9 @@
 # E2 changelog
 
+- 2026-09-09: Inferred external actors without an exclusive step are dropped from the draft
+  (`dropInferredActor<Actor>`). Exclusive inferred externals are recorded (`keepInferredActor`).
+  `kind: system` is kept (`systemActorKept`). The persona paragraph left the prompt.
+
 - 2026-09-09: An `act` step may list `affects[]` — other business objects it also changes.
   Demotion (`captureOnlyJourneys`) unions `entity` with `affects`, so a close-tab step that
   also frees a table is not capture-only. Prompt: one sentence; do not encode the second

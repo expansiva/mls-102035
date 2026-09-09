@@ -20,6 +20,12 @@ async function sources(): Promise<Ns4E10Sources> {
     journeys: run44.journeys, access: run44.access, ontology: run44.ontology,
     useCases: run44.useCases, workflows: run44.workflows,
   });
+  // run44's subcontractor is an E3 profile with no E8 workspace. n12 fails that at E8;
+  // this file measures E10, so drop the orphan profile from the access matrix used here.
+  input.access.profiles = input.access.profiles.filter((profile: { profileId: string }) => profile.profileId !== 'subcontractor');
+  if (Array.isArray(input.access.grants)) {
+    input.access.grants = input.access.grants.filter((grant: { profileRef?: string }) => grant.profileRef !== 'subcontractor');
+  }
   const model = deriveNs4E8Model(input);
   const saved = await compileNs4ClassicL4(model, input.ontology);
   const journeyIndex: any = {

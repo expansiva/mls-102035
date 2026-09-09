@@ -111,6 +111,27 @@ function e1ReviewBodyWithLanguages(productLanguages: string[]) {
   };
 }
 
+test('actor origin is named only when declared; omitted origin becomes inferred', () => {
+  const named = normalizeNs4E1Review({
+    ...e1ReviewBodyWithLanguages(['pt-BR']),
+    businessScope: {
+      mainGoal: 'Gerenciar tarefas da equipe.',
+      actors: [{ actorId: 'member', title: 'Membro da equipe', kind: 'internal', origin: 'named', expectedOutcome: 'Concluir tarefas.' }],
+      expectedOutcomes: [{ outcomeId: 'tasksDone', title: 'Tarefas concluidas', description: 'O quadro reflete o progresso.' }],
+      inScope: ['tarefas'], outOfScope: [],
+    },
+  });
+  assert.equal(named.businessScope.actors[0].origin, 'named');
+  assert.equal(validateNs4E1Review(named).ok, true);
+
+  const omitted = normalizeNs4E1Review(e1ReviewBodyWithLanguages(['pt-BR']));
+  assert.equal(omitted.businessScope.actors[0].origin, 'inferred');
+  assert.equal(validateNs4E1Review(omitted).ok, true);
+
+  const artifact = buildNs4ModuleArtifact('petShop', clarification, 'human', '2026-08-04T10:00:00.000Z');
+  assert.equal(artifact.businessScope.actors[0].origin, 'named');
+});
+
 test('languages the user never asked for are discarded with a visible warning — run02 102047', () => {
   // The LLM invented en/es for a pt-BR-only request: empty clarification answer, prompt without any
   // language mention. The l4 must carry exactly [userLanguage] and the discard must never be silent.

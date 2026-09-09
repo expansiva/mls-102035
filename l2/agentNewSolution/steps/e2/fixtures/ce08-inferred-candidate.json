@@ -1,0 +1,53 @@
+{
+  "actors": [
+    { "actorId": "recruiter", "title": "Recruiter", "kind": "internal", "origin": "named", "expectedOutcome": "Fill the role." },
+    { "actorId": "hiringManager", "title": "Hiring manager", "kind": "internal", "origin": "named", "expectedOutcome": "Decide a hire." },
+    { "actorId": "candidate", "title": "Candidate", "kind": "external", "origin": "inferred", "expectedOutcome": "Apply." }
+  ],
+  "review": {
+    "planId": "e2-review",
+    "moduleName": "hiringPipeline",
+    "userLanguage": "en",
+    "title": "Review journeys",
+    "reviewRound": 1,
+    "journeys": [
+      {
+        "journeyId": "screenApplication",
+        "policyDecisions": [],
+        "business": {
+          "actorRef": "recruiter",
+          "title": "Screen an application",
+          "goal": "Advance a candidate.",
+          "entry": { "mode": "coldStart" },
+          "steps": [
+            { "stepId": "locateApplication", "kind": "locate", "entity": "Application", "title": "Locate the application.", "description": "The application is selected.", "featureRefs": ["screening"] },
+            { "stepId": "advanceApplication", "kind": "act", "entity": "Application", "title": "Advance the application.", "description": "The application moved.", "featureRefs": ["screening"] }
+          ],
+          "outcome": { "statement": "The recruiter advanced an application.", "evidence": ["Status changed."] },
+          "useRules": []
+        }
+      },
+      {
+        "journeyId": "applyForRole",
+        "policyDecisions": [],
+        "business": {
+          "actorRef": "candidate",
+          "title": "Apply for a role",
+          "goal": "Submit an application.",
+          "entry": { "mode": "coldStart" },
+          "steps": [
+            { "stepId": "locateApplication", "kind": "locate", "entity": "Application", "title": "Locate the application.", "description": "The application is selected.", "featureRefs": ["apply"] },
+            { "stepId": "submitApplication", "kind": "act", "entity": "Application", "title": "Submit the application.", "description": "The application is recorded.", "featureRefs": ["apply"] }
+          ],
+          "outcome": { "statement": "The candidate applied.", "evidence": ["The application exists."] },
+          "useRules": []
+        }
+      }
+    ],
+    "features": [
+      { "featureId": "screening", "title": "Screening", "priority": "now", "journeyStepRefs": ["screenApplication.locateApplication", "screenApplication.advanceApplication"] },
+      { "featureId": "apply", "title": "Apply", "priority": "now", "journeyStepRefs": ["applyForRole.locateApplication", "applyForRole.submitApplication"] }
+    ],
+    "systemDecisions": []
+  }
+}

@@ -35,6 +35,12 @@ import type {
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
 export type {
+  Ns4ActorKind,
+  Ns4ActorOrigin,
+  Ns4BusinessActor,
+} from '/_102035_/l2/agentNewSolution/steps/e1/contracts.js';
+
+export type {
   Ns4ApprovedBy,
   Ns4CompletedStepId,
   Ns4E1Status,

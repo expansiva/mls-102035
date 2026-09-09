@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-09 — profile without workspace is a gate error
+
+`NS4_E8_PROFILE_WITHOUT_WORKSPACE` fails when an E3 profile is absent from every workspace
+`profileRefs`. Distinct from `NS4_E8_PROFILE_WITHOUT_LANDING` (profile has a workspace, no landing).
+
 ## 2026-09-09 — landing is exclusive workspace, else first journey, else rank
 
 `buildLandings` no longer sends every profile to the first non-journey by `tierRank`. Per profile:

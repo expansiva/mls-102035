@@ -39,7 +39,7 @@ export class WidgetNs4Intake102035 extends StateLitElement implements Ns4Clarifi
     if (path === 'purpose') return this.patch({ module: { ...this.value.module, purpose: value }, businessScope: { ...this.value.businessScope, mainGoal: value } });
     if (path === 'languages') return this.patch({ localization: { ...this.value.localization, productLanguages: split(value) } });
     if (path === 'defaultLanguage') return this.patch({ localization: { ...this.value.localization, defaultLanguage: value } });
-    if (path === 'actors') return this.patch({ businessScope: { ...this.value.businessScope, actors: split(value).map((title, index) => ({ actorId: `actor${index + 1}`, title, kind: 'internal', expectedOutcome: '' })) } });
+    if (path === 'actors') return this.patch({ businessScope: { ...this.value.businessScope, actors: split(value).map((title, index) => ({ actorId: `actor${index + 1}`, title, kind: 'internal', origin: 'named', expectedOutcome: '' })) } });
     if (path === 'outcomes') return this.patch({ businessScope: { ...this.value.businessScope, expectedOutcomes: split(value).map((title, index) => ({ outcomeId: `outcome${index + 1}`, title, description: title })) } });
     if (path === 'inScope' || path === 'outOfScope') return this.patch({ businessScope: { ...this.value.businessScope, [path]: split(value) } });
     if (path === 'integrations') return this.patch({ declaredConstraints: { ...this.value.declaredConstraints, mandatoryIntegrations: split(value).map((title, index) => ({ dependencyId: `dependency${index + 1}`, title, kind: 'unknown', reason: title })) } });

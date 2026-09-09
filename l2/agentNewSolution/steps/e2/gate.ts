@@ -1,11 +1,21 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution/steps/e2/gate.ts" enhancement="_blank"/>
 
+import type { Ns4BusinessActor } from '/_102035_/l2/agentNewSolution/steps/e1/contracts.js';
+import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+import {
+  resolveNs4Findings,
+  type Ns4ResolutionFinding,
+} from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import {
   Ns4E2Review,
   Ns4JourneyProposal,
   Ns4PolicyDecisionSelection,
 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import { isNs4E2DemotionDecisionId } from '/_102035_/l2/agentNewSolution/steps/e2/coverageSignals.js';
+
+export const NS4_E2_DROP_INFERRED_ACTOR_CHOICE = 'drop' as const;
+export const NS4_E2_KEEP_INFERRED_ACTOR_CHOICE = 'keep' as const;
 
 export const NS4_E2_DECIDE_ON_READ_MODEL = 'NS4_E2_DECIDE_ON_READ_MODEL' as const;
 
@@ -269,6 +279,149 @@ function checkBusinessText(value: string, path: string, add: AddIssue): void {
   if (RAW_TECHNICAL_ID_PATTERN.test(value)) {
     add('NS4_E2_RAW_TECHNICAL_ID', path, 'Business-facing journey text must name the business record, not ask for a technical id.');
   }
+}
+
+export function ns4E2DropInferredActorDecisionId(actorId: string): string {
+  return `dropInferredActor${pascalActor(actorId)}`;
+}
+
+export function ns4E2KeepInferredActorDecisionId(actorId: string): string {
+  return `keepInferredActor${pascalActor(actorId)}`;
+}
+
+export function ns4E2SystemActorKeptDecisionId(actorId: string): string {
+  return `systemActorKept${pascalActor(actorId)}`;
+}
+
+export function isNs4E2DropInferredActorDecisionId(decisionId: string): boolean {
+  return /^dropInferredActor[A-Z][A-Za-z0-9]*$/.test(decisionId);
+}
+
+export function ns4E2DroppedInferredActorIds(review: Pick<Ns4E2Review, 'systemDecisions'>): string[] {
+  return review.systemDecisions
+    .filter(decision => decision.chosen === NS4_E2_DROP_INFERRED_ACTOR_CHOICE && isNs4E2DropInferredActorDecisionId(decision.decisionId))
+    .map(decision => unpascalActor(decision.decisionId.slice('dropInferredActor'.length)));
+}
+
+/**
+ * Inferred external actor whose steps are all also performed by another actor (or who has no
+ * steps) is a persona: drop their journeys. kind:system is an integration point, never a persona.
+ * origin is the only structured signal — no regex over titles.
+ */
+export function applyNs4E2InferredActorDecisions(
+  review: Ns4E2Review,
+  actors: readonly Ns4BusinessActor[],
+  presentation?: Ns4Presentation,
+): Ns4E2Review {
+  if (!actors.length) return review;
+  const known = new Set(review.systemDecisions.map(decision => decision.decisionId));
+  const findings: Array<Ns4ResolutionFinding<Ns4E2Review>> = [];
+  for (const actor of actors) {
+    if (actor.kind === 'system') {
+      const decisionId = ns4E2SystemActorKeptDecisionId(actor.actorId);
+      if (known.has(decisionId)) continue;
+      findings.push({
+        classification: 'B',
+        decisionId,
+        findingRef: decisionId,
+        stage: 'e2',
+        question: ns4Text(presentation, 'actor.system.question', { actor: actor.title || actor.actorId }),
+        defaultChoice: NS4_E2_KEEP_INFERRED_ACTOR_CHOICE,
+        alternatives: [NS4_E2_DROP_INFERRED_ACTOR_CHOICE],
+        changeHint: ns4Text(presentation, 'actor.system.changeHint', { actor: actor.title || actor.actorId }),
+      });
+      continue;
+    }
+    if (actor.kind !== 'external' || actor.origin !== 'inferred') continue;
+    const exclusive = actorHasExclusiveSteps(review, actor.actorId);
+    if (exclusive) {
+      const decisionId = ns4E2KeepInferredActorDecisionId(actor.actorId);
+      if (known.has(decisionId)) continue;
+      findings.push({
+        classification: 'B',
+        decisionId,
+        findingRef: decisionId,
+        stage: 'e2',
+        question: ns4Text(presentation, 'actor.keep.question', { actor: actor.title || actor.actorId }),
+        defaultChoice: NS4_E2_KEEP_INFERRED_ACTOR_CHOICE,
+        alternatives: [NS4_E2_DROP_INFERRED_ACTOR_CHOICE],
+        changeHint: ns4Text(presentation, 'actor.keep.changeHint', { actor: actor.title || actor.actorId }),
+      });
+      continue;
+    }
+    const decisionId = ns4E2DropInferredActorDecisionId(actor.actorId);
+    if (known.has(decisionId)) continue;
+    const actorId = actor.actorId;
+    findings.push({
+      classification: 'C',
+      decisionId,
+      findingRef: decisionId,
+      stage: 'e2',
+      question: ns4Text(presentation, 'actor.drop.question', { actor: actor.title || actor.actorId }),
+      deterministicChoice: NS4_E2_DROP_INFERRED_ACTOR_CHOICE,
+      alternatives: [NS4_E2_KEEP_INFERRED_ACTOR_CHOICE],
+      changeHint: ns4Text(presentation, 'actor.drop.changeHint', { actor: actor.title || actor.actorId }),
+      apply: artifact => dropActorJourneys(artifact, actorId),
+    });
+  }
+  if (!findings.length) return review;
+  const resolution = resolveNs4Findings(review, findings);
+  const byId = new Map(review.systemDecisions.map(decision => [decision.decisionId, decision]));
+  resolution.systemDecisions.forEach(decision => byId.set(decision.decisionId, decision));
+  return { ...resolution.artifact, systemDecisions: [...byId.values()] };
+}
+
+function actorHasExclusiveSteps(review: Ns4E2Review, actorId: string): boolean {
+  const own = stepFingerprintsForActor(review, actorId);
+  if (!own.size) return false;
+  const others = new Set<string>();
+  review.journeys.forEach(journey => {
+    if (journey.business.actorRef === actorId) return;
+    journey.business.steps.forEach(step => {
+      const fingerprint = stepFingerprint(step.kind, step.entity);
+      if (fingerprint) others.add(fingerprint);
+    });
+  });
+  for (const fingerprint of own) if (!others.has(fingerprint)) return true;
+  return false;
+}
+
+function stepFingerprintsForActor(review: Ns4E2Review, actorId: string): Set<string> {
+  const fingerprints = new Set<string>();
+  review.journeys.forEach(journey => {
+    if (journey.business.actorRef !== actorId) return;
+    journey.business.steps.forEach(step => {
+      const fingerprint = stepFingerprint(step.kind, step.entity);
+      if (fingerprint) fingerprints.add(fingerprint);
+    });
+  });
+  return fingerprints;
+}
+
+function stepFingerprint(kind: string, entity: string): string {
+  return kind && entity ? `${kind}:${entity}` : '';
+}
+
+function dropActorJourneys(review: Ns4E2Review, actorId: string): Ns4E2Review {
+  const dropped = new Set(
+    review.journeys.filter(journey => journey.business.actorRef === actorId).map(journey => journey.journeyId),
+  );
+  const journeys = review.journeys.filter(journey => journey.business.actorRef !== actorId);
+  const features = review.features
+    .map(feature => ({
+      ...feature,
+      journeyStepRefs: feature.journeyStepRefs.filter(ref => !dropped.has(ref.split('.')[0])),
+    }))
+    .filter(feature => feature.priority !== 'now' || feature.journeyStepRefs.length > 0);
+  return { ...review, journeys, features };
+}
+
+function pascalActor(actorId: string): string {
+  return `${actorId.charAt(0).toUpperCase()}${actorId.slice(1)}`;
+}
+
+function unpascalActor(value: string): string {
+  return `${value.charAt(0).toLowerCase()}${value.slice(1)}`;
 }
 
 function checkEarlierJourneyRef(

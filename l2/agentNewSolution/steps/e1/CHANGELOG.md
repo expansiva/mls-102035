@@ -1,5 +1,9 @@
 # E1 changelog
 
+- 2026-09-09: `actors[].origin` is `named | inferred`. The prompt no longer restates the persona
+  rule; `origin` is `named` only for actors the request itself names as a profile. The E1 gate
+  requires the field. Reader: E2 gate (drop inferred external without exclusive steps).
+
 - 2026-09-08: The human prompt receives sibling modules and actors from
   `l4/organization/registry.defs.ts` as context. No new E1 rule.
 

@@ -29,6 +29,14 @@ recorded as `NS4_E2_DECIDE_ON_READ_MODEL` (warning + `demoteDecideToRule` system
 signal fails the gate. E4 is the stage that knows whether that entity is `kind: projection`; E4 does
 not yet record that confirmation (pendency, not implemented here).
 
+After normalize, E2 reads E1 `actors[].origin` and mechanically drops an inferred `kind: external`
+actor whose steps are all also performed by another actor, or who has no steps
+(`systemDecision dropInferredActor<Actor>`, chosen `drop`, alternative `keep`). Journeys and
+now-features of that actor leave the draft. An inferred external actor with an exclusive step stays
+and is recorded as `keepInferredActor<Actor>`. A `kind: system` actor is never a persona
+(`systemActorKept<Actor>`). Dropped actor ids are stripped from the compact E1 the coverage judge
+sees and from `module.defs.ts` on E2 approval.
+
 The proposal LLM returns an internal `flexible` payload rather than a clarification. This prevents an
 ungated candidate from briefly opening the journey widget while the deterministic gate, repair and
 coverage judge are still running. Guided review means that every approved checkpoint is shown; it

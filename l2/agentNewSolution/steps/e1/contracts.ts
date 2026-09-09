@@ -16,6 +16,17 @@ import {
 export type Ns4ReviewPolicy = 'guided' | 'smart' | 'automatic';
 export type Ns4SolutionStrategy = 'newSolution' | 'modernizePreserveDatabase' | 'modernizeEvolveDatabase' | 'replaceAndMigrateData';
 export type Ns4DatabaseChangePolicy = 'new' | 'forbidden' | 'additiveControlled' | 'replacement';
+export type Ns4ActorKind = 'internal' | 'external' | 'system';
+export type Ns4ActorOrigin = 'named' | 'inferred';
+
+/** E1 business actor. `origin` is `named` only when the request itself names the profile. */
+export interface Ns4BusinessActor {
+  actorId: string;
+  title: string;
+  kind: Ns4ActorKind;
+  origin: Ns4ActorOrigin;
+  expectedOutcome: string;
+}
 
 export interface Ns4E1Review {
   planId: 'e1-review';
@@ -31,7 +42,7 @@ export interface Ns4E1Review {
   };
   businessScope: {
     mainGoal: string;
-    actors: Array<{ actorId: string; title: string; kind: 'internal' | 'external' | 'system'; expectedOutcome: string }>;
+    actors: Ns4BusinessActor[];
     expectedOutcomes: Array<{ outcomeId: string; title: string; description: string }>;
     inScope: string[];
     outOfScope: string[];
@@ -114,10 +125,22 @@ export function normalizeNs4E1Review(value: unknown, fallback: {
   const mode: Ns4SolutionStrategy = requestedMode === 'modernizePreserveDatabase' || requestedMode === 'modernizeEvolveDatabase' || requestedMode === 'replaceAndMigrateData' ? requestedMode : 'newSolution';
   const actors = list(scope.actors).map((item, index) => {
     const actor = record(item);
-    return { actorId: stableId(text(actor.actorId) || text(actor.title), `actor${index + 1}`), title: text(actor.title), kind: actor.kind === 'external' || actor.kind === 'system' ? actor.kind : 'internal' as const, expectedOutcome: text(actor.expectedOutcome) };
+    return {
+      actorId: stableId(text(actor.actorId) || text(actor.title), `actor${index + 1}`),
+      title: text(actor.title),
+      kind: actor.kind === 'external' || actor.kind === 'system' ? actor.kind : 'internal' as const,
+      origin: actor.origin === 'named' ? 'named' as const : 'inferred' as const,
+      expectedOutcome: text(actor.expectedOutcome),
+    };
   }).filter(actor => actor.title);
   const legacyActors = text(legacy.mainActors?.answer) || fallback.mainActors || '';
-  const safeActors = actors.length ? actors : legacyActors ? [{ actorId: 'primaryActor', title: legacyActors, kind: 'internal' as const, expectedOutcome: text(scope.mainGoal) || text(legacy.mainGoal?.answer) || fallback.mainGoal || '' }] : [];
+  const safeActors = actors.length ? actors : legacyActors ? [{
+    actorId: 'primaryActor',
+    title: legacyActors,
+    kind: 'internal' as const,
+    origin: 'named' as const,
+    expectedOutcome: text(scope.mainGoal) || text(legacy.mainGoal?.answer) || fallback.mainGoal || '',
+  }] : [];
   const outcomes = list(scope.expectedOutcomes).map((item, index) => {
     const outcome = record(item);
     return { outcomeId: stableId(text(outcome.outcomeId) || text(outcome.title), `outcome${index + 1}`), title: text(outcome.title), description: text(outcome.description) };
@@ -184,6 +207,9 @@ export function validateNs4E1Review(review: Ns4E1Review): Ns4E1ReviewGate {
   review.businessScope.actors.forEach((actor, index) => {
     if (!actor.title.trim()) add('NS4_E1_ACTOR_TITLE', 'Every actor needs a friendly title.', `businessScope.actors[${index}].title`);
     if (!actor.expectedOutcome.trim()) add('NS4_E1_ACTOR_OUTCOME', 'Every actor needs an expected outcome.', `businessScope.actors[${index}].expectedOutcome`);
+    if (actor.origin !== 'named' && actor.origin !== 'inferred') {
+      add('NS4_E1_ACTOR_ORIGIN', 'Every actor declares origin named or inferred.', `businessScope.actors[${index}].origin`);
+    }
   });
   review.businessScope.expectedOutcomes.forEach((outcome, index) => {
     if (!outcome.title.trim()) add('NS4_E1_OUTCOME_TITLE', 'Every outcome needs a title.', `businessScope.expectedOutcomes[${index}].title`);

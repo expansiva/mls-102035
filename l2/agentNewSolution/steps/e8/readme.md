@@ -24,7 +24,8 @@ reading `landingIntent`: the exclusive non-journey whose `profileRefs` is exactl
 profile's first journey (`hostedStepRefs`, journeys/index order); else the previous rank fallback
 (first non-journey that includes the profile). `landings[].reason` records which step fired
 (`exclusive | firstJourney | rank`). A profile that has a workspace and no landing fails
-`NS4_E8_PROFILE_WITHOUT_LANDING`.
+`NS4_E8_PROFILE_WITHOUT_LANDING`. A profile that appears in no workspace `profileRefs` fails
+`NS4_E8_PROFILE_WITHOUT_WORKSPACE`.
 
 A journey of the same actor on an entity the catalogue already shows is
 hosted on that catalogue (`hostedStepRefs`) instead of becoming a second page. A hub is emitted only

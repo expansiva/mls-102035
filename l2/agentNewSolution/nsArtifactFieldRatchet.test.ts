@@ -13,6 +13,7 @@ interface KeyEntry { reader: string; since: string }
 const AGENT_ROOT = fileURLToPath(new URL('.', import.meta.url));
 
 const CONTRACTS: Record<string, { file: string; name: string }> = {
+  Ns4BusinessActor: { file: 'steps/e1/contracts.ts', name: 'Ns4BusinessActor' },
   Ns4JourneyStep: { file: 'steps/e2/contracts.ts', name: 'Ns4JourneyStep' },
   Ns4Rule: { file: 'steps/e5/contracts.ts', name: 'Ns4RuleDefinition' },
   Ns4AccessGrant: { file: 'steps/e3/contracts.ts', name: 'Ns4AccessGrant' },
@@ -21,6 +22,13 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
+  Ns4BusinessActor: {
+    actorId: { reader: 'steps/e1/gate.ts', since: '2026-09-08' },
+    title: { reader: 'steps/e1/gate.ts', since: '2026-09-08' },
+    kind: { reader: 'steps/e1/gate.ts', since: '2026-09-08' },
+    origin: { reader: 'steps/e2/gate.ts', since: '2026-09-09' },
+    expectedOutcome: { reader: 'steps/e1/gate.ts', since: '2026-09-08' },
+  },
   Ns4JourneyStep: {
     stepId: { reader: 'helpers/ns4Context.ts', since: '2026-09-08' },
     kind: { reader: 'helpers/ns4Context.ts', since: '2026-09-08' },
@@ -137,6 +145,16 @@ test('n04 keys mdmSubtype and displayField are in the entity ratchet with E4 gat
   assert.equal(KEYS.Ns4OntologyEntity.mdmSubtype.since, '2026-09-08');
   assert.doesNotMatch(readFileSync(new URL('nsArtifactFieldRatchet.test.ts', import.meta.url), 'utf8'), /\/todo\//);
   assert.doesNotMatch(AGENT_ROOT, /[À-ÿ]/);
+});
+
+test('n12 origin is on the business actor ratchet with the E2 gate reader', () => {
+  assert.equal(KEYS.Ns4BusinessActor.origin.reader, 'steps/e2/gate.ts');
+  assert.equal(KEYS.Ns4BusinessActor.origin.since, '2026-09-09');
+  const actor = keysOf(interfaceBody(
+    readFileSync(new URL('steps/e1/contracts.ts', import.meta.url), 'utf8'),
+    'Ns4BusinessActor',
+  ));
+  assert.ok(actor.includes('origin'));
 });
 
 test('n10 affects is on the journey step ratchet with coverage and E7 gate readers', () => {

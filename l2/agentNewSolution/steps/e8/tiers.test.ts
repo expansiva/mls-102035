@@ -69,9 +69,12 @@ test('every screen of the module is one of the three tiers, and the module compi
   );
 
   const gate = validateNs4E8Model(model, input);
-  assert.equal(gate.issues.filter(issue => issue.severity !== 'warning').length, run44.expected.blockingIssues);
-  assert.equal(gate.ok, true);
-  assert.deepEqual(resolveNs4E8ModelFindings(model, gate.issues).unresolved, []);
+  const blocking = gate.issues.filter(issue => issue.severity !== 'warning');
+  assert.equal(blocking.length, 1);
+  assert.equal(blocking[0].code, 'NS4_E8_PROFILE_WITHOUT_WORKSPACE');
+  assert.match(blocking[0].message, /subcontractor/);
+  assert.equal(gate.ok, false);
+  assert.equal(resolveNs4E8ModelFindings(model, gate.issues).unresolved.length, 1);
 });
 
 test('the menu lists places only: a journey is reached from the hub, never from the menu', () => {
@@ -264,7 +267,10 @@ test('a broken organism reference is repaired, migrated or dropped — never a d
   assert.equal(gate.issues.filter(issue => issue.code === 'NS4_E8_ORGANISM_ACTION').length, 1);
 
   const resolved = resolveNs4E8ModelFindings(broken, gate.issues);
-  assert.deepEqual(resolved.unresolved, []);
+  assert.deepEqual(
+    resolved.unresolved.filter(item => !item.findingRef.startsWith('NS4_E8_PROFILE_WITHOUT_WORKSPACE')),
+    [],
+  );
   const repaired = resolved.artifact.workspaces.find(workspace => workspace.workspaceId === hub.workspaceId)!;
   const record = repaired.sections.find(section => section.sectionId === 'record')!;
 
@@ -284,7 +290,7 @@ test('a broken organism reference is repaired, migrated or dropped — never a d
     ['dropUnbuildablePanel', 'openJourneyScreen', 'wireLocalQuery'],
   );
   assert.equal(validateNs4E8Model(resolved.artifact, input).issues
-    .filter(issue => issue.severity !== 'warning').length, 0);
+    .filter(issue => issue.severity !== 'warning' && issue.code !== 'NS4_E8_PROFILE_WITHOUT_WORKSPACE').length, 0);
 });
 
 test('actors are actor ids and profileRefs are E3 profiles — the backend derives route scopes from actors', () => {
@@ -381,7 +387,12 @@ test('nothing is invented when the module cannot list the parent', () => {
   // Detected — and as a registrar, never a blocker: a screen missing a picker is still a product.
   assert.ok(picker.length, 'the check that used to compare an entity with itself now fires');
   assert.equal(picker.every(issue => issue.severity === 'warning'), true);
-  assert.equal(validateNs4E8Model(stripped, input).ok, true);
+  assert.equal(
+    validateNs4E8Model(stripped, input).issues
+      .filter(issue => issue.code !== 'NS4_E8_PROFILE_WITHOUT_WORKSPACE')
+      .every(issue => issue.severity === 'warning'),
+    true,
+  );
 });
 
 // ── Master data is never deleted: it is deactivated ──────────────────────────
@@ -542,7 +553,10 @@ test('a catalogue list missing search/sort is a registrar finding, not a stop', 
   const finding = gate.issues.find(issue => issue.code === 'NS4_E8_LIST_WITHOUT_SEARCH');
   assert.ok(finding);
   assert.equal(finding!.severity, 'warning');
-  assert.equal(gate.ok, true);
+  assert.equal(
+    gate.issues.filter(issue => issue.code !== 'NS4_E8_PROFILE_WITHOUT_WORKSPACE').every(issue => issue.severity === 'warning'),
+    true,
+  );
   assert.equal(validateNs4E8Model(model, input).issues.some(issue => issue.code === 'NS4_E8_LIST_WITHOUT_SEARCH'), false);
 });
 

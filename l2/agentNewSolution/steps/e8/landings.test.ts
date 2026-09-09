@@ -169,7 +169,7 @@ test('a profile with a workspace and no landing is NS4_E8_PROFILE_WITHOUT_LANDIN
   assert.equal(validateNs4E8Model(model, sources).issues.some(issue => issue.code === 'NS4_E8_PROFILE_WITHOUT_LANDING'), false);
 });
 
-test('a profile with no workspace is not this gate (n12 owns that case)', () => {
+test('a profile with no workspace is NS4_E8_PROFILE_WITHOUT_WORKSPACE, not WITHOUT_LANDING', () => {
   const todo = JSON.parse(readFileSync(new URL('fixtures/todo-e8-sources.json', HERE), 'utf8'));
   const sources = {
     journeys: todo.journeys,
@@ -185,6 +185,11 @@ test('a profile with no workspace is not this gate (n12 owns that case)', () => 
   const model = deriveNs4E8Model(sources);
   const gate = validateNs4E8Model(model, sources);
   assert.equal(gate.issues.some(issue => issue.code === 'NS4_E8_PROFILE_WITHOUT_LANDING' && issue.message.includes('ghost')), false);
+  const hit = gate.issues.filter(issue => issue.code === 'NS4_E8_PROFILE_WITHOUT_WORKSPACE');
+  assert.equal(hit.length, 1, gate.issues.map(issue => issue.code).join(','));
+  assert.match(hit[0].message, /ghost/);
+  assert.notEqual(hit[0].severity, 'warning');
+  assert.equal(gate.ok, false);
 });
 
 const ce05 = JSON.parse(readFileSync(new URL('../e4b/fixtures/ce05-like.json', HERE), 'utf8'));

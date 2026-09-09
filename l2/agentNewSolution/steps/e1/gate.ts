@@ -66,6 +66,11 @@ export function validateNs4E1Module(artifact: Ns4ModuleArtifact): Ns4E1GateResul
   }
   if (!artifact.businessScope.mainGoal.trim()) error(issues, 'scope.goal.missing', 'Main business goal is required.', 'businessScope.mainGoal');
   if (!artifact.businessScope.actors.length) error(issues, 'scope.actors.missing', 'At least one business actor is required.', 'businessScope.actors');
+  artifact.businessScope.actors.forEach((actor, index) => {
+    if (actor.origin !== 'named' && actor.origin !== 'inferred') {
+      error(issues, 'scope.actor.origin', 'Every actor declares origin named or inferred.', `businessScope.actors[${index}].origin`);
+    }
+  });
   if (!artifact.businessScope.expectedOutcomes.length) error(issues, 'scope.outcomes.missing', 'At least one expected outcome is required.', 'businessScope.expectedOutcomes');
   if (!artifact.localization.productLanguages.includes(artifact.localization.defaultLanguage)) {
     error(issues, 'localization.default.invalid', 'Default language must belong to productLanguages.', 'localization.defaultLanguage');

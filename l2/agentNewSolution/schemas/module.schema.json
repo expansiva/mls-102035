@@ -97,8 +97,8 @@
       "properties": {
         "mainGoal": { "type": "string", "minLength": 1 },
         "actors": { "type": "array", "minItems": 1, "items": {
-          "type": "object", "additionalProperties": false, "required": ["actorId", "title", "kind", "expectedOutcome"],
-          "properties": { "actorId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }, "title": { "type": "string", "minLength": 1 }, "kind": { "type": "string", "enum": ["internal", "external", "system"] }, "expectedOutcome": { "type": "string", "minLength": 1 } }
+          "type": "object", "additionalProperties": false, "required": ["actorId", "title", "kind", "origin", "expectedOutcome"],
+          "properties": { "actorId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }, "title": { "type": "string", "minLength": 1 }, "kind": { "type": "string", "enum": ["internal", "external", "system"] }, "origin": { "type": "string", "enum": ["named", "inferred"] }, "expectedOutcome": { "type": "string", "minLength": 1 } } }
         } },
         "expectedOutcomes": { "type": "array", "minItems": 1, "items": {
           "type": "object", "additionalProperties": false, "required": ["outcomeId", "title", "description"],

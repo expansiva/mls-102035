@@ -128,6 +128,7 @@ export interface Ns4ModuleArtifact {
       actorId: string;
       title: string;
       kind: 'internal' | 'external' | 'system';
+      origin: 'named' | 'inferred';
       expectedOutcome: string;
     }>;
     expectedOutcomes: Array<{ outcomeId: string; title: string; description: string }>;
@@ -1092,6 +1093,7 @@ export function buildNs4ModuleArtifact(
           actorId: 'primaryActor',
           title: clarification.questions.mainActors.answer.trim(),
           kind: 'internal',
+          origin: 'named',
           expectedOutcome: mainGoal,
         }]
         : [],

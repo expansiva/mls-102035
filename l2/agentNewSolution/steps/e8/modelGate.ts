@@ -359,8 +359,15 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
   });
   const landed = new Set(model.landings.map(landing => landing.profileRef));
   sources.access.profiles.forEach(profile => {
+    const hosted = model.workspaces.some(workspace => workspace.profileRefs.includes(profile.profileId));
+    if (!hosted) {
+      if (model.workspaces.length) {
+        add('NS4_E8_PROFILE_WITHOUT_WORKSPACE', 'workspaces',
+          `E3 profile ${profile.profileId} does not appear in any workspace profileRefs.`);
+      }
+      return;
+    }
     if (landed.has(profile.profileId)) return;
-    if (!model.workspaces.some(workspace => workspace.profileRefs.includes(profile.profileId))) return;
     add('NS4_E8_PROFILE_WITHOUT_LANDING', 'landings',
       `E3 profile ${profile.profileId} has a workspace but no landing.`);
   });
