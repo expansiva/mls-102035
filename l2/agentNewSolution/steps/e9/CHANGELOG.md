@@ -1,5 +1,10 @@
 # E9 changelog
 
+## 2026-09-09 — E9 uses ns4ResolvableFields; /Id$/ identity fallback removed
+
+`ontologyFieldOf` / `fieldTypeOf` / `resolveOutputRef` read the shared resolver. `identityFieldOf`
+is `storage.idField` with no `/Id$/` fallback.
+
 ## 2026-09-09 — mdm storage.idField is a resolvable outputRef
 
 `resolveOutputRef` and `fieldTypeOf` treat `${entityId}.${storage.idField}` as a synthetic

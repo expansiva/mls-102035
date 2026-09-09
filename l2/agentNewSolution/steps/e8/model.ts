@@ -12,6 +12,7 @@
  * (`hostedStepRefs`); it is not another kind of page.
  */
 
+import { ns4EntityIdField } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { buildNs4ParentIndex, ns4FkParentOf } from '/_102035_/l2/agentNewSolution/helpers/ns4ForeignKeys.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import type { Ns4E8Sources } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
@@ -67,9 +68,7 @@ export function isNs4OwnerHandleInput(
   const person = referenced?.party === 'person' ? referenced : owner.party === 'person' ? owner : undefined;
   if (!person) return false;
   if (person.entityId === ownerId) {
-    const idField = person.storage?.idField
-      || person.fields.find(field => /Id$/.test(field.fieldId))?.fieldId
-      || '';
+    const idField = ns4EntityIdField(person);
     if (fieldId !== idField) return false;
     // Pagination borrows the identity fieldRef (`page`/`pageSize`); that is not a handle.
     if (input.inputId && input.inputId !== fieldId) return false;

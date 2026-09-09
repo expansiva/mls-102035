@@ -55,6 +55,7 @@ import {
   writeNs4OntologyIndex,
   writeNs4Pipeline,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+import { ns4BindingPromptEntity } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import {
   normalizeNs4E3Review,
@@ -313,14 +314,7 @@ async function buildRelationshipBindingPrompt(
   const details = await readAllEntityDrafts(plan);
   const review = assembleNs4E4Review(plan, details);
   const prompt = await readNs4AgentText('steps/e4', 'promptRelationships');
-  const compactEntities = review.entities.map(entity => ({
-    entityId: entity.entityId,
-    kind: entity.kind,
-    storage: entity.storage,
-    fields: entity.fields.map(field => ({
-      fieldId: field.fieldId, type: field.type, required: field.required, description: field.description,
-    })),
-  }));
+  const compactEntities = review.entities.map(entity => ns4BindingPromptEntity(entity));
   const humanPrompt = [
     `## Required identity\nmoduleName=${review.moduleName}; reviewRound=${review.reviewRound}`,
     '## Frozen entities and their exact available fields', JSON.stringify(compactEntities),

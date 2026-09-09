@@ -9,6 +9,7 @@
 import { sha256Ns4, type Ns4PolicyDecision } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+import { ns4ResolvableFieldOf } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { ns4NeedsDisclosureProjection } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import { ns4OntologyWithDisclosure } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
 import {
@@ -128,8 +129,7 @@ function validateOutputShapeTypes(sources: Ns4E10Sources, add: Add): void {
       if (dot <= 0) continue;
       const entity = entities.get(ref.slice(0, dot));
       const fieldId = ref.slice(dot + 1);
-      const ont = entity?.fields.find(item => item.fieldId === fieldId)
-        ?? (entity?.storage?.idField === fieldId ? { type: 'uuid' as const } : undefined);
+      const ont = ns4ResolvableFieldOf(entity, fieldId);
       if (!ont) continue;
       if (ont.type === 'json' && field.type !== 'json') {
         add('errors', {

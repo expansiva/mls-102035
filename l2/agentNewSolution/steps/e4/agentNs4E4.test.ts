@@ -1662,6 +1662,7 @@ test('touched E4 gate and overview prompt stay English in comments and identifie
     { name: 'gate.ts', source: readFileSync(new URL('gate.ts', import.meta.url), 'utf8') },
     { name: 'prompt.md', source: readFileSync(new URL('prompt.md', import.meta.url), 'utf8') },
     { name: 'promptEntity.md', source: readFileSync(new URL('promptEntity.md', import.meta.url), 'utf8') },
+    { name: 'promptRelationships.md', source: readFileSync(new URL('promptRelationships.md', import.meta.url), 'utf8') },
     { name: 'contracts.ts', source: readFileSync(new URL('contracts.ts', import.meta.url), 'utf8') },
   ];
   for (const { name, source } of files) {

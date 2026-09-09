@@ -1,5 +1,10 @@
 # E7 changelog
 
+## 2026-09-09 — writes.fieldRefs resolve through ns4ResolvableFields
+
+`NS4_E7_WRITE_FIELD` accepts `storage.idField` of an mdm entity whose `fields[]` is namespace-only
+(or empty). A field that is neither declared nor the id is still rejected.
+
 ## 2026-09-09 — time states stay; actor/command without a transition is an error
 
 `reachedBy: time` never enters the compiled workflow and is never shrunk. Actor/command states

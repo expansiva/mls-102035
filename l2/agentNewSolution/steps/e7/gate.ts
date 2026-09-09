@@ -17,6 +17,7 @@ import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns
 import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 import { deriveNs4Contexts, type Ns4DerivedStepContexts } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
+import { ns4ResolvableFieldIds } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { collectNs4ReachableWorkflowStates } from '/_102035_/l2/agentNewSolution/steps/e7/reachability.js';
 
 export interface Ns4E7LifecycleRepairOption {
@@ -154,7 +155,7 @@ export function validateNs4UseCaseDraft(
     const entity = entities.get(write.entityId);
     if (!entity) add('NS4_E7_WRITE_ENTITY', 'writes', `Unknown write entity ${write.entityId}.`);
     else if (write.fieldRefs?.length) {
-      const known = new Set(entity.fields.map(field => field.fieldId));
+      const known = ns4ResolvableFieldIds(entity);
       for (const fieldId of write.fieldRefs) if (!known.has(fieldId)) {
         add('NS4_E7_WRITE_FIELD', 'writes', `Unknown field ${write.entityId}.${fieldId}.`);
       }

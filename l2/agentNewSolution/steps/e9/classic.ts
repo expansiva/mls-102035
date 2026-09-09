@@ -17,6 +17,7 @@ import {
   type Ns4AccessMatrixArtifact, type Ns4AccessMatrixArtifactV4, type Ns4AccessOperationAuthorityRef,
   type Ns4AccessUseCaseAuthorityRef,
 } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import { ns4EntityIdField, ns4ResolvableFieldOf } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import type { Ns4E4Review, Ns4OntologyEntity, Ns4OntologyField } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type {
   Ns4E8BffCall, Ns4E8Input, Ns4E8MdmSemantics, Ns4E8Model, Ns4E8ModelWorkspace, Ns4E8Operation,
@@ -263,19 +264,11 @@ function inputSourceOf(call: Ns4E8BffCall, inputId: string): string {
   return (call.inputSources || []).find(entry => entry.inputId === inputId)?.bffId || '';
 }
 
-/**
- * mdm fields[] is namespace-only (n04); storage.idField is the logical record id and is
- * resolvable. The engine stores it as UUID (mdmId). A miss that is not the idField stays a miss.
- */
 function ontologyFieldOf(
   ontology: Ns4E4Review, entityId: string, fieldId: string,
 ): Pick<Ns4OntologyField, 'type' | 'required'> | undefined {
   const entity = ontology.entities.find(item => item.entityId === entityId);
-  if (!entity) return undefined;
-  const field = entity.fields.find(item => item.fieldId === fieldId);
-  if (field) return field;
-  if (entity.storage?.idField === fieldId) return { type: 'uuid', required: true };
-  return undefined;
+  return ns4ResolvableFieldOf(entity, fieldId);
 }
 
 export function fieldTypeOf(ontology: Ns4E4Review, entityId: string, fieldId: string): Ns4OntologyField['type'] {
@@ -404,7 +397,7 @@ export function buildNs4ClassicSiteMap(model: Ns4E8Model, classic: Ns4ClassicWor
 }
 
 function identityFieldOf(entity: Ns4OntologyEntity | undefined): string {
-  return entity?.storage.idField || entity?.fields.find(field => /Id$/.test(field.fieldId))?.fieldId || '';
+  return ns4EntityIdField(entity);
 }
 
 function isPaginated(pagination: string | undefined, outputKind?: string): boolean {

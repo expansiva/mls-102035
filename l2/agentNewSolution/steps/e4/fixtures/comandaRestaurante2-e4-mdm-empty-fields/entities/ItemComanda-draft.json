@@ -1,0 +1,101 @@
+{
+  "planId": "e4-ontology-entity",
+  "moduleName": "comandaRestaurante2",
+  "reviewRound": 1,
+  "entityId": "ItemComanda",
+  "fields": [
+    {
+      "fieldId": "itemComandaId",
+      "title": "Identificador do item da comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador estável do lançamento de item na comanda.",
+      "constraints": [
+        {
+          "constraintId": "uniqueItemComandaId",
+          "kind": "unique",
+          "value": "true",
+          "description": "Cada lançamento de item da comanda possui um identificador único.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "comandaId",
+      "title": "Comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à comanda aberta selecionada que recebe este lançamento.",
+      "constraints": []
+    },
+    {
+      "fieldId": "itemCardapioId",
+      "title": "Item do cardápio",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao item do cardápio selecionado para o lançamento.",
+      "constraints": []
+    },
+    {
+      "fieldId": "itemNameSnapshot",
+      "title": "Nome do item",
+      "type": "string",
+      "required": true,
+      "description": "Nome do item do cardápio preservado no momento do lançamento para consulta do histórico.",
+      "constraints": []
+    },
+    {
+      "fieldId": "unitPriceSnapshot",
+      "title": "Preço unitário",
+      "type": "money",
+      "required": true,
+      "description": "Preço vigente do item do cardápio preservado no momento do lançamento.",
+      "constraints": []
+    },
+    {
+      "fieldId": "quantity",
+      "title": "Quantidade",
+      "type": "integer",
+      "required": true,
+      "description": "Quantidade consumida do item lançada na comanda.",
+      "constraints": [
+        {
+          "constraintId": "quantityMin",
+          "kind": "min",
+          "value": "1",
+          "description": "A quantidade lançada deve ser maior ou igual a um.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "observation",
+      "title": "Observação",
+      "type": "text",
+      "required": false,
+      "description": "Observação opcional informada para o item lançado.",
+      "constraints": []
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação",
+      "type": "string",
+      "required": true,
+      "description": "Situação do lançamento na comanda.",
+      "constraints": [
+        {
+          "constraintId": "itemComandaStatusEnum",
+          "kind": "enum",
+          "value": "[\"launched\",\"cancelled\"]",
+          "description": "Situações permitidas para o item da comanda.",
+          "source": "inferred"
+        }
+      ]
+    }
+  ],
+  "useRules": [
+    "comandaAbertaParaLancamentos",
+    "precoDoItemPreservadoNoLancamento",
+    "itemCancelavelEnquantoComandaAberta"
+  ]
+}

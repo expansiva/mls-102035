@@ -1,5 +1,10 @@
 # E10 changelog
 
+## 2026-09-09 — E10 uses ns4ResolvableFields
+
+`validateOutputShapeTypes` resolves fieldRefs through the shared helper. The projection-field set
+at the disclosure check is unchanged (declared projection fields, not entity resolvable set).
+
 ## 2026-09-09 — mdm storage.idField is a resolvable outputShape fieldRef
 
 `validateOutputShapeTypes` resolves `storage.idField` as uuid when it is absent from

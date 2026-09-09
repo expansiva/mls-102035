@@ -16,8 +16,11 @@ derivation-binding pass (`Bind ontology derivations`) with its own repair budget
 only `plan.entities[].derivation` and re-runs the gate. Mixed overview+derivation failures stay on
 the overview repair. It then starts one compact
 relationship-binding pass, which writes `pipeline/e4-relationship-bindings-draft.json` and maps every
-semantic edge to exact existing endpoint fields or an explicit MDM/derived realization. Its gate rejects
-invented fields, missing edges and incompatible persistence strategies and allows one localized repair.
+semantic edge to exact existing endpoint fields or an explicit MDM/derived realization. Identity
+(`storage.idField`) is always resolvable, including on `kind: mdm` whose `fields[]` lists only
+namespace fields. An mdm endpoint of a persisted relationship binds exactly that id. Its gate rejects
+invented fields, missing edges, mdm endpoints that are not the id, and incompatible persistence
+strategies and allows one localized repair.
 Only then E4 assembles `pipeline/e4-ontology-draft.json` and renders the same single ontology widget. Titles
 and descriptions can be edited directly. Structural requests first persist those edits, then add the
 next open E4 round before completing the current clarification.

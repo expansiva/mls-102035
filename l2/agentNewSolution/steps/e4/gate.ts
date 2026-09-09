@@ -2,6 +2,11 @@
 
 import { deriveNs4Contexts } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import {
+  ns4EntityIdField,
+  ns4ResolvableFieldIds,
+  ns4ResolvableFieldOf,
+} from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
+import {
   ns4Level1FieldIds,
   ns4Level1FieldSlot,
   ns4Level1IsSubtype,
@@ -545,10 +550,12 @@ function validateRelationshipRealization(
   }
   const fromEntity = review.entities.find(entity => entity.entityId === relationship.fromEntity);
   const toEntity = review.entities.find(entity => entity.entityId === relationship.toEntity);
-  const fromFields = new Set(fromEntity?.fields.map(field => field.fieldId) || []);
-  const toFields = new Set(toEntity?.fields.map(field => field.fieldId) || []);
+  const fromFields = ns4ResolvableFieldIds(fromEntity);
+  const toFields = ns4ResolvableFieldIds(toEntity);
   validateEndpointFields(realization.from.fieldIds, fromFields, '.from.fieldIds', add);
   validateEndpointFields(realization.to.fieldIds, toFields, '.to.fieldIds', add);
+  validateMdmEndpointFields(fromEntity, realization.from.fieldIds, realization.kind, '.from.fieldIds', add);
+  validateMdmEndpointFields(toEntity, realization.to.fieldIds, realization.kind, '.to.fieldIds', add);
 
   if (realization.kind !== 'derived' && (!realization.from.fieldIds.length || !realization.to.fieldIds.length)) {
     add('NS4_E4_RELATIONSHIP_FIELDS_REQUIRED', '', 'A persisted relationship must name at least one existing field at each endpoint.');
@@ -557,7 +564,7 @@ function validateRelationshipRealization(
     const owner = realization.ownerEntity === relationship.fromEntity ? fromEntity : toEntity;
     const ownerFields = realization.ownerEntity === relationship.fromEntity
       ? realization.from.fieldIds : realization.to.fieldIds;
-    if (ownerFields.some(fieldId => !owner?.fields.find(field => field.fieldId === fieldId)?.required)) {
+    if (ownerFields.some(fieldId => !ns4ResolvableFieldOf(owner, fieldId)?.required)) {
       add('NS4_E4_RELATIONSHIP_REQUIRED_FIELD', '.ownerEntity', 'A required relationship must use required field(s) on its owning entity.');
     }
   }
@@ -576,6 +583,29 @@ function validateEndpointFields(
     if (!available.has(fieldId)) add('NS4_E4_RELATIONSHIP_FIELD_UNKNOWN', path, `Unknown field ${fieldId}.`);
     seen.add(fieldId);
   });
+}
+
+const MDM_ENDPOINT_REALIZATION_KINDS = new Set<Ns4RelationshipRealizationKind>([
+  'fieldReference', 'fieldCollection', 'mdmRelationship',
+]);
+
+function validateMdmEndpointFields(
+  entity: Ns4OntologyEntity | undefined,
+  fieldIds: string[],
+  kind: Ns4RelationshipRealizationKind,
+  path: string,
+  add: (code: string, suffix: string, message: string) => void,
+): void {
+  if (!entity || entity.kind !== 'mdm') return;
+  if (!MDM_ENDPOINT_REALIZATION_KINDS.has(kind)) return;
+  if (!fieldIds.length) return;
+  const idField = ns4EntityIdField(entity);
+  if (fieldIds.length === 1 && idField && fieldIds[0] === idField) return;
+  add(
+    'NS4_E4_RELATIONSHIP_MDM_ENDPOINT_ID',
+    path,
+    `mdm endpoint ${entity.entityId} must bind exactly [${idField}].`,
+  );
 }
 
 function expectedRealizationKinds(mode: Ns4OntologyRelationship['persistence']['mode']): Ns4RelationshipRealizationKind[] {
@@ -746,7 +776,7 @@ export function ns4E4BindingOwnerEscalation(
 }
 
 function entityIdField(entity: { entityId: string; storage: { idField?: string } }): string {
-  return entity.storage.idField || '';
+  return ns4EntityIdField(entity);
 }
 
 function displayFieldExists(entity: Ns4OntologyEntity): boolean {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-09 — E8 uses ns4ResolvableFields; /Id$/ identity fallbacks removed
+
+The local mdm `idField` union in `validateNs4E8Model` is the shared resolver. Catalogue identity
+(`identityFieldOf`), list-sort identity, owner-handle identity, and `identityEntityOfInput` read
+`storage.idField` only — no `/Id$/` name fallback. The `/Id$/` pick of a projection key in
+`attachSynthesizedProjectionTile` stays: that list is a projection's declared fields.
+
 ## 2026-09-09 — mdm storage.idField is a resolvable E8 input
 
 `validateNs4E8Model` includes `${entityId}.${storage.idField}` in the resolvable-field set.

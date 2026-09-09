@@ -1,5 +1,12 @@
 # E4 changelog
 
+- 2026-09-09: Relationship bindings resolve fields through `ns4ResolvableFields` (`fields[]` ∪
+  `storage.idField`). An mdm endpoint of `fieldReference` / `fieldCollection` / `mdmRelationship`
+  must bind exactly `[storage.idField]` (`NS4_E4_RELATIONSHIP_MDM_ENDPOINT_ID`). Empty `fieldIds`
+  on a persisted edge is still `NS4_E4_RELATIONSHIP_FIELDS_REQUIRED`. The binding prompt lists the
+  synthetic identity so the model can name it. `promptRelationships.md` lost the natural-keys
+  sentence (it contradicted the mdm endpoint rule).
+
 - 2026-09-09: `lifecycleStates[]` is `{ state, reachedBy: actor|command|time, ruleRef? }`. A bare
   string still means `actor`. `time` requires `ruleRef` (the rule is prose; the gate only checks
   the id exists in `useRules`). MDM entities still have no lifecycle. An appendOnly fact has no

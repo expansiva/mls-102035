@@ -4,6 +4,7 @@ import type { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contrac
 import type { Ns4E3Review } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import type { Ns4E4Review, Ns4OntologyEntity } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import { ns4Level1FieldIds } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
+import { ns4ResolvableFieldIds } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import {
   checkAnchorPath, isPersonEntity, missingFieldFinding, NS4_ACCESS_BINDINGS_SCHEMA_VERSION,
   NS4_PERSON_LOGIN_FIELD, ns4AccessFieldGraph, ns4DisclosureProjectionId, ns4EntityIdsCoveredByGrant,
@@ -182,7 +183,7 @@ function validateDisclosureProjections(
     }
     const source = entityById.get(binding.entityRef);
     if (!source) continue;
-    const sourceFieldIds = source.fields.map(field => field.fieldId);
+    const sourceFieldIds = [...ns4ResolvableFieldIds(source)];
     const sourceSet = new Set(sourceFieldIds);
     const allowed = allowedDisclosureFieldIds(source, sources.ontology);
     const projectedIds = projection.fields.map(field => field.fieldId);
@@ -224,7 +225,7 @@ function allowedDisclosureFieldIds(
   entity: Ns4OntologyEntity,
   ontology: Pick<Ns4E4Review, 'entities'>,
 ): Set<string> {
-  const allowed = new Set(entity.fields.map(field => field.fieldId));
+  const allowed = ns4ResolvableFieldIds(entity);
   for (const other of ontology.entities) {
     if (!other.mdmSubtype) continue;
     for (const fieldId of ns4Level1FieldIds(other.mdmSubtype)) allowed.add(fieldId);

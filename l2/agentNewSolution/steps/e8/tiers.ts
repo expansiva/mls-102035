@@ -11,6 +11,7 @@ import type { Ns4JourneyProposal, Ns4JourneyStep } from '/_102035_/l2/agentNewSo
 import type { Ns4OntologyEntity, Ns4OntologyRelationship } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4UseCaseArtifactV3 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import { deriveNs4Contexts, isNs4CollectionInspect, isNs4PlatformOwnedEntity, ns4ContextIdOf } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
+import { ns4EntityIdField } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { buildNs4ParentIndex, ns4FkParentOf } from '/_102035_/l2/agentNewSolution/helpers/ns4ForeignKeys.js';
 import type { Ns4DerivedContextGraph } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
@@ -1395,7 +1396,7 @@ type Ns4WorkspaceTierValue = Ns4E8ModelWorkspace['tier'];
 // ---------------------------------------------------------------------------------------------
 
 function identityFieldOf(entity: Ns4OntologyEntity | undefined): string {
-  return entity?.storage.idField || entity?.fields.find(field => /Id$/.test(field.fieldId))?.fieldId || '';
+  return ns4EntityIdField(entity);
 }
 
 function isRecordOwnerSessionField(

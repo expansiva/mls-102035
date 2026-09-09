@@ -1,0 +1,25 @@
+{
+  "planId": "e4-ontology-entity",
+  "moduleName": "comandaRestaurante2",
+  "reviewRound": 1,
+  "entityId": "ItemCardapio",
+  "fields": [
+    {
+      "fieldId": "price",
+      "title": "Preço",
+      "type": "money",
+      "required": true,
+      "description": "Preço vigente do item no cardápio, usado como referência ao lançar o consumo; o lançamento preserva seu próprio preço histórico.",
+      "constraints": []
+    },
+    {
+      "fieldId": "isAvailable",
+      "title": "Disponível",
+      "type": "boolean",
+      "required": true,
+      "description": "Indica se o item está disponível para seleção em novos lançamentos de consumo.",
+      "constraints": []
+    }
+  ],
+  "useRules": []
+}
