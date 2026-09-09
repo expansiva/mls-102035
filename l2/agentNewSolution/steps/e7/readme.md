@@ -21,12 +21,10 @@ Global provenance and generation metadata live in indexes, not in every artifact
 metadata back to journey/access contracts. E3 realization derives authority links from journey-step refs;
 E8 operations are the future channel integration endpoints, and backend generators choose their architecture.
 
-Workflow compilation starts from the explicit E4 lifecycle but emits a partial workflow containing
-only states reachable through approved journey transitions. Build and gate import the same reachability
-function. Shrink iterates to a fixed point: removing an unreachable source also removes its outgoing
-transition and may make further targets unreachable. Every removed state is recorded as a
-`shrinkLifecycle` system decision with `operateState` as an alternative. Predicates whose states all
-disappear receive a dormant-consumption decision while E4 and E5 stay unchanged. A workflow with no
-remaining transition is omitted with explicit decision evidence. Binary inactivation or reversal flags
-still do not require a workflow. The deterministic post-resolution gate remains a terminal invariant
+Workflow compilation starts from the explicit E4 lifecycle. States with `reachedBy: time` never
+enter the workflow and are never shrunk — they are computed on read. Actor/command states without a
+reachable transition fail `NS4_E7_STATE_UNREACHABLE` (repair: connect the command via `affects`, or
+mark `reachedBy: time` with a `ruleRef`). Silent `shrinkLifecycle` / `omitWorkflow` is gone except
+when a human unmarked the state at the E4 checkpoint. Binary inactivation or reversal flags still
+do not require a workflow. The deterministic post-resolution gate remains a terminal invariant
 for broken entity/use-case references, invalid transition bounds/operators and compiler/gate drift.

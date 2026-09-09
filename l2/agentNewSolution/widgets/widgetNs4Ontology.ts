@@ -242,9 +242,12 @@ export class WidgetNs4Ontology102035 extends StateLitElement implements Ns4Clari
   }
 
   private lifecycleLine(entity: Ns4OntologyEntity): string {
-    return entity.lifecycleStates.map(code => {
+    return entity.lifecycleStates.map(entry => {
+      const code = typeof entry === 'string' ? entry : entry.state;
+      const reachedBy = typeof entry === 'string' ? 'actor' : entry.reachedBy;
       const label = entity.lifecycleLabels?.find(item => item.code === code)?.label;
-      return label && label !== code ? `${label} (${code})` : code;
+      const name = label && label !== code ? `${label} (${code})` : code;
+      return reachedBy && reachedBy !== 'actor' ? `${name} · ${reachedBy}` : name;
     }).join(' → ');
   }
 }

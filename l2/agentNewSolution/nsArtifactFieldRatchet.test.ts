@@ -19,6 +19,7 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns4AccessGrant: { file: 'steps/e3/contracts.ts', name: 'Ns4AccessGrant' },
   Ns4OntologyEntity: { file: 'steps/e4/contracts.ts', name: 'Ns4OntologyEntity' },
   Ns4OntologyField: { file: 'steps/e4/contracts.ts', name: 'Ns4OntologyField' },
+  Ns4LifecycleState: { file: 'steps/e4/contracts.ts', name: 'Ns4LifecycleState' },
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
@@ -84,6 +85,11 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     constraints: { reader: 'steps/e4/gate.ts', since: '2026-09-08' },
     enum: { reader: 'steps/e4/contracts.ts', since: '2026-09-08' },
     enumLabels: { reader: 'steps/e4/gate.ts', since: '2026-09-08' },
+  },
+  Ns4LifecycleState: {
+    state: { reader: 'steps/e4/gate.ts', since: '2026-09-08' },
+    reachedBy: { reader: 'steps/e7/gate.ts, steps/e10/gate.ts', since: '2026-09-09' },
+    ruleRef: { reader: 'steps/e4/gate.ts, steps/e7/gate.ts', since: '2026-09-09' },
   },
 };
 
@@ -155,6 +161,17 @@ test('n12 origin is on the business actor ratchet with the E2 gate reader', () =
     'Ns4BusinessActor',
   ));
   assert.ok(actor.includes('origin'));
+});
+
+test('n13 reachedBy is on the lifecycle state ratchet with E7 and E10 gate readers', () => {
+  assert.equal(KEYS.Ns4LifecycleState.reachedBy.reader, 'steps/e7/gate.ts, steps/e10/gate.ts');
+  assert.equal(KEYS.Ns4LifecycleState.reachedBy.since, '2026-09-09');
+  const state = keysOf(interfaceBody(
+    readFileSync(new URL('steps/e4/contracts.ts', import.meta.url), 'utf8'),
+    'Ns4LifecycleState',
+  ));
+  assert.ok(state.includes('reachedBy'));
+  assert.ok(state.includes('ruleRef'));
 });
 
 test('n10 affects is on the journey step ratchet with coverage and E7 gate readers', () => {

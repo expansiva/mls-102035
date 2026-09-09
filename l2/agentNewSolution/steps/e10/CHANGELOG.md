@@ -1,5 +1,10 @@
 # E10 changelog
 
+## 2026-09-09 — A8 fails actor/command without a transition; time passes
+
+`NS4_E10_STATE_UNREACHABLE` is an A8 error when an actor/command state has no reachable
+transition, or when an operation's inputs filter by that state. `reachedBy: time` passes.
+
 ## 2026-09-09 — A8 unwritten state is an error; A4 disclosure is a real check
 
 A lifecycle state reached only by transitions whose use case does not list that entity in

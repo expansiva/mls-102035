@@ -30,6 +30,7 @@ import {
   buildNs4E7Plan, buildNs4RealizedAccessArtifact, buildNs4RealizedJourneyArtifact,
   buildNs4RealizedJourneyIndex, buildNs4UseCaseArtifacts, buildNs4WorkflowArtifacts,
   normalizeNs4UseCaseDraft, NS4_USE_CASE_DRAFT_VERSION, Ns4E7PlanDraft, Ns4E7SourceHashes, Ns4UseCaseDraft,
+  workflowLifecycleOf,
 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import {
   Ns4E7GateIssue, Ns4E7Sources, ns4E7WriteIntentDecisions, validateNs4E7Plan, validateNs4UseCaseDraft, validateNs4Workflows,
@@ -269,12 +270,7 @@ async function finalizeE7(
   const generatedAt = new Date().toISOString();
   const writeDecisions = ns4E7WriteIntentDecisions(valid, bundle, plan.presentation);
   const { artifacts: useCases, index: useCaseIndex } = await buildNs4UseCaseArtifacts(plan, valid, generatedAt, writeDecisions);
-  const ontologyLifecycles = new Map(bundle.ontology.entities.map(entity => [entity.entityId, {
-    states: entity.lifecycleStates,
-    initialState: entity.initialState,
-    terminalStates: entity.terminalStates,
-    lifecyclePredicates: entity.lifecyclePredicates.map(predicate => ({ predicateId: predicate.predicateId, stateIds: predicate.stateIds })),
-  }]));
+  const ontologyLifecycles = new Map(bundle.ontology.entities.map(entity => [entity.entityId, workflowLifecycleOf(entity)]));
   const { artifacts: workflows, index: workflowIndex } = await buildNs4WorkflowArtifacts(plan, valid, ontologyLifecycles, generatedAt);
   const workflowGate = validateNs4Workflows(workflows, bundle, useCases.map(useCase => useCase.useCaseId), workflowIndex.systemDecisions);
   if (!workflowGate.ok) {

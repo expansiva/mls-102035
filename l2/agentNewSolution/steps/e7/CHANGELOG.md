@@ -1,5 +1,11 @@
 # E7 changelog
 
+## 2026-09-09 — time states stay; actor/command without a transition is an error
+
+`reachedBy: time` never enters the compiled workflow and is never shrunk. Actor/command states
+with no reachable transition fail `NS4_E7_STATE_UNREACHABLE` instead of a silent `shrinkLifecycle`.
+`omit*`/`shrink*`/`dormant*` survive only for a state the human unmarked at E4.
+
 ## 2026-09-09 — usecase v4 `writes[]`
 
 The draft/artifact persist `writes: Array<{ entityId, fieldRefs? }>`. The gate requires

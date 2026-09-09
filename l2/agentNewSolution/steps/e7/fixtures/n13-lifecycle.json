@@ -1,0 +1,43 @@
+{
+  "ce10Tuition": {
+    "entityId": "Tuition",
+    "lifecycleStates": [
+      { "state": "open", "reachedBy": "actor" },
+      { "state": "paid", "reachedBy": "command" },
+      { "state": "overdue", "reachedBy": "time", "ruleRef": "overdueWhenPastDue" }
+    ],
+    "initialState": "open",
+    "terminalStates": ["paid"],
+    "blocked": {
+      "entityId": "Enrollment",
+      "lifecycleStates": [
+        { "state": "active", "reachedBy": "actor" },
+        { "state": "cancelled", "reachedBy": "actor" },
+        { "state": "blocked", "reachedBy": "time", "ruleRef": "blockedAfterTwoOverdue" }
+      ],
+      "initialState": "active",
+      "terminalStates": ["cancelled"]
+    }
+  },
+  "ce09Plan": {
+    "entityId": "MaintenancePlan",
+    "lifecycleStates": [
+      { "state": "active", "reachedBy": "actor" },
+      { "state": "dueByMileage", "reachedBy": "command" },
+      { "state": "dueByDate", "reachedBy": "time", "ruleRef": "dueWhenDateReached" }
+    ],
+    "initialState": "active",
+    "terminalStates": []
+  },
+  "ce06Registration": {
+    "entityId": "Registration",
+    "lifecycleStates": [
+      { "state": "confirmed", "reachedBy": "actor" },
+      { "state": "waitlisted", "reachedBy": "actor" },
+      { "state": "cancelled", "reachedBy": "actor" }
+    ],
+    "command": { "from": "waitlisted", "to": "confirmed", "reachedBy": "command" },
+    "initialState": "waitlisted",
+    "terminalStates": ["cancelled"]
+  }
+}

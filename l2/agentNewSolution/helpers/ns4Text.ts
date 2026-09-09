@@ -62,6 +62,8 @@ export const NS4_PHRASES = {
   'demotion.question': '{journey} has no decision and no handoff: should it become the standard {entity} record catalogue?',
   'dormant.question': 'The {title} action stays visible, but transition {transitions} is not reachable in this version.',
   'dormant.unwritten.question': 'State {entity}.{state} is reached only by a transition whose use case does not write {entity}.',
+  'state.unreachable.question': 'State {entity}.{state} ({reachedBy}) has no reachable transition. Connect the command that writes it.',
+  'state.filtered.question': 'Operation {operation} filters by unreachable state {entity}.{state}.',
   'writes.beyond.question': 'Use case {useCase} records {entities}, which the journey did not name as affected. Keep those writes?',
   'writes.beyond.changeHint': 'Drop the extra writes on {useCase} or add {entities} to the act step affects list.',
   'route.ambiguous.question': 'Which record should the {title} screen open directly?',

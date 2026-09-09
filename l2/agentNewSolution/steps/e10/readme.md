@@ -22,7 +22,9 @@ Picker-source leftovers (`NS4_E8_PICKER_SOURCE`) stay registrars on A4.
 
 A command whose `transitionRefs` are absent from compiled E7 workflows remains visible and
 receives a deterministic E10 system decision (A8, registrar). A lifecycle state reached only
-by a transition whose use case does not write the entity fails A8 (repair E7).
+by a transition whose use case does not write the entity fails A8 (repair E7). An actor/command
+state with no reachable transition, or an operation that filters by that state, fails A8
+(`NS4_E10_STATE_UNREACHABLE`). Time states pass — they are computed on read.
 
 The versioned report is written to `l4/<module>/pipeline/e10-validation-report.json`. A failed report is durable and no L5 file is created or updated.
 

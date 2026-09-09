@@ -41,7 +41,9 @@ reads and no journey writes is recorded as `NS4_E4_CORE_READ_ONLY` (warning + sy
 `keepCore` / `projection` / `masterData`) and does not block the run. Kind, scope, idField,
 `displayField` and `mdmType` must agree. `kind: mdm` requires `mdmSubtype` from the platform
 catalog, empty `lifecycleStates`, and `fields` that do not redeclare level-1 identification or
-base fields. A value recomputable from other records is a projection.
+base fields. Each lifecycle state is `{ state, reachedBy: actor|command|time, ruleRef? }` (a bare
+string is `actor`). `time` requires `ruleRef`; it is computed on read and is not a workflow
+transition. A value recomputable from other records is a projection.
 The widget groups entities by this destination, marks relationships that cross stores and displays the
 exact fields implementing every edge.
 

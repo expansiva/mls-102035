@@ -1,5 +1,10 @@
 # E4 changelog
 
+- 2026-09-09: `lifecycleStates[]` is `{ state, reachedBy: actor|command|time, ruleRef? }`. A bare
+  string still means `actor`. `time` requires `ruleRef` (the rule is prose; the gate only checks
+  the id exists in `useRules`). MDM entities still have no lifecycle. An appendOnly fact has no
+  lifecycleStates. A time status stays on the entity; it is not a separate projection.
+
 - 2026-09-08: Ontology schema `2026-09-08-ns4-ontology-v7`. `kind: mdm` declares `mdmSubtype`
   from the platform catalog, derived `role` `<moduleName>.<EntityId>`, and `displayField`.
   MDM entities list only namespace fields (level-1 identification/base are not redeclared) and

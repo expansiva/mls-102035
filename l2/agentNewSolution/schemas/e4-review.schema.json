@@ -263,6 +263,32 @@
         }
       }
     },
+    "lifecycleState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reachedBy"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reachedBy": {
+          "type": "string",
+          "enum": [
+            "actor",
+            "command",
+            "time"
+          ]
+        },
+        "ruleRef": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "entity": {
       "type": "object",
       "additionalProperties": false,
@@ -346,8 +372,15 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "type": "string",
-            "minLength": 1
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/lifecycleState"
+              }
+            ]
           }
         },
         "lifecycleLabels": {

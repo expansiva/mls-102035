@@ -49,6 +49,8 @@
   "demotion.question": "{journey} não tem decisão nem repasse: vira a tela de cadastro padrão de {entity}?",
   "dormant.question": "A ação {title} continua visível, mas a transição {transitions} não é alcançável nesta versão.",
   "dormant.unwritten.question": "O estado {entity}.{state} só é alcançado por uma transição cujo usecase não escreve {entity}.",
+  "state.unreachable.question": "O estado {entity}.{state} ({reachedBy}) não tem transição alcançável. Ligue o comando que o escreve.",
+  "state.filtered.question": "A operação {operation} filtra pelo estado inalcançável {entity}.{state}.",
   "writes.beyond.question": "O usecase {useCase} grava {entities}, que a jornada não nomeou como afetados. Manter essas escritas?",
   "writes.beyond.changeHint": "Remova as escritas extras de {useCase} ou inclua {entities} em affects do passo act.",
   "route.ambiguous.question": "Qual registro a tela {title} deve abrir diretamente?",

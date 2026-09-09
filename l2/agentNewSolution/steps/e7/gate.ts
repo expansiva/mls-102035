@@ -3,6 +3,9 @@
 import type { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4E3Review } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import type { Ns4E4Review } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import {
+  hasLifecycleState, isTimeLifecycleState, lifecycleReachedBy, lifecycleRuleRef, lifecycleStateIds,
+} from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import {
   NS4_USE_CASE_DRAFT_VERSION,
@@ -131,8 +134,12 @@ export function validateNs4UseCaseDraft(
   for (const transition of draft.transitions) {
     const entity = entities.get(transition.entityRef);
     if (!entity) add('NS4_E7_TRANSITION_ENTITY', 'transitions', `Unknown transition entity ${transition.entityRef}.`);
-    else for (const state of [...transition.fromStates, transition.toState]) if (!entity.lifecycleStates.includes(state)) {
-      add('NS4_E7_TRANSITION_STATE', 'transitions', `Unknown ${transition.entityRef} lifecycle state ${state}.`);
+    else for (const state of [...transition.fromStates, transition.toState]) {
+      if (!hasLifecycleState(entity.lifecycleStates, state)) {
+        add('NS4_E7_TRANSITION_STATE', 'transitions', `Unknown ${transition.entityRef} lifecycle state ${state}.`);
+      } else if (isTimeLifecycleState(entity.lifecycleStates, state)) {
+        add('NS4_E7_TIME_TRANSITION', 'transitions', `Lifecycle state ${transition.entityRef}.${state} is reachedBy time and is not a workflow transition.`);
+      }
     }
     if (!draft.entityRefs.includes(transition.entityRef)) {
       add('NS4_E7_TRANSITION_REF', 'entityRefs', `Transition entity ${transition.entityRef} must be referenced by the behavior.`);
@@ -239,7 +246,7 @@ export function validateNs4Workflows(
     const entity = entities.get(workflow.entityRef);
     if (!entity) add('NS4_E7_WORKFLOW_ENTITY', workflow.workflowId, `Unknown entity ${workflow.entityRef}.`);
     else {
-      const unknownStates = workflow.states.filter(state => !entity.lifecycleStates.includes(state));
+      const unknownStates = workflow.states.filter(state => !hasLifecycleState(entity.lifecycleStates, state));
       if (unknownStates.length) add('NS4_E7_WORKFLOW_STATES', workflow.workflowId, `Workflow contains states absent from E4: ${unknownStates.join(', ')}.`);
       if (workflow.initialState !== entity.initialState) add('workflow.initialState', workflow.workflowId, 'Workflow initialState must exactly match the E4 lifecycle initialState.');
       const unknownTerminals = workflow.terminalStates.filter(state => !(entity.terminalStates || []).includes(state));
@@ -265,9 +272,12 @@ export function validateNs4Workflows(
     });
     const reachableStates = collectNs4ReachableWorkflowStates(workflow.initialState, workflow.transitions);
     workflow.states.filter(state => state !== workflow.initialState).forEach(state => {
+      if (entity && isTimeLifecycleState(entity.lifecycleStates, state)) return;
       if (!reachableStates.has(state)) {
-        addLifecycleIssue(issues, 'workflow.state.unreachable', workflow.workflowId,
-          `Lifecycle state ${state} has no incoming transition.`, workflow.entityRef, state);
+        const reachedBy = entity ? lifecycleReachedBy(entity.lifecycleStates, state) : 'actor';
+        addLifecycleIssue(issues, 'NS4_E7_STATE_UNREACHABLE', workflow.workflowId,
+          ns4Text(undefined, 'state.unreachable.question', { entity: workflow.entityRef, state, reachedBy }),
+          workflow.entityRef, state);
       }
     });
     workflow.states.filter(state => !terminalStates.has(state)).forEach(state => {
@@ -276,21 +286,37 @@ export function validateNs4Workflows(
       }
     });
   }
+  const ruleIds = new Set((sources.rules.rules || []).map(rule => rule.id));
   for (const entity of entities.values()) {
+    for (const state of lifecycleStateIds(entity.lifecycleStates)) {
+      if (!isTimeLifecycleState(entity.lifecycleStates, state)) continue;
+      const ruleRef = lifecycleRuleRef(entity.lifecycleStates, state);
+      if (!ruleRef || !ruleIds.has(ruleRef)) {
+        add('NS4_E7_TIME_RULE_UNKNOWN', entity.entityId,
+          `reachedBy time on ${entity.entityId}.${state} requires a ruleRef that exists in rules.`);
+      }
+    }
     const workflow = workflows.find(item => item.entityRef === entity.entityId);
     const terminalStates = new Set(entity.terminalStates || []);
-    const hasIntermediateState = entity.lifecycleStates.some(state => state !== entity.initialState && !terminalStates.has(state));
-    if (hasIntermediateState && !workflow && !omittedWorkflowEntities.has(entity.entityId)) {
-      addLifecycleIssue(issues, 'workflow.missing', entity.entityId,
-        `Entity ${entity.entityId} has an intermediate lifecycle state but no compiled workflow.`, entity.entityId);
-      continue;
+    const hasOperatedIntermediate = lifecycleStateIds(entity.lifecycleStates).some(state =>
+      !isTimeLifecycleState(entity.lifecycleStates, state)
+      && state !== entity.initialState
+      && !terminalStates.has(state));
+    const operatedWithoutWorkflow = !workflow && hasOperatedIntermediate;
+    if (operatedWithoutWorkflow && !omittedWorkflowEntities.has(entity.entityId)) {
+      for (const state of lifecycleStateIds(entity.lifecycleStates)) {
+        if (isTimeLifecycleState(entity.lifecycleStates, state) || state === entity.initialState) continue;
+        const reachedBy = lifecycleReachedBy(entity.lifecycleStates, state);
+        addLifecycleIssue(issues, 'NS4_E7_STATE_UNREACHABLE', entity.entityId,
+          ns4Text(undefined, 'state.unreachable.question', { entity: entity.entityId, state, reachedBy }),
+          entity.entityId, state);
+      }
     }
     if (!workflow) continue;
     const reachableStates = collectNs4ReachableWorkflowStates(workflow.initialState, workflow.transitions);
     for (const predicate of entity.lifecyclePredicates) {
       for (const state of predicate.stateIds) {
-        // A state intentionally omitted from the compiled partial workflow is already covered by
-        // the workflow index's shrinkLifecycle system decision; E4 remains unchanged.
+        if (isTimeLifecycleState(entity.lifecycleStates, state)) continue;
         if (!workflow.states.includes(state)) continue;
         if (entity.lifecycleStates.length && !reachableStates.has(state)) {
           addLifecycleIssue(issues, 'workflow.predicate.dead', entity.entityId,
@@ -322,11 +348,11 @@ function addLifecycleIssue(
     repairOptions: [
       {
         action: 'operateState', owner: 'e2',
-        instruction: `Reopen the E2 checkpoint and add or amend a journey step that operates the${target} for ${entityRef}; E7 will compile its use case and transition on the next round.`,
+        instruction: `Reopen the E2 checkpoint and add or amend a journey step (affects) that writes the${target} for ${entityRef}; E7 will compile its use case and transition on the next round.`,
       },
       {
         action: 'shrinkLifecycle', owner: 'e4',
-        instruction: `Reopen the E4 checkpoint and remove or redefine the${target} for ${entityRef} when it is not a required business outcome.`,
+        instruction: `If the${target} for ${entityRef} is reached by time, set reachedBy: time with a ruleRef on E4; otherwise connect the command.`,
       },
     ],
   });

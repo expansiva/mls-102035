@@ -11,6 +11,10 @@ import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns
 import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 import { ns4NeedsDisclosureProjection } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import { ns4OntologyWithDisclosure } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
+import {
+  isTimeLifecycleState, lifecycleReachedBy, lifecycleStateIds,
+} from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import { collectNs4ReachableWorkflowStates } from '/_102035_/l2/agentNewSolution/steps/e7/reachability.js';
 import { validateNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/modelGate.js';
 import { compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
 import {
@@ -299,7 +303,59 @@ function dormantCommandDecisions(sources: Ns4E10Sources, add: Add): Ns4SystemDec
     add('registrars', { code: 'NS4_E10_DORMANT_COMMAND', path: decision.findingRef, message: decision.question });
   }
   unwrittenReachedStates(sources, add);
+  actorCommandUnreachableStates(sources, add);
   return decisions;
+}
+
+/**
+ * Actor/command states need a reachable transition. Time states are computed on read and pass.
+ * An operation that filters by an unreachable actor/command state also fails A8.
+ */
+function actorCommandUnreachableStates(sources: Ns4E10Sources, add: Add): void {
+  const workflowByEntity = new Map(sources.workflows.map(workflow => [workflow.entityRef, workflow]));
+  const unreachable = new Map<string, Set<string>>();
+  for (const entity of sources.ontology.entities) {
+    const workflow = workflowByEntity.get(entity.entityId);
+    const reachable = workflow
+      ? collectNs4ReachableWorkflowStates(workflow.initialState, workflow.transitions)
+      : new Set(entity.initialState ? [entity.initialState] : []);
+    for (const state of lifecycleStateIds(entity.lifecycleStates)) {
+      if (isTimeLifecycleState(entity.lifecycleStates, state)) continue;
+      if (state === entity.initialState) continue;
+      if (reachable.has(state)) continue;
+      const set = unreachable.get(entity.entityId) || new Set<string>();
+      set.add(state);
+      unreachable.set(entity.entityId, set);
+      const reachedBy = lifecycleReachedBy(entity.lifecycleStates, state);
+      add('errors', {
+        code: 'NS4_E10_STATE_UNREACHABLE',
+        path: `ontology.${entity.entityId}.lifecycleStates.${state}`,
+        message: ns4Text(sources.presentation, 'state.unreachable.question', { entity: entity.entityId, state, reachedBy }),
+        repairStep: 'e7-realization',
+      });
+    }
+  }
+  for (const operation of sources.model.operations) {
+    const entityId = operation.entityRef;
+    const blocked = unreachable.get(entityId);
+    if (!blocked?.size) continue;
+    const mentioned = new Set([
+      ...operation.inputs.flatMap(input => input.enumValues || []),
+    ]);
+    for (const state of mentioned) {
+      if (!blocked.has(state)) continue;
+      if (isTimeLifecycleState(
+        sources.ontology.entities.find(entity => entity.entityId === entityId)?.lifecycleStates || [],
+        state,
+      )) continue;
+      add('errors', {
+        code: 'NS4_E10_STATE_UNREACHABLE',
+        path: `operations.${operation.operationId}.inputs`,
+        message: ns4Text(sources.presentation, 'state.filtered.question', { operation: operation.operationId, entity: entityId, state }),
+        repairStep: 'e7-realization',
+      });
+    }
+  }
 }
 
 /**
@@ -417,6 +473,7 @@ const CHECK_OF: Array<[RegExp, Ns4E10CheckSummary['checkId']]> = [
   [/^NS4_E10_FSM/, 'A5-fsm'],
   [/^NS4_E10_(WORKSPACE_STALE|OPERATION_STALE|CONTRACT_STALE|SITEMAP_STALE|JOURNEY_STALE|ONTOLOGY_STALE|RULES_STALE|USECASE_STALE|WORKFLOW_STALE|OUTPUT_SHAPE_TYPE|ACCESS_BINDINGS_STALE)/, 'A6-staleness'],
   [/^NS4_E10_DORMANT_COMMAND/, 'A8-dormant-commands'],
+  [/^NS4_E10_STATE_UNREACHABLE/, 'A8-dormant-commands'],
   [/^NS4_E10_(OPERATION_WITHOUT_AUTHORITY|EXTERNAL_WRITE_WITHOUT_GRANT)/, 'A9-authority'],
 ];
 function checkOf(code: string): Ns4E10CheckSummary['checkId'] {

@@ -19,7 +19,7 @@ to persist its composition. When the frozen overview carries `derivation`, emit 
 - A stored entity must contain the overview's `idField` as required `uuid`, unless `kind` is `mdm` and `fields` is an empty namespace (identity lives at level 1).
 - Honour the frozen overview `displayField`. Do not invent a second identifying field from a name suffix.
 - Lifecycle states require a `status` field with an `enum` constraint whose value is a compact JSON
-  array string containing exactly those states.
+  array string containing exactly those state ids (`lifecycleStates[].state`; a bare string is the id).
 - Those states, and every other enum constraint value, are **stable English codes**: lowerCamel ASCII
   (`active`, `inactive`, `monday`), never the user's language (`ativo`, `segunda-feira`). Field
   `title` and `description` remain in the user's language.

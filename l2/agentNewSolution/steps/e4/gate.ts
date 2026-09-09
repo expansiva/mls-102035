@@ -14,6 +14,9 @@ import { Ns4E3Review } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js
 import {
   applyNs4E4RelationshipBindings,
   assembleNs4E4Review,
+  lifecycleReachedBy,
+  lifecycleRuleRef,
+  lifecycleStateIds,
   Ns4E4DerivationFieldIdChange,
   Ns4E4EntityDraft,
   Ns4E4PlanDraft,
@@ -306,8 +309,24 @@ export function validateNs4E4Review(
     if (entity.lifecycleStates.length && !entity.fields.some(field => field.fieldId === 'status')) {
       add('NS4_E4_LIFECYCLE_STATUS', `${path}.lifecycleStates`, 'An entity with lifecycle states must define a status field.');
     }
-    const lifecycleStates = new Set(entity.lifecycleStates);
+    const lifecycleIds = lifecycleStateIds(entity.lifecycleStates);
+    const lifecycleStates = new Set(lifecycleIds);
     const terminalStates = new Set(entity.terminalStates || []);
+    const useRuleIds = new Set(entity.useRules);
+    entity.lifecycleStates.forEach((entry, index) => {
+      const statePath = `${path}.lifecycleStates[${index}]`;
+      const reachedBy = lifecycleReachedBy(entity.lifecycleStates, entry.state);
+      if (reachedBy === 'time') {
+        const ruleRef = lifecycleRuleRef(entity.lifecycleStates, entry.state) || entry.ruleRef || '';
+        if (!ruleRef) {
+          add('NS4_E4_TIME_RULE_REF', `${statePath}.ruleRef`, `reachedBy 'time' on ${entity.entityId}.${entry.state} requires ruleRef.`);
+        } else if (!MEMBER_ID.test(ruleRef)) {
+          add('NS4_E4_TIME_RULE_REF', `${statePath}.ruleRef`, `ruleRef '${ruleRef}' must be a lower-camel identifier.`);
+        } else if (!options.planOverview && !useRuleIds.has(ruleRef)) {
+          add('NS4_E4_TIME_RULE_REF', `${statePath}.ruleRef`, `ruleRef '${ruleRef}' on ${entity.entityId}.${entry.state} must be listed in useRules (the rule body is prose in E5).`);
+        }
+      }
+    });
     if (entity.lifecycleStates.length && !entity.initialState) {
       add('NS4_E4_LIFECYCLE_INITIAL_REQUIRED', `${path}.initialState`, 'An entity with lifecycle states must declare its initialState.');
     }
@@ -361,10 +380,10 @@ export function validateNs4E4Review(
         );
       }
     }
-    const lifecycleCodes = new Set(entity.lifecycleStates);
+    const lifecycleCodes = new Set(lifecycleIds);
     validateEnumLabelList(entity.lifecycleLabels, lifecycleCodes, `${path}.lifecycleLabels`, add);
     entity.fields.forEach((field, fieldIndex) => {
-      const allowed = new Set(field.enum?.length ? field.enum : isStatusFieldId(field.fieldId) ? entity.lifecycleStates : []);
+      const allowed = new Set(field.enum?.length ? field.enum : isStatusFieldId(field.fieldId) ? lifecycleIds : []);
       validateEnumLabelList(field.enumLabels, allowed, `${path}.fields[${fieldIndex}].enumLabels`, add);
     });
     const ruleIds = new Set<string>();
@@ -824,7 +843,7 @@ function closedDomainCodes(entity: Ns4OntologyEntity, path: string): { path: str
   const push = (codePath: string, value: string) => {
     if (value) out.push({ path: codePath, value });
   };
-  entity.lifecycleStates.forEach((state, index) => push(`${path}.lifecycleStates[${index}]`, state));
+  entity.lifecycleStates.forEach((entry, index) => push(`${path}.lifecycleStates[${index}]`, typeof entry === 'string' ? entry : entry.state));
   if (entity.initialState) push(`${path}.initialState`, entity.initialState);
   (entity.terminalStates || []).forEach((state, index) => push(`${path}.terminalStates[${index}]`, state));
   entity.lifecyclePredicates.forEach((predicate, predicateIndex) => {
@@ -913,7 +932,7 @@ function derivationEnumCodes(entity: Ns4OntologyEntity, field: Ns4OntologyField)
     .filter(constraint => constraint.kind === 'enum')
     .flatMap(constraint => enumConstraintValues(constraint.value));
   if (fromConstraint.length) return fromConstraint;
-  if (isStatusFieldId(field.fieldId) && entity.lifecycleStates.length) return entity.lifecycleStates;
+  if (isStatusFieldId(field.fieldId) && entity.lifecycleStates.length) return lifecycleStateIds(entity.lifecycleStates);
   return [];
 }
 

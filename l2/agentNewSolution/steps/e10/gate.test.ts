@@ -49,7 +49,11 @@ async function sources(): Promise<Ns4E10Sources> {
   };
   return {
     moduleName: model.moduleName, userLanguage: model.userLanguage,
-    journeys: input.journeys, journeyIndex, ontology: input.ontology,
+    journeys: input.journeys, journeyIndex,
+    ontology: {
+      ...input.ontology,
+      entities: (input.ontology.entities || []).map((entity: any) => ({ ...entity, lifecycleStates: [] })),
+    },
     ontologyIndex: { ontologyHash: 'sha256:ontology' } as any,
     rules: { rulesHash: 'sha256:rules' } as any,
     access: { ...input.access, userLanguage: 'en', title: 'Access', accessHash: 'sha256:access' } as any,
@@ -140,6 +144,66 @@ test('a state reached only by a transition whose use case does not write the ent
     report.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   assert.equal(report.checks.find(check => check.checkId === 'A8-dormant-commands')?.status, 'failed');
   assert.equal(report.repairStep, 'e7-realization');
+});
+
+test('A8 fails an actor/command state with no transition and lets a time state pass', async () => {
+  const input = await sources();
+  const host = input.ontology.entities[0];
+  host.lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'paid', reachedBy: 'command' },
+    { state: 'overdue', reachedBy: 'time', ruleRef: 'overdueWhenPastDue' },
+  ];
+  host.initialState = 'open';
+  input.workflows = [{
+    workflowId: 'hostLifecycle', entityRef: host.entityId, initialState: 'open', terminalStates: ['paid'],
+    states: ['open', 'paid'],
+    transitions: [{
+      transitionId: 'pay', entityRef: host.entityId, fromStates: ['open'], toState: 'paid',
+      useCaseId: (input.useCases[0] || { useCaseId: 'pay' }).useCaseId,
+    }],
+  } as any];
+  const report = await validateNs4E10(input);
+  assert.equal(report.errors.some(issue => issue.code === 'NS4_E10_STATE_UNREACHABLE' && /overdue/.test(issue.message)), false,
+    report.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const blocked = structuredClone(input);
+  blocked.ontology.entities[0].lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'archived', reachedBy: 'actor' },
+  ];
+  blocked.ontology.entities[0].initialState = 'open';
+  blocked.workflows = [{
+    workflowId: 'hostLifecycle', entityRef: host.entityId, initialState: 'open', terminalStates: [],
+    states: ['open'], transitions: [],
+  } as any];
+  const failed = await validateNs4E10(blocked);
+  assert.equal(failed.finalStatus, 'failed');
+  assert.ok(failed.errors.some(issue => issue.code === 'NS4_E10_STATE_UNREACHABLE' && /archived/.test(issue.message)),
+    failed.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(failed.checks.find(check => check.checkId === 'A8-dormant-commands')?.status, 'failed');
+});
+
+test('A8 fails when an operation filters by an unreachable actor state', async () => {
+  const input = await sources();
+  const host = input.ontology.entities[0];
+  host.lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'archived', reachedBy: 'actor' },
+  ];
+  host.initialState = 'open';
+  input.workflows = [{
+    workflowId: 'hostLifecycle', entityRef: host.entityId, initialState: 'open', terminalStates: [],
+    states: ['open'], transitions: [],
+  } as any];
+  const operation = input.model.operations[0];
+  operation.entityRef = host.entityId;
+  operation.inputs = [{
+    inputId: 'status', fieldRef: { entityId: host.entityId, fieldId: 'status' },
+    source: 'userInput', required: false, description: 'Filter.', enumValues: ['open', 'archived'],
+  }];
+  const report = await validateNs4E10(input);
+  assert.ok(report.errors.some(issue => issue.code === 'NS4_E10_STATE_UNREACHABLE' && issue.path.includes(operation.operationId)),
+    report.errors.map(issue => `${issue.code}: ${issue.path}`).join('\n'));
 });
 
 test('a command whose transitions no longer exist stays visible as a registrar, never a failure', async () => {
@@ -267,7 +331,7 @@ async function ce05E10(opts: { dropProjection?: boolean } = {}): Promise<Ns4E10S
       entities: ce05.ontology.entities.map((entity: any) => ({
         ...entity, description: entity.title, ownership: entity.ownership || 'moduleOwned',
         sourceRefs: { journeyIds: [], featureIds: [], authorityRefs: [] },
-        lifecycleStates: entity.lifecycleStates || [], lifecyclePredicates: entity.lifecyclePredicates || [],
+        lifecycleStates: [], lifecyclePredicates: entity.lifecyclePredicates || [],
         useRules: entity.useRules || [],
       })),
     },

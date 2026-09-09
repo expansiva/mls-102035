@@ -117,6 +117,19 @@ export interface Ns4LifecyclePredicate {
   source: Ns4ConstraintSource;
 }
 
+/** How a lifecycle state is reached. A gate reads this without an LLM. */
+export type Ns4LifecycleReachedBy = 'actor' | 'command' | 'time';
+
+/**
+ * One lifecycle state of an entity. A bare string in authored JSON is `reachedBy: 'actor'`.
+ * `time` is computed on read and is never a workflow transition; it requires `ruleRef`.
+ */
+export interface Ns4LifecycleState {
+  state: string;
+  reachedBy: Ns4LifecycleReachedBy;
+  ruleRef?: string;
+}
+
 export interface Ns4OntologyEntity {
   entityId: string;
   title: string;
@@ -165,7 +178,7 @@ export interface Ns4OntologyEntity {
     authorityRefs: string[];
   };
   fields: Ns4OntologyField[];
-  lifecycleStates: string[];
+  lifecycleStates: Ns4LifecycleState[];
   /** The lifecycle values as a literal union; mirrors lifecycleStates and is never a second truth. */
   statusEnum?: string[];
   /** User-language labels for `lifecycleStates`. OPTIONAL on the type; new E4 runs backfill a gap. */
@@ -424,8 +437,9 @@ function closedDomainLabelFindings(review: Ns4E4Review): Array<Ns4ResolutionFind
     // Plan drafts have no fields yet — do not poison the entity workers with humanized English.
     if (!entity.fields.length) return;
     if (entity.lifecycleStates.length) {
-      const { missing } = completeEnumLabels(entity.lifecycleStates, entity.lifecycleLabels);
-      if (missing.length) findings.push(lifecycleLabelFinding(entity.entityId, entity.lifecycleStates));
+      const ids = lifecycleStateIds(entity.lifecycleStates);
+      const { missing } = completeEnumLabels(ids, entity.lifecycleLabels);
+      if (missing.length) findings.push(lifecycleLabelFinding(entity.entityId, ids));
     }
     entity.fields.forEach(field => {
       const codes = field.enum || [];
@@ -908,7 +922,8 @@ function normalizeEntity(value: unknown, moduleName: string): Ns4OntologyEntity 
   const entityId = text(entity.entityId);
   const kind = entityKind(entity.kind);
   const entityOwnership = ownership(entity.ownership);
-  const lifecycleStates = strings(entity.lifecycleStates);
+  const lifecycleStates = normalizeLifecycleStates(entity.lifecycleStates);
+  const lifecycleIds = lifecycleStateIds(lifecycleStates);
   const fields = array(entity.fields).map(item => {
     const field = record(item);
     const fieldId = text(field.fieldId);
@@ -923,7 +938,7 @@ function normalizeEntity(value: unknown, moduleName: string): Ns4OntologyEntity 
       };
     });
     const declared = enumValues(constraints);
-    const values = declared.length ? declared : (isStatusFieldId(fieldId) ? lifecycleStates : []);
+    const values = declared.length ? declared : (isStatusFieldId(fieldId) ? lifecycleIds : []);
     return {
       fieldId,
       title: text(field.title),
@@ -963,7 +978,7 @@ function normalizeEntity(value: unknown, moduleName: string): Ns4OntologyEntity 
     },
     fields,
     lifecycleStates,
-    ...(lifecycleStates.length ? { statusEnum: lifecycleStates } : {}),
+    ...(lifecycleIds.length ? { statusEnum: lifecycleIds } : {}),
     ...(enumLabels(entity.lifecycleLabels).length ? { lifecycleLabels: enumLabels(entity.lifecycleLabels) } : {}),
     ...(text(entity.initialState) ? { initialState: text(entity.initialState) } : {}),
     ...(strings(entity.terminalStates).length ? { terminalStates: strings(entity.terminalStates) } : {}),
@@ -1087,4 +1102,68 @@ function strings(value: unknown): string[] { return array(value).map(text).filte
 function text(value: unknown): string { return typeof value === 'string' ? value.trim() : ''; }
 function positiveInteger(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function reachedByOf(value: unknown): Ns4LifecycleReachedBy {
+  return value === 'command' || value === 'time' ? value : 'actor';
+}
+
+/** Bare string = `actor`. After normalize, every entity carries objects. */
+export function normalizeLifecycleStates(value: unknown): Ns4LifecycleState[] {
+  const seen = new Set<string>();
+  const out: Ns4LifecycleState[] = [];
+  for (const item of array(value)) {
+    const parsed = typeof item === 'string'
+      ? { state: item.trim(), reachedBy: 'actor' as const }
+      : (() => {
+        const rec = record(item);
+        const state = text(rec.state);
+        const ruleRef = text(rec.ruleRef);
+        return { state, reachedBy: reachedByOf(rec.reachedBy), ...(ruleRef ? { ruleRef } : {}) };
+      })();
+    if (!parsed.state || seen.has(parsed.state)) continue;
+    seen.add(parsed.state);
+    out.push(parsed);
+  }
+  return out;
+}
+
+export function lifecycleStateIds(states: ReadonlyArray<string | Ns4LifecycleState>): string[] {
+  return states.map(item => typeof item === 'string' ? item : item.state).filter(Boolean);
+}
+
+export function hasLifecycleState(states: ReadonlyArray<string | Ns4LifecycleState>, state: string): boolean {
+  return lifecycleStateIds(states).includes(state);
+}
+
+export function lifecycleReachedBy(
+  states: ReadonlyArray<string | Ns4LifecycleState>,
+  state: string,
+): Ns4LifecycleReachedBy {
+  for (const item of states) {
+    if (typeof item === 'string') {
+      if (item === state) return 'actor';
+      continue;
+    }
+    if (item.state === state) return item.reachedBy === 'command' || item.reachedBy === 'time' ? item.reachedBy : 'actor';
+  }
+  return 'actor';
+}
+
+export function lifecycleRuleRef(
+  states: ReadonlyArray<string | Ns4LifecycleState>,
+  state: string,
+): string {
+  for (const item of states) {
+    if (typeof item === 'string') continue;
+    if (item.state === state) return item.ruleRef || '';
+  }
+  return '';
+}
+
+export function isTimeLifecycleState(
+  states: ReadonlyArray<string | Ns4LifecycleState>,
+  state: string,
+): boolean {
+  return lifecycleReachedBy(states, state) === 'time';
 }

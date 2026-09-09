@@ -108,6 +108,8 @@ export type {
   Ns4EntityOwnership,
   Ns4FieldConstraint,
   Ns4LifecyclePredicate,
+  Ns4LifecycleReachedBy,
+  Ns4LifecycleState,
   Ns4OntologyEntity,
   Ns4OntologyEntityArtifact,
   Ns4OntologyEntityPlan,

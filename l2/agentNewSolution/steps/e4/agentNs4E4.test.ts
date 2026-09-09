@@ -1831,6 +1831,51 @@ test('E4 requires mdmSubtype on kind mdm and rejects an unknown or party-mismatc
   assert.ok(party.issues.some(issue => issue.code === 'NS4_E4_MDM_SUBTYPE_PARTY'), JSON.stringify(party.issues));
 });
 
+test('E4 normalizes a bare lifecycle string to reachedBy actor', () => {
+  const input = structuredClone(reviewInput) as any;
+  input.entities[0].lifecycleStates = ['draft', 'published'];
+  input.entities[0].initialState = 'draft';
+  input.entities[0].fields.push({
+    fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Lifecycle status.', constraints: [],
+  });
+  const review = normalizeNs4E4Review(input);
+  assert.deepEqual(review.entities[0].lifecycleStates, [
+    { state: 'draft', reachedBy: 'actor' },
+    { state: 'published', reachedBy: 'actor' },
+  ]);
+  assert.deepEqual(review.entities[0].statusEnum, ['draft', 'published']);
+});
+
+test('E4 requires ruleRef on reachedBy time and that the id is in useRules', () => {
+  const input = structuredClone(reviewInput) as any;
+  input.entities[0].lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'overdue', reachedBy: 'time' },
+  ];
+  input.entities[0].initialState = 'open';
+  input.entities[0].fields.push({
+    fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Lifecycle status.', constraints: [],
+  });
+  let gate = validateNs4E4Review(normalizeNs4E4Review(input), journeys, access);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS4_E4_TIME_RULE_REF'));
+
+  input.entities[0].lifecycleStates[1].ruleRef = 'overdueWhenPastDue';
+  gate = validateNs4E4Review(normalizeNs4E4Review(input), journeys, access);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS4_E4_TIME_RULE_REF' && /useRules/.test(issue.message)));
+
+  input.entities[0].useRules = ['overdueWhenPastDue'];
+  gate = validateNs4E4Review(normalizeNs4E4Review(input), journeys, access);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS4_E4_TIME_RULE_REF'), false, JSON.stringify(gate.issues));
+});
+
+test('E4 overview prompt names reachedBy and does not treat time status as a projection', () => {
+  const overview = readFileSync(new URL('prompt.md', import.meta.url), 'utf8');
+  assert.match(overview, /reachedBy/);
+  assert.match(overview, /`actor`.*`command`.*`time`/s);
+  assert.doesNotMatch(overview, /a status derived from dates/);
+  assert.match(overview, /An `appendOnly` fact has no `lifecycleStates`/);
+});
+
 test('E4 rejects MDM lifecycle and a redeclared level-1 field', () => {
   const input = structuredClone(normalizeNs4E4Review(V7_MDM)) as any;
   input.entities[0].lifecycleStates = ['active', 'inactive'];
