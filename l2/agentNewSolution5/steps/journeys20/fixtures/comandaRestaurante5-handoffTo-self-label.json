@@ -1,0 +1,235 @@
+{
+  "derivedFrom": "comandaRestaurante5/pipeline/journeys20-draft.json",
+  "journeys": [
+    {
+      "journeyId": "openTabForTable",
+      "business": {
+        "actorRef": "garcom",
+        "title": "Open a tab for a table",
+        "goal": "Start an order tab for an available restaurant table.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "locateAvailableTable",
+            "kind": "locate",
+            "entity": "Table",
+            "title": "Find an available table",
+            "description": "Find the table that will receive the new tab.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "inspectTableAvailability",
+            "kind": "inspect",
+            "entity": "Table",
+            "title": "Check table availability",
+            "description": "Confirm the selected table is available for service.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "createOpenTab",
+            "kind": "act",
+            "entity": "OrderTab",
+            "affects": [
+              "Table"
+            ],
+            "title": "Open the tab",
+            "description": "Create an open tab for the selected table and mark the table as occupied.",
+            "handoffTo": "garcom"
+          }
+        ],
+        "outcome": {
+          "statement": "An open tab is associated with the selected table.",
+          "evidence": [
+            "The tab is identified as open.",
+            "The table is shown as occupied."
+          ]
+        }
+      }
+    },
+    {
+      "journeyId": "addItemToOpenTab",
+      "business": {
+        "actorRef": "garcom",
+        "title": "Add a menu item to an open tab",
+        "goal": "Record an ordered menu item with its quantity and optional note.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateOpenTab",
+            "kind": "locate",
+            "entity": "OrderTab",
+            "title": "Find the open tab",
+            "description": "Use the tab already in hand or find the open tab for the table.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "inspectOpenTab",
+            "kind": "inspect",
+            "entity": "OrderTab",
+            "title": "Review the open tab",
+            "description": "Confirm the tab is open before adding an item.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "locateMenuItem",
+            "kind": "locate",
+            "entity": "MenuItem",
+            "title": "Find a menu item",
+            "description": "Find the requested item in the menu.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "inspectMenuItem",
+            "kind": "inspect",
+            "entity": "MenuItem",
+            "title": "Review item and price",
+            "description": "Check the selected menu item and its current price.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "recordOrderedItem",
+            "kind": "act",
+            "entity": "OrderItem",
+            "affects": [
+              "OrderTab"
+            ],
+            "title": "Add the item to the tab",
+            "description": "Record the menu item on the open tab with its quantity and optional observation.",
+            "handoffTo": "garcom"
+          }
+        ],
+        "outcome": {
+          "statement": "The requested item is recorded on the open tab.",
+          "evidence": [
+            "The tab lists the item, quantity, and any observation.",
+            "The tab total reflects the added item."
+          ]
+        }
+      }
+    },
+    {
+      "journeyId": "cancelMistakenTabItem",
+      "business": {
+        "actorRef": "garcom",
+        "title": "Cancel a mistaken tab item",
+        "goal": "Remove an item entered by mistake while the tab remains open.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateTabForCancellation",
+            "kind": "locate",
+            "entity": "OrderTab",
+            "title": "Find the open tab",
+            "description": "Use the tab already in hand or find the open tab for the table.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "inspectTabForCancellation",
+            "kind": "inspect",
+            "entity": "OrderTab",
+            "title": "Confirm the tab is open",
+            "description": "Check that the tab is still open and its items can be corrected.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "locateMistakenItem",
+            "kind": "locate",
+            "entity": "OrderItem",
+            "title": "Find the mistaken item",
+            "description": "Find the item that was entered by mistake on the tab.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "inspectMistakenItem",
+            "kind": "inspect",
+            "entity": "OrderItem",
+            "title": "Review the item to cancel",
+            "description": "Verify the item selected for cancellation.",
+            "handoffTo": "garcom"
+          },
+          {
+            "stepId": "cancelTabItem",
+            "kind": "act",
+            "entity": "OrderItem",
+            "affects": [
+              "OrderTab"
+            ],
+            "title": "Cancel the item",
+            "description": "Cancel the mistaken item from the open tab.",
+            "handoffTo": "garcom"
+          }
+        ],
+        "outcome": {
+          "statement": "The mistaken item is canceled and no longer contributes to the tab total.",
+          "evidence": [
+            "The item is marked as canceled on the tab.",
+            "The tab total is updated."
+          ]
+        }
+      }
+    },
+    {
+      "journeyId": "closeTabAndRegisterPayment",
+      "business": {
+        "actorRef": "caixa",
+        "title": "Close a tab and register payment",
+        "goal": "Set an optional discount, register payment, close the tab, and release the table.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateTabToClose",
+            "kind": "locate",
+            "entity": "OrderTab",
+            "title": "Find the tab to close",
+            "description": "Use the tab already in hand or find the open tab for the table.",
+            "handoffTo": "caixa"
+          },
+          {
+            "stepId": "inspectTabTotal",
+            "kind": "inspect",
+            "entity": "OrderTab",
+            "title": "Review the total",
+            "description": "Review the tab items and total before payment.",
+            "handoffTo": "caixa"
+          },
+          {
+            "stepId": "applyOptionalDiscount",
+            "kind": "act",
+            "entity": "OrderTab",
+            "title": "Apply an optional discount",
+            "description": "Apply a discount to the tab when one is needed.",
+            "handoffTo": "caixa"
+          },
+          {
+            "stepId": "registerPaymentAndCloseTab",
+            "kind": "act",
+            "entity": "Payment",
+            "affects": [
+              "OrderTab",
+              "Table"
+            ],
+            "title": "Register payment and close the tab",
+            "description": "Record the payment method, close the tab, and release its table.",
+            "handoffTo": "caixa"
+          }
+        ],
+        "outcome": {
+          "statement": "Payment is recorded, the tab is closed, and the table is available again.",
+          "evidence": [
+            "The payment method is recorded for the tab.",
+            "The tab is shown as closed.",
+            "The table is shown as available."
+          ]
+        }
+      }
+    }
+  ]
+}

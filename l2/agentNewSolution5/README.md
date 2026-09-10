@@ -4,8 +4,8 @@ L4 v5 source compiler. Writes the six business sources of a module and a determi
 finalize. Does not emit derived copies (operations, workspaces, usecases, landings) and
 never dispatches agentChangeBackend or agentChangeFrontend.
 
-`module10` is implemented: one LLM call writes `l4/<mod>/module.defs.ts` (actors, languages,
-scope). Later steps still stop the run at the first unimplemented id (`journeys20`).
+`module10` and `journeys20` are implemented. Later steps still stop the run at the first
+unimplemented id (`ontology30`).
 
 ## Invocation
 
@@ -17,7 +17,8 @@ scope). Later steps still stop the run at the first unimplemented id (`journeys2
 ```
 
 - `/module` fixes the folder name. Without it, `module10` proposes a lowerCamel name.
-- `/fast` skips reserved clarification anchors (they have no screen) and auto-approves `module10`.
+- `/fast` skips reserved clarification anchors (they have no screen) and auto-approves each
+  implemented step.
 - `/rebuild all` deletes only `l4/<module>/**` of that module and recreates the pipeline.
 - An existing module without `/rebuild all` is refused.
 

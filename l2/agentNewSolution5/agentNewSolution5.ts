@@ -20,6 +20,7 @@ import {
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
+import '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
 
 export function createAgent(): IAgentAsync {
   return {

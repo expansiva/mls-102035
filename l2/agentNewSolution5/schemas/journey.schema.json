@@ -1,0 +1,83 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/journey/2026-09-10-ns5-journey-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "journeys"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-journey-v1" },
+    "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "journeys": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/journey" }
+    }
+  },
+  "$defs": {
+    "journey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journeyId", "business"],
+      "properties": {
+        "journeyId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "business": { "$ref": "#/$defs/business" }
+      }
+    },
+    "business": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actorRef", "title", "goal", "entry", "steps", "outcome"],
+      "properties": {
+        "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "goal": { "type": "string", "minLength": 1 },
+        "entry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["coldStart", "contextOrLookup", "fromNotification"] }
+          }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement", "evidence"],
+          "properties": {
+            "statement": { "type": "string", "minLength": 1 },
+            "evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stepId", "kind", "entity", "title", "description"],
+      "properties": {
+        "stepId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "kind": { "type": "string", "enum": ["locate", "inspect", "act", "decide", "handoff"] },
+        "entity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "affects": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "handoffTo": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+      }
+    }
+  }
+}

@@ -107,6 +107,36 @@ export interface Ns5JourneyArtifact {
   businessHash: string;
 }
 
+export interface Ns5SystemDecision {
+  /** dropInferredActor<Actor> after journeys20. */
+  decisionId: string;
+  /** Mechanical choice. */
+  chosen: string;
+  /** Visible alternative; not offered as a widget. */
+  alternatives: string[];
+  decidedBy: 'system';
+}
+
+export interface Ns5JourneyIndexEntry {
+  /** File name under journeys/. */
+  journeyId: string;
+  /** Must be an actorId that survived inferred-actor drop. */
+  actorRef: string;
+  /** Planner / UI. */
+  title: string;
+}
+
+export interface Ns5JourneyIndexArtifact {
+  /** Gate of journeys20; same version as each journey file. */
+  schemaVersion: typeof NS5_JOURNEY_SCHEMA_VERSION;
+  /** Folder. */
+  moduleName: string;
+  /** Declaration order; ontology30 and access60 read this list. */
+  journeys: Ns5JourneyIndexEntry[];
+  /** journeys20 records dropInferredActor<Actor> here. */
+  systemDecisions: Ns5SystemDecision[];
+}
+
 export interface Ns5OntologyField {
   /** Grants and rules name Entidade.campo using this id. */
   fieldId: string;
@@ -379,6 +409,8 @@ export interface Ns5PipelineStepState {
   error?: string;
   /** Set when /fast auto-approves; later steps and the supervisor read this. */
   autoReason?: string;
+  /** journeys20: count of decide steps in the module. Zero is valid. */
+  decideStepCount?: number;
 }
 
 export interface Ns5Invocation {
