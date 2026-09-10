@@ -8,7 +8,10 @@ import {
   NS5_STEP_IDS,
   buildNs5PlannedSteps,
   createEmptyPipeline,
+  createNs5RetryStep,
+  markNs5Step,
   moduleTokenOk,
+  ownerStepId,
   parseNs5Invocation,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 
@@ -60,4 +63,36 @@ void test('empty pipeline starts inProgress with empty steps', () => {
   assert.deepEqual(pipeline.steps, {});
   assert.equal(pipeline.schemaVersion, '2026-09-10-ns5-pipeline-v1');
   assert.equal(pipeline.flowId, 'agentNewSolution5');
+});
+
+void test('parseNs5Invocation allows a prompt without /module', () => {
+  const parsed = parseNs5Invocation('criar o modulo x /fast');
+  assert.equal(parsed.fast, true);
+  assert.equal(parsed.module, '');
+  assert.equal(parsed.prompt, 'criar o modulo x');
+});
+
+void test('ownerStepId and retry step keep the owning module10 hook', () => {
+  assert.equal(ownerStepId('module10-repair-2'), 'module10');
+  const retry = createNs5RetryStep('module10', 'teste5', 'repair', 1, { gateFeedback: 'NS5_MODULE_INTERNAL_ACTOR: missing' });
+  assert.equal(retry.planning?.planId, 'module10-repair-1');
+  assert.match(String(retry.prompt), /"planId":"module10"/);
+  assert.match(String(retry.prompt), /gateFeedback/);
+});
+
+void test('markNs5Step refuses to overwrite approved', () => {
+  const pipeline = createEmptyPipeline('teste5', 'criar o modulo x', { fast: true, module: 'teste5', rebuildAll: false }, '2026-09-10T00:00:00.000Z');
+  const approved = markNs5Step(pipeline, 'module10', {
+    status: 'approved',
+    updatedAt: '2026-09-10T01:00:00.000Z',
+    artifactPaths: ['l4/teste5/module.defs.ts'],
+    autoReason: 'fast',
+  });
+  const afterFail = markNs5Step(approved, 'module10', {
+    status: 'failed',
+    updatedAt: '2026-09-10T02:00:00.000Z',
+    error: 'late',
+  });
+  assert.equal(afterFail.steps.module10?.status, 'approved');
+  assert.equal(afterFail.steps.module10?.error, undefined);
 });

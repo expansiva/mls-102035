@@ -28,6 +28,9 @@ void test('every generated path matches the NS5 l4 table', async () => {
   assert.equal(asPath(fs.integrationFile(m)), 'l4/teste5/integration.defs.ts');
   assert.equal(asPath(fs.pipelineFile(m)), 'l4/teste5/pipeline/pipeline.json');
   assert.equal(asPath(fs.draftFile(m, 'module10')), 'l4/teste5/pipeline/module10-draft.json');
+  assert.equal(fs.displayPath(fs.agentFile('schemas', 'module.schema', '.json')), 'l2/agentNewSolution5/schemas/module.schema.json');
+  assert.equal(fs.displayPath(fs.agentFile('steps/module10', 'prompt', '.md')), 'l2/agentNewSolution5/steps/module10/prompt.md');
+  assert.equal(fs.displayPath(fs.registryFile()), 'l4/organization/registry.defs.ts');
 });
 
 void test('displayPath and shortName builders stay free of extra dots', async () => {

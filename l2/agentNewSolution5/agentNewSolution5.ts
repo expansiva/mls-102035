@@ -19,6 +19,7 @@ import {
   planIdOf,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
 
 export function createAgent(): IAgentAsync {
   return {
@@ -43,14 +44,14 @@ async function beforePromptImplicit(
   if (!invocation.prompt && !invocation.rebuildAll) {
     return statusTask(agent, context, 'Provide the module description after @@newSolution5.');
   }
-  if (!invocation.module) {
-    return statusTask(agent, context, 'Pass /module <lowerCamel>. The module name is not inferred from the prompt.');
+  if (invocation.rebuildAll && !invocation.module) {
+    return statusTask(agent, context, 'Pass /rebuild all <lowerCamel>. /rebuild all needs the module name.');
   }
-  if (!moduleTokenOk(invocation.module)) {
+  if (invocation.module && !moduleTokenOk(invocation.module)) {
     return statusTask(agent, context, 'Module name must be lowerCamel (example: stockControl).');
   }
 
-  const existing = existingModuleName(invocation.module);
+  const existing = invocation.module ? existingModuleName(invocation.module) : '';
   if (existing && !invocation.rebuildAll) {
     return statusTask(
       agent,
@@ -68,7 +69,7 @@ async function beforePromptImplicit(
 
   const moduleName = existing || invocation.module;
   const flags: Ns5Invocation = { fast: invocation.fast, module: moduleName, rebuildAll: invocation.rebuildAll };
-  await startNs5Pipeline(moduleName, invocation.prompt, flags, invocation.rebuildAll);
+  if (moduleName) await startNs5Pipeline(moduleName, invocation.prompt, flags, invocation.rebuildAll);
 
   const addMessage: mls.msg.AgentIntentAddMessageAI = {
     type: 'add-message-ai',
@@ -80,7 +81,7 @@ async function beforePromptImplicit(
         { type: 'system', content: 'agentNewSolution5 deterministic bootstrap. The root LLM is skipped by AgentIntentAddMessageAI.skipRootLLM.' },
         { type: 'human', content: invocation.prompt || moduleName },
       ],
-      taskTitle: `plan ${moduleName}`,
+      taskTitle: `plan ${moduleName || 'new module'}`,
       threadId: context.message.threadId,
       userMessage: context.message.content,
       longTermMemory: {

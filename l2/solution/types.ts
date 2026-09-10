@@ -377,12 +377,14 @@ export interface Ns5PipelineStepState {
   updatedAt: string;
   artifactPaths?: string[];
   error?: string;
+  /** Set when /fast auto-approves; later steps and the supervisor read this. */
+  autoReason?: string;
 }
 
 export interface Ns5Invocation {
   /** /fast skips reserved clarification anchors. */
   fast: boolean;
-  /** /module value; required until module10 can propose a name. */
+  /** /module value when given; module10 proposes lowerCamel otherwise. */
   module: string;
   /** /rebuild all of that module's l4 tree. */
   rebuildAll: boolean;

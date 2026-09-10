@@ -3,7 +3,7 @@
 import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { writePipeline } from '/_102035_/l2/solution/fs.js';
 import type { Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
-import { isNs5StepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 
 export type Ns5StepBeforePrompt = (
   agent: IAgentMeta,
@@ -45,7 +45,8 @@ export function planIdOf(step: mls.msg.AIAgentStep): string {
 }
 
 export function hooksFor(planId: string): Ns5StepHooks | undefined {
-  return isNs5StepId(planId) ? NS5_STEP_HOOKS[planId] : undefined;
+  const stepId = ownerStepId(planId);
+  return stepId ? NS5_STEP_HOOKS[stepId] : undefined;
 }
 
 export async function markAwaitingStep(

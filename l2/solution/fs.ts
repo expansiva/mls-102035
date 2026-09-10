@@ -1,11 +1,15 @@
 /// <mls fileReference="_102035_/l2/solution/fs.ts" enhancement="_blank"/>
 
 import { createStorFile } from '/_102027_/l2/libStor.js';
+import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
+import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 import type { Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
 
 export type Ns5FileInfo = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
 
 const TYPES_IMPORT = '/_102035_/l2/solution/types.js';
+const AGENT_PROJECT = 102035;
+const AGENT_FOLDER = 'agentNewSolution5';
 
 export function normalizeModuleName(value: unknown, fallback = 'newModule'): string {
   const raw = String(value || '').trim() || fallback;
@@ -69,6 +73,20 @@ export function pipelineFile(moduleName: string): Ns5FileInfo {
 
 export function draftFile(moduleName: string, step: Ns5StepId | string): Ns5FileInfo {
   return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: `${step}-draft`, extension: '.json' };
+}
+
+export function agentFile(folder: string, shortName: string, extension: string): Ns5FileInfo {
+  return {
+    project: AGENT_PROJECT,
+    level: 2,
+    folder: folder ? `${AGENT_FOLDER}/${folder}` : AGENT_FOLDER,
+    shortName,
+    extension,
+  };
+}
+
+export function registryFile(): Ns5FileInfo {
+  return { project: currentProject(), level: 4, folder: 'organization', shortName: 'registry', extension: '.defs.ts' };
 }
 
 export function displayPath(fileInfo: Ns5FileInfo): string {
@@ -181,6 +199,34 @@ export async function readPipeline(moduleName: string): Promise<Ns5PipelineState
 
 export async function writePipeline(state: Ns5PipelineState): Promise<string> {
   return writeJson(pipelineFile(state.moduleName), state);
+}
+
+export async function readAgentText(folder: string, shortName: string, extension = '.md'): Promise<string> {
+  return readText(agentFile(folder, shortName, extension), true);
+}
+
+export async function readAgentJson<T>(folder: string, shortName: string, extension = '.json'): Promise<T> {
+  const raw = await readText(agentFile(folder, shortName, extension), true);
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new Error(`[agentNewSolution5] invalid JSON: ${displayPath(agentFile(folder, shortName, extension))}`);
+  }
+}
+
+export async function readDefsJson<T>(fileInfo: Ns5FileInfo): Promise<T | null> {
+  const source = await readText(fileInfo, false);
+  const json = extractNs4ClassicJsonObject(source);
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function readSolutionRegistry(): Promise<Ns4SolutionRegistryArtifact | null> {
+  return readDefsJson<Ns4SolutionRegistryArtifact>(registryFile());
 }
 
 type ReadableFile = {

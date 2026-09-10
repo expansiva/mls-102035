@@ -11,6 +11,7 @@ import {
   NS5_STEP_IDS,
   type Ns5Invocation,
   type Ns5PipelineState,
+  type Ns5PipelineStepState,
   type Ns5StepId,
 } from '/_102035_/l2/solution/types.js';
 
@@ -56,6 +57,15 @@ export interface Ns5ParsedInvocation {
 
 export function isNs5StepId(value: string): value is Ns5StepId {
   return (NS5_STEP_IDS as readonly string[]).includes(value);
+}
+
+/** Maps repair/transport planIds back to the owning step. Done-anchors and clarifications stay unmatched. */
+export function ownerStepId(planId: string): Ns5StepId | '' {
+  if (isNs5StepId(planId)) return planId;
+  for (const id of NS5_STEP_IDS) {
+    if (new RegExp(`^${id}-(?:repair|transport)-\\d+$`).test(planId)) return id;
+  }
+  return '';
 }
 
 export function parseNs5Invocation(value: string): Ns5ParsedInvocation {
@@ -144,4 +154,54 @@ export async function startNs5Pipeline(
 
 export function moduleTokenOk(moduleName: string): boolean {
   return /^[a-z][A-Za-z0-9]*$/.test(moduleName);
+}
+
+export function createNs5RetryStep(
+  stepId: Ns5StepId,
+  moduleName: string,
+  kind: 'repair' | 'transport',
+  attempt: number,
+  extra: Record<string, unknown> = {},
+): mls.msg.AIAgentStep {
+  const planId = `${stepId}-${kind}-${attempt}`;
+  const suffix = kind === 'repair' ? `R${attempt}` : `T${attempt}`;
+  return {
+    type: 'agent',
+    stepId: 0,
+    interaction: null,
+    stepTitle: `${NS5_STEP_TITLES[stepId]} · ${suffix}`,
+    status: 'waiting_human_input',
+    nextSteps: [],
+    agentName: NS5_AGENT_NAME,
+    prompt: JSON.stringify({ planId: stepId, moduleName, [`${kind}Attempt`]: attempt, ...extra }),
+    rags: [],
+    planning: {
+      planId,
+      dependsOn: [],
+      executionMode: 'sequential',
+      executionHost: 'client',
+    },
+  };
+}
+
+export function markNs5Step(
+  pipeline: Ns5PipelineState,
+  stepId: Ns5StepId,
+  next: Ns5PipelineStepState,
+): Ns5PipelineState {
+  const current = pipeline.steps[stepId];
+  if (current?.status === 'approved') {
+    return { ...pipeline, updatedAt: next.updatedAt };
+  }
+  const failed = next.status === 'failed';
+  const approved = next.status === 'approved';
+  return {
+    ...pipeline,
+    steps: { ...pipeline.steps, [stepId]: next },
+    updatedAt: next.updatedAt,
+    ...(failed ? { status: 'failed' as const, awaitingStep: undefined } : {}),
+    ...(approved && pipeline.awaitingStep === stepId
+      ? { status: 'inProgress' as const, awaitingStep: undefined }
+      : {}),
+  };
 }

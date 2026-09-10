@@ -21,13 +21,21 @@ const TOUCHED = [
   'agentNewSolution5/README.md',
   'agentNewSolution5/CHANGELOG.md',
   'agentNewSolution5/docs/flow.json',
+  'agentNewSolution5/schemas/module.schema.json',
+  'agentNewSolution5/steps/module10/agentNs5Module.ts',
+  'agentNewSolution5/steps/module10/agentNs5Module.test.ts',
+  'agentNewSolution5/steps/module10/contracts.ts',
+  'agentNewSolution5/steps/module10/gate.ts',
+  'agentNewSolution5/steps/module10/prompt.md',
+  'agentNewSolution5/steps/module10/readme.md',
+  'agentNewSolution5/steps/module10/CHANGELOG.md',
   'solution/types.ts',
   'solution/lib.ts',
   'solution/fs.ts',
   'solution/fs.test.ts',
 ];
 
-void test('ns5_01 touched files stay English in comments and identifiers', () => {
+void test('ns5 touched files stay English in comments and identifiers', () => {
   for (const relative of TOUCHED) {
     const abs = path.join(PROJECT_L2, relative);
     assert.equal(existsSync(abs), true, relative);

@@ -84,7 +84,7 @@ void test('flow artifacts match the l4 table', () => {
   assert.deepEqual(flow.artifacts, EXPECTED_ARTIFACTS);
 });
 
-void test('each step folder that exists implements beforePromptStep and is on the dispatch table', () => {
+void test('each step folder that exists implements beforePromptStep and is on the dispatch table', async () => {
   if (!existsSync(STEPS_ROOT)) return;
   for (const stepId of NS5_STEP_IDS) {
     const folder = path.join(STEPS_ROOT, stepId);
@@ -93,6 +93,7 @@ void test('each step folder that exists implements beforePromptStep and is on th
     assert.ok(agentFiles.length > 0, `${stepId} has a folder but no agentNs5*.ts`);
     const source = readFileSync(path.join(folder, agentFiles[0]), 'utf8');
     assert.match(source, /export async function beforeNs5\w+PromptStep/, `${agentFiles[0]} must export beforePromptStep`);
+    await import(`/_102035_/l2/agentNewSolution5/steps/${stepId}/${agentFiles[0].replace(/\.ts$/, '.js')}`);
     assert.equal(typeof NS5_STEP_HOOKS[stepId]?.beforePromptStep, 'function', `${stepId} folder exists but is missing from NS5_STEP_HOOKS`);
   }
 });
