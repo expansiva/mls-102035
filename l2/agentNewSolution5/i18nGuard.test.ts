@@ -1,0 +1,51 @@
+/// <mls fileReference="_102035_/l2/agentNewSolution5/i18nGuard.test.ts" enhancement="_blank"/>
+
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_L2 = path.resolve(HERE, '..');
+const ACCENT = /[À-ÿ]/;
+
+const TOUCHED = [
+  'agentNewSolution5/agentNewSolution5.ts',
+  'agentNewSolution5/helpers/ns5Core.ts',
+  'agentNewSolution5/helpers/ns5Core.test.ts',
+  'agentNewSolution5/helpers/ns5Dispatch.ts',
+  'agentNewSolution5/helpers/ns5CreateAgentGraph.test.ts',
+  'agentNewSolution5/flowContract.test.ts',
+  'agentNewSolution5/promptMarkers.test.ts',
+  'agentNewSolution5/README.md',
+  'agentNewSolution5/CHANGELOG.md',
+  'agentNewSolution5/docs/flow.json',
+  'solution/types.ts',
+  'solution/lib.ts',
+  'solution/fs.ts',
+  'solution/fs.test.ts',
+];
+
+void test('ns5_01 touched files stay English in comments and identifiers', () => {
+  for (const relative of TOUCHED) {
+    const abs = path.join(PROJECT_L2, relative);
+    assert.equal(existsSync(abs), true, relative);
+    const source = readFileSync(abs, 'utf8');
+    assert.doesNotMatch(source, /portuguese\s*\?/, relative);
+    for (const line of source.split('\n')) {
+      const trimmed = line.trim();
+      const isComment = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('<!--');
+      if (!isComment) continue;
+      assert.doesNotMatch(line, ACCENT, `${relative}: ${trimmed}`);
+    }
+    const stripped = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/`(?:\\.|[^`])*`/g, '')
+      .replace(/'(?:\\.|[^'\\])*'/g, '')
+      .replace(/"(?:\\.|[^"\\])*"/g, '');
+    assert.doesNotMatch(stripped, ACCENT, relative);
+  }
+});

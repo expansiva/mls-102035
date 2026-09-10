@@ -1,0 +1,218 @@
+/// <mls fileReference="_102035_/l2/agentNewSolution5/agentNewSolution5.ts" enhancement="_102027_/l2/enhancementAgent"/>
+
+import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
+import { readPipeline } from '/_102035_/l2/solution/fs.js';
+import type { Ns5Invocation, Ns5StepId } from '/_102035_/l2/solution/types.js';
+import {
+  NS5_AGENT_NAME,
+  buildNs5PlannedSteps,
+  existingModuleName,
+  isNs5StepId,
+  moduleTokenOk,
+  parseNs5Invocation,
+  startNs5Pipeline,
+} from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import {
+  drainWaitingSiblings,
+  hooksFor,
+  markAwaitingStep,
+  planIdOf,
+  updateStatus,
+} from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+
+export function createAgent(): IAgentAsync {
+  return {
+    agentName: NS5_AGENT_NAME,
+    agentProject: 102035,
+    agentFolder: 'agentNewSolution5',
+    agentDescription: 'L4 v5 source compiler — six business sources, no derived artifacts',
+    visibility: 'public',
+    beforePromptImplicit,
+    beforePromptStep,
+    afterPromptStep,
+    beforeClarificationStep,
+  };
+}
+
+async function beforePromptImplicit(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  userPrompt: string,
+): Promise<mls.msg.AgentIntent[]> {
+  const invocation = parseNs5Invocation(userPrompt || '');
+  if (!invocation.prompt && !invocation.rebuildAll) {
+    return statusTask(agent, context, 'Provide the module description after @@newSolution5.');
+  }
+  if (!invocation.module) {
+    return statusTask(agent, context, 'Pass /module <lowerCamel>. The module name is not inferred from the prompt.');
+  }
+  if (!moduleTokenOk(invocation.module)) {
+    return statusTask(agent, context, 'Module name must be lowerCamel (example: stockControl).');
+  }
+
+  const existing = existingModuleName(invocation.module);
+  if (existing && !invocation.rebuildAll) {
+    return statusTask(
+      agent,
+      context,
+      `Module "${existing}" already exists. To regenerate, use "@@newSolution5 ${existing} /rebuild all". Nothing was changed.`,
+    );
+  }
+  if (invocation.rebuildAll && !existing) {
+    return statusTask(
+      agent,
+      context,
+      `Module "${invocation.module}" does not exist. /rebuild all refuses to create a module that is not there.`,
+    );
+  }
+
+  const moduleName = existing || invocation.module;
+  const flags: Ns5Invocation = { fast: invocation.fast, module: moduleName, rebuildAll: invocation.rebuildAll };
+  await startNs5Pipeline(moduleName, invocation.prompt, flags, invocation.rebuildAll);
+
+  const addMessage: mls.msg.AgentIntentAddMessageAI = {
+    type: 'add-message-ai',
+    skipRootLLM: true,
+    request: {
+      action: 'addMessageAI',
+      agentName: agent.agentName,
+      inputAI: [
+        { type: 'system', content: 'agentNewSolution5 deterministic bootstrap. The root LLM is skipped by AgentIntentAddMessageAI.skipRootLLM.' },
+        { type: 'human', content: invocation.prompt || moduleName },
+      ],
+      taskTitle: `plan ${moduleName}`,
+      threadId: context.message.threadId,
+      userMessage: context.message.content,
+      longTermMemory: {
+        taskName: 'newSolution5',
+        flowName: NS5_AGENT_NAME,
+        moduleName,
+        sourcePrompt: invocation.prompt,
+        ...(invocation.fast ? { fastMode: 'true' } : {}),
+        ...(invocation.rebuildAll ? { rebuildAll: 'true' } : {}),
+      },
+    },
+  };
+
+  const steps = buildNs5PlannedSteps(moduleName).map(step => addStepIntent(context, step));
+  return [addMessage, ...steps];
+}
+
+async function beforePromptStep(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+  args?: string,
+): Promise<mls.msg.AgentIntent[]> {
+  const planId = planIdOf(step);
+  const hooks = hooksFor(planId);
+  if (hooks?.beforePromptStep) return hooks.beforePromptStep(agent, context, parentStep, step, hookSequential, args);
+  if (isNs5StepId(planId)) return notImplemented(context, parentStep, step, hookSequential, planId);
+  return [updateStatus(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed (no model).')];
+}
+
+async function afterPromptStep(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+): Promise<mls.msg.AgentIntent[]> {
+  const planId = planIdOf(step);
+  const hooks = hooksFor(planId);
+  if (hooks?.afterPromptStep) return hooks.afterPromptStep(agent, context, parentStep, step, hookSequential);
+  if (isNs5StepId(planId)) return notImplemented(context, parentStep, step, hookSequential, planId);
+  return [updateStatus(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed (no model).')];
+}
+
+async function beforeClarificationStep(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIClarificationStep,
+  hookSequential: number,
+  json: unknown,
+): Promise<HTMLElement> {
+  const planId = typeof step.planning?.planId === 'string' ? step.planning.planId : '';
+  const hooks = hooksFor(planId);
+  if (hooks?.beforeClarificationStep) {
+    return hooks.beforeClarificationStep(agent, context, parentStep, step, hookSequential, json);
+  }
+  throw new Error(`Clarification is reserved and not implemented for step ${planId || '(missing)'}.`);
+}
+
+async function notImplemented(
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+  stepId: Ns5StepId,
+): Promise<mls.msg.AgentIntent[]> {
+  const moduleName = memoryString(context, 'moduleName') || moduleNameFromPrompt(step);
+  if (moduleName) {
+    const pipeline = await readPipeline(moduleName);
+    if (pipeline) await markAwaitingStep(pipeline, stepId);
+  }
+  const traceMsg = `step ${stepId} not implemented yet`;
+  return [
+    ...drainWaitingSiblings(context, step, hookSequential, `stopped: awaiting step ${stepId}`),
+    updateStatus(context, parentStep, step, hookSequential, 'completed', traceMsg),
+  ];
+}
+
+function addStepIntent(context: mls.msg.ExecutionContext, step: mls.msg.AIPayload): mls.msg.AgentIntentAddStep {
+  return {
+    type: 'add-step',
+    messageId: '',
+    threadId: context.message.threadId,
+    taskId: '',
+    parentStepId: 1,
+    step,
+  };
+}
+
+function statusTask(agent: IAgentMeta, context: mls.msg.ExecutionContext, message: string): mls.msg.AgentIntent[] {
+  const addMessage: mls.msg.AgentIntentAddMessageAI = {
+    type: 'add-message-ai',
+    skipRootLLM: true,
+    request: {
+      action: 'addMessageAI',
+      agentName: agent.agentName,
+      inputAI: [
+        { type: 'system', content: `<!-- modelType: general -->\n${message}` },
+        { type: 'human', content: message },
+      ],
+      taskTitle: 'new Solution 5',
+      threadId: context.message.threadId,
+      userMessage: context.message.content,
+      longTermMemory: { taskName: 'newSolution5', flowName: NS5_AGENT_NAME, statusOnly: 'true' },
+    },
+  };
+  const result: mls.msg.AIPayload = {
+    type: 'result',
+    stepId: 0,
+    status: 'completed',
+    interaction: null,
+    nextSteps: [],
+    stepTitle: 'Status',
+    result: message,
+    planning: { planId: 'status', dependsOn: [], executionMode: 'sequential', executionHost: 'client' },
+  } as mls.msg.AIResultStep;
+  return [addMessage, addStepIntent(context, result)];
+}
+
+function memoryString(context: mls.msg.ExecutionContext, key: string): string {
+  const value = context.task?.iaCompressed?.longMemory?.[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function moduleNameFromPrompt(step: mls.msg.AIAgentStep): string {
+  try {
+    const parsed = JSON.parse(String(step.prompt || '{}')) as { moduleName?: unknown };
+    return typeof parsed.moduleName === 'string' ? parsed.moduleName : '';
+  } catch {
+    return '';
+  }
+}
