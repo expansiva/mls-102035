@@ -1,7 +1,7 @@
 {
   "flowId": "agentNewSolution5",
   "schemaVersion": "2026-09-10-ns5-flow-v1",
-  "status": "ontology30",
+  "status": "rules40",
   "description": "Source-only L4 compiler: six business artifacts plus a deterministic finalize. No derived copies. CB/CF are never dispatched.",
   "canonicalReferences": [
     "mls-base/skills/00_index.md",

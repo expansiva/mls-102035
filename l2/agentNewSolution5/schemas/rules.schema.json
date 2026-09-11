@@ -1,0 +1,60 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/rules/2026-09-10-ns5-rules-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "rules"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-rules-v1" },
+    "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleId", "title", "description", "appliesTo"],
+      "properties": {
+        "ruleId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "appliesTo": { "$ref": "#/$defs/appliesTo" }
+      }
+    },
+    "appliesTo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityRefs", "fieldRefs", "transitionRefs", "journeyRefs"],
+      "properties": {
+        "entityRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        },
+        "fieldRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+        },
+        "transitionRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*$" }
+        },
+        "journeyRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+        }
+      },
+      "anyOf": [
+        { "properties": { "entityRefs": { "minItems": 1 } }, "required": ["entityRefs"] },
+        { "properties": { "fieldRefs": { "minItems": 1 } }, "required": ["fieldRefs"] },
+        { "properties": { "transitionRefs": { "minItems": 1 } }, "required": ["transitionRefs"] },
+        { "properties": { "journeyRefs": { "minItems": 1 } }, "required": ["journeyRefs"] }
+      ]
+    }
+  }
+}

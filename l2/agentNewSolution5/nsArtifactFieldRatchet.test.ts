@@ -17,6 +17,8 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5OntologyEntityArtifact: { file: TYPES, name: 'Ns5OntologyEntityArtifact' },
   Ns5OntologyField: { file: TYPES, name: 'Ns5OntologyField' },
   Ns5OntologyRelationship: { file: TYPES, name: 'Ns5OntologyRelationship' },
+  Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
+  Ns5RulesArtifact: { file: TYPES, name: 'Ns5RulesArtifact' },
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
@@ -53,6 +55,17 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     required: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     persistence: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     realization: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+  },
+  Ns5Rule: {
+    ruleId: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    title: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    appliesTo: { reader: 'steps/rules40/gate.ts, later screens/endpoints cite ruleId', since: '2026-09-10' },
+  },
+  Ns5RulesArtifact: {
+    schemaVersion: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    rules: { reader: 'steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
   },
 };
 
@@ -111,4 +124,9 @@ test('NS5 ontology contracts do not gain a key without a non-LLM reader', () => 
 test('details and transitions are registered with finalize80 / basic backend readers', () => {
   assert.match(KEYS.Ns5OntologyEntityArtifact.details.reader, /finalize80/);
   assert.match(KEYS.Ns5OntologyEntityArtifact.transitions.reader, /finalize80/);
+});
+
+test('rules40 appliesTo is registered with the rules gate as reader', () => {
+  assert.match(KEYS.Ns5Rule.appliesTo.reader, /rules40\/gate/);
+  assert.match(KEYS.Ns5RulesArtifact.rules.reader, /finalize80/);
 });

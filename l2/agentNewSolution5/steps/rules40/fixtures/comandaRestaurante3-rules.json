@@ -1,0 +1,82 @@
+{
+  "derivedFrom": "comandaRestaurante3/rules/rules.defs.ts",
+  "rules": [
+    {
+      "ruleId": "comandaAbertaParaCancelamento",
+      "title": "Cancelamento só em comanda aberta",
+      "description": "Um item lançado somente pode ser cancelado enquanto sua comanda estiver aberta, devendo permanecer no histórico sem compor o total da comanda.",
+      "appliesTo": {
+        "entityRefs": ["Comanda", "ItemComanda"],
+        "fieldRefs": ["Comanda.status"],
+        "transitionRefs": ["ItemComanda.cancelarItem"],
+        "journeyRefs": ["cancelarItemDaComanda"]
+      }
+    },
+    {
+      "ruleId": "comandaAbertaParaFechamento",
+      "title": "Fechamento só de comanda aberta",
+      "description": "Somente uma comanda aberta pode ser fechada, com o registro de uma forma de pagamento, e seu fechamento libera a mesa vinculada.",
+      "appliesTo": {
+        "entityRefs": ["Comanda", "Mesa"],
+        "fieldRefs": ["Comanda.status", "Comanda.paymentMethod"],
+        "transitionRefs": ["Comanda.fecharComanda"],
+        "journeyRefs": ["fecharComanda"]
+      }
+    },
+    {
+      "ruleId": "comandaAbertaParaLancamento",
+      "title": "Lançamento só em comanda aberta",
+      "description": "Itens somente podem ser lançados em uma comanda aberta, com quantidade de pelo menos uma unidade e observação quando informada.",
+      "appliesTo": {
+        "entityRefs": ["Comanda", "ItemComanda"],
+        "fieldRefs": ["Comanda.status"],
+        "transitionRefs": [],
+        "journeyRefs": ["lancarItemNaComanda"]
+      }
+    },
+    {
+      "ruleId": "comandaComItensAtivosParaFechamento",
+      "title": "Fechamento exige item ativo",
+      "description": "Uma comanda somente pode ser fechada se possuir pelo menos um item ativo que componha seu total.",
+      "appliesTo": {
+        "entityRefs": ["Comanda", "ItemComanda"],
+        "fieldRefs": ["Comanda.details.total"],
+        "transitionRefs": ["Comanda.fecharComanda"],
+        "journeyRefs": ["fecharComanda"]
+      }
+    },
+    {
+      "ruleId": "descontoValidoNoFechamento",
+      "title": "Desconto não excede o total",
+      "description": "O desconto opcional aplicado no fechamento não pode ser maior que o total dos itens ativos da comanda.",
+      "appliesTo": {
+        "entityRefs": ["Comanda"],
+        "fieldRefs": ["Comanda.details.total", "Comanda.discountAmount"],
+        "transitionRefs": ["Comanda.fecharComanda"],
+        "journeyRefs": ["fecharComanda"]
+      }
+    },
+    {
+      "ruleId": "itemCardapioDisponivelParaLancamento",
+      "title": "Item disponível para lançamento",
+      "description": "Somente um item disponível do cardápio pode ser lançado na comanda, preservando-se no lançamento seu preço vigente.",
+      "appliesTo": {
+        "entityRefs": ["ItemCardapio"],
+        "fieldRefs": ["ItemCardapio.precoVigente"],
+        "transitionRefs": [],
+        "journeyRefs": ["lancarItemNaComanda"]
+      }
+    },
+    {
+      "ruleId": "mesaDisponivelParaAbertura",
+      "title": "Mesa livre para abertura",
+      "description": "Uma comanda somente pode ser aberta para uma mesa que não possua outra comanda aberta vinculada.",
+      "appliesTo": {
+        "entityRefs": ["Mesa", "Comanda"],
+        "fieldRefs": [],
+        "transitionRefs": [],
+        "journeyRefs": ["abrirComanda"]
+      }
+    }
+  ]
+}

@@ -93,6 +93,7 @@ export function drainWaitingSiblings(
   current: mls.msg.AIAgentStep,
   hookSequential: number,
   traceMsg: string,
+  opts?: { onlyUnimplemented?: boolean },
 ): mls.msg.AgentIntentUpdateStatus[] {
   const root = context.task?.iaCompressed?.nextSteps?.[0];
   if (!root) return [];
@@ -100,6 +101,9 @@ export function drainWaitingSiblings(
   for (const sibling of walk(root.nextSteps || [])) {
     if (sibling.stepId === current.stepId) continue;
     if (sibling.status === 'completed' || sibling.status === 'failed') continue;
+    // notImplemented must not complete a sibling that has a hook — that sibling is the
+    // implemented one still running (rules40 vs workflows50/access60 in the same parallel batch).
+    if (opts?.onlyUnimplemented && hooksFor(planIdOf(sibling as mls.msg.AIAgentStep))) continue;
     intents.push(updateStatus(context, root, sibling, hookSequential, 'completed', traceMsg));
   }
   return intents;

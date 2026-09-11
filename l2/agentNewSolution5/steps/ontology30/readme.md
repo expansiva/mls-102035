@@ -34,7 +34,7 @@ with field realization. No `kind: projection`, `derivation`, `role`, `sourceRefs
   entity validation does not run that check — the fan-out only has one entity. An entity no
   journey cites is a warning, not an error.
 - Gate repair is bounded (2) per LLM call. Entity fan-out repairs missing/invalid entities in the
-  finalizer (2 rounds). A run then stops at `awaitingStep: rules40`.
+  finalizer (2 rounds). A run then continues to `rules40`.
 
 ## Known traps
 
