@@ -1,0 +1,114 @@
+/// <mls fileReference="_102035_/l2/agentNewSolution5/nsArtifactFieldRatchet.test.ts" enhancement="_blank"/>
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * One-way ratchet: NS5 human-facing source contracts must not gain a structured key
+ * without a non-LLM reader. A new key fails until it is added here with `{ reader, since }`.
+ */
+interface KeyEntry { reader: string; since: string }
+
+const TYPES = fileURLToPath(new URL('../solution/types.ts', import.meta.url));
+
+const CONTRACTS: Record<string, { file: string; name: string }> = {
+  Ns5OntologyEntityArtifact: { file: TYPES, name: 'Ns5OntologyEntityArtifact' },
+  Ns5OntologyField: { file: TYPES, name: 'Ns5OntologyField' },
+  Ns5OntologyRelationship: { file: TYPES, name: 'Ns5OntologyRelationship' },
+};
+
+const KEYS: Record<string, Record<string, KeyEntry>> = {
+  Ns5OntologyEntityArtifact: {
+    schemaVersion: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    entityId: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    title: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    kind: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    party: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    mdmSubtype: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    displayField: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    fields: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    details: { reader: 'finalize80 / basic backend JSON column', since: '2026-09-10' },
+    lifecycleStates: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    transitions: { reader: 'steps/ontology30/gate.ts, finalize80', since: '2026-09-10' },
+    storage: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    mutability: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+  },
+  Ns5OntologyField: {
+    fieldId: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    title: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    type: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    required: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    enum: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+  },
+  Ns5OntologyRelationship: {
+    relationshipId: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    fromEntity: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    toEntity: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    type: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    required: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    persistence: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    realization: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+  },
+};
+
+function interfaceBody(source: string, name: string): string {
+  const match = source.match(new RegExp(`export interface ${name}\\b[^{]*\\{`));
+  if (!match || match.index === undefined) throw new Error(`interface ${name} not found`);
+  const start = match.index + match[0].length - 1;
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '{') depth += 1;
+    else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(start + 1, index);
+    }
+  }
+  throw new Error(`interface ${name} is unclosed`);
+}
+
+function keysOf(body: string): string[] {
+  const stripped = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const keys: string[] = [];
+  let depth = 0;
+  for (const line of stripped.split('\n')) {
+    const opens = (line.match(/\{/g) || []).length;
+    const closes = (line.match(/\}/g) || []).length;
+    if (depth === 0) {
+      const property = line.match(/^\s+(?:readonly\s+)?([A-Za-z][A-Za-z0-9]*)\??\s*:/);
+      if (property) keys.push(property[1]);
+    }
+    depth += opens - closes;
+  }
+  return keys;
+}
+
+test('NS5 ontology contracts do not gain a key without a non-LLM reader', () => {
+  for (const [artifact, spec] of Object.entries(CONTRACTS)) {
+    const source = readFileSync(spec.file, 'utf8');
+    const found = keysOf(interfaceBody(source, spec.name));
+    const table = KEYS[artifact];
+    assert.ok(table, `${artifact} is missing from the ratchet table`);
+    const extra = found.filter(key => !(key in table));
+    if (extra.length) {
+      assert.fail(
+        `${artifact} gained structured key(s) without a ratchet entry: ${extra.join(', ')}. `
+        + `Add { reader: '<file that reads it without an LLM>', since: 'YYYY-MM-DD' }.`,
+      );
+    }
+    for (const key of found) {
+      assert.ok(table[key].reader, `${artifact}.${key} needs a reader`);
+      assert.ok(table[key].since, `${artifact}.${key} needs a since date`);
+    }
+  }
+});
+
+test('details and transitions are registered with finalize80 / basic backend readers', () => {
+  assert.match(KEYS.Ns5OntologyEntityArtifact.details.reader, /finalize80/);
+  assert.match(KEYS.Ns5OntologyEntityArtifact.transitions.reader, /finalize80/);
+});

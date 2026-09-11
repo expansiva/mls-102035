@@ -11,6 +11,7 @@ import {
   createNs5RetryStep,
   markNs5Step,
   moduleTokenOk,
+  ns5OntologyEntitySelector,
   ownerStepId,
   parseNs5Invocation,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
@@ -78,6 +79,16 @@ void test('ownerStepId and retry step keep the owning module10 hook', () => {
   assert.equal(retry.planning?.planId, 'module10-repair-1');
   assert.match(String(retry.prompt), /"planId":"module10"/);
   assert.match(String(retry.prompt), /gateFeedback/);
+});
+
+void test('ownerStepId maps ontology fan-out children and leaves done-anchors unmatched', () => {
+  assert.equal(ownerStepId('ontology30-entities-0'), 'ontology30');
+  assert.equal(ownerStepId('ontology30-bindings'), 'ontology30');
+  assert.equal(ownerStepId('ontology30-finalize-1'), 'ontology30');
+  assert.equal(ownerStepId('ontology30-done'), '');
+  assert.equal(ownerStepId('ontology30-clarification'), '');
+  assert.equal(ns5OntologyEntitySelector('entity:ItemCardapio'), 'ItemCardapio');
+  assert.equal(ns5OntologyEntitySelector('{"planId":"ontology30"}'), '');
 });
 
 void test('markNs5Step refuses to overwrite approved', () => {

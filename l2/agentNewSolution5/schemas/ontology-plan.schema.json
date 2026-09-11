@@ -1,0 +1,86 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-plan/2026-09-10-ns5-ontology-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "moduleName",
+    "businessDomain",
+    "entities",
+    "relationships"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-ontology-v1" },
+    "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "businessDomain": { "type": "string", "minLength": 1 },
+    "entities": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/planEntity" }
+    },
+    "relationships": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/planRelationship" }
+    }
+  },
+  "$defs": {
+    "planEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityId", "title", "description", "kind", "party", "displayField", "storage"],
+      "properties": {
+        "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["core", "event", "supporting", "mdm", "valueObject"] },
+        "party": { "type": "string", "enum": ["person", "organization", "none"] },
+        "mdmSubtype": {
+          "type": "string",
+          "enum": [
+            "Person", "Company", "Product", "Service", "Location",
+            "AssetGeneric", "AssetVehicle", "AssetProperty", "AssetEquipment",
+            "Animal", "BankAccount", "Document", "ContactChannel"
+          ]
+        },
+        "displayField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "mutability": { "type": "string", "enum": ["appendOnly"] },
+        "storage": { "$ref": "#/$defs/storage" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "scope", "idField"],
+      "properties": {
+        "target": { "type": "string", "enum": ["moduleDatabase", "mdm", "external"] },
+        "scope": { "type": "string", "minLength": 1 },
+        "idField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "mdmType": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*\\.[A-Z][A-Za-z0-9]*$" }
+      }
+    },
+    "planRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationshipId", "fromEntity", "toEntity", "type", "required", "persistence"],
+      "properties": {
+        "relationshipId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "fromEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "toEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "type": { "type": "string", "enum": ["oneToOne", "oneToMany", "manyToOne", "manyToMany"] },
+        "required": { "type": "boolean" },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["moduleReference", "crossStoreReference", "mdmRelationship", "externalReference"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

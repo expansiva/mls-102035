@@ -21,6 +21,7 @@ import {
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
 import '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
+import '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 
 export function createAgent(): IAgentAsync {
   return {
@@ -109,7 +110,7 @@ async function beforePromptStep(
   args?: string,
 ): Promise<mls.msg.AgentIntent[]> {
   const planId = planIdOf(step);
-  const hooks = hooksFor(planId);
+  const hooks = hooksFor(planId, args, step.prompt);
   if (hooks?.beforePromptStep) return hooks.beforePromptStep(agent, context, parentStep, step, hookSequential, args);
   if (isNs5StepId(planId)) return notImplemented(context, parentStep, step, hookSequential, planId);
   return [updateStatus(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed (no model).')];
@@ -121,10 +122,11 @@ async function afterPromptStep(
   parentStep: mls.msg.AIAgentStep,
   step: mls.msg.AIAgentStep,
   hookSequential: number,
+  args?: string,
 ): Promise<mls.msg.AgentIntent[]> {
   const planId = planIdOf(step);
-  const hooks = hooksFor(planId);
-  if (hooks?.afterPromptStep) return hooks.afterPromptStep(agent, context, parentStep, step, hookSequential);
+  const hooks = hooksFor(planId, args, step.prompt);
+  if (hooks?.afterPromptStep) return hooks.afterPromptStep(agent, context, parentStep, step, hookSequential, args);
   if (isNs5StepId(planId)) return notImplemented(context, parentStep, step, hookSequential, planId);
   return [updateStatus(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed (no model).')];
 }

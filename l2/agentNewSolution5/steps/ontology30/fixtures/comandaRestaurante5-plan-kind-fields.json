@@ -1,0 +1,129 @@
+{
+  "derivedFrom": "comandaRestaurante5/pipeline/ontology30-plan-draft.json",
+  "moduleName": "comandaRestaurante5",
+  "businessDomain": "Restaurant table service and order settlement",
+  "entities": [
+    {
+      "entityId": "Table",
+      "title": "Table",
+      "description": "A restaurant table made available for guest service and associated with an open order tab when occupied.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Location",
+      "displayField": "name",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Table"
+      }
+    },
+    {
+      "entityId": "MenuItem",
+      "title": "Menu item",
+      "description": "A menu offering that can be selected for an order tab and has a restaurant price.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.MenuItem"
+      }
+    },
+    {
+      "entityId": "OrderTab",
+      "title": "Order tab",
+      "description": "The service record opened for one restaurant table, collecting requested items until settlement.",
+      "kind": "core",
+      "party": "none",
+      "mdmSubtype": "Document",
+      "displayField": "tabNumber",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.OrderTab"
+      }
+    },
+    {
+      "entityId": "OrderItem",
+      "title": "Order item",
+      "description": "A requested menu item recorded on an order tab, including the requested quantity and any note.",
+      "kind": "supporting",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "itemDescription",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.OrderItem"
+      }
+    },
+    {
+      "entityId": "Payment",
+      "title": "Payment",
+      "description": "The payment registration used to settle and close an order tab.",
+      "kind": "event",
+      "party": "none",
+      "mdmSubtype": "BankAccount",
+      "displayField": "paymentMethod",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Payment"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "orderTabForTable",
+      "fromEntity": "OrderTab",
+      "toEntity": "Table",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "orderItemOnOrderTab",
+      "fromEntity": "OrderItem",
+      "toEntity": "OrderTab",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "orderItemForMenuItem",
+      "fromEntity": "OrderItem",
+      "toEntity": "MenuItem",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "paymentForOrderTab",
+      "fromEntity": "Payment",
+      "toEntity": "OrderTab",
+      "type": "oneToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ]
+}

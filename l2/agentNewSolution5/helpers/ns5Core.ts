@@ -59,13 +59,24 @@ export function isNs5StepId(value: string): value is Ns5StepId {
   return (NS5_STEP_IDS as readonly string[]).includes(value);
 }
 
-/** Maps repair/transport planIds back to the owning step. Done-anchors and clarifications stay unmatched. */
+/**
+ * Maps child planIds (repair/transport, ontology fan-out, bindings, finalize) back to the owning
+ * step. Done-anchors and reserved clarification ids stay unmatched so they are not dispatched.
+ */
 export function ownerStepId(planId: string): Ns5StepId | '' {
   if (isNs5StepId(planId)) return planId;
   for (const id of NS5_STEP_IDS) {
-    if (new RegExp(`^${id}-(?:repair|transport)-\\d+$`).test(planId)) return id;
+    if (planId === `${id}-done` || planId.startsWith(`${id}-clarification`)) continue;
+    if (planId.startsWith(`${id}-`)) return id;
   }
   return '';
+}
+
+/** Parallel ontology children are scheduled as `entity:<PascalId>` (prompt and/or hook args). */
+export function ns5OntologyEntitySelector(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const match = /^entity:([A-Z][A-Za-z0-9]*)$/.exec(value.trim());
+  return match?.[1] || '';
 }
 
 export function parseNs5Invocation(value: string): Ns5ParsedInvocation {

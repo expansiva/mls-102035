@@ -143,7 +143,7 @@ export interface Ns5OntologyField {
   /** Planner / UI. */
   title: string;
   /** Backend storage and grant field resolution. */
-  type: string;
+  type: 'uuid' | 'string' | 'text' | 'number' | 'integer' | 'boolean' | 'money' | 'date' | 'datetime' | 'json';
   /** Backend required-on-write; ontology30 gate. */
   required: boolean;
   /** Literal union that reaches the page through the ontology. */
@@ -411,6 +411,8 @@ export interface Ns5PipelineStepState {
   autoReason?: string;
   /** journeys20: count of decide steps in the module. Zero is valid. */
   decideStepCount?: number;
+  /** ontology30: entityIds no journey cites. Supporting/valueObject may be legitimate. */
+  uncitedEntities?: string[];
 }
 
 export interface Ns5Invocation {

@@ -3,7 +3,7 @@
 import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { writePipeline } from '/_102035_/l2/solution/fs.js';
 import type { Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
-import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 
 export type Ns5StepBeforePrompt = (
   agent: IAgentMeta,
@@ -20,6 +20,7 @@ export type Ns5StepAfterPrompt = (
   parentStep: mls.msg.AIAgentStep,
   step: mls.msg.AIAgentStep,
   hookSequential: number,
+  args?: string,
 ) => Promise<mls.msg.AgentIntent[]>;
 
 export type Ns5StepBeforeClarification = (
@@ -44,9 +45,11 @@ export function planIdOf(step: mls.msg.AIAgentStep): string {
   return step.planning?.planId || '';
 }
 
-export function hooksFor(planId: string): Ns5StepHooks | undefined {
+export function hooksFor(planId: string, ...selectors: unknown[]): Ns5StepHooks | undefined {
   const stepId = ownerStepId(planId);
-  return stepId ? NS5_STEP_HOOKS[stepId] : undefined;
+  if (stepId) return NS5_STEP_HOOKS[stepId];
+  if (selectors.some(value => ns5OntologyEntitySelector(value))) return NS5_STEP_HOOKS.ontology30;
+  return undefined;
 }
 
 export async function markAwaitingStep(

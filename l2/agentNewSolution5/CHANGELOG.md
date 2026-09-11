@@ -2,6 +2,14 @@
 
 ## 2026-09-10
 
+- `ontology30`: isolated entity validation skips journey citation (fan-out of 1 entity vs N cited
+  always failed). Plan and bindings still require every journey entity.
+- `ontology30`: normalize drops `mdmSubtype` unless `kind === 'mdm'` and `mutability: appendOnly`
+  unless `kind !== 'mdm'` (same class as journeys20 `handoffTo`). Gate still requires a subtype on
+  a real mdm entity.
+- `ontology30`: plan + entity fan-out + relationship bindings. MDM identity stays out of `fields[]`.
+  Calculated values are `details`. Lifecycle carries allowed transitions. A run then stops at
+  `awaitingStep: rules40`.
 - `journeys20`: normalize drops `handoffTo` unless `kind === 'handoff'` (prompt/feedback did not stop the self-label). Schema `if/then` not used (`x-tool-strict` would leave the repair path). Gate still requires a valid receiver on a real handoff.
 - `journeys20`: omit `handoffTo` except on `kind: handoff`; gate feedback names `stepId` and says remove the field. Gate unchanged.
 - `journeys20`: business journeys only (`affects`, `decide`, inferred-actor drop). Tool `submitNs5Journeys`, gate, repair <= 2, persist `journeys/*.defs.ts` + index. A run then stops at `awaitingStep: ontology30`.

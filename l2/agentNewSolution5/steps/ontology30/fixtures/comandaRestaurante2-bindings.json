@@ -1,0 +1,41 @@
+{
+  "derivedFrom": "agentNewSolution/steps/e4/fixtures/comandaRestaurante2-e4-mdm-empty-fields/relationship-bindings-draft.json",
+  "bindings": [
+    {
+      "relationshipId": "comandaBelongsToMesa",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Comanda",
+        "from": { "entityId": "Comanda", "fieldIds": ["mesaId"] },
+        "to": { "entityId": "Mesa", "fieldIds": ["mesaId"] }
+      }
+    },
+    {
+      "relationshipId": "itemComandaBelongsToComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": { "entityId": "ItemComanda", "fieldIds": ["comandaId"] },
+        "to": { "entityId": "Comanda", "fieldIds": ["comandaId"] }
+      }
+    },
+    {
+      "relationshipId": "itemComandaReferencesItemCardapio",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": { "entityId": "ItemComanda", "fieldIds": ["itemCardapioId"] },
+        "to": { "entityId": "ItemCardapio", "fieldIds": ["itemCardapioId"] }
+      }
+    },
+    {
+      "relationshipId": "pagamentoClosesComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Pagamento",
+        "from": { "entityId": "Pagamento", "fieldIds": ["comandaId"] },
+        "to": { "entityId": "Comanda", "fieldIds": ["comandaId"] }
+      }
+    }
+  ]
+}
