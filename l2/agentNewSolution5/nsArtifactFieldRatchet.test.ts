@@ -28,6 +28,9 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5AccessDataScope: { file: TYPES, name: 'Ns5AccessDataScope' },
   Ns5AccessDisclosure: { file: TYPES, name: 'Ns5AccessDisclosure' },
   Ns5AccessArtifact: { file: TYPES, name: 'Ns5AccessArtifact' },
+  Ns5IntegrationItem: { file: TYPES, name: 'Ns5IntegrationItem' },
+  Ns5IntegrationPlugin: { file: TYPES, name: 'Ns5IntegrationPlugin' },
+  Ns5IntegrationArtifact: { file: TYPES, name: 'Ns5IntegrationArtifact' },
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
@@ -132,6 +135,26 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     authorities: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     grants: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
   },
+  Ns5IntegrationItem: {
+    id: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    kind: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    from: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    to: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    entityRefs: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+  },
+  Ns5IntegrationPlugin: {
+    pluginId: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    entityRefs: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+  },
+  Ns5IntegrationArtifact: {
+    schemaVersion: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    inbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend', since: '2026-09-10' },
+    outbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend', since: '2026-09-10' },
+    plugins: { reader: 'steps/integration70/gate.ts, sidecar / basic backend', since: '2026-09-10' },
+  },
 };
 
 function interfaceBody(source: string, name: string): string {
@@ -205,4 +228,12 @@ test('access60 disclosure fields are registered with the basic backend as reader
   assert.equal(KEYS.Ns5AccessDisclosure.allowedFields.reader, 'basic backend');
   assert.equal(KEYS.Ns5AccessDisclosure.deniedFields.reader, 'basic backend');
   assert.match(KEYS.Ns5AccessDataScope.anchorEntity.reader, /basic backend/);
+});
+
+test('integration70 inbound/outbound/plugins are registered with the sidecar as reader', () => {
+  assert.match(KEYS.Ns5IntegrationArtifact.inbound.reader, /sidecar/);
+  assert.match(KEYS.Ns5IntegrationArtifact.outbound.reader, /sidecar/);
+  assert.match(KEYS.Ns5IntegrationArtifact.plugins.reader, /sidecar/);
+  assert.match(KEYS.Ns5IntegrationItem.from.reader, /integration70\/gate/);
+  assert.match(KEYS.Ns5IntegrationPlugin.pluginId.reader, /integration70\/gate/);
 });

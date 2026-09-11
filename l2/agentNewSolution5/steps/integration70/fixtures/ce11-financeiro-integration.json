@@ -1,0 +1,34 @@
+{
+  "derivedFrom": "ce11 financeiro NS4 baseline (system actor + E6 plugin stripe)",
+  "inbound": [
+    {
+      "id": "comandaFechada",
+      "kind": "event",
+      "from": "comandaRestaurante",
+      "description": "A closed restaurant tab arrives as a receivable title.",
+      "entityRefs": ["ReceivableTitle"]
+    },
+    {
+      "id": "mensalidadeGerada",
+      "kind": "event",
+      "from": "mensalidadesAcademia",
+      "description": "A generated membership fee arrives as a receivable title.",
+      "entityRefs": ["ReceivableTitle"]
+    },
+    {
+      "id": "ordemEntregue",
+      "kind": "event",
+      "from": "ordenServicio",
+      "description": "A delivered service order arrives as a receivable title.",
+      "entityRefs": ["ReceivableTitle"]
+    }
+  ],
+  "outbound": [],
+  "plugins": [
+    {
+      "pluginId": "stripe",
+      "description": "Card payments through the platform Stripe adapter. No card entity.",
+      "entityRefs": ["ReceivableTitle"]
+    }
+  ]
+}

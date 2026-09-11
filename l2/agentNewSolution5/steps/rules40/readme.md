@@ -26,7 +26,7 @@ constraint and no transition is `by: time`.
 - A transition `by: time` without a rule that cites it fails `NS5_RULES_TIME_WITHOUT_RULE`.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `rules40-done` result. `integration70` still waits for `workflows50-done` and
-  `access60-done`. A run then stops at the first unimplemented step (`integration70`).
+  `access60-done`. A run then stops at the first unimplemented step (`finalize80`).
 
 ## Known traps
 

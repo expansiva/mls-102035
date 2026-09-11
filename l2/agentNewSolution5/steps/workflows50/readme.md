@@ -43,7 +43,7 @@ No signal ⇒ `processes: []`, cost 0, `noProcessSignal: true`.
 - A process signal with empty `processes` fails `NS5_WORKFLOWS_SIGNAL_WITHOUT_PROCESS`.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `workflows50-done` result. `integration70` still waits for `rules40-done` and
-  `access60-done`. A run then stops at the first unimplemented step (`integration70`).
+  `access60-done`. A run then stops at the first unimplemented step (`finalize80`).
 
 ## Known traps
 

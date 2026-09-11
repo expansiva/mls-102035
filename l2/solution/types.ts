@@ -419,6 +419,8 @@ export interface Ns5PipelineStepState {
   uncitedEntities?: string[];
   /** workflows50: true when processes is [] because no handoff, foreign-by transition or cross-actor decide. */
   noProcessSignal?: boolean;
+  /** integration70: true when inbound/outbound/plugins are [] because no system actor and no plugin-catalog term. */
+  noIntegrationSignal?: boolean;
 }
 
 export interface Ns5Invocation {

@@ -2,6 +2,11 @@
 
 ## 2026-09-10
 
+- `integration70`: inbound/outbound module endpoints, events and externals, plus platform
+  plugins. Tool `submitNs5Integration` only on a structural signal (`kind: system` actor, or a
+  plugin-catalog term in `sourcePrompt`); otherwise empty lists with `noIntegrationSignal` and
+  no LLM call. v1 form, minimum; align with the production harness before any executor. A run
+  then stops at `awaitingStep: finalize80`.
 - `access60`: profiles, authorities and grants with structured disclosure (`allowedFields` /
   `deniedFields` as `Entity.field`) and a derivable person `anchorEntity` for `own` / `assigned` /
   `related`. Tool `submitNs5Access`, gate, repair <= 2, persist `access.defs.ts`. The path is

@@ -1,0 +1,59 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/integration/2026-09-10-ns5-integration-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "inbound",
+    "outbound",
+    "plugins"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-integration-v1" },
+    "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "inbound": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "outbound": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plugin" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "description", "entityRefs"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "kind": { "type": "string", "enum": ["moduleEndpoint", "event", "external"] },
+        "from": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "to": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 },
+        "entityRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pluginId", "description", "entityRefs"],
+      "properties": {
+        "pluginId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 },
+        "entityRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        }
+      }
+    }
+  }
+}

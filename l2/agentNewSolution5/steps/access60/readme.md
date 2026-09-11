@@ -29,7 +29,7 @@ hops, `allowedInformation` or journey-step lists.
   every `entityRef` by required relationships. `anchorPath()` computes that walk and is not stored.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `access60-done` result. `integration70` still waits for `rules40-done` and
-  `workflows50-done`. A run then stops at the first unimplemented step (`integration70`).
+  `workflows50-done`. A run then stops at the first unimplemented step (`finalize80`).
 
 ## Known traps
 
