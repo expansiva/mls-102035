@@ -344,7 +344,7 @@ async function handlePlanResult(
   }
   const moduleArtifact = await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
-  const plan = normalizeNs5OntologyPlan(payload, parsed.moduleName);
+  const plan = normalizeNs5OntologyPlan(payload, parsed.moduleName, journeys);
   plan.moduleName = parsed.moduleName;
   let pipeline = await requirePipeline(parsed.moduleName);
   pipeline = await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString() });

@@ -1,0 +1,143 @@
+/// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/contracts.ts" enhancement="_blank"/>
+
+import type {
+  Ns5AccessArtifact,
+  Ns5IntegrationArtifact,
+  Ns5JourneyArtifact,
+  Ns5JourneyIndexArtifact,
+  Ns5ModuleArtifact,
+  Ns5OntologyEntityArtifact,
+  Ns5OntologyIndexArtifact,
+  Ns5RulesArtifact,
+  Ns5WorkflowsArtifact,
+} from '/_102035_/l2/solution/types.js';
+
+export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-report-v1' as const;
+
+export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6'] as const;
+export type Ns5OracleCheckId = typeof NS5_ORACLE_CHECK_IDS[number];
+
+export interface Ns5OracleSources {
+  module: Ns5ModuleArtifact;
+  journeys: Ns5JourneyArtifact[];
+  journeyIndex: Ns5JourneyIndexArtifact;
+  entities: Ns5OntologyEntityArtifact[];
+  ontologyIndex: Ns5OntologyIndexArtifact;
+  rules: Ns5RulesArtifact;
+  workflows: Ns5WorkflowsArtifact;
+  access: Ns5AccessArtifact;
+  integration: Ns5IntegrationArtifact;
+}
+
+export interface Ns5OracleIssue {
+  checkId: Ns5OracleCheckId;
+  code: `NS5_FINALIZE_${Ns5OracleCheckId}`;
+  path: string;
+  message: string;
+}
+
+export interface Ns5OracleCheckSummary {
+  checkId: Ns5OracleCheckId;
+  status: 'passed' | 'failed' | 'warned';
+  errorCount: number;
+  warningCount: number;
+}
+
+export interface Ns5FinalizeReport {
+  schemaVersion: typeof NS5_FINALIZE_REPORT_SCHEMA_VERSION;
+  moduleName: string;
+  finalStatus: 'passed' | 'failed';
+  checks: Ns5OracleCheckSummary[];
+  errors: Ns5OracleIssue[];
+  warnings: Ns5OracleIssue[];
+  counts: {
+    actors: number;
+    journeys: number;
+    entities: number;
+    rules: number;
+    processes: number;
+    profiles: number;
+    grants: number;
+  };
+}
+
+export function oracleCode(checkId: Ns5OracleCheckId): Ns5OracleIssue['code'] {
+  return `NS5_FINALIZE_${checkId}`;
+}
+
+export function buildNs5FinalizeReport(
+  moduleName: string,
+  errors: Ns5OracleIssue[],
+  warnings: Ns5OracleIssue[],
+  counts: Ns5FinalizeReport['counts'],
+): Ns5FinalizeReport {
+  const checks: Ns5OracleCheckSummary[] = NS5_ORACLE_CHECK_IDS.map(checkId => {
+    const errorCount = errors.filter(issue => issue.checkId === checkId).length;
+    const warningCount = warnings.filter(issue => issue.checkId === checkId).length;
+    const status: Ns5OracleCheckSummary['status'] = errorCount
+      ? 'failed'
+      : warningCount
+        ? 'warned'
+        : 'passed';
+    return { checkId, status, errorCount, warningCount };
+  });
+  return {
+    schemaVersion: NS5_FINALIZE_REPORT_SCHEMA_VERSION,
+    moduleName,
+    finalStatus: errors.length ? 'failed' : 'passed',
+    checks,
+    errors,
+    warnings,
+    counts,
+  };
+}
+
+export function formatNs5Oracle(report: Ns5FinalizeReport): string {
+  return report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n');
+}
+
+export function ensureConfigListsModule(
+  config: Record<string, unknown>,
+  moduleName: string,
+  userLanguage: string,
+  projectId: number,
+): Record<string, unknown> {
+  const next = { ...config };
+  const patch = {
+    moduleId: moduleName,
+    basePath: `/${moduleName}`,
+    userLanguage,
+    navigation: [] as unknown[],
+    headerLinks: [] as unknown[],
+  };
+  if (isRecord(next.projects)) {
+    const projects = { ...next.projects as Record<string, unknown> };
+    const requested = projects[String(projectId)];
+    const clientKey = isRecord(requested)
+      ? String(projectId)
+      : Object.keys(projects).find(key => isRecord(projects[key]) && (projects[key] as { type?: string }).type === 'client');
+    if (clientKey) {
+      const client = isRecord(projects[clientKey]) ? { ...projects[clientKey] as Record<string, unknown> } : {};
+      client.modules = mergeModuleList(client.modules, patch);
+      projects[clientKey] = client;
+      next.projects = projects;
+      return next;
+    }
+  }
+  next.modules = mergeModuleList(next.modules, patch);
+  return next;
+}
+
+function mergeModuleList(value: unknown, patch: Record<string, unknown>): Record<string, unknown>[] {
+  const modules = Array.isArray(value)
+    ? value.filter(isRecord).map(item => ({ ...item }))
+    : [];
+  const index = modules.findIndex(item => item.moduleId === patch.moduleId);
+  if (index >= 0) modules[index] = { ...modules[index], ...patch };
+  else modules.push(patch);
+  return modules;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}

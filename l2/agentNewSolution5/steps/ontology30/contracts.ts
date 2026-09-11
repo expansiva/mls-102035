@@ -122,9 +122,13 @@ export function buildNs5OntologyBindingsTool(
   );
 }
 
-export function normalizeNs5OntologyPlan(value: unknown, moduleName: string): Ns5OntologyPlanDraft {
+export function normalizeNs5OntologyPlan(
+  value: unknown,
+  moduleName: string,
+  journeys: ReadonlyArray<Ns5LifecycleJourneyView> = [],
+): Ns5OntologyPlanDraft {
   const root = record(value);
-  const entities = list(root.entities).map(item => normalizePlanEntity(item, moduleName)).filter(entity => entity.entityId);
+  const entities = list(root.entities).map(item => normalizePlanEntity(item, moduleName, journeys)).filter(entity => entity.entityId);
   return {
     moduleName: memberId(text(root.moduleName) || moduleName, moduleName),
     businessDomain: text(root.businessDomain),
@@ -208,6 +212,52 @@ export function collectNs5CitedEntities(
   return cited;
 }
 
+/** Journey view the lifecycle walk understands. Caller supplies index order. */
+export interface Ns5LifecycleJourneyView {
+  business: {
+    steps: ReadonlyArray<{ kind: string; entity: string }>;
+  };
+}
+
+/**
+ * Structural I2 signal for one entity: a second `act` (after the first create) requires
+ * declared transitions; a `decide` requires a branching origin. Same walk finalize80.checkI2
+ * uses — ontology30 imports this; finalize80 must not recompute it.
+ */
+export interface Ns5LifecycleSignal {
+  requiresTransitions: boolean;
+  requiresBranching: boolean;
+}
+
+export function collectNs5LifecycleSignal(
+  journeys: ReadonlyArray<Ns5LifecycleJourneyView>,
+  entityId: string,
+): Ns5LifecycleSignal {
+  let acts = 0;
+  let requiresBranching = false;
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      if (step.entity !== entityId) continue;
+      if (step.kind === 'act') acts += 1;
+      else if (step.kind === 'decide') requiresBranching = true;
+    }
+  }
+  return { requiresTransitions: acts >= 2, requiresBranching };
+}
+
+export function ns5LifecycleHasBranchingOrigin(
+  entity: { transitions: ReadonlyArray<{ from: readonly string[] }> },
+): boolean {
+  const counts = new Map<string, number>();
+  for (const transition of entity.transitions) {
+    for (const from of transition.from) {
+      if (!from) continue;
+      counts.set(from, (counts.get(from) || 0) + 1);
+    }
+  }
+  return [...counts.values()].some(count => count >= 2);
+}
+
 function assembleEntity(
   moduleName: string,
   plan: Ns5OntologyPlanEntity,
@@ -244,15 +294,26 @@ function emptyRealization(relationship: Ns5OntologyPlanRelationship): Ns5Ontolog
   };
 }
 
-function normalizePlanEntity(value: unknown, moduleName: string): Ns5OntologyPlanEntity {
+function normalizePlanEntity(
+  value: unknown,
+  moduleName: string,
+  journeys: ReadonlyArray<Ns5LifecycleJourneyView>,
+): Ns5OntologyPlanEntity {
   const source = record(value);
   const storage = record(source.storage);
   const kind = text(source.kind) as Ns5OntologyKind;
   const entityId = normalizeEntityId(source.entityId);
   // The model fills mdmSubtype and mutability on every entity. mdmSubtype is a role on
-  // kind mdm; appendOnly contradicts mdm. Drop them here — same class as journeys20 handoffTo.
+  // kind mdm; appendOnly contradicts mdm. A second act or a decide also contradicts
+  // appendOnly (the plan freezes mutability). Drop them here — same class as journeys20 handoffTo.
   const mdmSubtype = kind === 'mdm' ? text(source.mdmSubtype) : '';
-  const mutability = kind !== 'mdm' && text(source.mutability) === 'appendOnly' ? 'appendOnly' as const : undefined;
+  const signal = collectNs5LifecycleSignal(journeys, entityId);
+  const mutability = kind !== 'mdm'
+    && text(source.mutability) === 'appendOnly'
+    && !signal.requiresTransitions
+    && !signal.requiresBranching
+    ? 'appendOnly' as const
+    : undefined;
   const idField = memberId(text(storage.idField), '');
   const target = text(storage.target) as Ns5OntologyStorageTarget;
   const scope = text(storage.scope);

@@ -9,8 +9,10 @@ import {
   buildNs5PlannedSteps,
   createEmptyPipeline,
   createNs5RetryStep,
+  markNs5Complete,
   markNs5Step,
   moduleTokenOk,
+  nextNs5RunNn,
   ns5OntologyEntitySelector,
   ownerStepId,
   parseNs5Invocation,
@@ -89,6 +91,14 @@ void test('ownerStepId maps ontology fan-out children and leaves done-anchors un
   assert.equal(ownerStepId('ontology30-clarification'), '');
   assert.equal(ns5OntologyEntitySelector('entity:ItemCardapio'), 'ItemCardapio');
   assert.equal(ns5OntologyEntitySelector('{"planId":"ontology30"}'), '');
+});
+
+void test('nextNs5RunNn and markNs5Complete close the pipeline', () => {
+  assert.equal(nextNs5RunNn([]), '01');
+  assert.equal(nextNs5RunNn(['run02_newsolution5', 'pipeline']), '03');
+  const pipeline = createEmptyPipeline('teste5', 'criar o modulo x', { fast: true, module: 'teste5', rebuildAll: false }, '2026-09-10T00:00:00.000Z');
+  const complete = markNs5Complete(pipeline, '2026-09-10T03:00:00.000Z');
+  assert.equal(complete.status, 'complete');
 });
 
 void test('markNs5Step refuses to overwrite approved', () => {

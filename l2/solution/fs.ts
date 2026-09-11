@@ -71,6 +71,28 @@ export function pipelineFile(moduleName: string): Ns5FileInfo {
   return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: 'pipeline', extension: '.json' };
 }
 
+export function pipelineJsonFile(moduleName: string, shortName: string): Ns5FileInfo {
+  return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName, extension: '.json' };
+}
+
+export function finalizeReportFile(moduleName: string): Ns5FileInfo {
+  return pipelineJsonFile(moduleName, 'finalize-report');
+}
+
+export function listPipelineJsonShortNames(moduleName: string): string[] {
+  const project = currentProject();
+  const folder = `${moduleFolder(moduleName)}/pipeline`;
+  const names: string[] = [];
+  for (const file of Object.values(mls.stor.files) as Array<{
+    project?: number; level?: number; folder?: string; shortName?: string; extension?: string; status?: string;
+  }>) {
+    if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted') continue;
+    if (file.extension !== '.json' || String(file.folder || '') !== folder) continue;
+    if (file.shortName) names.push(String(file.shortName));
+  }
+  return names;
+}
+
 export function draftFile(moduleName: string, step: Ns5StepId | string): Ns5FileInfo {
   return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: `${step}-draft`, extension: '.json' };
 }

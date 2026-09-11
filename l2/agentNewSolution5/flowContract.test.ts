@@ -47,6 +47,8 @@ const EXPECTED_ARTIFACTS: Record<string, string> = {
   integration: 'l4/{module}/integration.defs.ts',
   pipeline: 'l4/{module}/pipeline/pipeline.json',
   draft: 'l4/{module}/pipeline/{step}-draft.json',
+  finalizeReport: 'l4/{module}/pipeline/finalize-report.json',
+  runSummary: 'l4/{module}/pipeline/runNN_newsolution5.json',
 };
 
 function loadFlow(): FlowDoc {

@@ -195,6 +195,26 @@ export function createNs5RetryStep(
   };
 }
 
+export function nextNs5RunNn(existingShortNames: readonly string[]): string {
+  const re = /^run(\d+)_newsolution5$/;
+  let max = 0;
+  for (const name of existingShortNames) {
+    const match = re.exec(name);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return String(max + 1).padStart(2, '0');
+}
+
+export function markNs5Complete(pipeline: Ns5PipelineState, now = new Date().toISOString()): Ns5PipelineState {
+  if (pipeline.status === 'failed') return pipeline;
+  return {
+    ...pipeline,
+    status: 'complete',
+    awaitingStep: undefined,
+    updatedAt: now,
+  };
+}
+
 export function markNs5Step(
   pipeline: Ns5PipelineState,
   stepId: Ns5StepId,

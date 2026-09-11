@@ -42,8 +42,8 @@ not a signal and is not an integration item.
   (`NS5_INTEGRATION_UNKNOWN_MODULE` / `unknownModule`), not an error.
 - A signal with all three arrays empty fails `NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM`.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
-- Success emits the `integration70-done` result. A run then stops at the first unimplemented
-  step (`finalize80`).
+- Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
+  the registry and l5, and marks the pipeline complete.
 
 ## Known traps
 

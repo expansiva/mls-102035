@@ -1,7 +1,7 @@
 {
   "flowId": "agentNewSolution5",
   "schemaVersion": "2026-09-10-ns5-flow-v1",
-  "status": "integration70",
+  "status": "finalize80",
   "description": "Source-only L4 compiler: six business artifacts plus a deterministic finalize. No derived copies. CB/CF are never dispatched.",
   "canonicalReferences": [
     "mls-base/skills/00_index.md",
@@ -42,7 +42,9 @@
     "access": "l4/{module}/access.defs.ts",
     "integration": "l4/{module}/integration.defs.ts",
     "pipeline": "l4/{module}/pipeline/pipeline.json",
-    "draft": "l4/{module}/pipeline/{step}-draft.json"
+    "draft": "l4/{module}/pipeline/{step}-draft.json",
+    "finalizeReport": "l4/{module}/pipeline/finalize-report.json",
+    "runSummary": "l4/{module}/pipeline/runNN_newsolution5.json"
   },
   "steps": [
     {

@@ -26,6 +26,7 @@ import '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import '/_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.js';
 import '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
 import '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
+import '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
 
 export function createAgent(): IAgentAsync {
   return {

@@ -26,6 +26,12 @@ with field realization. No `kind: projection`, `derivation`, `role`, `sourceRefs
 - Non-mdm stored identity: `idField` in `fields[]`, uuid, required.
 - `displayField` is a field of the entity, or of level-1 identification/base when mdm.
 - `appendOnly` has no lifecycle.
+- Journeys that include a second `act` or a `decide` on an entity require `lifecycleStates` /
+  `transitions` (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`). Normalize drops `appendOnly` on that entity
+  before the gate (mutability is frozen on the plan). The gate still rejects `appendOnly` if
+  normalize is skipped. A `decide` also needs two transitions from the same origin
+  (`NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED`). Same predicate as finalize80 I2
+  (`collectNs5LifecycleSignal`); I2 still checks that a later `act` matches `by`.
 - Transitions: `from`/`to` are declared states; `by` is actor ids, `system` or `time`. An
   actor/command state with no arriving transition fails (birth states are the ones no transition
   targets). `time` states must not be arrived at by a transition.
@@ -44,3 +50,6 @@ with field realization. No `kind: projection`, `derivation`, `role`, `sourceRefs
 - `mdmSubtype` is only on `kind: mdm`. `mutability: appendOnly` is never on mdm. The model fills
   both on every entity; normalize drops them before the gate. The gate still fails a real mdm
   entity that lacks `mdmSubtype`.
+- Normalize also drops `appendOnly` when `collectNs5LifecycleSignal` is on (second `act` or a
+  `decide`). Prompt plus gate feedback did not stop the model from keeping the label. The gate
+  still fails if someone skips normalize.

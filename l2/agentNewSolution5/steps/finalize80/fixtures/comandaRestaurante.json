@@ -1,0 +1,287 @@
+{
+  "derivedFrom": "ce02 comandaRestaurante / comandaRestaurante3 (NS5 sources, lifecycle restored)",
+  "module": {
+    "schemaVersion": "2026-09-10-ns5-module-v1",
+    "moduleName": "comandaRestaurante",
+    "title": "Restaurant tab",
+    "userLanguage": "pt-BR",
+    "productLanguages": ["pt-BR"],
+    "defaultLanguage": "pt-BR",
+    "sourcePrompt": "modulo comandaRestaurante",
+    "actors": [
+      { "actorId": "garcom", "kind": "internal", "origin": "named", "title": "Waiter", "description": "Opens tabs and posts items." },
+      { "actorId": "caixa", "kind": "internal", "origin": "named", "title": "Cashier", "description": "Closes tabs and records payment." }
+    ],
+    "scope": { "inScope": ["tabs"], "outOfScope": ["stock"] }
+  },
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "abrirComanda",
+      "business": {
+        "actorRef": "garcom",
+        "title": "Open tab",
+        "goal": "Open a tab for a table.",
+        "entry": { "mode": "coldStart" },
+        "steps": [
+          { "stepId": "locateTable", "kind": "locate", "entity": "Mesa", "title": "Find table", "description": "Pick a free table." },
+          { "stepId": "openTab", "kind": "act", "entity": "Comanda", "affects": ["Mesa"], "title": "Open tab", "description": "Create the tab." }
+        ],
+        "outcome": { "statement": "Tab is open.", "evidence": ["Open tab on the table."] }
+      },
+      "businessHash": "sha256:comanda-abrir"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "lancarItemNaComanda",
+      "business": {
+        "actorRef": "garcom",
+        "title": "Post item",
+        "goal": "Add a menu item to an open tab.",
+        "entry": { "mode": "contextOrLookup" },
+        "steps": [
+          { "stepId": "locateTab", "kind": "locate", "entity": "Comanda", "title": "Find tab", "description": "Open tab." },
+          { "stepId": "locateMenuItem", "kind": "locate", "entity": "ItemCardapio", "title": "Find item", "description": "Menu item." },
+          { "stepId": "postItem", "kind": "act", "entity": "ItemComanda", "affects": ["Comanda"], "title": "Post item", "description": "Record the line." }
+        ],
+        "outcome": { "statement": "Item posted.", "evidence": ["Line on the tab."] }
+      },
+      "businessHash": "sha256:comanda-lancar"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cancelarItemDaComanda",
+      "business": {
+        "actorRef": "garcom",
+        "title": "Cancel item",
+        "goal": "Cancel a mistaken line while the tab is open.",
+        "entry": { "mode": "contextOrLookup" },
+        "steps": [
+          { "stepId": "locateTabForCancel", "kind": "locate", "entity": "Comanda", "title": "Find tab", "description": "Open tab." },
+          { "stepId": "inspectLines", "kind": "inspect", "entity": "ItemComanda", "title": "Inspect lines", "description": "Find the mistake." },
+          { "stepId": "cancelLine", "kind": "act", "entity": "ItemComanda", "affects": ["Comanda"], "title": "Cancel line", "description": "Cancel the posted item." }
+        ],
+        "outcome": { "statement": "Line cancelled.", "evidence": ["Cancelled flag."] }
+      },
+      "businessHash": "sha256:comanda-cancelar"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "fecharComanda",
+      "business": {
+        "actorRef": "caixa",
+        "title": "Close tab",
+        "goal": "Close the tab and record payment.",
+        "entry": { "mode": "contextOrLookup" },
+        "steps": [
+          { "stepId": "locateTabToClose", "kind": "locate", "entity": "Comanda", "title": "Find tab", "description": "Open tab." },
+          { "stepId": "inspectTotal", "kind": "inspect", "entity": "Comanda", "title": "Inspect total", "description": "See the total." },
+          { "stepId": "closeTab", "kind": "act", "entity": "Comanda", "affects": ["Mesa"], "title": "Close tab", "description": "Record payment and close." }
+        ],
+        "outcome": { "statement": "Tab closed.", "evidence": ["Closed status."] }
+      },
+      "businessHash": "sha256:comanda-fechar"
+    }
+  ],
+  "journeyIndex": {
+    "schemaVersion": "2026-09-10-ns5-journey-v1",
+    "moduleName": "comandaRestaurante",
+    "journeys": [
+      { "journeyId": "abrirComanda", "actorRef": "garcom", "title": "Open tab" },
+      { "journeyId": "lancarItemNaComanda", "actorRef": "garcom", "title": "Post item" },
+      { "journeyId": "cancelarItemDaComanda", "actorRef": "garcom", "title": "Cancel item" },
+      { "journeyId": "fecharComanda", "actorRef": "caixa", "title": "Close tab" }
+    ],
+    "systemDecisions": []
+  },
+  "entities": [
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante",
+      "entityId": "Mesa",
+      "title": "Table",
+      "description": "Dining table.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Location",
+      "displayField": "name",
+      "fields": [],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": { "target": "mdm", "scope": "organization", "idField": "id", "mdmType": "comandaRestaurante.Mesa" }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante",
+      "entityId": "ItemCardapio",
+      "title": "Menu item",
+      "description": "Priced menu item.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
+      "fields": [{ "fieldId": "price", "title": "Price", "type": "money", "required": true, "description": "Current price." }],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": { "target": "mdm", "scope": "organization", "idField": "id", "mdmType": "comandaRestaurante.ItemCardapio" }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante",
+      "entityId": "Comanda",
+      "title": "Tab",
+      "description": "Open dining tab.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "comandaNumber",
+      "fields": [
+        { "fieldId": "id", "title": "Id", "type": "uuid", "required": true, "description": "Tab id." },
+        { "fieldId": "comandaNumber", "title": "Number", "type": "string", "required": true, "description": "Visible number." },
+        { "fieldId": "mesaId", "title": "Table", "type": "uuid", "required": true, "description": "Table id." },
+        { "fieldId": "status", "title": "Status", "type": "string", "required": true, "enum": ["open", "closed"], "description": "Tab status." }
+      ],
+      "details": { "total": "Sum of active lines minus discount." },
+      "lifecycleStates": [
+        { "state": "open", "reachedBy": "actor" },
+        { "state": "closed", "reachedBy": "actor" }
+      ],
+      "transitions": [
+        { "transitionId": "fecharComanda", "from": ["open"], "to": "closed", "by": ["caixa"], "description": "Cashier closes the tab." }
+      ],
+      "storage": { "target": "moduleDatabase", "scope": "module", "idField": "id" }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante",
+      "entityId": "ItemComanda",
+      "title": "Tab line",
+      "description": "Posted menu item.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "itemName",
+      "fields": [
+        { "fieldId": "id", "title": "Id", "type": "uuid", "required": true, "description": "Line id." },
+        { "fieldId": "itemName", "title": "Name", "type": "string", "required": true, "description": "Snapshot name." },
+        { "fieldId": "comanda", "title": "Tab", "type": "uuid", "required": true, "description": "Parent tab." }
+      ],
+      "lifecycleStates": [
+        { "state": "launched", "reachedBy": "actor" },
+        { "state": "cancelled", "reachedBy": "actor" }
+      ],
+      "transitions": [
+        { "transitionId": "cancelarItem", "from": ["launched"], "to": "cancelled", "by": ["garcom"], "description": "Waiter cancels a mistaken line." }
+      ],
+      "storage": { "target": "moduleDatabase", "scope": "module", "idField": "id" }
+    }
+  ],
+  "ontologyIndex": {
+    "schemaVersion": "2026-09-10-ns5-ontology-v1",
+    "moduleName": "comandaRestaurante",
+    "businessDomain": "Restaurant tabs",
+    "entities": ["Mesa", "ItemCardapio", "Comanda", "ItemComanda"],
+    "relationships": [
+      {
+        "relationshipId": "comandaMesa",
+        "fromEntity": "Comanda",
+        "toEntity": "Mesa",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": { "mode": "crossStoreReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "Comanda",
+          "from": { "entityId": "Comanda", "fieldIds": ["mesaId"] },
+          "to": { "entityId": "Mesa", "fieldIds": ["id"] }
+        }
+      },
+      {
+        "relationshipId": "itemComandaComanda",
+        "fromEntity": "ItemComanda",
+        "toEntity": "Comanda",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": { "mode": "moduleReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "ItemComanda",
+          "from": { "entityId": "ItemComanda", "fieldIds": ["comanda"] },
+          "to": { "entityId": "Comanda", "fieldIds": ["id"] }
+        }
+      }
+    ]
+  },
+  "rules": {
+    "schemaVersion": "2026-09-10-ns5-rules-v1",
+    "moduleName": "comandaRestaurante",
+    "rules": [
+      {
+        "ruleId": "closeOnlyOpenTab",
+        "title": "Close only an open tab",
+        "description": "A tab can be closed only while it is open.",
+        "appliesTo": {
+          "entityRefs": ["Comanda"],
+          "fieldRefs": ["Comanda.status", "Comanda.details.total"],
+          "transitionRefs": ["Comanda.fecharComanda"],
+          "journeyRefs": ["fecharComanda"]
+        }
+      },
+      {
+        "ruleId": "cancelOnlyOpenTab",
+        "title": "Cancel only on an open tab",
+        "description": "A line can be cancelled only while its tab is open.",
+        "appliesTo": {
+          "entityRefs": ["ItemComanda", "Comanda"],
+          "fieldRefs": ["Comanda.status"],
+          "transitionRefs": ["ItemComanda.cancelarItem"],
+          "journeyRefs": ["cancelarItemDaComanda"]
+        }
+      }
+    ]
+  },
+  "workflows": {
+    "schemaVersion": "2026-09-10-ns5-workflows-v1",
+    "moduleName": "comandaRestaurante",
+    "processes": []
+  },
+  "access": {
+    "schemaVersion": "2026-09-10-ns5-access-v1",
+    "moduleName": "comandaRestaurante",
+    "profiles": [
+      { "profileId": "garcom", "actorRefs": ["garcom"], "kind": "internal" },
+      { "profileId": "caixa", "actorRefs": ["caixa"], "kind": "internal" }
+    ],
+    "authorities": [
+      { "authorityId": "serve", "title": "Serve", "description": "Open tabs and post items." },
+      { "authorityId": "close", "title": "Close", "description": "Close tabs." }
+    ],
+    "grants": [
+      {
+        "grantId": "waiterGrant",
+        "profileRef": "garcom",
+        "authorityRef": "serve",
+        "entityRefs": ["Mesa", "ItemCardapio", "Comanda", "ItemComanda"],
+        "dataScope": { "mode": "organization", "description": "Restaurant-wide open tabs." },
+        "disclosure": { "mode": "fullRecord", "description": "Full tab record." }
+      },
+      {
+        "grantId": "cashierGrant",
+        "profileRef": "caixa",
+        "authorityRef": "close",
+        "entityRefs": ["Comanda", "Mesa"],
+        "dataScope": { "mode": "organization", "description": "Restaurant-wide closing." },
+        "disclosure": {
+          "mode": "fieldsOnly",
+          "allowedFields": ["Comanda.id", "Comanda.comandaNumber", "Comanda.status", "Comanda.details.total", "Mesa.id"],
+          "description": "Closing fields."
+        }
+      }
+    ]
+  },
+  "integration": {
+    "schemaVersion": "2026-09-10-ns5-integration-v1",
+    "moduleName": "comandaRestaurante",
+    "inbound": [],
+    "outbound": [],
+    "plugins": []
+  }
+}

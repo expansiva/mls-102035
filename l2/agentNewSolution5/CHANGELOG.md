@@ -1,7 +1,24 @@
 # agentNewSolution5
 
+## 2026-09-11
+
+- `ontology30` normalize drops `appendOnly` when journeys require lifecycle (second
+  `act` or a `decide`). Prompt plus two repair rounds left the label on the plan.
+- `ontology30` plan prompt states the structural rule: omit `mutability` when journeys
+  show a second `act` or a `decide` on the entity (gate feedback alone left `appendOnly`
+  on the plan after two repair rounds).
+- `ontology30` requires lifecycle when journeys show a second `act` or a `decide` on the
+  entity (`collectNs5LifecycleSignal`, shared with finalize80 I2). `appendOnly` on those
+  entities is rejected on the plan so frozen mutability cannot block entity repair.
+
 ## 2026-09-10
 
+- `finalize80`: deterministic oracle I1–I6 across the six sources, organization registry upsert,
+  l5 `config.json` / `project.json` via the E10 publishable helpers, `pipeline.status: complete`
+  and `runNN_newsolution5.json`. Errors fail with `finalize-report.json`; warnings continue.
+  Never dispatches CB/CF. I2 decide (at least two transitions from the same origin) is kept strict: an
+  appendOnly entity with empty lifecycle plus a decide step is the ontology30 finding
+  (task_6da10605) becoming blocking, not a finalize80 defect.
 - `integration70`: inbound/outbound module endpoints, events and externals, plus platform
   plugins. Tool `submitNs5Integration` only on a structural signal (`kind: system` actor, or a
   plugin-catalog term in `sourcePrompt`); otherwise empty lists with `noIntegrationSignal` and

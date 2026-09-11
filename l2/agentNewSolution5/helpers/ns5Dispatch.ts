@@ -102,7 +102,7 @@ export function drainWaitingSiblings(
     if (sibling.stepId === current.stepId) continue;
     if (sibling.status === 'completed' || sibling.status === 'failed') continue;
     // notImplemented must not complete a sibling that has a hook — that sibling is the
-    // implemented one still running (rules40/workflows50/access60/integration70 vs finalize80).
+    // implemented one still running (a parallel sibling vs a step that is not yet hooked).
     if (opts?.onlyUnimplemented && hooksFor(planIdOf(sibling as mls.msg.AIAgentStep))) continue;
     intents.push(updateStatus(context, root, sibling, hookSequential, 'completed', traceMsg));
   }

@@ -57,6 +57,10 @@ in `details`.
 `mutability: appendOnly` only when the record is a fact that is never corrected. An append-only
 fact has no lifecycle. MDM is never append-only.
 
+If the journeys show more than one `act` step on this entity (beyond the one that first creates
+it), or a `decide` step on it, omit `mutability` here — the entity is not append-only. The entity
+pass declares `lifecycleStates` and `transitions` covering those steps.
+
 ## Relationships
 
 Declare every semantic edge the journeys need. Persistence modes:

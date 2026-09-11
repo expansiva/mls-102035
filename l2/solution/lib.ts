@@ -74,3 +74,24 @@ export {
   createNs4FlexibleWorkerTool as createStrictArtifactTool,
   unwrapNs4FlexibleWorkerPayload as unwrapArtifactPayload,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
+
+export {
+  readNs4L5Config as readL5Config,
+  writeNs4L5Config as writeL5Config,
+  readNs4L5Project as readL5Project,
+  writeNs4L5Project as writeL5Project,
+  writeNs4SolutionRegistry as writeSolutionRegistry,
+} from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+
+export {
+  applyPlatformBlockDefaults,
+  buildProjectsBlock,
+  buildWorkspaceDependencies,
+  collectProjectJsonIssues,
+  collectPublishableConfigIssues,
+  ensureProjectAppEnv,
+  ensureProjectModule,
+  ensureProjectType,
+  readProjectTypeFromProjectJson,
+} from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
+export type { PublishableIssue, PublishableProjectType } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';

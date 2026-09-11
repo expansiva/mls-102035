@@ -20,9 +20,11 @@ import {
   buildNs5OntologyBindingsTool,
   buildNs5OntologyEntityTool,
   buildNs5OntologyPlanTool,
+  collectNs5LifecycleSignal,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
   normalizeNs5OntologyPlan,
+  ns5LifecycleHasBranchingOrigin,
   type Ns5OntologyBindingsDraft,
   type Ns5OntologyEntityDraft,
   type Ns5OntologyPlanDraft,
@@ -112,6 +114,60 @@ function idField(entityId: string, fieldId: string): Ns5OntologyEntityDraft['fie
 
 function emptyMdmDetail(entityId: string): Ns5OntologyEntityDraft {
   return { entityId, fields: [], lifecycleStates: [], transitions: [] };
+}
+
+function step(stepId: string, kind: 'act' | 'decide' | 'locate', entity: string) {
+  return { stepId, kind, entity, title: stepId, description: 'Done.' };
+}
+
+function journey(actorRef: string, steps: ReturnType<typeof step>[]) {
+  return {
+    business: {
+      actorRef,
+      title: 'Journey',
+      goal: 'Goal.',
+      entry: { mode: 'coldStart' as const },
+      steps,
+      outcome: { statement: 'Done.', evidence: ['Done.'] },
+    },
+  };
+}
+
+function emptyCoreDetail(entityId: string, fieldId: string, displayField = fieldId): Ns5OntologyEntityDraft {
+  return {
+    entityId,
+    fields: [idField(entityId, fieldId), ...(displayField === fieldId ? [] : [{ fieldId: displayField, title: displayField, type: 'string' as const, required: true, description: 'Label.' }])],
+    lifecycleStates: [],
+    transitions: [],
+  };
+}
+
+function ticketLifecycle(branching: boolean): Ns5OntologyEntityDraft {
+  const states = branching
+    ? [
+        { state: 'open', reachedBy: 'actor' as const },
+        { state: 'accepted', reachedBy: 'actor' as const },
+        { state: 'rejected', reachedBy: 'actor' as const },
+      ]
+    : [
+        { state: 'open', reachedBy: 'actor' as const },
+        { state: 'accepted', reachedBy: 'actor' as const },
+      ];
+  const transitions = [
+    { transitionId: 'accept', from: ['open'], to: 'accepted', by: ['caixa'], description: 'Accept.' },
+    ...(branching
+      ? [{ transitionId: 'reject', from: ['open'], to: 'rejected', by: ['caixa'], description: 'Reject.' }]
+      : []),
+  ];
+  return {
+    entityId: 'Ticket',
+    fields: [
+      idField('Ticket', 'ticketId'),
+      { fieldId: 'status', title: 'Status', type: 'string', required: true, enum: states.map(item => item.state), description: 'State.' },
+    ],
+    lifecycleStates: states,
+    transitions,
+  };
 }
 
 void test('ontology30 tool schemas are provider-clean', () => {
@@ -235,6 +291,113 @@ void test('mdm with lifecycle fails', () => {
   const gate = validateNs5OntologyEntity(plan, detail, ctx({ moduleName: 'ordenServicio2' }));
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_MDM_LIFECYCLE'));
+});
+
+void test('collectNs5LifecycleSignal is the I2 structural predicate', () => {
+  const once = [journey('garcom', [step('openTab', 'act', 'Tab')])];
+  assert.deepEqual(collectNs5LifecycleSignal(once, 'Tab'), { requiresTransitions: false, requiresBranching: false });
+  const twice = [
+    journey('garcom', [step('openTab', 'act', 'Tab')]),
+    journey('caixa', [step('closeTab', 'act', 'Tab')]),
+  ];
+  assert.deepEqual(collectNs5LifecycleSignal(twice, 'Tab'), { requiresTransitions: true, requiresBranching: false });
+  const decide = [journey('caixa', [step('openTab', 'act', 'Tab'), step('choose', 'decide', 'Tab')])];
+  assert.deepEqual(collectNs5LifecycleSignal(decide, 'Tab'), { requiresTransitions: false, requiresBranching: true });
+  assert.equal(collectNs5LifecycleSignal(twice, 'Ghost').requiresTransitions, false);
+  assert.equal(ns5LifecycleHasBranchingOrigin({ transitions: [{ from: ['open'] }, { from: ['open'] }] }), true);
+  assert.equal(ns5LifecycleHasBranchingOrigin({ transitions: [{ from: ['open'] }] }), false);
+});
+
+void test('repeated act with appendOnly empty lifecycle fails isolated entity validation', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [{ ...corePlan('Ticket', 'ticketId', 'ticketId'), mutability: 'appendOnly' }],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [
+    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+  ];
+  const isolated = validateNs5OntologyEntity(plan, emptyCoreDetail('Ticket', 'ticketId'), ctx({ journeys }));
+  assert.equal(isolated.ok, false);
+  assert.ok(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /repeated act/.test(issue.message)));
+
+  const overview = validateNs5OntologyPlan(plan, ctx({ journeys }));
+  assert.equal(overview.ok, false);
+  assert.ok(overview.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /appendOnly/.test(issue.message)));
+});
+
+void test('repeated act with lifecycle covering the second act passes isolated entity validation', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [
+    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+  ];
+  const detail = ticketLifecycle(false);
+  const gate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(detail, 'Ticket'), ctx({ journeys }));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('decide with empty lifecycle fails LIFECYCLE_REQUIRED and does not ask for branching yet', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [journey('caixa', [step('choose', 'decide', 'Ticket')])];
+  const isolated = validateNs5OntologyEntity(plan, emptyCoreDetail('Ticket', 'ticketId'), ctx({ journeys }));
+  assert.equal(isolated.ok, false);
+  assert.ok(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /decide/.test(issue.message)));
+  assert.equal(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED'), false);
+});
+
+void test('decide with one transition fails branching; two from the same origin pass', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [journey('caixa', [step('openTicket', 'act', 'Ticket'), step('choose', 'decide', 'Ticket')])];
+  const one = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(ticketLifecycle(false), 'Ticket'), ctx({ journeys }));
+  assert.equal(one.ok, false);
+  assert.ok(one.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED'));
+
+  const two = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(ticketLifecycle(true), 'Ticket'), ctx({ journeys }));
+  assert.equal(two.ok, true, two.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('a single act may stay appendOnly without lifecycle', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [{ ...corePlan('PaymentEvent', 'paymentEventId', 'paymentEventId'), mutability: 'appendOnly' }],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [journey('caixa', [step('registerPayment', 'act', 'PaymentEvent')])];
+  const isolated = validateNs5OntologyEntity(plan, emptyCoreDetail('PaymentEvent', 'paymentEventId'), ctx({ journeys }));
+  assert.equal(isolated.ok, true, isolated.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED'), false);
+
+  const overview = validateNs5OntologyPlan(plan, ctx({ journeys }));
+  assert.equal(overview.ok, true, overview.issues.filter(issue => issue.severity === 'error').map(issue => issue.code).join(', '));
+});
+
+void test('plan overview does not demand lifecycle states when mutability is omitted', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [
+    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+  ];
+  const overview = validateNs5OntologyPlan(plan, ctx({ journeys }));
+  assert.equal(overview.ok, true, overview.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(overview.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED'), false);
 });
 
 void test('appendOnly with transitions fails', () => {
@@ -537,6 +700,60 @@ void test('gate still requires mdmSubtype on mdm and rejects off-kind fields whe
   assert.ok(skippedGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_MDM_SUBTYPE_UNKNOWN' && /only valid on kind mdm/.test(issue.message)));
 });
 
+void test('normalize drops appendOnly when journeys repeat act or decide; plan then approves', () => {
+  const twice = [
+    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+  ];
+  const twicePlan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [{ ...corePlan('Ticket', 'ticketId', 'ticketId'), mutability: 'appendOnly' }],
+    relationships: [],
+  }, 'comandaRestaurante5', twice);
+  assert.equal('mutability' in twicePlan.entities[0], false);
+  const twiceGate = validateNs5OntologyPlan(twicePlan, ctx({ journeys: twice }));
+  assert.equal(twiceGate.ok, true, twiceGate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(twiceGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED'), false);
+
+  const decide = [journey('caixa', [step('choose', 'decide', 'Ticket')])];
+  const decidePlan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [{ ...corePlan('Ticket', 'ticketId', 'ticketId'), mutability: 'appendOnly' }],
+    relationships: [],
+  }, 'comandaRestaurante5', decide);
+  assert.equal('mutability' in decidePlan.entities[0], false);
+  const decideGate = validateNs5OntologyPlan(decidePlan, ctx({ journeys: decide }));
+  assert.equal(decideGate.ok, true, decideGate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('normalize keeps appendOnly when a single act does not require lifecycle', () => {
+  const journeys = [journey('caixa', [step('registerPayment', 'act', 'PaymentEvent')])];
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [{ ...corePlan('PaymentEvent', 'paymentEventId', 'paymentEventId'), mutability: 'appendOnly' }],
+    relationships: [],
+  }, 'comandaRestaurante5', journeys);
+  assert.equal(plan.entities[0].mutability, 'appendOnly');
+  const overview = validateNs5OntologyPlan(plan, ctx({ journeys }));
+  assert.equal(overview.ok, true, overview.issues.filter(issue => issue.severity === 'error').map(issue => issue.code).join(', '));
+});
+
+void test('gate still rejects appendOnly with lifecycle signal when normalize is skipped', () => {
+  const journeys = [
+    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+  ];
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  plan.entities[0].mutability = 'appendOnly';
+  const overview = validateNs5OntologyPlan(plan, ctx({ journeys }));
+  assert.equal(overview.ok, false);
+  assert.ok(overview.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /appendOnly/.test(issue.message)));
+});
+
 void test('normalize accepts details as an array and as a record', () => {
   const fromArray = normalizeNs5OntologyEntity({
     entityId: 'Comanda',
@@ -554,6 +771,14 @@ void test('normalize accepts details as an array and as a record', () => {
     transitions: [],
   }, 'Comanda');
   assert.deepEqual(fromRecord.details, { total: 'Sum of active items.' });
+});
+
+void test('ontology30 plan prompt omits mutability when journeys repeat act or decide', () => {
+  const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
+  assert.match(prompt, /more than one `act` step on this entity/);
+  assert.match(prompt, /or a `decide` step on it, omit `mutability` here/);
+  assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
+  assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|abrir|fechar/i);
 });
 
 void test('plan human prompt includes journeys, actors and level-1 placeholders', () => {

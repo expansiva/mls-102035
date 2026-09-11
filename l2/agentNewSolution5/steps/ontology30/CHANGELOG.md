@@ -1,5 +1,20 @@
 # ontology30
 
+## 2026-09-11
+
+- Normalize drops `mutability: appendOnly` when `collectNs5LifecycleSignal` is on
+  (second `act` or a `decide`). Prompt plus two repair rounds did not drop the label.
+  The plan gate (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`) stays as the skip-normalize net.
+- Plan prompt (`prompt.md` Persistence) states the structural rule: omit `mutability`
+  when journeys show a second `act` or a `decide` on the entity. Gate feedback alone
+  did not drop `appendOnly` on the plan after two repair rounds.
+- `collectNs5LifecycleSignal` / `ns5LifecycleHasBranchingOrigin` are the I2 structural
+  predicate (second `act` or a `decide` on the same entity). The entity/bindings gate now
+  requires lifecycle when that signal is on (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`,
+  `NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED`). The plan rejects `appendOnly` for those
+  entities so the frozen mutability cannot block entity repair. A single `act` may stay
+  `appendOnly`. finalize80.checkI2 imports the same functions.
+
 ## 2026-09-10
 
 - Isolated entity validation skips journey citation (`requireJourneyCitation: false`). The

@@ -19,6 +19,9 @@ import {
   NS5_ONTOLOGY_STORAGE_TARGETS,
   assembleNs5Ontology,
   collectNs5CitedEntities,
+  collectNs5LifecycleSignal,
+  ns5LifecycleHasBranchingOrigin,
+  type Ns5LifecycleSignal,
   type Ns5OntologyAssembly,
   type Ns5OntologyBindingsDraft,
   type Ns5OntologyEntityDraft,
@@ -158,9 +161,11 @@ export function validateNs5OntologyAssembly(
     error(issues, 'NS5_ONTOLOGY_NONE', 'At least one ontology entity is required.', 'entities');
   }
 
+  const journeys = context.journeys || [];
   const entityIds = new Set<string>();
   entities.forEach((entity, entityIndex) => {
-    validateEntity(entity, context.moduleName || index.moduleName, actorIds, planOverview, `entities[${entityIndex}]`, issues);
+    const signal = collectNs5LifecycleSignal(journeys, entity.entityId);
+    validateEntity(entity, context.moduleName || index.moduleName, actorIds, planOverview, `entities[${entityIndex}]`, issues, signal);
     if (entity.entityId) {
       if (entityIds.has(entity.entityId)) {
         error(issues, 'NS5_ONTOLOGY_ENTITY_DUPLICATE', `Duplicate entityId ${entity.entityId}.`, `entities[${entityIndex}].entityId`);
@@ -231,6 +236,7 @@ function validateEntity(
   planOverview: boolean,
   path: string,
   issues: Ns5OntologyGateIssue[],
+  signal: Ns5LifecycleSignal,
 ): void {
   if (!ENTITY_ID.test(entity.entityId)) {
     error(issues, 'NS5_ONTOLOGY_ENTITY_ID', 'entityId must be a PascalCase business noun.', `${path}.entityId`);
@@ -340,9 +346,21 @@ function validateEntity(
     error(issues, 'NS5_ONTOLOGY_MUTABILITY', "mutability 'appendOnly' contradicts kind mdm.", `${path}.mutability`);
   }
 
+  // Plan freezes mutability. A later entity pass cannot drop appendOnly, so the plan
+  // must not freeze it when journeys need transitions. Lifecycle states do not exist
+  // on the plan — that half of the check runs only on the entity/bindings pass.
+  if (
+    planOverview
+    && entity.kind !== 'mdm'
+    && entity.mutability === 'appendOnly'
+    && (signal.requiresTransitions || signal.requiresBranching)
+  ) {
+    error(issues, 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED', lifecycleRequiredMessage(entity.entityId, signal, 'plan'), `${path}.mutability`);
+  }
+
   if (!planOverview) {
     validateDetails(entity, path, issues);
-    validateLifecycle(entity, actorIds, path, issues);
+    validateLifecycle(entity, actorIds, path, issues, signal);
   }
 }
 
@@ -417,12 +435,32 @@ function validateLifecycle(
   actorIds: Set<string>,
   path: string,
   issues: Ns5OntologyGateIssue[],
+  signal: Ns5LifecycleSignal,
 ): void {
   if (entity.mutability === 'appendOnly' && (entity.lifecycleStates.length || entity.transitions.length)) {
     error(issues, 'NS5_ONTOLOGY_MUTABILITY_LIFECYCLE', `appendOnly ${entity.entityId} has no lifecycle or transitions.`, `${path}.lifecycleStates`);
     return;
   }
   if (entity.kind === 'mdm') return;
+
+  if (signal.requiresTransitions || signal.requiresBranching) {
+    if (entity.mutability === 'appendOnly' || entity.lifecycleStates.length === 0) {
+      error(
+        issues,
+        'NS5_ONTOLOGY_LIFECYCLE_REQUIRED',
+        lifecycleRequiredMessage(entity.entityId, signal, 'entity'),
+        `${path}.lifecycleStates`,
+      );
+    }
+  }
+  if (signal.requiresBranching && entity.lifecycleStates.length > 0 && !ns5LifecycleHasBranchingOrigin(entity)) {
+    error(
+      issues,
+      'NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED',
+      `${entity.entityId} has a decide in a journey and needs at least two transitions from the same origin state.`,
+      `${path}.transitions`,
+    );
+  }
 
   const stateIds = new Set<string>();
   entity.lifecycleStates.forEach((entry, index) => {
@@ -632,6 +670,17 @@ function validateMdmEndpointFields(
   const idField = entityIdField(entity);
   if (fieldIds.length === 1 && idField && fieldIds[0] === idField) return;
   error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_MDM_ENDPOINT_ID', `mdm endpoint ${entity.entityId} must bind exactly [${idField}].`, path);
+}
+
+function lifecycleRequiredMessage(entityId: string, signal: Ns5LifecycleSignal, stage: 'plan' | 'entity'): string {
+  const reasons: string[] = [];
+  if (signal.requiresTransitions) reasons.push('a repeated act');
+  if (signal.requiresBranching) reasons.push('a decide');
+  const reason = reasons.join(' and ');
+  if (stage === 'plan') {
+    return `${entityId} cannot be appendOnly: journeys include ${reason} on this entity. Omit mutability; the entity pass declares lifecycleStates and transitions.`;
+  }
+  return `${entityId} needs lifecycleStates and transitions because journeys include ${reason} on this entity.`;
 }
 
 function displayFieldExists(entity: Ns5OntologyEntityArtifact): boolean {

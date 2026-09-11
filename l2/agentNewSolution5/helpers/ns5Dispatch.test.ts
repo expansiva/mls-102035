@@ -3,7 +3,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { createAgent } from '/_102035_/l2/agentNewSolution5/agentNewSolution5.js';
 import { createNs5AgentStep, type Ns5StepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
@@ -63,12 +62,14 @@ function statusStepIds(intents: mls.msg.AgentIntent[]): number[] {
     .map(intent => intent.stepId);
 }
 
-void test('rules40, workflows50, access60 and integration70 are hooked; finalize80 is not', () => {
+void test('all eight steps including finalize80 are hooked', () => {
+  createAgent();
   assert.ok(NS5_STEP_HOOKS.rules40?.beforePromptStep, 'rules40 hook must be registered');
   assert.ok(NS5_STEP_HOOKS.workflows50?.beforePromptStep, 'workflows50 hook must be registered');
   assert.ok(NS5_STEP_HOOKS.access60?.beforePromptStep, 'access60 hook must be registered');
   assert.ok(NS5_STEP_HOOKS.integration70?.beforePromptStep, 'integration70 hook must be registered');
-  assert.equal(NS5_STEP_HOOKS.finalize80, undefined);
+  assert.ok(NS5_STEP_HOOKS.finalize80?.beforePromptStep, 'finalize80 hook must be registered');
+  assert.ok(NS5_STEP_HOOKS.finalize80?.afterPromptStep, 'finalize80 afterPrompt must fail an LLM reply');
 });
 
 void test('notImplemented drain leaves hooked siblings running', () => {
@@ -102,26 +103,16 @@ void test('failure drain still completes a hooked sibling so the task does not h
   assert.equal(ids.has(byPlan.access60.stepId), true);
 });
 
-void test('beforePromptStep of an unimplemented step does not complete hooked siblings', async () => {
+void test('notImplemented drain with every sibling hooked completes none', () => {
   const { root, byPlan } = parallelBatch();
-  byPlan.finalize80.prompt = '{}';
-  const agent = createAgent();
-  assert.equal(typeof agent.beforePromptStep, 'function');
-  const intents = await agent.beforePromptStep!(
-    { agentName: 'agentNewSolution5' } as IAgentMeta,
+  const intents = drainWaitingSiblings(
     contextWith(root),
-    root,
-    byPlan.finalize80,
+    byPlan.module10,
     1,
+    'stopped: awaiting a future step',
+    { onlyUnimplemented: true },
   );
   const ids = new Set(statusStepIds(intents));
-  assert.equal(ids.has(byPlan.rules40.stepId), false);
-  assert.equal(ids.has(byPlan.workflows50.stepId), false);
-  assert.equal(ids.has(byPlan.access60.stepId), false);
-  assert.equal(ids.has(byPlan.integration70.stepId), false);
-  const self = intents.find((intent): intent is mls.msg.AgentIntentUpdateStatus =>
-    intent.type === 'update-status' && intent.stepId === byPlan.finalize80.stepId);
-  assert.ok(self);
-  assert.equal(self.status, 'completed');
-  assert.match(String(self.traceMsg || ''), /finalize80 not implemented yet/);
+  assert.equal(ids.size, 0);
+  assert.equal(ids.has(byPlan.finalize80.stepId), false);
 });

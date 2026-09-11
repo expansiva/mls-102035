@@ -1,0 +1,270 @@
+{
+  "derivedFrom": "ce05 ordenServicio / ordenServicio2 (NS5 sources, decide transitions restored)",
+  "module": {
+    "schemaVersion": "2026-09-10-ns5-module-v1",
+    "moduleName": "ordenServicio",
+    "title": "Service orders",
+    "userLanguage": "es",
+    "productLanguages": ["es"],
+    "defaultLanguage": "es",
+    "sourcePrompt": "modulo orden de servicio",
+    "actors": [
+      { "actorId": "recepcionista", "kind": "internal", "origin": "named", "title": "Reception", "description": "Opens and delivers orders." },
+      { "actorId": "tecnico", "kind": "internal", "origin": "named", "title": "Technician", "description": "Diagnoses and repairs." },
+      { "actorId": "cliente", "kind": "external", "origin": "named", "title": "Customer", "description": "Approves or rejects the quote." }
+    ],
+    "scope": { "inScope": ["orders"], "outOfScope": ["billing"] }
+  },
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarOrdenServicio",
+      "business": {
+        "actorRef": "recepcionista",
+        "title": "Register order",
+        "goal": "Open a service order.",
+        "entry": { "mode": "coldStart" },
+        "steps": [
+          { "stepId": "locateCustomer", "kind": "locate", "entity": "Cliente", "title": "Find customer", "description": "Identify the customer." },
+          { "stepId": "openOrder", "kind": "act", "entity": "OrdenServicio", "title": "Open order", "description": "Create the order." }
+        ],
+        "outcome": { "statement": "Order is open.", "evidence": ["New order."] }
+      },
+      "businessHash": "sha256:orden-registrar"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "elaborarDiagnosticoYpresupuesto",
+      "business": {
+        "actorRef": "tecnico",
+        "title": "Quote",
+        "goal": "Publish a quote.",
+        "entry": { "mode": "contextOrLookup" },
+        "steps": [
+          { "stepId": "locateOrder", "kind": "locate", "entity": "OrdenServicio", "title": "Find order", "description": "Open order." },
+          { "stepId": "issueQuote", "kind": "act", "entity": "Presupuesto", "affects": ["OrdenServicio"], "title": "Issue quote", "description": "Publish the quote." }
+        ],
+        "outcome": { "statement": "Quote issued.", "evidence": ["Quote on the order."] }
+      },
+      "businessHash": "sha256:orden-presupuesto"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "decidirPresupuesto",
+      "business": {
+        "actorRef": "cliente",
+        "title": "Decide quote",
+        "goal": "Approve or reject the quote.",
+        "entry": { "mode": "fromNotification" },
+        "steps": [
+          { "stepId": "inspectQuote", "kind": "inspect", "entity": "Presupuesto", "title": "Inspect quote", "description": "Read the quote." },
+          { "stepId": "decideQuote", "kind": "decide", "entity": "Presupuesto", "title": "Decide", "description": "Approve or reject." }
+        ],
+        "outcome": { "statement": "Decision recorded.", "evidence": ["Approved or rejected."] }
+      },
+      "businessHash": "sha256:orden-decidir"
+    }
+  ],
+  "journeyIndex": {
+    "schemaVersion": "2026-09-10-ns5-journey-v1",
+    "moduleName": "ordenServicio",
+    "journeys": [
+      { "journeyId": "registrarOrdenServicio", "actorRef": "recepcionista", "title": "Register order" },
+      { "journeyId": "elaborarDiagnosticoYpresupuesto", "actorRef": "tecnico", "title": "Quote" },
+      { "journeyId": "decidirPresupuesto", "actorRef": "cliente", "title": "Decide quote" }
+    ],
+    "systemDecisions": []
+  },
+  "entities": [
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio",
+      "entityId": "Cliente",
+      "title": "Customer",
+      "description": "Person who owns the device.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "fields": [],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": { "target": "mdm", "scope": "organization", "idField": "id", "mdmType": "ordenServicio.Cliente" }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio",
+      "entityId": "OrdenServicio",
+      "title": "Service order",
+      "description": "Repair order.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "orderNumber",
+      "fields": [
+        { "fieldId": "id", "title": "Id", "type": "uuid", "required": true, "description": "Order id." },
+        { "fieldId": "orderNumber", "title": "Number", "type": "string", "required": true, "description": "Visible number." },
+        { "fieldId": "cliente", "title": "Customer", "type": "uuid", "required": true, "description": "Owner." }
+      ],
+      "lifecycleStates": [
+        { "state": "open", "reachedBy": "actor" },
+        { "state": "quoted", "reachedBy": "actor" }
+      ],
+      "transitions": [
+        { "transitionId": "emitirPresupuesto", "from": ["open"], "to": "quoted", "by": ["tecnico"], "description": "Technician publishes the quote." }
+      ],
+      "storage": { "target": "moduleDatabase", "scope": "module", "idField": "id" }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio",
+      "entityId": "Presupuesto",
+      "title": "Quote",
+      "description": "Repair quote.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "quoteNumber",
+      "fields": [
+        { "fieldId": "id", "title": "Id", "type": "uuid", "required": true, "description": "Quote id." },
+        { "fieldId": "quoteNumber", "title": "Number", "type": "string", "required": true, "description": "Visible number." },
+        { "fieldId": "amount", "title": "Amount", "type": "money", "required": true, "description": "Quoted amount." }
+      ],
+      "details": { "totalInternalCost": "Sum of internal part costs." },
+      "lifecycleStates": [
+        { "state": "issued", "reachedBy": "actor" },
+        { "state": "approved", "reachedBy": "actor" },
+        { "state": "rejected", "reachedBy": "actor" }
+      ],
+      "transitions": [
+        { "transitionId": "aprobarPresupuesto", "from": ["issued"], "to": "approved", "by": ["cliente"], "description": "Customer approves." },
+        { "transitionId": "rechazarPresupuesto", "from": ["issued"], "to": "rejected", "by": ["cliente"], "description": "Customer rejects." }
+      ],
+      "storage": { "target": "moduleDatabase", "scope": "module", "idField": "id" }
+    }
+  ],
+  "ontologyIndex": {
+    "schemaVersion": "2026-09-10-ns5-ontology-v1",
+    "moduleName": "ordenServicio",
+    "businessDomain": "Service orders",
+    "entities": ["Cliente", "OrdenServicio", "Presupuesto"],
+    "relationships": [
+      {
+        "relationshipId": "ordenCliente",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Cliente",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": { "mode": "crossStoreReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "OrdenServicio",
+          "from": { "entityId": "OrdenServicio", "fieldIds": ["cliente"] },
+          "to": { "entityId": "Cliente", "fieldIds": ["id"] }
+        }
+      }
+    ]
+  },
+  "rules": {
+    "schemaVersion": "2026-09-10-ns5-rules-v1",
+    "moduleName": "ordenServicio",
+    "rules": [
+      {
+        "ruleId": "decisionIsFinal",
+        "title": "Quote decision is final",
+        "description": "The customer decision on a quote is recorded as approved or rejected.",
+        "appliesTo": {
+          "entityRefs": ["Presupuesto"],
+          "fieldRefs": ["Presupuesto.amount"],
+          "transitionRefs": ["Presupuesto.aprobarPresupuesto", "Presupuesto.rechazarPresupuesto"],
+          "journeyRefs": ["decidirPresupuesto"]
+        }
+      }
+    ]
+  },
+  "workflows": {
+    "schemaVersion": "2026-09-10-ns5-workflows-v1",
+    "moduleName": "ordenServicio",
+    "processes": [
+      {
+        "processId": "comunicarYresolverPresupuesto",
+        "title": "Quote handoff",
+        "description": "Technician publishes, customer decides.",
+        "tasks": [
+          {
+            "taskId": "issueQuote",
+            "kind": "human",
+            "actorRef": "tecnico",
+            "journeyRef": "elaborarDiagnosticoYpresupuesto",
+            "stepRef": "issueQuote",
+            "next": ["decideQuote"],
+            "description": "Publish the quote."
+          },
+          {
+            "taskId": "decideQuote",
+            "kind": "human",
+            "actorRef": "cliente",
+            "journeyRef": "decidirPresupuesto",
+            "stepRef": "decideQuote",
+            "next": [],
+            "description": "Customer decides."
+          }
+        ]
+      }
+    ]
+  },
+  "access": {
+    "schemaVersion": "2026-09-10-ns5-access-v1",
+    "moduleName": "ordenServicio",
+    "profiles": [
+      { "profileId": "recepcionista", "actorRefs": ["recepcionista"], "kind": "internal" },
+      { "profileId": "tecnico", "actorRefs": ["tecnico"], "kind": "internal" },
+      { "profileId": "cliente", "actorRefs": ["cliente"], "kind": "external" }
+    ],
+    "authorities": [
+      { "authorityId": "reception", "title": "Reception", "description": "Open orders." },
+      { "authorityId": "analysis", "title": "Analysis", "description": "Quote." },
+      { "authorityId": "budgetDecision", "title": "Decide", "description": "Approve or reject." }
+    ],
+    "grants": [
+      {
+        "grantId": "receptionGrant",
+        "profileRef": "recepcionista",
+        "authorityRef": "reception",
+        "entityRefs": ["Cliente", "OrdenServicio"],
+        "dataScope": { "mode": "organization", "description": "All reception records." },
+        "disclosure": { "mode": "fullRecord", "description": "Full order." }
+      },
+      {
+        "grantId": "analysisGrant",
+        "profileRef": "tecnico",
+        "authorityRef": "analysis",
+        "entityRefs": ["OrdenServicio", "Presupuesto"],
+        "dataScope": { "mode": "organization", "description": "All analysis records." },
+        "disclosure": {
+          "mode": "fieldsOnly",
+          "allowedFields": ["OrdenServicio.id", "Presupuesto.id", "Presupuesto.amount", "Presupuesto.details.totalInternalCost"],
+          "description": "Quote internals."
+        }
+      },
+      {
+        "grantId": "customerGrant",
+        "profileRef": "cliente",
+        "authorityRef": "budgetDecision",
+        "entityRefs": ["OrdenServicio"],
+        "dataScope": { "mode": "own", "anchorEntity": "Cliente", "description": "Own orders only." },
+        "disclosure": {
+          "mode": "fieldsOnly",
+          "allowedFields": ["OrdenServicio.id", "OrdenServicio.orderNumber"],
+          "deniedFields": ["Presupuesto.details.totalInternalCost"],
+          "description": "No internal cost."
+        }
+      }
+    ]
+  },
+  "integration": {
+    "schemaVersion": "2026-09-10-ns5-integration-v1",
+    "moduleName": "ordenServicio",
+    "inbound": [],
+    "outbound": [],
+    "plugins": []
+  }
+}
