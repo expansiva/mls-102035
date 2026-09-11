@@ -17,7 +17,8 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
 ## Invariants
 
 - `actorRef` is an actor from `module.defs.ts`. Ids are unique lowerCamel.
-- Every journey has at least one `act` or `decide` step.
+- A journey of only `locate`/`inspect` is valid (consultation). `act`/`decide` only
+  when the request names a change or a human choice.
 - `affects` is only on `act`, does not repeat `entity`, has no duplicates.
 - `handoffTo` is an actor id and only on `handoff`.
 - Twin journeys (same actor, same set of `kind:entity`) fail the gate.

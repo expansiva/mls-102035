@@ -38,9 +38,10 @@ profile.
 ### dataScope
 
 - `organization` — records of the whole organization.
-- `own` / `assigned` / `related` — records tied to a person. Name `anchorEntity` as the
-  `party: person` entity those records reach by required relationships. Do not emit hops or field
-  paths; the consumer derives the path.
+- `own` / `assigned` / `related` — records tied to a person (MDM skill: `own` reaches the Person
+  whose login row is the session). Name `anchorEntity` as the `party: person` entity those records
+  reach by required relationships. Do not emit hops or field paths; the consumer derives the path.
+  `docType`/`docId` is the national document and is not the own-anchor.
 - `public` — only on `anonymous`.
 - `custom` — a predicate that is not a person path; explain it in `description`.
 

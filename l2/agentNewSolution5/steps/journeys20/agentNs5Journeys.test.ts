@@ -130,6 +130,28 @@ void test('normalize + gate accept a valid payload without decide', () => {
   assert.equal(countNs5DecideSteps(journeys), 0);
 });
 
+void test('gate accepts a locate then inspect consultation journey', () => {
+  const journeys = drafts({
+    journeys: [{
+      journeyId: 'consultarMisOrdenes',
+      business: {
+        actorRef: 'cliente',
+        title: 'Consult my orders',
+        goal: 'See the status of own orders.',
+        entry: { mode: 'coldStart' },
+        steps: [
+          { stepId: 'localizarMisOrdenes', kind: 'locate', entity: 'OrdenServicio', title: 'Find.', description: 'Own orders are listed.' },
+          { stepId: 'consultarDetalleDeMiOrden', kind: 'inspect', entity: 'OrdenServicio', title: 'Read.', description: 'Allowed facts are visible.' },
+        ],
+        outcome: { statement: 'The customer knows the allowed facts.', evidence: ['Status is visible.'] },
+      },
+    }],
+  });
+  const gate = validateNs5Journeys(journeys, { actors: [...ACTORS, CLIENT] });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(journeys[0].business.steps.some(step => step.kind === 'act' || step.kind === 'decide'), false);
+});
+
 void test('gate rejects affects that repeat the step entity', () => {
   const journeys = drafts({
     journeys: [validJourney({
@@ -403,6 +425,8 @@ void test('journeys20 prompt omits handoffTo except on handoff', () => {
   assert.match(prompt, /placeholders — use only ids that exist in the module/);
   assert.match(prompt, /"kind": "act"/);
   assert.match(prompt, /"kind": "handoff"/);
+  assert.match(prompt, /only locates and inspects/);
+  assert.doesNotMatch(prompt, /Every journey has at least one `act` or `decide`/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity/i);
 });
 

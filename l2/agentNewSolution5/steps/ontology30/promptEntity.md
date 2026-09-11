@@ -21,9 +21,8 @@ not a list of fields to copy onto this entity.
 - Honour the frozen `displayField`. Do not invent a second identifying field from a name suffix.
 - Closed-domain values (`enum`, lifecycle state ids) are stable English codes: lowerCamel ASCII
   (`open`, `closed`). Titles and descriptions stay in the user's language.
-- When `kind` is `mdm`, `fields` is the module namespace and may be empty. Do not redeclare
-  `storage.idField`. Do not redeclare a level-1 identification or base field (`<name>`,
-  `<contacts>`, `<addresses>`, `<docId>`, …).
+- When `kind` is `mdm`, `fields` is the module namespace and may be empty (identity and level-1
+  fields stay out — MDM skill).
 - When `kind` is not `mdm`, include the frozen `idField` as a required `uuid`.
 - Include relationship reference fields this entity owns (a selected related record, not a raw id a
   person types).
@@ -39,14 +38,16 @@ Declare states and transitions only when the request names them.
 
 - Each state is `{ "state", "reachedBy" }`. `reachedBy` is `actor` (a person acts), `command`
   (consequence of another command) or `time` (elapsed time or a threshold, computed on read).
-- `time` is only a mark here. The rule body is written later; do not invent a rule id.
+- `time` is only a mark here. Cite a `ruleRef` only when the request names the constraint; the
+  rules step writes the catalog and must keep those ids.
 - A state reached by `time` must not be the `to` of a transition.
 - An `actor` or `command` state other than the birth state needs a transition that arrives at it.
-- Transitions: `{ "transitionId", "from", "to", "by", "description" }`. `by` is an array of actor
-  ids from the module, or `"system"`, or `"time"`.
+- Transitions: `{ "transitionId", "from", "to", "by", "description", "ruleRefs"? }`. `by` is an
+  array of actor ids from the module, or `"system"`, or `"time"`. `ruleRefs` are optional
+  lowerCamel ids of rules that constrain the transition.
 - An entity with lifecycle states must include a `status` field whose `enum` is exactly those
   state ids.
-- MDM entities have no lifecycle and no transitions (engine status is Active|Inactive|Blocked).
+- MDM entities have no lifecycle and no transitions.
 - An `appendOnly` fact has no lifecycle and no transitions.
 
 Do not emit `useRules`, `role`, `sourceRefs`, `derivation` or `lifecyclePredicates`.

@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- A journey of only `locate`/`inspect` is valid. The ≥1 `act|decide` gate
+  (`NS5_JOURNEY_ACT_OR_DECIDE`) is gone; it had no business basis (G15). Fixture:
+  `consultarMisOrdenes` without the fabricated `act`.
 - After writing `journeys/index.defs.ts`, remove every `journeys/*.defs.ts` whose id is not
   in the index. Draft records `removedOrphans[]`. Closes the class where a new id set left
   previous files on disk (Q1 / ns5_11).

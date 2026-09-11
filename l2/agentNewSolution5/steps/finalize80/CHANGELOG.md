@@ -2,6 +2,13 @@
 
 ## 2026-09-11
 
+- I1 accepts a journey `entity`/`affects` that names an id ontology30 lifted into
+  `module.details` (`pipeline.json` `ontology30.liftedAggregateEntities` and
+  `module.details` still has keys). An unknown id that was not lifted stays an error.
+  Fixture: live `acompanharIndicadoresDaAcademia` / `PainelGerencial`.
+- I4 is integrity of cited `ruleRefs`: a `transitions[].ruleRefs` id must exist in
+  `rules.defs.ts` (error). An uncited rule is not a defect at l4. I2 does not apply to a
+  locate→inspect journey; fixture `consultarMisOrdenes` no longer has the fabricated `act`.
 - I2 walks journeys in index order and tracks reachable origin states per entity
   (birth on first create; `any` if first seen via locate/inspect). An `act` on an
   already-provided entity that has lifecycle needs a transition with `by` of the

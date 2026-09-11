@@ -9,6 +9,7 @@ import {
   markNs5Step,
   ns5OntologyEntitySelector,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
 import {
   NS5_STEP_HOOKS,
   drainWaitingSiblings,
@@ -47,10 +48,12 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import {
   NS5_ONTOLOGY_MAX_PARALLEL,
+  applyNs5ModuleDetails,
   assembleNs5Ontology,
   buildNs5OntologyBindingsTool,
   buildNs5OntologyEntityTool,
   buildNs5OntologyPlanTool,
+  liftNs5AggregateOnlyEntities,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
   normalizeNs5OntologyPlan,
@@ -244,9 +247,10 @@ async function buildPlanPrompt(
   args: string,
   parsed: OntologyArgs,
 ): Promise<mls.msg.AgentIntentPromptReady> {
-  const [moduleArtifact, journeys, prompt, schema, previous] = await Promise.all([
+  const [moduleArtifact, journeys, mdm, prompt, schema, previous] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
+    readNs5MdmSkill(),
     readAgentText('steps/ontology30', 'prompt', '.md'),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-plan.schema', '.json'),
     readJson(draftFile(parsed.moduleName, 'ontology30-plan')),
@@ -262,7 +266,7 @@ async function buildPlanPrompt(
     gateFeedback: parsed.gateFeedback,
     previousDraft: previous,
   });
-  return promptReady(context, parentStep, hookSequential, args, prompt, humanPrompt, tool);
+  return promptReady(context, parentStep, hookSequential, args, composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool);
 }
 
 async function buildEntityPrompt(
@@ -277,9 +281,10 @@ async function buildEntityPrompt(
   if (!plan.entities.some(entity => entity.entityId === entityId)) {
     throw new Error(`Entity ${entityId} is not present in the ontology30 overview.`);
   }
-  const [moduleArtifact, journeys, prompt, schema, previous] = await Promise.all([
+  const [moduleArtifact, journeys, mdm, prompt, schema, previous] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
+    readNs5MdmSkill(),
     readAgentText('steps/ontology30', 'promptEntity', '.md'),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-entity.schema', '.json'),
     readJson(entityDraftFile(parsed.moduleName, entityId)),
@@ -296,7 +301,7 @@ async function buildEntityPrompt(
     level1Catalog: formatNs4Level1CatalogPrompt(level1Catalog()),
     previousDraft: previous,
   });
-  return promptReady(context, parentStep, hookSequential, args, prompt, humanPrompt, tool);
+  return promptReady(context, parentStep, hookSequential, args, composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool);
 }
 
 async function buildBindingsPrompt(
@@ -309,7 +314,8 @@ async function buildBindingsPrompt(
   const plan = await readPlanDraft(parsed.moduleName);
   const details = await readAllEntityDrafts(plan);
   const assembled = assembleNs5Ontology(plan, details);
-  const [prompt, schema, previous] = await Promise.all([
+  const [mdm, prompt, schema, previous] = await Promise.all([
+    readNs5MdmSkill(),
     readAgentText('steps/ontology30', 'promptRelationships', '.md'),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-bindings.schema', '.json'),
     readJson(draftFile(parsed.moduleName, 'ontology30-bindings')),
@@ -321,7 +327,7 @@ async function buildBindingsPrompt(
     gateFeedback: parsed.gateFeedback,
     previousDraft: previous,
   });
-  return promptReady(context, parentStep, hookSequential, args, prompt, humanPrompt, tool);
+  return promptReady(context, parentStep, hookSequential, args, composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool);
 }
 
 async function handlePlanResult(
@@ -424,12 +430,13 @@ async function handleBindingsResult(
     }
     throw new Error(failure);
   }
-  const plan = await readPlanDraft(parsed.moduleName);
-  const details = await readAllEntityDrafts(plan);
-  const bindings = normalizeNs5OntologyBindings(payload);
-  await writeJson(draftFile(parsed.moduleName, 'ontology30-bindings'), bindings);
+  const rawPlan = await readPlanDraft(parsed.moduleName);
+  const rawDetails = await readAllEntityDrafts(rawPlan);
   const moduleArtifact = await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
+  const { plan, details } = await applyAggregateLift(parsed.moduleName, rawPlan, rawDetails, journeys);
+  const bindings = normalizeNs5OntologyBindings(payload);
+  await writeJson(draftFile(parsed.moduleName, 'ontology30-bindings'), bindings);
   const gate = validateNs5OntologyBindings(plan, details, bindings, {
     moduleName: parsed.moduleName,
     actors: moduleArtifact.actors,
@@ -461,13 +468,19 @@ async function finalizeOntology(
   parsed: OntologyArgs,
 ): Promise<mls.msg.AgentIntent[]> {
   const mutationParent = findMutableParent(context, parentStep);
-  const plan = await readPlanDraft(parsed.moduleName);
-  const invalid: string[] = [];
-  const details: Ns5OntologyEntityDraft[] = [];
+  const rawPlan = await readPlanDraft(parsed.moduleName);
+  const collected: Ns5OntologyEntityDraft[] = [];
   const moduleArtifact = await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
-  for (const entity of plan.entities) {
+  for (const entity of rawPlan.entities) {
     const detail = await readJson<Ns5OntologyEntityDraft>(entityDraftFile(parsed.moduleName, entity.entityId));
+    if (detail) collected.push(detail);
+  }
+  const { plan, details: liftedDetails } = await applyAggregateLift(parsed.moduleName, rawPlan, collected, journeys);
+  const invalid: string[] = [];
+  const details: Ns5OntologyEntityDraft[] = [];
+  for (const entity of plan.entities) {
+    const detail = liftedDetails.find(item => item.entityId === entity.entityId);
     if (!detail || !validateNs5OntologyEntity(plan, detail, {
       moduleName: parsed.moduleName,
       actors: moduleArtifact.actors,
@@ -511,6 +524,20 @@ async function finalizeOntology(
   ];
 }
 
+async function applyAggregateLift(
+  moduleName: string,
+  plan: Ns5OntologyPlanDraft,
+  details: Ns5OntologyEntityDraft[],
+  journeys: Ns5JourneyArtifact[],
+): Promise<{ plan: Ns5OntologyPlanDraft; details: Ns5OntologyEntityDraft[] }> {
+  const lift = liftNs5AggregateOnlyEntities(plan, details, journeys);
+  if (lift.issues.length) throw new Error(formatNs5OntologyGate(lift.issues));
+  if (lift.liftedEntityIds.length) {
+    await writeJson(draftFile(moduleName, 'ontology30-plan'), lift.plan);
+  }
+  return { plan: lift.plan, details: lift.details };
+}
+
 async function persistArtifacts(
   moduleName: string,
   plan: Ns5OntologyPlanDraft,
@@ -539,17 +566,27 @@ async function persistArtifacts(
     'ontology',
     assembled.entities.map(entity => entity.entityId),
   );
+  if (plan.moduleDetails && Object.keys(plan.moduleDetails).length) {
+    const moduleArtifact = await readModule(moduleName);
+    const nextModule = applyNs5ModuleDetails(moduleArtifact, plan.moduleDetails);
+    artifactPaths.push(
+      await writeDefs(moduleFile(moduleName), `${moduleName}Module`, nextModule, 'Ns5ModuleArtifact'),
+    );
+  }
+  const liftedAggregateEntities = plan.liftedAggregateEntities || [];
   await writeJson(draftFile(moduleName, 'ontology30'), {
     plan,
     entities: assembled.entities,
     relationships: assembled.index.relationships,
     removedOrphans,
+    liftedAggregateEntities,
   });
   await writeStepState(pipeline, {
     status: 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths,
     uncitedEntities,
+    liftedAggregateEntities,
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPaths;

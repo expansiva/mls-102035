@@ -20,6 +20,7 @@ import {
   assembleNs5Ontology,
   collectNs5CitedEntities,
   collectNs5LifecycleSignal,
+  isNs5AggregateOnlyEntity,
   ns5LifecycleHasBranchingOrigin,
   type Ns5LifecycleSignal,
   type Ns5OntologyAssembly,
@@ -66,6 +67,8 @@ export interface Ns5OntologyGateContext {
   planOverview?: boolean;
   requireRelationshipRealization?: boolean;
   requireJourneyCitation?: boolean;
+  /** Entity ids ontology30 lifted into module.details; citation check skips them. */
+  liftedAggregateEntityIds?: readonly string[];
 }
 
 export function validateNs5OntologyPlan(
@@ -78,11 +81,16 @@ export function validateNs5OntologyPlan(
     lifecycleStates: [],
     transitions: [],
   })));
-  return validateNs5OntologyAssembly(assembled, {
+  const result = validateNs5OntologyAssembly(assembled, {
     ...context,
     planOverview: true,
     requireRelationshipRealization: false,
   });
+  const extra: Ns5OntologyGateIssue[] = [];
+  validateNamedDetails(plan.moduleDetails, 'moduleDetails', extra);
+  if (!extra.length) return result;
+  const issues = [...result.issues, ...extra];
+  return { ...result, issues, ok: !issues.some(issue => issue.severity === 'error') };
 }
 
 export function validateNs5OntologyEntity(
@@ -137,6 +145,7 @@ export function validateNs5OntologyBindings(
     ...context,
     planOverview: false,
     requireRelationshipRealization: true,
+    liftedAggregateEntityIds: context.liftedAggregateEntityIds || plan.liftedAggregateEntities,
   });
 }
 
@@ -165,7 +174,16 @@ export function validateNs5OntologyAssembly(
   const entityIds = new Set<string>();
   entities.forEach((entity, entityIndex) => {
     const signal = collectNs5LifecycleSignal(journeys, entity.entityId);
-    validateEntity(entity, context.moduleName || index.moduleName, actorIds, planOverview, `entities[${entityIndex}]`, issues, signal);
+    validateEntity(
+      entity,
+      context.moduleName || index.moduleName,
+      actorIds,
+      planOverview,
+      `entities[${entityIndex}]`,
+      issues,
+      signal,
+      journeys,
+    );
     if (entity.entityId) {
       if (entityIds.has(entity.entityId)) {
         error(issues, 'NS5_ONTOLOGY_ENTITY_DUPLICATE', `Duplicate entityId ${entity.entityId}.`, `entities[${entityIndex}].entityId`);
@@ -202,12 +220,13 @@ export function validateNs5OntologyAssembly(
   });
 
   const cited = collectNs5CitedEntities(context.journeys || []);
+  const lifted = new Set(context.liftedAggregateEntityIds || []);
   const uncitedEntities = requireJourneyCitation
     ? [...entityIds].filter(entityId => !cited.has(entityId)).sort()
     : [];
   if (requireJourneyCitation) {
     cited.forEach(entityId => {
-      if (!entityIds.has(entityId)) {
+      if (!entityIds.has(entityId) && !lifted.has(entityId)) {
         error(issues, 'NS5_ONTOLOGY_JOURNEY_ENTITY', `Journey business object ${entityId} has no ontology entity.`, 'entities');
       }
     });
@@ -237,6 +256,7 @@ function validateEntity(
   path: string,
   issues: Ns5OntologyGateIssue[],
   signal: Ns5LifecycleSignal,
+  journeys: ReadonlyArray<Pick<Ns5JourneyArtifact, 'business'>>,
 ): void {
   if (!ENTITY_ID.test(entity.entityId)) {
     error(issues, 'NS5_ONTOLOGY_ENTITY_ID', 'entityId must be a PascalCase business noun.', `${path}.entityId`);
@@ -361,6 +381,14 @@ function validateEntity(
   if (!planOverview) {
     validateDetails(entity, path, issues);
     validateLifecycle(entity, actorIds, path, issues, signal);
+    if (isNs5AggregateOnlyEntity(entity, journeys)) {
+      error(
+        issues,
+        'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY',
+        `Entity ${entity.entityId} only stores aggregates; move them to module.details.`,
+        `${path}.details`,
+      );
+    }
   }
 }
 
@@ -414,18 +442,26 @@ function validateDetails(
   path: string,
   issues: Ns5OntologyGateIssue[],
 ): void {
-  const details = entity.details || {};
+  validateNamedDetails(entity.details, `${path}.details`, issues);
+}
+
+function validateNamedDetails(
+  details: Record<string, string> | undefined,
+  path: string,
+  issues: Ns5OntologyGateIssue[],
+): void {
   const names = new Set<string>();
-  for (const [name, description] of Object.entries(details)) {
+  for (const [name, description] of Object.entries(details || {})) {
+    const itemPath = `${path}.${name}`;
     if (!MEMBER_ID.test(name)) {
-      error(issues, 'NS5_ONTOLOGY_DETAILS_ID', 'details names must be lowerCamel.', `${path}.details.${name}`);
+      error(issues, 'NS5_ONTOLOGY_DETAILS_ID', 'details names must be lowerCamel.', itemPath);
     }
     if (names.has(name)) {
-      error(issues, 'NS5_ONTOLOGY_DETAILS_ID', `Duplicate details name ${name}.`, `${path}.details.${name}`);
+      error(issues, 'NS5_ONTOLOGY_DETAILS_ID', `Duplicate details name ${name}.`, itemPath);
     }
     names.add(name);
     if (!String(description || '').trim()) {
-      error(issues, 'NS5_ONTOLOGY_DETAILS_DESCRIPTION', `details.${name} needs a one-sentence description.`, `${path}.details.${name}`);
+      error(issues, 'NS5_ONTOLOGY_DETAILS_DESCRIPTION', `${name} needs a one-sentence description.`, itemPath);
     }
   }
 }
@@ -519,6 +555,17 @@ function validateLifecycle(
       error(issues, 'NS5_ONTOLOGY_TRANSITION_ID', 'Transition description is required.', `${tPath}.description`);
     }
     validateTransitionBy(transition.by, actorIds, tPath, issues);
+    const seenRefs = new Set<string>();
+    (transition.ruleRefs || []).forEach((ruleRef, refIndex) => {
+      const refPath = `${tPath}.ruleRefs[${refIndex}]`;
+      if (!MEMBER_ID.test(ruleRef)) {
+        error(issues, 'NS5_ONTOLOGY_TRANSITION_RULE_REF', 'ruleRefs must be lowerCamel rule ids.', refPath);
+      } else if (seenRefs.has(ruleRef)) {
+        error(issues, 'NS5_ONTOLOGY_TRANSITION_RULE_REF', `Duplicate ruleRef ${ruleRef}.`, refPath);
+      } else {
+        seenRefs.add(ruleRef);
+      }
+    });
   });
 
   const actorCommand = entity.lifecycleStates.filter(entry => entry.reachedBy !== 'time');

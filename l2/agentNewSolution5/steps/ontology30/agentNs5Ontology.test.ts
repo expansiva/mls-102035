@@ -22,8 +22,10 @@ import {
   buildNs5OntologyEntityTool,
   buildNs5OntologyPlanTool,
   collectNs5LifecycleSignal,
+  liftNs5AggregateOnlyEntities,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
+  applyNs5ModuleDetails,
   normalizeNs5OntologyPlan,
   ns5LifecycleHasBranchingOrigin,
   type Ns5OntologyBindingsDraft,
@@ -119,7 +121,7 @@ function emptyMdmDetail(entityId: string): Ns5OntologyEntityDraft {
   return { entityId, fields: [], lifecycleStates: [], transitions: [] };
 }
 
-function step(stepId: string, kind: 'act' | 'decide' | 'locate', entity: string) {
+function step(stepId: string, kind: 'act' | 'decide' | 'locate' | 'inspect', entity: string) {
   return { stepId, kind, entity, title: stepId, description: 'Done.' };
 }
 
@@ -731,6 +733,7 @@ void test('ontology30 plan prompt omits mutability when journeys repeat act or d
   assert.match(prompt, /more than one `act` step on this entity/);
   assert.match(prompt, /or a `decide` step on it, omit `mutability` here/);
   assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
+  assert.match(prompt, /moduleDetails/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|abrir|fechar/i);
 });
 
@@ -763,6 +766,8 @@ void test('persistArtifacts reconciles ontology defs against the index', () => {
   const persist = source.slice(source.indexOf('async function persistArtifacts'));
   assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'ontology'/);
   assert.match(persist, /removedOrphans/);
+  assert.match(persist, /liftedAggregateEntities/);
+  assert.match(persist, /writeStepState/);
 });
 
 void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection on one passes', () => {
@@ -889,6 +894,264 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
     true,
     fkGate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'),
   );
+});
+
+void test('PainelMensalidades aggregate-only entity fails; module.details version passes', () => {
+  const panelPlan: Ns5OntologyPlanDraft = {
+    moduleName: 'mensalidadesAcademia',
+    businessDomain: 'Gym fees',
+    entities: [{
+      entityId: 'PainelMensalidades',
+      title: 'Panel',
+      description: 'Monthly KPIs.',
+      kind: 'supporting',
+      party: 'none',
+      displayField: 'referenceMonth',
+      mutability: 'appendOnly',
+      storage: { target: 'moduleDatabase', scope: 'module', idField: 'painelMensalidadesId' },
+    }],
+    relationships: [],
+  };
+  const panelDetail: Ns5OntologyEntityDraft = {
+    entityId: 'PainelMensalidades',
+    fields: [
+      idField('PainelMensalidades', 'painelMensalidadesId'),
+      { fieldId: 'referenceMonth', title: 'Month', type: 'string', required: true, description: 'Reference month.' },
+    ],
+    details: {
+      totalAreceber: 'Soma dos valores das mensalidades geradas para o mês de referência.',
+      quantidadeAlunosBloqueados: 'Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.',
+    },
+    lifecycleStates: [],
+    transitions: [],
+  };
+  const inspectOnly = journey('garcom', [
+    step('locatePanel', 'locate', 'PainelMensalidades'),
+    step('inspectPanel', 'inspect', 'PainelMensalidades'),
+  ]);
+  const failing = validateNs5OntologyEntity(panelPlan, panelDetail, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [inspectOnly],
+  }));
+  assert.equal(failing.ok, false);
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY' && /module.details/.test(issue.message)));
+
+  const mensalidadePlan: Ns5OntologyPlanDraft = {
+    moduleName: 'mensalidadesAcademia',
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId')],
+    relationships: [],
+    moduleDetails: {
+      totalAreceber: 'Soma dos valores das mensalidades geradas para o mês de referência.',
+      quantidadeAlunosBloqueados: 'Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.',
+    },
+  };
+  const generate = journey('garcom', [step('gerar', 'act', 'Mensalidade')]);
+  const passingPlan = validateNs5OntologyPlan(mensalidadePlan, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [generate],
+  }));
+  assert.equal(passingPlan.ok, true, passingPlan.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const passingEntity = validateNs5OntologyEntity(
+    mensalidadePlan,
+    emptyCoreDetail('Mensalidade', 'mensalidadeId'),
+    ctx({ moduleName: 'mensalidadesAcademia', journeys: [generate] }),
+  );
+  assert.equal(passingEntity.ok, true, passingEntity.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const module = applyNs5ModuleDetails(
+    {
+      schemaVersion: '2026-09-10-ns5-module-v1' as const,
+      moduleName: 'mensalidadesAcademia',
+      title: 'Fees',
+      userLanguage: 'pt-BR',
+      productLanguages: ['pt-BR'],
+      defaultLanguage: 'pt-BR',
+      sourcePrompt: 'academia',
+      actors: ACTORS,
+      scope: { inScope: ['Fees'], outOfScope: [] },
+    },
+    mensalidadePlan.moduleDetails,
+  );
+  assert.equal(module.details?.totalAreceber, mensalidadePlan.moduleDetails?.totalAreceber);
+});
+
+function panelPlan(entityId: string, idField: string): Ns5OntologyPlanEntity {
+  return {
+    entityId,
+    title: entityId,
+    description: 'Monthly KPIs.',
+    kind: 'supporting',
+    party: 'none',
+    displayField: idField,
+    mutability: 'appendOnly',
+    storage: { target: 'moduleDatabase', scope: 'module', idField },
+  };
+}
+
+function emptyModule(): Parameters<typeof applyNs5ModuleDetails>[0] {
+  return {
+    schemaVersion: '2026-09-10-ns5-module-v1',
+    moduleName: 'mensalidadesAcademia',
+    title: 'Fees',
+    userLanguage: 'pt-BR',
+    productLanguages: ['pt-BR'],
+    defaultLanguage: 'pt-BR',
+    sourcePrompt: 'academia',
+    actors: ACTORS,
+    scope: { inScope: ['Fees'], outOfScope: [] },
+  };
+}
+
+void test('lift moves PainelGerencial and PainelMensalidades into module.details; ontology30 then approves', () => {
+  const generate = journey('garcom', [step('gerar', 'act', 'Mensalidade')]);
+  const inspectPanel = journey('garcom', [
+    step('locatePanel', 'locate', 'PainelGerencial'),
+    step('inspectPanel', 'inspect', 'PainelGerencial'),
+  ]);
+  const painelGerencial = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
+    'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelGerencial-draft.json',
+  );
+  const gerencialPlan: Ns5OntologyPlanDraft = {
+    moduleName: 'mensalidadesAcademia',
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId'), panelPlan('PainelGerencial', 'id')],
+    relationships: [],
+  };
+  const gerencialLift = liftNs5AggregateOnlyEntities(
+    gerencialPlan,
+    [emptyCoreDetail('Mensalidade', 'mensalidadeId'), painelGerencial],
+    [generate, inspectPanel],
+  );
+  assert.deepEqual(gerencialLift.issues, []);
+  assert.deepEqual(gerencialLift.liftedEntityIds, ['PainelGerencial']);
+  assert.equal(gerencialLift.plan.entities.some(entity => entity.entityId === 'PainelGerencial'), false);
+  assert.deepEqual(Object.keys(gerencialLift.plan.moduleDetails || {}), [
+    'totalAreceberMes',
+    'totalRecebidoMes',
+    'quantidadeAlunosAtivos',
+    'quantidadeAlunosBloqueados',
+    'quantidadeAlunosInadimplentes',
+  ]);
+  const assembled = assembleNs5Ontology(gerencialLift.plan, gerencialLift.details);
+  assert.equal(assembled.entities.some(entity => entity.entityId === 'PainelGerencial'), false);
+  assert.equal(assembled.index.entities.includes('PainelGerencial'), false);
+  const gerencialGate = validateNs5OntologyBindings(gerencialLift.plan, gerencialLift.details, { bindings: [] }, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [generate, inspectPanel],
+    requireRelationshipRealization: false,
+  }));
+  assert.equal(gerencialGate.ok, true, gerencialGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const gerencialModule = applyNs5ModuleDetails(emptyModule(), gerencialLift.plan.moduleDetails);
+  assert.equal(gerencialModule.details?.quantidadeAlunosAtivos, painelGerencial.details?.quantidadeAlunosAtivos);
+  const overlapping = liftNs5AggregateOnlyEntities(
+    { ...gerencialPlan, moduleDetails: { quantidadeAlunosAtivos: 'From the plan.' } },
+    [emptyCoreDetail('Mensalidade', 'mensalidadeId'), painelGerencial],
+    [generate, inspectPanel],
+  );
+  assert.deepEqual(overlapping.issues, []);
+  assert.equal(overlapping.plan.moduleDetails?.quantidadeAlunosAtivos, 'From the plan.');
+  assert.ok(overlapping.plan.moduleDetails?.totalAreceberMes);
+
+  const painelMensalidades = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
+    'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelMensalidades-draft.json',
+  );
+  const mensalidadesPlan: Ns5OntologyPlanDraft = {
+    moduleName: 'mensalidadesAcademia',
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId'), panelPlan('PainelMensalidades', 'painelMensalidadesId')],
+    relationships: [],
+  };
+  const mensalidadesLift = liftNs5AggregateOnlyEntities(
+    mensalidadesPlan,
+    [emptyCoreDetail('Mensalidade', 'mensalidadeId'), painelMensalidades],
+    [generate, journey('garcom', [step('locatePanel', 'locate', 'PainelMensalidades'), step('inspectPanel', 'inspect', 'PainelMensalidades')])],
+  );
+  assert.deepEqual(mensalidadesLift.issues, []);
+  assert.deepEqual(mensalidadesLift.liftedEntityIds, ['PainelMensalidades']);
+  assert.equal(mensalidadesLift.plan.entities.some(entity => entity.entityId === 'PainelMensalidades'), false);
+  assert.equal(Object.keys(mensalidadesLift.plan.moduleDetails || {}).length, 5);
+  const mensalidadesGate = validateNs5OntologyBindings(mensalidadesLift.plan, mensalidadesLift.details, { bindings: [] }, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [generate, journey('garcom', [step('locatePanel', 'locate', 'PainelMensalidades'), step('inspectPanel', 'inspect', 'PainelMensalidades')])],
+    requireRelationshipRealization: false,
+  }));
+  assert.equal(mensalidadesGate.ok, true, mensalidadesGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('two aggregate-only entities sharing a details key is NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION', () => {
+  const generate = journey('garcom', [step('gerar', 'act', 'Mensalidade')]);
+  const inspectOnly = journey('garcom', [
+    step('locateA', 'locate', 'PainelA'),
+    step('inspectA', 'inspect', 'PainelA'),
+    step('locateB', 'locate', 'PainelB'),
+    step('inspectB', 'inspect', 'PainelB'),
+  ]);
+  const plan: Ns5OntologyPlanDraft = {
+    moduleName: 'mensalidadesAcademia',
+    businessDomain: 'Gym fees',
+    entities: [
+      corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId'),
+      panelPlan('PainelA', 'id'),
+      panelPlan('PainelB', 'id'),
+    ],
+    relationships: [],
+  };
+  const shared = {
+    totalAreceberMes: 'Soma dos valores das mensalidades geradas para o mês.',
+  };
+  const lift = liftNs5AggregateOnlyEntities(
+    plan,
+    [
+      emptyCoreDetail('Mensalidade', 'mensalidadeId'),
+      { entityId: 'PainelA', fields: [idField('PainelA', 'id')], details: shared, lifecycleStates: [], transitions: [] },
+      { entityId: 'PainelB', fields: [idField('PainelB', 'id')], details: shared, lifecycleStates: [], transitions: [] },
+    ],
+    [generate, inspectOnly],
+  );
+  assert.equal(lift.plan.entities.some(entity => entity.entityId === 'PainelA'), true);
+  assert.ok(lift.issues.some(issue => (
+    issue.code === 'NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION'
+    && /PainelA/.test(issue.message)
+    && /PainelB/.test(issue.message)
+    && /totalAreceberMes/.test(issue.message)
+  )));
+});
+
+void test('aggregate-only entity with a relationship is not lifted; gate stays the net', () => {
+  const generate = journey('garcom', [step('gerar', 'act', 'Mensalidade')]);
+  const inspectPanel = journey('garcom', [
+    step('locatePanel', 'locate', 'PainelGerencial'),
+    step('inspectPanel', 'inspect', 'PainelGerencial'),
+  ]);
+  const painelGerencial = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
+    'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelGerencial-draft.json',
+  );
+  const plan: Ns5OntologyPlanDraft = {
+    moduleName: 'mensalidadesAcademia',
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId'), panelPlan('PainelGerencial', 'id')],
+    relationships: [{
+      relationshipId: 'mensalidadePainel',
+      fromEntity: 'Mensalidade',
+      toEntity: 'PainelGerencial',
+      type: 'manyToOne',
+      required: false,
+      persistence: { mode: 'moduleReference' },
+    }],
+  };
+  const lift = liftNs5AggregateOnlyEntities(
+    plan,
+    [emptyCoreDetail('Mensalidade', 'mensalidadeId'), painelGerencial],
+    [generate, inspectPanel],
+  );
+  assert.deepEqual(lift.liftedEntityIds, []);
+  assert.equal(lift.plan.entities.some(entity => entity.entityId === 'PainelGerencial'), true);
+  const failing = validateNs5OntologyEntity(plan, painelGerencial, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [generate, inspectPanel],
+  }));
+  assert.equal(failing.ok, false);
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY'));
 });
 
 void test('ownerStepId keeps ontology fan-out on the ontology30 hook and ignores the done-anchor', () => {

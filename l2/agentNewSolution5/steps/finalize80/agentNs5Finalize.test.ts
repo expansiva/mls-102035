@@ -10,7 +10,7 @@ import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { createAgent } from '/_102035_/l2/agentNewSolution5/agentNewSolution5.js';
 import { markNs5Complete, nextNs5RunNn } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
-import { loadNs5Defs, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Defs, loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { buildSolutionRegistryModuleBlock } from '/_102035_/l2/solution/lib.js';
 import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import { collectNs5LifecycleSignal } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
@@ -32,6 +32,31 @@ function loadSources(name: 'comandaRestaurante.json' | 'ordenServicio.json'): Ns
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function withLiftedPainel(sources: Ns5OracleSources): Ns5OracleSources {
+  const journey = clone(loadNs5Defs<Ns5JourneyArtifact>(
+    'steps/finalize80/fixtures',
+    'acompanharIndicadoresDaAcademia.defs.ts',
+  ));
+  const pipeline = loadNs5FixtureJson<{ liftedAggregateEntities: string[] }>(
+    'steps/finalize80/fixtures',
+    'mensalidadesAcademia-ontology30-pipeline.json',
+  );
+  const details = loadNs5FixtureJson<Record<string, string>>(
+    'steps/finalize80/fixtures',
+    'mensalidadesAcademia-module.details.json',
+  );
+  journey.business.actorRef = sources.module.actors[0].actorId;
+  sources.journeys.push(journey);
+  sources.journeyIndex.journeys.push({
+    journeyId: journey.journeyId,
+    actorRef: journey.business.actorRef,
+    title: journey.business.title,
+  });
+  sources.liftedAggregateEntities = pipeline.liftedAggregateEntities;
+  sources.module.details = details;
+  return sources;
 }
 
 void test('I7 fails on the captured comandaRestaurante5 disk (19 journeys / index 4) and passes after reconcile', () => {
@@ -93,6 +118,51 @@ void test('I1 fails when a journey step names an unknown entity', () => {
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I1' && /Ghost/.test(issue.message)));
 });
 
+void test('I1 accepts PainelGerencial when ontology30 lifted it into module.details', () => {
+  const sources = withLiftedPainel(clone(loadSources('comandaRestaurante.json')));
+  const report = runNs5Oracle(sources);
+  assert.equal(
+    report.errors.filter(issue => issue.checkId === 'I1' && /PainelGerencial/.test(issue.message)).length,
+    0,
+    report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'),
+  );
+  sources.journeys[0].business.steps[0].affects = ['PainelGerencial'];
+  const withAffects = runNs5Oracle(sources);
+  assert.equal(
+    withAffects.errors.filter(issue => issue.checkId === 'I1' && /PainelGerencial/.test(issue.message)).length,
+    0,
+    withAffects.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'),
+  );
+});
+
+void test('I1 still fails an unknown entity that was not lifted', () => {
+  const sources = withLiftedPainel(clone(loadSources('comandaRestaurante.json')));
+  sources.journeys[0].business.steps[0].entity = 'Ghost';
+  const report = runNs5Oracle(sources);
+  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I1' && /Ghost/.test(issue.message)));
+});
+
+void test('I1 still fails a lifted id when module.details has no keys', () => {
+  const sources = withLiftedPainel(clone(loadSources('comandaRestaurante.json')));
+  delete sources.module.details;
+  const report = runNs5Oracle(sources);
+  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I1' && /PainelGerencial/.test(issue.message)));
+});
+
+void test('I1 still fails PainelGerencial when it was not recorded as lifted', () => {
+  const sources = withLiftedPainel(clone(loadSources('comandaRestaurante.json')));
+  sources.liftedAggregateEntities = [];
+  const report = runNs5Oracle(sources);
+  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I1' && /PainelGerencial/.test(issue.message)));
+});
+
+void test('loadSources reads ontology30 liftedAggregateEntities from pipeline.json', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Finalize.ts'), 'utf8');
+  const load = source.slice(source.indexOf('async function loadSources'));
+  assert.match(load, /liftedAggregateEntities/);
+  assert.match(load, /ontology30/);
+});
+
 void test('I2 uses ontology30 collectNs5LifecycleSignal without changing messages', () => {
   const sources = loadSources('comandaRestaurante.json');
   assert.equal(collectNs5LifecycleSignal(sources.journeys, 'Comanda').requiresTransitions, true);
@@ -105,9 +175,6 @@ void test('I2 fails when a later act has no matching transition', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
   comanda.transitions = [];
-  for (const rule of sources.rules.rules) {
-    rule.appliesTo.transitionRefs = rule.appliesTo.transitionRefs.filter(ref => ref !== 'Comanda.fecharComanda');
-  }
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.ok(report.errors.some(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /fecharComanda/.test(issue.message)));
@@ -124,7 +191,6 @@ void test('I2 fails a decide without two transitions from the same origin (task_
   quote.lifecycleStates = [];
   quote.transitions = [];
   quote.mutability = 'appendOnly';
-  for (const rule of sources.rules.rules) rule.appliesTo.transitionRefs = [];
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.equal(report.errors.every(issue => issue.code === 'NS5_FINALIZE_I2'), true, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
@@ -133,9 +199,10 @@ void test('I2 fails a decide without two transitions from the same origin (task_
   assert.match(decide.message, /two transitions from the same origin state/);
 });
 
-void test('I2 fails consultarMisOrdenes act on already-provided OrdenServicio without a reachable transition', () => {
+void test('I2 does not apply to consultarMisOrdenes when it is locate then inspect', () => {
   const sources = clone(loadSources('ordenServicio.json'));
   const consult = loadNs5Defs<Ns5JourneyArtifact>('steps/finalize80/fixtures', 'consultarMisOrdenes.defs.ts');
+  assert.equal(consult.business.steps.some(step => step.kind === 'act' || step.kind === 'decide'), false);
   sources.journeys.push(consult);
   sources.journeyIndex.journeys.push({
     journeyId: consult.journeyId,
@@ -143,12 +210,7 @@ void test('I2 fails consultarMisOrdenes act on already-provided OrdenServicio wi
     title: consult.business.title,
   });
   const report = runNs5Oracle(sources);
-  assert.equal(report.finalStatus, 'failed');
-  const act = report.errors.find(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION);
-  assert.ok(act, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
-  assert.match(act.message, /registrarConsultaDeOrden/);
-  assert.match(act.message, /OrdenServicio/);
-  assert.ok(report.errors.every(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION));
+  assert.equal(report.errors.filter(issue => issue.checkId === 'I2').length, 0, report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
 });
 
 void test('I3 fails when an actor has no profile', () => {
@@ -161,17 +223,20 @@ void test('I3 fails when an actor has no profile', () => {
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I3' && /caixa/.test(issue.message)));
 });
 
-void test('I4 warns when a rule is not referenced by transition, journey, grant or details', () => {
+void test('I4 ignores an uncited rule and fails an unknown ruleRef on a transition', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   sources.rules.rules.push({
     ruleId: 'orphanHint',
-    title: 'Orphan',
-    description: 'Not attached to a transition, journey, grant or details field.',
-    appliesTo: { entityRefs: [], fieldRefs: ['Comanda.status'], transitionRefs: [], journeyRefs: [] },
+    description: 'Not cited by any transition.',
   });
+  const silent = runNs5Oracle(sources);
+  assert.equal(silent.finalStatus, 'passed');
+  assert.equal(silent.warnings.filter(issue => issue.checkId === 'I4').length, 0);
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  comanda.transitions[0] = { ...comanda.transitions[0], ruleRefs: ['ghostRule'] };
   const report = runNs5Oracle(sources);
-  assert.equal(report.finalStatus, 'passed');
-  assert.ok(report.warnings.some(issue => issue.code === 'NS5_FINALIZE_I4' && /orphanHint/.test(issue.message)));
+  assert.equal(report.finalStatus, 'failed');
+  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I4' && /ghostRule/.test(issue.message)));
 });
 
 void test('I5 fails an mdm entity without mdmSubtype', () => {

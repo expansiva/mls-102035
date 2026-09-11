@@ -2,6 +2,18 @@
 
 ## 2026-09-11
 
+- Three subtractions (ns5_13): rules are `{ruleId, description}` (title/appliesTo gone;
+  gate is form only); organization-wide aggregates live in `module.details` written by
+  ontology30 (`NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY` against a panel entity); a
+  locate→inspect journey is valid (the ≥1 `act|decide` gate is gone). Finalize I4
+  checks cited `transitions[].ruleRefs` exist. MDM skill `skills/mdm.md` is the first
+  block of the system prompt of module10, ontology30 (plan, entity, bindings) and
+  access60. Login is the `mdm_tag` row in namespace `login`. Round 2: ontology30
+  lifts an aggregate-only entity into `module.details` after fan-out
+  (`liftNs5AggregateOnlyEntities`); the gate stays as the net.
+  `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION` when two such entities share a key.
+  Round 3: ontology30 writes `liftedAggregateEntities` on `pipeline.json`; finalize80
+  I1 accepts a journey ref to a lifted id when `module.details` still has keys.
 - Three form normalizations (ns5_12): access60 turns unrestricted `fieldsOnly` into
   `fullRecord` and drops stray `anchorEntity`; ontology30 rejects `id → id` relationship
   realization; finalize80 I2 requires a reachable origin-state transition for an `act`

@@ -35,14 +35,14 @@ export function buildNs5RulesTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Rules',
-    'Submit the module business-rule catalog: ruleId, title, description, appliesTo references.',
+    'Submit the module business-rule catalog: ruleId and description.',
     schema,
   );
 }
 
 export function normalizeNs5RulesPayload(value: unknown): Ns5RulesNormalization {
   const root = record(value);
-  return { rules: list(root.rules).map(normalizeRule).filter(rule => rule.ruleId || rule.title || rule.description) };
+  return { rules: list(root.rules).map(normalizeRule).filter(rule => rule.ruleId || rule.description) };
 }
 
 export function buildNs5RulesArtifact(moduleName: string, rules: Ns5Rule[]): Ns5RulesArtifact {
@@ -117,34 +117,15 @@ export function splitTransitionRef(ref: string): { entityId: string; transitionI
 
 function normalizeRule(value: unknown): Ns5Rule {
   const source = record(value);
-  const applies = record(source.appliesTo);
   return {
     ruleId: memberId(text(source.ruleId) || text(source.id), ''),
-    title: text(source.title),
     description: text(source.description),
-    appliesTo: {
-      entityRefs: unique(strings(applies.entityRefs)),
-      fieldRefs: unique(strings(applies.fieldRefs)),
-      transitionRefs: unique(strings(applies.transitionRefs)),
-      journeyRefs: unique(strings(applies.journeyRefs)),
-    },
   };
 }
 
 function memberId(value: string, fallback: string): string {
   const id = normalizeModuleName(value || fallback, fallback);
   return MEMBER_ID.test(id) ? id : fallback;
-}
-
-function unique(values: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of values) {
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    out.push(value);
-  }
-  return out;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -157,8 +138,4 @@ function list(value: unknown): unknown[] {
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function strings(value: unknown): string[] {
-  return list(value).map(text).filter(Boolean);
 }

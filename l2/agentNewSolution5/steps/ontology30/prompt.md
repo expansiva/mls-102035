@@ -28,19 +28,13 @@ for what the platform already stores; do not copy those names as entities of thi
 
 ## Party and MDM
 
-Declare `party` for every entity: `person`, `organization` or `none`.
+Declare `party` for every entity: `person`, `organization` or `none`. A person or organization is
+`kind: mdm` with `storage.target: mdm` and `storage.scope: organization`. `party: person` ⇒
+`mdmSubtype: Person`. `party: organization` ⇒ `mdmSubtype: Company`. For other MDM roles pick
+`mdmSubtype` from the level-1 catalog. Namespace, identity, login and lifecycle of master records
+are in the MDM skill prepended to this prompt.
 
-- A person or an organization is master data of the organization: `kind` is `mdm`,
-  `storage.target` is `mdm`, `storage.scope` is `organization`.
-- `party: person` ⇒ `mdmSubtype: Person`. `party: organization` ⇒ `mdmSubtype: Company`.
-- For `party: none` with `kind: mdm` (a catalogue thing: product, location, asset), pick
-  `mdmSubtype` from the level-1 catalog.
-- Level 1 is where person, company, product, location and asset live. An MDM entity is a role on
-  that subtype. This pass does not list fields; the entity worker lists only the module namespace.
-- `storage.idField` is the logical identity. It is not a field of the module namespace.
-- `storage.mdmType` is `<moduleName>.<EntityId>` when `kind` is `mdm`.
-
-A login is never duplicated. The person lives in MDM.
+`storage.mdmType` is `<moduleName>.<EntityId>` when `kind` is `mdm`.
 
 ## Persistence
 
@@ -52,7 +46,7 @@ Choose exactly one `storage.target`:
 
 `kind` is `core`, `event`, `supporting`, `mdm` or `valueObject`. There is no projection kind.
 A calculated total, count or current position is **not** an entity: the entity worker will put it
-in `details`.
+in `details`. An aggregate that does not belong to one entity goes in `moduleDetails`.
 
 `mutability: appendOnly` only when the record is a fact that is never corrected. An append-only
 fact has no lifecycle. MDM is never append-only.

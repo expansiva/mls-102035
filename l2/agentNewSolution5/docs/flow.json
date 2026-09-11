@@ -85,7 +85,7 @@
       "clarificationAnchor": { "id": "rules40-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/rules.defs.ts",
-      "goal": "Rules as prose with ids and appliesTo references."
+      "goal": "Rules as prose: ruleId and description."
     },
     {
       "id": "workflows50",

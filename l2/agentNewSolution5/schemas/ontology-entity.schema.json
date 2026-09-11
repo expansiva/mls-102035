@@ -74,7 +74,11 @@
         },
         "to": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "by": { "$ref": "#/$defs/transitionBy" },
-        "description": { "type": "string", "minLength": 1 }
+        "description": { "type": "string", "minLength": 1 },
+        "ruleRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+        }
       }
     },
     "transitionBy": {

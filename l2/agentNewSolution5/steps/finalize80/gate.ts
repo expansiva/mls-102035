@@ -18,7 +18,6 @@ import {
 import {
   ns5FieldRefExists,
   splitFieldRef,
-  splitTransitionRef,
   type Ns5RulesEntityView,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
@@ -54,7 +53,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI1(sources, error);
   checkI2(sources, error);
   checkI3(sources, error);
-  checkI4(sources, warning);
+  checkI4(sources, error);
   checkI5(sources, error);
   checkI6(sources, warning);
   checkI7(sources, error);
@@ -95,11 +94,13 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
     }
     journey.business.steps.forEach((step, index) => {
       const path = `${base}.steps[${index}]`;
-      if (step.entity && !entityIds.has(step.entity)) {
+      if (step.entity && !entityIds.has(step.entity) && !isLiftedModuleDetailRef(step.entity, sources)) {
         error('I1', `${path}.entity`, `Unknown entity ${step.entity}.`);
       }
       for (const extra of step.affects || []) {
-        if (extra && !entityIds.has(extra)) error('I1', `${path}.affects`, `Unknown entity ${extra}.`);
+        if (extra && !entityIds.has(extra) && !isLiftedModuleDetailRef(extra, sources)) {
+          error('I1', `${path}.affects`, `Unknown entity ${extra}.`);
+        }
       }
       if (step.handoffTo && !actorIds.has(step.handoffTo)) {
         error('I1', `${path}.handoffTo`, `Unknown actor ${step.handoffTo}.`);
@@ -124,22 +125,6 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
       }
     });
   }
-
-  sources.rules.rules.forEach((rule, index) => {
-    const base = `rules[${index}]`;
-    for (const entityId of rule.appliesTo.entityRefs) {
-      if (entityId && !entityIds.has(entityId)) error('I1', `${base}.entityRefs`, `Unknown entity ${entityId}.`);
-    }
-    for (const ref of rule.appliesTo.fieldRefs) {
-      if (!fieldExists(ref, entityById)) error('I1', `${base}.fieldRefs`, `Unknown field ${ref}.`);
-    }
-    for (const ref of rule.appliesTo.transitionRefs) {
-      if (!transitionExists(ref, entityById)) error('I1', `${base}.transitionRefs`, `Unknown transition ${ref}.`);
-    }
-    for (const journeyId of rule.appliesTo.journeyRefs) {
-      if (journeyId && !journeyIds.has(journeyId)) error('I1', `${base}.journeyRefs`, `Unknown journey ${journeyId}.`);
-    }
-  });
 
   sources.workflows.processes.forEach((process, processIndex) => {
     process.tasks.forEach((task, taskIndex) => {
@@ -278,16 +263,21 @@ function checkI3(sources: Ns5OracleSources, error: IssueFn): void {
   }
 }
 
-function checkI4(sources: Ns5OracleSources, warning: IssueFn): void {
-  const grantedEntities = new Set(sources.access.grants.flatMap(grant => grant.entityRefs));
-  sources.rules.rules.forEach((rule, index) => {
-    const viaTransition = rule.appliesTo.transitionRefs.length > 0;
-    const viaJourney = rule.appliesTo.journeyRefs.length > 0;
-    const viaDetails = rule.appliesTo.fieldRefs.some(ref => ref.includes('.details.') || detailsField(ref, sources));
-    const viaGrant = rule.appliesTo.entityRefs.some(entityId => grantedEntities.has(entityId));
-    if (viaTransition || viaJourney || viaDetails || viaGrant) return;
-    warning('I4', `rules[${index}].${rule.ruleId}`, `Rule ${rule.ruleId} is not referenced by a transition, journey, grant or details field.`);
-  });
+function checkI4(sources: Ns5OracleSources, error: IssueFn): void {
+  const ruleIds = new Set(sources.rules.rules.map(rule => rule.ruleId).filter(Boolean));
+  for (const entity of sources.entities) {
+    entity.transitions.forEach((transition, index) => {
+      (transition.ruleRefs || []).forEach((ruleRef, refIndex) => {
+        if (!ruleRef) return;
+        if (ruleIds.has(ruleRef)) return;
+        error(
+          'I4',
+          `ontology.${entity.entityId}.transitions[${index}].ruleRefs[${refIndex}]`,
+          `Unknown rule ${ruleRef}.`,
+        );
+      });
+    });
+  }
 }
 
 function checkI5(sources: Ns5OracleSources, error: IssueFn): void {
@@ -433,27 +423,25 @@ function entityMap(sources: Ns5OracleSources): Map<string, Ns5OntologyEntityArti
   return new Map(sources.entities.map(entity => [entity.entityId, entity]));
 }
 
+/**
+ * A journey `entity`/`affects` naming an id ontology30 lifted into `module.details`
+ * is a legitimate read of those aggregates — not an unknown entity. Both locks:
+ * the id is in `liftedAggregateEntities` (pipeline.json) and `module.details` still
+ * has keys (the absorbed aggregates). An unknown id that was never lifted stays I1.
+ */
+function isLiftedModuleDetailRef(id: string, sources: Ns5OracleSources): boolean {
+  if (!id) return false;
+  if (!(sources.liftedAggregateEntities || []).includes(id)) return false;
+  const details = sources.module.details;
+  return !!details && Object.keys(details).length > 0;
+}
+
 function fieldExists(ref: string, entityById: Map<string, Ns5OntologyEntityArtifact>): boolean {
   const parsed = splitFieldRef(ref);
   if (!parsed) return false;
   const entity = entityById.get(parsed.entityId);
   if (!entity) return false;
   return ns5FieldRefExists(ref, asRulesEntity(entity));
-}
-
-function transitionExists(ref: string, entityById: Map<string, Ns5OntologyEntityArtifact>): boolean {
-  const parsed = splitTransitionRef(ref);
-  if (!parsed) return false;
-  const entity = entityById.get(parsed.entityId);
-  if (!entity) return false;
-  return entity.transitions.some(transition => transition.transitionId === parsed.transitionId);
-}
-
-function detailsField(ref: string, sources: Ns5OracleSources): boolean {
-  const parsed = splitFieldRef(ref);
-  if (!parsed) return false;
-  const entity = entityMap(sources).get(parsed.entityId);
-  return Boolean(entity?.details && parsed.fieldId in entity.details);
 }
 
 function asRulesEntity(entity: Ns5OntologyEntityArtifact): Ns5RulesEntityView {

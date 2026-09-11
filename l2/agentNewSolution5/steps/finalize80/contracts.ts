@@ -37,6 +37,12 @@ export interface Ns5OracleSources {
   journeyDiskFiles?: string[];
   /** shortNames of `ontology/*.defs.ts` on disk (including `index`). Omit to skip I7. */
   ontologyDiskFiles?: string[];
+  /**
+   * From `pipeline.json` ontology30: entity ids absorbed into `module.details`.
+   * I1 treats a journey `entity`/`affects` of one of these as a module.details ref
+   * when that map still has keys.
+   */
+  liftedAggregateEntities?: string[];
 }
 
 export interface Ns5OracleIssue {

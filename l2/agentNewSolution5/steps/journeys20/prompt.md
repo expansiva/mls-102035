@@ -21,7 +21,8 @@ A journey is what a person does to reach an outcome. It is not a screen and not 
 - `decide` exists only when the request names a human choice between alternative outcomes (approve or reject, accept or decline, select one of). Confirming a form, validating captured data or applying a system rule is `act`, not `decide`. A module with no decide step is valid.
 - `handoff` when the next step belongs to another actor: set `handoffTo` to that actor's id. Omit `handoffTo` on every other `kind`. The field names the receiving actor of a handoff; it is not "who performs this step" (`actorRef` already does that). A `locate`, `inspect`, `act` or `decide` step that includes `handoffTo` — even set to the journey's own actor — is invalid.
 - Counter-example (placeholders — use only ids that exist in the module): `{ "stepId": "<stepId>", "kind": "act", "entity": "<Entity>", "handoffTo": "<actorRef>" }` is wrong. Remove the field. A valid handoff is `{ "stepId": "<stepId>", "kind": "handoff", "entity": "<Entity>", "handoffTo": "<otherActor>" }`.
-- Every journey has at least one `act` or `decide` step.
+- A journey that only locates and inspects (a consultation) is valid. `act` and `decide` are
+  required only when the request names a change or a human choice.
 - `stepId` and `journeyId` are lowerCamel. `journeyId` is not `index`.
 
 ## Entry

@@ -23,10 +23,10 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 | check | meaning | on fail |
 |---|---|---|
-| I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey, profile, authority) | error |
-| I2 | first `act` on an entity is create; a later `act` on an already-provided entity with lifecycle needs a transition whose `by` includes the journey actor and whose `from` intersects reachable origin states (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); every `decide` has at least two transitions from the same origin state. Structural signal (`requiresTransitions` / `requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error |
+| I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey, profile, authority). A journey `entity`/`affects` naming an id in `pipeline.json` `ontology30.liftedAggregateEntities` is a `module.details` ref when that map has keys — not an unknown entity | error |
+| I2 | first `act` on an entity is create; a later `act` on an already-provided entity with lifecycle needs a transition whose `by` includes the journey actor and whose `from` intersects reachable origin states (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal (`requiresTransitions` / `requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error |
 | I3 | every actor has at least one journey and one profile; every profile has at least one grant | error |
-| I4 | every rule is referenced by a transition, journey, grant or `details` field | warning |
+| I4 | every cited `transitions[].ruleRefs` exists in `rules.defs.ts`. An uncited rule is not a defect at l4 | error |
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
 | I6 | a `handoff` without a covering process, or a foreign-by / cross-actor decide with `processes: []` | warning |
 | I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |

@@ -29,3 +29,14 @@ void test('every step prompt.md declares modelType and x-tool-strict', () => {
     assert.match(source, /<!--\s*x-tool-strict:\s*true\s*-->/, `${rel} missing x-tool-strict`);
   }
 });
+
+void test('injected skills are not step prompts and have no modelType marker', () => {
+  const skillsRoot = path.join(HERE, 'skills');
+  if (!existsSync(skillsRoot)) return;
+  for (const name of readdirSync(skillsRoot)) {
+    if (!name.endsWith('.md')) continue;
+    const source = readFileSync(path.join(skillsRoot, name), 'utf8');
+    assert.doesNotMatch(source, /<!--\s*modelType:/, `${name} is a skill, not a step prompt`);
+    assert.doesNotMatch(source, /<!--\s*x-tool-strict:/, `${name} is a skill, not a step prompt`);
+  }
+});

@@ -2,6 +2,22 @@
 
 ## 2026-09-11
 
+- Persist `liftedAggregateEntities` on the ontology30 `pipeline.json` step (and the
+  draft), same class as `uncitedEntities` / `removedOrphans`. finalize80 I1 reads it.
+- After entity fan-out, `liftNs5AggregateOnlyEntities` moves a core/supporting
+  entity that only stores aggregates into `plan.moduleDetails` and drops it from
+  the plan (no `.defs.ts`). Same predicate as `NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`
+  (the gate stays as the net when the entity has a relationship). Two lifted
+  entities sharing a details key fail `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION`.
+  Prompt plus two repair rounds left `PainelGerencial` in place; the entity pass
+  cannot uncreate a plan entity. Fixtures: live `PainelGerencial`, `PainelMensalidades`.
+- Plan may emit `moduleDetails` (name → description). Persist copies them onto
+  `module.defs.ts` as `details`. A `core`/`supporting` entity whose only job is
+  aggregates (details not empty, no journey `act` on it or in `affects`) fails
+  `NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`. Fixture: `PainelMensalidades`.
+- Transitions may list `ruleRefs` (form: unique lowerCamel). Existence is finalize80 I4
+  because rules40 runs after this step.
+- MDM skill prepended to plan, entity and bindings system prompts.
 - Persisted `oneToOne` / `oneToMany` / `manyToOne` (`fieldReference` / `fieldCollection`)
   must store a real foreign key on the owner: not `id → id`. `fieldReference` owner is
   the many side (`uuid` field); `fieldCollection` owner field is `json`. The other

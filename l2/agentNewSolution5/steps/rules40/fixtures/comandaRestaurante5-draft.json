@@ -4,146 +4,35 @@
   "rules": [
     {
       "ruleId": "valorTotalDoLancamento",
-      "title": "Valor total do lançamento",
-      "description": "O valor total de um item da comanda é a quantidade multiplicada pelo preço unitário e é desconsiderado quando o lançamento está cancelado.",
-      "appliesTo": {
-        "entityRefs": [
-          "ItemComanda"
-        ],
-        "fieldRefs": [
-          "ItemComanda.details.valorTotal",
-          "ItemComanda.quantidade",
-          "ItemComanda.precoUnitario",
-          "ItemComanda.status"
-        ],
-        "transitionRefs": [],
-        "journeyRefs": []
-      }
+      "description": "O valor total de um item da comanda é a quantidade multiplicada pelo preço unitário e é desconsiderado quando o lançamento está cancelado."
     },
     {
       "ruleId": "valorItensDaComanda",
-      "title": "Valor dos itens",
-      "description": "O valor dos itens da comanda é a soma dos valores dos lançamentos que não foram cancelados.",
-      "appliesTo": {
-        "entityRefs": [
-          "Comanda"
-        ],
-        "fieldRefs": [
-          "Comanda.details.valorItens",
-          "ItemComanda.details.valorTotal"
-        ],
-        "transitionRefs": [],
-        "journeyRefs": []
-      }
+      "description": "O valor dos itens da comanda é a soma dos valores dos lançamentos que não foram cancelados."
     },
     {
       "ruleId": "valorDescontosDaComanda",
-      "title": "Valor dos descontos",
-      "description": "O valor dos descontos da comanda é a soma dos descontos pontuais registrados para a comanda.",
-      "appliesTo": {
-        "entityRefs": [
-          "Comanda",
-          "Desconto"
-        ],
-        "fieldRefs": [
-          "Comanda.details.valorDescontos",
-          "Desconto.valor"
-        ],
-        "transitionRefs": [],
-        "journeyRefs": []
-      }
+      "description": "O valor dos descontos da comanda é a soma dos descontos pontuais registrados para a comanda."
     },
     {
       "ruleId": "valorDevidoDaComanda",
-      "title": "Valor devido",
-      "description": "O valor devido da comanda é o valor a receber após deduzir os descontos do valor dos itens.",
-      "appliesTo": {
-        "entityRefs": [
-          "Comanda"
-        ],
-        "fieldRefs": [
-          "Comanda.details.valorDevido",
-          "Comanda.details.valorItens",
-          "Comanda.details.valorDescontos"
-        ],
-        "transitionRefs": [],
-        "journeyRefs": []
-      }
+      "description": "O valor devido da comanda é o valor a receber após deduzir os descontos do valor dos itens."
     },
     {
       "ruleId": "valorPagoDaComanda",
-      "title": "Valor pago",
-      "description": "O valor pago da comanda é a soma dos pagamentos registrados para a comanda.",
-      "appliesTo": {
-        "entityRefs": [
-          "Comanda",
-          "Pagamento"
-        ],
-        "fieldRefs": [
-          "Comanda.details.valorPago",
-          "Pagamento.valor"
-        ],
-        "transitionRefs": [],
-        "journeyRefs": []
-      }
+      "description": "O valor pago da comanda é a soma dos pagamentos registrados para a comanda."
     },
     {
       "ruleId": "saldoDevedorDaComanda",
-      "title": "Saldo devedor",
-      "description": "O saldo devedor da comanda é o valor que ainda falta receber para quitar a comanda, obtido subtraindo o valor pago do valor devido.",
-      "appliesTo": {
-        "entityRefs": [
-          "Comanda"
-        ],
-        "fieldRefs": [
-          "Comanda.details.saldoDevedor",
-          "Comanda.details.valorDevido",
-          "Comanda.details.valorPago"
-        ],
-        "transitionRefs": [],
-        "journeyRefs": []
-      }
+      "description": "O saldo devedor da comanda é o valor que ainda falta receber para quitar a comanda, obtido subtraindo o valor pago do valor devido."
     },
     {
       "ruleId": "fecharComandaAposQuitacao",
-      "title": "Fechamento após quitação",
-      "description": "A comanda só pode ser fechada depois que o caixa conferir o consumo e o valor pago cobrir integralmente o valor devido.",
-      "appliesTo": {
-        "entityRefs": [
-          "Comanda"
-        ],
-        "fieldRefs": [
-          "Comanda.details.valorDevido",
-          "Comanda.details.valorPago"
-        ],
-        "transitionRefs": [
-          "Comanda.fecharComanda"
-        ],
-        "journeyRefs": [
-          "conferirEfecharConta"
-        ]
-      }
+      "description": "A comanda só pode ser fechada depois que o caixa conferir o consumo e o valor pago cobrir integralmente o valor devido."
     },
     {
       "ruleId": "cancelarItemEmComandaAberta",
-      "title": "Cancelamento em comanda aberta",
-      "description": "O garçom só pode cancelar um item lançado por engano enquanto a comanda permanece aberta.",
-      "appliesTo": {
-        "entityRefs": [
-          "ItemComanda",
-          "Comanda"
-        ],
-        "fieldRefs": [
-          "Comanda.status",
-          "ItemComanda.status"
-        ],
-        "transitionRefs": [
-          "ItemComanda.cancelarItem"
-        ],
-        "journeyRefs": [
-          "cancelarItemLancadoPorEngano"
-        ]
-      }
+      "description": "O garçom só pode cancelar um item lançado por engano enquanto a comanda permanece aberta."
     }
   ]
 }

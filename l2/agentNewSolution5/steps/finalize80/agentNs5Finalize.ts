@@ -215,6 +215,7 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     integration,
     journeyDiskFiles: listModuleDefsShortNames(moduleName, 'journeys'),
     ontologyDiskFiles: listModuleDefsShortNames(moduleName, 'ontology'),
+    liftedAggregateEntities: pipeline?.steps.ontology30?.liftedAggregateEntities || [],
   };
 }
 

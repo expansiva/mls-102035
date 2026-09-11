@@ -1,0 +1,21 @@
+{
+  "entityId": "PainelMensalidades",
+  "fields": [
+    {
+      "fieldId": "painelMensalidadesId",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do painel."
+    }
+  ],
+  "details": {
+    "totalAreceber": "Soma dos valores das mensalidades geradas para o mês de referência.",
+    "totalRecebido": "Soma dos pagamentos registrados no mês de referência.",
+    "quantidadeAlunosAtivos": "Quantidade de alunos com matrícula ativa.",
+    "quantidadeAlunosBloqueados": "Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.",
+    "quantidadeAlunosInadimplentes": "Quantidade de alunos com ao menos uma mensalidade vencida e não paga."
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

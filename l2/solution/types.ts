@@ -59,6 +59,8 @@ export interface Ns5ModuleArtifact {
     /** Human boundary; no generator reads this as structure. */
     outOfScope: string[];
   };
+  /** Organization-wide aggregates; ontology30 writes this at the end of the fan-out. */
+  details?: Record<string, string>;
 }
 
 export interface Ns5JourneyStep {
@@ -81,7 +83,7 @@ export interface Ns5JourneyStep {
 export interface Ns5JourneyArtifact {
   /** Gate of journeys20. */
   schemaVersion: typeof NS5_JOURNEY_SCHEMA_VERSION;
-  /** Index order, rules.appliesTo.journeyRefs, workflows50.journeyRef. */
+  /** Index order, workflows50.journeyRef. */
   journeyId: string;
   business: {
     /** Must be an actorId from module.defs.ts. */
@@ -180,13 +182,15 @@ export interface Ns5OntologyEntityArtifact {
     state: string;
     reachedBy: 'actor' | 'command' | 'time';
   }>;
-  /** finalize80 maps journey act/decide onto these; rules cite Entidade.transitionId. */
+  /** finalize80 maps journey act/decide onto these; ruleRefs cite rules.defs.ts. */
   transitions: Array<{
     transitionId: string;
     from: string[];
     to: string;
     by: string[] | 'system' | 'time';
     description: string;
+    /** Optional citations; finalize80 I4 checks each id exists in rules.defs.ts. */
+    ruleRefs?: string[];
   }>;
   storage: {
     /** Must match kind (mdm => mdm). */
@@ -238,22 +242,10 @@ export interface Ns5OntologyIndexArtifact {
 }
 
 export interface Ns5Rule {
-  /** Cited by transitions, grants, details and later screens/endpoints. */
+  /** Cited by transitions.ruleRefs and later screens/endpoints. */
   ruleId: string;
-  /** Planner / UI. */
-  title: string;
   /** The only copy of the rule text. */
   description: string;
-  appliesTo: {
-    /** Must exist in the ontology index. */
-    entityRefs: string[];
-    /** Entidade.campo, including details.<name>. */
-    fieldRefs: string[];
-    /** Entidade.transitionId. */
-    transitionRefs: string[];
-    /** journeyId. */
-    journeyRefs: string[];
-  };
 }
 
 export interface Ns5RulesArtifact {
@@ -261,7 +253,7 @@ export interface Ns5RulesArtifact {
   schemaVersion: typeof NS5_RULES_SCHEMA_VERSION;
   /** Folder. */
   moduleName: string;
-  /** finalize80 I4: every rule is referenced somewhere. */
+  /** Catalog of {ruleId, description}; I4 checks cited ruleRefs exist. */
   rules: Ns5Rule[];
 }
 
@@ -417,6 +409,12 @@ export interface Ns5PipelineStepState {
   decideStepCount?: number;
   /** ontology30: entityIds no journey cites. Supporting/valueObject may be legitimate. */
   uncitedEntities?: string[];
+  /**
+   * ontology30: entity ids `liftNs5AggregateOnlyEntities` absorbed into `module.details`.
+   * finalize80 I1 accepts a journey `entity`/`affects` that names one of these when
+   * `module.details` still has the corresponding aggregate keys.
+   */
+  liftedAggregateEntities?: string[];
   /** workflows50: true when processes is [] because no handoff, foreign-by transition or cross-actor decide. */
   noProcessSignal?: boolean;
   /** integration70: true when inbound/outbound/plugins are [] because no system actor and no plugin-catalog term. */

@@ -10,19 +10,15 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
-  loadNs5Entities,
   loadNs5FixtureJson,
-  loadNs5JourneyIndex,
   NS5_REAL_MODULES,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
-import type { Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
 import { buildNs5RulesHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import {
   buildNs5RulesArtifact,
   buildNs5RulesTool,
-  collectNs5RulesRefCatalog,
   normalizeNs5RulesPayload,
-  type Ns5RulesEntityView,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
   formatNs5RulesGate,
@@ -37,96 +33,10 @@ function loadSchema(): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
-function rulesView(entities: Ns5OntologyEntityArtifact[]): Ns5RulesEntityView[] {
-  return entities.map(entity => ({
-    entityId: entity.entityId,
-    fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
-    ...(entity.details ? { details: entity.details } : {}),
-    storage: { idField: entity.storage.idField },
-    transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
-  }));
-}
-
-function entity(
-  entityId: string,
-  fields: string[],
-  extras: {
-    details?: Record<string, string>;
-    idField?: string;
-    transitions?: Array<{ transitionId: string; by: string[] | 'system' | 'time' }>;
-  } = {},
-): Ns5RulesEntityView {
-  return {
-    entityId,
-    fields: fields.map(fieldId => ({ fieldId })),
-    ...(extras.details ? { details: extras.details } : {}),
-    ...(extras.idField ? { storage: { idField: extras.idField } } : {}),
-    transitions: extras.transitions || [],
-  };
-}
-
-function journeys(...ids: string[]): Array<{ journeyId: string }> {
-  return ids.map(journeyId => ({ journeyId }));
-}
-
-const COMANDA_ENTITIES: Ns5RulesEntityView[] = [
-  entity('Comanda', ['comandaId', 'comandaNumber', 'status', 'discountAmount', 'paymentMethod'], {
-    details: { total: 'Sum of active items at close.' },
-    idField: 'comandaId',
-    transitions: [{ transitionId: 'fecharComanda', by: ['caixa'] }],
-  }),
-  entity('ItemComanda', ['itemComandaId', 'comandaId', 'status'], {
-    idField: 'itemComandaId',
-    transitions: [{ transitionId: 'cancelarItem', by: ['garcom'] }],
-  }),
-  entity('ItemCardapio', ['precoVigente'], { idField: 'itemCardapioId' }),
-  entity('Mesa', [], { idField: 'mesaId' }),
-];
-
-const COMANDA_JOURNEYS = journeys(
-  'abrirComanda',
-  'lancarItemNaComanda',
-  'cancelarItemDaComanda',
-  'fecharComanda',
-);
-
-const ORDEN_ENTITIES: Ns5RulesEntityView[] = [
-  entity('ServiceOrder', ['serviceOrderId', 'status'], {
-    idField: 'serviceOrderId',
-    transitions: [
-      { transitionId: 'publishBudget', by: ['tecnico'] },
-      { transitionId: 'approveBudget', by: ['cliente'] },
-      { transitionId: 'rejectBudget', by: ['cliente'] },
-      { transitionId: 'markServiceOrderReady', by: ['tecnico'] },
-      { transitionId: 'completeServiceOrder', by: ['recepcionista'] },
-    ],
-  }),
-  entity('Customer', [], { idField: 'customerId' }),
-  entity('Device', [], { idField: 'deviceId' }),
-  entity('Diagnosis', [], { idField: 'diagnosisId' }),
-  entity('ServicePart', [], { idField: 'servicePartId' }),
-  entity('RepairRecord', [], { idField: 'repairRecordId' }),
-];
-
-const ORDEN_JOURNEYS = journeys(
-  'abrirOrdenServicio',
-  'prepararPresupuestoServicio',
-  'consultarYDecidirPresupuesto',
-  'repararAparato',
-  'entregarAparato',
-);
-
 function validRule(overrides: Partial<Ns5Rule> = {}): Record<string, unknown> {
   return {
     ruleId: 'discountWithinTotal',
-    title: 'Discount within total',
     description: 'The optional discount cannot exceed the total of active items.',
-    appliesTo: {
-      entityRefs: ['Comanda'],
-      fieldRefs: ['Comanda.details.total'],
-      transitionRefs: ['Comanda.fecharComanda'],
-      journeyRefs: ['fecharComanda'],
-    },
     ...overrides,
   };
 }
@@ -145,12 +55,9 @@ void test('real rules40 drafts of both runs pass the gate', () => {
   for (const moduleName of NS5_REAL_MODULES) {
     const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', `${moduleName}-draft.json`);
     const rules = drafts(draft);
-    const gate = validateNs5Rules(rules, {
-      moduleName,
-      entities: rulesView(loadNs5Entities(moduleName)),
-      journeys: loadNs5JourneyIndex(moduleName).journeys,
-    });
+    const gate = validateNs5Rules(rules, { moduleName });
     assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
+    assert.equal(rules.every(rule => !('title' in rule) && !('appliesTo' in rule)), true, moduleName);
   }
   const comanda = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', 'comandaRestaurante5-draft.json');
   assert.equal(comanda.rules.length, 8);
@@ -160,151 +67,52 @@ void test('real rules40 drafts of both runs pass the gate', () => {
   assert.ok(orden.rules.some(rule => rule.ruleId === 'visibilidadPortalCliente'));
 });
 
-void test('normalize + gate accept a valid payload including details.total', () => {
+void test('normalize + gate accept a valid payload of id and description only', () => {
   const rules = drafts({ schemaVersion: '2026-09-10-ns5-rules-v1', rules: [validRule()] });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
+  const gate = validateNs5Rules(rules);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-  assert.deepEqual(rules[0].appliesTo.fieldRefs, ['Comanda.details.total']);
+  assert.equal(rules[0].ruleId, 'discountWithinTotal');
+  assert.ok(!('title' in rules[0]));
+  assert.ok(!('appliesTo' in rules[0]));
 });
 
-void test('empty catalog is valid when no time transition exists', () => {
+void test('empty catalog is valid', () => {
   const rules = drafts({ rules: [] });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
+  const gate = validateNs5Rules(rules);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-});
-
-void test('gate rejects a rule with no appliesTo reference', () => {
-  const rules = drafts({
-    rules: [validRule({
-      appliesTo: { entityRefs: [], fieldRefs: [], transitionRefs: [], journeyRefs: [] },
-    })],
-  });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
-  assert.equal(gate.ok, false);
-  assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_NO_REF'));
 });
 
 void test('gate rejects duplicate lowerCamel rule ids', () => {
   const rules = drafts({
-    rules: [validRule(), validRule({ title: 'Again', description: 'Same id again.' })],
+    rules: [validRule(), validRule({ description: 'Same id again.' })],
   });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
+  const gate = validateNs5Rules(rules);
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_ID_DUPLICATE'));
 });
 
-void test('gate rejects unknown entity, field, transition and journey refs', () => {
-  const rules = drafts({
-    rules: [validRule({
-      appliesTo: {
-        entityRefs: ['Ghost'],
-        fieldRefs: ['Comanda.missingField'],
-        transitionRefs: ['Comanda.ghostTransition'],
-        journeyRefs: ['ghostJourney'],
-      },
-    })],
-  });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
-  assert.equal(gate.ok, false);
-  assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_ENTITY_UNKNOWN'));
-  assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_FIELD_UNKNOWN'));
-  assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_TRANSITION_UNKNOWN'));
-  assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_JOURNEY_UNKNOWN'));
-});
-
-void test('details name as Entity.name is accepted (the total case)', () => {
-  const rules = drafts({
-    rules: [validRule({
-      appliesTo: {
-        entityRefs: ['Comanda'],
-        fieldRefs: ['Comanda.total'],
-        transitionRefs: [],
-        journeyRefs: [],
-      },
-    })],
-  });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-});
-
-void test('mdm identity outside fields[] is a valid field ref', () => {
-  const rules = drafts({
-    rules: [validRule({
-      ruleId: 'mesaHasIdentity',
-      title: 'Table identity',
-      description: 'A table is identified by its organization record id.',
-      appliesTo: {
-        entityRefs: ['Mesa'],
-        fieldRefs: ['Mesa.mesaId'],
-        transitionRefs: [],
-        journeyRefs: ['abrirComanda'],
-      },
-    })],
-  });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-});
-
-void test('time transition without a citing rule fails NS5_RULES_TIME_WITHOUT_RULE', () => {
-  const entities = [
-    entity('Booking', ['bookingId'], {
-      transitions: [{ transitionId: 'expireHold', by: 'time' }],
-    }),
-  ];
-  const empty = validateNs5Rules([], { entities, journeys: journeys('holdSeat') });
+void test('gate rejects empty description and non-lowerCamel id', () => {
+  const empty = validateNs5Rules(drafts({ rules: [validRule({ description: '' })] }));
   assert.equal(empty.ok, false);
-  assert.ok(empty.issues.some(issue => issue.code === 'NS5_RULES_TIME_WITHOUT_RULE'));
-  const feedback = formatNs5RulesGate(empty.issues);
-  assert.match(feedback, /NS5_RULES_TIME_WITHOUT_RULE/);
-  assert.match(feedback, /Booking.expireHold/);
-
-  const covered = drafts({
-    rules: [{
-      ruleId: 'holdExpires',
-      title: 'Hold expires',
-      description: 'An unpaid hold expires after the allowed window.',
-      appliesTo: {
-        entityRefs: ['Booking'],
-        fieldRefs: [],
-        transitionRefs: ['Booking.expireHold'],
-        journeyRefs: [],
-      },
-    }],
-  });
-  const gate = validateNs5Rules(covered, { entities, journeys: journeys('holdSeat') });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.ok(empty.issues.some(issue => issue.code === 'NS5_RULES_DESCRIPTION'));
+  const badId = validateNs5Rules([{ ruleId: 'NotCamel', description: 'A constraint.' }]);
+  assert.equal(badId.ok, false);
+  assert.ok(badId.issues.some(issue => issue.code === 'NS5_RULES_ID'));
+  assert.match(formatNs5RulesGate(badId.issues), /NS5_RULES_ID/);
 });
 
-void test('normalize maps id to ruleId and drops empty refs', () => {
+void test('normalize maps id to ruleId and drops title/appliesTo', () => {
   const rules = drafts({
     rules: [{
       id: 'discountWithinTotal',
       title: 'Discount within total',
       description: 'The discount cannot exceed the total.',
-      appliesTo: {
-        entityRefs: ['Comanda', 'Comanda', ''],
-        fieldRefs: ['Comanda.details.total'],
-        transitionRefs: [],
-        journeyRefs: ['fecharComanda'],
-      },
+      appliesTo: { entityRefs: ['Comanda'], fieldRefs: [], transitionRefs: [], journeyRefs: [] },
     }],
   });
   assert.equal(rules[0].ruleId, 'discountWithinTotal');
-  assert.deepEqual(rules[0].appliesTo.entityRefs, ['Comanda']);
-});
-
-void test('normalize keeps cited journey ids that contain a single-letter word', () => {
-  const rules = drafts({
-    rules: [validRule({
-      appliesTo: {
-        entityRefs: ['ServiceOrder'],
-        fieldRefs: [],
-        transitionRefs: ['ServiceOrder.approveBudget'],
-        journeyRefs: ['consultarYDecidirPresupuesto'],
-      },
-    })],
-  });
-  assert.equal(rules[0].appliesTo.journeyRefs[0], 'consultarYDecidirPresupuesto');
+  assert.equal(rules[0].description, 'The discount cannot exceed the total.');
+  assert.deepEqual(Object.keys(rules[0]).sort(), ['description', 'ruleId']);
 });
 
 void test('buildNs5RulesArtifact keeps schemaVersion and rule order', () => {
@@ -321,7 +129,7 @@ void test('ownerStepId maps rules40 repair planIds', () => {
   assert.equal(ownerStepId('rules40-done'), '');
 });
 
-void test('human prompt carries source request, journeys, fields, transitions and details', () => {
+void test('human prompt carries source request, journeys, ontology and cited ruleRefs', () => {
   const comanda = {
     schemaVersion: '2026-09-10-ns5-ontology-v1',
     moduleName: 'comandaRestaurante5',
@@ -333,7 +141,6 @@ void test('human prompt carries source request, journeys, fields, transitions an
     displayField: 'comandaNumber',
     fields: [
       { fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Open or closed.' },
-      { fieldId: 'discountAmount', title: 'Discount', type: 'money', required: false, description: 'Optional discount.' },
     ],
     details: { total: 'Sum of active items.' },
     lifecycleStates: [
@@ -346,6 +153,7 @@ void test('human prompt carries source request, journeys, fields, transitions an
       to: 'closed',
       by: ['caixa'],
       description: 'Cashier closes the order.',
+      ruleRefs: ['fecharComandaAposQuitacao'],
     }],
     storage: { target: 'moduleDatabase', scope: 'module', idField: 'comandaId' },
   } as Ns5OntologyEntityArtifact;
@@ -372,19 +180,16 @@ void test('human prompt carries source request, journeys, fields, transitions an
   });
   assert.match(human, /Source request/);
   assert.match(human, /fecharComanda \(caixa\)/);
-  assert.match(human, /Comanda\.status/);
-  assert.match(human, /Comanda\.details\.total/);
-  assert.match(human, /Comanda\.fecharComanda/);
-  const catalog = collectNs5RulesRefCatalog([comanda], [journey]);
-  assert.ok(catalog.fieldRefs.includes('Comanda.details.total'));
-  assert.ok(catalog.transitionRefs.includes('Comanda.fecharComanda'));
+  assert.match(human, /fecharComandaAposQuitacao/);
 });
 
-void test('rules40 prompt has no domain examples and keeps appliesTo by id', () => {
+void test('rules40 prompt has no domain examples and no appliesTo/title', () => {
   const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
   assert.match(prompt, /submitNs5Rules/);
-  assert.match(prompt, /appliesTo/);
+  assert.match(prompt, /ruleId/);
+  assert.match(prompt, /description/);
+  assert.doesNotMatch(prompt, /appliesTo/);
+  assert.doesNotMatch(prompt, /title is a short label/);
   assert.match(prompt, /Do not invent a rule that has no basis/);
-  assert.match(prompt, /placeholders — use only ids that exist in the module/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto/i);
 });

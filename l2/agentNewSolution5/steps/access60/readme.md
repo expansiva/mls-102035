@@ -36,7 +36,9 @@ hops, `allowedInformation` or journey-step lists.
 ## Known traps
 
 - Disclosure names fields, not concepts. Prose stays in `description`.
-- Do not persist hops or `platformUserId`. The consumer derives the person path from
-  `anchorEntity` and the ontology.
+- Do not persist hops or a login field on the module. `own` reaches the Person whose
+  `mdm_tag` login row (namespace `login`) is the session e-mail. `docType`/`docId` is
+  the national document and is not the own-anchor. The consumer derives the person path
+  from `anchorEntity` and the ontology.
 - Do not add prompt examples of a domain. Placeholders (`<profileId>`, `<Entity>`, `<field>`) are
   context.

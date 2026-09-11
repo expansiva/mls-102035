@@ -1,0 +1,8 @@
+{
+  "indicadoresMensais": "Total a receber no mês, total recebido, quantidade de alunos ativos, bloqueados e inadimplentes, calculados a partir das matrículas, mensalidades e pagamentos.",
+  "totalAreceber": "Soma dos valores das mensalidades do período de referência que ainda estão em aberto ou vencidas.",
+  "totalRecebido": "Soma dos pagamentos registrados para mensalidades do período de referência.",
+  "quantidadeAlunosAtivos": "Quantidade de alunos com matrícula ativa no período de referência.",
+  "quantidadeAlunosBloqueados": "Quantidade de alunos bloqueados por possuírem duas ou mais mensalidades vencidas no período de referência.",
+  "quantidadeAlunosInadimplentes": "Quantidade de alunos com ao menos uma mensalidade vencida no período de referência."
+}

@@ -8,7 +8,6 @@ import {
   loadNs5Entities,
   loadNs5FixtureJson,
   loadNs5FixtureText,
-  loadNs5JourneyIndex,
   loadNs5Journeys,
   loadNs5Module,
   loadNs5OntologyIndex,
@@ -85,16 +84,6 @@ function render(
   typeName: string,
 ): string {
   return renderDefsSource(defsFile(folder, shortName), exportName, value, typeName);
-}
-
-function rulesView(entities: Ns5OntologyEntityArtifact[]) {
-  return entities.map(entity => ({
-    entityId: entity.entityId,
-    fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
-    ...(entity.details ? { details: entity.details } : {}),
-    storage: { idField: entity.storage.idField },
-    transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
-  }));
 }
 
 function accessView(entities: Ns5OntologyEntityArtifact[]) {
@@ -225,9 +214,7 @@ for (const moduleName of NS5_REAL_MODULES) {
   void test(`${moduleName} rules40 draft replays to rules.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/rules40/fixtures', `${moduleName}-draft.json`);
     const { rules } = normalizeNs5RulesPayload(draft);
-    const entities = loadNs5Entities(moduleName);
-    const journeys = loadNs5JourneyIndex(moduleName).journeys;
-    const gate = validateNs5Rules(rules, { moduleName, entities: rulesView(entities), journeys });
+    const gate = validateNs5Rules(rules, { moduleName });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
     const artifact = buildNs5RulesArtifact(moduleName, rules);
     const rendered = render(moduleName, 'rules', `${moduleName}Rules`, artifact, 'Ns5RulesArtifact');

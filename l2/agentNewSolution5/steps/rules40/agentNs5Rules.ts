@@ -41,7 +41,6 @@ import type {
 import {
   buildNs5RulesArtifact,
   buildNs5RulesTool,
-  collectNs5RulesRefCatalog,
   normalizeNs5RulesPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
@@ -68,7 +67,9 @@ export function buildNs5RulesHumanPrompt(input: {
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
-  const catalog = collectNs5RulesRefCatalog(input.entities, input.journeys);
+  const citedRuleIds = [...new Set(
+    input.entities.flatMap(entity => entity.transitions.flatMap(transition => transition.ruleRefs || [])),
+  )].filter(Boolean);
   return [
     '## Source request',
     input.sourcePrompt,
@@ -81,16 +82,8 @@ export function buildNs5RulesHumanPrompt(input: {
     '',
     '## Ontology (entities, fields, transitions)',
     formatOntology(input.entities),
-    '',
-    '## Valid reference ids',
-    JSON.stringify({
-      entityIds: catalog.entityIds,
-      fieldRefs: catalog.fieldRefs,
-      transitionRefs: catalog.transitionRefs,
-      journeyIds: catalog.journeyIds,
-    }, null, 2),
-    catalog.timeTransitionRefs.length
-      ? `## Time transitions that need a rule\n${catalog.timeTransitionRefs.map(ref => `- ${ref}`).join('\n')}`
+    citedRuleIds.length
+      ? `## ruleIds already cited by transitions\n${citedRuleIds.map(id => `- ${id}`).join('\n')}`
       : '',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
@@ -163,14 +156,13 @@ export async function afterNs5RulesPromptStep(
     }
 
     const { rules } = normalizeNs5RulesPayload(payload);
-    const [journeys, entities] = await Promise.all([readJourneys(moduleName), readEntities(moduleName)]);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
     const draftPath = await writeJson(draftFile(moduleName, 'rules40'), { rules });
-    const gate = validateNs5Rules(rules, { moduleName, entities, journeys });
+    const gate = validateNs5Rules(rules, { moduleName });
     if (!gate.ok) {
       const feedback = formatNs5RulesGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {

@@ -22,9 +22,22 @@
     "relationships": {
       "type": "array",
       "items": { "$ref": "#/$defs/planRelationship" }
+    },
+    "moduleDetails": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/detail" }
     }
   },
   "$defs": {
+    "detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
     "planEntity": {
       "type": "object",
       "additionalProperties": false,

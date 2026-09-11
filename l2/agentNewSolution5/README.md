@@ -46,3 +46,9 @@ Types live in `/_102035_/l2/solution/types.ts`. Shared pure helpers are re-expor
 `docs/flow.json` is the contract: `module10 → journeys20 → ontology30 → {rules40, workflows50, access60} → integration70 → finalize80`.
 `finalize80` writes `pipeline/finalize-report.json` and `pipeline/runNN_newsolution5.json`.
 Oracle errors fail the run; warnings do not. The step never dispatches CB or CF.
+Rules are `{ruleId, description}`. Module aggregates live in `module.details`. After
+the ontology fan-out, an aggregate-only entity is lifted into `module.details` and
+not written as `.defs.ts`. Lifted ids are stored on `pipeline.json`
+`ontology30.liftedAggregateEntities`; finalize80 I1 accepts a journey ref to one
+when `module.details` still has keys. A locate→inspect journey is valid. The MDM
+skill is prepended to module10, ontology30 and access60 system prompts.

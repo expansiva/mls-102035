@@ -1,0 +1,18 @@
+{
+  "status": "approved",
+  "updatedAt": "2026-09-11T20:19:49.266Z",
+  "artifactPaths": [
+    "l4/mensalidadesAcademia/ontology/Aluno.defs.ts",
+    "l4/mensalidadesAcademia/ontology/Plano.defs.ts",
+    "l4/mensalidadesAcademia/ontology/Matricula.defs.ts",
+    "l4/mensalidadesAcademia/ontology/Mensalidade.defs.ts",
+    "l4/mensalidadesAcademia/ontology/Pagamento.defs.ts",
+    "l4/mensalidadesAcademia/ontology/index.defs.ts",
+    "l4/mensalidadesAcademia/module.defs.ts"
+  ],
+  "uncitedEntities": [],
+  "liftedAggregateEntities": [
+    "PainelGerencial"
+  ],
+  "autoReason": "fast"
+}

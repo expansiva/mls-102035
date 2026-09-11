@@ -90,6 +90,20 @@ export function validateNs5ModuleArtifact(
       error(issues, 'NS5_MODULE_SCOPE_CONTRADICTION', 'The same item cannot be both in and out of scope.', `scope.outOfScope[${index}]`);
     }
   });
+  const details = artifact.details || {};
+  const detailNames = new Set<string>();
+  for (const [name, description] of Object.entries(details)) {
+    if (!MEMBER_ID.test(name)) {
+      error(issues, 'NS5_MODULE_DETAILS_ID', 'details names must be lowerCamel.', `details.${name}`);
+    }
+    if (detailNames.has(name)) {
+      error(issues, 'NS5_MODULE_DETAILS_ID', `Duplicate details name ${name}.`, `details.${name}`);
+    }
+    detailNames.add(name);
+    if (!String(description || '').trim()) {
+      error(issues, 'NS5_MODULE_DETAILS_DESCRIPTION', `details.${name} needs a one-sentence description.`, `details.${name}`);
+    }
+  }
   return { ok: !issues.some(issue => issue.severity === 'error'), issues };
 }
 

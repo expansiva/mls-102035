@@ -3,6 +3,7 @@
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION,
+  type Ns5ModuleArtifact,
   type Ns5OntologyEntityArtifact,
   type Ns5OntologyField,
   type Ns5OntologyIndexArtifact,
@@ -65,6 +66,14 @@ export interface Ns5OntologyPlanDraft {
   businessDomain: string;
   entities: Ns5OntologyPlanEntity[];
   relationships: Ns5OntologyPlanRelationship[];
+  /** Organization-wide aggregates; copied onto module.defs.ts at persist. */
+  moduleDetails?: Record<string, string>;
+  /**
+   * Ids removed by `liftNs5AggregateOnlyEntities` after fan-out. Not an LLM field;
+   * normalize drops it. The ontology gate skips `NS5_ONTOLOGY_JOURNEY_ENTITY` for these
+   * names so a locate→inspect of the former panel still closes ontology30.
+   */
+  liftedAggregateEntities?: string[];
 }
 
 export interface Ns5OntologyEntityDraft {
@@ -95,7 +104,7 @@ export function buildNs5OntologyPlanTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5OntologyPlan',
-    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, storage) and relationships without realization.',
+    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
     schema,
   );
 }
@@ -129,12 +138,154 @@ export function normalizeNs5OntologyPlan(
 ): Ns5OntologyPlanDraft {
   const root = record(value);
   const entities = list(root.entities).map(item => normalizePlanEntity(item, moduleName, journeys)).filter(entity => entity.entityId);
+  const moduleDetails = normalizeDetails(root.moduleDetails);
   return {
     moduleName: memberId(text(root.moduleName) || moduleName, moduleName),
     businessDomain: text(root.businessDomain),
     entities,
     relationships: list(root.relationships).map(normalizePlanRelationship).filter(item => item.relationshipId),
+    ...(moduleDetails ? { moduleDetails } : {}),
   };
+}
+
+/** Copies organization-wide aggregates onto the module envelope. Empty omits the field. */
+export function applyNs5ModuleDetails(
+  module: Ns5ModuleArtifact,
+  details: Record<string, string> | undefined,
+): Ns5ModuleArtifact {
+  if (!details || !Object.keys(details).length) {
+    if (!module.details) return module;
+    const { details: _dropped, ...rest } = module;
+    return rest;
+  }
+  return { ...module, details };
+}
+
+/** Journey slice the aggregate-only predicate reads (act on the entity or in affects). */
+export type Ns5AggregateJourneyView = {
+  business: {
+    steps: ReadonlyArray<{ kind: string; entity: string; affects?: string[] }>;
+  };
+};
+
+export function ns5EntityHasActOrAffects(
+  journeys: ReadonlyArray<Ns5AggregateJourneyView>,
+  entityId: string,
+): boolean {
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      if (step.kind !== 'act') continue;
+      if (step.entity === entityId) return true;
+      if ((step.affects || []).includes(entityId)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Same predicate as `NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`: core/supporting, details
+ * not empty, no journey `act` on it or in `affects`.
+ */
+export function isNs5AggregateOnlyEntity(
+  entity: { entityId: string; kind: string; details?: Record<string, string> },
+  journeys: ReadonlyArray<Ns5AggregateJourneyView>,
+): boolean {
+  return (entity.kind === 'core' || entity.kind === 'supporting')
+    && !!entity.details
+    && Object.keys(entity.details).length > 0
+    && !ns5EntityHasActOrAffects(journeys, entity.entityId);
+}
+
+export interface Ns5AggregateLiftIssue {
+  severity: 'error';
+  code: string;
+  message: string;
+  path?: string;
+}
+
+export interface Ns5AggregateLiftResult {
+  plan: Ns5OntologyPlanDraft;
+  details: Ns5OntologyEntityDraft[];
+  liftedEntityIds: string[];
+  issues: Ns5AggregateLiftIssue[];
+}
+
+/**
+ * After entity fan-out: move aggregate-only entities into `plan.moduleDetails` and
+ * drop them from the plan. A relationship to another entity is not lifted (the gate
+ * stays as the net). Two lifted entities claiming the same details key is an error;
+ * a key already on `moduleDetails` is kept, not overwritten.
+ */
+export function liftNs5AggregateOnlyEntities(
+  plan: Ns5OntologyPlanDraft,
+  details: Ns5OntologyEntityDraft[],
+  journeys: ReadonlyArray<Ns5AggregateJourneyView>,
+): Ns5AggregateLiftResult {
+  const byId = new Map(details.map(item => [item.entityId, item]));
+  const merged: Record<string, string> = { ...(plan.moduleDetails || {}) };
+  const origin = new Map<string, string>();
+  for (const key of Object.keys(merged)) origin.set(key, 'moduleDetails');
+  const toRemove = new Set<string>();
+  const issues: Ns5AggregateLiftIssue[] = [];
+
+  for (const entity of plan.entities) {
+    const detail = byId.get(entity.entityId);
+    if (!detail) continue;
+    if (!isNs5AggregateOnlyEntity({ entityId: entity.entityId, kind: entity.kind, details: detail.details }, journeys)) {
+      continue;
+    }
+    if (plan.relationships.some(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId)) {
+      continue;
+    }
+    for (const [key, description] of Object.entries(detail.details || {})) {
+      const previous = origin.get(key);
+      if (previous && previous !== 'moduleDetails') {
+        issues.push({
+          severity: 'error',
+          code: 'NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION',
+          message: `Aggregate '${key}' is defined on ${previous}.details and ${entity.entityId}.details.`,
+          path: `entities.${entity.entityId}.details.${key}`,
+        });
+      } else if (!previous) {
+        merged[key] = description;
+        origin.set(key, entity.entityId);
+      }
+    }
+    toRemove.add(entity.entityId);
+  }
+
+  if (issues.length) {
+    return { plan, details, liftedEntityIds: plan.liftedAggregateEntities || [], issues };
+  }
+  if (!toRemove.size) {
+    return { plan, details, liftedEntityIds: plan.liftedAggregateEntities || [], issues };
+  }
+
+  const liftedEntityIds = uniqueIds([...(plan.liftedAggregateEntities || []), ...toRemove]);
+  const nextPlan: Ns5OntologyPlanDraft = {
+    ...plan,
+    entities: plan.entities.filter(entity => !toRemove.has(entity.entityId)),
+    relationships: plan.relationships.filter(item => !toRemove.has(item.fromEntity) && !toRemove.has(item.toEntity)),
+    ...(Object.keys(merged).length ? { moduleDetails: merged } : {}),
+    liftedAggregateEntities: liftedEntityIds,
+  };
+  return {
+    plan: nextPlan,
+    details: details.filter(item => !toRemove.has(item.entityId)),
+    liftedEntityIds,
+    issues,
+  };
+}
+
+function uniqueIds(ids: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
 }
 
 export function normalizeNs5OntologyEntity(value: unknown, entityId: string): Ns5OntologyEntityDraft {
@@ -397,12 +548,14 @@ function normalizeLifecycleState(value: unknown): Ns5OntologyEntityArtifact['lif
 
 function normalizeTransition(value: unknown): Ns5OntologyEntityArtifact['transitions'][number] {
   const source = record(value);
+  const ruleRefs = uniqueMemberIds(source.ruleRefs);
   return {
     transitionId: memberId(text(source.transitionId), ''),
     from: uniqueMemberIds(source.from),
     to: memberId(text(source.to), ''),
     by: normalizeBy(source.by),
     description: text(source.description),
+    ...(ruleRefs.length ? { ruleRefs } : {}),
   };
 }
 

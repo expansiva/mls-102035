@@ -15,9 +15,10 @@ has no screen; `/fast` auto-approves.
 ## Output
 
 `Ns5OntologyEntityArtifact` per entity: kind, party, mdmSubtype, displayField, namespace fields,
-`details`, lifecycle states, allowed transitions, storage. Index: entity order plus relationships
-with field realization. No `kind: projection`, `derivation`, `role`, `sourceRefs`, `useRules` or
-`lifecyclePredicates`.
+`details`, lifecycle states, allowed transitions (`ruleRefs` optional), storage. Index: entity
+order plus relationships with field realization. Organization-wide aggregates go in
+`module.details` (plan `moduleDetails`). No `kind: projection`, `derivation`, `role`,
+`sourceRefs`, `useRules` or `lifecyclePredicates`.
 
 ## Invariants
 
@@ -39,15 +40,23 @@ with field realization. No `kind: projection`, `derivation`, `role`, `sourceRefs
   `[idField]`, both ends required. Owner stores a `uuid` FK or a `json` collection, never
   `id → id`. MDM with `fields: []` cannot be owner
   (`NS5_ONTOLOGY_RELATIONSHIP_MDM_OWNER_WITHOUT_NAMESPACE`).
-- Every journey `entity`/`affects` exists on the **full** ontology (plan and bindings). Isolated
-  entity validation does not run that check — the fan-out only has one entity. An entity no
-  journey cites is a warning, not an error.
+- Every journey `entity`/`affects` exists on the **full** ontology (plan and bindings), except
+  names `liftNs5AggregateOnlyEntities` moved to `module.details`. Isolated entity validation
+  does not run that check — the fan-out only has one entity. An entity no journey cites is a
+  warning, not an error.
 - Gate repair is bounded (2) per LLM call. Entity fan-out repairs missing/invalid entities in the
   finalizer (2 rounds). A run then continues to `rules40`.
 
 ## Known traps
 
-- Calculated totals are `details`, not a projection entity.
+- Calculated totals are `details` on the owning entity, or `module.details` when they
+  belong to the module (`NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`). Not a projection entity.
+  After fan-out, `liftNs5AggregateOnlyEntities` moves that entity into `module.details`
+  and drops it (the model keeps creating a panel; prompt plus gate did not stop it).
+  Lifted ids are stored as `liftedAggregateEntities[]` on the ontology30
+  `pipeline.json` step so finalize80 I1 can accept journey refs to them.
+  A relationship to another entity is not lifted — the gate remains the net. Two
+  entities claiming the same details key fail `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION`.
 - MDM `fields[]` is the module namespace and may be empty. Identity is `storage.idField`.
 - Do not add prompt examples of a domain. Placeholders (`<Person>`, `<Entity>`) are context.
 - `mdmSubtype` is only on `kind: mdm`. `mutability: appendOnly` is never on mdm. The model fills

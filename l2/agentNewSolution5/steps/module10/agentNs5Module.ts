@@ -16,6 +16,7 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
 import {
   draftFile,
   fileExists,
@@ -82,7 +83,8 @@ export async function beforeNs5ModulePromptStep(
     const sourcePrompt = await readSourcePrompt(context, moduleName);
     const pipeline = moduleName ? await readPipeline(moduleName) : null;
     const fixedModuleName = invocationOf(context, pipeline).module;
-    const [prompt, schema, registry, previous] = await Promise.all([
+    const [mdm, prompt, schema, registry, previous] = await Promise.all([
+      readNs5MdmSkill(),
       readAgentText('steps/module10', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'module.schema', '.json'),
       readSolutionRegistry(),
@@ -96,7 +98,7 @@ export async function beforeNs5ModulePromptStep(
       gateFeedback: parsed.gateFeedback,
       previousDraft: previous,
     });
-    return [promptReady(context, parentStep, hookSequential, args || String(step.prompt || ''), prompt, humanPrompt, tool)];
+    return [promptReady(context, parentStep, hookSequential, args || String(step.prompt || ''), composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool)];
   } catch (error) {
     const message = errorMessage(error);
     await recordFailure(moduleName, message);

@@ -78,9 +78,6 @@ export function validateNs5Journeys(
     if (!journey.business.steps.length) {
       error(issues, 'NS5_JOURNEY_STEPS', 'Journey must contain at least one step.', `${base}.business.steps`);
     }
-    if (!journey.business.steps.some(step => step.kind === 'act' || step.kind === 'decide')) {
-      error(issues, 'NS5_JOURNEY_ACT_OR_DECIDE', 'Every journey needs at least one act or decide step.', `${base}.business.steps`);
-    }
     if (!journey.business.outcome.statement.trim()) {
       error(issues, 'NS5_JOURNEY_OUTCOME', 'Outcome statement is required.', `${base}.business.outcome.statement`);
     }

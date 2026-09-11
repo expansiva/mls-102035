@@ -59,6 +59,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     sourcePrompt: { reader: 'resume and /rebuild all', since: '2026-09-10' },
     actors: { reader: 'steps/journeys20, steps/access60, finalize80', since: '2026-09-10' },
     scope: { reader: 'planner / UI', since: '2026-09-10' },
+    details: { reader: 'steps/ontology30 persist (module aggregates), later screens/backend', since: '2026-09-11' },
   },
   Ns5JourneyStep: {
     stepId: { reader: 'steps/workflows50/gate.ts, finalize80', since: '2026-09-10' },
@@ -71,7 +72,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
   },
   Ns5JourneyArtifact: {
     schemaVersion: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
-    journeyId: { reader: 'journeys/index, rules.appliesTo.journeyRefs, workflows50.journeyRef', since: '2026-09-10' },
+    journeyId: { reader: 'journeys/index, workflows50.journeyRef', since: '2026-09-10' },
     business: { reader: 'steps/journeys20/gate.ts, finalize80', since: '2026-09-10' },
     businessHash: { reader: 'staleness: journeys20 rewrite vs finalize80', since: '2026-09-10' },
   },
@@ -134,10 +135,8 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     relationships: { reader: 'steps/ontology30/gate.ts, access60 anchorPath', since: '2026-09-10' },
   },
   Ns5Rule: {
-    ruleId: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
-    title: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    ruleId: { reader: 'steps/rules40/gate.ts, finalize80 I4, transitions.ruleRefs', since: '2026-09-10' },
     description: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
-    appliesTo: { reader: 'steps/rules40/gate.ts, later screens/endpoints cite ruleId', since: '2026-09-10' },
   },
   Ns5RulesArtifact: {
     schemaVersion: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
@@ -279,9 +278,16 @@ test('details and transitions are registered with finalize80 / basic backend rea
   assert.match(KEYS.Ns5OntologyEntityArtifact.transitions.reader, /finalize80/);
 });
 
-test('rules40 appliesTo is registered with the rules gate as reader', () => {
-  assert.match(KEYS.Ns5Rule.appliesTo.reader, /rules40\/gate/);
+test('rules40 title and appliesTo were removed; I4 reads cited ruleRefs', () => {
+  assert.equal('title' in KEYS.Ns5Rule, false);
+  assert.equal('appliesTo' in KEYS.Ns5Rule, false);
+  assert.match(KEYS.Ns5Rule.ruleId.reader, /finalize80 I4/);
   assert.match(KEYS.Ns5RulesArtifact.rules.reader, /finalize80/);
+});
+
+test('module.details is registered with the ontology30 persist as reader', () => {
+  assert.match(KEYS.Ns5ModuleArtifact.details.reader, /ontology30/);
+  assert.match(KEYS.Ns5ModuleArtifact.details.since, /2026-09-11/);
 });
 
 test('workflows50 tasks are registered with the workflows gate as reader', () => {

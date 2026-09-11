@@ -26,13 +26,6 @@ export const consultarMisOrdenesJourney = {
         "entity": "OrdenServicio",
         "title": "Consultar el estado, el diagnóstico y el valor del presupuesto de una orden propia.",
         "description": "Consultar el estado, el diagnóstico y el valor del presupuesto de una orden propia."
-      },
-      {
-        "stepId": "registrarConsultaDeOrden",
-        "kind": "act",
-        "entity": "OrdenServicio",
-        "title": "Registrar la consulta de la orden.",
-        "description": "Registrar la consulta de la orden."
       }
     ],
     "outcome": {
