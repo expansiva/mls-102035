@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- I7: disk files in `journeys/` and `ontology/` must equal the index plus `index.defs.ts`.
+  Difference is `NS5_FINALIZE_I7_ORPHAN_FILE` with the orphan list. Fixture: live
+  `comandaRestaurante5` disk before reconcile (19 journeys / index 4) fails; after, passes.
 - I2 structural signal (`requiresTransitions` / `requiresBranching`, branching origin) is
   imported from ontology30 (`collectNs5LifecycleSignal`, `ns5LifecycleHasBranchingOrigin`).
   Observable I2 codes and messages are unchanged. The rule itself lives in ontology30.

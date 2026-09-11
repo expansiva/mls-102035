@@ -157,8 +157,13 @@ export async function startNs5Pipeline(
   invocation: Ns5Invocation,
   rebuildAll: boolean,
 ): Promise<Ns5PipelineState> {
-  if (rebuildAll) await deleteModuleL4(moduleName);
+  let deleted = 0;
+  if (rebuildAll) {
+    const keys = await deleteModuleL4(moduleName);
+    deleted = keys.length;
+  }
   const pipeline = createEmptyPipeline(moduleName, sourcePrompt, invocation);
+  if (rebuildAll) pipeline.rebuildAll = { deleted, at: pipeline.updatedAt };
   await writePipeline(pipeline);
   return pipeline;
 }

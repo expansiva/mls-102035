@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- Host unlink + per-item reconcile (ns5_11): `/rebuild all` lists the real `l4/<mod>/**`
+  and deletes it; `journeys20` / `ontology30` drop defs that left the index;
+  finalize80 I7 fails when disk ≠ index. Pipeline records `rebuildAll: { deleted, at }`.
 - Certification: byte copies of the two complete runs (`comandaRestaurante5`,
   `ordenServicio5`) replace synthetic/derived happy-path fixtures. `replayRealRuns.test.ts`
   replays `normalize → gate → writeDefs` against the recorded defs (hashes stripped).

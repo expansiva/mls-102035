@@ -14,8 +14,10 @@ import type {
 
 export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-report-v1' as const;
 
-export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6'] as const;
+export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7'] as const;
 export type Ns5OracleCheckId = typeof NS5_ORACLE_CHECK_IDS[number];
+export const NS5_FINALIZE_I7_ORPHAN_FILE = 'NS5_FINALIZE_I7_ORPHAN_FILE' as const;
+export type Ns5OracleIssueCode = `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7'>}` | typeof NS5_FINALIZE_I7_ORPHAN_FILE;
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;
@@ -27,11 +29,15 @@ export interface Ns5OracleSources {
   workflows: Ns5WorkflowsArtifact;
   access: Ns5AccessArtifact;
   integration: Ns5IntegrationArtifact;
+  /** shortNames of `journeys/*.defs.ts` on disk (including `index`). Omit to skip I7. */
+  journeyDiskFiles?: string[];
+  /** shortNames of `ontology/*.defs.ts` on disk (including `index`). Omit to skip I7. */
+  ontologyDiskFiles?: string[];
 }
 
 export interface Ns5OracleIssue {
   checkId: Ns5OracleCheckId;
-  code: `NS5_FINALIZE_${Ns5OracleCheckId}`;
+  code: Ns5OracleIssueCode;
   path: string;
   message: string;
 }
@@ -62,7 +68,8 @@ export interface Ns5FinalizeReport {
 }
 
 export function oracleCode(checkId: Ns5OracleCheckId): Ns5OracleIssue['code'] {
-  return `NS5_FINALIZE_${checkId}`;
+  if (checkId === 'I7') return NS5_FINALIZE_I7_ORPHAN_FILE;
+  return `NS5_FINALIZE_${checkId}` as `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7'>}`;
 }
 
 export function buildNs5FinalizeReport(

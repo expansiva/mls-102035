@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I6).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I7).
  * Errors fail the run; warnings do not.
  *
  * I2 uses collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin from ontology30
@@ -50,6 +50,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI4(sources, warning);
   checkI5(sources, error);
   checkI6(sources, warning);
+  checkI7(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.module.actors.length,
@@ -338,6 +339,27 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
       'A foreign-by transition or cross-actor decide has no process in workflows.',
     );
   }
+}
+
+function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
+  reportOrphans('journeys', sources.journeyDiskFiles, sources.journeyIndex.journeys.map(entry => entry.journeyId), error);
+  reportOrphans('ontology', sources.ontologyDiskFiles, sources.ontologyIndex.entities, error);
+}
+
+function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | undefined, indexIds: string[], error: IssueFn): void {
+  if (!diskFiles) return;
+  const keep = new Set<string>(['index', ...indexIds.filter(Boolean)]);
+  const extras: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of diskFiles) {
+    const name = String(raw || '').replace(/\.defs\.ts$/, '');
+    if (!name || keep.has(name) || seen.has(name)) continue;
+    seen.add(name);
+    extras.push(name);
+  }
+  extras.sort();
+  if (!extras.length) return;
+  error('I7', `${kind}/`, `orphan files: ${extras.join(', ')}`);
 }
 
 type IssueFn = (checkId: Ns5OracleCheckId, path: string, message: string) => void;

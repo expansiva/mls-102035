@@ -38,6 +38,12 @@
       "status": "passed",
       "errorCount": 0,
       "warningCount": 0
+    },
+    {
+      "checkId": "I7",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
     }
   ],
   "errors": [],

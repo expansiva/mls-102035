@@ -22,7 +22,7 @@ Gate tests run on the two complete-run fixtures; `replayRealRuns.test.ts` replay
 - `/module` fixes the folder name. Without it, `module10` proposes a lowerCamel name.
 - `/fast` skips reserved clarification anchors (they have no screen) and auto-approves each
   implemented step.
-- `/rebuild all` deletes only `l4/<module>/**` of that module and recreates the pipeline.
+- `/rebuild all` unlinks only `l4/<module>/**` of that module and recreates the pipeline.
 - An existing module without `/rebuild all` is refused.
 
 ## L4 table

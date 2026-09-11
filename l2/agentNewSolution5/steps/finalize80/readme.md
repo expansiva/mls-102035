@@ -11,7 +11,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 ## Output
 
-- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I6, `errors` and `warnings`
+- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I7, `errors` and `warnings`
 - organization `l4/organization/registry.defs.ts` — module block with actors and
   `mdmSubtype <- <mod>.<Entity>` roles
 - `l5/config.json` / `l5/project.json` — workspaceDependencies, projects, platform block
@@ -29,6 +29,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | I4 | every rule is referenced by a transition, journey, grant or `details` field | warning |
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
 | I6 | a `handoff` without a covering process, or a foreign-by / cross-actor decide with `processes: []` | warning |
+| I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |
 
 Errors fail the run with the report. Warnings only continue.
 
@@ -38,7 +39,7 @@ still fails the same shape if it reaches here; do not invent a transition and do
 
 ## Invariants
 
-- One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`.
+- One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`; I7 uses `NS5_FINALIZE_I7_ORPHAN_FILE`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).
 - Status updates use `cleaner: input_output`.
-- Converted ce02 / ce05 fixtures pass I1-I6 with no warnings.
+- Converted ce02 / ce05 fixtures pass I1-I7 with no warnings when disk matches the index.

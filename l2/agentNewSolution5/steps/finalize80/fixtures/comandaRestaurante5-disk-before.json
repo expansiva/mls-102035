@@ -1,0 +1,36 @@
+{
+  "capturedFrom": "mls-102047/l4/comandaRestaurante5",
+  "capturedAt": "2026-09-11",
+  "journeys": [
+    "abrirComandaMesa",
+    "abrirComandaNaMesa",
+    "abrirComandaParaMesa",
+    "addItemToOpenOrderTab",
+    "aplicarDescontoNaComanda",
+    "cancelMistakenOrderItem",
+    "cancelarItemLancado",
+    "cancelarItemLancadoPorEngano",
+    "closeOrderTabAndRecordPayment",
+    "conferirComandaEaplicarDesconto",
+    "conferirEfecharConta",
+    "fecharComanda",
+    "fecharComandaEregistrarPagamento",
+    "fecharContaComPagamentosDivididos",
+    "index",
+    "lancarItemComanda",
+    "lancarItemNaComanda",
+    "lancarItemPedido",
+    "openOrderTabForTable",
+    "receberPagamentoEfecharConta"
+  ],
+  "ontology": [
+    "Cardapio",
+    "Comanda",
+    "Desconto",
+    "ItemCardapio",
+    "ItemComanda",
+    "Mesa",
+    "Pagamento",
+    "index"
+  ]
+}

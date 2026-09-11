@@ -21,6 +21,7 @@ import {
   readDefsJson,
   readJson,
   readPipeline,
+  reconcileModuleDefs,
   writeDefs,
   writeJson,
   writePipeline,
@@ -209,6 +210,11 @@ async function persistArtifacts(
   artifactPaths.push(
     await writeDefs(journeyIndexFile(moduleName), `${moduleName}JourneyIndex`, index, 'Ns5JourneyIndexArtifact'),
   );
+  const removedOrphans = await reconcileModuleDefs(
+    moduleName,
+    'journeys',
+    artifacts.map(artifact => artifact.journeyId),
+  );
   if (dropped.systemDecisions.length) {
     const nextModule: Ns5ModuleArtifact = { ...moduleArtifact, actors: dropped.actors };
     artifactPaths.push(
@@ -218,6 +224,7 @@ async function persistArtifacts(
   await writeJson(draftFile(moduleName, 'journeys20'), {
     journeys: artifacts,
     systemDecisions: dropped.systemDecisions,
+    removedOrphans,
   });
   await writeStepState(pipeline, {
     status: 'approved',

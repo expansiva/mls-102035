@@ -638,6 +638,10 @@ function isGlobalFolder(level: number, folder: string): boolean {
 /**
  * Archives the module's whole l4/l5 through the platform channel (`libStor.deleteFile`): a persisted file
  * becomes `status: 'deleted'` and a never-saved one is removed. Nothing is unlinked outside that channel.
+ *
+ * 11/09/2026: on the host CLI this was a rewrite, not an unlink (same class as Q1 / ns5_11).
+ * NS4 is frozen — do not change this path. Host `localStor.deleteFile` + libStor capability
+ * branch fix the class for NS5 and later callers; NS4 still uses the Studio trash write.
  */
 export async function archiveNs4ModuleForRebuild(moduleName: string): Promise<string[]> {
   const project = mls.actualProject || 0;

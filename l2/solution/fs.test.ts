@@ -81,3 +81,93 @@ void test('listModuleL4Keys is exact-folder and l4-only', async () => {
   };
   assert.deepEqual(fs.listModuleL4Keys(files, 102047, 'teste5'), ['a']);
 });
+
+void test('ns5DefsOrphans drops index plus the ids and keeps the rest', async () => {
+  const fs = await loadFs();
+  assert.deepEqual(
+    fs.ns5DefsOrphans(
+      ['abrirComandaNaMesa', 'abrirComandaMesa', 'index', 'openOrderTabForTable.defs.ts'],
+      ['abrirComandaNaMesa', 'lancarItemNaComanda'],
+    ),
+    ['abrirComandaMesa', 'openOrderTabForTable'],
+  );
+  assert.deepEqual(fs.ns5DefsOrphans(['index', 'Comanda'], ['Comanda']), []);
+});
+
+void test('deleteModuleL4 unlinks memory files and host-listed disk files', async () => {
+  const g = globalThis as unknown as { mls?: unknown };
+  const prev = g.mls;
+  const deleted: string[] = [];
+  const files: Record<string, { project: number; level: number; folder: string; shortName: string; extension: string; status: string }> = {
+    '102047_4_teste5/module.defs.ts': {
+      project: 102047, level: 4, folder: 'teste5', shortName: 'module', extension: '.defs.ts', status: 'deleted',
+    },
+  };
+  try {
+    g.mls = {
+      actualProject: 102047,
+      events: { addEventListener() {}, removeEventListener() {}, dispatch() {} },
+      stor: {
+        files,
+        getKeyToFile: (info: { project: number; level: number; folder: string; shortName: string; extension: string }) =>
+          `${info.project}_${info.level}_${info.folder}/${info.shortName}${info.extension}`,
+        localStor: {
+          deleteFile: (file: { shortName: string; folder: string; extension: string }) => {
+            deleted.push(`${file.folder}/${file.shortName}${file.extension}`);
+          },
+          listFolder: (project: number, level: number, folder: string) => {
+            if (project !== 102047 || level !== 4 || folder !== 'teste5') return [];
+            return [
+              { project, level, folder: 'teste5/journeys', shortName: 'orphan', extension: '.defs.ts' },
+              { project, level, folder: 'teste5', shortName: 'module', extension: '.defs.ts' },
+            ];
+          },
+        },
+      },
+    };
+    const fs = await loadFs();
+    const keys = await fs.deleteModuleL4('teste5');
+    assert.ok(deleted.includes('teste5/module.defs.ts'));
+    assert.ok(deleted.includes('teste5/journeys/orphan.defs.ts'));
+    assert.equal(keys.length, 2);
+  } finally {
+    g.mls = prev;
+  }
+});
+
+void test('reconcileModuleDefs removes defs whose id is not in the index', async () => {
+  const g = globalThis as unknown as { mls?: unknown };
+  const prev = g.mls;
+  const deleted: string[] = [];
+  const files: Record<string, { project: number; level: number; folder: string; shortName: string; extension: string; status: string }> = {
+    keep: {
+      project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'keepMe', extension: '.defs.ts', status: 'changed',
+    },
+    orphan: {
+      project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'oldName', extension: '.defs.ts', status: 'changed',
+    },
+    index: {
+      project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'index', extension: '.defs.ts', status: 'changed',
+    },
+  };
+  try {
+    g.mls = {
+      actualProject: 102047,
+      events: { addEventListener() {}, removeEventListener() {}, dispatch() {} },
+      stor: {
+        files,
+        getKeyToFile: (info: { project: number; level: number; folder: string; shortName: string; extension: string }) =>
+          `${info.project}_${info.level}_${info.folder}/${info.shortName}${info.extension}`,
+        localStor: {
+          deleteFile: (file: { shortName: string }) => { deleted.push(file.shortName); },
+        },
+      },
+    };
+    const fs = await loadFs();
+    const removed = await fs.reconcileModuleDefs('teste5', 'journeys', ['keepMe']);
+    assert.deepEqual(removed, ['oldName']);
+    assert.deepEqual(deleted, ['oldName']);
+  } finally {
+    g.mls = prev;
+  }
+});

@@ -26,6 +26,7 @@ import {
   readDefsJson,
   readJson,
   readPipeline,
+  reconcileModuleDefs,
   writeDefs,
   writeJson,
   writePipeline,
@@ -533,10 +534,16 @@ async function persistArtifacts(
   artifactPaths.push(
     await writeDefs(ontologyIndexFile(moduleName), `${moduleName}OntologyIndex`, assembled.index, 'Ns5OntologyIndexArtifact'),
   );
+  const removedOrphans = await reconcileModuleDefs(
+    moduleName,
+    'ontology',
+    assembled.entities.map(entity => entity.entityId),
+  );
   await writeJson(draftFile(moduleName, 'ontology30'), {
     plan,
     entities: assembled.entities,
     relationships: assembled.index.relationships,
+    removedOrphans,
   });
   await writeStepState(pipeline, {
     status: 'approved',

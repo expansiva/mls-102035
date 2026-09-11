@@ -161,13 +161,100 @@ export function listModuleL4Keys(
   return keys;
 }
 
+export type Ns5DefsKind = 'journeys' | 'ontology';
+
+type ListedStorFile = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
+
+function hostListFolder(): ((project: number, level: number, folder: string) => ListedStorFile[]) | undefined {
+  const fn = (mls.stor.localStor as { listFolder?: unknown } | undefined)?.listFolder;
+  return typeof fn === 'function' ? fn as ((project: number, level: number, folder: string) => ListedStorFile[]) : undefined;
+}
+
+function diskFileInfo(info: ListedStorFile): mls.stor.IFileInfo {
+  const key = mls.stor.getKeyToFile(info);
+  const existing = mls.stor.files[key];
+  if (existing) return existing;
+  return {
+    ...info,
+    versionRef: '0',
+    inLocalStorage: true,
+    status: 'changed',
+    hasError: false,
+  } as mls.stor.IFileInfo;
+}
+
+/** shortNames of `.defs.ts` in `l4/<mod>/<kind>/`, including status=deleted and host disk. */
+export function listModuleDefsShortNames(moduleName: string, kind: Ns5DefsKind): string[] {
+  const project = currentProject();
+  const folder = `${moduleFolder(moduleName)}/${kind}`;
+  const names = new Set<string>();
+  for (const file of Object.values(mls.stor.files)) {
+    if (!file || file.project !== project || file.level !== 4) continue;
+    if (String(file.folder || '') !== folder || file.extension !== '.defs.ts') continue;
+    if (file.shortName) names.add(file.shortName);
+  }
+  const listFolder = hostListFolder();
+  if (listFolder) {
+    for (const info of listFolder(project, 4, folder)) {
+      if (info.extension === '.defs.ts' && info.shortName) names.add(info.shortName);
+    }
+  }
+  return [...names].sort();
+}
+
+export function ns5DefsOrphans(diskShortNames: string[], indexIds: string[]): string[] {
+  const keep = new Set<string>(['index', ...indexIds.filter(Boolean)]);
+  const seen = new Set<string>();
+  const orphans: string[] = [];
+  for (const raw of diskShortNames) {
+    const name = String(raw || '').replace(/\.defs\.ts$/, '');
+    if (!name || keep.has(name) || seen.has(name)) continue;
+    seen.add(name);
+    orphans.push(name);
+  }
+  return orphans.sort();
+}
+
+export async function reconcileModuleDefs(
+  moduleName: string,
+  kind: Ns5DefsKind,
+  indexIds: string[],
+): Promise<string[]> {
+  const orphans = ns5DefsOrphans(listModuleDefsShortNames(moduleName, kind), indexIds);
+  if (!orphans.length) return [];
+  const { deleteFile } = await import('/_102027_/l2/libStor.js');
+  const removed: string[] = [];
+  for (const shortName of orphans) {
+    const info = kind === 'journeys' ? journeyFile(moduleName, shortName) : ontologyEntityFile(moduleName, shortName);
+    await deleteFile(diskFileInfo(info));
+    removed.push(shortName);
+  }
+  return removed;
+}
+
 export async function deleteModuleL4(moduleName: string): Promise<string[]> {
   const project = currentProject();
-  const keys = listModuleL4Keys(mls.stor.files, project, moduleName);
+  const folder = moduleFolder(moduleName);
+  const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
+  const keys = new Set<string>();
+  for (const [key, file] of Object.entries(files)) {
+    if (!file || file.project !== project || !file.folder) continue;
+    if (file.level !== 4) continue;
+    if (!isExactModuleFolder(file.folder, moduleName)) continue;
+    keys.add(key);
+  }
+  const listFolder = hostListFolder();
+  if (listFolder) {
+    for (const info of listFolder(project, 4, folder)) {
+      const key = mls.stor.getKeyToFile(info);
+      keys.add(key);
+      if (!files[key]) files[key] = diskFileInfo(info);
+    }
+  }
   const { deleteFile } = await import('/_102027_/l2/libStor.js');
   const deleted: string[] = [];
   for (const key of keys) {
-    const file = mls.stor.files[key];
+    const file = files[key];
     if (!file) continue;
     await deleteFile(file);
     deleted.push(key);

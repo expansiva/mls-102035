@@ -1,6 +1,8 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/helpers/ns5Core.test.ts" enhancement="_blank"/>
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
@@ -57,6 +59,11 @@ void test('planned tree is eight sequential steps with module10 first', () => {
     assert.equal(step.planning?.executionMode, 'sequential');
   }
   assert.deepEqual(steps.find(step => step.planning?.planId === 'rules40')?.planning?.dependsOn, [...NS5_STEP_DEPENDS_ON.rules40]);
+});
+
+void test('startNs5Pipeline stamps rebuildAll { deleted, at } after deleteModuleL4', () => {
+  const source = readFileSync(fileURLToPath(new URL('./ns5Core.ts', import.meta.url)), 'utf8');
+  assert.match(source, /if \(rebuildAll\) pipeline\.rebuildAll = \{ deleted, at: pipeline\.updatedAt \}/);
 });
 
 void test('empty pipeline starts inProgress with empty steps', () => {

@@ -16,10 +16,12 @@ import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact } from '/_102035_/l2
 import { collectNs5LifecycleSignal } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
   ensureConfigListsModule,
+  NS5_FINALIZE_I7_ORPHAN_FILE,
   type Ns5OracleSources,
 } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
 import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+import { ns5DefsOrphans } from '/_102035_/l2/solution/fs.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,7 +33,42 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-void test('real comandaRestaurante5 sources pass I1–I6 with no warnings', () => {
+void test('I7 fails on the captured comandaRestaurante5 disk (19 journeys / index 4) and passes after reconcile', () => {
+  const before = JSON.parse(
+    readFileSync(path.join(HERE, 'fixtures/comandaRestaurante5-disk-before.json'), 'utf8'),
+  ) as { journeys: string[]; ontology: string[] };
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  assert.equal(before.journeys.filter(name => name !== 'index').length, 19);
+  assert.equal(sources.journeyIndex.journeys.length, 4);
+  const failing = runNs5Oracle({
+    ...sources,
+    journeyDiskFiles: before.journeys,
+    ontologyDiskFiles: before.ontology,
+  });
+  assert.equal(failing.finalStatus, 'failed');
+  const i7 = failing.errors.filter(issue => issue.code === NS5_FINALIZE_I7_ORPHAN_FILE);
+  assert.ok(i7.some(issue => issue.path === 'journeys/' && /abrirComandaMesa/.test(issue.message)));
+  assert.ok(i7.some(issue => issue.path === 'ontology/' && /Cardapio/.test(issue.message)));
+  const afterJourneys = [
+    'index',
+    ...sources.journeyIndex.journeys.map(entry => entry.journeyId),
+  ];
+  const afterOntology = ['index', ...sources.ontologyIndex.entities];
+  assert.deepEqual(
+    ns5DefsOrphans(before.journeys, sources.journeyIndex.journeys.map(entry => entry.journeyId)).length,
+    15,
+  );
+  const passing = runNs5Oracle({
+    ...sources,
+    journeyDiskFiles: afterJourneys,
+    ontologyDiskFiles: afterOntology,
+  });
+  assert.equal(passing.finalStatus, 'passed', passing.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
+  assert.equal(passing.errors.filter(issue => issue.checkId === 'I7').length, 0);
+  assert.equal(passing.checks.find(check => check.checkId === 'I7')?.status, 'passed');
+});
+
+void test('real comandaRestaurante5 sources pass I1–I7 with no warnings', () => {
   const report = runNs5Oracle(loadSources('comandaRestaurante.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
@@ -39,7 +76,7 @@ void test('real comandaRestaurante5 sources pass I1–I6 with no warnings', () =
   assert.ok(report.checks.every(check => check.status === 'passed'));
 });
 
-void test('real ordenServicio5 sources pass I1–I6 with no warnings', () => {
+void test('real ordenServicio5 sources pass I1–I7 with no warnings', () => {
   const report = runNs5Oracle(loadSources('ordenServicio.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);

@@ -757,6 +757,13 @@ void test('bindings human prompt lists the synthetic mdm identity', () => {
   assert.match(prompt, /mesaId/);
 });
 
+void test('persistArtifacts reconciles ontology defs against the index', () => {
+  const source = readFileSync(new URL('./agentNs5Ontology.ts', import.meta.url), 'utf8');
+  const persist = source.slice(source.indexOf('async function persistArtifacts'));
+  assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'ontology'/);
+  assert.match(persist, /removedOrphans/);
+});
+
 void test('ownerStepId keeps ontology fan-out on the ontology30 hook and ignores the done-anchor', () => {
   assert.equal(ownerStepId('ontology30-entities-0'), 'ontology30');
   assert.equal(ownerStepId('ontology30-bindings-repair-1'), 'ontology30');

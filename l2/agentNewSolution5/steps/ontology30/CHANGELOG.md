@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- After writing `ontology/index.defs.ts`, remove every `ontology/*.defs.ts` whose id is not
+  in the index. Draft records `removedOrphans[]` (ns5_11).
 - Normalize drops `mutability: appendOnly` when `collectNs5LifecycleSignal` is on
   (second `act` or a `decide`). Prompt plus two repair rounds did not drop the label.
   The plan gate (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`) stays as the skip-normalize net.

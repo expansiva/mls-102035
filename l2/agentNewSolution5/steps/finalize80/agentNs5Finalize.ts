@@ -19,6 +19,7 @@ import {
   integrationFile,
   journeyFile,
   journeyIndexFile,
+  listModuleDefsShortNames,
   listPipelineJsonShortNames,
   moduleFile,
   ontologyEntityFile,
@@ -212,6 +213,8 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     workflows,
     access,
     integration,
+    journeyDiskFiles: listModuleDefsShortNames(moduleName, 'journeys'),
+    ontologyDiskFiles: listModuleDefsShortNames(moduleName, 'ontology'),
   };
 }
 

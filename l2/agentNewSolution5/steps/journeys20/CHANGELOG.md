@@ -1,5 +1,11 @@
 # journeys20
 
+## 2026-09-11
+
+- After writing `journeys/index.defs.ts`, remove every `journeys/*.defs.ts` whose id is not
+  in the index. Draft records `removedOrphans[]`. Closes the class where a new id set left
+  previous files on disk (Q1 / ns5_11).
+
 ## 2026-09-10
 
 - Normalize drops `handoffTo` unless `kind === 'handoff'` (prompt + named `gateFeedback` did not

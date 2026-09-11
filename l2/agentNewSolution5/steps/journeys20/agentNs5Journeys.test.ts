@@ -422,6 +422,13 @@ void test('ownerStepId maps journeys20 repair planIds', () => {
   assert.equal(ownerStepId('journeys20-done'), '');
 });
 
+void test('persistArtifacts reconciles journey defs against the index', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Journeys.ts'), 'utf8');
+  const persist = source.slice(source.indexOf('async function persistArtifacts'));
+  assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'journeys'/);
+  assert.match(persist, /removedOrphans/);
+});
+
 void test('human prompt carries the source request and module actors', () => {
   const human = buildNs5JourneysHumanPrompt({
     sourcePrompt: 'modulo comandaRestaurante, portugues. perfis: garcom e caixa.',

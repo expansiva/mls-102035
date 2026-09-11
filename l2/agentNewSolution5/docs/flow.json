@@ -28,7 +28,7 @@
     "fast": "@@newSolution5 <prompt> /fast [/module <lowerCamel>]",
     "rebuildAll": "@@newSolution5 /rebuild all <module>",
     "moduleRule": "/module is optional. When given it is the folder name; otherwise module10 proposes lowerCamel. The name is a flag, never inferred from prose by the invocation parser.",
-    "rebuildAllRule": "/rebuild all deletes only l4/<module>/** of that module and recreates the pipeline from the current prompt. l1, l2 and l5 stay. An existing module without /rebuild all is refused.",
+    "rebuildAllRule": "/rebuild all unlinks only l4/<module>/** of that module (host: localStor.deleteFile; Studio: existing trash) and recreates the pipeline from the current prompt. l1, l2 and l5 stay. An existing module without /rebuild all is refused.",
     "noHandoff": "This flow never dispatches CB or CF. There is no /nochain flag."
   },
   "artifacts": {

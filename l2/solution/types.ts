@@ -432,6 +432,12 @@ export interface Ns5Invocation {
   rebuildAll: boolean;
 }
 
+export interface Ns5RebuildAllReport {
+  /** How many l4/<module> files were unlinked. */
+  deleted: number;
+  at: string;
+}
+
 export interface Ns5PipelineState {
   /** Gate of the skeleton; later steps refuse a different version. */
   schemaVersion: typeof NS5_PIPELINE_SCHEMA_VERSION;
@@ -449,5 +455,7 @@ export interface Ns5PipelineState {
   sourcePrompt: string;
   /** Flags used for this run. */
   invocation: Ns5Invocation;
+  /** Set when this pipeline was created by /rebuild all. */
+  rebuildAll?: Ns5RebuildAllReport;
   updatedAt: string;
 }
