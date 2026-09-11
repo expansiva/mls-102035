@@ -10,6 +10,7 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
+  loadNs5Defs,
   loadNs5Entities,
   loadNs5FixtureJson,
   loadNs5Journeys,
@@ -17,6 +18,7 @@ import {
   loadNs5OntologyIndex,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type {
+  Ns5AccessArtifact,
   Ns5AccessAuthority,
   Ns5AccessGrant,
   Ns5AccessProfile,
@@ -24,6 +26,7 @@ import type {
 import { buildNs5AccessHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
 import {
   anchorPath,
+  applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
   buildNs5AccessTool,
   collectNs5AccessRefCatalog,
@@ -421,6 +424,12 @@ void test('ownerStepId maps access60 repair planIds', () => {
   assert.equal(ownerStepId('access60-done'), '');
 });
 
+void test('afterPrompt applies form normalizations before the gate and records them on the draft', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Access.ts'), 'utf8');
+  assert.match(source, /applyNs5AccessFormNormalizations/);
+  assert.match(source, /normalizations/);
+});
+
 void test('human prompt carries source request, actors, journeys, fields, party and required relationships', () => {
   const customer = {
     schemaVersion: '2026-09-10-ns5-ontology-v1',
@@ -516,7 +525,117 @@ void test('access60 prompt has no domain examples and keeps structured disclosur
   assert.match(prompt, /deniedFields/);
   assert.match(prompt, /anchorEntity/);
   assert.match(prompt, /placeholders — use only ids that exist in the module/);
+  assert.match(prompt, /proper/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto|recepcionista/i);
   const schema = JSON.stringify(loadSchema());
   assert.doesNotMatch(schema, /landingIntent|allowedInformation|deniedInformation|journeyStepRefs/);
+});
+
+const LIVE_ACCESS_MODULES = ['comandaRestaurante5', 'ordenServicio5', 'mensalidadesAcademia'] as const;
+
+function liveAccess(moduleName: typeof LIVE_ACCESS_MODULES[number]): Ns5AccessArtifact {
+  return loadNs5Defs<Ns5AccessArtifact>('steps/access60/fixtures/live', `${moduleName}-access.defs.ts`);
+}
+
+function liveEntityViews(moduleName: typeof LIVE_ACCESS_MODULES[number]): Ns5AccessEntityView[] {
+  const all = loadNs5FixtureJson<Record<string, Ns5AccessEntityView[]>>(
+    'steps/access60/fixtures/live',
+    'entity-views.json',
+  );
+  return all[moduleName];
+}
+
+void test('live access of the three modules: fieldsOnly without restriction becomes fullRecord and stray anchors drop', () => {
+  const views = loadNs5FixtureJson<Record<string, Ns5AccessEntityView[]>>(
+    'steps/access60/fixtures/live',
+    'entity-views.json',
+  );
+  for (const moduleName of LIVE_ACCESS_MODULES) {
+    const artifact = liveAccess(moduleName);
+    const { grants, normalizations } = applyNs5AccessFormNormalizations(artifact.grants, views[moduleName]);
+    const droppedAnchors = normalizations.filter(item => item.kind === 'dropAnchorEntity');
+    const promoted = normalizations.filter(item => item.kind === 'disclosureFullRecord');
+    assert.ok(
+      droppedAnchors.length + promoted.length > 0,
+      `${moduleName} expected at least one form normalization`,
+    );
+    for (const grant of grants) {
+      if (grant.disclosure.mode === 'fieldsOnly' || grant.disclosure.mode === 'summaryOnly') {
+        assert.ok(
+          (grant.disclosure.allowedFields && grant.disclosure.allowedFields.length)
+          || (grant.disclosure.deniedFields && grant.disclosure.deniedFields.length),
+          `${moduleName} ${grant.grantId} limited disclosure kept empty lists`,
+        );
+      } else {
+        assert.equal(grant.disclosure.allowedFields, undefined, `${moduleName} ${grant.grantId}`);
+        assert.equal(grant.disclosure.deniedFields, undefined, `${moduleName} ${grant.grantId}`);
+      }
+      if (grant.dataScope.mode === 'own' || grant.dataScope.mode === 'assigned' || grant.dataScope.mode === 'related') {
+        assert.ok(grant.dataScope.anchorEntity, `${moduleName} ${grant.grantId} lost person anchor`);
+      } else {
+        assert.equal(grant.dataScope.anchorEntity, undefined, `${moduleName} ${grant.grantId} kept stray anchor`);
+      }
+    }
+    const relationships = loadNs5FixtureJson<Record<string, Ns5AccessRelationshipView[]>>(
+      'steps/access60/fixtures/live',
+      'relationships.json',
+    )[moduleName];
+    const actorIds = [...new Set(artifact.profiles.flatMap(profile => profile.actorRefs))];
+    const gate = validateNs5Access(artifact.profiles, artifact.authorities, grants, {
+      actorIds,
+      entities: views[moduleName],
+      relationships,
+      journeys: actorIds.map(actorRef => ({
+        journeyId: actorRef,
+        business: { actorRef },
+      })),
+    });
+    assert.equal(
+      gate.ok,
+      true,
+      `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`,
+    );
+  }
+  const academia = liveAccess('mensalidadesAcademia');
+  const { grants: academiaGrants } = applyNs5AccessFormNormalizations(
+    academia.grants,
+    liveEntityViews('mensalidadesAcademia'),
+  );
+  const own = academiaGrants.find(grant => grant.grantId === 'alunoCancelarPropriaMatricula');
+  assert.equal(own?.disclosure.mode, 'fieldsOnly');
+  assert.equal(own?.dataScope.anchorEntity, 'Aluno');
+  assert.ok(academiaGrants.filter(grant => grant.disclosure.mode === 'fullRecord').length >= 4);
+});
+
+void test('fieldsOnly covering every resolvable field fails the gate unless normalized to fullRecord', () => {
+  const entities = [entity('Pagamento', 'none', ['id', 'valor', 'comanda', 'recebidoEm'], { idField: 'id' })];
+  const grant: Ns5AccessGrant = {
+    grantId: 'caixaRegistraPagamento',
+    profileRef: 'caixa',
+    authorityRef: 'closeTab',
+    entityRefs: ['Pagamento'],
+    dataScope: { mode: 'organization', description: 'Payments.' },
+    disclosure: {
+      mode: 'fieldsOnly',
+      description: 'All payment fields.',
+      allowedFields: ['Pagamento.id', 'Pagamento.valor', 'Pagamento.comanda', 'Pagamento.recebidoEm'],
+    },
+  };
+  const profiles: Ns5AccessProfile[] = [{ profileId: 'caixa', actorRefs: ['caixa'], kind: 'internal' }];
+  const authorities: Ns5AccessAuthority[] = [{ authorityId: 'closeTab', title: 'Close', description: 'Close.' }];
+  const ctx = {
+    actorIds: ['caixa'],
+    entities,
+    relationships: [] as Ns5AccessRelationshipView[],
+    journeys: [{ journeyId: 'fecharComanda', business: { actorRef: 'caixa' } }],
+  };
+  const raw = validateNs5Access(profiles, authorities, [grant], ctx);
+  assert.equal(raw.ok, false);
+  assert.ok(raw.issues.some(issue => issue.code === 'NS5_ACCESS_DISCLOSURE_FIELDS'));
+  const { grants, normalizations } = applyNs5AccessFormNormalizations([grant], entities);
+  assert.equal(grants[0].disclosure.mode, 'fullRecord');
+  assert.equal(grants[0].disclosure.allowedFields, undefined);
+  assert.ok(normalizations.some(item => item.kind === 'disclosureFullRecord'));
+  const after = validateNs5Access(profiles, authorities, grants, ctx);
+  assert.equal(after.ok, true, after.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });

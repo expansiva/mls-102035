@@ -2,12 +2,20 @@
 
 ## 2026-09-11
 
+- I2 walks journeys in index order and tracks reachable origin states per entity
+  (birth on first create; `any` if first seen via locate/inspect). An `act` on an
+  already-provided entity that has lifecycle needs a transition with `by` of the
+  journey actor and `from` intersecting reachable states; none ⇒
+  `NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION` naming the step and entity. Live
+  `consultarMisOrdenes` (`act` "registrar la consulta") is the failing fixture.
+  Further `act`s on the same entity in the same journey are covered by the first
+  match. Append-only entities without lifecycle may be written again after locate.
 - I7: disk files in `journeys/` and `ontology/` must equal the index plus `index.defs.ts`.
   Difference is `NS5_FINALIZE_I7_ORPHAN_FILE` with the orphan list. Fixture: live
   `comandaRestaurante5` disk before reconcile (19 journeys / index 4) fails; after, passes.
 - I2 structural signal (`requiresTransitions` / `requiresBranching`, branching origin) is
   imported from ontology30 (`collectNs5LifecycleSignal`, `ns5LifecycleHasBranchingOrigin`).
-  Observable I2 codes and messages are unchanged. The rule itself lives in ontology30.
+  The reachable-origin check (ns5_12) adds `NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`.
 
 ## 2026-09-10
 

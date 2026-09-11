@@ -42,6 +42,7 @@ import type {
   Ns5PipelineState,
 } from '/_102035_/l2/solution/types.js';
 import {
+  applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
   buildNs5AccessTool,
   collectNs5AccessRefCatalog,
@@ -173,15 +174,16 @@ export async function afterNs5AccessPromptStep(
       throw new Error(failure);
     }
 
-    const { profiles, authorities, grants } = normalizeNs5AccessPayload(payload);
+    const { profiles, authorities, grants: rawGrants } = normalizeNs5AccessPayload(payload);
     const moduleArtifact = await readModule(moduleName);
     const [journeys, ontology] = await Promise.all([readJourneys(moduleName), readOntology(moduleName)]);
+    const { grants, normalizations } = applyNs5AccessFormNormalizations(rawGrants, ontology.entities);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'access60'), { profiles, authorities, grants });
+    const draftPath = await writeJson(draftFile(moduleName, 'access60'), { profiles, authorities, grants, normalizations });
     const gate = validateNs5Access(profiles, authorities, grants, {
       moduleName,
       actorIds: moduleArtifact.actors.map(actor => actor.actorId),

@@ -28,6 +28,7 @@ import {
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5FinalizeReport,
+  NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
   oracleCode,
   type Ns5FinalizeReport,
   type Ns5OracleCheckId,
@@ -38,11 +39,17 @@ import {
 export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   const errors: Ns5OracleIssue[] = [];
   const warnings: Ns5OracleIssue[] = [];
-  const add = (bucket: Ns5OracleIssue[], checkId: Ns5OracleCheckId, path: string, message: string) => {
-    bucket.push({ checkId, code: oracleCode(checkId), path, message });
+  const add = (
+    bucket: Ns5OracleIssue[],
+    checkId: Ns5OracleCheckId,
+    path: string,
+    message: string,
+    code?: Ns5OracleIssue['code'],
+  ) => {
+    bucket.push({ checkId, code: code || oracleCode(checkId), path, message });
   };
-  const error = (checkId: Ns5OracleCheckId, path: string, message: string) => add(errors, checkId, path, message);
-  const warning = (checkId: Ns5OracleCheckId, path: string, message: string) => add(warnings, checkId, path, message);
+  const error: IssueFn = (checkId, path, message, code) => add(errors, checkId, path, message, code);
+  const warning: IssueFn = (checkId, path, message) => add(warnings, checkId, path, message);
 
   checkI1(sources, error);
   checkI2(sources, error);
@@ -191,30 +198,46 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
 
 function checkI2(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
-  const created = new Set<string>();
+  const provided = new Set<string>();
+  const reachable = new Map<string, Set<string> | null>();
   const ordered = orderedJourneys(sources);
   for (const journey of ordered) {
     const actor = journey.business.actorRef;
+    const matchedThisJourney = new Set<string>();
     journey.business.steps.forEach((step, index) => {
       const path = `journeys.${journey.journeyId}.steps[${index}]`;
+      if (step.kind === 'locate' || step.kind === 'inspect') {
+        if (!step.entity) return;
+        if (!provided.has(step.entity)) {
+          provided.add(step.entity);
+          reachable.set(step.entity, null);
+        }
+        return;
+      }
       if (step.kind === 'act') {
         if (!step.entity) return;
-        if (!created.has(step.entity)) {
-          created.add(step.entity);
+        const entity = entityById.get(step.entity);
+        if (!provided.has(step.entity)) {
+          provided.add(step.entity);
+          reachable.set(step.entity, birthStates(entity));
           return;
         }
-        const signal = collectNs5LifecycleSignal(ordered, step.entity);
-        if (!signal.requiresTransitions) return;
-        const entity = entityById.get(step.entity);
-        const matched = (entity?.transitions || []).some(transition =>
-          Array.isArray(transition.by) && actor && transition.by.includes(actor));
-        if (!matched) {
+        if (!entityHasLifecycle(entity)) return;
+        if (matchedThisJourney.has(step.entity)) return;
+        const current = reachable.get(step.entity) ?? null;
+        const matched = (entity?.transitions || []).filter(transition =>
+          actorMatches(transition.by, actor) && fromIntersects(transition.from, current));
+        if (!matched.length) {
           error(
             'I2',
             path,
-            `act ${step.stepId} on ${step.entity} is not the first create and has no declared transition whose by includes ${actor || '(missing actor)'}.`,
+            `act ${step.stepId} on ${step.entity} has no candidate transition for ${actor || '(missing actor)'} from reachable origin states.`,
+            NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
           );
+          return;
         }
+        matchedThisJourney.add(step.entity);
+        reachable.set(step.entity, new Set(matched.map(transition => transition.to).filter(Boolean)));
         return;
       }
       if (step.kind !== 'decide') return;
@@ -362,7 +385,32 @@ function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | unde
   error('I7', `${kind}/`, `orphan files: ${extras.join(', ')}`);
 }
 
-type IssueFn = (checkId: Ns5OracleCheckId, path: string, message: string) => void;
+type IssueFn = (checkId: Ns5OracleCheckId, path: string, message: string, code?: Ns5OracleIssue['code']) => void;
+
+function entityHasLifecycle(entity: Ns5OntologyEntityArtifact | undefined): boolean {
+  return Boolean(entity && (entity.lifecycleStates.length || entity.transitions.length));
+}
+
+function birthStates(entity: Ns5OntologyEntityArtifact | undefined): Set<string> | null {
+  if (!entity?.lifecycleStates.length) return null;
+  const incoming = new Set(entity.transitions.map(transition => transition.to).filter(Boolean));
+  const births = entity.lifecycleStates
+    .filter(entry => entry.reachedBy !== 'time' && !incoming.has(entry.state))
+    .map(entry => entry.state)
+    .filter(Boolean);
+  if (births.length) return new Set(births);
+  return new Set(entity.lifecycleStates.map(entry => entry.state).filter(Boolean));
+}
+
+function actorMatches(by: Ns5OntologyEntityArtifact['transitions'][number]['by'], actor: string): boolean {
+  return Boolean(actor && Array.isArray(by) && by.includes(actor));
+}
+
+function fromIntersects(from: readonly string[], reachable: Set<string> | null): boolean {
+  if (!from.length) return false;
+  if (reachable === null) return true;
+  return from.some(state => reachable.has(state));
+}
 
 function orderedJourneys(sources: Ns5OracleSources): Ns5OracleSources['journeys'] {
   const byId = new Map(sources.journeys.map(journey => [journey.journeyId, journey]));

@@ -2,6 +2,12 @@
 
 ## 2026-09-11
 
+- Persisted `oneToOne` / `oneToMany` / `manyToOne` (`fieldReference` / `fieldCollection`)
+  must store a real foreign key on the owner: not `id → id`. `fieldReference` owner is
+  the many side (`uuid` field); `fieldCollection` owner field is `json`. The other
+  endpoint binds exactly `[idField]`. MDM owner with `fields: []` fails
+  `NS5_ONTOLOGY_RELATIONSHIP_MDM_OWNER_WITHOUT_NAMESPACE`. Live `serviceOrderPhotos`
+  (`id → id`, owner FotoOrdenServicio mdm empty namespace) is the failing fixture.
 - After writing `ontology/index.defs.ts`, remove every `ontology/*.defs.ts` whose id is not
   in the index. Draft records `removedOrphans[]` (ns5_11).
 - Normalize drops `mutability: appendOnly` when `collectNs5LifecycleSignal` is on

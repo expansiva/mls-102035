@@ -17,7 +17,11 @@ export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-repor
 export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7'] as const;
 export type Ns5OracleCheckId = typeof NS5_ORACLE_CHECK_IDS[number];
 export const NS5_FINALIZE_I7_ORPHAN_FILE = 'NS5_FINALIZE_I7_ORPHAN_FILE' as const;
-export type Ns5OracleIssueCode = `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7'>}` | typeof NS5_FINALIZE_I7_ORPHAN_FILE;
+export const NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION = 'NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION' as const;
+export type Ns5OracleIssueCode =
+  | `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7'>}`
+  | typeof NS5_FINALIZE_I7_ORPHAN_FILE
+  | typeof NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION;
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;

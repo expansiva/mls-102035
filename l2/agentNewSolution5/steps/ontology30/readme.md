@@ -35,7 +35,10 @@ with field realization. No `kind: projection`, `derivation`, `role`, `sourceRefs
 - Transitions: `from`/`to` are declared states; `by` is actor ids, `system` or `time`. An
   actor/command state with no arriving transition fails (birth states are the ones no transition
   targets). `time` states must not be arrived at by a transition.
-- Relationships follow n15: resolvable fields, mdm endpoint exactly `[idField]`, both ends required.
+- Relationships follow n15 plus a real FK: resolvable fields, non-owning mdm endpoint exactly
+  `[idField]`, both ends required. Owner stores a `uuid` FK or a `json` collection, never
+  `id → id`. MDM with `fields: []` cannot be owner
+  (`NS5_ONTOLOGY_RELATIONSHIP_MDM_OWNER_WITHOUT_NAMESPACE`).
 - Every journey `entity`/`affects` exists on the **full** ontology (plan and bindings). Isolated
   entity validation does not run that check — the fan-out only has one entity. An entity no
   journey cites is a warning, not an error.

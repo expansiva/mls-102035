@@ -65,8 +65,7 @@ export const ordenServicio5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Órdenes y registros de recepción o entrega gestionados por el servicio técnico.",
-        "anchorEntity": "Cliente"
+        "description": "Órdenes y registros de recepción o entrega gestionados por el servicio técnico."
       },
       "disclosure": {
         "mode": "fieldsOnly",
@@ -108,8 +107,7 @@ export const ordenServicio5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Órdenes del servicio técnico que requieren análisis o presupuesto.",
-        "anchorEntity": "Cliente"
+        "description": "Órdenes del servicio técnico que requieren análisis o presupuesto."
       },
       "disclosure": {
         "mode": "fieldsOnly",
@@ -157,8 +155,7 @@ export const ordenServicio5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Órdenes cuyo presupuesto fue aprobado y están disponibles para reparación.",
-        "anchorEntity": "Cliente"
+        "description": "Órdenes cuyo presupuesto fue aprobado y están disponibles para reparación."
       },
       "disclosure": {
         "mode": "fieldsOnly",

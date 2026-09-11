@@ -10,8 +10,8 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
-import { loadNs5FixtureJson, loadNs5Journeys, loadNs5Module } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
-import type { Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
+import { loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys, loadNs5Module } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import type { Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5OntologyBindingsHumanPrompt,
   buildNs5OntologyPlanHumanPrompt,
@@ -32,6 +32,7 @@ import {
   type Ns5OntologyPlanEntity,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
+  validateNs5OntologyAssembly,
   validateNs5OntologyBindings,
   validateNs5OntologyEntity,
   validateNs5OntologyPlan,
@@ -762,6 +763,132 @@ void test('persistArtifacts reconciles ontology defs against the index', () => {
   const persist = source.slice(source.indexOf('async function persistArtifacts'));
   assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'ontology'/);
   assert.match(persist, /removedOrphans/);
+});
+
+void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection on one passes', () => {
+  const orden = loadNs5Defs<Ns5OntologyEntityArtifact>(
+    'steps/ontology30/fixtures/live',
+    'OrdenServicio.defs.ts',
+  );
+  const foto = loadNs5Defs<Ns5OntologyEntityArtifact>(
+    'steps/ontology30/fixtures/live',
+    'FotoOrdenServicio.defs.ts',
+  );
+  const actors: Ns5ModuleActor[] = [
+    { actorId: 'recepcionista', kind: 'internal', origin: 'named', title: 'Reception', description: 'Receives devices.' },
+    { actorId: 'tecnico', kind: 'internal', origin: 'named', title: 'Tech', description: 'Repairs.' },
+    { actorId: 'cliente', kind: 'external', origin: 'named', title: 'Customer', description: 'Owns orders.' },
+  ];
+  const bad: Ns5OntologyRelationship = {
+    relationshipId: 'serviceOrderPhotos',
+    fromEntity: 'OrdenServicio',
+    toEntity: 'FotoOrdenServicio',
+    type: 'oneToMany',
+    required: false,
+    persistence: { mode: 'crossStoreReference' },
+    realization: {
+      kind: 'fieldReference',
+      ownerEntity: 'FotoOrdenServicio',
+      from: { entityId: 'OrdenServicio', fieldIds: ['id'] },
+      to: { entityId: 'FotoOrdenServicio', fieldIds: ['id'] },
+    },
+  };
+  const failing = validateNs5OntologyAssembly(
+    {
+      entities: [orden, foto],
+      index: {
+        schemaVersion: '2026-09-10-ns5-ontology-v1',
+        moduleName: 'ordenServicio5',
+        businessDomain: 'Service orders.',
+        entities: ['OrdenServicio', 'FotoOrdenServicio'],
+        relationships: [bad],
+      },
+    },
+    { moduleName: 'ordenServicio5', actors, requireJourneyCitation: false, requireRelationshipRealization: true },
+  );
+  assert.equal(failing.ok, false);
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_RELATIONSHIP_OWNER_KEY'));
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_RELATIONSHIP_MDM_OWNER_WITHOUT_NAMESPACE'));
+
+  const collectionOrden = {
+    ...orden,
+    fields: [
+      ...orden.fields,
+      {
+        fieldId: 'fotoOrdenServicioIds',
+        title: 'Photos',
+        type: 'json' as const,
+        required: false,
+        description: 'Photo ids attached at reception.',
+      },
+    ],
+  };
+  const collection: Ns5OntologyRelationship = {
+    ...bad,
+    persistence: { mode: 'moduleReference' },
+    realization: {
+      kind: 'fieldCollection',
+      ownerEntity: 'OrdenServicio',
+      from: { entityId: 'OrdenServicio', fieldIds: ['fotoOrdenServicioIds'] },
+      to: { entityId: 'FotoOrdenServicio', fieldIds: ['id'] },
+    },
+  };
+  const collectionGate = validateNs5OntologyAssembly(
+    {
+      entities: [collectionOrden, foto],
+      index: {
+        schemaVersion: '2026-09-10-ns5-ontology-v1',
+        moduleName: 'ordenServicio5',
+        businessDomain: 'Service orders.',
+        entities: ['OrdenServicio', 'FotoOrdenServicio'],
+        relationships: [collection],
+      },
+    },
+    { moduleName: 'ordenServicio5', actors, requireJourneyCitation: false, requireRelationshipRealization: true },
+  );
+  assert.equal(
+    collectionGate.ok,
+    true,
+    collectionGate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'),
+  );
+
+  const namespaceFoto = {
+    ...foto,
+    fields: [{
+      fieldId: 'ordenServicioId',
+      title: 'Service order',
+      type: 'uuid' as const,
+      required: false,
+      description: 'Order this photo belongs to.',
+    }],
+  };
+  const fk: Ns5OntologyRelationship = {
+    ...bad,
+    realization: {
+      kind: 'fieldReference',
+      ownerEntity: 'FotoOrdenServicio',
+      from: { entityId: 'OrdenServicio', fieldIds: ['id'] },
+      to: { entityId: 'FotoOrdenServicio', fieldIds: ['ordenServicioId'] },
+    },
+  };
+  const fkGate = validateNs5OntologyAssembly(
+    {
+      entities: [orden, namespaceFoto],
+      index: {
+        schemaVersion: '2026-09-10-ns5-ontology-v1',
+        moduleName: 'ordenServicio5',
+        businessDomain: 'Service orders.',
+        entities: ['OrdenServicio', 'FotoOrdenServicio'],
+        relationships: [fk],
+      },
+    },
+    { moduleName: 'ordenServicio5', actors, requireJourneyCitation: false, requireRelationshipRealization: true },
+  );
+  assert.equal(
+    fkGate.ok,
+    true,
+    fkGate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'),
+  );
 });
 
 void test('ownerStepId keeps ontology fan-out on the ontology30 hook and ignores the done-anchor', () => {

@@ -10,12 +10,13 @@ import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { createAgent } from '/_102035_/l2/agentNewSolution5/agentNewSolution5.js';
 import { markNs5Complete, nextNs5RunNn } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
-import { loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Defs, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { buildSolutionRegistryModuleBlock } from '/_102035_/l2/solution/lib.js';
 import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import { collectNs5LifecycleSignal } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
   ensureConfigListsModule,
+  NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
   NS5_FINALIZE_I7_ORPHAN_FILE,
   type Ns5OracleSources,
 } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
@@ -109,8 +110,12 @@ void test('I2 fails when a later act has no matching transition', () => {
   }
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
-  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I2' && /fecharComanda/.test(issue.message)));
-  assert.equal(report.errors.every(issue => issue.code === 'NS5_FINALIZE_I2'), true, report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
+  assert.ok(report.errors.some(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /fecharComanda/.test(issue.message)));
+  assert.equal(
+    report.errors.every(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION),
+    true,
+    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
 });
 
 void test('I2 fails a decide without two transitions from the same origin (task_6da10605 shape)', () => {
@@ -126,6 +131,24 @@ void test('I2 fails a decide without two transitions from the same origin (task_
   const decide = report.errors.find(issue => /decidirRespuestaPresupuesto/.test(issue.message));
   assert.ok(decide, report.errors.map(issue => `${issue.path}: ${issue.message}`).join('\n'));
   assert.match(decide.message, /two transitions from the same origin state/);
+});
+
+void test('I2 fails consultarMisOrdenes act on already-provided OrdenServicio without a reachable transition', () => {
+  const sources = clone(loadSources('ordenServicio.json'));
+  const consult = loadNs5Defs<Ns5JourneyArtifact>('steps/finalize80/fixtures', 'consultarMisOrdenes.defs.ts');
+  sources.journeys.push(consult);
+  sources.journeyIndex.journeys.push({
+    journeyId: consult.journeyId,
+    actorRef: consult.business.actorRef,
+    title: consult.business.title,
+  });
+  const report = runNs5Oracle(sources);
+  assert.equal(report.finalStatus, 'failed');
+  const act = report.errors.find(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION);
+  assert.ok(act, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+  assert.match(act.message, /registrarConsultaDeOrden/);
+  assert.match(act.message, /OrdenServicio/);
+  assert.ok(report.errors.every(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION));
 });
 
 void test('I3 fails when an actor has no profile', () => {

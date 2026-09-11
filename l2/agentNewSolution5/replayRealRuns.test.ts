@@ -18,6 +18,7 @@ import {
   stripNs5HashSource,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import {
+  applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
   normalizeNs5AccessPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
@@ -256,9 +257,10 @@ for (const moduleName of NS5_REAL_MODULES) {
 
   void test(`${moduleName} access60 draft replays to access.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/access60/fixtures', `${moduleName}-draft.json`);
-    const { profiles, authorities, grants } = normalizeNs5AccessPayload(draft);
+    const { profiles, authorities, grants: rawGrants } = normalizeNs5AccessPayload(draft);
     const moduleArtifact = loadNs5Module(moduleName);
     const entities = loadNs5Entities(moduleName);
+    const { grants } = applyNs5AccessFormNormalizations(rawGrants, accessView(entities));
     const index = loadNs5OntologyIndex(moduleName);
     const journeys = loadNs5Journeys(moduleName);
     const gate = validateNs5Access(profiles, authorities, grants, {

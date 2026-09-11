@@ -7,6 +7,8 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import {
   anchorPath,
+  disclosureListIsProprio,
+  grantResolvableFieldRefs,
   isAccessFieldRef,
   isLimitedDisclosureMode,
   isPersonScopeMode,
@@ -180,13 +182,17 @@ export function validateNs5Access(
     }
     const allowed = grant.disclosure.allowedFields || [];
     const denied = grant.disclosure.deniedFields || [];
-    if (isLimitedDisclosureMode(grant.disclosure.mode) && !allowed.length && !denied.length) {
-      error(
-        issues,
-        'NS5_ACCESS_DISCLOSURE_FIELDS',
-        `${grant.disclosure.mode} names allowedFields or deniedFields as Entity.field.`,
-        `${base}.disclosure`,
-      );
+    if (isLimitedDisclosureMode(grant.disclosure.mode)) {
+      const total = grantResolvableFieldRefs(grant, entityById);
+      const proprio = disclosureListIsProprio(allowed, total) || disclosureListIsProprio(denied, total);
+      if (!proprio) {
+        error(
+          issues,
+          'NS5_ACCESS_DISCLOSURE_FIELDS',
+          `${grant.disclosure.mode} names allowedFields or deniedFields as a proper subset of the grant entities' resolvable fields.`,
+          `${base}.disclosure`,
+        );
+      }
     }
     checkFieldList(issues, allowed, entityById, `${base}.disclosure.allowedFields`);
     checkFieldList(issues, denied, entityById, `${base}.disclosure.deniedFields`);

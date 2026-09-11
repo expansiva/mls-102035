@@ -321,7 +321,7 @@ export interface Ns5AccessAuthority {
 }
 
 export interface Ns5AccessDataScope {
-  /** own|assigned|related require anchorEntity. */
+  /** own|assigned|related require anchorEntity. Other modes drop it before the gate. */
   mode: 'own' | 'assigned' | 'related' | 'public' | 'organization' | 'custom';
   /** party:person entity reachable from each entityRef. The path is derived, not stored. */
   anchorEntity?: string;
@@ -330,7 +330,7 @@ export interface Ns5AccessDataScope {
 }
 
 export interface Ns5AccessDisclosure {
-  /** fieldsOnly|summaryOnly require allowedFields or deniedFields. */
+  /** fieldsOnly|summaryOnly require a proper (not the full resolvable set) allowedFields or deniedFields list. */
   mode: 'fullRecord' | 'fieldsOnly' | 'summaryOnly' | 'aggregateOnly';
   /** Entity.field the backend includes. */
   allowedFields?: string[];

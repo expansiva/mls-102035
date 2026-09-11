@@ -1,0 +1,116 @@
+{
+  "comandaRestaurante5": [
+    {
+      "relationshipId": "comandaNaMesa",
+      "fromEntity": "Comanda",
+      "toEntity": "Mesa",
+      "required": true
+    },
+    {
+      "relationshipId": "itemComandaDaComanda",
+      "fromEntity": "ItemComanda",
+      "toEntity": "Comanda",
+      "required": true
+    },
+    {
+      "relationshipId": "itemComandaDoCardapio",
+      "fromEntity": "ItemComanda",
+      "toEntity": "ItemCardapio",
+      "required": true
+    },
+    {
+      "relationshipId": "descontoDaComanda",
+      "fromEntity": "Desconto",
+      "toEntity": "Comanda",
+      "required": true
+    },
+    {
+      "relationshipId": "pagamentoDaComanda",
+      "fromEntity": "Pagamento",
+      "toEntity": "Comanda",
+      "required": true
+    }
+  ],
+  "ordenServicio5": [
+    {
+      "relationshipId": "customerOrders",
+      "fromEntity": "Cliente",
+      "toEntity": "OrdenServicio",
+      "required": true
+    },
+    {
+      "relationshipId": "deviceServiceOrders",
+      "fromEntity": "Aparato",
+      "toEntity": "OrdenServicio",
+      "required": true
+    },
+    {
+      "relationshipId": "serviceOrderPhotos",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "FotoOrdenServicio",
+      "required": false
+    },
+    {
+      "relationshipId": "serviceOrderDiagnosis",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Diagnostico",
+      "required": false
+    },
+    {
+      "relationshipId": "diagnosisRequiredParts",
+      "fromEntity": "Diagnostico",
+      "toEntity": "PiezaNecesaria",
+      "required": false
+    },
+    {
+      "relationshipId": "serviceOrderQuote",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Presupuesto",
+      "required": false
+    },
+    {
+      "relationshipId": "serviceOrderRepair",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Reparacion",
+      "required": false
+    },
+    {
+      "relationshipId": "serviceOrderDelivery",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "EntregaAparato",
+      "required": false
+    }
+  ],
+  "mensalidadesAcademia": [
+    {
+      "relationshipId": "matriculaAluno",
+      "fromEntity": "Matricula",
+      "toEntity": "Aluno",
+      "required": true
+    },
+    {
+      "relationshipId": "matriculaPlano",
+      "fromEntity": "Matricula",
+      "toEntity": "Plano",
+      "required": true
+    },
+    {
+      "relationshipId": "mensalidadeMatricula",
+      "fromEntity": "Mensalidade",
+      "toEntity": "Matricula",
+      "required": true
+    },
+    {
+      "relationshipId": "pagamentoMensalidade",
+      "fromEntity": "Pagamento",
+      "toEntity": "Mensalidade",
+      "required": true
+    },
+    {
+      "relationshipId": "painelMensalidades",
+      "fromEntity": "PainelMensalidades",
+      "toEntity": "Mensalidade",
+      "required": false
+    }
+  ]
+}

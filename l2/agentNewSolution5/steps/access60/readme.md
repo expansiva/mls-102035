@@ -23,10 +23,12 @@ hops, `allowedInformation` or journey-step lists.
 - Ids are unique lowerCamel. Authorities have a title and a description.
 - Every profile has at least one grant. Every journey actor is covered by some profile.
 - An `external` profile only receives `own` grants. `public` is only for `anonymous`.
-- `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields`, and every ref resolves
-  (`fields[]` ∪ `storage.idField` ∪ `details.<name>`).
+- `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields` as a proper restriction
+  (non-empty and not the complete resolvable set). Unrestricted `fieldsOnly` is normalized to
+  `fullRecord` before the gate. Every ref resolves (`fields[]` ∪ `storage.idField` ∪ `details.<name>`).
 - `own` / `assigned` / `related` name `anchorEntity` as a `party: person` entity reachable from
   every `entityRef` by required relationships. `anchorPath()` computes that walk and is not stored.
+  `anchorEntity` on any other mode is dropped before the gate.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `access60-done` result. `integration70` still waits for `rules40-done` and
   `workflows50-done`. A run then stops at the first unimplemented step (`finalize80`).

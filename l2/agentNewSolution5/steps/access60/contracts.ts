@@ -33,6 +33,15 @@ export interface Ns5AccessNormalization {
   grants: Ns5AccessGrant[];
 }
 
+export type Ns5AccessFormNormalizationKind = 'disclosureFullRecord' | 'dropAnchorEntity';
+
+/** Deterministic form change recorded on the access60 draft, not on the artifact. */
+export interface Ns5AccessFormNormalization {
+  kind: Ns5AccessFormNormalizationKind;
+  grantId: string;
+  detail: string;
+}
+
 export interface Ns5AccessEntityView {
   entityId: string;
   party: 'person' | 'organization' | 'none' | string;
@@ -80,6 +89,88 @@ export function normalizeNs5AccessPayload(value: unknown): Ns5AccessNormalizatio
     authorities: list(root.authorities).map(normalizeAuthority).filter(item => item.authorityId || item.title),
     grants: list(root.grants).map(normalizeGrant).filter(grant => grant.grantId || grant.profileRef),
   };
+}
+
+/**
+ * Post-LLM form cleanup: fieldsOnly with no real restriction becomes fullRecord;
+ * anchorEntity is dropped unless the scope is own/assigned/related.
+ */
+export function applyNs5AccessFormNormalizations(
+  grants: Ns5AccessGrant[],
+  entities: readonly Ns5AccessEntityView[],
+): { grants: Ns5AccessGrant[]; normalizations: Ns5AccessFormNormalization[] } {
+  const entityById = new Map(entities.map(entity => [entity.entityId, entity]));
+  const normalizations: Ns5AccessFormNormalization[] = [];
+  const next = grants.map(grant => {
+    let current: Ns5AccessGrant = {
+      ...grant,
+      dataScope: { ...grant.dataScope },
+      disclosure: {
+        ...grant.disclosure,
+        ...(grant.disclosure.allowedFields ? { allowedFields: [...grant.disclosure.allowedFields] } : {}),
+        ...(grant.disclosure.deniedFields ? { deniedFields: [...grant.disclosure.deniedFields] } : {}),
+      },
+    };
+    const allowed = current.disclosure.allowedFields || [];
+    const denied = current.disclosure.deniedFields || [];
+    const total = grantResolvableFieldRefs(current, entityById);
+    if (
+      current.disclosure.mode === 'fieldsOnly'
+      && coversAllResolvable(allowed, total)
+      && denied.length === 0
+    ) {
+      current = {
+        ...current,
+        disclosure: { mode: 'fullRecord', description: current.disclosure.description },
+      };
+      normalizations.push({
+        kind: 'disclosureFullRecord',
+        grantId: current.grantId,
+        detail: 'fieldsOnly allowedFields covered every resolvable field; mode is fullRecord.',
+      });
+    }
+    if (current.dataScope.anchorEntity && !isPersonScopeMode(current.dataScope.mode)) {
+      current = {
+        ...current,
+        dataScope: { mode: current.dataScope.mode, description: current.dataScope.description },
+      };
+      normalizations.push({
+        kind: 'dropAnchorEntity',
+        grantId: current.grantId,
+        detail: `anchorEntity removed; ${current.dataScope.mode} is not own/assigned/related.`,
+      });
+    }
+    return current;
+  });
+  return { grants: next, normalizations };
+}
+
+export function grantResolvableFieldRefs(
+  grant: Pick<Ns5AccessGrant, 'entityRefs'>,
+  entityById: Map<string, Ns5AccessEntityView>,
+): string[] {
+  const refs: string[] = [];
+  const seen = new Set<string>();
+  for (const entityId of grant.entityRefs) {
+    const entity = entityById.get(entityId);
+    if (!entity) continue;
+    for (const ref of ns5AccessResolvableFieldRefs(entity)) {
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      refs.push(ref);
+    }
+  }
+  return refs;
+}
+
+export function disclosureListIsProprio(list: readonly string[], total: readonly string[]): boolean {
+  return list.length > 0 && !coversAllResolvable(list, total);
+}
+
+function coversAllResolvable(list: readonly string[], total: readonly string[]): boolean {
+  if (!total.length) return list.length === 0;
+  const have = new Set(list);
+  return total.every(ref => have.has(ref));
 }
 
 export function buildNs5AccessArtifact(

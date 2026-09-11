@@ -63,16 +63,11 @@ export const comandaRestaurante5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Itens do cardápio disponibilizados pelo restaurante.",
-        "anchorEntity": "ItemCardapio"
+        "description": "Itens do cardápio disponibilizados pelo restaurante."
       },
       "disclosure": {
-        "mode": "fieldsOnly",
-        "description": "Identificação e preço de venda dos itens do cardápio.",
-        "allowedFields": [
-          "ItemCardapio.id",
-          "ItemCardapio.price"
-        ]
+        "mode": "fullRecord",
+        "description": "Identificação e preço de venda dos itens do cardápio."
       }
     },
     {
@@ -85,8 +80,7 @@ export const comandaRestaurante5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Mesas e comandas do restaurante necessárias ao atendimento.",
-        "anchorEntity": "Comanda"
+        "description": "Mesas e comandas do restaurante necessárias ao atendimento."
       },
       "disclosure": {
         "mode": "fieldsOnly",
@@ -109,22 +103,11 @@ export const comandaRestaurante5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Itens lançados nas comandas do restaurante.",
-        "anchorEntity": "ItemComanda"
+        "description": "Itens lançados nas comandas do restaurante."
       },
       "disclosure": {
-        "mode": "fieldsOnly",
-        "description": "Dados necessários para registrar, identificar e cancelar itens da comanda.",
-        "allowedFields": [
-          "ItemComanda.id",
-          "ItemComanda.descricao",
-          "ItemComanda.comanda",
-          "ItemComanda.itemCardapio",
-          "ItemComanda.quantidade",
-          "ItemComanda.precoUnitario",
-          "ItemComanda.status",
-          "ItemComanda.details.valorTotal"
-        ]
+        "mode": "fullRecord",
+        "description": "Dados necessários para registrar, identificar e cancelar itens da comanda."
       }
     },
     {
@@ -137,31 +120,11 @@ export const comandaRestaurante5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Comandas e respectivos itens apresentados para conferência e fechamento.",
-        "anchorEntity": "Comanda"
+        "description": "Comandas e respectivos itens apresentados para conferência e fechamento."
       },
       "disclosure": {
-        "mode": "fieldsOnly",
-        "description": "Dados completos de consumo, cancelamentos e valores para conferir e encerrar a conta.",
-        "allowedFields": [
-          "Comanda.id",
-          "Comanda.numero",
-          "Comanda.mesa",
-          "Comanda.status",
-          "Comanda.details.valorItens",
-          "Comanda.details.valorDescontos",
-          "Comanda.details.valorDevido",
-          "Comanda.details.valorPago",
-          "Comanda.details.saldoDevedor",
-          "ItemComanda.id",
-          "ItemComanda.descricao",
-          "ItemComanda.comanda",
-          "ItemComanda.itemCardapio",
-          "ItemComanda.quantidade",
-          "ItemComanda.precoUnitario",
-          "ItemComanda.status",
-          "ItemComanda.details.valorTotal"
-        ]
+        "mode": "fullRecord",
+        "description": "Dados completos de consumo, cancelamentos e valores para conferir e encerrar a conta."
       }
     },
     {
@@ -173,18 +136,11 @@ export const comandaRestaurante5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Descontos pontuais concedidos nas comandas do restaurante.",
-        "anchorEntity": "Desconto"
+        "description": "Descontos pontuais concedidos nas comandas do restaurante."
       },
       "disclosure": {
-        "mode": "fieldsOnly",
-        "description": "Dados necessários para registrar e consultar descontos pontuais.",
-        "allowedFields": [
-          "Desconto.id",
-          "Desconto.comandaId",
-          "Desconto.motivo",
-          "Desconto.valor"
-        ]
+        "mode": "fullRecord",
+        "description": "Dados necessários para registrar e consultar descontos pontuais."
       }
     },
     {
@@ -196,18 +152,11 @@ export const comandaRestaurante5Access = {
       ],
       "dataScope": {
         "mode": "organization",
-        "description": "Pagamentos recebidos para as comandas do restaurante.",
-        "anchorEntity": "Pagamento"
+        "description": "Pagamentos recebidos para as comandas do restaurante."
       },
       "disclosure": {
-        "mode": "fieldsOnly",
-        "description": "Dados necessários para registrar e consultar pagamentos recebidos.",
-        "allowedFields": [
-          "Pagamento.id",
-          "Pagamento.valor",
-          "Pagamento.comanda",
-          "Pagamento.recebidoEm"
-        ]
+        "mode": "fullRecord",
+        "description": "Dados necessários para registrar e consultar pagamentos recebidos."
       }
     }
   ]

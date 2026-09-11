@@ -2,6 +2,10 @@
 
 ## 2026-09-11
 
+- Three form normalizations (ns5_12): access60 turns unrestricted `fieldsOnly` into
+  `fullRecord` and drops stray `anchorEntity`; ontology30 rejects `id → id` relationship
+  realization; finalize80 I2 requires a reachable origin-state transition for an `act`
+  on an already-provided entity (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`).
 - Host unlink + per-item reconcile (ns5_11): `/rebuild all` lists the real `l4/<mod>/**`
   and deletes it; `journeys20` / `ontology30` drop defs that left the index;
   finalize80 I7 fails when disk ≠ index. Pipeline records `rebuildAll: { deleted, at }`.

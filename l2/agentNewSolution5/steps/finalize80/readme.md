@@ -24,7 +24,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | check | meaning | on fail |
 |---|---|---|
 | I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey, profile, authority) | error |
-| I2 | every `act` is the first create of that entity (journey-index order) or matches a transition whose `by` includes the journey actor; every `decide` has at least two transitions from the same origin state. Structural signal (`requiresTransitions` / `requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error |
+| I2 | first `act` on an entity is create; a later `act` on an already-provided entity with lifecycle needs a transition whose `by` includes the journey actor and whose `from` intersects reachable origin states (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); every `decide` has at least two transitions from the same origin state. Structural signal (`requiresTransitions` / `requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error |
 | I3 | every actor has at least one journey and one profile; every profile has at least one grant | error |
 | I4 | every rule is referenced by a transition, journey, grant or `details` field | warning |
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
@@ -39,7 +39,8 @@ still fails the same shape if it reaches here; do not invent a transition and do
 
 ## Invariants
 
-- One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`; I7 uses `NS5_FINALIZE_I7_ORPHAN_FILE`.
+- One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`; I7 uses `NS5_FINALIZE_I7_ORPHAN_FILE`;
+  I2 act-without-transition uses `NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).
 - Status updates use `cleaner: input_output`.
 - Converted ce02 / ce05 fixtures pass I1-I7 with no warnings when disk matches the index.

@@ -7,8 +7,8 @@ never dispatches agentChangeBackend or agentChangeFrontend.
 `module10`, `journeys20`, `ontology30`, `rules40`, `workflows50`, `access60`, `integration70`
 and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle, organization
 registry, l5 config/project.json, `pipeline.status: complete`. It never dispatches CB or CF.
-Gate tests run on the two complete-run fixtures; `replayRealRuns.test.ts` replays
-`normalize → gate → writeDefs` against those defs.
+Gate tests run on the two complete-run fixtures plus live access of the three measured
+modules; `replayRealRuns.test.ts` replays `normalize → gate → writeDefs` against those defs.
 
 ## Invocation
 

@@ -49,10 +49,13 @@ profile.
 Name fields, not concepts. A field is `<Entity>.<field>` or `<Entity>.details.<name>` and must exist
 in the ontology given in the human prompt.
 
-- `fullRecord` — the whole record. Omit field lists.
-- `fieldsOnly` or `summaryOnly` — list `allowedFields` and/or `deniedFields`. At least one of those
-  arrays is non-empty.
+- `fullRecord` — the whole record. Omit field lists. Use this when `allowedFields` would list every
+  resolvable field of the grant entities and `deniedFields` would be empty.
+- `fieldsOnly` or `summaryOnly` — list `allowedFields` and/or `deniedFields` as a **proper**
+  restriction (non-empty and not the complete resolvable set).
 - `aggregateOnly` — totals or counts, not row fields.
+
+Omit `anchorEntity` unless `dataScope.mode` is `own`, `assigned` or `related`.
 
 Frontend hiding is not a security boundary. The backend applies `dataScope` and `disclosure`.
 

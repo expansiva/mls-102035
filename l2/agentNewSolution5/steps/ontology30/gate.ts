@@ -622,19 +622,20 @@ function validateRelationshipRealization(
   const toEntity = entities.find(item => item.entityId === relationship.toEntity);
   validateEndpointFields(realization.from.fieldIds, resolvableFieldIds(fromEntity), `${rPath}.from.fieldIds`, issues);
   validateEndpointFields(realization.to.fieldIds, resolvableFieldIds(toEntity), `${rPath}.to.fieldIds`, issues);
-  validateMdmEndpointFields(fromEntity, realization.from.fieldIds, realization.kind, `${rPath}.from.fieldIds`, issues);
-  validateMdmEndpointFields(toEntity, realization.to.fieldIds, realization.kind, `${rPath}.to.fieldIds`, issues);
+  const ownerIsFrom = realization.ownerEntity === relationship.fromEntity;
+  validateMdmEndpointFields(fromEntity, realization.from.fieldIds, realization.kind, ownerIsFrom, `${rPath}.from.fieldIds`, issues);
+  validateMdmEndpointFields(toEntity, realization.to.fieldIds, realization.kind, !ownerIsFrom, `${rPath}.to.fieldIds`, issues);
   if (!realization.from.fieldIds.length || !realization.to.fieldIds.length) {
     error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_FIELDS_REQUIRED', 'A persisted relationship must name at least one existing field at each endpoint.', rPath);
   }
   if (relationship.required) {
-    const owner = realization.ownerEntity === relationship.fromEntity ? fromEntity : toEntity;
-    const ownerFields = realization.ownerEntity === relationship.fromEntity
-      ? realization.from.fieldIds : realization.to.fieldIds;
+    const owner = ownerIsFrom ? fromEntity : toEntity;
+    const ownerFields = ownerIsFrom ? realization.from.fieldIds : realization.to.fieldIds;
     if (ownerFields.some(fieldId => !resolvableFieldOf(owner, fieldId)?.required)) {
       error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_REQUIRED_FIELD', 'A required relationship must use required field(s) on its owning entity.', `${rPath}.ownerEntity`);
     }
   }
+  validatePersistedForeignKey(relationship, fromEntity, toEntity, rPath, issues);
 }
 
 function expectedRealizationKinds(mode: string): Ns5OntologyRealizationKind[] {
@@ -657,13 +658,99 @@ function validateEndpointFields(
   });
 }
 
+function validatePersistedForeignKey(
+  relationship: Ns5OntologyAssembly['index']['relationships'][number],
+  fromEntity: Ns5OntologyEntityArtifact | undefined,
+  toEntity: Ns5OntologyEntityArtifact | undefined,
+  rPath: string,
+  issues: Ns5OntologyGateIssue[],
+): void {
+  const realization = relationship.realization;
+  if (!realization) return;
+  if (realization.kind !== 'fieldReference' && realization.kind !== 'fieldCollection') return;
+  if (relationship.type !== 'oneToOne' && relationship.type !== 'oneToMany' && relationship.type !== 'manyToOne') return;
+
+  const ownerIsFrom = realization.ownerEntity === relationship.fromEntity;
+  const ownerEntity = ownerIsFrom ? fromEntity : toEntity;
+  const otherEntity = ownerIsFrom ? toEntity : fromEntity;
+  const ownerFieldIds = ownerIsFrom ? realization.from.fieldIds : realization.to.fieldIds;
+  const otherFieldIds = ownerIsFrom ? realization.to.fieldIds : realization.from.fieldIds;
+  const ownerId = entityIdField(ownerEntity);
+  const otherId = entityIdField(otherEntity);
+
+  if (realization.kind === 'fieldReference') {
+    const manySide = relationship.type === 'oneToMany' ? relationship.toEntity
+      : relationship.type === 'manyToOne' ? relationship.fromEntity
+      : '';
+    if (manySide && realization.ownerEntity !== manySide) {
+      error(
+        issues,
+        'NS5_ONTOLOGY_RELATIONSHIP_MANY_OWNER',
+        `${relationship.type} fieldReference owner must be the many-side entity ${manySide}.`,
+        `${rPath}.ownerEntity`,
+      );
+    }
+  }
+
+  if (ownerEntity?.kind === 'mdm' && !(ownerEntity.fields || []).length) {
+    error(
+      issues,
+      'NS5_ONTOLOGY_RELATIONSHIP_MDM_OWNER_WITHOUT_NAMESPACE',
+      `mdm owner ${ownerEntity.entityId} has fields: [] and cannot store the foreign key; declare a namespace field or move ownership.`,
+      `${rPath}.ownerEntity`,
+    );
+  }
+
+  if (ownerId && ownerFieldIds.length && ownerFieldIds.every(fieldId => fieldId === ownerId)) {
+    error(
+      issues,
+      'NS5_ONTOLOGY_RELATIONSHIP_OWNER_KEY',
+      `Owner ${realization.ownerEntity} must store a foreign key, not its own id [${ownerId}].`,
+      `${rPath}.ownerEntity`,
+    );
+  }
+
+  if (otherId && (otherFieldIds.length !== 1 || otherFieldIds[0] !== otherId)) {
+    error(
+      issues,
+      'NS5_ONTOLOGY_RELATIONSHIP_TARGET_ID',
+      `The non-owning endpoint must bind exactly [${otherId}].`,
+      ownerIsFrom ? `${rPath}.to.fieldIds` : `${rPath}.from.fieldIds`,
+    );
+  }
+
+  ownerFieldIds.forEach(fieldId => {
+    if (ownerId && fieldId === ownerId) return;
+    const field = resolvableFieldOf(ownerEntity, fieldId);
+    if (!field) return;
+    if (realization.kind === 'fieldCollection' && field.type !== 'json') {
+      error(
+        issues,
+        'NS5_ONTOLOGY_RELATIONSHIP_OWNER_FIELD_TYPE',
+        `fieldCollection owner field ${fieldId} must be json.`,
+        `${rPath}.ownerEntity`,
+      );
+    }
+    if (realization.kind === 'fieldReference' && field.type !== 'uuid') {
+      error(
+        issues,
+        'NS5_ONTOLOGY_RELATIONSHIP_OWNER_FIELD_TYPE',
+        `fieldReference owner field ${fieldId} must be uuid.`,
+        `${rPath}.ownerEntity`,
+      );
+    }
+  });
+}
+
 function validateMdmEndpointFields(
   entity: Ns5OntologyEntityArtifact | undefined,
   fieldIds: string[],
   kind: string,
+  isOwner: boolean,
   path: string,
   issues: Ns5OntologyGateIssue[],
 ): void {
+  if (isOwner) return;
   if (!entity || entity.kind !== 'mdm') return;
   if (!MDM_ENDPOINT_KINDS.has(kind)) return;
   if (!fieldIds.length) return;
