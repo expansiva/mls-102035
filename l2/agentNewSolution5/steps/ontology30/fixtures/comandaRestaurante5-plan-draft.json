@@ -1,0 +1,146 @@
+{
+  "moduleName": "comandaRestaurante5",
+  "businessDomain": "Gestão de comandas, itens de cardápio, descontos e pagamentos de restaurante.",
+  "entities": [
+    {
+      "entityId": "Mesa",
+      "title": "Mesa",
+      "description": "Mesa do restaurante onde uma comanda é aberta e atendida.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Location",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Mesa"
+      }
+    },
+    {
+      "entityId": "ItemCardapio",
+      "title": "Item do cardápio",
+      "description": "Produto oferecido no cardápio do restaurante que pode ser lançado em uma comanda.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.ItemCardapio"
+      }
+    },
+    {
+      "entityId": "Comanda",
+      "title": "Comanda",
+      "description": "Registro de atendimento e consumo aberto para uma mesa até o fechamento da conta.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "numero",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Comanda"
+      }
+    },
+    {
+      "entityId": "ItemComanda",
+      "title": "Item da comanda",
+      "description": "Lançamento de um item pedido na comanda, incluindo a possibilidade de cancelamento.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "descricao",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.ItemComanda"
+      }
+    },
+    {
+      "entityId": "Desconto",
+      "title": "Desconto",
+      "description": "Concessão pontual de desconto aplicada a uma comanda durante a conferência.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "motivo",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Desconto"
+      }
+    },
+    {
+      "entityId": "Pagamento",
+      "title": "Pagamento",
+      "description": "Recebimento de um valor para quitar total ou parcialmente uma comanda.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "valor",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Pagamento"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "comandaMesa",
+      "fromEntity": "Comanda",
+      "toEntity": "Mesa",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "itemComandaComanda",
+      "fromEntity": "ItemComanda",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "itemComandaItemCardapio",
+      "fromEntity": "ItemComanda",
+      "toEntity": "ItemCardapio",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "descontoComanda",
+      "fromEntity": "Desconto",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "pagamentoComanda",
+      "fromEntity": "Pagamento",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ]
+}

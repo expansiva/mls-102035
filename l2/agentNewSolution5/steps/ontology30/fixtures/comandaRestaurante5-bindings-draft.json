@@ -1,0 +1,99 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "comandaMesa",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Comanda",
+        "from": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "mesa"
+          ]
+        },
+        "to": {
+          "entityId": "Mesa",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemComandaComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "comanda"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemComandaItemCardapio",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "itemCardapio"
+          ]
+        },
+        "to": {
+          "entityId": "ItemCardapio",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "descontoComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Desconto",
+        "from": {
+          "entityId": "Desconto",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "pagamentoComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Pagamento",
+        "from": {
+          "entityId": "Pagamento",
+          "fieldIds": [
+            "comanda"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

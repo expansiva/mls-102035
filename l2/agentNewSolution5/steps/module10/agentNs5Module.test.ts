@@ -9,19 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { buildNs5ModuleHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
 import { buildNs5ModuleTool, normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
 import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-
-function loadFixture(): { synthetic: boolean; artifact: Ns5ModuleArtifact } {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures/synthetic-module.json'), 'utf8')) as {
-    synthetic: boolean;
-    artifact: Ns5ModuleArtifact;
-  };
-}
 
 function loadSchema(): Record<string, unknown> {
   return JSON.parse(
@@ -67,13 +61,18 @@ void test('module10 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
-void test('synthetic fixture is marked and passes the gate', () => {
-  const fixture = loadFixture();
-  assert.equal(fixture.synthetic, true);
-  const gate = validateNs5ModuleArtifact(fixture.artifact, { fixedModuleName: 'comandaRestaurante5' });
-  assert.equal(gate.ok, true, gate.issues.map(issue => issue.code).join(', '));
-  assert.equal(fixture.artifact.actors[0].origin, 'named');
-  assert.equal(fixture.artifact.actors[1].actorId, 'caixa');
+void test('real module10 drafts of both runs pass the gate', () => {
+  for (const moduleName of NS5_REAL_MODULES) {
+    const draft = loadNs5FixtureJson<Ns5ModuleArtifact>('steps/module10/fixtures', `${moduleName}-draft.json`);
+    const { artifact } = normalizeNs5ModuleArtifact(draft, {
+      sourcePrompt: draft.sourcePrompt,
+      fixedModuleName: moduleName,
+    });
+    const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName });
+    assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => issue.code).join(', ')}`);
+    assert.equal(artifact.actors.every(actor => actor.origin === 'named'), true, moduleName);
+    assert.ok(artifact.actors.some(actor => actor.kind === 'internal'), moduleName);
+  }
 });
 
 void test('normalize + gate accept a valid payload', () => {

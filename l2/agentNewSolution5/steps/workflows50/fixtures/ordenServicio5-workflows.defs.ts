@@ -1,0 +1,196 @@
+/// <mls fileReference="_102047_/l4/ordenServicio5/workflows.defs.ts" enhancement="_blank"/>
+
+import type { Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+
+export const ordenServicio5Workflows = {
+  "schemaVersion": "2026-09-10-ns5-workflows-v1",
+  "moduleName": "ordenServicio5",
+  "processes": [
+    {
+      "processId": "gestionarOrdenServicio",
+      "title": "Gestionar orden de servicio",
+      "description": "Coordinar la recepción, el presupuesto, la respuesta del cliente, la reparación o el retiro y la finalización de una orden de servicio.",
+      "tasks": [
+        {
+          "taskId": "registrarRecepcion",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "registrarRecepcionAparato",
+          "stepRef": "capturarDatosRecepcion",
+          "next": [
+            "localizarOrdenParaAnalisis"
+          ],
+          "description": "El recepcionista registra la recepción del aparato y deja la orden disponible para análisis técnico."
+        },
+        {
+          "taskId": "localizarOrdenParaAnalisis",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "analizarYpresupuestarOrden",
+          "stepRef": "localizarOrdenPendiente",
+          "next": [
+            "inspeccionarAparato"
+          ],
+          "description": "El técnico toma una orden recibida que requiere análisis."
+        },
+        {
+          "taskId": "inspeccionarAparato",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "analizarYpresupuestarOrden",
+          "stepRef": "inspeccionarAparatoYrecepcion",
+          "next": [
+            "registrarPresupuesto"
+          ],
+          "description": "El técnico revisa el aparato y la información registrada en la recepción."
+        },
+        {
+          "taskId": "registrarPresupuesto",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "analizarYpresupuestarOrden",
+          "stepRef": "registrarDiagnosticoYpresupuesto",
+          "next": [
+            "localizarPresupuestoCliente"
+          ],
+          "description": "El técnico registra el diagnóstico, las piezas y el presupuesto para que el cliente responda."
+        },
+        {
+          "taskId": "localizarPresupuestoCliente",
+          "kind": "human",
+          "actorRef": "cliente",
+          "journeyRef": "responderPresupuesto",
+          "stepRef": "localizarOrdenPresupuestada",
+          "next": [
+            "revisarPresupuestoCliente"
+          ],
+          "description": "El cliente accede a su orden presupuestada para responder al presupuesto."
+        },
+        {
+          "taskId": "revisarPresupuestoCliente",
+          "kind": "human",
+          "actorRef": "cliente",
+          "journeyRef": "responderPresupuesto",
+          "stepRef": "revisarPresupuestoYdiagnostico",
+          "next": [
+            "decidirPresupuesto"
+          ],
+          "description": "El cliente consulta el diagnóstico y el valor presupuestado antes de decidir."
+        },
+        {
+          "taskId": "decidirPresupuesto",
+          "kind": "human",
+          "actorRef": "cliente",
+          "journeyRef": "responderPresupuesto",
+          "stepRef": "decidirRespuestaPresupuesto",
+          "next": [
+            "registrarRespuestaCliente"
+          ],
+          "description": "El cliente decide aprobar o rechazar el presupuesto de su orden."
+        },
+        {
+          "taskId": "registrarRespuestaCliente",
+          "kind": "human",
+          "actorRef": "cliente",
+          "journeyRef": "responderPresupuesto",
+          "stepRef": "registrarRespuestaPresupuesto",
+          "next": [
+            "localizarOrdenAprobada",
+            "localizarOrdenParaEntrega"
+          ],
+          "description": "El cliente registra su respuesta, habilitando la reparación si aprueba o el retiro si rechaza."
+        },
+        {
+          "taskId": "localizarOrdenAprobada",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "repararYmarcarOrdenLista",
+          "stepRef": "localizarOrdenAprobada",
+          "next": [
+            "revisarDiagnosticoYPiezas"
+          ],
+          "description": "El técnico toma la orden cuyo presupuesto fue aprobado para realizar la reparación."
+        },
+        {
+          "taskId": "revisarDiagnosticoYPiezas",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "repararYmarcarOrdenLista",
+          "stepRef": "revisarDiagnosticoYpiezas",
+          "next": [
+            "registrarReparacion"
+          ],
+          "description": "El técnico revisa el diagnóstico y las piezas antes de reparar el aparato."
+        },
+        {
+          "taskId": "registrarReparacion",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "repararYmarcarOrdenLista",
+          "stepRef": "registrarReparacionRealizada",
+          "next": [
+            "marcarOrdenLista"
+          ],
+          "description": "El técnico documenta las tareas efectuadas durante la reparación."
+        },
+        {
+          "taskId": "marcarOrdenLista",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "repararYmarcarOrdenLista",
+          "stepRef": "marcarOrdenLista",
+          "next": [
+            "derivarParaEntrega"
+          ],
+          "description": "El técnico marca la orden reparada como lista para entrega."
+        },
+        {
+          "taskId": "derivarParaEntrega",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "repararYmarcarOrdenLista",
+          "stepRef": "derivarParaEntrega",
+          "next": [
+            "localizarOrdenParaEntrega"
+          ],
+          "description": "El técnico pone la orden reparada a disposición del recepcionista para su entrega."
+        },
+        {
+          "taskId": "localizarOrdenParaEntrega",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "entregarAparatoYfinalizarOrden",
+          "stepRef": "localizarOrdenParaEntrega",
+          "next": [
+            "verificarOrdenParaEntrega"
+          ],
+          "description": "El recepcionista toma la orden rechazada o lista para entrega del aparato."
+        },
+        {
+          "taskId": "verificarOrdenParaEntrega",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "entregarAparatoYfinalizarOrden",
+          "stepRef": "verificarOrdenYaparato",
+          "next": [
+            "registrarEntregaFinal"
+          ],
+          "description": "El recepcionista verifica la orden, la identificación del cliente y el aparato disponible."
+        },
+        {
+          "taskId": "registrarEntregaFinal",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "entregarAparatoYfinalizarOrden",
+          "stepRef": "registrarEntregaYfinalizacion",
+          "next": [],
+          "description": "El recepcionista registra la entrega del aparato y finaliza la orden."
+        }
+      ]
+    }
+  ]
+} as const satisfies Ns5WorkflowsArtifact;
+
+export type OrdenServicio5WorkflowsType = typeof ordenServicio5Workflows;
+
+export default ordenServicio5Workflows;

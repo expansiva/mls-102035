@@ -9,12 +9,17 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import {
+  loadNs5Entities,
+  loadNs5FixtureJson,
+  loadNs5Journeys,
+  loadNs5Module,
+  loadNs5OntologyIndex,
+} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type {
   Ns5AccessAuthority,
   Ns5AccessGrant,
   Ns5AccessProfile,
-  Ns5JourneyArtifact,
-  Ns5OntologyEntityArtifact,
 } from '/_102035_/l2/solution/types.js';
 import { buildNs5AccessHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
 import {
@@ -33,21 +38,45 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-interface DerivedAccessFixture {
-  derivedFrom: string;
-  profiles: Ns5AccessProfile[];
-  authorities: Ns5AccessAuthority[];
-  grants: Ns5AccessGrant[];
-}
-
 function loadSchema(): Record<string, unknown> {
   return JSON.parse(
     readFileSync(path.join(HERE, '../../schemas/access.schema.json'), 'utf8'),
   ) as Record<string, unknown>;
 }
 
-function loadDerived(name: string): DerivedAccessFixture {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', name), 'utf8')) as DerivedAccessFixture;
+function realOrdenDraft() {
+  return loadNs5FixtureJson<{
+    profiles: Ns5AccessProfile[];
+    authorities: Ns5AccessAuthority[];
+    grants: Ns5AccessGrant[];
+  }>('steps/access60/fixtures', 'ordenServicio5-draft.json');
+}
+
+function realOrdenContext() {
+  const moduleArtifact = loadNs5Module('ordenServicio5');
+  const entities = loadNs5Entities('ordenServicio5');
+  const index = loadNs5OntologyIndex('ordenServicio5');
+  const journeys = loadNs5Journeys('ordenServicio5');
+  return {
+    actorIds: moduleArtifact.actors.map(actor => actor.actorId),
+    entities: entities.map(entity => ({
+      entityId: entity.entityId,
+      party: entity.party,
+      fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
+      ...(entity.details ? { details: entity.details } : {}),
+      storage: { idField: entity.storage.idField },
+    })),
+    relationships: index.relationships.map(rel => ({
+      relationshipId: rel.relationshipId,
+      fromEntity: rel.fromEntity,
+      toEntity: rel.toEntity,
+      required: rel.required,
+    })),
+    journeys: journeys.map(journey => ({
+      journeyId: journey.journeyId,
+      business: { actorRef: journey.business.actorRef },
+    })),
+  };
 }
 
 function entity(
@@ -145,26 +174,22 @@ void test('access60 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
-void test('derived ordenServicio2 fixture keeps six grants with structured deniedFields and cliente own', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
-  assert.match(fixture.derivedFrom, /ordenServicio2\/access\/access-matrix\.defs\.ts$/);
+void test('real ordenServicio5 access draft keeps cliente own with structured disclosure', () => {
+  const fixture = realOrdenDraft();
   assert.equal(fixture.profiles.length, 3);
-  assert.equal(fixture.authorities.length, 6);
-  assert.equal(fixture.grants.length, 6);
+  assert.equal(fixture.authorities.length, 4);
+  assert.equal(fixture.grants.length, 4);
   const cliente = fixture.profiles.find(profile => profile.profileId === 'cliente');
   assert.equal(cliente?.kind, 'external');
   const ownGrants = fixture.grants.filter(grant => grant.profileRef === 'cliente');
-  assert.equal(ownGrants.length, 2);
-  for (const grant of ownGrants) {
-    assert.equal(grant.dataScope.mode, 'own');
-    assert.equal(grant.dataScope.anchorEntity, 'Customer');
-    assert.ok(grant.disclosure.deniedFields?.includes('ServicePart.internalCost'));
-    assert.ok(grant.disclosure.deniedFields?.includes('Diagnosis.internalTechnicalNotes'));
-    assert.equal('hops' in grant.dataScope, false);
-  }
+  assert.equal(ownGrants.length, 1);
+  assert.equal(ownGrants[0].dataScope.mode, 'own');
+  assert.equal(ownGrants[0].dataScope.anchorEntity, 'Cliente');
+  assert.ok(ownGrants[0].disclosure.deniedFields?.includes('Presupuesto.piezasNecesarias'));
+  assert.equal('hops' in ownGrants[0].dataScope, false);
   const source = JSON.stringify(fixture);
-  assert.doesNotMatch(source, /landingIntent|allowedInformation|deniedInformation|journeyStepRefs|realization/);
-  const gate = gateOf(fixture);
+  assert.doesNotMatch(source, /landingIntent|allowedInformation|deniedInformation|journeyStepRefs|sourceRefs/);
+  const gate = validateNs5Access(fixture.profiles, fixture.authorities, fixture.grants, realOrdenContext());
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
@@ -227,69 +252,48 @@ void test('anchorPath walks required relationships and does not persist hops', (
 });
 
 void test('own without reachable person anchor fails', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
-  const broken = grants.map(grant => grant.grantId === 'ownConsultationGrant'
+  const broken = grants.map(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto'
     ? { ...grant, dataScope: { ...grant.dataScope, anchorEntity: undefined } }
     : grant);
-  const missing = validateNs5Access(profiles, authorities, broken, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const missing = validateNs5Access(profiles, authorities, broken, realOrdenContext());
   assert.equal(missing.ok, false);
   assert.ok(missing.issues.some(issue => issue.code === 'NS5_ACCESS_ANCHOR_REQUIRED'));
 
-  const notPerson = grants.map(grant => grant.grantId === 'ownConsultationGrant'
-    ? { ...grant, dataScope: { ...grant.dataScope, anchorEntity: 'ServiceOrder' } }
+  const notPerson = grants.map(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto'
+    ? { ...grant, dataScope: { ...grant.dataScope, anchorEntity: 'OrdenServicio' } }
     : grant);
-  const party = validateNs5Access(profiles, authorities, notPerson, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const party = validateNs5Access(profiles, authorities, notPerson, realOrdenContext());
   assert.equal(party.ok, false);
   assert.ok(party.issues.some(issue => issue.code === 'NS5_ACCESS_ANCHOR_NOT_PERSON'));
 
-  const unreachable = grants.map(grant => grant.grantId === 'ownConsultationGrant'
-    ? { ...grant, entityRefs: ['ServiceOrder', 'Comanda'] }
+  const ctx = realOrdenContext();
+  const unreachable = grants.map(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto'
+    ? { ...grant, entityRefs: ['OrdenServicio', 'Comanda'] }
     : grant);
   const walk = validateNs5Access(profiles, authorities, unreachable, {
-    actorIds: ORDEN_ACTORS,
-    entities: [...ORDEN_ENTITIES, entity('Comanda', 'none', ['comandaId'])],
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
+    ...ctx,
+    entities: [...ctx.entities, entity('Comanda', 'none', ['comandaId'])],
   });
   assert.equal(walk.ok, false);
   assert.ok(walk.issues.some(issue => issue.code === 'NS5_ACCESS_ANCHOR_UNREACHABLE'));
 });
 
 void test('fieldsOnly without field lists fails; unknown and details refs are checked', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
-  const emptyFields = grants.map(grant => grant.grantId === 'budgetDecisionGrant'
+  const emptyFields = grants.map(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto'
     ? { ...grant, disclosure: { mode: 'fieldsOnly' as const, description: grant.disclosure.description } }
     : grant);
-  const empty = validateNs5Access(profiles, authorities, emptyFields, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const empty = validateNs5Access(profiles, authorities, emptyFields, realOrdenContext());
   assert.equal(empty.ok, false);
   assert.ok(empty.issues.some(issue => issue.code === 'NS5_ACCESS_DISCLOSURE_FIELDS'));
 
-  const unknown = grants.map(grant => grant.grantId === 'budgetDecisionGrant'
-    ? { ...grant, disclosure: { ...grant.disclosure, deniedFields: ['ServicePart.ghostCost'] } }
+  const unknown = grants.map(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto'
+    ? { ...grant, disclosure: { ...grant.disclosure, deniedFields: ['PiezaNecesaria.ghostCost'] } }
     : grant);
-  const missing = validateNs5Access(profiles, authorities, unknown, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const missing = validateNs5Access(profiles, authorities, unknown, realOrdenContext());
   assert.equal(missing.ok, false);
   assert.ok(missing.issues.some(issue => issue.code === 'NS5_ACCESS_FIELD_UNKNOWN'));
 
@@ -320,43 +324,28 @@ void test('fieldsOnly without field lists fails; unknown and details refs are ch
 });
 
 void test('external organization and public on internal fail; anonymous is public-only', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
-  const leaked = grants.map(grant => grant.grantId === 'ownConsultationGrant'
+  const leaked = grants.map(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto'
     ? { ...grant, dataScope: { mode: 'organization' as const, description: grant.dataScope.description } }
     : grant);
-  const external = validateNs5Access(profiles, authorities, leaked, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const external = validateNs5Access(profiles, authorities, leaked, realOrdenContext());
   assert.equal(external.ok, false);
   assert.ok(external.issues.some(issue => issue.code === 'NS5_ACCESS_EXTERNAL_OWN'));
 
-  const publicInternal = grants.map(grant => grant.grantId === 'receptionGrant'
+  const publicInternal = grants.map(grant => grant.grantId === 'recepcionGestionaRecepcionYentrega'
     ? { ...grant, dataScope: { mode: 'public' as const, description: grant.dataScope.description } }
     : grant);
-  const pub = validateNs5Access(profiles, authorities, publicInternal, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const pub = validateNs5Access(profiles, authorities, publicInternal, realOrdenContext());
   assert.equal(pub.ok, false);
   assert.ok(pub.issues.some(issue => issue.code === 'NS5_ACCESS_PUBLIC_ANONYMOUS'));
 });
 
 void test('profile without grant fails', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
   const dropped = grants.filter(grant => grant.profileRef !== 'cliente');
-  const noGrant = validateNs5Access(profiles, authorities, dropped, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const noGrant = validateNs5Access(profiles, authorities, dropped, realOrdenContext());
   assert.equal(noGrant.ok, false);
   assert.ok(noGrant.issues.some(issue => issue.code === 'NS5_ACCESS_PROFILE_NO_GRANT'));
   const feedback = formatNs5AccessGate(noGrant.issues);
@@ -364,18 +353,13 @@ void test('profile without grant fails', () => {
 });
 
 void test('journey actor without a profile fails', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
   const noCliente = validateNs5Access(
     profiles.filter(profile => profile.profileId !== 'cliente'),
-    authorities.filter(item => item.authorityId !== 'ownConsultation' && item.authorityId !== 'budgetDecision'),
+    authorities.filter(item => item.authorityId !== 'consultarYresponderPresupuesto'),
     grants.filter(grant => grant.profileRef !== 'cliente'),
-    {
-      actorIds: ORDEN_ACTORS,
-      entities: ORDEN_ENTITIES,
-      relationships: ORDEN_RELATIONSHIPS,
-      journeys: ORDEN_JOURNEYS,
-    },
+    realOrdenContext(),
   );
   assert.equal(noCliente.ok, false);
   assert.ok(noCliente.issues.some(issue => issue.code === 'NS5_ACCESS_JOURNEY_ACTOR'));
@@ -383,27 +367,17 @@ void test('journey actor without a profile fails', () => {
 });
 
 void test('unknown refs, duplicate ids and duplicate profile-authority pairs fail', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
-  const dupPair = [...grants, { ...grants[0], grantId: 'receptionGrantCopy' }];
-  const pair = validateNs5Access(profiles, authorities, dupPair, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const dupPair = [...grants, { ...grants[0], grantId: 'recepcionGestionaRecepcionYentregaCopy' }];
+  const pair = validateNs5Access(profiles, authorities, dupPair, realOrdenContext());
   assert.equal(pair.ok, false);
   assert.ok(pair.issues.some(issue => issue.code === 'NS5_ACCESS_GRANT_DUPLICATE_PAIR'));
 
-  const ghost = grants.map(grant => grant.grantId === 'receptionGrant'
+  const ghost = grants.map(grant => grant.grantId === 'recepcionGestionaRecepcionYentrega'
     ? { ...grant, entityRefs: ['Ghost'], profileRef: 'ghost', authorityRef: 'ghost' }
     : grant);
-  const unknown = validateNs5Access(profiles, authorities, ghost, {
-    actorIds: ORDEN_ACTORS,
-    entities: ORDEN_ENTITIES,
-    relationships: ORDEN_RELATIONSHIPS,
-    journeys: ORDEN_JOURNEYS,
-  });
+  const unknown = validateNs5Access(profiles, authorities, ghost, realOrdenContext());
   assert.equal(unknown.ok, false);
   assert.ok(unknown.issues.some(issue => issue.code === 'NS5_ACCESS_GRANT_PROFILE'));
   assert.ok(unknown.issues.some(issue => issue.code === 'NS5_ACCESS_GRANT_AUTHORITY'));
@@ -415,7 +389,7 @@ void test('normalize maps authorityRef to authorityId and drops empty field list
     profiles: [{ id: 'cliente', actorRefs: ['cliente', 'cliente', ''], kind: 'external' }],
     authorities: [{ authorityRef: 'ownConsultation', title: 'Consult', description: 'Own orders.' }],
     grants: [{
-      id: 'ownConsultationGrant',
+      id: 'clienteConsultaYrespondePresupuesto',
       profileRef: 'cliente',
       authorityRef: 'ownConsultation',
       entityRefs: ['ServiceOrder', 'ServiceOrder', ''],
@@ -424,20 +398,20 @@ void test('normalize maps authorityRef to authorityId and drops empty field list
     }],
   });
   assert.equal(authorities[0].authorityId, 'ownConsultation');
-  assert.equal(grants[0].grantId, 'ownConsultationGrant');
+  assert.equal(grants[0].grantId, 'clienteConsultaYrespondePresupuesto');
   assert.deepEqual(grants[0].entityRefs, ['ServiceOrder']);
   assert.equal(grants[0].disclosure.allowedFields, undefined);
   assert.deepEqual(grants[0].disclosure.deniedFields, ['ServicePart.internalCost']);
 });
 
 void test('buildNs5AccessArtifact keeps schemaVersion and does not store hops', () => {
-  const fixture = loadDerived('ordenServicio2-access.json');
+  const fixture = realOrdenDraft();
   const { profiles, authorities, grants } = drafts(fixture);
   const artifact = buildNs5AccessArtifact('ordenServicio5', profiles, authorities, grants);
   assert.equal(artifact.schemaVersion, '2026-09-10-ns5-access-v1');
   assert.equal(artifact.moduleName, 'ordenServicio5');
-  const cliente = artifact.grants.find(grant => grant.grantId === 'ownConsultationGrant');
-  assert.equal(cliente?.dataScope.anchorEntity, 'Customer');
+  const cliente = artifact.grants.find(grant => grant.grantId === 'clienteConsultaYrespondePresupuesto');
+  assert.equal(cliente?.dataScope.anchorEntity, 'Cliente');
   assert.equal(JSON.stringify(artifact).includes('"hops"'), false);
 });
 

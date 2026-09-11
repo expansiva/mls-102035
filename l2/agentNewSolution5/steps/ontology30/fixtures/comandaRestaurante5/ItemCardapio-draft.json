@@ -1,0 +1,14 @@
+{
+  "entityId": "ItemCardapio",
+  "fields": [
+    {
+      "fieldId": "price",
+      "title": "Preço",
+      "type": "money",
+      "required": true,
+      "description": "Preço de venda do item no cardápio."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

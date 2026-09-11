@@ -1,0 +1,246 @@
+{
+  "moduleName": "ordenServicio5",
+  "businessDomain": "Gestión de órdenes de servicio técnico para aparatos electrónicos, desde la recepción hasta la entrega.",
+  "entities": [
+    {
+      "entityId": "DefectoInformado",
+      "title": "Defecto informado",
+      "description": "Manifestación o problema del aparato informado por el cliente al momento de la recepción.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "descripcion",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.DefectoInformado"
+      }
+    },
+    {
+      "entityId": "FotoOrden",
+      "title": "Foto de la orden",
+      "description": "Imagen adjunta que documenta el aparato o su condición al recibirlo.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "nombreArchivo",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.FotoOrden"
+      }
+    },
+    {
+      "entityId": "Diagnostico",
+      "title": "Diagnóstico",
+      "description": "Resultado técnico del análisis del aparato y de la causa del defecto reportado.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "descripcion",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Diagnostico"
+      }
+    },
+    {
+      "entityId": "PiezaNecesaria",
+      "title": "Pieza necesaria",
+      "description": "Pieza o insumo identificado para la reparación, incluyendo su costo interno.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "nombrePieza",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.PiezaNecesaria"
+      }
+    },
+    {
+      "entityId": "Reparacion",
+      "title": "Reparación",
+      "description": "Registro de las tareas técnicas efectivamente realizadas sobre el aparato autorizado.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "detalleTrabajo",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Reparacion"
+      }
+    },
+    {
+      "entityId": "EntregaAparato",
+      "title": "Entrega de aparato",
+      "description": "Constancia de la entrega del aparato al cliente al finalizar la gestión.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "fechaEntrega",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.EntregaAparato"
+      }
+    },
+    {
+      "entityId": "Presupuesto",
+      "title": "Presupuesto",
+      "description": "Propuesta económica comunicada al cliente para autorizar o rechazar la reparación.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "valorCliente",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Presupuesto"
+      }
+    },
+    {
+      "entityId": "OrdenServicio",
+      "title": "Orden de servicio",
+      "description": "Gestión del servicio técnico de un aparato recibido, desde su recepción hasta su entrega o retiro.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "numeroOrden",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio5.OrdenServicio"
+      }
+    },
+    {
+      "entityId": "Cliente",
+      "title": "Cliente",
+      "description": "Persona que presenta el aparato, consulta su orden en el portal y responde al presupuesto.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Cliente"
+      }
+    },
+    {
+      "entityId": "Aparato",
+      "title": "Aparato",
+      "description": "Equipo electrónico recibido para análisis, reparación y posterior entrega o retiro.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetEquipment",
+      "displayField": "serialNumber",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Aparato"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "ordenTieneCliente",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Cliente",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordenTieneAparato",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Aparato",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraDefectoInformado",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "DefectoInformado",
+      "type": "oneToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "ordenIncluyeFotos",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "FotoOrden",
+      "type": "oneToMany",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "ordenTieneDiagnostico",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Diagnostico",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "ordenTienePresupuesto",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Presupuesto",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "presupuestoIncluyePiezasNecesarias",
+      "fromEntity": "Presupuesto",
+      "toEntity": "PiezaNecesaria",
+      "type": "oneToMany",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraReparacion",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Reparacion",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraEntregaAparato",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "EntregaAparato",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ]
+}

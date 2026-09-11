@@ -102,6 +102,28 @@ void test('plugin catalog is the closed E6 platform set', () => {
   assert.ok(NS5_PLUGIN_CATALOG.every(item => item.terms.length > 0));
 });
 
+void test('real integration70 drafts of both runs are empty and pass the gate', () => {
+  for (const moduleName of ['comandaRestaurante5', 'ordenServicio5'] as const) {
+    const draft = JSON.parse(
+      readFileSync(path.join(HERE, 'fixtures', `${moduleName}-draft.json`), 'utf8'),
+    ) as { inbound: unknown[]; outbound: unknown[]; plugins: unknown[] };
+    assert.deepEqual(draft.inbound, []);
+    assert.deepEqual(draft.outbound, []);
+    assert.deepEqual(draft.plugins, []);
+    const gate = gateOf(draft, {
+      actors: moduleName === 'comandaRestaurante5' ? COMANDA_ACTORS : [
+        { actorId: 'recepcionista', kind: 'internal' },
+        { actorId: 'tecnico', kind: 'internal' },
+        { actorId: 'cliente', kind: 'external' },
+      ],
+      entities: [{ entityId: 'Comanda' }, { entityId: 'OrdenServicio' }],
+      registryModuleNames: [],
+      sourcePrompt: moduleName === 'comandaRestaurante5' ? COMANDA_PROMPT : ORDEN_PROMPT,
+    });
+    assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
+  }
+});
+
 void test('derived ce11 fixture keeps inbound events and stripe plugin, no card entity', () => {
   const fixture = loadDerived('ce11-financeiro-integration.json');
   assert.match(fixture.derivedFrom, /ce11/);

@@ -1,0 +1,35 @@
+{
+  "entityId": "FotoOrden",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único de la foto de la orden."
+    },
+    {
+      "fieldId": "nombreArchivo",
+      "title": "Nombre del archivo",
+      "type": "string",
+      "required": true,
+      "description": "Nombre del archivo de imagen adjunto a la orden."
+    },
+    {
+      "fieldId": "urlArchivo",
+      "title": "Ubicación del archivo",
+      "type": "string",
+      "required": true,
+      "description": "Ubicación donde se almacena la imagen adjunta."
+    },
+    {
+      "fieldId": "tipoMime",
+      "title": "Tipo de archivo",
+      "type": "string",
+      "required": true,
+      "description": "Tipo MIME de la imagen adjunta."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

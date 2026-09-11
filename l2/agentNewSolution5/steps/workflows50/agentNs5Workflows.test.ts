@@ -9,6 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import {
+  loadNs5Entities,
+  loadNs5FixtureJson,
+  loadNs5Journeys,
+  loadNs5Module,
+} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type {
   Ns5JourneyArtifact,
   Ns5OntologyEntityArtifact,
@@ -30,19 +36,10 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-interface DerivedWorkflowsFixture {
-  derivedFrom: string;
-  processes: Ns5WorkflowProcess[];
-}
-
 function loadSchema(): Record<string, unknown> {
   return JSON.parse(
     readFileSync(path.join(HERE, '../../schemas/workflows.schema.json'), 'utf8'),
   ) as Record<string, unknown>;
-}
-
-function loadDerived(name: string): DerivedWorkflowsFixture {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', name), 'utf8')) as DerivedWorkflowsFixture;
 }
 
 function journey(
@@ -190,29 +187,45 @@ void test('workflows50 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
-void test('derived ordenServicio2 fixture is one process of five chained tasks with human decide', () => {
-  const fixture = loadDerived('ordenServicio2-workflows.json');
-  assert.match(fixture.derivedFrom, /ordenServicio2\/journeys/);
-  assert.equal(fixture.processes.length, 1);
-  const process = fixture.processes[0];
-  assert.equal(process.tasks.length, 5);
-  const decide = process.tasks.find(task => task.taskId === 'decide');
+void test('real ordenServicio5 workflows draft is one process covering the decide and passes the gate', () => {
+  const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('steps/workflows50/fixtures', 'ordenServicio5-draft.json');
+  assert.equal(draft.processes.length, 1);
+  const process = draft.processes[0];
+  assert.equal(process.processId, 'gestionarOrdenServicio');
+  const decide = process.tasks.find(task => task.taskId === 'decidirPresupuesto');
   assert.ok(decide);
   assert.equal(decide.kind, 'human');
   assert.equal(decide.actorRef, 'cliente');
-  assert.equal(decide.journeyRef, 'consultarYDecidirPresupuesto');
-  assert.equal(decide.stepRef, 'decideBudget');
-  assert.deepEqual(process.tasks.map(task => task.next[0] || ''), ['analyze', 'decide', 'repair', 'deliver', '']);
-  const processes = drafts({ processes: fixture.processes });
-  const covered = ORDEN_JOURNEYS.map(item => ({
-    ...item,
+  assert.equal(decide.journeyRef, 'responderPresupuesto');
+  const processes = drafts(draft);
+  const moduleArtifact = loadNs5Module('ordenServicio5');
+  const journeys = loadNs5Journeys('ordenServicio5').map(item => ({
+    journeyId: item.journeyId,
     business: {
-      ...item.business,
-      steps: item.business.steps.filter(step => step.kind !== 'handoff'),
+      actorRef: item.business.actorRef,
+      steps: item.business.steps.map(step => ({
+        stepId: step.stepId,
+        kind: step.kind,
+        entity: step.entity,
+        ...(step.handoffTo ? { handoffTo: step.handoffTo } : {}),
+      })),
     },
   }));
-  const gate = gateOf(processes, covered, ORDEN_ENTITIES);
+  const entities = loadNs5Entities('ordenServicio5').map(entity => ({
+    entityId: entity.entityId,
+    transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
+  }));
+  const gate = validateNs5Workflows(processes, {
+    actorIds: moduleArtifact.actors.map(actor => actor.actorId),
+    journeys,
+    entities,
+  });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('real comandaRestaurante5 workflows draft is empty and has no process signal', () => {
+  const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('steps/workflows50/fixtures', 'comandaRestaurante5-draft.json');
+  assert.deepEqual(draft.processes, []);
 });
 
 void test('comanda-like journeys have no process signal (skip LLM)', () => {

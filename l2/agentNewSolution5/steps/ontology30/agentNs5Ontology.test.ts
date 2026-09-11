@@ -10,6 +10,7 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { loadNs5FixtureJson, loadNs5Journeys, loadNs5Module } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5OntologyBindingsHumanPrompt,
@@ -39,25 +40,26 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-interface EntityFixture {
-  derivedFrom: string;
-  plan: Ns5OntologyPlanEntity;
-  detail: Ns5OntologyEntityDraft;
-}
-
 function loadSchema(name: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path.join(HERE, '../../schemas', name), 'utf8')) as Record<string, unknown>;
 }
 
-function loadEntityFixture(name: string): EntityFixture {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', name), 'utf8')) as EntityFixture;
+function realPlan(moduleName: 'comandaRestaurante5' | 'ordenServicio5'): Ns5OntologyPlanDraft {
+  return loadNs5FixtureJson<Ns5OntologyPlanDraft>('steps/ontology30/fixtures', `${moduleName}-plan-draft.json`);
 }
 
-function loadBindingsFixture(): { derivedFrom: string; bindings: Ns5OntologyBindingsDraft['bindings'] } {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures/comandaRestaurante2-bindings.json'), 'utf8')) as {
-    derivedFrom: string;
-    bindings: Ns5OntologyBindingsDraft['bindings'];
-  };
+function realDetail(moduleName: 'comandaRestaurante5' | 'ordenServicio5', entityId: string): Ns5OntologyEntityDraft {
+  return loadNs5FixtureJson<Ns5OntologyEntityDraft>('steps/ontology30/fixtures', moduleName, `${entityId}-draft.json`);
+}
+
+function realBindings(moduleName: 'comandaRestaurante5' | 'ordenServicio5'): Ns5OntologyBindingsDraft {
+  return loadNs5FixtureJson<Ns5OntologyBindingsDraft>('steps/ontology30/fixtures', `${moduleName}-bindings-draft.json`);
+}
+
+function planEntity(moduleName: 'comandaRestaurante5' | 'ordenServicio5', entityId: string): Ns5OntologyPlanEntity {
+  const entity = realPlan(moduleName).entities.find(item => item.entityId === entityId);
+  if (!entity) throw new Error(`missing plan entity ${entityId}`);
+  return entity;
 }
 
 const ACTORS: Ns5ModuleActor[] = [
@@ -182,53 +184,48 @@ void test('ontology30 tool schemas are provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(bindings.function.parameters)), null);
 });
 
-void test('derived Customer is mdm Person with empty fields and passes the gate', () => {
-  const fixture = loadEntityFixture('Customer.json');
-  assert.match(fixture.derivedFrom, /Customer\.defs\.ts$/);
-  assert.equal(fixture.plan.kind, 'mdm');
-  assert.equal(fixture.plan.mdmSubtype, 'Person');
-  assert.deepEqual(fixture.detail.fields, []);
+void test('real Cliente is mdm Person with empty fields and passes the gate', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Service orders',
-    entities: [fixture.plan],
+    entities: [planEntity('ordenServicio5', 'Cliente')],
     relationships: [],
-  }, 'ordenServicio2');
-  const detail = normalizeNs5OntologyEntity(fixture.detail, 'Customer');
+  }, 'ordenServicio5');
+  const detail = normalizeNs5OntologyEntity(realDetail('ordenServicio5', 'Cliente'), 'Cliente');
+  assert.equal(plan.entities[0].kind, 'mdm');
+  assert.equal(plan.entities[0].mdmSubtype, 'Person');
+  assert.deepEqual(detail.fields, []);
   const gate = validateNs5OntologyEntity(plan, detail, ctx({
-    moduleName: 'ordenServicio2',
-    journeys: [{ business: { ...FECHAR.business, steps: [{ ...FECHAR.business.steps[0], entity: 'Customer' }] } }],
+    moduleName: 'ordenServicio5',
+    journeys: [{ business: { ...FECHAR.business, steps: [{ ...FECHAR.business.steps[0], entity: 'Cliente' }] } }],
   }));
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
-void test('derived ItemCardapio keeps namespace fields and level-1 displayField', () => {
-  const fixture = loadEntityFixture('ItemCardapio.json');
-  assert.match(fixture.derivedFrom, /ItemCardapio\.defs\.ts$/);
-  assert.equal(fixture.plan.mdmSubtype, 'Product');
-  assert.equal(fixture.detail.fields.some(field => field.fieldId === 'precoVigente'), true);
-  assert.equal(fixture.detail.fields.some(field => field.fieldId === 'itemCardapioId'), false);
+void test('real ItemCardapio keeps namespace fields and level-1 displayField', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
-    entities: [fixture.plan],
+    entities: [planEntity('comandaRestaurante5', 'ItemCardapio')],
     relationships: [],
-  }, 'comandaRestaurante3');
-  const gate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(fixture.detail, 'ItemCardapio'), ctx({
-    moduleName: 'comandaRestaurante3',
+  }, 'comandaRestaurante5');
+  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'ItemCardapio'), 'ItemCardapio');
+  assert.equal(plan.entities[0].mdmSubtype, 'Product');
+  assert.equal(detail.fields.some(field => field.fieldId === 'price'), true);
+  assert.equal(detail.fields.some(field => field.fieldId === 'id'), false);
+  const gate = validateNs5OntologyEntity(plan, detail, ctx({
+    moduleName: 'comandaRestaurante5',
     journeys: [{ business: { ...FECHAR.business, steps: [{ ...FECHAR.business.steps[0], entity: 'ItemCardapio' }] } }],
   }));
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
-void test('derived Comanda keeps details.total and fecharComanda by caixa', () => {
-  const fixture = loadEntityFixture('Comanda.json');
-  assert.match(fixture.derivedFrom, /Comanda\.defs\.ts$/);
+void test('real Comanda keeps details and fecharComanda by caixa', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
-    entities: [fixture.plan],
+    entities: [planEntity('comandaRestaurante5', 'Comanda')],
     relationships: [],
   }, 'comandaRestaurante5');
-  const detail = normalizeNs5OntologyEntity(fixture.detail, 'Comanda');
-  assert.equal(detail.details?.total.includes('itens'), true);
+  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'Comanda'), 'Comanda');
+  assert.ok(detail.details?.valorItens);
   assert.equal(detail.transitions[0]?.transitionId, 'fecharComanda');
   assert.deepEqual(detail.transitions[0]?.by, ['caixa']);
   const gate = validateNs5OntologyEntity(plan, detail, ctx({
@@ -245,17 +242,16 @@ void test('derived Comanda keeps details.total and fecharComanda by caixa', () =
 });
 
 void test('mdm idField inside fields[] is NS5_ONTOLOGY_MDM_ID_IN_FIELDS', () => {
-  const fixture = loadEntityFixture('Customer.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Service orders',
-    entities: [fixture.plan],
+    entities: [planEntity('ordenServicio5', 'Cliente')],
     relationships: [],
-  }, 'ordenServicio2');
+  }, 'ordenServicio5');
   const detail = normalizeNs5OntologyEntity({
-    ...fixture.detail,
-    fields: [idField('Customer', 'customerId')],
-  }, 'Customer');
-  const gate = validateNs5OntologyEntity(plan, detail, ctx({ moduleName: 'ordenServicio2' }));
+    ...realDetail('ordenServicio5', 'Cliente'),
+    fields: [idField('Cliente', 'id')],
+  }, 'Cliente');
+  const gate = validateNs5OntologyEntity(plan, detail, ctx({ moduleName: 'ordenServicio5' }));
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_MDM_ID_IN_FIELDS'));
 });
@@ -278,17 +274,16 @@ void test('non-mdm stored entity without uuid idField fails', () => {
 });
 
 void test('mdm with lifecycle fails', () => {
-  const fixture = loadEntityFixture('Customer.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Service orders',
-    entities: [fixture.plan],
+    entities: [planEntity('ordenServicio5', 'Cliente')],
     relationships: [],
-  }, 'ordenServicio2');
+  }, 'ordenServicio5');
   const detail = normalizeNs5OntologyEntity({
-    ...fixture.detail,
+    ...realDetail('ordenServicio5', 'Cliente'),
     lifecycleStates: [{ state: 'active', reachedBy: 'actor' }],
-  }, 'Customer');
-  const gate = validateNs5OntologyEntity(plan, detail, ctx({ moduleName: 'ordenServicio2' }));
+  }, 'Cliente');
+  const gate = validateNs5OntologyEntity(plan, detail, ctx({ moduleName: 'ordenServicio5' }));
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_MDM_LIFECYCLE'));
 });
@@ -424,20 +419,20 @@ void test('appendOnly with transitions fails', () => {
 });
 
 void test('actor/command state without an arriving transition fails', () => {
-  const fixture = loadEntityFixture('Comanda.json');
+  const source = realDetail('comandaRestaurante5', 'Comanda');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
-    entities: [fixture.plan],
+    entities: [planEntity('comandaRestaurante5', 'Comanda')],
     relationships: [],
   }, 'comandaRestaurante5');
   const detail = normalizeNs5OntologyEntity({
-    ...fixture.detail,
+    ...source,
     lifecycleStates: [
-      ...fixture.detail.lifecycleStates,
+      ...source.lifecycleStates,
       { state: 'cancelled', reachedBy: 'actor' },
     ],
-    fields: fixture.detail.fields.map(field => field.fieldId === 'status'
-      ? { ...field, enum: ['open', 'closed', 'cancelled'] }
+    fields: source.fields.map(field => field.fieldId === 'status'
+      ? { ...field, enum: [...(field.enum || []), 'cancelled'] }
       : field),
   }, 'Comanda');
   const gate = validateNs5OntologyEntity(plan, detail, ctx());
@@ -446,22 +441,22 @@ void test('actor/command state without an arriving transition fails', () => {
 });
 
 void test('time state with an arriving transition fails', () => {
-  const fixture = loadEntityFixture('Comanda.json');
+  const source = realDetail('comandaRestaurante5', 'Comanda');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
-    entities: [fixture.plan],
+    entities: [planEntity('comandaRestaurante5', 'Comanda')],
     relationships: [],
   }, 'comandaRestaurante5');
   const detail = normalizeNs5OntologyEntity({
-    ...fixture.detail,
+    ...source,
     lifecycleStates: [
-      { state: 'open', reachedBy: 'actor' },
+      { state: 'aberta', reachedBy: 'actor' },
       { state: 'overdue', reachedBy: 'time' },
     ],
-    fields: fixture.detail.fields.map(field => field.fieldId === 'status'
-      ? { ...field, enum: ['open', 'overdue'] }
+    fields: source.fields.map(field => field.fieldId === 'status'
+      ? { ...field, enum: ['aberta', 'overdue'] }
       : field),
-    transitions: [{ transitionId: 'expire', from: ['open'], to: 'overdue', by: 'time', description: 'Expires.' }],
+    transitions: [{ transitionId: 'expire', from: ['aberta'], to: 'overdue', by: 'time', description: 'Expires.' }],
   }, 'Comanda');
   const gate = validateNs5OntologyEntity(plan, detail, ctx());
   assert.equal(gate.ok, false);
@@ -469,15 +464,15 @@ void test('time state with an arriving transition fails', () => {
 });
 
 void test('transition by unknown actor fails', () => {
-  const fixture = loadEntityFixture('Comanda.json');
+  const source = realDetail('comandaRestaurante5', 'Comanda');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
-    entities: [fixture.plan],
+    entities: [planEntity('comandaRestaurante5', 'Comanda')],
     relationships: [],
   }, 'comandaRestaurante5');
   const detail = normalizeNs5OntologyEntity({
-    ...fixture.detail,
-    transitions: [{ transitionId: 'fecharComanda', from: ['open'], to: 'closed', by: ['ghost'], description: 'Close.' }],
+    ...source,
+    transitions: [{ transitionId: 'fecharComanda', from: ['aberta'], to: 'fechada', by: ['ghost'], description: 'Close.' }],
   }, 'Comanda');
   const gate = validateNs5OntologyEntity(plan, detail, ctx());
   assert.equal(gate.ok, false);
@@ -508,12 +503,11 @@ void test('journey entity that the ontology omits is an error; uncited entity is
 
 void test('isolated entity validation does not demand other journey-cited entities', () => {
   const mesa = mdmPlan('Mesa', 'Location', 'none', 'mesaId');
-  const comanda = loadEntityFixture('Comanda.json');
   const extra = corePlan('TipPolicy', 'tipPolicyId', 'tipPolicyId');
   const plan: Ns5OntologyPlanDraft = {
     moduleName: 'comandaRestaurante5',
     businessDomain: 'Restaurant orders',
-    entities: [mesa, comanda.plan, extra],
+    entities: [mesa, planEntity('comandaRestaurante5', 'Comanda'), extra],
     relationships: [],
   };
   const mesaGate = validateNs5OntologyEntity(plan, emptyMdmDetail('Mesa'), ctx());
@@ -521,7 +515,7 @@ void test('isolated entity validation does not demand other journey-cited entiti
   assert.equal(mesaGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_JOURNEY_ENTITY' || issue.code === 'NS5_ONTOLOGY_ENTITY_UNCITED'), false);
   assert.deepEqual(mesaGate.uncitedEntities, []);
 
-  const comandaGate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(comanda.detail, 'Comanda'), ctx());
+  const comandaGate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'Comanda'), 'Comanda'), ctx());
   assert.equal(comandaGate.ok, true, comandaGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   assert.equal(comandaGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_JOURNEY_ENTITY'), false);
 
@@ -541,83 +535,41 @@ void test('isolated entity validation does not demand other journey-cited entiti
 });
 
 void test('n15 bindings require mdm endpoint [idField] and reject empty to.fieldIds', () => {
-  const fixture = loadBindingsFixture();
-  assert.match(fixture.derivedFrom, /comandaRestaurante2-e4-mdm-empty-fields/);
-  const comanda = loadEntityFixture('Comanda.json');
-  const cardapio = loadEntityFixture('ItemCardapio.json');
-  const mesa = mdmPlan('Mesa', 'Location', 'none', 'mesaId');
-  const itemComanda = corePlan('ItemComanda', 'itemComandaId', 'itemComandaId');
-  const pagamento = corePlan('Pagamento', 'pagamentoId', 'pagamentoId');
-  const plan: Ns5OntologyPlanDraft = {
+  const moduleArtifact = loadNs5Module('comandaRestaurante5');
+  const journeys = loadNs5Journeys('comandaRestaurante5');
+  const plan = normalizeNs5OntologyPlan(realPlan('comandaRestaurante5'), 'comandaRestaurante5', journeys);
+  const details = plan.entities.map(entity => normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', entity.entityId), entity.entityId));
+  const bindings = normalizeNs5OntologyBindings(realBindings('comandaRestaurante5'));
+  const good = validateNs5OntologyBindings(plan, details, bindings, {
     moduleName: 'comandaRestaurante5',
-    businessDomain: 'Restaurant orders',
-    entities: [
-      { ...mesa, storage: { ...mesa.storage, mdmType: 'comandaRestaurante5.Mesa' } },
-      { ...cardapio.plan, storage: { ...cardapio.plan.storage, mdmType: 'comandaRestaurante5.ItemCardapio' } },
-      comanda.plan,
-      itemComanda,
-      pagamento,
-    ],
-    relationships: [
-      { relationshipId: 'comandaBelongsToMesa', fromEntity: 'Comanda', toEntity: 'Mesa', type: 'manyToOne', required: true, persistence: { mode: 'crossStoreReference' } },
-      { relationshipId: 'itemComandaBelongsToComanda', fromEntity: 'ItemComanda', toEntity: 'Comanda', type: 'manyToOne', required: true, persistence: { mode: 'moduleReference' } },
-      { relationshipId: 'itemComandaReferencesItemCardapio', fromEntity: 'ItemComanda', toEntity: 'ItemCardapio', type: 'manyToOne', required: true, persistence: { mode: 'crossStoreReference' } },
-      { relationshipId: 'pagamentoClosesComanda', fromEntity: 'Pagamento', toEntity: 'Comanda', type: 'manyToOne', required: true, persistence: { mode: 'moduleReference' } },
-    ],
-  };
-  const details: Ns5OntologyEntityDraft[] = [
-    emptyMdmDetail('Mesa'),
-    normalizeNs5OntologyEntity(cardapio.detail, 'ItemCardapio'),
-    normalizeNs5OntologyEntity(comanda.detail, 'Comanda'),
-    {
-      entityId: 'ItemComanda',
-      fields: [
-        idField('ItemComanda', 'itemComandaId'),
-        { fieldId: 'comandaId', title: 'Comanda', type: 'uuid', required: true, description: 'Parent order.' },
-        { fieldId: 'itemCardapioId', title: 'Menu item', type: 'uuid', required: true, description: 'Selected product.' },
-      ],
-      lifecycleStates: [],
-      transitions: [],
-    },
-    {
-      entityId: 'Pagamento',
-      fields: [
-        idField('Pagamento', 'pagamentoId'),
-        { fieldId: 'comandaId', title: 'Comanda', type: 'uuid', required: true, description: 'Closed order.' },
-      ],
-      lifecycleStates: [],
-      transitions: [],
-    },
-  ];
-  const journeys = [{
-    business: {
-      ...FECHAR.business,
-      steps: [
-        ...FECHAR.business.steps,
-        { stepId: 'lancar', kind: 'act' as const, entity: 'ItemComanda', title: 'Add', description: 'Added.' },
-        { stepId: 'pagar', kind: 'act' as const, entity: 'Pagamento', title: 'Pay', description: 'Paid.' },
-        { stepId: 'cardapio', kind: 'locate' as const, entity: 'ItemCardapio', title: 'Pick', description: 'Picked.' },
-      ],
-    },
-  }];
-  const good = validateNs5OntologyBindings(plan, details, normalizeNs5OntologyBindings(fixture), ctx({ journeys }));
+    actors: moduleArtifact.actors,
+    journeys,
+  });
   assert.equal(good.ok, true, good.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 
   const emptyTo = normalizeNs5OntologyBindings({
-    bindings: fixture.bindings.map(binding => binding.relationshipId === 'comandaBelongsToMesa'
+    bindings: bindings.bindings.map(binding => binding.relationshipId === 'comandaMesa'
       ? { ...binding, realization: { ...binding.realization, to: { entityId: 'Mesa', fieldIds: [] } } }
       : binding),
   });
-  const emptyGate = validateNs5OntologyBindings(plan, details, emptyTo, ctx({ journeys }));
+  const emptyGate = validateNs5OntologyBindings(plan, details, emptyTo, {
+    moduleName: 'comandaRestaurante5',
+    actors: moduleArtifact.actors,
+    journeys,
+  });
   assert.equal(emptyGate.ok, false);
   assert.ok(emptyGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_RELATIONSHIP_FIELDS_REQUIRED'));
 
   const wrongId = normalizeNs5OntologyBindings({
-    bindings: fixture.bindings.map(binding => binding.relationshipId === 'comandaBelongsToMesa'
+    bindings: bindings.bindings.map(binding => binding.relationshipId === 'comandaMesa'
       ? { ...binding, realization: { ...binding.realization, to: { entityId: 'Mesa', fieldIds: ['name'] } } }
       : binding),
   });
-  const wrongGate = validateNs5OntologyBindings(plan, details, wrongId, ctx({ journeys }));
+  const wrongGate = validateNs5OntologyBindings(plan, details, wrongId, {
+    moduleName: 'comandaRestaurante5',
+    actors: moduleArtifact.actors,
+    journeys,
+  });
   assert.equal(wrongGate.ok, false);
   assert.ok(wrongGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_RELATIONSHIP_MDM_ENDPOINT_ID'));
 });

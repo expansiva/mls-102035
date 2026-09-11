@@ -1,0 +1,76 @@
+{
+  "entityId": "Presupuesto",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único del presupuesto."
+    },
+    {
+      "fieldId": "valorCliente",
+      "title": "Valor del presupuesto",
+      "type": "money",
+      "required": true,
+      "description": "Importe propuesto al cliente por la reparación."
+    },
+    {
+      "fieldId": "piezasNecesarias",
+      "title": "Piezas necesarias",
+      "type": "json",
+      "required": false,
+      "description": "Referencias a las piezas necesarias incluidas en el presupuesto."
+    },
+    {
+      "fieldId": "status",
+      "title": "Estado",
+      "type": "string",
+      "required": true,
+      "enum": [
+        "pendingResponse",
+        "approved",
+        "rejected"
+      ],
+      "description": "Estado de la respuesta del cliente al presupuesto."
+    }
+  ],
+  "lifecycleStates": [
+    {
+      "state": "pendingResponse",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "approved",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "rejected",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "aprobarPresupuesto",
+      "from": [
+        "pendingResponse"
+      ],
+      "to": "approved",
+      "by": [
+        "cliente"
+      ],
+      "description": "El cliente aprueba el presupuesto desde el portal y autoriza la reparación."
+    },
+    {
+      "transitionId": "rechazarPresupuesto",
+      "from": [
+        "pendingResponse"
+      ],
+      "to": "rejected",
+      "by": [
+        "cliente"
+      ],
+      "description": "El cliente rechaza el presupuesto desde el portal; la orden queda cerrada como rechazada y el aparato disponible para retiro."
+    }
+  ]
+}

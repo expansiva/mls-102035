@@ -1,0 +1,1042 @@
+{
+  "plan": {
+    "moduleName": "ordenServicio5",
+    "businessDomain": "Gestión de órdenes de servicio técnico para aparatos electrónicos, desde la recepción hasta la entrega.",
+    "entities": [
+      {
+        "entityId": "DefectoInformado",
+        "title": "Defecto informado",
+        "description": "Manifestación o problema del aparato informado por el cliente al momento de la recepción.",
+        "kind": "supporting",
+        "party": "none",
+        "displayField": "descripcion",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.DefectoInformado"
+        }
+      },
+      {
+        "entityId": "FotoOrden",
+        "title": "Foto de la orden",
+        "description": "Imagen adjunta que documenta el aparato o su condición al recibirlo.",
+        "kind": "supporting",
+        "party": "none",
+        "displayField": "nombreArchivo",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.FotoOrden"
+        }
+      },
+      {
+        "entityId": "Diagnostico",
+        "title": "Diagnóstico",
+        "description": "Resultado técnico del análisis del aparato y de la causa del defecto reportado.",
+        "kind": "supporting",
+        "party": "none",
+        "displayField": "descripcion",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.Diagnostico"
+        }
+      },
+      {
+        "entityId": "PiezaNecesaria",
+        "title": "Pieza necesaria",
+        "description": "Pieza o insumo identificado para la reparación, incluyendo su costo interno.",
+        "kind": "supporting",
+        "party": "none",
+        "displayField": "nombrePieza",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.PiezaNecesaria"
+        }
+      },
+      {
+        "entityId": "Reparacion",
+        "title": "Reparación",
+        "description": "Registro de las tareas técnicas efectivamente realizadas sobre el aparato autorizado.",
+        "kind": "event",
+        "party": "none",
+        "displayField": "detalleTrabajo",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.Reparacion"
+        }
+      },
+      {
+        "entityId": "EntregaAparato",
+        "title": "Entrega de aparato",
+        "description": "Constancia de la entrega del aparato al cliente al finalizar la gestión.",
+        "kind": "event",
+        "party": "none",
+        "displayField": "fechaEntrega",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.EntregaAparato"
+        }
+      },
+      {
+        "entityId": "Presupuesto",
+        "title": "Presupuesto",
+        "description": "Propuesta económica comunicada al cliente para autorizar o rechazar la reparación.",
+        "kind": "core",
+        "party": "none",
+        "displayField": "valorCliente",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.Presupuesto"
+        }
+      },
+      {
+        "entityId": "OrdenServicio",
+        "title": "Orden de servicio",
+        "description": "Gestión del servicio técnico de un aparato recibido, desde su recepción hasta su entrega o retiro.",
+        "kind": "core",
+        "party": "none",
+        "displayField": "numeroOrden",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "ordenServicio5.OrdenServicio"
+        }
+      },
+      {
+        "entityId": "Cliente",
+        "title": "Cliente",
+        "description": "Persona que presenta el aparato, consulta su orden en el portal y responde al presupuesto.",
+        "kind": "mdm",
+        "party": "person",
+        "mdmSubtype": "Person",
+        "displayField": "name",
+        "storage": {
+          "target": "mdm",
+          "scope": "organization",
+          "idField": "id",
+          "mdmType": "ordenServicio5.Cliente"
+        }
+      },
+      {
+        "entityId": "Aparato",
+        "title": "Aparato",
+        "description": "Equipo electrónico recibido para análisis, reparación y posterior entrega o retiro.",
+        "kind": "mdm",
+        "party": "none",
+        "mdmSubtype": "AssetEquipment",
+        "displayField": "serialNumber",
+        "storage": {
+          "target": "mdm",
+          "scope": "organization",
+          "idField": "id",
+          "mdmType": "ordenServicio5.Aparato"
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "relationshipId": "ordenTieneCliente",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Cliente",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "crossStoreReference"
+        }
+      },
+      {
+        "relationshipId": "ordenTieneAparato",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Aparato",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "crossStoreReference"
+        }
+      },
+      {
+        "relationshipId": "ordenRegistraDefectoInformado",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "DefectoInformado",
+        "type": "oneToOne",
+        "required": true,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "ordenIncluyeFotos",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "FotoOrden",
+        "type": "oneToMany",
+        "required": false,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "ordenTieneDiagnostico",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Diagnostico",
+        "type": "oneToOne",
+        "required": false,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "ordenTienePresupuesto",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Presupuesto",
+        "type": "oneToOne",
+        "required": false,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "presupuestoIncluyePiezasNecesarias",
+        "fromEntity": "Presupuesto",
+        "toEntity": "PiezaNecesaria",
+        "type": "oneToMany",
+        "required": false,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "ordenRegistraReparacion",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "Reparacion",
+        "type": "oneToOne",
+        "required": false,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "ordenRegistraEntregaAparato",
+        "fromEntity": "OrdenServicio",
+        "toEntity": "EntregaAparato",
+        "type": "oneToOne",
+        "required": false,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      }
+    ]
+  },
+  "entities": [
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "DefectoInformado",
+      "title": "Defecto informado",
+      "description": "Manifestación o problema del aparato informado por el cliente al momento de la recepción.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "descripcion",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único del defecto informado."
+        },
+        {
+          "fieldId": "descripcion",
+          "title": "Descripción",
+          "type": "text",
+          "required": true,
+          "description": "Descripción del problema o manifestación del aparato informada por el cliente."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "FotoOrden",
+      "title": "Foto de la orden",
+      "description": "Imagen adjunta que documenta el aparato o su condición al recibirlo.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "nombreArchivo",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único de la foto de la orden."
+        },
+        {
+          "fieldId": "nombreArchivo",
+          "title": "Nombre del archivo",
+          "type": "string",
+          "required": true,
+          "description": "Nombre del archivo de imagen adjunto a la orden."
+        },
+        {
+          "fieldId": "urlArchivo",
+          "title": "Ubicación del archivo",
+          "type": "string",
+          "required": true,
+          "description": "Ubicación donde se almacena la imagen adjunta."
+        },
+        {
+          "fieldId": "tipoMime",
+          "title": "Tipo de archivo",
+          "type": "string",
+          "required": true,
+          "description": "Tipo MIME de la imagen adjunta."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "Diagnostico",
+      "title": "Diagnóstico",
+      "description": "Resultado técnico del análisis del aparato y de la causa del defecto reportado.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "descripcion",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único del diagnóstico."
+        },
+        {
+          "fieldId": "descripcion",
+          "title": "Descripción del diagnóstico",
+          "type": "text",
+          "required": true,
+          "description": "Descripción técnica del análisis realizado y de la causa del defecto informado."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "PiezaNecesaria",
+      "title": "Pieza necesaria",
+      "description": "Pieza o insumo identificado para la reparación, incluyendo su costo interno.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "nombrePieza",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único de la pieza necesaria."
+        },
+        {
+          "fieldId": "nombrePieza",
+          "title": "Nombre de la pieza",
+          "type": "string",
+          "required": true,
+          "description": "Nombre de la pieza o insumo necesario para la reparación."
+        },
+        {
+          "fieldId": "cantidad",
+          "title": "Cantidad",
+          "type": "integer",
+          "required": true,
+          "description": "Cantidad requerida de esta pieza o insumo."
+        },
+        {
+          "fieldId": "costoInterno",
+          "title": "Costo interno",
+          "type": "money",
+          "required": true,
+          "description": "Costo interno de la pieza o insumo para el servicio técnico."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "Reparacion",
+      "title": "Reparación",
+      "description": "Registro de las tareas técnicas efectivamente realizadas sobre el aparato autorizado.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "detalleTrabajo",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único del registro de reparación."
+        },
+        {
+          "fieldId": "detalleTrabajo",
+          "title": "Detalle del trabajo realizado",
+          "type": "text",
+          "required": true,
+          "description": "Describe las tareas técnicas efectuadas durante la reparación del aparato."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "EntregaAparato",
+      "title": "Entrega de aparato",
+      "description": "Constancia de la entrega del aparato al cliente al finalizar la gestión.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "fechaEntrega",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único de la constancia de entrega del aparato."
+        },
+        {
+          "fieldId": "fechaEntrega",
+          "title": "Fecha y hora de entrega",
+          "type": "datetime",
+          "required": true,
+          "description": "Fecha y hora en que se entrega el aparato al cliente."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "Presupuesto",
+      "title": "Presupuesto",
+      "description": "Propuesta económica comunicada al cliente para autorizar o rechazar la reparación.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "valorCliente",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único del presupuesto."
+        },
+        {
+          "fieldId": "valorCliente",
+          "title": "Valor del presupuesto",
+          "type": "money",
+          "required": true,
+          "description": "Importe propuesto al cliente por la reparación."
+        },
+        {
+          "fieldId": "piezasNecesarias",
+          "title": "Piezas necesarias",
+          "type": "json",
+          "required": false,
+          "description": "Referencias a las piezas necesarias incluidas en el presupuesto."
+        },
+        {
+          "fieldId": "status",
+          "title": "Estado",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "pendingResponse",
+            "approved",
+            "rejected"
+          ],
+          "description": "Estado de la respuesta del cliente al presupuesto."
+        }
+      ],
+      "lifecycleStates": [
+        {
+          "state": "pendingResponse",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "approved",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "rejected",
+          "reachedBy": "actor"
+        }
+      ],
+      "transitions": [
+        {
+          "transitionId": "aprobarPresupuesto",
+          "from": [
+            "pendingResponse"
+          ],
+          "to": "approved",
+          "by": [
+            "cliente"
+          ],
+          "description": "El cliente aprueba el presupuesto desde el portal y autoriza la reparación."
+        },
+        {
+          "transitionId": "rechazarPresupuesto",
+          "from": [
+            "pendingResponse"
+          ],
+          "to": "rejected",
+          "by": [
+            "cliente"
+          ],
+          "description": "El cliente rechaza el presupuesto desde el portal; la orden queda cerrada como rechazada y el aparato disponible para retiro."
+        }
+      ],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "OrdenServicio",
+      "title": "Orden de servicio",
+      "description": "Gestión del servicio técnico de un aparato recibido, desde su recepción hasta su entrega o retiro.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "numeroOrden",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único de la orden de servicio."
+        },
+        {
+          "fieldId": "numeroOrden",
+          "title": "Número de orden",
+          "type": "string",
+          "required": true,
+          "description": "Número visible que identifica la orden de servicio."
+        },
+        {
+          "fieldId": "clienteId",
+          "title": "Cliente",
+          "type": "uuid",
+          "required": true,
+          "description": "Cliente seleccionado que presentó el aparato para el servicio."
+        },
+        {
+          "fieldId": "aparatoId",
+          "title": "Aparato",
+          "type": "uuid",
+          "required": true,
+          "description": "Aparato seleccionado que fue recibido para el servicio técnico."
+        },
+        {
+          "fieldId": "defectoInformadoId",
+          "title": "Defecto informado",
+          "type": "uuid",
+          "required": true,
+          "description": "Registro seleccionado con el defecto informado por el cliente."
+        },
+        {
+          "fieldId": "fotoOrdenIds",
+          "title": "Fotos de la orden",
+          "type": "json",
+          "required": false,
+          "description": "Referencias a las fotos asociadas a la recepción del aparato."
+        },
+        {
+          "fieldId": "diagnosticoId",
+          "title": "Diagnóstico",
+          "type": "uuid",
+          "required": false,
+          "description": "Diagnóstico técnico seleccionado para la orden."
+        },
+        {
+          "fieldId": "presupuestoId",
+          "title": "Presupuesto",
+          "type": "uuid",
+          "required": false,
+          "description": "Presupuesto seleccionado que se presenta al cliente."
+        },
+        {
+          "fieldId": "reparacionId",
+          "title": "Reparación",
+          "type": "uuid",
+          "required": false,
+          "description": "Registro seleccionado de la reparación realizada."
+        },
+        {
+          "fieldId": "entregaAparatoId",
+          "title": "Entrega del aparato",
+          "type": "uuid",
+          "required": false,
+          "description": "Registro seleccionado de la entrega del aparato al cliente."
+        },
+        {
+          "fieldId": "status",
+          "title": "Estado",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "received",
+            "quoted",
+            "approved",
+            "rejected",
+            "readyForPickup",
+            "completed"
+          ],
+          "description": "Estado actual de la orden de servicio."
+        }
+      ],
+      "lifecycleStates": [
+        {
+          "state": "received",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "quoted",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "approved",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "rejected",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "readyForPickup",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "completed",
+          "reachedBy": "actor"
+        }
+      ],
+      "transitions": [
+        {
+          "transitionId": "quoteOrder",
+          "from": [
+            "received"
+          ],
+          "to": "quoted",
+          "by": [
+            "tecnico"
+          ],
+          "description": "El técnico registra el diagnóstico y el presupuesto para poner la orden a disposición del cliente."
+        },
+        {
+          "transitionId": "approveQuote",
+          "from": [
+            "quoted"
+          ],
+          "to": "approved",
+          "by": [
+            "cliente"
+          ],
+          "description": "El cliente aprueba el presupuesto y autoriza la reparación."
+        },
+        {
+          "transitionId": "rejectQuote",
+          "from": [
+            "quoted"
+          ],
+          "to": "rejected",
+          "by": [
+            "cliente"
+          ],
+          "description": "El cliente rechaza el presupuesto, cierra la orden como rechazada y deja el aparato disponible para retiro."
+        },
+        {
+          "transitionId": "markReadyForPickup",
+          "from": [
+            "approved"
+          ],
+          "to": "readyForPickup",
+          "by": [
+            "tecnico"
+          ],
+          "description": "El técnico registra la reparación y marca el aparato como listo para entregar."
+        },
+        {
+          "transitionId": "completeRejectedOrder",
+          "from": [
+            "rejected"
+          ],
+          "to": "completed",
+          "by": [
+            "recepcionista"
+          ],
+          "description": "El recepcionista entrega el aparato retirado y finaliza la orden rechazada."
+        },
+        {
+          "transitionId": "completeRepairedOrder",
+          "from": [
+            "readyForPickup"
+          ],
+          "to": "completed",
+          "by": [
+            "recepcionista"
+          ],
+          "description": "El recepcionista entrega el aparato reparado y finaliza la orden."
+        }
+      ],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "Cliente",
+      "title": "Cliente",
+      "description": "Persona que presenta el aparato, consulta su orden en el portal y responde al presupuesto.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "fields": [],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Cliente"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "ordenServicio5",
+      "entityId": "Aparato",
+      "title": "Aparato",
+      "description": "Equipo electrónico recibido para análisis, reparación y posterior entrega o retiro.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetEquipment",
+      "displayField": "serialNumber",
+      "fields": [],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio5.Aparato"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "ordenTieneCliente",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Cliente",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "clienteId"
+          ]
+        },
+        "to": {
+          "entityId": "Cliente",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenTieneAparato",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Aparato",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "aparatoId"
+          ]
+        },
+        "to": {
+          "entityId": "Aparato",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraDefectoInformado",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "DefectoInformado",
+      "type": "oneToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "defectoInformadoId"
+          ]
+        },
+        "to": {
+          "entityId": "DefectoInformado",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenIncluyeFotos",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "FotoOrden",
+      "type": "oneToMany",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldCollection",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "fotoOrdenIds"
+          ]
+        },
+        "to": {
+          "entityId": "FotoOrden",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenTieneDiagnostico",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Diagnostico",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "diagnosticoId"
+          ]
+        },
+        "to": {
+          "entityId": "Diagnostico",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenTienePresupuesto",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Presupuesto",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "presupuestoId"
+          ]
+        },
+        "to": {
+          "entityId": "Presupuesto",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "presupuestoIncluyePiezasNecesarias",
+      "fromEntity": "Presupuesto",
+      "toEntity": "PiezaNecesaria",
+      "type": "oneToMany",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldCollection",
+        "ownerEntity": "Presupuesto",
+        "from": {
+          "entityId": "Presupuesto",
+          "fieldIds": [
+            "piezasNecesarias"
+          ]
+        },
+        "to": {
+          "entityId": "PiezaNecesaria",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraReparacion",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Reparacion",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "reparacionId"
+          ]
+        },
+        "to": {
+          "entityId": "Reparacion",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraEntregaAparato",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "EntregaAparato",
+      "type": "oneToOne",
+      "required": false,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "entregaAparatoId"
+          ]
+        },
+        "to": {
+          "entityId": "EntregaAparato",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

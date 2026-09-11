@@ -1,0 +1,204 @@
+/// <mls fileReference="_102047_/l4/ordenServicio5/ontology/OrdenServicio.defs.ts" enhancement="_blank"/>
+
+import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+
+export const ordenServicio5EntityOrdenServicio = {
+  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "moduleName": "ordenServicio5",
+  "entityId": "OrdenServicio",
+  "title": "Orden de servicio",
+  "description": "Gestión del servicio técnico de un aparato recibido, desde su recepción hasta su entrega o retiro.",
+  "kind": "core",
+  "party": "none",
+  "displayField": "numeroOrden",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único de la orden de servicio."
+    },
+    {
+      "fieldId": "numeroOrden",
+      "title": "Número de orden",
+      "type": "string",
+      "required": true,
+      "description": "Número visible que identifica la orden de servicio."
+    },
+    {
+      "fieldId": "clienteId",
+      "title": "Cliente",
+      "type": "uuid",
+      "required": true,
+      "description": "Cliente seleccionado que presentó el aparato para el servicio."
+    },
+    {
+      "fieldId": "aparatoId",
+      "title": "Aparato",
+      "type": "uuid",
+      "required": true,
+      "description": "Aparato seleccionado que fue recibido para el servicio técnico."
+    },
+    {
+      "fieldId": "defectoInformadoId",
+      "title": "Defecto informado",
+      "type": "uuid",
+      "required": true,
+      "description": "Registro seleccionado con el defecto informado por el cliente."
+    },
+    {
+      "fieldId": "fotoOrdenIds",
+      "title": "Fotos de la orden",
+      "type": "json",
+      "required": false,
+      "description": "Referencias a las fotos asociadas a la recepción del aparato."
+    },
+    {
+      "fieldId": "diagnosticoId",
+      "title": "Diagnóstico",
+      "type": "uuid",
+      "required": false,
+      "description": "Diagnóstico técnico seleccionado para la orden."
+    },
+    {
+      "fieldId": "presupuestoId",
+      "title": "Presupuesto",
+      "type": "uuid",
+      "required": false,
+      "description": "Presupuesto seleccionado que se presenta al cliente."
+    },
+    {
+      "fieldId": "reparacionId",
+      "title": "Reparación",
+      "type": "uuid",
+      "required": false,
+      "description": "Registro seleccionado de la reparación realizada."
+    },
+    {
+      "fieldId": "entregaAparatoId",
+      "title": "Entrega del aparato",
+      "type": "uuid",
+      "required": false,
+      "description": "Registro seleccionado de la entrega del aparato al cliente."
+    },
+    {
+      "fieldId": "status",
+      "title": "Estado",
+      "type": "string",
+      "required": true,
+      "enum": [
+        "received",
+        "quoted",
+        "approved",
+        "rejected",
+        "readyForPickup",
+        "completed"
+      ],
+      "description": "Estado actual de la orden de servicio."
+    }
+  ],
+  "lifecycleStates": [
+    {
+      "state": "received",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "quoted",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "approved",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "rejected",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "readyForPickup",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "completed",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "quoteOrder",
+      "from": [
+        "received"
+      ],
+      "to": "quoted",
+      "by": [
+        "tecnico"
+      ],
+      "description": "El técnico registra el diagnóstico y el presupuesto para poner la orden a disposición del cliente."
+    },
+    {
+      "transitionId": "approveQuote",
+      "from": [
+        "quoted"
+      ],
+      "to": "approved",
+      "by": [
+        "cliente"
+      ],
+      "description": "El cliente aprueba el presupuesto y autoriza la reparación."
+    },
+    {
+      "transitionId": "rejectQuote",
+      "from": [
+        "quoted"
+      ],
+      "to": "rejected",
+      "by": [
+        "cliente"
+      ],
+      "description": "El cliente rechaza el presupuesto, cierra la orden como rechazada y deja el aparato disponible para retiro."
+    },
+    {
+      "transitionId": "markReadyForPickup",
+      "from": [
+        "approved"
+      ],
+      "to": "readyForPickup",
+      "by": [
+        "tecnico"
+      ],
+      "description": "El técnico registra la reparación y marca el aparato como listo para entregar."
+    },
+    {
+      "transitionId": "completeRejectedOrder",
+      "from": [
+        "rejected"
+      ],
+      "to": "completed",
+      "by": [
+        "recepcionista"
+      ],
+      "description": "El recepcionista entrega el aparato retirado y finaliza la orden rechazada."
+    },
+    {
+      "transitionId": "completeRepairedOrder",
+      "from": [
+        "readyForPickup"
+      ],
+      "to": "completed",
+      "by": [
+        "recepcionista"
+      ],
+      "description": "El recepcionista entrega el aparato reparado y finaliza la orden."
+    }
+  ],
+  "storage": {
+    "target": "moduleDatabase",
+    "scope": "module",
+    "idField": "id"
+  }
+} as const satisfies Ns5OntologyEntityArtifact;
+
+export type OrdenServicio5EntityOrdenServicioType = typeof ordenServicio5EntityOrdenServicio;
+
+export default ordenServicio5EntityOrdenServicio;

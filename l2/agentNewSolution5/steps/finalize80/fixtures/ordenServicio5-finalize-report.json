@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "2026-09-10-ns5-finalize-report-v1",
+  "moduleName": "ordenServicio5",
+  "finalStatus": "passed",
+  "checks": [
+    {
+      "checkId": "I1",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I2",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I3",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I4",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I5",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I6",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "counts": {
+    "actors": 3,
+    "journeys": 5,
+    "entities": 10,
+    "rules": 7,
+    "processes": 1,
+    "profiles": 3,
+    "grants": 4
+  }
+}

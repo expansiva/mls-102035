@@ -10,6 +10,7 @@ import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { createAgent } from '/_102035_/l2/agentNewSolution5/agentNewSolution5.js';
 import { markNs5Complete, nextNs5RunNn } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { buildSolutionRegistryModuleBlock } from '/_102035_/l2/solution/lib.js';
 import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import { collectNs5LifecycleSignal } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
@@ -22,15 +23,15 @@ import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/ga
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-function loadSources(name: string): Ns5OracleSources {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', name), 'utf8')) as Ns5OracleSources;
+function loadSources(name: 'comandaRestaurante.json' | 'ordenServicio.json'): Ns5OracleSources {
+  return loadNs5OracleSources(name === 'comandaRestaurante.json' ? 'comandaRestaurante5' : 'ordenServicio5');
 }
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-void test('converted comandaRestaurante evidence passes I1–I6 with no warnings', () => {
+void test('real comandaRestaurante5 sources pass I1–I6 with no warnings', () => {
   const report = runNs5Oracle(loadSources('comandaRestaurante.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
@@ -38,7 +39,7 @@ void test('converted comandaRestaurante evidence passes I1–I6 with no warnings
   assert.ok(report.checks.every(check => check.status === 'passed'));
 });
 
-void test('converted ordenServicio evidence passes I1–I6 with no warnings', () => {
+void test('real ordenServicio5 sources pass I1–I6 with no warnings', () => {
   const report = runNs5Oracle(loadSources('ordenServicio.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
@@ -71,7 +72,7 @@ void test('I2 fails when a later act has no matching transition', () => {
   }
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
-  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I2' && /closeTab/.test(issue.message)));
+  assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I2' && /fecharComanda/.test(issue.message)));
   assert.equal(report.errors.every(issue => issue.code === 'NS5_FINALIZE_I2'), true, report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
 });
 
@@ -85,15 +86,16 @@ void test('I2 fails a decide without two transitions from the same origin (task_
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.equal(report.errors.every(issue => issue.code === 'NS5_FINALIZE_I2'), true, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
-  const decide = report.errors.find(issue => /decideQuote/.test(issue.message));
+  const decide = report.errors.find(issue => /decidirRespuestaPresupuesto/.test(issue.message));
   assert.ok(decide, report.errors.map(issue => `${issue.path}: ${issue.message}`).join('\n'));
   assert.match(decide.message, /two transitions from the same origin state/);
 });
 
 void test('I3 fails when an actor has no profile', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
-  sources.access.profiles = sources.access.profiles.filter(profile => profile.profileId !== 'caixa');
-  sources.access.grants = sources.access.grants.filter(grant => grant.profileRef !== 'caixa');
+  const dropped = sources.access.profiles.filter(profile => profile.actorRefs.includes('caixa')).map(profile => profile.profileId);
+  sources.access.profiles = sources.access.profiles.filter(profile => !dropped.includes(profile.profileId));
+  sources.access.grants = sources.access.grants.filter(grant => !dropped.includes(grant.profileRef));
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I3' && /caixa/.test(issue.message)));
@@ -155,7 +157,7 @@ void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
   });
   assert.deepEqual(
     block.roles.map(role => `${role.mdmSubtype} <- ${role.role}`).sort(),
-    ['Location <- comandaRestaurante.Mesa', 'Product <- comandaRestaurante.ItemCardapio'],
+    ['Location <- comandaRestaurante5.Mesa', 'Product <- comandaRestaurante5.ItemCardapio'],
   );
   assert.deepEqual(block.actors.map(actor => actor.actorId), ['garcom', 'caixa']);
 });

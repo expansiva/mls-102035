@@ -1,0 +1,84 @@
+{
+  "entityId": "ItemComanda",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do item da comanda."
+    },
+    {
+      "fieldId": "descricao",
+      "title": "Descrição",
+      "type": "string",
+      "required": true,
+      "description": "Descrição do item pedido, registrada conforme o cardápio no momento do lançamento."
+    },
+    {
+      "fieldId": "comanda",
+      "title": "Comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Comanda aberta à qual este lançamento pertence."
+    },
+    {
+      "fieldId": "itemCardapio",
+      "title": "Item do cardápio",
+      "type": "uuid",
+      "required": true,
+      "description": "Item do cardápio selecionado para o lançamento."
+    },
+    {
+      "fieldId": "quantidade",
+      "title": "Quantidade",
+      "type": "integer",
+      "required": true,
+      "description": "Quantidade solicitada do item do cardápio."
+    },
+    {
+      "fieldId": "precoUnitario",
+      "title": "Preço unitário",
+      "type": "money",
+      "required": true,
+      "description": "Preço unitário do item no momento em que foi lançado."
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação",
+      "type": "string",
+      "required": true,
+      "enum": [
+        "lancado",
+        "cancelado"
+      ],
+      "description": "Situação do lançamento na comanda."
+    }
+  ],
+  "details": {
+    "valorTotal": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+  },
+  "lifecycleStates": [
+    {
+      "state": "lancado",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "cancelado",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "cancelarItem",
+      "from": [
+        "lancado"
+      ],
+      "to": "cancelado",
+      "by": [
+        "garcom"
+      ],
+      "description": "O garçom cancela um item lançado por engano enquanto a comanda está aberta."
+    }
+  ]
+}

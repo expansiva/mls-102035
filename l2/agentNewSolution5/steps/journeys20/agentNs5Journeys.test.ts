@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
 import { buildNs5JourneysHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
 import {
@@ -29,19 +30,10 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-interface DerivedFixture {
-  derivedFrom: string;
-  journey: Ns5JourneyDraft;
-}
-
 function loadSchema(): Record<string, unknown> {
   return JSON.parse(
     readFileSync(path.join(HERE, '../../schemas/journey.schema.json'), 'utf8'),
   ) as Record<string, unknown>;
-}
-
-function loadDerived(name: string): DerivedFixture {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', name), 'utf8')) as DerivedFixture;
 }
 
 const ACTORS: Ns5ModuleActor[] = [
@@ -107,26 +99,28 @@ void test('journeys20 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
-void test('derived fecharComanda fixture is business-only and passes the gate', () => {
-  const fixture = loadDerived('fecharComanda.json');
-  assert.match(fixture.derivedFrom, /fecharComanda\.defs\.ts$/);
-  assert.equal('useRules' in fixture.journey.business, false);
-  assert.equal('featureRefs' in (fixture.journey.business.steps[2] || {}), false);
-  assert.deepEqual(fixture.journey.business.steps[2]?.affects, ['Mesa']);
-  const journeys = drafts({ journeys: [fixture.journey] });
-  const gate = validateNs5Journeys(journeys, { actors: ACTORS });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-  assert.equal(countNs5DecideSteps(journeys), 0);
-});
-
-void test('derived consultarYDecidirPresupuesto fixture keeps decide and passes the gate', () => {
-  const fixture = loadDerived('consultarYDecidirPresupuesto.json');
-  assert.match(fixture.derivedFrom, /consultarYDecidirPresupuesto\.defs\.ts$/);
-  assert.equal(fixture.journey.business.steps[2]?.kind, 'decide');
-  const journeys = drafts({ journeys: [fixture.journey] });
-  const gate = validateNs5Journeys(journeys, { actors: [CLIENT] });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-  assert.equal(countNs5DecideSteps(journeys), 1);
+void test('real journeys20 drafts of both runs pass the gate', () => {
+  const actorsByModule: Record<string, Ns5ModuleActor[]> = {
+    comandaRestaurante5: ACTORS,
+    ordenServicio5: [
+      { actorId: 'recepcionista', kind: 'internal', origin: 'named', title: 'Reception', description: 'Receives devices.' },
+      { actorId: 'tecnico', kind: 'internal', origin: 'named', title: 'Technician', description: 'Diagnoses and repairs.' },
+      CLIENT,
+    ],
+  };
+  for (const moduleName of NS5_REAL_MODULES) {
+    const draft = loadNs5FixtureJson<{ journeys: unknown[] }>('steps/journeys20/fixtures', `${moduleName}-draft.json`);
+    const journeys = drafts(draft);
+    const gate = validateNs5Journeys(journeys, { actors: actorsByModule[moduleName], moduleName });
+    assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
+    assert.equal(journeys.every(journey => !('useRules' in journey.business)), true, moduleName);
+  }
+  const comanda = drafts(loadNs5FixtureJson('steps/journeys20/fixtures', 'comandaRestaurante5-draft.json'));
+  assert.equal(countNs5DecideSteps(comanda), 0);
+  const orden = drafts(loadNs5FixtureJson('steps/journeys20/fixtures', 'ordenServicio5-draft.json'));
+  assert.equal(countNs5DecideSteps(orden), 1);
+  const decide = orden.flatMap(journey => journey.business.steps).find(step => step.kind === 'decide');
+  assert.equal(decide?.stepId, 'decidirRespuestaPresupuesto');
 });
 
 void test('normalize + gate accept a valid payload without decide', () => {
@@ -233,7 +227,9 @@ void test('kind system stays even with no exclusive step', () => {
 });
 
 void test('named external with exclusive decide is kept', () => {
-  const fixture = loadDerived('consultarYDecidirPresupuesto.json');
+  const orden = loadNs5FixtureJson<{ journeys: unknown[] }>('steps/journeys20/fixtures', 'ordenServicio5-draft.json');
+  const clienteJourney = drafts(orden).find(journey => journey.business.actorRef === 'cliente');
+  assert.ok(clienteJourney);
   const journeys = drafts({
     journeys: [
       validJourney({
@@ -247,7 +243,7 @@ void test('named external with exclusive decide is kept', () => {
           outcome: { statement: 'Opened.', evidence: ['Opened.'] },
         },
       }),
-      fixture.journey,
+      clienteJourney,
     ],
   });
   const dropped = applyNs5InferredActorDrop(journeys, [...ACTORS, CLIENT]);

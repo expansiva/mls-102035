@@ -14,9 +14,17 @@ interface KeyEntry { reader: string; since: string }
 const TYPES = fileURLToPath(new URL('../solution/types.ts', import.meta.url));
 
 const CONTRACTS: Record<string, { file: string; name: string }> = {
+  Ns5ModuleActor: { file: TYPES, name: 'Ns5ModuleActor' },
+  Ns5ModuleArtifact: { file: TYPES, name: 'Ns5ModuleArtifact' },
+  Ns5JourneyStep: { file: TYPES, name: 'Ns5JourneyStep' },
+  Ns5JourneyArtifact: { file: TYPES, name: 'Ns5JourneyArtifact' },
+  Ns5SystemDecision: { file: TYPES, name: 'Ns5SystemDecision' },
+  Ns5JourneyIndexEntry: { file: TYPES, name: 'Ns5JourneyIndexEntry' },
+  Ns5JourneyIndexArtifact: { file: TYPES, name: 'Ns5JourneyIndexArtifact' },
   Ns5OntologyEntityArtifact: { file: TYPES, name: 'Ns5OntologyEntityArtifact' },
   Ns5OntologyField: { file: TYPES, name: 'Ns5OntologyField' },
   Ns5OntologyRelationship: { file: TYPES, name: 'Ns5OntologyRelationship' },
+  Ns5OntologyIndexArtifact: { file: TYPES, name: 'Ns5OntologyIndexArtifact' },
   Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
   Ns5RulesArtifact: { file: TYPES, name: 'Ns5RulesArtifact' },
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
@@ -34,6 +42,56 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
+  Ns5ModuleActor: {
+    actorId: { reader: 'steps/journeys20/gate.ts, steps/access60/gate.ts, finalize80 I3', since: '2026-09-10' },
+    kind: { reader: 'steps/journeys20/gate.ts, steps/integration70/contracts.ts', since: '2026-09-10' },
+    origin: { reader: 'steps/journeys20/gate.ts (inferred-actor drop)', since: '2026-09-10' },
+    title: { reader: 'planner / UI', since: '2026-09-10' },
+    description: { reader: 'planner / UI', since: '2026-09-10' },
+  },
+  Ns5ModuleArtifact: {
+    schemaVersion: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'every later step and the registry', since: '2026-09-10' },
+    title: { reader: 'planner / UI', since: '2026-09-10' },
+    userLanguage: { reader: 'steps/module10/gate.ts, NS4_PHRASES', since: '2026-09-10' },
+    productLanguages: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
+    defaultLanguage: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
+    sourcePrompt: { reader: 'resume and /rebuild all', since: '2026-09-10' },
+    actors: { reader: 'steps/journeys20, steps/access60, finalize80', since: '2026-09-10' },
+    scope: { reader: 'planner / UI', since: '2026-09-10' },
+  },
+  Ns5JourneyStep: {
+    stepId: { reader: 'steps/workflows50/gate.ts, finalize80', since: '2026-09-10' },
+    kind: { reader: 'steps/journeys20/gate.ts, finalize80 I2', since: '2026-09-10' },
+    entity: { reader: 'steps/ontology30/gate.ts, finalize80 I1', since: '2026-09-10' },
+    affects: { reader: 'steps/ontology30 collectNs5CitedEntities, finalize80 I1', since: '2026-09-10' },
+    title: { reader: 'planner / UI', since: '2026-09-10' },
+    description: { reader: 'planner / UI', since: '2026-09-10' },
+    handoffTo: { reader: 'steps/journeys20/gate.ts, steps/workflows50, finalize80 I6', since: '2026-09-10' },
+  },
+  Ns5JourneyArtifact: {
+    schemaVersion: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
+    journeyId: { reader: 'journeys/index, rules.appliesTo.journeyRefs, workflows50.journeyRef', since: '2026-09-10' },
+    business: { reader: 'steps/journeys20/gate.ts, finalize80', since: '2026-09-10' },
+    businessHash: { reader: 'staleness: journeys20 rewrite vs finalize80', since: '2026-09-10' },
+  },
+  Ns5SystemDecision: {
+    decisionId: { reader: 'journeys/index.defs.ts after inferred-actor drop', since: '2026-09-10' },
+    chosen: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
+    alternatives: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
+    decidedBy: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
+  },
+  Ns5JourneyIndexEntry: {
+    journeyId: { reader: 'ontology30 and access60 read this list', since: '2026-09-10' },
+    actorRef: { reader: 'steps/access60/gate.ts, finalize80 I3', since: '2026-09-10' },
+    title: { reader: 'planner / UI', since: '2026-09-10' },
+  },
+  Ns5JourneyIndexArtifact: {
+    schemaVersion: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'folder', since: '2026-09-10' },
+    journeys: { reader: 'ontology30, access60, finalize80', since: '2026-09-10' },
+    systemDecisions: { reader: 'steps/journeys20 persist', since: '2026-09-10' },
+  },
   Ns5OntologyEntityArtifact: {
     schemaVersion: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
@@ -67,6 +125,13 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     required: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     persistence: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     realization: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+  },
+  Ns5OntologyIndexArtifact: {
+    schemaVersion: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'folder / registry', since: '2026-09-10' },
+    businessDomain: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    entities: { reader: 'finalize80 coverage', since: '2026-09-10' },
+    relationships: { reader: 'steps/ontology30/gate.ts, access60 anchorPath', since: '2026-09-10' },
   },
   Ns5Rule: {
     ruleId: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
@@ -189,7 +254,7 @@ function keysOf(body: string): string[] {
   return keys;
 }
 
-test('NS5 ontology contracts do not gain a key without a non-LLM reader', () => {
+test('NS5 source contracts do not gain a key without a non-LLM reader', () => {
   for (const [artifact, spec] of Object.entries(CONTRACTS)) {
     const source = readFileSync(spec.file, 'utf8');
     const found = keysOf(interfaceBody(source, spec.name));
@@ -236,4 +301,13 @@ test('integration70 inbound/outbound/plugins are registered with the sidecar as 
   assert.match(KEYS.Ns5IntegrationArtifact.plugins.reader, /sidecar/);
   assert.match(KEYS.Ns5IntegrationItem.from.reader, /integration70\/gate/);
   assert.match(KEYS.Ns5IntegrationPlugin.pluginId.reader, /integration70\/gate/);
+});
+
+test('module10 and journeys20 contracts are registered with non-LLM readers', () => {
+  assert.match(KEYS.Ns5ModuleArtifact.actors.reader, /journeys20/);
+  assert.match(KEYS.Ns5ModuleActor.origin.reader, /journeys20/);
+  assert.match(KEYS.Ns5JourneyStep.kind.reader, /finalize80/);
+  assert.match(KEYS.Ns5JourneyArtifact.businessHash.reader, /finalize80/);
+  assert.match(KEYS.Ns5JourneyIndexArtifact.journeys.reader, /finalize80/);
+  assert.match(KEYS.Ns5OntologyIndexArtifact.relationships.reader, /access60/);
 });

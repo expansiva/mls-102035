@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "ordenServicio5",
+  "rules": [
+    {
+      "ruleId": "datosObligatoriosRecepcion",
+      "title": "Datos obligatorios de recepción",
+      "description": "Al abrir una orden de servicio deben registrarse los datos del cliente, el aparato, el defecto informado y las fotos.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "Cliente",
+          "Aparato",
+          "DefectoInformado",
+          "FotoOrden"
+        ],
+        "fieldRefs": [
+          "OrdenServicio.clienteId",
+          "OrdenServicio.aparatoId",
+          "OrdenServicio.defectoInformadoId",
+          "OrdenServicio.fotoOrdenIds"
+        ],
+        "transitionRefs": [],
+        "journeyRefs": [
+          "registrarRecepcionAparato"
+        ]
+      }
+    },
+    {
+      "ruleId": "diagnosticoPiezasYpresupuestoObligatorios",
+      "title": "Diagnóstico, piezas y presupuesto obligatorios",
+      "description": "Para presupuestar una orden deben registrarse el diagnóstico, las piezas necesarias con su costo interno y el valor del presupuesto para el cliente.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "Diagnostico",
+          "PiezaNecesaria",
+          "Presupuesto"
+        ],
+        "fieldRefs": [
+          "Diagnostico.descripcion",
+          "PiezaNecesaria.nombrePieza",
+          "PiezaNecesaria.cantidad",
+          "PiezaNecesaria.costoInterno",
+          "Presupuesto.valorCliente"
+        ],
+        "transitionRefs": [
+          "OrdenServicio.quoteOrder"
+        ],
+        "journeyRefs": [
+          "analizarYpresupuestarOrden"
+        ]
+      }
+    },
+    {
+      "ruleId": "rechazoCierraOrdenYhabilitaRetiro",
+      "title": "Cierre por rechazo del presupuesto",
+      "description": "Si el cliente rechaza el presupuesto, la orden se cierra como rechazada y el aparato queda disponible para retiro.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "Presupuesto",
+          "Aparato"
+        ],
+        "fieldRefs": [],
+        "transitionRefs": [
+          "OrdenServicio.rejectQuote",
+          "Presupuesto.rechazarPresupuesto"
+        ],
+        "journeyRefs": [
+          "responderPresupuesto"
+        ]
+      }
+    },
+    {
+      "ruleId": "aprobacionHabilitaReparacion",
+      "title": "Autorización de la reparación",
+      "description": "Si el cliente aprueba el presupuesto, la orden queda disponible para que el técnico realice la reparación.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "Presupuesto"
+        ],
+        "fieldRefs": [],
+        "transitionRefs": [
+          "OrdenServicio.approveQuote",
+          "Presupuesto.aprobarPresupuesto"
+        ],
+        "journeyRefs": [
+          "responderPresupuesto"
+        ]
+      }
+    },
+    {
+      "ruleId": "reparacionRegistradaParaMarcarLista",
+      "title": "Documentación de la reparación",
+      "description": "El técnico debe registrar las tareas efectuadas en la reparación antes de marcar la orden como lista para entrega.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "Reparacion"
+        ],
+        "fieldRefs": [
+          "Reparacion.detalleTrabajo",
+          "OrdenServicio.reparacionId"
+        ],
+        "transitionRefs": [
+          "OrdenServicio.markReadyForPickup"
+        ],
+        "journeyRefs": [
+          "repararYmarcarOrdenLista"
+        ]
+      }
+    },
+    {
+      "ruleId": "entregaDeOrdenListaOrechazada",
+      "title": "Entrega y finalización de la orden",
+      "description": "El recepcionista entrega el aparato y finaliza la orden cuando esta está lista para entrega o cuando quedó rechazada con el aparato disponible para retiro.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "EntregaAparato",
+          "Aparato"
+        ],
+        "fieldRefs": [
+          "EntregaAparato.fechaEntrega",
+          "OrdenServicio.entregaAparatoId"
+        ],
+        "transitionRefs": [
+          "OrdenServicio.completeRejectedOrder",
+          "OrdenServicio.completeRepairedOrder"
+        ],
+        "journeyRefs": [
+          "entregarAparatoYfinalizarOrden"
+        ]
+      }
+    },
+    {
+      "ruleId": "visibilidadPortalCliente",
+      "title": "Visibilidad y respuesta del cliente",
+      "description": "El cliente ve y responde solamente sus propias órdenes, con estado, diagnóstico y valor del presupuesto, y nunca el costo interno de las piezas ni las anotaciones del técnico.",
+      "appliesTo": {
+        "entityRefs": [
+          "OrdenServicio",
+          "Cliente",
+          "Diagnostico",
+          "Presupuesto",
+          "PiezaNecesaria",
+          "Reparacion"
+        ],
+        "fieldRefs": [
+          "OrdenServicio.clienteId",
+          "OrdenServicio.status",
+          "Diagnostico.descripcion",
+          "Presupuesto.valorCliente",
+          "PiezaNecesaria.costoInterno",
+          "Reparacion.detalleTrabajo"
+        ],
+        "transitionRefs": [
+          "Presupuesto.aprobarPresupuesto",
+          "Presupuesto.rechazarPresupuesto"
+        ],
+        "journeyRefs": [
+          "responderPresupuesto"
+        ]
+      }
+    }
+  ]
+}

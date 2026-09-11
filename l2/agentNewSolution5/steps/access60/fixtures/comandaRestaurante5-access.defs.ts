@@ -1,0 +1,218 @@
+/// <mls fileReference="_102047_/l4/comandaRestaurante5/access.defs.ts" enhancement="_blank"/>
+
+import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
+
+export const comandaRestaurante5Access = {
+  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "moduleName": "comandaRestaurante5",
+  "profiles": [
+    {
+      "profileId": "garcomAtendimento",
+      "actorRefs": [
+        "garcom"
+      ],
+      "kind": "internal"
+    },
+    {
+      "profileId": "caixaFechamento",
+      "actorRefs": [
+        "caixa"
+      ],
+      "kind": "internal"
+    }
+  ],
+  "authorities": [
+    {
+      "authorityId": "consultarCardapio",
+      "title": "Consultar cardápio",
+      "description": "Consulta os itens e preços disponíveis no cardápio."
+    },
+    {
+      "authorityId": "gerirAtendimentoMesa",
+      "title": "Gerir atendimento da mesa",
+      "description": "Localiza mesas e abre ou consulta comandas durante o atendimento."
+    },
+    {
+      "authorityId": "gerirItensComanda",
+      "title": "Gerir itens da comanda",
+      "description": "Registra itens pedidos e cancela lançamentos feitos por engano em comandas abertas."
+    },
+    {
+      "authorityId": "conferirEfecharConta",
+      "title": "Conferir e fechar conta",
+      "description": "Consulta a comanda e seus valores para conferir e encerrar a conta após a quitação."
+    },
+    {
+      "authorityId": "concederDescontoPontual",
+      "title": "Conceder desconto pontual",
+      "description": "Registra descontos pontuais em uma comanda durante a conferência."
+    },
+    {
+      "authorityId": "registrarPagamento",
+      "title": "Registrar pagamento",
+      "description": "Registra pagamentos totais ou divididos destinados à comanda."
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "garcomConsultaCardapio",
+      "profileRef": "garcomAtendimento",
+      "authorityRef": "consultarCardapio",
+      "entityRefs": [
+        "ItemCardapio"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Itens do cardápio disponibilizados pelo restaurante.",
+        "anchorEntity": "ItemCardapio"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Identificação e preço de venda dos itens do cardápio.",
+        "allowedFields": [
+          "ItemCardapio.id",
+          "ItemCardapio.price"
+        ]
+      }
+    },
+    {
+      "grantId": "garcomGerenciaAtendimento",
+      "profileRef": "garcomAtendimento",
+      "authorityRef": "gerirAtendimentoMesa",
+      "entityRefs": [
+        "Mesa",
+        "Comanda"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Mesas e comandas do restaurante necessárias ao atendimento.",
+        "anchorEntity": "Comanda"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Identificação da mesa e dados operacionais da comanda.",
+        "allowedFields": [
+          "Mesa.id",
+          "Comanda.id",
+          "Comanda.numero",
+          "Comanda.mesa",
+          "Comanda.status"
+        ]
+      }
+    },
+    {
+      "grantId": "garcomGerenciaItens",
+      "profileRef": "garcomAtendimento",
+      "authorityRef": "gerirItensComanda",
+      "entityRefs": [
+        "ItemComanda"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Itens lançados nas comandas do restaurante.",
+        "anchorEntity": "ItemComanda"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Dados necessários para registrar, identificar e cancelar itens da comanda.",
+        "allowedFields": [
+          "ItemComanda.id",
+          "ItemComanda.descricao",
+          "ItemComanda.comanda",
+          "ItemComanda.itemCardapio",
+          "ItemComanda.quantidade",
+          "ItemComanda.precoUnitario",
+          "ItemComanda.status",
+          "ItemComanda.details.valorTotal"
+        ]
+      }
+    },
+    {
+      "grantId": "caixaConfereEfechaConta",
+      "profileRef": "caixaFechamento",
+      "authorityRef": "conferirEfecharConta",
+      "entityRefs": [
+        "Comanda",
+        "ItemComanda"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Comandas e respectivos itens apresentados para conferência e fechamento.",
+        "anchorEntity": "Comanda"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Dados completos de consumo, cancelamentos e valores para conferir e encerrar a conta.",
+        "allowedFields": [
+          "Comanda.id",
+          "Comanda.numero",
+          "Comanda.mesa",
+          "Comanda.status",
+          "Comanda.details.valorItens",
+          "Comanda.details.valorDescontos",
+          "Comanda.details.valorDevido",
+          "Comanda.details.valorPago",
+          "Comanda.details.saldoDevedor",
+          "ItemComanda.id",
+          "ItemComanda.descricao",
+          "ItemComanda.comanda",
+          "ItemComanda.itemCardapio",
+          "ItemComanda.quantidade",
+          "ItemComanda.precoUnitario",
+          "ItemComanda.status",
+          "ItemComanda.details.valorTotal"
+        ]
+      }
+    },
+    {
+      "grantId": "caixaConcedeDesconto",
+      "profileRef": "caixaFechamento",
+      "authorityRef": "concederDescontoPontual",
+      "entityRefs": [
+        "Desconto"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Descontos pontuais concedidos nas comandas do restaurante.",
+        "anchorEntity": "Desconto"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Dados necessários para registrar e consultar descontos pontuais.",
+        "allowedFields": [
+          "Desconto.id",
+          "Desconto.comandaId",
+          "Desconto.motivo",
+          "Desconto.valor"
+        ]
+      }
+    },
+    {
+      "grantId": "caixaRegistraPagamento",
+      "profileRef": "caixaFechamento",
+      "authorityRef": "registrarPagamento",
+      "entityRefs": [
+        "Pagamento"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Pagamentos recebidos para as comandas do restaurante.",
+        "anchorEntity": "Pagamento"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Dados necessários para registrar e consultar pagamentos recebidos.",
+        "allowedFields": [
+          "Pagamento.id",
+          "Pagamento.valor",
+          "Pagamento.comanda",
+          "Pagamento.recebidoEm"
+        ]
+      }
+    }
+  ]
+} as const satisfies Ns5AccessArtifact;
+
+export type ComandaRestaurante5AccessType = typeof comandaRestaurante5Access;
+
+export default comandaRestaurante5Access;

@@ -2,6 +2,12 @@
 
 ## 2026-09-11
 
+- Certification: byte copies of the two complete runs (`comandaRestaurante5`,
+  `ordenServicio5`) replace synthetic/derived happy-path fixtures. `replayRealRuns.test.ts`
+  replays `normalize → gate → writeDefs` against the recorded defs (hashes stripped).
+  `nsArtifactFieldRatchet` now lists every named source contract (module, journeys, ontology
+  index included). Skill `mls-base/skills/agentNewSolution5.md`.
+
 - `ontology30` normalize drops `appendOnly` when journeys require lifecycle (second
   `act` or a `decide`). Prompt plus two repair rounds left the label on the plan.
 - `ontology30` plan prompt states the structural rule: omit `mutability` when journeys

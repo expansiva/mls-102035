@@ -17,6 +17,8 @@ const TOUCHED = [
   'agentNewSolution5/helpers/ns5Dispatch.ts',
   'agentNewSolution5/helpers/ns5Dispatch.test.ts',
   'agentNewSolution5/helpers/ns5CreateAgentGraph.test.ts',
+  'agentNewSolution5/helpers/ns5RealFixtures.test.ts',
+  'agentNewSolution5/replayRealRuns.test.ts',
   'agentNewSolution5/flowContract.test.ts',
   'agentNewSolution5/promptMarkers.test.ts',
   'agentNewSolution5/README.md',

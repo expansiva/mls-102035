@@ -1,0 +1,601 @@
+{
+  "plan": {
+    "moduleName": "comandaRestaurante5",
+    "businessDomain": "Gestão de comandas, itens de cardápio, descontos e pagamentos de restaurante.",
+    "entities": [
+      {
+        "entityId": "Mesa",
+        "title": "Mesa",
+        "description": "Mesa do restaurante onde uma comanda é aberta e atendida.",
+        "kind": "mdm",
+        "party": "none",
+        "mdmSubtype": "Location",
+        "displayField": "name",
+        "storage": {
+          "target": "mdm",
+          "scope": "organization",
+          "idField": "id",
+          "mdmType": "comandaRestaurante5.Mesa"
+        }
+      },
+      {
+        "entityId": "ItemCardapio",
+        "title": "Item do cardápio",
+        "description": "Produto oferecido no cardápio do restaurante que pode ser lançado em uma comanda.",
+        "kind": "mdm",
+        "party": "none",
+        "mdmSubtype": "Product",
+        "displayField": "name",
+        "storage": {
+          "target": "mdm",
+          "scope": "organization",
+          "idField": "id",
+          "mdmType": "comandaRestaurante5.ItemCardapio"
+        }
+      },
+      {
+        "entityId": "Comanda",
+        "title": "Comanda",
+        "description": "Registro de atendimento e consumo aberto para uma mesa até o fechamento da conta.",
+        "kind": "core",
+        "party": "none",
+        "displayField": "numero",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "comandaRestaurante5.Comanda"
+        }
+      },
+      {
+        "entityId": "ItemComanda",
+        "title": "Item da comanda",
+        "description": "Lançamento de um item pedido na comanda, incluindo a possibilidade de cancelamento.",
+        "kind": "core",
+        "party": "none",
+        "displayField": "descricao",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "comandaRestaurante5.ItemComanda"
+        }
+      },
+      {
+        "entityId": "Desconto",
+        "title": "Desconto",
+        "description": "Concessão pontual de desconto aplicada a uma comanda durante a conferência.",
+        "kind": "event",
+        "party": "none",
+        "displayField": "motivo",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "comandaRestaurante5.Desconto"
+        }
+      },
+      {
+        "entityId": "Pagamento",
+        "title": "Pagamento",
+        "description": "Recebimento de um valor para quitar total ou parcialmente uma comanda.",
+        "kind": "event",
+        "party": "none",
+        "displayField": "valor",
+        "mutability": "appendOnly",
+        "storage": {
+          "target": "moduleDatabase",
+          "scope": "module",
+          "idField": "id",
+          "mdmType": "comandaRestaurante5.Pagamento"
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "relationshipId": "comandaMesa",
+        "fromEntity": "Comanda",
+        "toEntity": "Mesa",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "crossStoreReference"
+        }
+      },
+      {
+        "relationshipId": "itemComandaComanda",
+        "fromEntity": "ItemComanda",
+        "toEntity": "Comanda",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "itemComandaItemCardapio",
+        "fromEntity": "ItemComanda",
+        "toEntity": "ItemCardapio",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "crossStoreReference"
+        }
+      },
+      {
+        "relationshipId": "descontoComanda",
+        "fromEntity": "Desconto",
+        "toEntity": "Comanda",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      },
+      {
+        "relationshipId": "pagamentoComanda",
+        "fromEntity": "Pagamento",
+        "toEntity": "Comanda",
+        "type": "manyToOne",
+        "required": true,
+        "persistence": {
+          "mode": "moduleReference"
+        }
+      }
+    ]
+  },
+  "entities": [
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante5",
+      "entityId": "Mesa",
+      "title": "Mesa",
+      "description": "Mesa do restaurante onde uma comanda é aberta e atendida.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Location",
+      "displayField": "name",
+      "fields": [],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.Mesa"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante5",
+      "entityId": "ItemCardapio",
+      "title": "Item do cardápio",
+      "description": "Produto oferecido no cardápio do restaurante que pode ser lançado em uma comanda.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
+      "fields": [
+        {
+          "fieldId": "price",
+          "title": "Preço",
+          "type": "money",
+          "required": true,
+          "description": "Preço de venda do item no cardápio."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "comandaRestaurante5.ItemCardapio"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante5",
+      "entityId": "Comanda",
+      "title": "Comanda",
+      "description": "Registro de atendimento e consumo aberto para uma mesa até o fechamento da conta.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "numero",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único da comanda."
+        },
+        {
+          "fieldId": "numero",
+          "title": "Número da comanda",
+          "type": "integer",
+          "required": true,
+          "description": "Número exibido para identificar a comanda no atendimento."
+        },
+        {
+          "fieldId": "mesa",
+          "title": "Mesa",
+          "type": "uuid",
+          "required": true,
+          "description": "Mesa selecionada para o atendimento desta comanda."
+        },
+        {
+          "fieldId": "status",
+          "title": "Situação",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "aberta",
+            "fechada"
+          ],
+          "description": "Situação atual da comanda durante o atendimento e o fechamento."
+        }
+      ],
+      "details": {
+        "valorItens": "Soma os valores dos itens da comanda que não foram cancelados.",
+        "valorDescontos": "Soma os descontos pontuais registrados para a comanda.",
+        "valorDevido": "Calcula o valor a receber após deduzir os descontos do valor dos itens.",
+        "valorPago": "Soma os pagamentos registrados para a comanda.",
+        "saldoDevedor": "Calcula o valor que ainda falta receber para quitar a comanda."
+      },
+      "lifecycleStates": [
+        {
+          "state": "aberta",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "fechada",
+          "reachedBy": "actor"
+        }
+      ],
+      "transitions": [
+        {
+          "transitionId": "fecharComanda",
+          "from": [
+            "aberta"
+          ],
+          "to": "fechada",
+          "by": [
+            "caixa"
+          ],
+          "description": "O caixa fecha a comanda após conferir o consumo e receber integralmente o valor devido."
+        }
+      ],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante5",
+      "entityId": "ItemComanda",
+      "title": "Item da comanda",
+      "description": "Lançamento de um item pedido na comanda, incluindo a possibilidade de cancelamento.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "descricao",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único do item da comanda."
+        },
+        {
+          "fieldId": "descricao",
+          "title": "Descrição",
+          "type": "string",
+          "required": true,
+          "description": "Descrição do item pedido, registrada conforme o cardápio no momento do lançamento."
+        },
+        {
+          "fieldId": "comanda",
+          "title": "Comanda",
+          "type": "uuid",
+          "required": true,
+          "description": "Comanda aberta à qual este lançamento pertence."
+        },
+        {
+          "fieldId": "itemCardapio",
+          "title": "Item do cardápio",
+          "type": "uuid",
+          "required": true,
+          "description": "Item do cardápio selecionado para o lançamento."
+        },
+        {
+          "fieldId": "quantidade",
+          "title": "Quantidade",
+          "type": "integer",
+          "required": true,
+          "description": "Quantidade solicitada do item do cardápio."
+        },
+        {
+          "fieldId": "precoUnitario",
+          "title": "Preço unitário",
+          "type": "money",
+          "required": true,
+          "description": "Preço unitário do item no momento em que foi lançado."
+        },
+        {
+          "fieldId": "status",
+          "title": "Situação",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "lancado",
+            "cancelado"
+          ],
+          "description": "Situação do lançamento na comanda."
+        }
+      ],
+      "details": {
+        "valorTotal": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+      },
+      "lifecycleStates": [
+        {
+          "state": "lancado",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "cancelado",
+          "reachedBy": "actor"
+        }
+      ],
+      "transitions": [
+        {
+          "transitionId": "cancelarItem",
+          "from": [
+            "lancado"
+          ],
+          "to": "cancelado",
+          "by": [
+            "garcom"
+          ],
+          "description": "O garçom cancela um item lançado por engano enquanto a comanda está aberta."
+        }
+      ],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      }
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante5",
+      "entityId": "Desconto",
+      "title": "Desconto",
+      "description": "Concessão pontual de desconto aplicada a uma comanda durante a conferência.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "motivo",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único do desconto concedido."
+        },
+        {
+          "fieldId": "comandaId",
+          "title": "Comanda",
+          "type": "uuid",
+          "required": true,
+          "description": "Comanda à qual o desconto é aplicado, selecionada durante a conferência."
+        },
+        {
+          "fieldId": "motivo",
+          "title": "Motivo",
+          "type": "text",
+          "required": true,
+          "description": "Justificativa para a concessão pontual do desconto."
+        },
+        {
+          "fieldId": "valor",
+          "title": "Valor do desconto",
+          "type": "money",
+          "required": true,
+          "description": "Valor monetário abatido do total da comanda."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "moduleName": "comandaRestaurante5",
+      "entityId": "Pagamento",
+      "title": "Pagamento",
+      "description": "Recebimento de um valor para quitar total ou parcialmente uma comanda.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "valor",
+      "fields": [
+        {
+          "fieldId": "id",
+          "title": "Identificador",
+          "type": "uuid",
+          "required": true,
+          "description": "Identificador único do pagamento."
+        },
+        {
+          "fieldId": "valor",
+          "title": "Valor",
+          "type": "money",
+          "required": true,
+          "description": "Valor recebido neste pagamento."
+        },
+        {
+          "fieldId": "comanda",
+          "title": "Comanda",
+          "type": "uuid",
+          "required": true,
+          "description": "Comanda à qual este pagamento é destinado."
+        },
+        {
+          "fieldId": "recebidoEm",
+          "title": "Recebido em",
+          "type": "datetime",
+          "required": true,
+          "description": "Data e hora em que o pagamento foi recebido."
+        }
+      ],
+      "lifecycleStates": [],
+      "transitions": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id"
+      },
+      "mutability": "appendOnly"
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "comandaMesa",
+      "fromEntity": "Comanda",
+      "toEntity": "Mesa",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Comanda",
+        "from": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "mesa"
+          ]
+        },
+        "to": {
+          "entityId": "Mesa",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemComandaComanda",
+      "fromEntity": "ItemComanda",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "comanda"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemComandaItemCardapio",
+      "fromEntity": "ItemComanda",
+      "toEntity": "ItemCardapio",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "crossStoreReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "itemCardapio"
+          ]
+        },
+        "to": {
+          "entityId": "ItemCardapio",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "descontoComanda",
+      "fromEntity": "Desconto",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Desconto",
+        "from": {
+          "entityId": "Desconto",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "pagamentoComanda",
+      "fromEntity": "Pagamento",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "persistence": {
+        "mode": "moduleReference"
+      },
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Pagamento",
+        "from": {
+          "entityId": "Pagamento",
+          "fieldIds": [
+            "comanda"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "entityId": "PiezaNecesaria",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único de la pieza necesaria."
+    },
+    {
+      "fieldId": "nombrePieza",
+      "title": "Nombre de la pieza",
+      "type": "string",
+      "required": true,
+      "description": "Nombre de la pieza o insumo necesario para la reparación."
+    },
+    {
+      "fieldId": "cantidad",
+      "title": "Cantidad",
+      "type": "integer",
+      "required": true,
+      "description": "Cantidad requerida de esta pieza o insumo."
+    },
+    {
+      "fieldId": "costoInterno",
+      "title": "Costo interno",
+      "type": "money",
+      "required": true,
+      "description": "Costo interno de la pieza o insumo para el servicio técnico."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

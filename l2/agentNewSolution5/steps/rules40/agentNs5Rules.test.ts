@@ -9,7 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
+import {
+  loadNs5Entities,
+  loadNs5FixtureJson,
+  loadNs5JourneyIndex,
+  NS5_REAL_MODULES,
+} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import type { Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
 import { buildNs5RulesHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import {
   buildNs5RulesArtifact,
@@ -25,19 +31,20 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-interface DerivedRulesFixture {
-  derivedFrom: string;
-  rules: Ns5Rule[];
-}
-
 function loadSchema(): Record<string, unknown> {
   return JSON.parse(
     readFileSync(path.join(HERE, '../../schemas/rules.schema.json'), 'utf8'),
   ) as Record<string, unknown>;
 }
 
-function loadDerived(name: string): DerivedRulesFixture {
-  return JSON.parse(readFileSync(path.join(HERE, 'fixtures', name), 'utf8')) as DerivedRulesFixture;
+function rulesView(entities: Ns5OntologyEntityArtifact[]): Ns5RulesEntityView[] {
+  return entities.map(entity => ({
+    entityId: entity.entityId,
+    fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
+    ...(entity.details ? { details: entity.details } : {}),
+    storage: { idField: entity.storage.idField },
+    transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
+  }));
 }
 
 function entity(
@@ -134,29 +141,23 @@ void test('rules40 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
-void test('derived comandaRestaurante3 fixture keeps seven rules and passes the gate', () => {
-  const fixture = loadDerived('comandaRestaurante3-rules.json');
-  assert.match(fixture.derivedFrom, /comandaRestaurante3\/rules\/rules\.defs\.ts$/);
-  assert.equal(fixture.rules.length, 7);
-  const discount = fixture.rules.find(rule => rule.ruleId === 'descontoValidoNoFechamento');
-  assert.ok(discount);
-  assert.ok(
-    discount.appliesTo.fieldRefs.includes('Comanda.details.total')
-    || discount.appliesTo.fieldRefs.includes('Comanda.discountAmount'),
-  );
-  assert.ok(discount.appliesTo.transitionRefs.includes('Comanda.fecharComanda'));
-  const rules = drafts({ rules: fixture.rules });
-  const gate = validateNs5Rules(rules, { entities: COMANDA_ENTITIES, journeys: COMANDA_JOURNEYS });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-});
-
-void test('derived ordenServicio2 fixture keeps nine rules and passes the gate', () => {
-  const fixture = loadDerived('ordenServicio2-rules.json');
-  assert.match(fixture.derivedFrom, /ordenServicio2\/rules\/rules\.defs\.ts$/);
-  assert.equal(fixture.rules.length, 9);
-  const rules = drafts({ rules: fixture.rules });
-  const gate = validateNs5Rules(rules, { entities: ORDEN_ENTITIES, journeys: ORDEN_JOURNEYS });
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+void test('real rules40 drafts of both runs pass the gate', () => {
+  for (const moduleName of NS5_REAL_MODULES) {
+    const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', `${moduleName}-draft.json`);
+    const rules = drafts(draft);
+    const gate = validateNs5Rules(rules, {
+      moduleName,
+      entities: rulesView(loadNs5Entities(moduleName)),
+      journeys: loadNs5JourneyIndex(moduleName).journeys,
+    });
+    assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
+  }
+  const comanda = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', 'comandaRestaurante5-draft.json');
+  assert.equal(comanda.rules.length, 8);
+  assert.ok(comanda.rules.some(rule => rule.ruleId === 'fecharComandaAposQuitacao'));
+  const orden = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', 'ordenServicio5-draft.json');
+  assert.equal(orden.rules.length, 7);
+  assert.ok(orden.rules.some(rule => rule.ruleId === 'visibilidadPortalCliente'));
 });
 
 void test('normalize + gate accept a valid payload including details.total', () => {

@@ -1,0 +1,67 @@
+{
+  "entityId": "Comanda",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único da comanda."
+    },
+    {
+      "fieldId": "numero",
+      "title": "Número da comanda",
+      "type": "integer",
+      "required": true,
+      "description": "Número exibido para identificar a comanda no atendimento."
+    },
+    {
+      "fieldId": "mesa",
+      "title": "Mesa",
+      "type": "uuid",
+      "required": true,
+      "description": "Mesa selecionada para o atendimento desta comanda."
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação",
+      "type": "string",
+      "required": true,
+      "enum": [
+        "aberta",
+        "fechada"
+      ],
+      "description": "Situação atual da comanda durante o atendimento e o fechamento."
+    }
+  ],
+  "details": {
+    "valorItens": "Soma os valores dos itens da comanda que não foram cancelados.",
+    "valorDescontos": "Soma os descontos pontuais registrados para a comanda.",
+    "valorDevido": "Calcula o valor a receber após deduzir os descontos do valor dos itens.",
+    "valorPago": "Soma os pagamentos registrados para a comanda.",
+    "saldoDevedor": "Calcula o valor que ainda falta receber para quitar a comanda."
+  },
+  "lifecycleStates": [
+    {
+      "state": "aberta",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "fechada",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "fecharComanda",
+      "from": [
+        "aberta"
+      ],
+      "to": "fechada",
+      "by": [
+        "caixa"
+      ],
+      "description": "O caixa fecha a comanda após conferir o consumo e receber integralmente o valor devido."
+    }
+  ]
+}

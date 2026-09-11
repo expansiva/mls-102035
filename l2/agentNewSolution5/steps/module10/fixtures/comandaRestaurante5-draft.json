@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "2026-09-10-ns5-module-v1",
+  "moduleName": "comandaRestaurante5",
+  "title": "Comanda de restaurante",
+  "userLanguage": "pt-BR",
+  "productLanguages": [
+    "pt-BR"
+  ],
+  "defaultLanguage": "pt-BR",
+  "sourcePrompt": "crie o módulo comandaRestaurante para um restaurante de bairro: o garçom abre uma comanda numa mesa e vai lançando os itens do cardápio pedidos, podendo cancelar um item lançado por engano; ao final, o caixa confere a comanda, pode aplicar um desconto pontual e fecha a conta recebendo o pagamento, que pode ser dividido entre as pessoas da mesa.",
+  "actors": [
+    {
+      "actorId": "garcom",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Garçom",
+      "description": "Abre comandas nas mesas e registra ou cancela itens pedidos."
+    },
+    {
+      "actorId": "caixa",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Caixa",
+      "description": "Confere comandas, aplica descontos pontuais e recebe pagamentos para fechar contas."
+    }
+  ],
+  "scope": {
+    "inScope": [
+      "Registro de comandas por mesa",
+      "Lançamento e cancelamento de itens pedidos",
+      "Conferência, desconto pontual e fechamento de contas",
+      "Registro de pagamento dividido entre pessoas da mesa"
+    ],
+    "outOfScope": [
+      "Gestão do cardápio",
+      "Controle de estoque",
+      "Gestão de reservas e atendimento de mesas",
+      "Gestão financeira além do recebimento da conta"
+    ]
+  }
+}
