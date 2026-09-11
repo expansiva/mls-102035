@@ -24,6 +24,7 @@ import '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
 import '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import '/_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.js';
+import '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
 
 export function createAgent(): IAgentAsync {
   return {

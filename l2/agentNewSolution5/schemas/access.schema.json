@@ -1,0 +1,100 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/access/2026-09-10-ns5-access-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profiles",
+    "authorities",
+    "grants"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-access-v1" },
+    "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/profile" }
+    },
+    "authorities": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/authority" }
+    },
+    "grants": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/grant" }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "actorRefs", "kind"],
+      "properties": {
+        "profileId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "actorRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+        },
+        "kind": { "type": "string", "enum": ["internal", "external", "anonymous"] }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorityId", "title", "description"],
+      "properties": {
+        "authorityId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grantId", "profileRef", "authorityRef", "entityRefs", "dataScope", "disclosure"],
+      "properties": {
+        "grantId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "profileRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "authorityRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "entityRefs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        },
+        "dataScope": { "$ref": "#/$defs/dataScope" },
+        "disclosure": { "$ref": "#/$defs/disclosure" }
+      }
+    },
+    "dataScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "description"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["own", "assigned", "related", "public", "organization", "custom"] },
+        "anchorEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "disclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "description"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["fullRecord", "fieldsOnly", "summaryOnly", "aggregateOnly"] },
+        "allowedFields": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+        },
+        "deniedFields": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+        },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

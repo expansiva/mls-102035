@@ -22,6 +22,12 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
   Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
   Ns5WorkflowsArtifact: { file: TYPES, name: 'Ns5WorkflowsArtifact' },
+  Ns5AccessProfile: { file: TYPES, name: 'Ns5AccessProfile' },
+  Ns5AccessAuthority: { file: TYPES, name: 'Ns5AccessAuthority' },
+  Ns5AccessGrant: { file: TYPES, name: 'Ns5AccessGrant' },
+  Ns5AccessDataScope: { file: TYPES, name: 'Ns5AccessDataScope' },
+  Ns5AccessDisclosure: { file: TYPES, name: 'Ns5AccessDisclosure' },
+  Ns5AccessArtifact: { file: TYPES, name: 'Ns5AccessArtifact' },
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
@@ -90,6 +96,42 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     moduleName: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     processes: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
   },
+  Ns5AccessProfile: {
+    profileId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    actorRefs: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    kind: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+  },
+  Ns5AccessAuthority: {
+    authorityId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    title: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+  },
+  Ns5AccessGrant: {
+    grantId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    profileRef: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    authorityRef: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    entityRefs: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    dataScope: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+    disclosure: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+  },
+  Ns5AccessDataScope: {
+    mode: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+    anchorEntity: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+    description: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+  },
+  Ns5AccessDisclosure: {
+    mode: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+    allowedFields: { reader: 'basic backend', since: '2026-09-10' },
+    deniedFields: { reader: 'basic backend', since: '2026-09-10' },
+    description: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+  },
+  Ns5AccessArtifact: {
+    schemaVersion: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    profiles: { reader: 'steps/access60/gate.ts, finalize80 I3', since: '2026-09-10' },
+    authorities: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    grants: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+  },
 };
 
 function interfaceBody(source: string, name: string): string {
@@ -157,4 +199,10 @@ test('rules40 appliesTo is registered with the rules gate as reader', () => {
 test('workflows50 tasks are registered with the workflows gate as reader', () => {
   assert.match(KEYS.Ns5WorkflowTask.actorRef.reader, /workflows50\/gate/);
   assert.match(KEYS.Ns5WorkflowsArtifact.processes.reader, /finalize80/);
+});
+
+test('access60 disclosure fields are registered with the basic backend as reader', () => {
+  assert.equal(KEYS.Ns5AccessDisclosure.allowedFields.reader, 'basic backend');
+  assert.equal(KEYS.Ns5AccessDisclosure.deniedFields.reader, 'basic backend');
+  assert.match(KEYS.Ns5AccessDataScope.anchorEntity.reader, /basic backend/);
 });

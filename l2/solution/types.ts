@@ -320,6 +320,26 @@ export interface Ns5AccessAuthority {
   description: string;
 }
 
+export interface Ns5AccessDataScope {
+  /** own|assigned|related require anchorEntity. */
+  mode: 'own' | 'assigned' | 'related' | 'public' | 'organization' | 'custom';
+  /** party:person entity reachable from each entityRef. The path is derived, not stored. */
+  anchorEntity?: string;
+  /** Prose for custom; backend does not parse it. */
+  description: string;
+}
+
+export interface Ns5AccessDisclosure {
+  /** fieldsOnly|summaryOnly require allowedFields or deniedFields. */
+  mode: 'fullRecord' | 'fieldsOnly' | 'summaryOnly' | 'aggregateOnly';
+  /** Entity.field the backend includes. */
+  allowedFields?: string[];
+  /** Entity.field the backend strips. */
+  deniedFields?: string[];
+  /** Prose; backend does not parse it. */
+  description: string;
+}
+
 export interface Ns5AccessGrant {
   /** Index identity. */
   grantId: string;
@@ -329,24 +349,8 @@ export interface Ns5AccessGrant {
   authorityRef: string;
   /** Must be entityIds. */
   entityRefs: string[];
-  dataScope: {
-    /** own|assigned|related require anchorEntity. */
-    mode: 'own' | 'assigned' | 'related' | 'public' | 'organization' | 'custom';
-    /** party:person entity reachable from each entityRef. */
-    anchorEntity?: string;
-    /** Prose for custom; backend does not parse it. */
-    description: string;
-  };
-  disclosure: {
-    /** fieldsOnly|summaryOnly require allowedFields or deniedFields. */
-    mode: 'fullRecord' | 'fieldsOnly' | 'summaryOnly' | 'aggregateOnly';
-    /** Entidade.campo the backend includes. */
-    allowedFields?: string[];
-    /** Entidade.campo the backend strips. */
-    deniedFields?: string[];
-    /** Prose; backend does not parse it. */
-    description: string;
-  };
+  dataScope: Ns5AccessDataScope;
+  disclosure: Ns5AccessDisclosure;
 }
 
 export interface Ns5AccessArtifact {

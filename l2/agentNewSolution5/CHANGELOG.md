@@ -2,6 +2,10 @@
 
 ## 2026-09-10
 
+- `access60`: profiles, authorities and grants with structured disclosure (`allowedFields` /
+  `deniedFields` as `Entity.field`) and a derivable person `anchorEntity` for `own` / `assigned` /
+  `related`. Tool `submitNs5Access`, gate, repair <= 2, persist `access.defs.ts`. The path is
+  computed by `anchorPath()` and is not stored. A run then stops at `awaitingStep: integration70`.
 - `workflows50`: orchestrated processes of human/system/wait tasks pointing at existing
   journeys/steps. Tool `submitNs5Workflows` only on a structural signal (handoff, foreign-by
   transition, cross-actor decide); otherwise `processes: []` with `noProcessSignal` and no LLM

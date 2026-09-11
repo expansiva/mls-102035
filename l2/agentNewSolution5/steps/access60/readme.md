@@ -1,0 +1,40 @@
+# access60 — who may do what, and sees what
+
+One LLM call with tool `submitNs5Access`. Writes `l4/<mod>/access.defs.ts`. Clarification is reserved
+and has no screen; `/fast` auto-approves.
+
+## Input
+
+- The original request (`sourcePrompt`)
+- Module actors
+- Journeys (`business` entire)
+- Ontology: entities, fields (including `details.<name>` and identity), `party`, required
+  relationships
+
+## Output
+
+`Ns5AccessArtifact`: `profiles[]`, `authorities[]`, `grants[]`. A grant carries `entityRefs`,
+`dataScope` (`mode` + optional `anchorEntity` + description) and `disclosure` (`mode` +
+`allowedFields`/`deniedFields` as `Entity.field` + description). No landing intent, realization,
+hops, `allowedInformation` or journey-step lists.
+
+## Invariants
+
+- Ids are unique lowerCamel. Authorities have a title and a description.
+- Every profile has at least one grant. Every journey actor is covered by some profile.
+- An `external` profile only receives `own` grants. `public` is only for `anonymous`.
+- `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields`, and every ref resolves
+  (`fields[]` ∪ `storage.idField` ∪ `details.<name>`).
+- `own` / `assigned` / `related` name `anchorEntity` as a `party: person` entity reachable from
+  every `entityRef` by required relationships. `anchorPath()` computes that walk and is not stored.
+- Gate repair is bounded (2). After that the pipeline step is `failed`.
+- Success emits the `access60-done` result. `integration70` still waits for `rules40-done` and
+  `workflows50-done`. A run then stops at the first unimplemented step (`integration70`).
+
+## Known traps
+
+- Disclosure names fields, not concepts. Prose stays in `description`.
+- Do not persist hops or `platformUserId`. The consumer derives the person path from
+  `anchorEntity` and the ontology.
+- Do not add prompt examples of a domain. Placeholders (`<profileId>`, `<Entity>`, `<field>`) are
+  context.
