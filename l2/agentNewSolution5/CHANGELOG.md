@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- MDM level-1 ontology (subtypes + `platform.defs.ts`) is emitted by 102034; ontology30
+  reads it and warns `NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE` (ns5_14).
 - Three subtractions (ns5_13): rules are `{ruleId, description}` (title/appliesTo gone;
   gate is form only); organization-wide aggregates live in `module.details` written by
   ontology30 (`NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY` against a panel entity); a

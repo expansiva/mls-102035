@@ -239,6 +239,8 @@ export interface Ns5OntologyIndexArtifact {
   entities: string[];
   /** n15 field endpoints; access60 anchorPath. */
   relationships: Ns5OntologyRelationship[];
+  /** ontology30: platform-service candidates (attachments/comments). Omitted when none. */
+  systemDecisions?: Ns5SystemDecision[];
 }
 
 export interface Ns5Rule {
@@ -457,3 +459,18 @@ export interface Ns5PipelineState {
   rebuildAll?: Ns5RebuildAllReport;
   updatedAt: string;
 }
+
+export type {
+  MdmPlatformCatalogArtifact,
+  MdmPlatformService,
+  Ns4Level1AllowedRelationship,
+  Ns4Level1EntityArtifact,
+  Ns4Level1Field,
+  Ns4Level1IndexArtifact,
+  Ns4Level1RelationshipRef,
+  Ns4Level1Subtype,
+} from '/_102034_/l1/mdm/defs/level1Types.js';
+export {
+  NS4_LEVEL1_SCHEMA_VERSION,
+  NS4_LEVEL1_SUBTYPE_VALUES,
+} from '/_102034_/l1/mdm/defs/level1Types.js';

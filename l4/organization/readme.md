@@ -16,7 +16,7 @@ the document. It is not a generated client module. A client project only stores
 
 ## Who edits this folder
 
-The platform, on a platform release. The deterministic script
-`l2/agentNewSolution/helpers/nodejsLevel1FromEngine.ts` reads `mls-102034/l1/mdm` types and rewrites
-`ontology/*.defs.ts`. Never edit those defs by hand — they must not diverge from the engine. A test
-fails if the engine gains a subtype the defs do not list.
+The platform, on a platform release. The engine emits
+`mls-102034/l4/organization/ontology/*.defs.ts` (`l1/mdm/scripts/emitLevel1Defs.ts`). This folder
+no longer holds a copy. Never edit those defs by hand — a drift test in 102034 fails if they
+diverge from the engine.

@@ -89,5 +89,5 @@ Deduplication by document, contact channels, addresses, aliases, tags (`mdm_tag`
 relationships, status history, attachments (photos, files), comments (notes), **audit** (every master-data
 write is logged and readable through the platform `audit` module — never create an audit, log or history entity),
 prospects with promotion, number sequences, and the `general` layer. The machine-readable list is the platform
-catalog (`platform.defs.ts` of level 1). If the request needs one
+catalog (`platform.defs.ts`, emitted with the level-1 defs). If the request needs one
 of these for a person, company, product or place, it is level-1 base data — reference it, do not redeclare it.

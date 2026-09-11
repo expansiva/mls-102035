@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution/helpers/organizationContext.ts" enhancement="_blank"/>
 
 import type {
+  MdmPlatformCatalogArtifact,
   Ns4Level1EntityArtifact,
   Ns4Level1IndexArtifact,
   Ns4SolutionRegistryArtifact,
@@ -36,9 +37,29 @@ export function formatNs4E4OrganizationContext(registry: Ns4SolutionRegistryArti
   ].join('\n');
 }
 
+export function formatPlatformCatalogPrompt(platform: MdmPlatformCatalogArtifact): string {
+  const lines = ['## Platform services (already provided — do not model as module entities)'];
+  for (const service of platform.services) {
+    const bits: string[] = [];
+    if (service.useFor?.length) bits.push(`use for ${service.useFor.join('; ')}`);
+    if (service.notFor?.length) bits.push(`not for ${service.notFor.join('; ')}`);
+    if (service.rule) bits.push(service.rule);
+    lines.push(bits.length ? `- ${service.service}: ${bits.join('; ')}` : `- ${service.service}`);
+  }
+  lines.push('## Role rules');
+  lines.push(`- ${platform.roles.meaning}`);
+  lines.push(`- tag: ${platform.roles.tag}`);
+  for (const rule of platform.roles.ontologyRules) {
+    lines.push(`- ${rule}`);
+  }
+  lines.push(`- ${platform.roles.actorsAreNotRoles}`);
+  return lines.join('\n');
+}
+
 export function formatNs4Level1CatalogPrompt(catalog: {
   index: Ns4Level1IndexArtifact;
   entities: readonly Ns4Level1EntityArtifact[];
+  platform?: MdmPlatformCatalogArtifact;
 }): string {
   const placeholder = (value: string) => `<${value}>`;
   const join = (values: readonly string[]) => values.map(placeholder).join(', ');
@@ -58,5 +79,7 @@ export function formatNs4Level1CatalogPrompt(catalog: {
   }
   lines.push(`Statuses: ${join(catalog.index.mdmStatuses)}`);
   lines.push(`Doc types: ${join(catalog.index.docTypes)}`);
-  return lines.join('\n');
+  const structure = lines.join('\n');
+  if (!catalog.platform) return structure;
+  return `${structure}\n${formatPlatformCatalogPrompt(catalog.platform)}`;
 }

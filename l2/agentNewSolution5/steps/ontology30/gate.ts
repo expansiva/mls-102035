@@ -7,7 +7,14 @@ import {
   resolvableFieldIds,
   resolvableFieldOf,
 } from '/_102035_/l2/solution/lib.js';
-import type { Ns5JourneyArtifact, Ns5ModuleActor, Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+import type {
+  Ns5JourneyArtifact,
+  Ns5ModuleActor,
+  Ns5OntologyEntityArtifact,
+  Ns5OntologyIndexArtifact,
+  Ns5OntologyRelationship,
+  Ns5SystemDecision,
+} from '/_102035_/l2/solution/types.js';
 import {
   NS5_ONTOLOGY_FIELD_TYPES,
   NS5_ONTOLOGY_KINDS,
@@ -235,7 +242,66 @@ export function validateNs5OntologyAssembly(
     });
   }
 
+  if (!planOverview) {
+    collectNs5PlatformServiceCandidates(entities, index.relationships).forEach(entityId => {
+      const entityIndex = entities.findIndex(entity => entity.entityId === entityId);
+      warning(
+        issues,
+        'NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE',
+        `${entityId}: attachments/comments already exist`,
+        entityIndex >= 0 ? `entities[${entityIndex}]` : 'entities',
+      );
+    });
+  }
+
   return result(issues, uncitedEntities);
+}
+
+const FILE_NOTE_FIELD_IDS = new Set(['url', 'fileName', 'mimeType', 'text']);
+export const NS5_PLATFORM_SERVICE_KEEP = 'keepEntity' as const;
+export const NS5_PLATFORM_SERVICE_USE = 'usePlatformService' as const;
+
+export function collectNs5PlatformServiceCandidates(
+  entities: readonly Ns5OntologyEntityArtifact[],
+  relationships: readonly Pick<Ns5OntologyRelationship, 'fromEntity' | 'toEntity' | 'type'>[],
+): string[] {
+  const byId = new Map(entities.map(entity => [entity.entityId, entity]));
+  const candidates: string[] = [];
+  for (const entity of entities) {
+    if (entity.kind !== 'supporting' && entity.kind !== 'event') continue;
+    if (entity.mdmSubtype) continue;
+    const idField = entity.storage?.idField;
+    const content = (entity.fields || []).filter(field => field.fieldId !== idField);
+    if (!content.length) continue;
+    if (!content.every(field => FILE_NOTE_FIELD_IDS.has(field.fieldId))) continue;
+    const linksMdm = relationships.some(rel => (
+      (rel.type === 'oneToOne' || rel.type === 'oneToMany')
+      && rel.fromEntity === entity.entityId
+      && byId.get(rel.toEntity)?.kind === 'mdm'
+    ));
+    if (linksMdm) candidates.push(entity.entityId);
+  }
+  return candidates;
+}
+
+export function applyNs5PlatformServiceCandidateDecisions(
+  index: Ns5OntologyIndexArtifact,
+  entities: readonly Ns5OntologyEntityArtifact[],
+): Ns5OntologyIndexArtifact {
+  const candidates = collectNs5PlatformServiceCandidates(entities, index.relationships);
+  if (!candidates.length) return index;
+  const byId = new Map((index.systemDecisions || []).map(decision => [decision.decisionId, decision]));
+  for (const entityId of candidates) {
+    const decisionId = `platformServiceCandidate${entityId}`;
+    const decision: Ns5SystemDecision = {
+      decisionId,
+      chosen: NS5_PLATFORM_SERVICE_KEEP,
+      alternatives: [NS5_PLATFORM_SERVICE_KEEP, NS5_PLATFORM_SERVICE_USE],
+      decidedBy: 'system',
+    };
+    byId.set(decisionId, decision);
+  }
+  return { ...index, systemDecisions: [...byId.values()] };
 }
 
 export function formatNs5OntologyGate(issues: Ns5OntologyGateIssue[]): string {

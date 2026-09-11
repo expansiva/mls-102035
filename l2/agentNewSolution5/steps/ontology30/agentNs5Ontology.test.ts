@@ -34,6 +34,9 @@ import {
   type Ns5OntologyPlanEntity,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
+  applyNs5PlatformServiceCandidateDecisions,
+  NS5_PLATFORM_SERVICE_KEEP,
+  NS5_PLATFORM_SERVICE_USE,
   validateNs5OntologyAssembly,
   validateNs5OntologyBindings,
   validateNs5OntologyEntity,
@@ -767,7 +770,116 @@ void test('persistArtifacts reconciles ontology defs against the index', () => {
   assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'ontology'/);
   assert.match(persist, /removedOrphans/);
   assert.match(persist, /liftedAggregateEntities/);
+  assert.match(persist, /applyNs5PlatformServiceCandidateDecisions/);
   assert.match(persist, /writeStepState/);
+});
+
+void test('supporting file-or-note entity linked to mdm is a platform-service candidate warning', () => {
+  const person = mdmPlan('Cliente', 'Person', 'person', 'id');
+  const photo: Ns5OntologyPlanEntity = {
+    entityId: 'Foto',
+    title: 'Photo',
+    description: 'A file of the master record.',
+    kind: 'supporting',
+    party: 'none',
+    displayField: 'fileName',
+    storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+  };
+  const plan: Ns5OntologyPlanDraft = {
+    moduleName: 'comandaRestaurante5',
+    businessDomain: 'Sample',
+    entities: [person, photo],
+    relationships: [{
+      relationshipId: 'fotoOfCliente',
+      fromEntity: 'Foto',
+      toEntity: 'Cliente',
+      type: 'oneToMany',
+      required: false,
+      persistence: { mode: 'crossStoreReference' },
+    }],
+  };
+  const photoDetail: Ns5OntologyEntityDraft = {
+    entityId: 'Foto',
+    fields: [
+      { fieldId: 'id', title: 'id', type: 'uuid', required: true, description: 'Identity.' },
+      { fieldId: 'url', title: 'url', type: 'string', required: true, description: 'File.' },
+      { fieldId: 'fileName', title: 'fileName', type: 'string', required: true, description: 'Name.' },
+      { fieldId: 'mimeType', title: 'mimeType', type: 'string', required: true, description: 'Type.' },
+    ],
+    lifecycleStates: [],
+    transitions: [],
+  };
+  const assembled = assembleNs5Ontology(plan, [emptyMdmDetail('Cliente'), photoDetail], {
+    bindings: [{
+      relationshipId: 'fotoOfCliente',
+      realization: {
+        kind: 'fieldReference',
+        ownerEntity: 'Foto',
+        from: { entityId: 'Foto', fieldIds: ['id'] },
+        to: { entityId: 'Cliente', fieldIds: ['id'] },
+      },
+    }],
+  });
+  const gate = validateNs5OntologyAssembly(assembled, {
+    moduleName: 'comandaRestaurante5',
+    actors: ACTORS,
+    journeys: [],
+    requireJourneyCitation: false,
+    requireRelationshipRealization: false,
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const warning = gate.issues.find(issue => issue.code === 'NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE');
+  assert.ok(warning);
+  assert.equal(warning.severity, 'warning');
+  assert.match(warning.message, /attachments\/comments already exist/);
+  const withDecision = applyNs5PlatformServiceCandidateDecisions(assembled.index, assembled.entities);
+  assert.equal(withDecision.systemDecisions?.length, 1);
+  assert.equal(withDecision.systemDecisions?.[0]?.chosen, NS5_PLATFORM_SERVICE_KEEP);
+  assert.deepEqual(withDecision.systemDecisions?.[0]?.alternatives, [NS5_PLATFORM_SERVICE_KEEP, NS5_PLATFORM_SERVICE_USE]);
+});
+
+void test('entityId matching a platform service name is not a gate', () => {
+  const person = mdmPlan('Cliente', 'Person', 'person', 'id');
+  const named: Ns5OntologyPlanEntity = {
+    entityId: 'Attachment',
+    title: 'Attachment',
+    description: 'A business attachment record with its own payload.',
+    kind: 'supporting',
+    party: 'none',
+    displayField: 'label',
+    storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+  };
+  const plan: Ns5OntologyPlanDraft = {
+    moduleName: 'comandaRestaurante5',
+    businessDomain: 'Sample',
+    entities: [person, named],
+    relationships: [{
+      relationshipId: 'attachmentOfCliente',
+      fromEntity: 'Attachment',
+      toEntity: 'Cliente',
+      type: 'oneToMany',
+      required: false,
+      persistence: { mode: 'crossStoreReference' },
+    }],
+  };
+  const namedDetail: Ns5OntologyEntityDraft = {
+    entityId: 'Attachment',
+    fields: [
+      { fieldId: 'id', title: 'id', type: 'uuid', required: true, description: 'Identity.' },
+      { fieldId: 'label', title: 'label', type: 'string', required: true, description: 'Label.' },
+    ],
+    lifecycleStates: [],
+    transitions: [],
+  };
+  const assembled = assembleNs5Ontology(plan, [emptyMdmDetail('Cliente'), namedDetail]);
+  const gate = validateNs5OntologyAssembly(assembled, {
+    moduleName: 'comandaRestaurante5',
+    actors: ACTORS,
+    journeys: [],
+    requireJourneyCitation: false,
+    requireRelationshipRealization: false,
+  });
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE'), false);
 });
 
 void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection on one passes', () => {

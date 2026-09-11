@@ -7,12 +7,10 @@ import { fileURLToPath } from 'node:url';
 
 const files = [
   fileURLToPath(new URL('./organizationTypes.ts', import.meta.url)),
-  fileURLToPath(new URL('./level1FromEngine.ts', import.meta.url)),
-  fileURLToPath(new URL('./nodejsLevel1FromEngine.ts', import.meta.url)),
+  fileURLToPath(new URL('./level1Catalog.ts', import.meta.url)),
   fileURLToPath(new URL('./registryGate.ts', import.meta.url)),
   fileURLToPath(new URL('./organizationRegistry.ts', import.meta.url)),
   fileURLToPath(new URL('./organizationContext.ts', import.meta.url)),
-  fileURLToPath(new URL('./level1Catalog.ts', import.meta.url)),
   fileURLToPath(new URL('./ns4Fs.ts', import.meta.url)),
   fileURLToPath(new URL('../types.ts', import.meta.url)),
   fileURLToPath(new URL('./ns4TextPaths.ts', import.meta.url)),

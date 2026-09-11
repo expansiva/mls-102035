@@ -133,6 +133,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     businessDomain: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     entities: { reader: 'finalize80 coverage', since: '2026-09-10' },
     relationships: { reader: 'steps/ontology30/gate.ts, access60 anchorPath', since: '2026-09-10' },
+    systemDecisions: { reader: 'steps/ontology30/gate.ts applyNs5PlatformServiceCandidateDecisions', since: '2026-09-11' },
   },
   Ns5Rule: {
     ruleId: { reader: 'steps/rules40/gate.ts, finalize80 I4, transitions.ruleRefs', since: '2026-09-10' },

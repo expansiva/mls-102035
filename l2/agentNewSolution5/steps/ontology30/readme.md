@@ -10,7 +10,7 @@ has no screen; `/fast` auto-approves.
 - The original request (`sourcePrompt`)
 - Actors from `module.defs.ts`
 - Journeys (`business` entire: `entity`, `affects`, `decide`)
-- Platform level-1 catalog as placeholders
+- Platform level-1 catalog as placeholders, plus the platform catalog (services and role rules) from `platform.defs.ts`
 
 ## Output
 
@@ -40,6 +40,10 @@ order plus relationships with field realization. Organization-wide aggregates go
   `[idField]`, both ends required. Owner stores a `uuid` FK or a `json` collection, never
   `id → id`. MDM with `fields: []` cannot be owner
   (`NS5_ONTOLOGY_RELATIONSHIP_MDM_OWNER_WITHOUT_NAMESPACE`).
+- A supporting/event entity whose content fields are ⊆ {url, fileName, mimeType, text} and that
+  links `oneToOne`/`oneToMany` to an mdm entity is a warning
+  (`NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE`, attachments/comments already exist) plus a
+  `systemDecision` (`keepEntity` | `usePlatformService`). Name matching is not a gate.
 - Every journey `entity`/`affects` exists on the **full** ontology (plan and bindings), except
   names `liftNs5AggregateOnlyEntities` moved to `module.details`. Isolated entity validation
   does not run that check — the fan-out only has one entity. An entity no journey cites is a

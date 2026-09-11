@@ -2,6 +2,11 @@
 
 ## 2026-09-11
 
+- Level-1 catalog (and the platform catalog) is read from 102034. Plan and entity
+  prompts receive subtypes plus services/role rules derived from `platform.defs.ts`.
+  `NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE` warns when a supporting/event entity
+  whose content fields are ⊆ {url, fileName, mimeType, text} links oneToOne/oneToMany
+  to an mdm entity; persist records `systemDecision` keepEntity | usePlatformService.
 - Persist `liftedAggregateEntities` on the ontology30 `pipeline.json` step (and the
   draft), same class as `uncitedEntities` / `removedOrphans`. finalize80 I1 reads it.
 - After entity fan-out, `liftNs5AggregateOnlyEntities` moves a core/supporting

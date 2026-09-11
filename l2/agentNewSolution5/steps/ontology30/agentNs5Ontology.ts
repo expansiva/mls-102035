@@ -62,6 +62,7 @@ import {
   type Ns5OntologyPlanDraft,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
+  applyNs5PlatformServiceCandidateDecisions,
   formatNs5OntologyGate,
   validateNs5OntologyBindings,
   validateNs5OntologyEntity,
@@ -547,6 +548,7 @@ async function persistArtifacts(
   uncitedEntities: string[],
 ): Promise<string[]> {
   const assembled = assembleNs5Ontology(plan, details, bindings);
+  const index = applyNs5PlatformServiceCandidateDecisions(assembled.index, assembled.entities);
   const artifactPaths: string[] = [];
   for (const entity of assembled.entities) {
     artifactPaths.push(
@@ -559,7 +561,7 @@ async function persistArtifacts(
     );
   }
   artifactPaths.push(
-    await writeDefs(ontologyIndexFile(moduleName), `${moduleName}OntologyIndex`, assembled.index, 'Ns5OntologyIndexArtifact'),
+    await writeDefs(ontologyIndexFile(moduleName), `${moduleName}OntologyIndex`, index, 'Ns5OntologyIndexArtifact'),
   );
   const removedOrphans = await reconcileModuleDefs(
     moduleName,

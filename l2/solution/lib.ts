@@ -16,6 +16,7 @@ export type { Ns4EntityFieldsSource as EntityFieldsSource } from '/_102035_/l2/a
 
 export {
   ns4Level1Catalog as level1Catalog,
+  ns4Level1PlatformCatalog as level1PlatformCatalog,
   ns4Level1Subtypes as level1Subtypes,
   ns4Level1IsSubtype as level1IsSubtype,
   ns4Level1Entity as level1Entity,
@@ -33,6 +34,7 @@ export type {
   Ns4Level1Field as Level1Field,
   Ns4Level1EntityArtifact as Level1EntityArtifact,
   Ns4Level1IndexArtifact as Level1IndexArtifact,
+  MdmPlatformCatalogArtifact as PlatformCatalogArtifact,
   Ns4SolutionRegistryActor as SolutionRegistryActor,
   Ns4SolutionRegistryRole as SolutionRegistryRole,
   Ns4SolutionRegistryModule as SolutionRegistryModule,

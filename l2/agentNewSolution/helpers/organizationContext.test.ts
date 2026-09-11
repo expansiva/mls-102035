@@ -8,6 +8,7 @@ import {
   formatNs4E4OrganizationContext,
   formatNs4E6OrganizationContext,
   formatNs4Level1CatalogPrompt,
+  formatPlatformCatalogPrompt,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
 import { ns4Level1Catalog } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
 import {
@@ -62,10 +63,25 @@ test('E4 context lists general fields as placeholders', () => {
 });
 
 test('level-1 catalog prompt uses placeholders and no domain nouns', () => {
-  const text = formatNs4Level1CatalogPrompt(ns4Level1Catalog());
-  assert.match(text, /<Person>/);
-  assert.match(text, /<Company>/);
-  assert.match(text, /<name>/);
-  assert.match(text, /<Owns>/);
-  assert.doesNotMatch(text, /\b(Cliente|Customer|Patient|Aluno|stock|Inventory)\b/i);
+  const catalog = ns4Level1Catalog();
+  const structure = formatNs4Level1CatalogPrompt({ index: catalog.index, entities: catalog.entities });
+  assert.match(structure, /<Person>/);
+  assert.match(structure, /<Company>/);
+  assert.match(structure, /<name>/);
+  assert.match(structure, /<Owns>/);
+  assert.doesNotMatch(structure, /\b(Cliente|Customer|Patient|Aluno|stock|Inventory)\b/i);
+  const text = formatNs4Level1CatalogPrompt(catalog);
+  assert.match(text, /## Platform services/);
+  assert.match(text, /use for files of a master record/);
+  assert.match(text, /not for a module Photo\/File entity/);
+  assert.match(text, /## Role rules/);
+  assert.doesNotMatch(text, /\b(Cliente|Patient|Aluno)\b/);
+});
+
+test('platform catalog prompt is derived from the catalog object', () => {
+  const text = formatPlatformCatalogPrompt(ns4Level1Catalog().platform);
+  assert.match(text, /^- attachments: /m);
+  assert.match(text, /^- comments: /m);
+  assert.match(text, /tag: <moduleId>\.<EntityId>/);
+  assert.doesNotMatch(text, /\b(Cliente|Patient|Aluno)\b/);
 });

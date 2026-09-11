@@ -1,55 +1,22 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution/helpers/organizationTypes.ts" enhancement="_blank"/>
 
-/** Schema of the platform level-1 ontology defs. Bumped when the engine subtype set or field shape changes. */
-export const NS4_LEVEL1_SCHEMA_VERSION = 'ns4-level1-v1' as const;
+export {
+  NS4_LEVEL1_SCHEMA_VERSION,
+  NS4_LEVEL1_SUBTYPE_VALUES,
+} from '/_102034_/l1/mdm/defs/level1Types.js';
+export type {
+  MdmPlatformCatalogArtifact,
+  MdmPlatformService,
+  Ns4Level1AllowedRelationship,
+  Ns4Level1EntityArtifact,
+  Ns4Level1Field,
+  Ns4Level1IndexArtifact,
+  Ns4Level1RelationshipRef,
+  Ns4Level1Subtype,
+} from '/_102034_/l1/mdm/defs/level1Types.js';
 
 /** Schema of the per-project solution registry written by E10. */
 export const NS4_SOLUTION_REGISTRY_SCHEMA_VERSION = 'ns4-solution-registry-v1' as const;
-
-/** Closed platform subtype set. Grows only on a platform release, never per module. */
-export const NS4_LEVEL1_SUBTYPE_VALUES = [
-  'Person', 'Company', 'Product', 'Service', 'Location',
-  'AssetGeneric', 'AssetVehicle', 'AssetProperty', 'AssetEquipment',
-  'Animal', 'BankAccount', 'Document', 'ContactChannel',
-] as const;
-
-export type Ns4Level1Subtype = typeof NS4_LEVEL1_SUBTYPE_VALUES[number];
-
-export interface Ns4Level1Field {
-  fieldId: string;
-  type: string;
-  required: boolean;
-}
-
-export interface Ns4Level1RelationshipRef {
-  type: string;
-  from: readonly string[];
-  to: readonly string[];
-  bidirectional: boolean;
-}
-
-export interface Ns4Level1AllowedRelationship {
-  type: string;
-  as: 'from' | 'to' | 'both';
-  otherSubtypes: readonly string[];
-}
-
-export interface Ns4Level1EntityArtifact {
-  schemaVersion: typeof NS4_LEVEL1_SCHEMA_VERSION;
-  subtype: string;
-  identification: readonly Ns4Level1Field[];
-  baseFields: readonly Ns4Level1Field[];
-  allowedRelationships: readonly Ns4Level1AllowedRelationship[];
-}
-
-export interface Ns4Level1IndexArtifact {
-  schemaVersion: typeof NS4_LEVEL1_SCHEMA_VERSION;
-  level1SchemaVersion: typeof NS4_LEVEL1_SCHEMA_VERSION;
-  subtypes: readonly Ns4Level1Subtype[];
-  docTypes: readonly string[];
-  mdmStatuses: readonly string[];
-  relationshipTypes: readonly Ns4Level1RelationshipRef[];
-}
 
 export interface Ns4SolutionRegistryActor {
   actorId: string;
