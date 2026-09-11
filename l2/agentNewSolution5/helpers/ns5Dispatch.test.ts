@@ -63,27 +63,27 @@ function statusStepIds(intents: mls.msg.AgentIntent[]): number[] {
     .map(intent => intent.stepId);
 }
 
-void test('rules40 is hooked; workflows50 and access60 are not (the live race)', () => {
+void test('rules40 and workflows50 are hooked; access60 is not (the live race)', () => {
   assert.ok(NS5_STEP_HOOKS.rules40?.beforePromptStep, 'rules40 hook must be registered');
-  assert.equal(NS5_STEP_HOOKS.workflows50, undefined);
+  assert.ok(NS5_STEP_HOOKS.workflows50?.beforePromptStep, 'workflows50 hook must be registered');
   assert.equal(NS5_STEP_HOOKS.access60, undefined);
 });
 
-void test('notImplemented drain leaves the hooked parallel sibling running', () => {
+void test('notImplemented drain leaves hooked parallel siblings running', () => {
   const { root, byPlan } = parallelBatch();
   const intents = drainWaitingSiblings(
     contextWith(root),
-    byPlan.workflows50,
+    byPlan.access60,
     1,
-    'stopped: awaiting step workflows50',
+    'stopped: awaiting step access60',
     { onlyUnimplemented: true },
   );
   const ids = new Set(statusStepIds(intents));
   assert.equal(ids.has(byPlan.rules40.stepId), false, 'rules40 has a hook and must keep running');
-  assert.equal(ids.has(byPlan.access60.stepId), true, 'access60 has no hook and must be drained');
+  assert.equal(ids.has(byPlan.workflows50.stepId), false, 'workflows50 has a hook and must keep running');
   assert.equal(ids.has(byPlan.integration70.stepId), true);
   assert.equal(ids.has(byPlan.finalize80.stepId), true);
-  assert.equal(ids.has(byPlan.workflows50.stepId), false, 'current step is not a sibling');
+  assert.equal(ids.has(byPlan.access60.stepId), false, 'current step is not a sibling');
 });
 
 void test('failure drain still completes a hooked sibling so the task does not hang', () => {
@@ -100,24 +100,24 @@ void test('failure drain still completes a hooked sibling so the task does not h
   assert.equal(ids.has(byPlan.access60.stepId), true);
 });
 
-void test('beforePromptStep of an unimplemented parallel step does not complete rules40', async () => {
+void test('beforePromptStep of an unimplemented parallel step does not complete rules40 or workflows50', async () => {
   const { root, byPlan } = parallelBatch();
-  byPlan.workflows50.prompt = '{}';
+  byPlan.access60.prompt = '{}';
   const agent = createAgent();
   assert.equal(typeof agent.beforePromptStep, 'function');
   const intents = await agent.beforePromptStep!(
     { agentName: 'agentNewSolution5' } as IAgentMeta,
     contextWith(root),
     root,
-    byPlan.workflows50,
+    byPlan.access60,
     1,
   );
   const ids = new Set(statusStepIds(intents));
   assert.equal(ids.has(byPlan.rules40.stepId), false);
-  assert.equal(ids.has(byPlan.access60.stepId), true);
+  assert.equal(ids.has(byPlan.workflows50.stepId), false);
   const self = intents.find((intent): intent is mls.msg.AgentIntentUpdateStatus =>
-    intent.type === 'update-status' && intent.stepId === byPlan.workflows50.stepId);
+    intent.type === 'update-status' && intent.stepId === byPlan.access60.stepId);
   assert.ok(self);
   assert.equal(self.status, 'completed');
-  assert.match(String(self.traceMsg || ''), /workflows50 not implemented yet/);
+  assert.match(String(self.traceMsg || ''), /access60 not implemented yet/);
 });

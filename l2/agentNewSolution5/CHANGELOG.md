@@ -2,6 +2,11 @@
 
 ## 2026-09-10
 
+- `workflows50`: orchestrated processes of human/system/wait tasks pointing at existing
+  journeys/steps. Tool `submitNs5Workflows` only on a structural signal (handoff, foreign-by
+  transition, cross-actor decide); otherwise `processes: []` with `noProcessSignal` and no LLM
+  call. v1 form, provisional; align with the production harness (G3c) before any executor. A run
+  then stops at `awaitingStep: access60`.
 - `notImplemented` drains only siblings without a registered hook. A parallel unimplemented step
   (`workflows50`/`access60`) no longer completes an implemented sibling still running (`rules40`).
   Failure paths still drain every non-terminal sibling so the task does not hang.

@@ -413,6 +413,8 @@ export interface Ns5PipelineStepState {
   decideStepCount?: number;
   /** ontology30: entityIds no journey cites. Supporting/valueObject may be legitimate. */
   uncitedEntities?: string[];
+  /** workflows50: true when processes is [] because no handoff, foreign-by transition or cross-actor decide. */
+  noProcessSignal?: boolean;
 }
 
 export interface Ns5Invocation {

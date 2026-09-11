@@ -4,8 +4,8 @@ L4 v5 source compiler. Writes the six business sources of a module and a determi
 finalize. Does not emit derived copies (operations, workspaces, usecases, landings) and
 never dispatches agentChangeBackend or agentChangeFrontend.
 
-`module10`, `journeys20`, `ontology30` and `rules40` are implemented. Later steps still stop the
-run at the first unimplemented id (`workflows50`).
+`module10`, `journeys20`, `ontology30`, `rules40` and `workflows50` are implemented. Later steps
+still stop the run at the first unimplemented id (`access60`).
 
 ## Invocation
 

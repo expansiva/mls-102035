@@ -19,6 +19,9 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5OntologyRelationship: { file: TYPES, name: 'Ns5OntologyRelationship' },
   Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
   Ns5RulesArtifact: { file: TYPES, name: 'Ns5RulesArtifact' },
+  Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
+  Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
+  Ns5WorkflowsArtifact: { file: TYPES, name: 'Ns5WorkflowsArtifact' },
 };
 
 const KEYS: Record<string, Record<string, KeyEntry>> = {
@@ -66,6 +69,26 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     schemaVersion: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
     rules: { reader: 'steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
+  },
+  Ns5WorkflowTask: {
+    taskId: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    kind: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    actorRef: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    journeyRef: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    stepRef: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    next: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+  },
+  Ns5WorkflowProcess: {
+    processId: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    title: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    tasks: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
+  },
+  Ns5WorkflowsArtifact: {
+    schemaVersion: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    moduleName: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    processes: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
   },
 };
 
@@ -129,4 +152,9 @@ test('details and transitions are registered with finalize80 / basic backend rea
 test('rules40 appliesTo is registered with the rules gate as reader', () => {
   assert.match(KEYS.Ns5Rule.appliesTo.reader, /rules40\/gate/);
   assert.match(KEYS.Ns5RulesArtifact.rules.reader, /finalize80/);
+});
+
+test('workflows50 tasks are registered with the workflows gate as reader', () => {
+  assert.match(KEYS.Ns5WorkflowTask.actorRef.reader, /workflows50\/gate/);
+  assert.match(KEYS.Ns5WorkflowsArtifact.processes.reader, /finalize80/);
 });

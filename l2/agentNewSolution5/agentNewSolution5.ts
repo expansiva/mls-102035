@@ -23,6 +23,7 @@ import '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
 import '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
 import '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
+import '/_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.js';
 
 export function createAgent(): IAgentAsync {
   return {
