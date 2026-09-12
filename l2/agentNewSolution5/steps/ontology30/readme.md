@@ -15,10 +15,22 @@ has no screen; `/fast` auto-approves.
 ## Output
 
 `Ns5OntologyEntityArtifact` per entity: kind, party, mdmSubtype, displayField, namespace fields,
-`details`, lifecycle states, allowed transitions (`ruleRefs` optional), storage. Index: entity
-order plus relationships with field realization. Organization-wide aggregates go in
-`module.details` (plan `moduleDetails`). No `kind: projection`, `derivation`, `role`,
-`sourceRefs`, `useRules` or `lifecyclePredicates`.
+`unique` / `uniqueKeys`, typed `details`, lifecycle states, allowed transitions (`ruleRefs`
+optional), storage. Index: entity order plus relationships with field realization and a
+one-sentence `description`. Organization-wide aggregates go in typed `module.details` (plan
+`moduleDetails`). No `kind: projection`, `derivation`, `role`, `sourceRefs`, `useRules` or
+`lifecyclePredicates`.
+
+## Form (v2)
+
+| fact | where | not |
+|---|---|---|
+| type, required, `unique`, `uniqueKeys`, intrinsic domain (`constraints`) | ontology | business policy |
+| calculated value | `details.{name}.{type, description}` | a projection entity |
+| relationship edge label | `relationships[].description` | `title` |
+| closed-domain label | `enum[{ value, title }]` | `NS4_PHRASES` (chrome only) |
+| organization policy ("max 12 installments") | `rules.{ruleId, description}` | `constraints` |
+| value that varies per record | a field the rule cites | a constant in `constraints` |
 
 ## Invariants
 

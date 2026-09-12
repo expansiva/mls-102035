@@ -422,7 +422,7 @@ void test('afterPrompt applies form normalizations before the gate and records t
 
 void test('human prompt carries source request, actors, journeys, fields, party and required relationships', () => {
   const customer = {
-    schemaVersion: '2026-09-10-ns5-ontology-v1',
+    schemaVersion: '2026-09-11-ns5-ontology-v2',
     moduleName: 'ordenServicio5',
     entityId: 'Customer',
     title: 'Customer',
@@ -436,7 +436,7 @@ void test('human prompt carries source request, actors, journeys, fields, party 
     storage: { target: 'mdm', scope: 'organization', idField: 'customerId' },
   } as Ns5OntologyEntityArtifact;
   const serviceOrder = {
-    schemaVersion: '2026-09-10-ns5-ontology-v1',
+    schemaVersion: '2026-09-11-ns5-ontology-v2',
     moduleName: 'ordenServicio5',
     entityId: 'ServiceOrder',
     title: 'Service order',
@@ -448,7 +448,7 @@ void test('human prompt carries source request, actors, journeys, fields, party 
       { fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Current state.' },
       { fieldId: 'budgetAmount', title: 'Budget', type: 'money', required: false, description: 'Customer budget.' },
     ],
-    details: { ageDays: 'Days since opening.' },
+    details: { ageDays: { type: 'integer', description: 'Days since opening.' } },
     lifecycleStates: [{ state: 'opened', reachedBy: 'actor' }],
     transitions: [],
     storage: { target: 'moduleDatabase', scope: 'module', idField: 'serviceOrderId' },

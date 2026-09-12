@@ -28,9 +28,18 @@
       "type": "string",
       "required": true,
       "enum": [
-        "pendingResponse",
-        "approved",
-        "rejected"
+        {
+          "value": "pendingResponse",
+          "title": "Pendiente de respuesta"
+        },
+        {
+          "value": "approved",
+          "title": "Aprobada"
+        },
+        {
+          "value": "rejected",
+          "title": "Rechazada"
+        }
       ],
       "description": "Estado de la respuesta del cliente al presupuesto."
     }

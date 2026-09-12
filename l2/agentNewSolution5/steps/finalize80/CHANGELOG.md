@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- I9: each `uniqueKeys` fieldId exists on the entity (`NS5_FINALIZE_I9`). A uniqueness
+  claim that lives only in rule prose is not checkable — I9 is the inverse.
 - I3: every `access.actors` row has ≥1 journey and ≥1 grant. I1 cites `grant.actorRef`.
   Registry reads actors from access.
 - I8: an `own`/`related` grant whose `anchorEntity` is `party: person` needs an

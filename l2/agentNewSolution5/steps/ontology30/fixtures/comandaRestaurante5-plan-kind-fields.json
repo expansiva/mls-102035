@@ -91,6 +91,7 @@
       "toEntity": "Table",
       "type": "manyToOne",
       "required": true,
+      "description": "OrderTab relates to Table.",
       "persistence": {
         "mode": "crossStoreReference"
       }
@@ -101,6 +102,7 @@
       "toEntity": "OrderTab",
       "type": "manyToOne",
       "required": true,
+      "description": "OrderItem relates to OrderTab.",
       "persistence": {
         "mode": "moduleReference"
       }
@@ -111,6 +113,7 @@
       "toEntity": "MenuItem",
       "type": "manyToOne",
       "required": true,
+      "description": "OrderItem relates to MenuItem.",
       "persistence": {
         "mode": "crossStoreReference"
       }
@@ -121,6 +124,7 @@
       "toEntity": "OrderTab",
       "type": "oneToOne",
       "required": true,
+      "description": "Payment relates to OrderTab.",
       "persistence": {
         "mode": "moduleReference"
       }

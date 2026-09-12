@@ -3,7 +3,7 @@
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 
 export const mensalidadesAcademiaEntityAluno = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "mensalidadesAcademia",
   "entityId": "Aluno",
   "title": "Aluno",
@@ -14,9 +14,18 @@ export const mensalidadesAcademiaEntityAluno = {
   "displayField": "name",
   "fields": [],
   "details": {
-    "quantidadeMensalidadesVencidas": "Quantidade de mensalidades vencidas e ainda não pagas do aluno.",
-    "situacaoFinanceira": "Indica se o aluno está regular, inadimplente ou bloqueado conforme suas mensalidades vencidas.",
-    "acessoPermitido": "Indica se o aluno pode entrar na academia, sendo falso quando possui duas ou mais mensalidades vencidas."
+    "quantidadeMensalidadesVencidas": {
+      "type": "integer",
+      "description": "Quantidade de mensalidades vencidas e ainda não pagas do aluno."
+    },
+    "situacaoFinanceira": {
+      "type": "string",
+      "description": "Indica se o aluno está regular, inadimplente ou bloqueado conforme suas mensalidades vencidas."
+    },
+    "acessoPermitido": {
+      "type": "boolean",
+      "description": "Indica se o aluno pode entrar na academia, sendo falso quando possui duas ou mais mensalidades vencidas."
+    }
   },
   "lifecycleStates": [],
   "transitions": [],

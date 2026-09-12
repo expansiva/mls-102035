@@ -3,7 +3,7 @@
 /** Schema ids for NS5 source artifacts. Bumped when a field is added or removed. */
 export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
-export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-10-ns5-ontology-v1' as const;
+export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const;
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-10-ns5-workflows-v1' as const;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-10-ns5-access-v2' as const;
@@ -52,7 +52,7 @@ export interface Ns5ModuleArtifact {
   /** Resume and /rebuild all recover the original request from here. */
   sourcePrompt: string;
   /** Organization-wide aggregates; ontology30 writes this at the end of the fan-out. */
-  details?: Record<string, string>;
+  details?: Record<string, Ns5OntologyDetail>;
 }
 
 export interface Ns5JourneyStep {
@@ -131,6 +131,31 @@ export interface Ns5JourneyIndexArtifact {
   systemDecisions: Ns5SystemDecision[];
 }
 
+export interface Ns5OntologyDetail {
+  /** Typed JSON column and screen formatting. */
+  type: Ns5OntologyField['type'];
+  /** Planner / UI; rules may cite details.<name>. */
+  description: string;
+}
+
+export interface Ns5OntologyEnumValue {
+  /** Stable English lowerCamel code; status.enum.value covers lifecycleStates[].state. */
+  value: string;
+  /** Screen select/badge label in userLanguage. */
+  title: string;
+}
+
+export interface Ns5OntologyFieldConstraints {
+  /** Inclusive lower bound; number, integer or money. */
+  min?: number;
+  /** Inclusive upper bound; number, integer or money. */
+  max?: number;
+  /** string or text only. */
+  maxLength?: number;
+  /** money or number only. */
+  precision?: number;
+}
+
 export interface Ns5OntologyField {
   /** Grants and rules name Entidade.campo using this id. */
   fieldId: string;
@@ -140,8 +165,12 @@ export interface Ns5OntologyField {
   type: 'uuid' | 'string' | 'text' | 'number' | 'integer' | 'boolean' | 'money' | 'date' | 'datetime' | 'json';
   /** Backend required-on-write; ontology30 gate. */
   required: boolean;
-  /** Literal union that reaches the page through the ontology. */
-  enum?: string[];
+  /** Simple uniqueness; DDL unique index. Never the identity field. */
+  unique?: boolean;
+  /** Closed domain; value is the code, title is the screen label. */
+  enum?: Ns5OntologyEnumValue[];
+  /** Intrinsic to the type (day 1..31, percent 0..100). Never a business policy. */
+  constraints?: Ns5OntologyFieldConstraints;
   /** Planner / UI. */
   description: string;
 }
@@ -167,8 +196,10 @@ export interface Ns5OntologyEntityArtifact {
   displayField: string;
   /** Namespace-only on mdm; identity lives in storage.idField. */
   fields: Ns5OntologyField[];
-  /** Calculated values; backend persists JSON column details; rules may cite details.<name>. */
-  details?: Record<string, string>;
+  /** Composite uniqueness; fieldIds of this entity, never idField. finalize80 I9. */
+  uniqueKeys?: string[][];
+  /** Calculated values; typed JSON column; rules may cite details.<name>. */
+  details?: Record<string, Ns5OntologyDetail>;
   /** finalize80 reachability; a screen may only request a declared transition. */
   lifecycleStates: Array<{
     state: string;
@@ -207,6 +238,8 @@ export interface Ns5OntologyRelationship {
   toEntity: string;
   /** Structural type of the link. */
   type: string;
+  /** Ontology screen edge label; master frontend. One sentence, userLanguage. */
+  description: string;
   /** access60 own-anchor walk follows required edges. */
   required: boolean;
   persistence: {

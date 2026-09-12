@@ -43,7 +43,7 @@ export interface Ns5AccessEntityView {
   entityId: string;
   party: 'person' | 'organization' | 'none' | string;
   fields: ReadonlyArray<{ fieldId: string }>;
-  details?: Record<string, string>;
+  details?: Record<string, unknown>;
   storage?: { idField: string };
 }
 

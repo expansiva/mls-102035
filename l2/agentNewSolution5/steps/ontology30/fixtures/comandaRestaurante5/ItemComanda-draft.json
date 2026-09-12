@@ -49,14 +49,23 @@
       "type": "string",
       "required": true,
       "enum": [
-        "lancado",
-        "cancelado"
+        {
+          "value": "lancado",
+          "title": "Lançado"
+        },
+        {
+          "value": "cancelado",
+          "title": "Cancelado"
+        }
       ],
       "description": "Situação do lançamento na comanda."
     }
   ],
   "details": {
-    "valorTotal": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+    "valorTotal": {
+      "type": "money",
+      "description": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+    }
   },
   "lifecycleStates": [
     {

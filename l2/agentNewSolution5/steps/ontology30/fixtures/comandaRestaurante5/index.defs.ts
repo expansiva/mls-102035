@@ -3,7 +3,7 @@
 import type { Ns5OntologyIndexArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5OntologyIndex = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "comandaRestaurante5",
   "businessDomain": "Gestão de comandas, itens de cardápio, descontos e pagamentos de restaurante.",
   "entities": [
@@ -21,6 +21,7 @@ export const comandaRestaurante5OntologyIndex = {
       "toEntity": "Mesa",
       "type": "manyToOne",
       "required": true,
+      "description": "A comanda é aberta em uma mesa do restaurante.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -47,6 +48,7 @@ export const comandaRestaurante5OntologyIndex = {
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "Cada lançamento pertence a uma comanda aberta.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -73,6 +75,7 @@ export const comandaRestaurante5OntologyIndex = {
       "toEntity": "ItemCardapio",
       "type": "manyToOne",
       "required": true,
+      "description": "O lançamento referencia o item do cardápio pedido.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -99,6 +102,7 @@ export const comandaRestaurante5OntologyIndex = {
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "O desconto pontual é aplicado a uma comanda.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -125,6 +129,7 @@ export const comandaRestaurante5OntologyIndex = {
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "O pagamento quita total ou parcialmente uma comanda.",
       "persistence": {
         "mode": "moduleReference"
       },

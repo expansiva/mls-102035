@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-plan/2026-09-10-ns5-ontology-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-plan/2026-09-11-ns5-ontology-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
@@ -11,7 +11,7 @@
     "relationships"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-ontology-v1" },
+    "schemaVersion": { "type": "string", "const": "2026-09-11-ns5-ontology-v2" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "businessDomain": { "type": "string", "minLength": 1 },
     "entities": {
@@ -32,9 +32,13 @@
     "detail": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "description"],
+      "required": ["name", "type", "description"],
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "type": {
+          "type": "string",
+          "enum": ["uuid", "string", "text", "number", "integer", "boolean", "money", "date", "datetime", "json"]
+        },
         "description": { "type": "string", "minLength": 1 }
       }
     },
@@ -75,13 +79,14 @@
     "planRelationship": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["relationshipId", "fromEntity", "toEntity", "type", "required", "persistence"],
+      "required": ["relationshipId", "fromEntity", "toEntity", "type", "required", "description", "persistence"],
       "properties": {
         "relationshipId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "fromEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "toEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "type": { "type": "string", "enum": ["oneToOne", "oneToMany", "manyToOne", "manyToMany"] },
         "required": { "type": "boolean" },
+        "description": { "type": "string", "minLength": 1 },
         "persistence": {
           "type": "object",
           "additionalProperties": false,

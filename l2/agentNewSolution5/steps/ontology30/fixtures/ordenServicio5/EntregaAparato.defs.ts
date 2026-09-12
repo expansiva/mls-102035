@@ -3,7 +3,7 @@
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5EntityEntregaAparato = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "ordenServicio5",
   "entityId": "EntregaAparato",
   "title": "Entrega de aparato",

@@ -3,7 +3,7 @@
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5EntityOrdenServicio = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "ordenServicio5",
   "entityId": "OrdenServicio",
   "title": "Orden de servicio",
@@ -88,12 +88,30 @@ export const ordenServicio5EntityOrdenServicio = {
       "type": "string",
       "required": true,
       "enum": [
-        "received",
-        "quoted",
-        "approved",
-        "rejected",
-        "readyForPickup",
-        "completed"
+        {
+          "value": "received",
+          "title": "Recibida"
+        },
+        {
+          "value": "quoted",
+          "title": "Presupuestada"
+        },
+        {
+          "value": "approved",
+          "title": "Aprobada"
+        },
+        {
+          "value": "rejected",
+          "title": "Rechazada"
+        },
+        {
+          "value": "readyForPickup",
+          "title": "Lista para recoger"
+        },
+        {
+          "value": "completed",
+          "title": "Completada"
+        }
       ],
       "description": "Estado actual de la orden de servicio."
     }

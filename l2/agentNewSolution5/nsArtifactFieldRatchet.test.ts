@@ -23,6 +23,9 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5JourneyIndexArtifact: { file: TYPES, name: 'Ns5JourneyIndexArtifact' },
   Ns5OntologyEntityArtifact: { file: TYPES, name: 'Ns5OntologyEntityArtifact' },
   Ns5OntologyField: { file: TYPES, name: 'Ns5OntologyField' },
+  Ns5OntologyDetail: { file: TYPES, name: 'Ns5OntologyDetail' },
+  Ns5OntologyEnumValue: { file: TYPES, name: 'Ns5OntologyEnumValue' },
+  Ns5OntologyFieldConstraints: { file: TYPES, name: 'Ns5OntologyFieldConstraints' },
   Ns5OntologyRelationship: { file: TYPES, name: 'Ns5OntologyRelationship' },
   Ns5OntologyIndexArtifact: { file: TYPES, name: 'Ns5OntologyIndexArtifact' },
   Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
@@ -56,7 +59,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     productLanguages: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
     defaultLanguage: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
     sourcePrompt: { reader: 'resume and /rebuild all', since: '2026-09-10' },
-    details: { reader: 'steps/ontology30 persist (module aggregates), later screens/backend', since: '2026-09-11' },
+    details: { reader: 'steps/ontology30 persist (typed module aggregates), later screens/backend', since: '2026-09-11' },
   },
   Ns5JourneyStep: {
     stepId: { reader: 'steps/workflows50/gate.ts, finalize80', since: '2026-09-10' },
@@ -101,7 +104,8 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     mdmSubtype: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     displayField: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     fields: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
-    details: { reader: 'finalize80 / basic backend JSON column', since: '2026-09-10' },
+    uniqueKeys: { reader: 'steps/ontology30/gate.ts, finalize80 I9, DDL/upsert lote', since: '2026-09-11' },
+    details: { reader: 'typed JSON column, screens, finalize80 I4 details.<name>', since: '2026-09-10' },
     lifecycleStates: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     transitions: { reader: 'steps/ontology30/gate.ts, finalize80', since: '2026-09-10' },
     storage: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
@@ -112,14 +116,31 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     title: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     type: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     required: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
-    enum: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    unique: { reader: 'steps/ontology30/gate.ts, DDL unique index', since: '2026-09-11' },
+    enum: { reader: 'steps/ontology30/gate.ts, screen select/badge, i18n', since: '2026-09-10' },
+    constraints: { reader: 'steps/ontology30/gate.ts, DDL/validation', since: '2026-09-11' },
     description: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+  },
+  Ns5OntologyDetail: {
+    type: { reader: 'typed JSON column, screens, ontology30 gate', since: '2026-09-11' },
+    description: { reader: 'typed JSON column, screens, rules citing details.<name>', since: '2026-09-11' },
+  },
+  Ns5OntologyEnumValue: {
+    value: { reader: 'steps/ontology30/gate.ts, lifecycleStates ⊆ enum.value', since: '2026-09-11' },
+    title: { reader: 'screen select/badge, i18n', since: '2026-09-11' },
+  },
+  Ns5OntologyFieldConstraints: {
+    min: { reader: 'steps/ontology30/gate.ts, DDL/validation', since: '2026-09-11' },
+    max: { reader: 'steps/ontology30/gate.ts, DDL/validation', since: '2026-09-11' },
+    maxLength: { reader: 'steps/ontology30/gate.ts, DDL/validation', since: '2026-09-11' },
+    precision: { reader: 'steps/ontology30/gate.ts, DDL/validation', since: '2026-09-11' },
   },
   Ns5OntologyRelationship: {
     relationshipId: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     fromEntity: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     toEntity: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     type: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    description: { reader: 'ontology screen edge label, master frontend', since: '2026-09-11' },
     required: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     persistence: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     realization: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
@@ -269,6 +290,15 @@ test('NS5 source contracts do not gain a key without a non-LLM reader', () => {
 test('details and transitions are registered with finalize80 / basic backend readers', () => {
   assert.match(KEYS.Ns5OntologyEntityArtifact.details.reader, /finalize80/);
   assert.match(KEYS.Ns5OntologyEntityArtifact.transitions.reader, /finalize80/);
+});
+
+test('ns5_19 uniqueness, typed details, relationship description, enum labels and constraints have readers', () => {
+  assert.match(KEYS.Ns5OntologyField.unique.reader, /ontology30\/gate/);
+  assert.match(KEYS.Ns5OntologyField.constraints.reader, /DDL/);
+  assert.match(KEYS.Ns5OntologyEntityArtifact.uniqueKeys.reader, /finalize80 I9/);
+  assert.match(KEYS.Ns5OntologyRelationship.description.reader, /ontology screen/);
+  assert.match(KEYS.Ns5OntologyField.enum.reader, /select\/badge/);
+  assert.match(KEYS.Ns5ModuleArtifact.details.reader, /typed/);
 });
 
 test('rules40 title and appliesTo were removed; I4 reads cited ruleRefs', () => {

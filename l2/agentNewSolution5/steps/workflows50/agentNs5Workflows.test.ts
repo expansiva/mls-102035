@@ -482,7 +482,7 @@ void test('ownerStepId maps workflows50 repair planIds', () => {
 
 void test('human prompt carries source request, journeys, handoffs and transitions', () => {
   const serviceOrder = {
-    schemaVersion: '2026-09-10-ns5-ontology-v1',
+    schemaVersion: '2026-09-11-ns5-ontology-v2',
     moduleName: 'ordenServicio5',
     entityId: 'ServiceOrder',
     title: 'Service order',

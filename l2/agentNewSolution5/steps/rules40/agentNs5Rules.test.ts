@@ -131,7 +131,7 @@ void test('ownerStepId maps rules40 repair planIds', () => {
 
 void test('human prompt carries source request, journeys, ontology and cited ruleRefs', () => {
   const comanda = {
-    schemaVersion: '2026-09-10-ns5-ontology-v1',
+    schemaVersion: '2026-09-11-ns5-ontology-v2',
     moduleName: 'comandaRestaurante5',
     entityId: 'Comanda',
     title: 'Order',
@@ -142,7 +142,7 @@ void test('human prompt carries source request, journeys, ontology and cited rul
     fields: [
       { fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Open or closed.' },
     ],
-    details: { total: 'Sum of active items.' },
+    details: { total: { type: 'money', description: 'Sum of active items.' } },
     lifecycleStates: [
       { state: 'open', reachedBy: 'actor' },
       { state: 'closed', reachedBy: 'actor' },

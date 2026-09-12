@@ -3,7 +3,7 @@
 import type { Ns5OntologyIndexArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5OntologyIndex = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "ordenServicio5",
   "businessDomain": "Gestión de órdenes de servicio técnico para aparatos electrónicos, desde la recepción hasta la entrega.",
   "entities": [
@@ -25,6 +25,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "Cliente",
       "type": "manyToOne",
       "required": true,
+      "description": "La orden de servicio pertenece a un cliente registrado.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -51,6 +52,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "Aparato",
       "type": "manyToOne",
       "required": true,
+      "description": "La orden registra el aparato recibido para reparación.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -77,6 +79,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "DefectoInformado",
       "type": "oneToOne",
       "required": true,
+      "description": "El defecto informado queda ligado a la orden de recepción.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -103,6 +106,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "FotoOrden",
       "type": "oneToMany",
       "required": false,
+      "description": "Las fotos tomadas en recepción quedan ligadas a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -129,6 +133,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "Diagnostico",
       "type": "oneToOne",
       "required": false,
+      "description": "El diagnóstico técnico queda ligado a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -155,6 +160,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "Presupuesto",
       "type": "oneToOne",
       "required": false,
+      "description": "El presupuesto de reparación queda ligado a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -181,6 +187,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "PiezaNecesaria",
       "type": "oneToMany",
       "required": false,
+      "description": "El presupuesto incluye las piezas necesarias para la reparación.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -207,6 +214,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "Reparacion",
       "type": "oneToOne",
       "required": false,
+      "description": "La reparación ejecutada queda ligada a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -233,6 +241,7 @@ export const ordenServicio5OntologyIndex = {
       "toEntity": "EntregaAparato",
       "type": "oneToOne",
       "required": false,
+      "description": "La entrega del aparato queda ligada a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },

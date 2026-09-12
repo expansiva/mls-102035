@@ -66,4 +66,6 @@ Declare every semantic edge the journeys need. Persistence modes:
 
 Types: `oneToOne`, `oneToMany`, `manyToOne`, `manyToMany`. Do not emit `realization` here.
 
-`schemaVersion` is `2026-09-10-ns5-ontology-v1`.
+Each relationship includes a one-sentence `description` in the user language (the edge label).
+
+`schemaVersion` is `2026-09-11-ns5-ontology-v2`.

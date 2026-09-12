@@ -159,6 +159,7 @@
         "toEntity": "Cliente",
         "type": "manyToOne",
         "required": true,
+        "description": "La orden de servicio pertenece a un cliente registrado.",
         "persistence": {
           "mode": "crossStoreReference"
         }
@@ -169,6 +170,7 @@
         "toEntity": "Aparato",
         "type": "manyToOne",
         "required": true,
+        "description": "La orden registra el aparato recibido para reparación.",
         "persistence": {
           "mode": "crossStoreReference"
         }
@@ -179,6 +181,7 @@
         "toEntity": "DefectoInformado",
         "type": "oneToOne",
         "required": true,
+        "description": "El defecto informado queda ligado a la orden de recepción.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -189,6 +192,7 @@
         "toEntity": "FotoOrden",
         "type": "oneToMany",
         "required": false,
+        "description": "Las fotos tomadas en recepción quedan ligadas a la orden.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -199,6 +203,7 @@
         "toEntity": "Diagnostico",
         "type": "oneToOne",
         "required": false,
+        "description": "El diagnóstico técnico queda ligado a la orden.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -209,6 +214,7 @@
         "toEntity": "Presupuesto",
         "type": "oneToOne",
         "required": false,
+        "description": "El presupuesto de reparación queda ligado a la orden.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -219,6 +225,7 @@
         "toEntity": "PiezaNecesaria",
         "type": "oneToMany",
         "required": false,
+        "description": "El presupuesto incluye las piezas necesarias para la reparación.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -229,6 +236,7 @@
         "toEntity": "Reparacion",
         "type": "oneToOne",
         "required": false,
+        "description": "La reparación ejecutada queda ligada a la orden.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -239,6 +247,7 @@
         "toEntity": "EntregaAparato",
         "type": "oneToOne",
         "required": false,
+        "description": "La entrega del aparato queda ligada a la orden.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -247,7 +256,7 @@
   },
   "entities": [
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "DefectoInformado",
       "title": "Defecto informado",
@@ -281,7 +290,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "FotoOrden",
       "title": "Foto de la orden",
@@ -329,7 +338,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "Diagnostico",
       "title": "Diagnóstico",
@@ -363,7 +372,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "PiezaNecesaria",
       "title": "Pieza necesaria",
@@ -411,7 +420,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "Reparacion",
       "title": "Reparación",
@@ -445,7 +454,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "EntregaAparato",
       "title": "Entrega de aparato",
@@ -479,7 +488,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "Presupuesto",
       "title": "Presupuesto",
@@ -515,9 +524,18 @@
           "type": "string",
           "required": true,
           "enum": [
-            "pendingResponse",
-            "approved",
-            "rejected"
+            {
+              "value": "pendingResponse",
+              "title": "Pendiente de respuesta"
+            },
+            {
+              "value": "approved",
+              "title": "Aprobada"
+            },
+            {
+              "value": "rejected",
+              "title": "Rechazada"
+            }
           ],
           "description": "Estado de la respuesta del cliente al presupuesto."
         }
@@ -567,7 +585,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "OrdenServicio",
       "title": "Orden de servicio",
@@ -652,12 +670,30 @@
           "type": "string",
           "required": true,
           "enum": [
-            "received",
-            "quoted",
-            "approved",
-            "rejected",
-            "readyForPickup",
-            "completed"
+            {
+              "value": "received",
+              "title": "Recibida"
+            },
+            {
+              "value": "quoted",
+              "title": "Presupuestada"
+            },
+            {
+              "value": "approved",
+              "title": "Aprobada"
+            },
+            {
+              "value": "rejected",
+              "title": "Rechazada"
+            },
+            {
+              "value": "readyForPickup",
+              "title": "Lista para recoger"
+            },
+            {
+              "value": "completed",
+              "title": "Completada"
+            }
           ],
           "description": "Estado actual de la orden de servicio."
         }
@@ -763,7 +799,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "Cliente",
       "title": "Cliente",
@@ -783,7 +819,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "ordenServicio5",
       "entityId": "Aparato",
       "title": "Aparato",
@@ -810,6 +846,7 @@
       "toEntity": "Cliente",
       "type": "manyToOne",
       "required": true,
+      "description": "La orden de servicio pertenece a un cliente registrado.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -836,6 +873,7 @@
       "toEntity": "Aparato",
       "type": "manyToOne",
       "required": true,
+      "description": "La orden registra el aparato recibido para reparación.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -862,6 +900,7 @@
       "toEntity": "DefectoInformado",
       "type": "oneToOne",
       "required": true,
+      "description": "El defecto informado queda ligado a la orden de recepción.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -888,6 +927,7 @@
       "toEntity": "FotoOrden",
       "type": "oneToMany",
       "required": false,
+      "description": "Las fotos tomadas en recepción quedan ligadas a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -914,6 +954,7 @@
       "toEntity": "Diagnostico",
       "type": "oneToOne",
       "required": false,
+      "description": "El diagnóstico técnico queda ligado a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -940,6 +981,7 @@
       "toEntity": "Presupuesto",
       "type": "oneToOne",
       "required": false,
+      "description": "El presupuesto de reparación queda ligado a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -966,6 +1008,7 @@
       "toEntity": "PiezaNecesaria",
       "type": "oneToMany",
       "required": false,
+      "description": "El presupuesto incluye las piezas necesarias para la reparación.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -992,6 +1035,7 @@
       "toEntity": "Reparacion",
       "type": "oneToOne",
       "required": false,
+      "description": "La reparación ejecutada queda ligada a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -1018,6 +1062,7 @@
       "toEntity": "EntregaAparato",
       "type": "oneToOne",
       "required": false,
+      "description": "La entrega del aparato queda ligada a la orden.",
       "persistence": {
         "mode": "moduleReference"
       },

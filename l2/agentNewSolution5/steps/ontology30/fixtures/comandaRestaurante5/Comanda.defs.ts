@@ -3,7 +3,7 @@
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5EntityComanda = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "comandaRestaurante5",
   "entityId": "Comanda",
   "title": "Comanda",
@@ -39,18 +39,39 @@ export const comandaRestaurante5EntityComanda = {
       "type": "string",
       "required": true,
       "enum": [
-        "aberta",
-        "fechada"
+        {
+          "value": "aberta",
+          "title": "Aberta"
+        },
+        {
+          "value": "fechada",
+          "title": "Fechada"
+        }
       ],
       "description": "Situação atual da comanda durante o atendimento e o fechamento."
     }
   ],
   "details": {
-    "valorItens": "Soma os valores dos itens da comanda que não foram cancelados.",
-    "valorDescontos": "Soma os descontos pontuais registrados para a comanda.",
-    "valorDevido": "Calcula o valor a receber após deduzir os descontos do valor dos itens.",
-    "valorPago": "Soma os pagamentos registrados para a comanda.",
-    "saldoDevedor": "Calcula o valor que ainda falta receber para quitar a comanda."
+    "valorItens": {
+      "type": "money",
+      "description": "Soma os valores dos itens da comanda que não foram cancelados."
+    },
+    "valorDescontos": {
+      "type": "money",
+      "description": "Soma os descontos pontuais registrados para a comanda."
+    },
+    "valorDevido": {
+      "type": "money",
+      "description": "Calcula o valor a receber após deduzir os descontos do valor dos itens."
+    },
+    "valorPago": {
+      "type": "money",
+      "description": "Soma os pagamentos registrados para a comanda."
+    },
+    "saldoDevedor": {
+      "type": "money",
+      "description": "Calcula o valor que ainda falta receber para quitar a comanda."
+    }
   },
   "lifecycleStates": [
     {

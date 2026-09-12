@@ -3,7 +3,7 @@
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5EntityPresupuesto = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "ordenServicio5",
   "entityId": "Presupuesto",
   "title": "Presupuesto",
@@ -39,9 +39,18 @@ export const ordenServicio5EntityPresupuesto = {
       "type": "string",
       "required": true,
       "enum": [
-        "pendingResponse",
-        "approved",
-        "rejected"
+        {
+          "value": "pendingResponse",
+          "title": "Pendiente de respuesta"
+        },
+        {
+          "value": "approved",
+          "title": "Aprobada"
+        },
+        {
+          "value": "rejected",
+          "title": "Rechazada"
+        }
       ],
       "description": "Estado de la respuesta del cliente al presupuesto."
     }

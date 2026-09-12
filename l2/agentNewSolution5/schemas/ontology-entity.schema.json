@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-entity/2026-09-10-ns5-ontology-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-entity/2026-09-11-ns5-ontology-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
@@ -9,6 +9,14 @@
     "fields": {
       "type": "array",
       "items": { "$ref": "#/$defs/field" }
+    },
+    "uniqueKeys": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+      }
     },
     "details": {
       "type": "array",
@@ -24,6 +32,10 @@
     }
   },
   "$defs": {
+    "fieldType": {
+      "type": "string",
+      "enum": ["uuid", "string", "text", "number", "integer", "boolean", "money", "date", "datetime", "json"]
+    },
     "field": {
       "type": "object",
       "additionalProperties": false,
@@ -31,24 +43,43 @@
       "properties": {
         "fieldId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "title": { "type": "string", "minLength": 1 },
-        "type": {
-          "type": "string",
-          "enum": ["uuid", "string", "text", "number", "integer", "boolean", "money", "date", "datetime", "json"]
-        },
+        "type": { "$ref": "#/$defs/fieldType" },
         "required": { "type": "boolean" },
+        "unique": { "type": "boolean" },
         "enum": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+          "items": { "$ref": "#/$defs/enumValue" }
         },
+        "constraints": { "$ref": "#/$defs/constraints" },
         "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "enumValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "title"],
+      "properties": {
+        "value": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "maxLength": { "type": "integer", "minimum": 1 },
+        "precision": { "type": "integer", "minimum": 0 }
       }
     },
     "detail": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "description"],
+      "required": ["name", "type", "description"],
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "type": { "$ref": "#/$defs/fieldType" },
         "description": { "type": "string", "minLength": 1 }
       }
     },

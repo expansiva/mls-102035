@@ -89,7 +89,10 @@ export function validateNs5ModuleArtifact(
   }
   const details = artifact.details || {};
   const detailNames = new Set<string>();
-  for (const [name, description] of Object.entries(details)) {
+  const detailTypes = new Set([
+    'uuid', 'string', 'text', 'number', 'integer', 'boolean', 'money', 'date', 'datetime', 'json',
+  ]);
+  for (const [name, detail] of Object.entries(details)) {
     if (!MEMBER_ID.test(name)) {
       error(issues, 'NS5_MODULE_DETAILS_ID', 'details names must be lowerCamel.', `details.${name}`);
     }
@@ -97,7 +100,10 @@ export function validateNs5ModuleArtifact(
       error(issues, 'NS5_MODULE_DETAILS_ID', `Duplicate details name ${name}.`, `details.${name}`);
     }
     detailNames.add(name);
-    if (!String(description || '').trim()) {
+    if (!detailTypes.has(detail?.type)) {
+      error(issues, 'NS5_MODULE_DETAILS_TYPE', `details.${name} type must be a field type.`, `details.${name}.type`);
+    }
+    if (!String(detail?.description || '').trim()) {
       error(issues, 'NS5_MODULE_DETAILS_DESCRIPTION', `details.${name} needs a one-sentence description.`, `details.${name}`);
     }
   }

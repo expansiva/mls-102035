@@ -87,7 +87,7 @@ the user types.
 ## Computed values
 
 Values derived from other data (a total, a balance, a due situation) are not fields and not entities:
-they are `details: { <name>: <one-sentence definition> }` on the entity that owns them (or on the module,
+they are `details: { <name>: { type, description } }` on the entity that owns them (or on the module,
 for organization-wide aggregates). The backend computes them; a rule may cite them.
 
 ## What the MDM already answers (do not model it in the module)

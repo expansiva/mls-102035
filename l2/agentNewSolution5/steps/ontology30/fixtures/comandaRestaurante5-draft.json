@@ -99,6 +99,7 @@
         "toEntity": "Mesa",
         "type": "manyToOne",
         "required": true,
+        "description": "A comanda é aberta em uma mesa do restaurante.",
         "persistence": {
           "mode": "crossStoreReference"
         }
@@ -109,6 +110,7 @@
         "toEntity": "Comanda",
         "type": "manyToOne",
         "required": true,
+        "description": "Cada lançamento pertence a uma comanda aberta.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -119,6 +121,7 @@
         "toEntity": "ItemCardapio",
         "type": "manyToOne",
         "required": true,
+        "description": "O lançamento referencia o item do cardápio pedido.",
         "persistence": {
           "mode": "crossStoreReference"
         }
@@ -129,6 +132,7 @@
         "toEntity": "Comanda",
         "type": "manyToOne",
         "required": true,
+        "description": "O desconto pontual é aplicado a uma comanda.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -139,6 +143,7 @@
         "toEntity": "Comanda",
         "type": "manyToOne",
         "required": true,
+        "description": "O pagamento quita total ou parcialmente uma comanda.",
         "persistence": {
           "mode": "moduleReference"
         }
@@ -147,7 +152,7 @@
   },
   "entities": [
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "comandaRestaurante5",
       "entityId": "Mesa",
       "title": "Mesa",
@@ -167,7 +172,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "comandaRestaurante5",
       "entityId": "ItemCardapio",
       "title": "Item do cardápio",
@@ -195,7 +200,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "comandaRestaurante5",
       "entityId": "Comanda",
       "title": "Comanda",
@@ -231,18 +236,39 @@
           "type": "string",
           "required": true,
           "enum": [
-            "aberta",
-            "fechada"
+            {
+              "value": "aberta",
+              "title": "Aberta"
+            },
+            {
+              "value": "fechada",
+              "title": "Fechada"
+            }
           ],
           "description": "Situação atual da comanda durante o atendimento e o fechamento."
         }
       ],
       "details": {
-        "valorItens": "Soma os valores dos itens da comanda que não foram cancelados.",
-        "valorDescontos": "Soma os descontos pontuais registrados para a comanda.",
-        "valorDevido": "Calcula o valor a receber após deduzir os descontos do valor dos itens.",
-        "valorPago": "Soma os pagamentos registrados para a comanda.",
-        "saldoDevedor": "Calcula o valor que ainda falta receber para quitar a comanda."
+        "valorItens": {
+          "type": "money",
+          "description": "Soma os valores dos itens da comanda que não foram cancelados."
+        },
+        "valorDescontos": {
+          "type": "money",
+          "description": "Soma os descontos pontuais registrados para a comanda."
+        },
+        "valorDevido": {
+          "type": "money",
+          "description": "Calcula o valor a receber após deduzir os descontos do valor dos itens."
+        },
+        "valorPago": {
+          "type": "money",
+          "description": "Soma os pagamentos registrados para a comanda."
+        },
+        "saldoDevedor": {
+          "type": "money",
+          "description": "Calcula o valor que ainda falta receber para quitar a comanda."
+        }
       },
       "lifecycleStates": [
         {
@@ -274,7 +300,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "comandaRestaurante5",
       "entityId": "ItemComanda",
       "title": "Item da comanda",
@@ -331,14 +357,23 @@
           "type": "string",
           "required": true,
           "enum": [
-            "lancado",
-            "cancelado"
+            {
+              "value": "lancado",
+              "title": "Lançado"
+            },
+            {
+              "value": "cancelado",
+              "title": "Cancelado"
+            }
           ],
           "description": "Situação do lançamento na comanda."
         }
       ],
       "details": {
-        "valorTotal": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+        "valorTotal": {
+          "type": "money",
+          "description": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+        }
       },
       "lifecycleStates": [
         {
@@ -370,7 +405,7 @@
       }
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "comandaRestaurante5",
       "entityId": "Desconto",
       "title": "Desconto",
@@ -418,7 +453,7 @@
       "mutability": "appendOnly"
     },
     {
-      "schemaVersion": "2026-09-10-ns5-ontology-v1",
+      "schemaVersion": "2026-09-11-ns5-ontology-v2",
       "moduleName": "comandaRestaurante5",
       "entityId": "Pagamento",
       "title": "Pagamento",
@@ -473,6 +508,7 @@
       "toEntity": "Mesa",
       "type": "manyToOne",
       "required": true,
+      "description": "A comanda é aberta em uma mesa do restaurante.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -499,6 +535,7 @@
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "Cada lançamento pertence a uma comanda aberta.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -525,6 +562,7 @@
       "toEntity": "ItemCardapio",
       "type": "manyToOne",
       "required": true,
+      "description": "O lançamento referencia o item do cardápio pedido.",
       "persistence": {
         "mode": "crossStoreReference"
       },
@@ -551,6 +589,7 @@
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "O desconto pontual é aplicado a uma comanda.",
       "persistence": {
         "mode": "moduleReference"
       },
@@ -577,6 +616,7 @@
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "O pagamento quita total ou parcialmente uma comanda.",
       "persistence": {
         "mode": "moduleReference"
       },

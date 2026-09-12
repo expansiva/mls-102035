@@ -98,6 +98,7 @@
       "toEntity": "Mesa",
       "type": "manyToOne",
       "required": true,
+      "description": "A comanda é aberta em uma mesa do restaurante.",
       "persistence": {
         "mode": "crossStoreReference"
       }
@@ -108,6 +109,7 @@
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "Cada lançamento pertence a uma comanda aberta.",
       "persistence": {
         "mode": "moduleReference"
       }
@@ -118,6 +120,7 @@
       "toEntity": "ItemCardapio",
       "type": "manyToOne",
       "required": true,
+      "description": "O lançamento referencia o item do cardápio pedido.",
       "persistence": {
         "mode": "crossStoreReference"
       }
@@ -128,6 +131,7 @@
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "O desconto pontual é aplicado a uma comanda.",
       "persistence": {
         "mode": "moduleReference"
       }
@@ -138,6 +142,7 @@
       "toEntity": "Comanda",
       "type": "manyToOne",
       "required": true,
+      "description": "O pagamento quita total ou parcialmente uma comanda.",
       "persistence": {
         "mode": "moduleReference"
       }

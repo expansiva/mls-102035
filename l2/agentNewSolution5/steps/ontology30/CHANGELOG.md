@@ -2,6 +2,12 @@
 
 ## 2026-09-11
 
+- Schema `2026-09-11-ns5-ontology-v2`: `unique` / `uniqueKeys`, typed `details`
+  (`{ type, description }`), required relationship `description`, `enum[{ value, title }]`,
+  intrinsic `constraints` (`min`/`max`/`maxLength`/`precision`). String `details` and
+  `enum: string[]` are no longer accepted. Gate: uniqueKeys fields exist, never
+  `idField`; constraints match the field type; `lifecycleStates[].state` ⊆
+  `status.enum.value`.
 - Actors come from `readNs5Actors` (pipeline), not `module.defs.ts`.
 - Level-1 catalog (and the platform catalog) is read from 102034. Plan and entity
   prompts receive subtypes plus services/role rules derived from `platform.defs.ts`.

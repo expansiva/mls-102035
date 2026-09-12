@@ -77,12 +77,30 @@
       "type": "string",
       "required": true,
       "enum": [
-        "received",
-        "quoted",
-        "approved",
-        "rejected",
-        "readyForPickup",
-        "completed"
+        {
+          "value": "received",
+          "title": "Recibida"
+        },
+        {
+          "value": "quoted",
+          "title": "Presupuestada"
+        },
+        {
+          "value": "approved",
+          "title": "Aprobada"
+        },
+        {
+          "value": "rejected",
+          "title": "Rechazada"
+        },
+        {
+          "value": "readyForPickup",
+          "title": "Lista para recoger"
+        },
+        {
+          "value": "completed",
+          "title": "Completada"
+        }
       ],
       "description": "Estado actual de la orden de servicio."
     }

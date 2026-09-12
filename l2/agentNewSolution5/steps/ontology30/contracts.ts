@@ -4,8 +4,11 @@ import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION,
   type Ns5ModuleArtifact,
+  type Ns5OntologyDetail,
   type Ns5OntologyEntityArtifact,
+  type Ns5OntologyEnumValue,
   type Ns5OntologyField,
+  type Ns5OntologyFieldConstraints,
   type Ns5OntologyIndexArtifact,
   type Ns5OntologyRelationship,
 } from '/_102035_/l2/solution/types.js';
@@ -58,6 +61,7 @@ export interface Ns5OntologyPlanRelationship {
   toEntity: string;
   type: string;
   required: boolean;
+  description: string;
   persistence: { mode: Ns5OntologyPersistenceMode };
 }
 
@@ -67,7 +71,7 @@ export interface Ns5OntologyPlanDraft {
   entities: Ns5OntologyPlanEntity[];
   relationships: Ns5OntologyPlanRelationship[];
   /** Organization-wide aggregates; copied onto module.defs.ts at persist. */
-  moduleDetails?: Record<string, string>;
+  moduleDetails?: Record<string, Ns5OntologyDetail>;
   /**
    * Ids removed by `liftNs5AggregateOnlyEntities` after fan-out. Not an LLM field;
    * normalize drops it. The ontology gate skips `NS5_ONTOLOGY_JOURNEY_ENTITY` for these
@@ -79,7 +83,8 @@ export interface Ns5OntologyPlanDraft {
 export interface Ns5OntologyEntityDraft {
   entityId: string;
   fields: Ns5OntologyField[];
-  details?: Record<string, string>;
+  uniqueKeys?: string[][];
+  details?: Record<string, Ns5OntologyDetail>;
   lifecycleStates: Ns5OntologyEntityArtifact['lifecycleStates'];
   transitions: Ns5OntologyEntityArtifact['transitions'];
 }
@@ -115,7 +120,7 @@ export function buildNs5OntologyEntityTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Entity',
-    'Submit fields, calculated details, lifecycle states and allowed transitions for one frozen entity.',
+    'Submit fields, uniqueKeys, calculated details, lifecycle states and allowed transitions for one frozen entity.',
     schema,
   );
 }
@@ -149,9 +154,27 @@ export function normalizeNs5OntologyPlan(
 }
 
 /** Copies organization-wide aggregates onto the module envelope. Empty omits the field. */
+/** Strip NS5-only field shape (enum objects, object constraints) for NS4 field helpers. */
+export function ns5AsFieldSource(entity: Ns5OntologyEntityArtifact | undefined | null) {
+  if (!entity) return entity;
+  return {
+    entityId: entity.entityId,
+    kind: entity.kind,
+    storage: entity.storage,
+    fields: entity.fields.map(field => ({
+      fieldId: field.fieldId,
+      type: field.type,
+      required: field.required,
+      title: field.title,
+      description: field.description,
+      ...(field.enum?.length ? { enum: field.enum.map(entry => entry.value) } : {}),
+    })),
+  };
+}
+
 export function applyNs5ModuleDetails(
   module: Ns5ModuleArtifact,
-  details: Record<string, string> | undefined,
+  details: Record<string, Ns5OntologyDetail> | undefined,
 ): Ns5ModuleArtifact {
   if (!details || !Object.keys(details).length) {
     if (!module.details) return module;
@@ -187,7 +210,7 @@ export function ns5EntityHasActOrAffects(
  * not empty, no journey `act` on it or in `affects`.
  */
 export function isNs5AggregateOnlyEntity(
-  entity: { entityId: string; kind: string; details?: Record<string, string> },
+  entity: { entityId: string; kind: string; details?: Record<string, unknown> },
   journeys: ReadonlyArray<Ns5AggregateJourneyView>,
 ): boolean {
   return (entity.kind === 'core' || entity.kind === 'supporting')
@@ -222,7 +245,7 @@ export function liftNs5AggregateOnlyEntities(
   journeys: ReadonlyArray<Ns5AggregateJourneyView>,
 ): Ns5AggregateLiftResult {
   const byId = new Map(details.map(item => [item.entityId, item]));
-  const merged: Record<string, string> = { ...(plan.moduleDetails || {}) };
+  const merged: Record<string, Ns5OntologyDetail> = { ...(plan.moduleDetails || {}) };
   const origin = new Map<string, string>();
   for (const key of Object.keys(merged)) origin.set(key, 'moduleDetails');
   const toRemove = new Set<string>();
@@ -237,7 +260,7 @@ export function liftNs5AggregateOnlyEntities(
     if (plan.relationships.some(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId)) {
       continue;
     }
-    for (const [key, description] of Object.entries(detail.details || {})) {
+    for (const [key, entry] of Object.entries(detail.details || {})) {
       const previous = origin.get(key);
       if (previous && previous !== 'moduleDetails') {
         issues.push({
@@ -247,7 +270,7 @@ export function liftNs5AggregateOnlyEntities(
           path: `entities.${entity.entityId}.details.${key}`,
         });
       } else if (!previous) {
-        merged[key] = description;
+        merged[key] = entry;
         origin.set(key, entity.entityId);
       }
     }
@@ -291,9 +314,11 @@ function uniqueIds(ids: string[]): string[] {
 export function normalizeNs5OntologyEntity(value: unknown, entityId: string): Ns5OntologyEntityDraft {
   const root = record(value);
   const details = normalizeDetails(root.details);
+  const uniqueKeys = normalizeUniqueKeys(root.uniqueKeys);
   return {
     entityId: normalizeEntityId(root.entityId) || entityId,
     fields: list(root.fields).map(normalizeField).filter(field => field.fieldId),
+    ...(uniqueKeys ? { uniqueKeys } : {}),
     ...(details ? { details } : {}),
     lifecycleStates: list(root.lifecycleStates).map(normalizeLifecycleState).filter(item => item.state),
     transitions: list(root.transitions).map(normalizeTransition).filter(item => item.transitionId),
@@ -341,6 +366,7 @@ export function applyNs5OntologyBindings(
       toEntity: relationship.toEntity,
       type: relationship.type,
       required: relationship.required,
+      description: relationship.description,
       persistence: { mode: relationship.persistence.mode },
       realization: realization || emptyRealization(relationship),
     } satisfies Ns5OntologyRelationship;
@@ -428,6 +454,7 @@ function assembleEntity(
     ...(plan.mdmSubtype ? { mdmSubtype: plan.mdmSubtype } : {}),
     displayField: plan.displayField,
     fields: detail?.fields || [],
+    ...(detail?.uniqueKeys?.length ? { uniqueKeys: detail.uniqueKeys } : {}),
     ...(detail?.details && Object.keys(detail.details).length ? { details: detail.details } : {}),
     lifecycleStates: detail?.lifecycleStates || [],
     transitions: detail?.transitions || [],
@@ -496,42 +523,86 @@ function normalizePlanRelationship(value: unknown): Ns5OntologyPlanRelationship 
     toEntity: normalizeEntityId(source.toEntity),
     type: text(source.type),
     required: source.required === true,
+    description: text(source.description),
     persistence: { mode: text(persistence.mode) as Ns5OntologyPersistenceMode },
   };
 }
 
 function normalizeField(value: unknown): Ns5OntologyField {
   const source = record(value);
-  const enumValues = uniqueMemberIds(source.enum);
+  const enumValues = normalizeEnum(source.enum);
+  const constraints = normalizeConstraints(source.constraints);
   return {
     fieldId: memberId(text(source.fieldId), ''),
     title: text(source.title),
     type: text(source.type) as Ns5OntologyField['type'],
     required: source.required === true,
+    ...(source.unique === true ? { unique: true } : {}),
     ...(enumValues.length ? { enum: enumValues } : {}),
+    ...(constraints ? { constraints } : {}),
     description: text(source.description),
   };
 }
 
-function normalizeDetails(value: unknown): Record<string, string> | undefined {
+function normalizeEnum(value: unknown): Ns5OntologyEnumValue[] {
+  const seen = new Set<string>();
+  const out: Ns5OntologyEnumValue[] = [];
+  for (const item of list(value)) {
+    if (typeof item === 'string') continue;
+    const entry = record(item);
+    const code = memberId(text(entry.value), '');
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push({ value: code, title: text(entry.title) });
+  }
+  return out;
+}
+
+function normalizeConstraints(value: unknown): Ns5OntologyFieldConstraints | undefined {
+  const source = record(value);
+  const out: Ns5OntologyFieldConstraints = {};
+  if (typeof source.min === 'number' && Number.isFinite(source.min)) out.min = source.min;
+  if (typeof source.max === 'number' && Number.isFinite(source.max)) out.max = source.max;
+  if (typeof source.maxLength === 'number' && Number.isFinite(source.maxLength)) out.maxLength = source.maxLength;
+  if (typeof source.precision === 'number' && Number.isFinite(source.precision)) out.precision = source.precision;
+  return Object.keys(out).length ? out : undefined;
+}
+
+function normalizeUniqueKeys(value: unknown): string[][] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const keys = value.map(item => uniqueMemberIds(item)).filter(key => key.length);
+  return keys.length ? keys : undefined;
+}
+
+function normalizeDetails(value: unknown): Record<string, Ns5OntologyDetail> | undefined {
+  const details: Record<string, Ns5OntologyDetail> = {};
   if (Array.isArray(value)) {
-    const details: Record<string, string> = {};
     for (const item of value) {
       const entry = record(item);
       const name = memberId(text(entry.name) || text(entry.fieldId), '');
-      const description = text(entry.description);
-      if (name && description) details[name] = description;
+      const detail = normalizeDetailValue(entry);
+      if (name && detail) details[name] = detail;
     }
-    return Object.keys(details).length ? details : undefined;
-  }
-  const source = record(value);
-  const details: Record<string, string> = {};
-  for (const [key, raw] of Object.entries(source)) {
-    const name = memberId(key, '');
-    const description = text(raw);
-    if (name && description) details[name] = description;
+  } else {
+    const source = record(value);
+    for (const [key, raw] of Object.entries(source)) {
+      if (typeof raw === 'string') continue;
+      const name = memberId(key, '');
+      const detail = normalizeDetailValue(raw);
+      if (name && detail) details[name] = detail;
+    }
   }
   return Object.keys(details).length ? details : undefined;
+}
+
+function normalizeDetailValue(value: unknown): Ns5OntologyDetail | undefined {
+  const source = record(value);
+  const description = text(source.description);
+  if (!description) return undefined;
+  return {
+    type: text(source.type) as Ns5OntologyField['type'],
+    description,
+  };
 }
 
 function normalizeLifecycleState(value: unknown): Ns5OntologyEntityArtifact['lifecycleStates'][number] {

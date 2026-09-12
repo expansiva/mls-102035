@@ -370,7 +370,7 @@ function formatOntology(entities: Ns5OntologyEntityArtifact[]): string {
       fields.unshift(`- ${entity.entityId}.${entity.storage.idField} (identity)`);
     }
     const details = entity.details
-      ? Object.entries(entity.details).map(([name, description]) => `- ${entity.entityId}.details.${name}: ${description}`)
+      ? Object.entries(entity.details).map(([name, detail]) => `- ${entity.entityId}.details.${name} (${detail.type}): ${detail.description}`)
       : [];
     return [
       `### ${entity.entityId} (${entity.kind}, party=${entity.party})`,

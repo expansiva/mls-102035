@@ -150,13 +150,14 @@ void test('I7 fails on the captured comandaRestaurante5 disk (19 journeys / inde
   assert.equal(passing.checks.find(check => check.checkId === 'I7')?.status, 'passed');
 });
 
-void test('real comandaRestaurante5 sources pass I1–I8 with no warnings', () => {
+void test('real comandaRestaurante5 sources pass I1–I9 with no warnings', () => {
   const report = runNs5Oracle(loadSources('comandaRestaurante.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
   assert.equal(report.warnings.length, 0);
   assert.ok(report.checks.every(check => check.status === 'passed'));
   assert.equal(report.checks.find(check => check.checkId === 'I8')?.status, 'passed');
+  assert.equal(report.checks.find(check => check.checkId === 'I9')?.status, 'passed');
 });
 
 void test('real ordenServicio5 sources pass I1–I7 and fail I8: Cliente is only in affects', () => {
@@ -374,6 +375,21 @@ void test('I5 fails an own grant whose non-mdm entity does not reach a person', 
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I5' && /party:person/.test(issue.message)));
+});
+
+void test('I9 fails uniqueKeys that cite an unknown field and passes a real composite key', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  comanda.uniqueKeys = [['ghostField', 'status']];
+  const failing = runNs5Oracle(sources);
+  assert.equal(failing.finalStatus, 'failed');
+  assert.ok(failing.errors.some(issue => issue.checkId === 'I9' && /ghostField/.test(issue.message)));
+
+  const passingSources = clone(loadSources('comandaRestaurante.json'));
+  const item = passingSources.entities.find(entity => entity.entityId === 'ItemComanda')!;
+  item.uniqueKeys = [['comanda', 'itemCardapio']];
+  const passing = runNs5Oracle(passingSources);
+  assert.equal(passing.errors.filter(issue => issue.checkId === 'I9').length, 0, passing.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
 });
 
 void test('I6 warns when a handoff has no covering process', () => {

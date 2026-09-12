@@ -171,7 +171,7 @@ function ticketLifecycle(branching: boolean): Ns5OntologyEntityDraft {
     entityId: 'Ticket',
     fields: [
       idField('Ticket', 'ticketId'),
-      { fieldId: 'status', title: 'Status', type: 'string', required: true, enum: states.map(item => item.state), description: 'State.' },
+      { fieldId: 'status', title: 'Status', type: 'string', required: true, enum: states.map(item => ({ value: item.state, title: item.state })), description: 'State.' },
     ],
     lifecycleStates: states,
     transitions,
@@ -411,7 +411,7 @@ void test('appendOnly with transitions fails', () => {
     entityId: 'AuditEvent',
     fields: [
       idField('AuditEvent', 'auditEventId'),
-      { fieldId: 'status', title: 'Status', type: 'string', required: true, enum: ['open', 'closed'], description: 'Status.' },
+      { fieldId: 'status', title: 'Status', type: 'string', required: true, enum: [{ value: 'open', title: 'Open' }, { value: 'closed', title: 'Closed' }], description: 'Status.' },
     ],
     lifecycleStates: [
       { state: 'open', reachedBy: 'actor' },
@@ -438,7 +438,7 @@ void test('actor/command state without an arriving transition fails', () => {
       { state: 'cancelled', reachedBy: 'actor' },
     ],
     fields: source.fields.map(field => field.fieldId === 'status'
-      ? { ...field, enum: [...(field.enum || []), 'cancelled'] }
+      ? { ...field, enum: [...(field.enum || []), { value: 'cancelled', title: 'Cancelled' }] }
       : field),
   }, 'Comanda');
   const gate = validateNs5OntologyEntity(plan, detail, ctx());
@@ -460,7 +460,7 @@ void test('time state with an arriving transition fails', () => {
       { state: 'overdue', reachedBy: 'time' },
     ],
     fields: source.fields.map(field => field.fieldId === 'status'
-      ? { ...field, enum: ['aberta', 'overdue'] }
+      ? { ...field, enum: [{ value: 'aberta', title: 'Aberta' }, { value: 'overdue', title: 'Vencida' }] }
       : field),
     transitions: [{ transitionId: 'expire', from: ['aberta'], to: 'overdue', by: 'time', description: 'Expires.' }],
   }, 'Comanda');
@@ -712,23 +712,32 @@ void test('gate still rejects appendOnly with lifecycle signal when normalize is
   assert.ok(overview.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /appendOnly/.test(issue.message)));
 });
 
-void test('normalize accepts details as an array and as a record', () => {
+void test('normalize accepts typed details as an array and as a record; string values are dropped', () => {
+  const typed = { type: 'money' as const, description: 'Sum of active items.' };
   const fromArray = normalizeNs5OntologyEntity({
     entityId: 'Comanda',
     fields: [],
-    details: [{ name: 'total', description: 'Sum of active items.' }],
+    details: [{ name: 'total', type: 'money', description: 'Sum of active items.' }],
     lifecycleStates: [],
     transitions: [],
   }, 'Comanda');
-  assert.deepEqual(fromArray.details, { total: 'Sum of active items.' });
+  assert.deepEqual(fromArray.details, { total: typed });
   const fromRecord = normalizeNs5OntologyEntity({
+    entityId: 'Comanda',
+    fields: [],
+    details: { total: typed },
+    lifecycleStates: [],
+    transitions: [],
+  }, 'Comanda');
+  assert.deepEqual(fromRecord.details, { total: typed });
+  const fromString = normalizeNs5OntologyEntity({
     entityId: 'Comanda',
     fields: [],
     details: { total: 'Sum of active items.' },
     lifecycleStates: [],
     transitions: [],
   }, 'Comanda');
-  assert.deepEqual(fromRecord.details, { total: 'Sum of active items.' });
+  assert.equal(fromString.details, undefined);
 });
 
 void test('ontology30 plan prompt omits mutability when journeys repeat act or decide', () => {
@@ -737,7 +746,16 @@ void test('ontology30 plan prompt omits mutability when journeys repeat act or d
   assert.match(prompt, /or a `decide` step on it, omit `mutability` here/);
   assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
   assert.match(prompt, /moduleDetails/);
+  assert.match(prompt, /one-sentence `description`/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|abrir|fechar/i);
+});
+
+void test('ontology30 entity prompt states uniqueKeys, typed details, enum titles and intrinsic constraints', () => {
+  const prompt = readFileSync(path.join(HERE, 'promptEntity.md'), 'utf8');
+  assert.match(prompt, /Declare `unique`\/`uniqueKeys` for what must not repeat/);
+  assert.match(prompt, /intrinsic to the type, never a business\s+policy/);
+  assert.match(prompt, /Each enum entry is `\{ "value", "title" \}`/);
+  assert.match(prompt, /\{ "name", "type", "description" \}/);
 });
 
 void test('plan human prompt includes journeys, actors and level-1 placeholders', () => {
@@ -795,6 +813,7 @@ void test('supporting file-or-note entity linked to mdm is a platform-service ca
       toEntity: 'Cliente',
       type: 'oneToMany',
       required: false,
+      description: 'Photos attached to the customer record.',
       persistence: { mode: 'crossStoreReference' },
     }],
   };
@@ -859,6 +878,7 @@ void test('entityId matching a platform service name is not a gate', () => {
       toEntity: 'Cliente',
       type: 'oneToMany',
       required: false,
+      description: 'Attachments of the customer record.',
       persistence: { mode: 'crossStoreReference' },
     }],
   };
@@ -902,6 +922,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
     toEntity: 'FotoOrdenServicio',
     type: 'oneToMany',
     required: false,
+    description: 'Photos taken at reception of the service order.',
     persistence: { mode: 'crossStoreReference' },
     realization: {
       kind: 'fieldReference',
@@ -914,7 +935,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
     {
       entities: [orden, foto],
       index: {
-        schemaVersion: '2026-09-10-ns5-ontology-v1',
+        schemaVersion: '2026-09-11-ns5-ontology-v2',
         moduleName: 'ordenServicio5',
         businessDomain: 'Service orders.',
         entities: ['OrdenServicio', 'FotoOrdenServicio'],
@@ -954,7 +975,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
     {
       entities: [collectionOrden, foto],
       index: {
-        schemaVersion: '2026-09-10-ns5-ontology-v1',
+        schemaVersion: '2026-09-11-ns5-ontology-v2',
         moduleName: 'ordenServicio5',
         businessDomain: 'Service orders.',
         entities: ['OrdenServicio', 'FotoOrdenServicio'],
@@ -992,7 +1013,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
     {
       entities: [orden, namespaceFoto],
       index: {
-        schemaVersion: '2026-09-10-ns5-ontology-v1',
+        schemaVersion: '2026-09-11-ns5-ontology-v2',
         moduleName: 'ordenServicio5',
         businessDomain: 'Service orders.',
         entities: ['OrdenServicio', 'FotoOrdenServicio'],
@@ -1031,8 +1052,8 @@ void test('PainelMensalidades aggregate-only entity fails; module.details versio
       { fieldId: 'referenceMonth', title: 'Month', type: 'string', required: true, description: 'Reference month.' },
     ],
     details: {
-      totalAreceber: 'Soma dos valores das mensalidades geradas para o mês de referência.',
-      quantidadeAlunosBloqueados: 'Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.',
+      totalAreceber: { type: 'money', description: 'Soma dos valores das mensalidades geradas para o mês de referência.' },
+      quantidadeAlunosBloqueados: { type: 'integer', description: 'Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.' },
     },
     lifecycleStates: [],
     transitions: [],
@@ -1054,8 +1075,8 @@ void test('PainelMensalidades aggregate-only entity fails; module.details versio
     entities: [corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId')],
     relationships: [],
     moduleDetails: {
-      totalAreceber: 'Soma dos valores das mensalidades geradas para o mês de referência.',
-      quantidadeAlunosBloqueados: 'Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.',
+      totalAreceber: { type: 'money', description: 'Soma dos valores das mensalidades geradas para o mês de referência.' },
+      quantidadeAlunosBloqueados: { type: 'integer', description: 'Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.' },
     },
   };
   const generate = journey('garcom', [step('gerar', 'act', 'Mensalidade')]);
@@ -1082,7 +1103,7 @@ void test('PainelMensalidades aggregate-only entity fails; module.details versio
     },
     mensalidadePlan.moduleDetails,
   );
-  assert.equal(module.details?.totalAreceber, mensalidadePlan.moduleDetails?.totalAreceber);
+  assert.deepEqual(module.details?.totalAreceber, mensalidadePlan.moduleDetails?.totalAreceber);
 });
 
 function panelPlan(entityId: string, idField: string): Ns5OntologyPlanEntity {
@@ -1150,14 +1171,14 @@ void test('lift moves PainelGerencial and PainelMensalidades into module.details
   }));
   assert.equal(gerencialGate.ok, true, gerencialGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   const gerencialModule = applyNs5ModuleDetails(emptyModule(), gerencialLift.plan.moduleDetails);
-  assert.equal(gerencialModule.details?.quantidadeAlunosAtivos, painelGerencial.details?.quantidadeAlunosAtivos);
+  assert.deepEqual(gerencialModule.details?.quantidadeAlunosAtivos, painelGerencial.details?.quantidadeAlunosAtivos);
   const overlapping = liftNs5AggregateOnlyEntities(
-    { ...gerencialPlan, moduleDetails: { quantidadeAlunosAtivos: 'From the plan.' } },
+    { ...gerencialPlan, moduleDetails: { quantidadeAlunosAtivos: { type: 'integer', description: 'From the plan.' } } },
     [emptyCoreDetail('Mensalidade', 'mensalidadeId'), painelGerencial],
     [generate, inspectPanel],
   );
   assert.deepEqual(overlapping.issues, []);
-  assert.equal(overlapping.plan.moduleDetails?.quantidadeAlunosAtivos, 'From the plan.');
+  assert.deepEqual(overlapping.plan.moduleDetails?.quantidadeAlunosAtivos, { type: 'integer', description: 'From the plan.' });
   assert.ok(overlapping.plan.moduleDetails?.totalAreceberMes);
 
   const painelMensalidades = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
@@ -1205,7 +1226,7 @@ void test('two aggregate-only entities sharing a details key is NS5_ONTOLOGY_AGG
     relationships: [],
   };
   const shared = {
-    totalAreceberMes: 'Soma dos valores das mensalidades geradas para o mês.',
+    totalAreceberMes: { type: 'money' as const, description: 'Soma dos valores das mensalidades geradas para o mês.' },
   };
   const lift = liftNs5AggregateOnlyEntities(
     plan,
@@ -1244,6 +1265,7 @@ void test('aggregate-only entity with a relationship is not lifted; gate stays t
       toEntity: 'PainelGerencial',
       type: 'manyToOne',
       required: false,
+      description: 'Fees rolled into the management panel.',
       persistence: { mode: 'moduleReference' },
     }],
   };
@@ -1260,6 +1282,141 @@ void test('aggregate-only entity with a relationship is not lifted; gate stays t
   }));
   assert.equal(failing.ok, false);
   assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY'));
+});
+
+void test('uniqueKeys require existing fields, reject idField, and unique is not on idField', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Mensalidade', 'id', 'id')],
+    relationships: [],
+  }, 'mensalidadesAcademia');
+  const base = {
+    entityId: 'Mensalidade',
+    fields: [
+      idField('Mensalidade', 'id'),
+      { fieldId: 'matriculaId', title: 'Enrollment', type: 'uuid' as const, required: true, description: 'Enrollment.' },
+      { fieldId: 'competencia', title: 'Period', type: 'date' as const, required: true, description: 'Period.' },
+    ],
+    lifecycleStates: [],
+    transitions: [],
+  };
+  const good = normalizeNs5OntologyEntity({
+    ...base,
+    uniqueKeys: [['matriculaId', 'competencia']],
+  }, 'Mensalidade');
+  const passing = validateNs5OntologyEntity(plan, good, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+    requireJourneyCitation: false,
+  }));
+  assert.equal(passing.ok, true, passing.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+
+  const missing = normalizeNs5OntologyEntity({ ...base, uniqueKeys: [['matriculaId', 'ghost']] }, 'Mensalidade');
+  const missingGate = validateNs5OntologyEntity(plan, missing, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+  }));
+  assert.ok(missingGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_KEYS_UNKNOWN'));
+
+  const withId = normalizeNs5OntologyEntity({ ...base, uniqueKeys: [['id', 'competencia']] }, 'Mensalidade');
+  const idGate = validateNs5OntologyEntity(plan, withId, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+  }));
+  assert.ok(idGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD'));
+
+  const uniqueId = normalizeNs5OntologyEntity({
+    ...base,
+    fields: [{ ...idField('Mensalidade', 'id'), unique: true }, base.fields[1], base.fields[2]],
+  }, 'Mensalidade');
+  const uniqueIdGate = validateNs5OntologyEntity(plan, uniqueId, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+  }));
+  assert.ok(uniqueIdGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_ID_FIELD'));
+});
+
+void test('constraints match the field type; enum values need titles; details need a catalog type', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Plano', 'id', 'name')],
+    relationships: [],
+  }, 'mensalidadesAcademia');
+  const good = normalizeNs5OntologyEntity({
+    entityId: 'Plano',
+    fields: [
+      idField('Plano', 'id'),
+      { fieldId: 'name', title: 'Name', type: 'string', required: true, description: 'Name.' },
+      {
+        fieldId: 'diaVencimento',
+        title: 'Due day',
+        type: 'integer',
+        required: true,
+        constraints: { min: 1, max: 31 },
+        description: 'Day of month.',
+      },
+      {
+        fieldId: 'status',
+        title: 'Status',
+        type: 'string',
+        required: true,
+        enum: [{ value: 'active', title: 'Ativo' }, { value: 'cancelled', title: 'Cancelado' }],
+        description: 'Status.',
+      },
+    ],
+    details: { acessoPermitido: { type: 'boolean', description: 'Whether the student may enter.' } },
+    lifecycleStates: [
+      { state: 'active', reachedBy: 'actor' },
+      { state: 'cancelled', reachedBy: 'actor' },
+    ],
+    transitions: [{ transitionId: 'cancel', from: ['active'], to: 'cancelled', by: ['caixa'], description: 'Cancel.' }],
+  }, 'Plano');
+  const passing = validateNs5OntologyEntity(plan, good, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('caixa', [step('criar', 'act', 'Plano')])],
+  }));
+  assert.equal(passing.ok, true, passing.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+
+  const policy = normalizeNs5OntologyEntity({
+    ...good,
+    fields: good.fields.map(field => field.fieldId === 'diaVencimento'
+      ? { ...field, constraints: { maxLength: 2 } }
+      : field),
+  }, 'Plano');
+  const policyGate = validateNs5OntologyEntity(plan, policy, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('caixa', [step('criar', 'act', 'Plano')])],
+  }));
+  assert.ok(policyGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CONSTRAINTS'));
+
+  const untyped = normalizeNs5OntologyEntity({
+    ...good,
+    details: [{ name: 'acessoPermitido', description: 'Whether the student may enter.' }],
+  }, 'Plano');
+  const untypedGate = validateNs5OntologyEntity(plan, untyped, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [journey('caixa', [step('criar', 'act', 'Plano')])],
+  }));
+  assert.ok(untypedGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_DETAILS_TYPE'));
+});
+
+void test('relationship without description fails', () => {
+  const plan: Ns5OntologyPlanDraft = {
+    moduleName: 'comandaRestaurante5',
+    businessDomain: 'Restaurant orders',
+    entities: [mdmPlan('Mesa', 'Location', 'none', 'id'), corePlan('Comanda', 'id', 'numero')],
+    relationships: [{
+      relationshipId: 'comandaMesa',
+      fromEntity: 'Comanda',
+      toEntity: 'Mesa',
+      type: 'manyToOne',
+      required: true,
+      description: '',
+      persistence: { mode: 'crossStoreReference' },
+    }],
+  };
+  const gate = validateNs5OntologyPlan(plan, ctx({ requireJourneyCitation: false }));
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_RELATIONSHIP_DESCRIPTION'));
 });
 
 void test('ownerStepId keeps ontology fan-out on the ontology30 hook and ignores the done-anchor', () => {

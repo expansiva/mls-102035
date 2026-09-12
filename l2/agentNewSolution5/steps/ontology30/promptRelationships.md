@@ -11,6 +11,8 @@ relationships. Return one binding for every supplied relationship, in the same o
 
 Call the tool `submitNs5RelationshipBindings` once. Do not write Markdown around the tool arguments.
 
+Do not add `title` or `description` here — the plan already described each relationship.
+
 Rules:
 
 - Copy every `relationshipId`, `fromEntity` and `toEntity` exactly. Never invent a field id.

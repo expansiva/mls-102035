@@ -51,6 +51,7 @@ import {
   NS5_ONTOLOGY_MAX_PARALLEL,
   applyNs5ModuleDetails,
   assembleNs5Ontology,
+  ns5AsFieldSource,
   buildNs5OntologyBindingsTool,
   buildNs5OntologyEntityTool,
   buildNs5OntologyPlanTool,
@@ -164,7 +165,7 @@ export function buildNs5OntologyBindingsHumanPrompt(input: {
     JSON.stringify(input.plan.relationships, null, 2),
     '',
     '## Entities with resolvable fields (mdm identity is included even when fields is empty)',
-    JSON.stringify(input.entities.map(entity => bindingPromptEntity(entity)), null, 2),
+    JSON.stringify(input.entities.map(entity => bindingPromptEntity(ns5AsFieldSource(entity)!)), null, 2),
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
   ].filter(Boolean).join('\n');

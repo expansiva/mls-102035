@@ -3,7 +3,7 @@
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5EntityItemComanda = {
-  "schemaVersion": "2026-09-10-ns5-ontology-v1",
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
   "moduleName": "comandaRestaurante5",
   "entityId": "ItemComanda",
   "title": "Item da comanda",
@@ -60,14 +60,23 @@ export const comandaRestaurante5EntityItemComanda = {
       "type": "string",
       "required": true,
       "enum": [
-        "lancado",
-        "cancelado"
+        {
+          "value": "lancado",
+          "title": "Lançado"
+        },
+        {
+          "value": "cancelado",
+          "title": "Cancelado"
+        }
       ],
       "description": "Situação do lançamento na comanda."
     }
   ],
   "details": {
-    "valorTotal": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+    "valorTotal": {
+      "type": "money",
+      "description": "Valor total do lançamento, calculado pela quantidade multiplicada pelo preço unitário e desconsiderado quando cancelado."
+    }
   },
   "lifecycleStates": [
     {

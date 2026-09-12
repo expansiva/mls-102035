@@ -19,8 +19,12 @@ not a list of fields to copy onto this entity.
 - `fieldId` is lowerCamel. Types: `uuid`, `string`, `text`, `number`, `integer`, `boolean`, `money`,
   `date`, `datetime`, `json`.
 - Honour the frozen `displayField`. Do not invent a second identifying field from a name suffix.
+- Declare `unique`/`uniqueKeys` for what must not repeat; the rule text explains why.
+- `constraints` (`min`, `max`, `maxLength`, `precision`) are intrinsic to the type, never a business
+  policy — that is a rule; a value that varies is a field.
 - Closed-domain values (`enum`, lifecycle state ids) are stable English codes: lowerCamel ASCII
-  (`open`, `closed`). Titles and descriptions stay in the user's language.
+  (`open`, `closed`). Each enum entry is `{ "value", "title" }` with `title` in the user's language.
+  Descriptions stay in the user's language.
 - When `kind` is `mdm`, `fields` is the module namespace and may be empty (identity and level-1
   fields stay out — MDM skill).
 - When `kind` is not `mdm`, include the frozen `idField` as a required `uuid`.
@@ -29,8 +33,9 @@ not a list of fields to copy onto this entity.
 
 ## Calculated values
 
-A total, a count, a current position lives in `details`: an array of `{ "name", "description" }`
-with one sentence each. The backend persists them as JSON. Do not invent a projection entity.
+A total, a count, a current position lives in `details`: an array of
+`{ "name", "type", "description" }` with a field type and one sentence each. The backend persists
+them as typed JSON. Do not invent a projection entity.
 
 ## Lifecycle and transitions
 
@@ -45,7 +50,7 @@ Declare states and transitions only when the request names them.
 - Transitions: `{ "transitionId", "from", "to", "by", "description", "ruleRefs"? }`. `by` is an
   array of actor ids from the module, or `"system"`, or `"time"`. `ruleRefs` are optional
   lowerCamel ids of rules that constrain the transition.
-- An entity with lifecycle states must include a `status` field whose `enum` is exactly those
+- An entity with lifecycle states must include a `status` field whose `enum[].value` covers those
   state ids.
 - MDM entities have no lifecycle and no transitions.
 - An `appendOnly` fact has no lifecycle and no transitions.

@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I8).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I9).
  * Errors fail the run; warnings do not.
  *
  * I2 uses collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin from ontology30
@@ -59,6 +59,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI6(sources, warning);
   checkI7(sources, error);
   checkI8(sources, error);
+  checkI9(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.access.actors.length,
@@ -375,6 +376,23 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   });
 }
 
+function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
+  for (const entity of sources.entities) {
+    const fieldIds = new Set(entity.fields.map(field => field.fieldId).filter(Boolean));
+    (entity.uniqueKeys || []).forEach((key, keyIndex) => {
+      key.forEach((fieldId, fieldIndex) => {
+        if (!fieldId) return;
+        if (fieldIds.has(fieldId)) return;
+        error(
+          'I9',
+          `ontology.${entity.entityId}.uniqueKeys[${keyIndex}][${fieldIndex}]`,
+          `Unknown field ${fieldId}.`,
+        );
+      });
+    });
+  }
+}
+
 function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | undefined, indexIds: string[], error: IssueFn): void {
   if (!diskFiles) return;
   const keep = new Set<string>(['index', ...indexIds.filter(Boolean)]);
@@ -464,7 +482,9 @@ function asRulesEntity(entity: Ns5OntologyEntityArtifact): Ns5RulesEntityView {
   return {
     entityId: entity.entityId,
     fields: entity.fields,
-    details: entity.details,
+    details: entity.details
+      ? Object.fromEntries(Object.entries(entity.details).map(([name, detail]) => [name, detail.description]))
+      : undefined,
     storage: entity.storage,
     transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
   };

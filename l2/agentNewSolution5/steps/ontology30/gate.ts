@@ -10,6 +10,7 @@ import {
 import type {
   Ns5JourneyArtifact,
   Ns5ModuleActor,
+  Ns5OntologyDetail,
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
   Ns5OntologyRelationship,
@@ -28,6 +29,7 @@ import {
   collectNs5CitedEntities,
   collectNs5LifecycleSignal,
   isNs5AggregateOnlyEntity,
+  ns5AsFieldSource,
   ns5LifecycleHasBranchingOrigin,
   type Ns5LifecycleSignal,
   type Ns5OntologyAssembly,
@@ -218,6 +220,9 @@ export function validateNs5OntologyAssembly(
     if (!REL_TYPE_SET.has(relationship.type)) {
       error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_TYPE', 'type must be oneToOne, oneToMany, manyToOne or manyToMany.', `${path}.type`);
     }
+    if (!String(relationship.description || '').trim()) {
+      error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_DESCRIPTION', 'relationship description is required.', `${path}.description`);
+    }
     if (!PERSISTENCE_SET.has(relationship.persistence.mode)) {
       error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_PERSISTENCE', 'Unknown persistence mode.', `${path}.persistence.mode`);
     }
@@ -358,12 +363,27 @@ function validateEntity(
     if (!FIELD_TYPE_SET.has(field.type)) {
       error(issues, 'NS5_ONTOLOGY_FIELD_TYPE', `Unknown field type ${field.type || '(empty)'}.`, `${fieldPath}.type`);
     }
-    (field.enum || []).forEach((code, enumIndex) => {
-      if (!STABLE_EN.test(code)) {
-        error(issues, 'NS5_ONTOLOGY_ENUM_CODE', `Closed-domain value must be lowerCamel ASCII (got '${code}').`, `${fieldPath}.enum[${enumIndex}]`);
+    if (field.unique === true && field.fieldId && field.fieldId === entity.storage.idField) {
+      error(issues, 'NS5_ONTOLOGY_UNIQUE_ID_FIELD', 'idField is already unique; do not set unique on it.', `${fieldPath}.unique`);
+    }
+    const enumSeen = new Set<string>();
+    (field.enum || []).forEach((entry, enumIndex) => {
+      const enumPath = `${fieldPath}.enum[${enumIndex}]`;
+      if (!STABLE_EN.test(entry.value)) {
+        error(issues, 'NS5_ONTOLOGY_ENUM_CODE', `Closed-domain value must be lowerCamel ASCII (got '${entry.value}').`, `${enumPath}.value`);
+      }
+      if (entry.value && enumSeen.has(entry.value)) {
+        error(issues, 'NS5_ONTOLOGY_ENUM_DUPLICATE', `Duplicate enum value ${entry.value}.`, `${enumPath}.value`);
+      }
+      if (entry.value) enumSeen.add(entry.value);
+      if (!String(entry.title || '').trim()) {
+        error(issues, 'NS5_ONTOLOGY_ENUM_TITLE', `enum value ${entry.value || '(empty)'} needs a title in the user language.`, `${enumPath}.title`);
       }
     });
+    validateConstraints(field, fieldPath, issues);
   });
+
+  if (!planOverview) validateUniqueKeys(entity, path, fieldIds, issues);
 
   if (!planOverview && !entity.fields.length && entity.kind !== 'mdm') {
     error(issues, 'NS5_ONTOLOGY_ENTITY_FIELDS', 'Every non-mdm entity must define its useful fields.', `${path}.fields`);
@@ -512,12 +532,12 @@ function validateDetails(
 }
 
 function validateNamedDetails(
-  details: Record<string, string> | undefined,
+  details: Record<string, Ns5OntologyDetail> | undefined,
   path: string,
   issues: Ns5OntologyGateIssue[],
 ): void {
   const names = new Set<string>();
-  for (const [name, description] of Object.entries(details || {})) {
+  for (const [name, detail] of Object.entries(details || {})) {
     const itemPath = `${path}.${name}`;
     if (!MEMBER_ID.test(name)) {
       error(issues, 'NS5_ONTOLOGY_DETAILS_ID', 'details names must be lowerCamel.', itemPath);
@@ -526,8 +546,86 @@ function validateNamedDetails(
       error(issues, 'NS5_ONTOLOGY_DETAILS_ID', `Duplicate details name ${name}.`, itemPath);
     }
     names.add(name);
-    if (!String(description || '').trim()) {
+    if (!FIELD_TYPE_SET.has(detail?.type)) {
+      error(issues, 'NS5_ONTOLOGY_DETAILS_TYPE', `${name} type must be a field type.`, `${itemPath}.type`);
+    }
+    if (!String(detail?.description || '').trim()) {
       error(issues, 'NS5_ONTOLOGY_DETAILS_DESCRIPTION', `${name} needs a one-sentence description.`, itemPath);
+    }
+  }
+}
+
+function validateUniqueKeys(
+  entity: Ns5OntologyEntityArtifact,
+  path: string,
+  fieldIds: Set<string>,
+  issues: Ns5OntologyGateIssue[],
+): void {
+  const idField = entity.storage.idField;
+  (entity.uniqueKeys || []).forEach((key, keyIndex) => {
+    const keyPath = `${path}.uniqueKeys[${keyIndex}]`;
+    if (key.length < 2) {
+      error(issues, 'NS5_ONTOLOGY_UNIQUE_KEYS', 'uniqueKeys entries are composite (two or more fieldIds); use unique on a single field.', keyPath);
+      return;
+    }
+    const seen = new Set<string>();
+    key.forEach((fieldId, fieldIndex) => {
+      const itemPath = `${keyPath}[${fieldIndex}]`;
+      if (!MEMBER_ID.test(fieldId)) {
+        error(issues, 'NS5_ONTOLOGY_UNIQUE_KEYS', 'uniqueKeys fieldIds must be lowerCamel.', itemPath);
+        return;
+      }
+      if (fieldId === idField) {
+        error(issues, 'NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD', 'idField must not appear in uniqueKeys.', itemPath);
+      }
+      if (!fieldIds.has(fieldId)) {
+        error(
+          issues,
+          'NS5_ONTOLOGY_UNIQUE_KEYS_UNKNOWN',
+          entity.kind === 'mdm' ? `mdm uniqueKeys may only name namespace fields.` : `Unknown field ${fieldId}.`,
+          itemPath,
+        );
+      }
+      if (seen.has(fieldId)) {
+        error(issues, 'NS5_ONTOLOGY_UNIQUE_KEYS', `Duplicate field ${fieldId} in uniqueKeys entry.`, itemPath);
+      }
+      seen.add(fieldId);
+    });
+  });
+}
+
+function validateConstraints(
+  field: Ns5OntologyEntityArtifact['fields'][number],
+  fieldPath: string,
+  issues: Ns5OntologyGateIssue[],
+): void {
+  const constraints = field.constraints;
+  if (!constraints) return;
+  const numeric = field.type === 'number' || field.type === 'integer' || field.type === 'money';
+  const textual = field.type === 'string' || field.type === 'text';
+  const path = `${fieldPath}.constraints`;
+  if (constraints.min !== undefined || constraints.max !== undefined) {
+    if (!numeric) {
+      error(issues, 'NS5_ONTOLOGY_CONSTRAINTS', 'min/max apply to number, integer or money.', path);
+    }
+    if (constraints.min !== undefined && constraints.max !== undefined && constraints.min > constraints.max) {
+      error(issues, 'NS5_ONTOLOGY_CONSTRAINTS', 'min must be ≤ max.', path);
+    }
+  }
+  if (constraints.maxLength !== undefined) {
+    if (!textual) {
+      error(issues, 'NS5_ONTOLOGY_CONSTRAINTS', 'maxLength applies to string or text.', `${path}.maxLength`);
+    }
+    if (!Number.isInteger(constraints.maxLength) || constraints.maxLength < 1) {
+      error(issues, 'NS5_ONTOLOGY_CONSTRAINTS', 'maxLength must be a positive integer.', `${path}.maxLength`);
+    }
+  }
+  if (constraints.precision !== undefined) {
+    if (field.type !== 'money' && field.type !== 'number') {
+      error(issues, 'NS5_ONTOLOGY_CONSTRAINTS', 'precision applies to money or number.', `${path}.precision`);
+    }
+    if (!Number.isInteger(constraints.precision) || constraints.precision < 0) {
+      error(issues, 'NS5_ONTOLOGY_CONSTRAINTS', 'precision must be a non-negative integer.', `${path}.precision`);
     }
   }
 }
@@ -584,10 +682,10 @@ function validateLifecycle(
   }
   const statusField = entity.fields.find(field => field.fieldId === 'status');
   if (statusField?.enum?.length && entity.lifecycleStates.length) {
-    const expected = [...stateIds];
-    const actual = statusField.enum;
-    if (expected.length !== actual.length || expected.some(state => !actual.includes(state))) {
-      error(issues, 'NS5_ONTOLOGY_LIFECYCLE_STATUS', 'status.enum must list exactly the lifecycle state ids.', `${path}.fields`);
+    const actual = new Set(statusField.enum.map(entry => entry.value));
+    const missing = [...stateIds].filter(state => !actual.has(state));
+    if (missing.length) {
+      error(issues, 'NS5_ONTOLOGY_LIFECYCLE_STATUS', 'lifecycleStates[].state must be a subset of status.enum.value.', `${path}.fields`);
     }
   }
 
@@ -733,8 +831,8 @@ function validateRelationshipRealization(
   }
   const fromEntity = entities.find(item => item.entityId === relationship.fromEntity);
   const toEntity = entities.find(item => item.entityId === relationship.toEntity);
-  validateEndpointFields(realization.from.fieldIds, resolvableFieldIds(fromEntity), `${rPath}.from.fieldIds`, issues);
-  validateEndpointFields(realization.to.fieldIds, resolvableFieldIds(toEntity), `${rPath}.to.fieldIds`, issues);
+  validateEndpointFields(realization.from.fieldIds, resolvableFieldIds(ns5AsFieldSource(fromEntity)), `${rPath}.from.fieldIds`, issues);
+  validateEndpointFields(realization.to.fieldIds, resolvableFieldIds(ns5AsFieldSource(toEntity)), `${rPath}.to.fieldIds`, issues);
   const ownerIsFrom = realization.ownerEntity === relationship.fromEntity;
   validateMdmEndpointFields(fromEntity, realization.from.fieldIds, realization.kind, ownerIsFrom, `${rPath}.from.fieldIds`, issues);
   validateMdmEndpointFields(toEntity, realization.to.fieldIds, realization.kind, !ownerIsFrom, `${rPath}.to.fieldIds`, issues);
@@ -744,7 +842,7 @@ function validateRelationshipRealization(
   if (relationship.required) {
     const owner = ownerIsFrom ? fromEntity : toEntity;
     const ownerFields = ownerIsFrom ? realization.from.fieldIds : realization.to.fieldIds;
-    if (ownerFields.some(fieldId => !resolvableFieldOf(owner, fieldId)?.required)) {
+    if (ownerFields.some(fieldId => !resolvableFieldOf(ns5AsFieldSource(owner), fieldId)?.required)) {
       error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_REQUIRED_FIELD', 'A required relationship must use required field(s) on its owning entity.', `${rPath}.ownerEntity`);
     }
   }
@@ -788,8 +886,8 @@ function validatePersistedForeignKey(
   const otherEntity = ownerIsFrom ? toEntity : fromEntity;
   const ownerFieldIds = ownerIsFrom ? realization.from.fieldIds : realization.to.fieldIds;
   const otherFieldIds = ownerIsFrom ? realization.to.fieldIds : realization.from.fieldIds;
-  const ownerId = entityIdField(ownerEntity);
-  const otherId = entityIdField(otherEntity);
+  const ownerId = entityIdField(ns5AsFieldSource(ownerEntity));
+  const otherId = entityIdField(ns5AsFieldSource(otherEntity));
 
   if (realization.kind === 'fieldReference') {
     const manySide = relationship.type === 'oneToMany' ? relationship.toEntity
@@ -834,7 +932,7 @@ function validatePersistedForeignKey(
 
   ownerFieldIds.forEach(fieldId => {
     if (ownerId && fieldId === ownerId) return;
-    const field = resolvableFieldOf(ownerEntity, fieldId);
+    const field = resolvableFieldOf(ns5AsFieldSource(ownerEntity), fieldId);
     if (!field) return;
     if (realization.kind === 'fieldCollection' && field.type !== 'json') {
       error(
@@ -867,7 +965,7 @@ function validateMdmEndpointFields(
   if (!entity || entity.kind !== 'mdm') return;
   if (!MDM_ENDPOINT_KINDS.has(kind)) return;
   if (!fieldIds.length) return;
-  const idField = entityIdField(entity);
+  const idField = entityIdField(ns5AsFieldSource(entity));
   if (fieldIds.length === 1 && idField && fieldIds[0] === idField) return;
   error(issues, 'NS5_ONTOLOGY_RELATIONSHIP_MDM_ENDPOINT_ID', `mdm endpoint ${entity.entityId} must bind exactly [${idField}].`, path);
 }

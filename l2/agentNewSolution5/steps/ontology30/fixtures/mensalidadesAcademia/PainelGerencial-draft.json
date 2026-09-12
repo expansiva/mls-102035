@@ -10,11 +10,26 @@
     }
   ],
   "details": {
-    "totalAreceberMes": "Soma dos valores das mensalidades geradas para o mês de referência que ainda não foram integralmente pagas.",
-    "totalRecebidoMes": "Soma dos valores dos pagamentos registrados no mês de referência.",
-    "quantidadeAlunosAtivos": "Quantidade de alunos com matrícula ativa na academia.",
-    "quantidadeAlunosBloqueados": "Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.",
-    "quantidadeAlunosInadimplentes": "Quantidade de alunos com ao menos uma mensalidade vencida e não paga."
+    "totalAreceberMes": {
+      "type": "money",
+      "description": "Soma dos valores das mensalidades geradas para o mês de referência que ainda não foram integralmente pagas."
+    },
+    "totalRecebidoMes": {
+      "type": "money",
+      "description": "Soma dos valores dos pagamentos registrados no mês de referência."
+    },
+    "quantidadeAlunosAtivos": {
+      "type": "integer",
+      "description": "Quantidade de alunos com matrícula ativa na academia."
+    },
+    "quantidadeAlunosBloqueados": {
+      "type": "integer",
+      "description": "Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas."
+    },
+    "quantidadeAlunosInadimplentes": {
+      "type": "integer",
+      "description": "Quantidade de alunos com ao menos uma mensalidade vencida e não paga."
+    }
   },
   "lifecycleStates": [],
   "transitions": []

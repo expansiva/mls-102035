@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- Ontology v2 (ns5_19): `unique`/`uniqueKeys`, typed `details`, relationship
+  `description`, `enum[{value,title}]`, intrinsic `constraints`; finalize80 I9.
 - Actors leave `module.defs.ts` (`-module-v2`, no `scope`) and live on the pipeline
   during generation, then on `access.defs.ts` (`-access-v2`, no `profiles`, grants by
   `actorRef`). Six clarifications; module10 and finalize80 have none.
