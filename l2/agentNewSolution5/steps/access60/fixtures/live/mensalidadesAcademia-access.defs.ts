@@ -3,29 +3,29 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const mensalidadesAcademiaAccess = {
-  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "schemaVersion": "2026-09-10-ns5-access-v2",
   "moduleName": "mensalidadesAcademia",
-  "profiles": [
+  "actors": [
     {
-      "profileId": "recepcao",
-      "actorRefs": [
-        "recepcao"
-      ],
-      "kind": "internal"
+      "actorId": "recepcao",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Recepção",
+      "description": "Matricula alunos em planos e registra pagamentos de mensalidades."
     },
     {
-      "profileId": "gerencia",
-      "actorRefs": [
-        "gerencia"
-      ],
-      "kind": "internal"
+      "actorId": "gerencia",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Gerência",
+      "description": "Gera mensalidades mensais e acompanha os indicadores financeiros e de alunos."
     },
     {
-      "profileId": "aluno",
-      "actorRefs": [
-        "aluno"
-      ],
-      "kind": "external"
+      "actorId": "aluno",
+      "kind": "external",
+      "origin": "inferred",
+      "title": "Aluno",
+      "description": "Pode cancelar sua matrícula, encerrando futuras gerações de mensalidades."
     }
   ],
   "authorities": [
@@ -58,7 +58,7 @@ export const mensalidadesAcademiaAccess = {
   "grants": [
     {
       "grantId": "recepcaoGerirMatriculas",
-      "profileRef": "recepcao",
+      "actorRef": "recepcao",
       "authorityRef": "gerirMatriculas",
       "entityRefs": [
         "Plano",
@@ -89,7 +89,7 @@ export const mensalidadesAcademiaAccess = {
     },
     {
       "grantId": "recepcaoRegistrarPagamentos",
-      "profileRef": "recepcao",
+      "actorRef": "recepcao",
       "authorityRef": "registrarPagamentos",
       "entityRefs": [
         "Mensalidade",
@@ -122,7 +122,7 @@ export const mensalidadesAcademiaAccess = {
     },
     {
       "grantId": "gerenciaGerirPlanos",
-      "profileRef": "gerencia",
+      "actorRef": "gerencia",
       "authorityRef": "gerirPlanos",
       "entityRefs": [
         "Plano"
@@ -145,7 +145,7 @@ export const mensalidadesAcademiaAccess = {
     },
     {
       "grantId": "gerenciaGerarEacompanharMensalidades",
-      "profileRef": "gerencia",
+      "actorRef": "gerencia",
       "authorityRef": "gerarEcentralizarMensalidades",
       "entityRefs": [
         "Plano",
@@ -192,7 +192,7 @@ export const mensalidadesAcademiaAccess = {
     },
     {
       "grantId": "alunoCancelarPropriaMatricula",
-      "profileRef": "aluno",
+      "actorRef": "aluno",
       "authorityRef": "cancelarPropriaMatricula",
       "entityRefs": [
         "Matricula"

@@ -22,6 +22,7 @@ export interface Ns5ModuleNormalizeOptions {
 
 export interface Ns5ModuleNormalization {
   artifact: Ns5ModuleArtifact;
+  actors: Ns5ModuleActor[];
   i18nWarnings: string[];
 }
 
@@ -29,7 +30,7 @@ export function buildNs5ModuleTool(
   schema: Record<string, unknown>,
   createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
 ): mls.msg.LLMTool {
-  return createTool('submitNs5Module', 'Submit the module artifact: name, actors, languages and scope.', schema);
+  return createTool('submitNs5Module', 'Submit the module artifact: name, actors and languages.', schema);
 }
 
 export function normalizeNs5ModuleArtifact(
@@ -48,7 +49,6 @@ export function normalizeNs5ModuleArtifact(
     : languages[0];
   const proposedName = normalizeModuleName(text(root.moduleName) || options.fixedModuleName || sourcePrompt, 'newModule');
   const moduleName = options.fixedModuleName || proposedName;
-  const scope = record(root.scope);
   const actors = list(root.actors).map((item, index) => normalizeActor(item, index)).filter(actor => actor.title);
   return {
     artifact: {
@@ -59,12 +59,8 @@ export function normalizeNs5ModuleArtifact(
       productLanguages: languages,
       defaultLanguage,
       sourcePrompt,
-      actors,
-      scope: {
-        inScope: strings(scope.inScope),
-        outOfScope: strings(scope.outOfScope),
-      },
     },
+    actors,
     i18nWarnings,
   };
 }
@@ -131,6 +127,4 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function strings(value: unknown): string[] {
-  return list(value).map(text).filter(Boolean);
-}
+

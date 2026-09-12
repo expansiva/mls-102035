@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- Artifact is actors + authorities + grants (`-access-v2`). `profiles` gone;
+  grants use `actorRef`. LLM does not emit actors. No `anonymous` (no fixture used it).
 - System prompt prepends the MDM skill. `own` reaches the Person whose `mdm_tag`
   login row (namespace `login`) is the session e-mail; `docType`/`docId` is the
   national document and is not the own-anchor.

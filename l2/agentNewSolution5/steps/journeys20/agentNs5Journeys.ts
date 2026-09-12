@@ -2,6 +2,7 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
+import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
 import {
   createNs5RetryStep,
   markNs5Step,
@@ -77,7 +78,7 @@ export function buildNs5JourneysHumanPrompt(input: {
     `## userLanguage`,
     input.userLanguage,
     '',
-    '## Actors from module.defs.ts',
+    '## Actors',
     actorLines.length ? actorLines.join('\n') : '(none)',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
@@ -98,6 +99,7 @@ export async function beforeNs5JourneysPromptStep(
     const parsed = resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     const moduleArtifact = await readModule(moduleName);
+    const actors = await readNs5Actors(moduleName);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     const [mdm, prompt, schema, previous] = await Promise.all([
       readNs5MdmSkill(),
@@ -109,7 +111,7 @@ export async function beforeNs5JourneysPromptStep(
     const humanPrompt = buildNs5JourneysHumanPrompt({
       sourcePrompt,
       userLanguage: moduleArtifact.userLanguage,
-      actors: moduleArtifact.actors,
+      actors,
       gateFeedback: parsed.gateFeedback,
       previousDraft: previous,
     });
@@ -149,6 +151,7 @@ export async function afterNs5JourneysPromptStep(
     }
 
     const moduleArtifact = await readModule(moduleName);
+    const actors = await readNs5Actors(moduleName);
     const { journeys } = normalizeNs5JourneysPayload(payload);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
@@ -156,7 +159,7 @@ export async function afterNs5JourneysPromptStep(
       updatedAt: new Date().toISOString(),
     });
     const draftPath = await writeJson(draftFile(moduleName, 'journeys20'), { journeys });
-    const gate = validateNs5Journeys(journeys, { actors: moduleArtifact.actors, moduleName });
+    const gate = validateNs5Journeys(journeys, { actors, moduleName });
     if (!gate.ok) {
       const feedback = formatNs5JourneyGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -174,8 +177,8 @@ export async function afterNs5JourneysPromptStep(
       throw new Error(feedback);
     }
 
-    const dropped = applyNs5InferredActorDrop(journeys, moduleArtifact.actors);
-    const artifactPaths = await persistArtifacts(moduleName, moduleArtifact, dropped, pipeline);
+    const dropped = applyNs5InferredActorDrop(journeys, actors);
+    const artifactPaths = await persistArtifacts(moduleName, dropped, pipeline);
     return [
       doneAnchor(context, mutationParent, moduleName, artifactPaths),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `journeys20 approved: ${artifactPaths.join(', ')}`),
@@ -192,11 +195,11 @@ export async function afterNs5JourneysPromptStep(
 
 async function persistArtifacts(
   moduleName: string,
-  moduleArtifact: Ns5ModuleArtifact,
   dropped: {
     journeys: Ns5JourneyDraft[];
     actors: Ns5ModuleActor[];
     systemDecisions: Ns5SystemDecision[];
+    droppedActorIds: string[];
   },
   pipeline: Ns5PipelineState,
 ): Promise<string[]> {
@@ -217,15 +220,10 @@ async function persistArtifacts(
     'journeys',
     artifacts.map(artifact => artifact.journeyId),
   );
-  if (dropped.systemDecisions.length) {
-    const nextModule: Ns5ModuleArtifact = { ...moduleArtifact, actors: dropped.actors };
-    artifactPaths.push(
-      await writeDefs(moduleFile(moduleName), `${moduleName}Module`, nextModule, 'Ns5ModuleArtifact'),
-    );
-  }
   await writeJson(draftFile(moduleName, 'journeys20'), {
     journeys: artifacts,
     systemDecisions: dropped.systemDecisions,
+    droppedActors: dropped.droppedActorIds,
     removedOrphans,
   });
   await writeStepState(pipeline, {
@@ -233,6 +231,7 @@ async function persistArtifacts(
     updatedAt: new Date().toISOString(),
     artifactPaths,
     decideStepCount: countNs5DecideSteps(dropped.journeys),
+    droppedActors: dropped.droppedActorIds,
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPaths;

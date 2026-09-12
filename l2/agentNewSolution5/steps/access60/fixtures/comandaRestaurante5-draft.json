@@ -1,22 +1,6 @@
 {
-  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "schemaVersion": "2026-09-10-ns5-access-v2",
   "moduleName": "comandaRestaurante5",
-  "profiles": [
-    {
-      "profileId": "garcomAtendimento",
-      "actorRefs": [
-        "garcom"
-      ],
-      "kind": "internal"
-    },
-    {
-      "profileId": "caixaFechamento",
-      "actorRefs": [
-        "caixa"
-      ],
-      "kind": "internal"
-    }
-  ],
   "authorities": [
     {
       "authorityId": "consultarCardapio",
@@ -52,7 +36,6 @@
   "grants": [
     {
       "grantId": "garcomConsultaCardapio",
-      "profileRef": "garcomAtendimento",
       "authorityRef": "consultarCardapio",
       "entityRefs": [
         "ItemCardapio"
@@ -69,11 +52,11 @@
           "ItemCardapio.id",
           "ItemCardapio.price"
         ]
-      }
+      },
+      "actorRef": "garcom"
     },
     {
       "grantId": "garcomGerenciaAtendimento",
-      "profileRef": "garcomAtendimento",
       "authorityRef": "gerirAtendimentoMesa",
       "entityRefs": [
         "Mesa",
@@ -94,11 +77,11 @@
           "Comanda.mesa",
           "Comanda.status"
         ]
-      }
+      },
+      "actorRef": "garcom"
     },
     {
       "grantId": "garcomGerenciaItens",
-      "profileRef": "garcomAtendimento",
       "authorityRef": "gerirItensComanda",
       "entityRefs": [
         "ItemComanda"
@@ -121,11 +104,11 @@
           "ItemComanda.status",
           "ItemComanda.details.valorTotal"
         ]
-      }
+      },
+      "actorRef": "garcom"
     },
     {
       "grantId": "caixaConfereEfechaConta",
-      "profileRef": "caixaFechamento",
       "authorityRef": "conferirEfecharConta",
       "entityRefs": [
         "Comanda",
@@ -158,11 +141,11 @@
           "ItemComanda.status",
           "ItemComanda.details.valorTotal"
         ]
-      }
+      },
+      "actorRef": "caixa"
     },
     {
       "grantId": "caixaConcedeDesconto",
-      "profileRef": "caixaFechamento",
       "authorityRef": "concederDescontoPontual",
       "entityRefs": [
         "Desconto"
@@ -181,11 +164,11 @@
           "Desconto.motivo",
           "Desconto.valor"
         ]
-      }
+      },
+      "actorRef": "caixa"
     },
     {
       "grantId": "caixaRegistraPagamento",
-      "profileRef": "caixaFechamento",
       "authorityRef": "registrarPagamento",
       "entityRefs": [
         "Pagamento"
@@ -204,7 +187,8 @@
           "Pagamento.comanda",
           "Pagamento.recebidoEm"
         ]
-      }
+      },
+      "actorRef": "caixa"
     }
   ]
 }

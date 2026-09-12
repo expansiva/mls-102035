@@ -13,6 +13,7 @@ import type {
   Ns5IntegrationArtifact,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
+  Ns5ModuleActor,
   Ns5ModuleArtifact,
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
@@ -55,6 +56,11 @@ export function listNs5DefsFiles(step: string, moduleName: Ns5RealModule): strin
 
 export function loadNs5Module(moduleName: Ns5RealModule): Ns5ModuleArtifact {
   return loadNs5Defs<Ns5ModuleArtifact>('steps/module10/fixtures', `${moduleName}-module.defs.ts`);
+}
+
+/** Actors born by module10 (pipeline state). Fixtures keep them on the module10 draft. */
+export function loadNs5Actors(moduleName: Ns5RealModule): Ns5ModuleActor[] {
+  return loadNs5FixtureJson<{ actors: Ns5ModuleActor[] }>('steps/module10/fixtures', `${moduleName}-draft.json`).actors;
 }
 
 export function loadNs5Journeys(moduleName: Ns5RealModule): Ns5JourneyArtifact[] {
@@ -134,6 +140,8 @@ export function stripNs5HashSource(source: string): string {
 
 void test('real fixture modules are the two complete NS5 runs', () => {
   assert.deepEqual([...NS5_REAL_MODULES], ['comandaRestaurante5', 'ordenServicio5']);
-  assert.equal(loadNs5Module('comandaRestaurante5').actors.length, 2);
-  assert.equal(loadNs5Module('ordenServicio5').actors.length, 3);
+  assert.equal(loadNs5Actors('comandaRestaurante5').length, 2);
+  assert.equal(loadNs5Actors('ordenServicio5').length, 3);
+  assert.equal('actors' in loadNs5Module('comandaRestaurante5'), false);
+  assert.equal(loadNs5Access('comandaRestaurante5').actors.length, 2);
 });

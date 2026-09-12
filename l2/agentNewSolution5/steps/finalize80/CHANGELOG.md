@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- I3: every `access.actors` row has ≥1 journey and ≥1 grant. I1 cites `grant.actorRef`.
+  Registry reads actors from access.
 - I8: an `own`/`related` grant whose `anchorEntity` is `party: person` needs an
   internal-actor `act` on that entity (not `affects`). Code
   `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`. Fixture: live

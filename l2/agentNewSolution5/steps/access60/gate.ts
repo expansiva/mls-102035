@@ -3,7 +3,7 @@
 import type {
   Ns5AccessAuthority,
   Ns5AccessGrant,
-  Ns5AccessProfile,
+  Ns5ModuleActor,
 } from '/_102035_/l2/solution/types.js';
 import {
   anchorPath,
@@ -15,7 +15,6 @@ import {
   ns5AccessFieldRefExists,
   splitAccessFieldRef,
   NS5_ACCESS_DISCLOSURE_MODES,
-  NS5_ACCESS_PROFILE_KINDS,
   NS5_ACCESS_SCOPE_MODES,
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
@@ -38,51 +37,39 @@ export interface Ns5AccessGateResult {
 
 export interface Ns5AccessGateContext {
   moduleName?: string;
-  actorIds: readonly string[];
+  actors: readonly Ns5ModuleActor[];
   entities: readonly Ns5AccessEntityView[];
   relationships: readonly Ns5AccessRelationshipView[];
   journeys: ReadonlyArray<{ journeyId: string; business: { actorRef: string } }>;
 }
 
 export function validateNs5Access(
-  profiles: Ns5AccessProfile[],
   authorities: Ns5AccessAuthority[],
   grants: Ns5AccessGrant[],
   context: Ns5AccessGateContext,
 ): Ns5AccessGateResult {
   const issues: Ns5AccessGateIssue[] = [];
   const entityById = new Map(context.entities.map(entity => [entity.entityId, entity]));
-  const actorIds = new Set(context.actorIds.filter(Boolean));
-  const profileIds = new Set<string>();
+  const actors = context.actors || [];
+  const actorById = new Map(actors.map(actor => [actor.actorId, actor]));
+  const actorIds = new Set(actors.map(actor => actor.actorId).filter(Boolean));
   const authorityIds = new Set<string>();
-  const grantedProfiles = new Set<string>();
+  const grantedActors = new Set<string>();
   const grantPairs = new Set<string>();
-  const coveredActors = new Set<string>();
 
-  profiles.forEach((profile, index) => {
-    const base = `profiles[${index}]`;
-    if (!MEMBER_ID.test(profile.profileId)) {
-      error(issues, 'NS5_ACCESS_PROFILE_ID', 'profileId must be lowerCamel.', `${base}.profileId`);
+  if (!actors.length) {
+    error(issues, 'NS5_ACCESS_ACTORS', 'At least one actor is required.', 'actors');
+  }
+  const seenActorIds = new Set<string>();
+  actors.forEach((actor, index) => {
+    const path = `actors[${index}]`;
+    if (!MEMBER_ID.test(actor.actorId)) {
+      error(issues, 'NS5_ACCESS_ACTOR_ID', 'actorId must be lowerCamel.', `${path}.actorId`);
     }
-    if (profile.profileId && profileIds.has(profile.profileId)) {
-      error(issues, 'NS5_ACCESS_PROFILE_ID_DUPLICATE', `Duplicate profileId ${profile.profileId}.`, `${base}.profileId`);
+    if (actor.actorId && seenActorIds.has(actor.actorId)) {
+      error(issues, 'NS5_ACCESS_ACTOR_DUPLICATE', `Duplicate actorId ${actor.actorId}.`, `${path}.actorId`);
     }
-    if (profile.profileId) profileIds.add(profile.profileId);
-    if (!(NS5_ACCESS_PROFILE_KINDS as readonly string[]).includes(profile.kind)) {
-      error(issues, 'NS5_ACCESS_PROFILE_KIND', 'Profile kind must be internal, external or anonymous.', `${base}.kind`);
-    }
-    if (profile.kind === 'internal' && !profile.actorRefs.length) {
-      error(issues, 'NS5_ACCESS_INTERNAL_ACTOR', 'An internal profile must map to at least one actor.', `${base}.actorRefs`);
-    }
-    profile.actorRefs.forEach((actorRef, position) => {
-      const path = `${base}.actorRefs[${position}]`;
-      if (!MEMBER_ID.test(actorRef)) {
-        error(issues, 'NS5_ACCESS_PROFILE_ACTOR', 'actorRefs must be lowerCamel actor ids.', path);
-      } else if (!actorIds.has(actorRef)) {
-        error(issues, 'NS5_ACCESS_PROFILE_ACTOR_UNKNOWN', `Unknown actor ${actorRef}.`, path);
-      }
-      coveredActors.add(actorRef);
-    });
+    if (actor.actorId) seenActorIds.add(actor.actorId);
   });
 
   authorities.forEach((authority, index) => {
@@ -105,18 +92,18 @@ export function validateNs5Access(
     if (!MEMBER_ID.test(grant.grantId)) {
       error(issues, 'NS5_ACCESS_GRANT_ID', 'grantId must be lowerCamel.', `${base}.grantId`);
     }
-    if (!profileIds.has(grant.profileRef)) {
-      error(issues, 'NS5_ACCESS_GRANT_PROFILE', `Unknown profile ${grant.profileRef}.`, `${base}.profileRef`);
+    if (!actorIds.has(grant.actorRef)) {
+      error(issues, 'NS5_ACCESS_GRANT_ACTOR', `Unknown actor ${grant.actorRef}.`, `${base}.actorRef`);
     }
     if (!authorityIds.has(grant.authorityRef)) {
       error(issues, 'NS5_ACCESS_GRANT_AUTHORITY', `Unknown authority ${grant.authorityRef}.`, `${base}.authorityRef`);
     }
-    const pair = `${grant.profileRef}\u0000${grant.authorityRef}`;
-    if (grant.profileRef && grant.authorityRef && grantPairs.has(pair)) {
-      error(issues, 'NS5_ACCESS_GRANT_DUPLICATE_PAIR', `Duplicate grant for ${grant.profileRef} and ${grant.authorityRef}.`, base);
+    const pair = `${grant.actorRef}\u0000${grant.authorityRef}`;
+    if (grant.actorRef && grant.authorityRef && grantPairs.has(pair)) {
+      error(issues, 'NS5_ACCESS_GRANT_DUPLICATE_PAIR', `Duplicate grant for ${grant.actorRef} and ${grant.authorityRef}.`, base);
     }
-    if (grant.profileRef && grant.authorityRef) grantPairs.add(pair);
-    grantedProfiles.add(grant.profileRef);
+    if (grant.actorRef && grant.authorityRef) grantPairs.add(pair);
+    grantedActors.add(grant.actorRef);
 
     if (!grant.entityRefs.length) {
       error(issues, 'NS5_ACCESS_GRANT_NO_ENTITY', 'Every grant lists at least one entity.', `${base}.entityRefs`);
@@ -137,15 +124,9 @@ export function validateNs5Access(
       error(issues, 'NS5_ACCESS_SCOPE_DESCRIPTION', 'Data scope must be explained.', `${base}.dataScope.description`);
     }
 
-    const profile = profiles.find(item => item.profileId === grant.profileRef);
-    if (profile?.kind === 'external' && grant.dataScope.mode !== 'own') {
-      error(issues, 'NS5_ACCESS_EXTERNAL_OWN', 'An external profile only receives own grants.', `${base}.dataScope.mode`);
-    }
-    if (grant.dataScope.mode === 'public' && profile?.kind !== 'anonymous') {
-      error(issues, 'NS5_ACCESS_PUBLIC_ANONYMOUS', 'public scope is only for an anonymous profile.', `${base}.dataScope.mode`);
-    }
-    if (profile?.kind === 'anonymous' && grant.dataScope.mode !== 'public') {
-      error(issues, 'NS5_ACCESS_PUBLIC_ANONYMOUS', 'An anonymous profile only receives public grants.', `${base}.dataScope.mode`);
+    const actor = actorById.get(grant.actorRef);
+    if (actor?.kind === 'external' && grant.dataScope.mode !== 'own') {
+      error(issues, 'NS5_ACCESS_EXTERNAL_OWN', 'An external actor only receives own grants.', `${base}.dataScope.mode`);
     }
 
     if (isPersonScopeMode(grant.dataScope.mode)) {
@@ -207,20 +188,20 @@ export function validateNs5Access(
     seenGrantIds.add(grant.grantId);
   });
 
-  profileIds.forEach(profileId => {
-    if (!grantedProfiles.has(profileId)) {
-      error(issues, 'NS5_ACCESS_PROFILE_NO_GRANT', `Profile ${profileId} has no grant.`, 'grants');
+  actorIds.forEach(actorId => {
+    if (!grantedActors.has(actorId)) {
+      error(issues, 'NS5_ACCESS_ACTOR_NO_GRANT', `Actor ${actorId} has no grant.`, 'grants');
     }
   });
 
   context.journeys.forEach((journey, index) => {
     const actorRef = journey.business.actorRef;
     if (!actorRef) return;
-    if (coveredActors.has(actorRef)) return;
+    if (grantedActors.has(actorRef)) return;
     error(
       issues,
       'NS5_ACCESS_JOURNEY_ACTOR',
-      `Journey ${journey.journeyId} actor ${actorRef} is not covered by any profile.`,
+      `Journey ${journey.journeyId} actor ${actorRef} has no grant.`,
       `journeys[${index}].business.actorRef`,
     );
   });

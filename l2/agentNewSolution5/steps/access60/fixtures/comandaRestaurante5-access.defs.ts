@@ -3,22 +3,22 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "schemaVersion": "2026-09-10-ns5-access-v2",
   "moduleName": "comandaRestaurante5",
-  "profiles": [
+  "actors": [
     {
-      "profileId": "garcomAtendimento",
-      "actorRefs": [
-        "garcom"
-      ],
-      "kind": "internal"
+      "actorId": "garcom",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Garçom",
+      "description": "Abre comandas nas mesas e registra ou cancela itens pedidos."
     },
     {
-      "profileId": "caixaFechamento",
-      "actorRefs": [
-        "caixa"
-      ],
-      "kind": "internal"
+      "actorId": "caixa",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Caixa",
+      "description": "Confere comandas, aplica descontos pontuais e recebe pagamentos para fechar contas."
     }
   ],
   "authorities": [
@@ -56,7 +56,7 @@ export const comandaRestaurante5Access = {
   "grants": [
     {
       "grantId": "garcomConsultaCardapio",
-      "profileRef": "garcomAtendimento",
+      "actorRef": "garcom",
       "authorityRef": "consultarCardapio",
       "entityRefs": [
         "ItemCardapio"
@@ -72,7 +72,7 @@ export const comandaRestaurante5Access = {
     },
     {
       "grantId": "garcomGerenciaAtendimento",
-      "profileRef": "garcomAtendimento",
+      "actorRef": "garcom",
       "authorityRef": "gerirAtendimentoMesa",
       "entityRefs": [
         "Mesa",
@@ -96,7 +96,7 @@ export const comandaRestaurante5Access = {
     },
     {
       "grantId": "garcomGerenciaItens",
-      "profileRef": "garcomAtendimento",
+      "actorRef": "garcom",
       "authorityRef": "gerirItensComanda",
       "entityRefs": [
         "ItemComanda"
@@ -112,7 +112,7 @@ export const comandaRestaurante5Access = {
     },
     {
       "grantId": "caixaConfereEfechaConta",
-      "profileRef": "caixaFechamento",
+      "actorRef": "caixa",
       "authorityRef": "conferirEfecharConta",
       "entityRefs": [
         "Comanda",
@@ -129,7 +129,7 @@ export const comandaRestaurante5Access = {
     },
     {
       "grantId": "caixaConcedeDesconto",
-      "profileRef": "caixaFechamento",
+      "actorRef": "caixa",
       "authorityRef": "concederDescontoPontual",
       "entityRefs": [
         "Desconto"
@@ -145,7 +145,7 @@ export const comandaRestaurante5Access = {
     },
     {
       "grantId": "caixaRegistraPagamento",
-      "profileRef": "caixaFechamento",
+      "actorRef": "caixa",
       "authorityRef": "registrarPagamento",
       "entityRefs": [
         "Pagamento"

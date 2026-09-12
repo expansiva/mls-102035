@@ -61,23 +61,21 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI8(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
-    actors: sources.module.actors.length,
+    actors: sources.access.actors.length,
     journeys: sources.journeys.length,
     entities: sources.entities.length,
     rules: sources.rules.rules.length,
     processes: sources.workflows.processes.length,
-    profiles: sources.access.profiles.length,
     grants: sources.access.grants.length,
   });
 }
 
 function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
-  const actorIds = new Set(sources.module.actors.map(actor => actor.actorId).filter(Boolean));
+  const actorIds = new Set(sources.access.actors.map(actor => actor.actorId).filter(Boolean));
   const entityById = entityMap(sources);
   const entityIds = new Set(entityById.keys());
   const journeyById = new Map(sources.journeys.map(journey => [journey.journeyId, journey]));
   const journeyIds = new Set(journeyById.keys());
-  const profileIds = new Set(sources.access.profiles.map(profile => profile.profileId).filter(Boolean));
   const authorityIds = new Set(sources.access.authorities.map(item => item.authorityId).filter(Boolean));
 
   for (const entry of sources.journeyIndex.journeys) {
@@ -145,17 +143,10 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
     });
   });
 
-  sources.access.profiles.forEach((profile, index) => {
-    for (const actorRef of profile.actorRefs) {
-      if (actorRef && !actorIds.has(actorRef)) {
-        error('I1', `access.profiles[${index}].actorRefs`, `Unknown actor ${actorRef}.`);
-      }
-    }
-  });
   sources.access.grants.forEach((grant, index) => {
     const path = `access.grants[${index}]`;
-    if (grant.profileRef && !profileIds.has(grant.profileRef)) {
-      error('I1', `${path}.profileRef`, `Unknown profile ${grant.profileRef}.`);
+    if (grant.actorRef && !actorIds.has(grant.actorRef)) {
+      error('I1', `${path}.actorRef`, `Unknown actor ${grant.actorRef}.`);
     }
     if (grant.authorityRef && !authorityIds.has(grant.authorityRef)) {
       error('I1', `${path}.authorityRef`, `Unknown authority ${grant.authorityRef}.`);
@@ -243,24 +234,14 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn): void {
 
 function checkI3(sources: Ns5OracleSources, error: IssueFn): void {
   const journeyActors = new Set(sources.journeys.map(journey => journey.business.actorRef).filter(Boolean));
-  const profileByActor = new Set<string>();
-  for (const profile of sources.access.profiles) {
-    for (const actorRef of profile.actorRefs) if (actorRef) profileByActor.add(actorRef);
-  }
-  const grantsByProfile = new Set(sources.access.grants.map(grant => grant.profileRef).filter(Boolean));
-  for (const actor of sources.module.actors) {
+  const grantsByActor = new Set(sources.access.grants.map(grant => grant.actorRef).filter(Boolean));
+  for (const actor of sources.access.actors) {
     if (!actor.actorId) continue;
     if (!journeyActors.has(actor.actorId)) {
-      error('I3', `module.actors.${actor.actorId}`, `Actor ${actor.actorId} has no journey.`);
+      error('I3', `access.actors.${actor.actorId}`, `Actor ${actor.actorId} has no journey.`);
     }
-    if (!profileByActor.has(actor.actorId)) {
-      error('I3', `module.actors.${actor.actorId}`, `Actor ${actor.actorId} has no profile.`);
-    }
-  }
-  for (const profile of sources.access.profiles) {
-    if (!profile.profileId) continue;
-    if (!grantsByProfile.has(profile.profileId)) {
-      error('I3', `access.profiles.${profile.profileId}`, `Profile ${profile.profileId} has no grant.`);
+    if (!grantsByActor.has(actor.actorId)) {
+      error('I3', `access.actors.${actor.actorId}`, `Actor ${actor.actorId} has no grant.`);
     }
   }
 }
@@ -368,7 +349,7 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  */
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
-  const actorById = new Map(sources.module.actors.map(actor => [actor.actorId, actor]));
+  const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   const registered = new Set<string>();
   for (const journey of sources.journeys) {
     const actor = actorById.get(journey.business.actorRef);

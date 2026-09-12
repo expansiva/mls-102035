@@ -2,6 +2,7 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
+import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
 import {
   createNs5RetryStep,
   markNs5Step,
@@ -117,8 +118,12 @@ export async function beforeNs5WorkflowsPromptStep(
     const parsed = resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     const moduleArtifact = await readModule(moduleName);
-    const [journeys, entities] = await Promise.all([readJourneys(moduleName), readEntities(moduleName)]);
-    const actorIds = moduleArtifact.actors.map(actor => actor.actorId).filter(Boolean);
+    const [journeys, entities, actors] = await Promise.all([
+      readJourneys(moduleName),
+      readEntities(moduleName),
+      readNs5Actors(moduleName),
+    ]);
+    const actorIds = actors.map(actor => actor.actorId).filter(Boolean);
     const signals = collectNs5ProcessSignals(journeys, entities);
     if (!signals.length) {
       const pipeline = await requirePipeline(moduleName);
@@ -181,7 +186,11 @@ export async function afterNs5WorkflowsPromptStep(
 
     const { processes } = normalizeNs5WorkflowsPayload(payload);
     const moduleArtifact = await readModule(moduleName);
-    const [journeys, entities] = await Promise.all([readJourneys(moduleName), readEntities(moduleName)]);
+    const [journeys, entities, actors] = await Promise.all([
+      readJourneys(moduleName),
+      readEntities(moduleName),
+      readNs5Actors(moduleName),
+    ]);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
@@ -190,7 +199,7 @@ export async function afterNs5WorkflowsPromptStep(
     const draftPath = await writeJson(draftFile(moduleName, 'workflows50'), { processes });
     const gate = validateNs5Workflows(processes, {
       moduleName,
-      actorIds: moduleArtifact.actors.map(actor => actor.actorId),
+      actorIds: actors.map(actor => actor.actorId),
       journeys,
       entities,
     });

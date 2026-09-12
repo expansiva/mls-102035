@@ -231,7 +231,7 @@ async function persistRegistry(moduleName: string, sources: Ns5OracleSources): P
   }
   const next = upsertSolutionRegistryModule(current, buildSolutionRegistryModuleBlock({
     moduleName,
-    actors: sources.module.actors,
+    actors: sources.access.actors,
     entities: sources.entities,
     updatedAt: new Date().toISOString(),
   }));

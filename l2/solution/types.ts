@@ -1,12 +1,12 @@
 /// <mls fileReference="_102035_/l2/solution/types.ts" enhancement="_blank"/>
 
 /** Schema ids for NS5 source artifacts. Bumped when a field is added or removed. */
-export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v1' as const;
+export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
 export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-10-ns5-ontology-v1' as const;
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-10-ns5-workflows-v1' as const;
-export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-10-ns5-access-v1' as const;
+export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-10-ns5-access-v2' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-10-ns5-integration-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
 
@@ -24,7 +24,7 @@ export const NS5_STEP_IDS = [
 export type Ns5StepId = typeof NS5_STEP_IDS[number];
 
 export interface Ns5ModuleActor {
-  /** journeys20 binds actorRef; access60 binds profile.actorRefs; finalize80 checks coverage. */
+  /** journeys20 binds actorRef; access60 copies survivors onto access.defs.ts; finalize80 I3 checks coverage. */
   actorId: string;
   /** journeys20 drops inferred external without an exclusive step; integration70 treats system as a signal. */
   kind: 'internal' | 'external' | 'system';
@@ -51,14 +51,6 @@ export interface Ns5ModuleArtifact {
   defaultLanguage: string;
   /** Resume and /rebuild all recover the original request from here. */
   sourcePrompt: string;
-  /** journeys20, access60, finalize80 iterate this list. */
-  actors: Ns5ModuleActor[];
-  scope: {
-    /** Human boundary; no generator reads this as structure. */
-    inScope: string[];
-    /** Human boundary; no generator reads this as structure. */
-    outOfScope: string[];
-  };
   /** Organization-wide aggregates; ontology30 writes this at the end of the fan-out. */
   details?: Record<string, string>;
 }
@@ -86,7 +78,7 @@ export interface Ns5JourneyArtifact {
   /** Index order, workflows50.journeyRef. */
   journeyId: string;
   business: {
-    /** Must be an actorId from module.defs.ts. */
+    /** Must be an actorId from the pipeline (then access.defs.ts). */
     actorRef: string;
     /** Planner / UI. */
     title: string;
@@ -296,15 +288,6 @@ export interface Ns5WorkflowsArtifact {
   processes: Ns5WorkflowProcess[];
 }
 
-export interface Ns5AccessProfile {
-  /** grants.profileRef. */
-  profileId: string;
-  /** Must be actorIds from module.defs.ts. */
-  actorRefs: string[];
-  /** External profiles need their own grant; anonymous is public-only. */
-  kind: 'internal' | 'external' | 'anonymous';
-}
-
 export interface Ns5AccessAuthority {
   /** grants.authorityRef. */
   authorityId: string;
@@ -337,8 +320,8 @@ export interface Ns5AccessDisclosure {
 export interface Ns5AccessGrant {
   /** Index identity. */
   grantId: string;
-  /** Must be a profileId. */
-  profileRef: string;
+  /** Must be an actorId from access.actors. */
+  actorRef: string;
   /** Must be an authorityId. */
   authorityRef: string;
   /** Must be entityIds. */
@@ -352,8 +335,8 @@ export interface Ns5AccessArtifact {
   schemaVersion: typeof NS5_ACCESS_SCHEMA_VERSION;
   /** Folder. */
   moduleName: string;
-  /** finalize80 I3: every actor has a profile. */
-  profiles: Ns5AccessProfile[];
+  /** Copied from the pipeline (survivors of the journeys20 drop). The LLM does not rewrite this list. */
+  actors: Ns5ModuleActor[];
   /** grants.authorityRef. */
   authorities: Ns5AccessAuthority[];
   /** Backend applies scope and disclosure from these rows. */
@@ -417,6 +400,10 @@ export interface Ns5PipelineStepState {
    * `module.details` still has the corresponding aggregate keys.
    */
   liftedAggregateEntities?: string[];
+  /** module10: actors born by the step. Later steps read them via `readNs5Actors`. */
+  actors?: Ns5ModuleActor[];
+  /** journeys20: actorIds dropped as inferred-external without an exclusive step. */
+  droppedActors?: string[];
   /** workflows50: true when processes is [] because no handoff, foreign-by transition or cross-actor decide. */
   noProcessSignal?: boolean;
   /** integration70: true when inbound/outbound/plugins are [] because no system actor and no plugin-catalog term. */

@@ -8,7 +8,7 @@ import {
   type Ns5AccessAuthority,
   type Ns5AccessDataScope,
   type Ns5AccessGrant,
-  type Ns5AccessProfile,
+  type Ns5ModuleActor,
 } from '/_102035_/l2/solution/types.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
@@ -17,18 +17,15 @@ const FIELD_REF = /^[A-Z][A-Za-z0-9]*\.(?:details\.)?[a-z][A-Za-z0-9]*$/;
 
 export const NS5_ACCESS_MAX_ANCHOR_HOPS = 6 as const;
 
-export const NS5_ACCESS_PROFILE_KINDS = ['internal', 'external', 'anonymous'] as const;
 export const NS5_ACCESS_SCOPE_MODES = ['own', 'assigned', 'related', 'public', 'organization', 'custom'] as const;
 export const NS5_ACCESS_DISCLOSURE_MODES = ['fullRecord', 'fieldsOnly', 'summaryOnly', 'aggregateOnly'] as const;
 export const NS5_ACCESS_PERSON_SCOPE_MODES = ['own', 'assigned', 'related'] as const;
 export const NS5_ACCESS_LIMITED_DISCLOSURE_MODES = ['fieldsOnly', 'summaryOnly'] as const;
 
-export type Ns5AccessProfileKind = typeof NS5_ACCESS_PROFILE_KINDS[number];
 export type Ns5AccessScopeMode = typeof NS5_ACCESS_SCOPE_MODES[number];
 export type Ns5AccessDisclosureMode = typeof NS5_ACCESS_DISCLOSURE_MODES[number];
 
 export interface Ns5AccessNormalization {
-  profiles: Ns5AccessProfile[];
   authorities: Ns5AccessAuthority[];
   grants: Ns5AccessGrant[];
 }
@@ -77,7 +74,7 @@ export function buildNs5AccessTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Access',
-    'Submit profiles, authorities and grants. Disclosure names Entity.field; own/assigned/related name the person anchorEntity. Do not emit hops, landing or realization.',
+    'Submit authorities and grants by actorRef. Do not emit actors, profiles, hops, landing or realization. Disclosure names Entity.field; own/assigned/related name the person anchorEntity.',
     schema,
   );
 }
@@ -85,9 +82,8 @@ export function buildNs5AccessTool(
 export function normalizeNs5AccessPayload(value: unknown): Ns5AccessNormalization {
   const root = record(value);
   return {
-    profiles: list(root.profiles).map(normalizeProfile).filter(profile => profile.profileId || profile.kind),
     authorities: list(root.authorities).map(normalizeAuthority).filter(item => item.authorityId || item.title),
-    grants: list(root.grants).map(normalizeGrant).filter(grant => grant.grantId || grant.profileRef),
+    grants: list(root.grants).map(normalizeGrant).filter(grant => grant.grantId || grant.actorRef),
   };
 }
 
@@ -175,14 +171,14 @@ function coversAllResolvable(list: readonly string[], total: readonly string[]):
 
 export function buildNs5AccessArtifact(
   moduleName: string,
-  profiles: Ns5AccessProfile[],
+  actors: Ns5ModuleActor[],
   authorities: Ns5AccessAuthority[],
   grants: Ns5AccessGrant[],
 ): Ns5AccessArtifact {
   return {
     schemaVersion: NS5_ACCESS_SCHEMA_VERSION,
     moduleName,
-    profiles,
+    actors,
     authorities,
     grants,
   };
@@ -317,16 +313,6 @@ function requiredEdges(relationships: readonly Ns5AccessRelationshipView[]): Map
   return edges;
 }
 
-function normalizeProfile(value: unknown): Ns5AccessProfile {
-  const source = record(value);
-  const kind = text(source.kind);
-  return {
-    profileId: memberId(text(source.profileId) || text(source.id), ''),
-    actorRefs: unique(strings(source.actorRefs).map(item => memberId(item, '')).filter(Boolean)),
-    kind: kind as Ns5AccessProfileKind,
-  };
-}
-
 function normalizeAuthority(value: unknown): Ns5AccessAuthority {
   const source = record(value);
   return {
@@ -348,7 +334,7 @@ function normalizeGrant(value: unknown): Ns5AccessGrant {
   if (anchorEntity) dataScope.anchorEntity = anchorEntity;
   const next: Ns5AccessGrant = {
     grantId: memberId(text(source.grantId) || text(source.id), ''),
-    profileRef: memberId(text(source.profileRef), ''),
+    actorRef: memberId(text(source.actorRef) || text(source.profileRef), ''),
     authorityRef: memberId(text(source.authorityRef) || text(source.authorityId), ''),
     entityRefs: unique(strings(source.entityRefs).map(entityId).filter(Boolean)),
     dataScope,

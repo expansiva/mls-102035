@@ -10,10 +10,10 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
+  loadNs5Actors,
   loadNs5Entities,
   loadNs5FixtureJson,
   loadNs5Journeys,
-  loadNs5Module,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type {
   Ns5JourneyArtifact,
@@ -198,7 +198,6 @@ void test('real ordenServicio5 workflows draft is one process covering the decid
   assert.equal(decide.actorRef, 'cliente');
   assert.equal(decide.journeyRef, 'responderPresupuesto');
   const processes = drafts(draft);
-  const moduleArtifact = loadNs5Module('ordenServicio5');
   const journeys = loadNs5Journeys('ordenServicio5').map(item => ({
     journeyId: item.journeyId,
     business: {
@@ -216,7 +215,7 @@ void test('real ordenServicio5 workflows draft is one process covering the decid
     transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
   }));
   const gate = validateNs5Workflows(processes, {
-    actorIds: moduleArtifact.actors.map(actor => actor.actorId),
+    actorIds: loadNs5Actors('ordenServicio5').map(actor => actor.actorId),
     journeys,
     entities,
   });

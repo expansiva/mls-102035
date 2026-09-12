@@ -2,6 +2,7 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
+import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
 import {
   createNs5RetryStep,
   markNs5Step,
@@ -112,8 +113,9 @@ export async function beforeNs5IntegrationPromptStep(
     const parsed = resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     const moduleArtifact = await readModule(moduleName);
+    const actors = await readNs5Actors(moduleName);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
-    const signals = collectNs5IntegrationSignals(moduleArtifact.actors, sourcePrompt);
+    const signals = collectNs5IntegrationSignals(actors, sourcePrompt);
     if (!signals.length) {
       const pipeline = await requirePipeline(moduleName);
       const artifactPath = await persistArtifacts(moduleName, [], [], [], pipeline, true);
@@ -133,7 +135,7 @@ export async function beforeNs5IntegrationPromptStep(
     const humanPrompt = buildNs5IntegrationHumanPrompt({
       sourcePrompt,
       userLanguage: moduleArtifact.userLanguage,
-      actors: moduleArtifact.actors,
+      actors,
       entityIds: entities,
       registryModuleNames,
       gateFeedback: parsed.gateFeedback,
@@ -176,9 +178,10 @@ export async function afterNs5IntegrationPromptStep(
 
     const { inbound, outbound, plugins } = normalizeNs5IntegrationPayload(payload);
     const moduleArtifact = await readModule(moduleName);
-    const [entities, registryModuleNames] = await Promise.all([
+    const [entities, registryModuleNames, actors] = await Promise.all([
       readEntities(moduleName),
       readRegistryModuleNames(moduleName),
+      readNs5Actors(moduleName),
     ]);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     let pipeline = await requirePipeline(moduleName);
@@ -189,7 +192,7 @@ export async function afterNs5IntegrationPromptStep(
     const draftPath = await writeJson(draftFile(moduleName, 'integration70'), { inbound, outbound, plugins });
     const gate = validateNs5Integration(inbound, outbound, plugins, {
       moduleName,
-      actors: moduleArtifact.actors,
+      actors,
       entities,
       registryModuleNames,
       sourcePrompt,

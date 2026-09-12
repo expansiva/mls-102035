@@ -23,10 +23,19 @@ interface FlowStep {
   kind: string;
   dependsOn: string[];
   doneAnchor: string;
-  clarificationAnchor: { id: string; status: string };
+  clarificationAnchor?: { id: string; status: string };
   modelAlias?: string;
   artifact: string;
 }
+
+const NS5_CLARIFICATION_STEPS = [
+  'journeys20',
+  'ontology30',
+  'rules40',
+  'workflows50',
+  'access60',
+  'integration70',
+] as const;
 
 interface FlowDoc {
   flowId: string;
@@ -65,7 +74,11 @@ void test('flow has exactly eight steps in declared order with declared dependen
   for (const step of flow.steps) {
     assert.deepEqual(step.dependsOn, [...NS5_STEP_DEPENDS_ON[step.id as keyof typeof NS5_STEP_DEPENDS_ON]]);
     assert.equal(step.doneAnchor, `${step.id}-done`);
-    assert.deepEqual(step.clarificationAnchor, { id: `${step.id}-clarification`, status: 'reserved' });
+    if ((NS5_CLARIFICATION_STEPS as readonly string[]).includes(step.id)) {
+      assert.deepEqual(step.clarificationAnchor, { id: `${step.id}-clarification`, status: 'reserved' });
+    } else {
+      assert.equal(step.clarificationAnchor, undefined);
+    }
     if (step.id === 'finalize80') {
       assert.equal(step.kind, 'deterministic');
       assert.equal(step.modelAlias, undefined);

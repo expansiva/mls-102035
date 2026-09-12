@@ -10,7 +10,7 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
-import { loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys, loadNs5Module } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5OntologyBindingsHumanPrompt,
@@ -541,14 +541,14 @@ void test('isolated entity validation does not demand other journey-cited entiti
 });
 
 void test('n15 bindings require mdm endpoint [idField] and reject empty to.fieldIds', () => {
-  const moduleArtifact = loadNs5Module('comandaRestaurante5');
+  const actors = loadNs5Actors('comandaRestaurante5');
   const journeys = loadNs5Journeys('comandaRestaurante5');
   const plan = normalizeNs5OntologyPlan(realPlan('comandaRestaurante5'), 'comandaRestaurante5', journeys);
   const details = plan.entities.map(entity => normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', entity.entityId), entity.entityId));
   const bindings = normalizeNs5OntologyBindings(realBindings('comandaRestaurante5'));
   const good = validateNs5OntologyBindings(plan, details, bindings, {
     moduleName: 'comandaRestaurante5',
-    actors: moduleArtifact.actors,
+    actors,
     journeys,
   });
   assert.equal(good.ok, true, good.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
@@ -560,7 +560,7 @@ void test('n15 bindings require mdm endpoint [idField] and reject empty to.field
   });
   const emptyGate = validateNs5OntologyBindings(plan, details, emptyTo, {
     moduleName: 'comandaRestaurante5',
-    actors: moduleArtifact.actors,
+    actors,
     journeys,
   });
   assert.equal(emptyGate.ok, false);
@@ -573,7 +573,7 @@ void test('n15 bindings require mdm endpoint [idField] and reject empty to.field
   });
   const wrongGate = validateNs5OntologyBindings(plan, details, wrongId, {
     moduleName: 'comandaRestaurante5',
-    actors: moduleArtifact.actors,
+    actors,
     journeys,
   });
   assert.equal(wrongGate.ok, false);
@@ -1072,15 +1072,13 @@ void test('PainelMensalidades aggregate-only entity fails; module.details versio
   assert.equal(passingEntity.ok, true, passingEntity.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   const module = applyNs5ModuleDetails(
     {
-      schemaVersion: '2026-09-10-ns5-module-v1' as const,
+      schemaVersion: '2026-09-10-ns5-module-v2' as const,
       moduleName: 'mensalidadesAcademia',
       title: 'Fees',
       userLanguage: 'pt-BR',
       productLanguages: ['pt-BR'],
       defaultLanguage: 'pt-BR',
       sourcePrompt: 'academia',
-      actors: ACTORS,
-      scope: { inScope: ['Fees'], outOfScope: [] },
     },
     mensalidadePlan.moduleDetails,
   );
@@ -1102,15 +1100,13 @@ function panelPlan(entityId: string, idField: string): Ns5OntologyPlanEntity {
 
 function emptyModule(): Parameters<typeof applyNs5ModuleDetails>[0] {
   return {
-    schemaVersion: '2026-09-10-ns5-module-v1',
+    schemaVersion: '2026-09-10-ns5-module-v2',
     moduleName: 'mensalidadesAcademia',
     title: 'Fees',
     userLanguage: 'pt-BR',
     productLanguages: ['pt-BR'],
     defaultLanguage: 'pt-BR',
     sourcePrompt: 'academia',
-    actors: ACTORS,
-    scope: { inScope: ['Fees'], outOfScope: [] },
   };
 }
 

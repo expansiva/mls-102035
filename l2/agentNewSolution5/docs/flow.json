@@ -16,7 +16,7 @@
     "Sequence is declared in this file via dependsOn and done-anchors. Steps do not enqueue their successor by name.",
     "Pipeline state lives on disk at l4/{module}/pipeline/pipeline.json. The task record is orchestration, not truth.",
     "A step declared here and not implemented stops the run with pipeline.status awaitingStep naming that step. The task completes without failed.",
-    "Clarification anchors exist as reserved and have no screen. /fast skips them.",
+    "Six clarification anchors (journeys20, ontology30, rules40, workflows50, access60, integration70) exist as reserved and have no screen. module10 and finalize80 have none. /fast skips them.",
     "Never dispatch agentChangeBackend or agentChangeFrontend.",
     "Permanent TypeScript artifacts import Ns5* types from /_102035_/l2/solution/types.js and are emitted as const satisfies.",
     "Deterministic user text is English keys; the planner translates. Internal messages stay English literals.",
@@ -52,10 +52,9 @@
       "kind": "agent-checkpoint",
       "dependsOn": [],
       "doneAnchor": "module10-done",
-      "clarificationAnchor": { "id": "module10-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/module.defs.ts",
-      "goal": "Name the module, its actors (with origin) and its scope."
+      "goal": "Name the module, its actors (with origin) and languages. Actors are stored on pipeline.json, not on module.defs.ts."
     },
     {
       "id": "journeys20",
@@ -105,7 +104,7 @@
       "clarificationAnchor": { "id": "access60-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/access.defs.ts",
-      "goal": "Profiles, authorities, grants with structured disclosure."
+      "goal": "Actors (from pipeline), authorities, grants with structured disclosure."
     },
     {
       "id": "integration70",
@@ -122,7 +121,6 @@
       "kind": "deterministic",
       "dependsOn": ["integration70-done"],
       "doneAnchor": "finalize80-done",
-      "clarificationAnchor": { "id": "finalize80-clarification", "status": "reserved" },
       "artifact": "l4/{module}/pipeline/pipeline.json",
       "goal": "Integrity oracle, organization registry, l5 delivery. Marks pipeline complete. Never dispatches CB/CF."
     }

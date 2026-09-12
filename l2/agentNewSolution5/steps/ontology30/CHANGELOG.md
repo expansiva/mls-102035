@@ -2,6 +2,7 @@
 
 ## 2026-09-11
 
+- Actors come from `readNs5Actors` (pipeline), not `module.defs.ts`.
 - Level-1 catalog (and the platform catalog) is read from 102034. Plan and entity
   prompts receive subtypes plus services/role rules derived from `platform.defs.ts`.
   `NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE` warns when a supporting/event entity

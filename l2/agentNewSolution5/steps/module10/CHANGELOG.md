@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- Actors go to `pipeline.json` `module10.actors`, not `module.defs.ts`. `scope` is gone.
+  Schema `2026-09-10-ns5-module-v2`.
 - System prompt prepends the MDM skill (`skills/mdm.md`). `details` on the module
   artifact is written later by ontology30, not by this step.
 

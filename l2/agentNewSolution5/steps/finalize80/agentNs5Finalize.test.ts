@@ -48,7 +48,7 @@ function withLiftedPainel(sources: Ns5OracleSources): Ns5OracleSources {
     'steps/finalize80/fixtures',
     'mensalidadesAcademia-module.details.json',
   );
-  journey.business.actorRef = sources.module.actors[0].actorId;
+  journey.business.actorRef = sources.access.actors[0].actorId;
   sources.journeys.push(journey);
   sources.journeyIndex.journeys.push({
     journeyId: journey.journeyId,
@@ -88,7 +88,7 @@ function withAcademiaEnrollment(
     lifecycleStates: [],
     transitions: [],
   };
-  const actor = sources.module.actors.find(item => item.kind === 'internal')!;
+  const actor = sources.access.actors.find(item => item.kind === 'internal')!;
   journey.business.actorRef = actor.actorId;
   const locate = journey.business.steps.find(step => step.stepId === 'localizarOuCadastrarAluno');
   if (locate) locate.kind = personStep;
@@ -102,7 +102,7 @@ function withAcademiaEnrollment(
   });
   sources.access.grants.push({
     grantId: 'alunoCancelarPropriaMatricula',
-    profileRef: sources.access.profiles[0].profileId,
+    actorRef: sources.access.actors[0].actorId,
     authorityRef: sources.access.authorities[0].authorityId,
     entityRefs: ['Aluno'],
     dataScope: { mode: 'own', anchorEntity: 'Aluno', description: 'Own student record.' },
@@ -276,11 +276,9 @@ void test('I2 does not apply to consultarMisOrdenes when it is locate then inspe
   assert.equal(report.errors.filter(issue => issue.checkId === 'I2').length, 0, report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
 });
 
-void test('I3 fails when an actor has no profile', () => {
+void test('I3 fails when an actor has no grant', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
-  const dropped = sources.access.profiles.filter(profile => profile.actorRefs.includes('caixa')).map(profile => profile.profileId);
-  sources.access.profiles = sources.access.profiles.filter(profile => !dropped.includes(profile.profileId));
-  sources.access.grants = sources.access.grants.filter(grant => !dropped.includes(grant.profileRef));
+  sources.access.grants = sources.access.grants.filter(grant => grant.actorRef !== 'caixa');
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I3' && /caixa/.test(issue.message)));
@@ -398,7 +396,7 @@ void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
   const sources = loadSources('comandaRestaurante.json');
   const block = buildSolutionRegistryModuleBlock({
     moduleName: sources.module.moduleName,
-    actors: sources.module.actors,
+    actors: sources.access.actors,
     entities: sources.entities,
     updatedAt: '2026-09-10T00:00:00.000Z',
   });

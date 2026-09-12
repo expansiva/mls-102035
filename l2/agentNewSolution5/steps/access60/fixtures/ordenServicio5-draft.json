@@ -1,29 +1,6 @@
 {
-  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "schemaVersion": "2026-09-10-ns5-access-v2",
   "moduleName": "ordenServicio5",
-  "profiles": [
-    {
-      "profileId": "recepcionista",
-      "actorRefs": [
-        "recepcionista"
-      ],
-      "kind": "internal"
-    },
-    {
-      "profileId": "tecnico",
-      "actorRefs": [
-        "tecnico"
-      ],
-      "kind": "internal"
-    },
-    {
-      "profileId": "cliente",
-      "actorRefs": [
-        "cliente"
-      ],
-      "kind": "external"
-    }
-  ],
   "authorities": [
     {
       "authorityId": "gestionarRecepcionYentrega",
@@ -49,7 +26,6 @@
   "grants": [
     {
       "grantId": "recepcionGestionaRecepcionYentrega",
-      "profileRef": "recepcionista",
       "authorityRef": "gestionarRecepcionYentrega",
       "entityRefs": [
         "OrdenServicio",
@@ -87,11 +63,11 @@
           "EntregaAparato.id",
           "EntregaAparato.fechaEntrega"
         ]
-      }
+      },
+      "actorRef": "recepcionista"
     },
     {
       "grantId": "tecnicoAnalizaYpresupuesta",
-      "profileRef": "tecnico",
       "authorityRef": "analizarYpresupuestar",
       "entityRefs": [
         "OrdenServicio",
@@ -137,11 +113,11 @@
           "Presupuesto.piezasNecesarias",
           "Presupuesto.status"
         ]
-      }
+      },
+      "actorRef": "tecnico"
     },
     {
       "grantId": "tecnicoReparaOrden",
-      "profileRef": "tecnico",
       "authorityRef": "repararOrden",
       "entityRefs": [
         "OrdenServicio",
@@ -181,11 +157,11 @@
           "Reparacion.id",
           "Reparacion.detalleTrabajo"
         ]
-      }
+      },
+      "actorRef": "tecnico"
     },
     {
       "grantId": "clienteConsultaYrespondePresupuesto",
-      "profileRef": "cliente",
       "authorityRef": "consultarYresponderPresupuesto",
       "entityRefs": [
         "OrdenServicio"
@@ -213,7 +189,8 @@
         "deniedFields": [
           "Presupuesto.piezasNecesarias"
         ]
-      }
+      },
+      "actorRef": "cliente"
     }
   ]
 }

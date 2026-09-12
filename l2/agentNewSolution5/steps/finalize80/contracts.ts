@@ -75,7 +75,6 @@ export interface Ns5FinalizeReport {
     entities: number;
     rules: number;
     processes: number;
-    profiles: number;
     grants: number;
   };
 }

@@ -64,31 +64,33 @@ void test('module10 tool schema is provider-clean', () => {
 void test('real module10 drafts of both runs pass the gate', () => {
   for (const moduleName of NS5_REAL_MODULES) {
     const draft = loadNs5FixtureJson<Ns5ModuleArtifact>('steps/module10/fixtures', `${moduleName}-draft.json`);
-    const { artifact } = normalizeNs5ModuleArtifact(draft, {
+    const { artifact, actors } = normalizeNs5ModuleArtifact(draft, {
       sourcePrompt: draft.sourcePrompt,
       fixedModuleName: moduleName,
     });
-    const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName });
+    const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName, actors });
     assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => issue.code).join(', ')}`);
-    assert.equal(artifact.actors.every(actor => actor.origin === 'named'), true, moduleName);
-    assert.ok(artifact.actors.some(actor => actor.kind === 'internal'), moduleName);
+    assert.equal(actors.every(actor => actor.origin === 'named'), true, moduleName);
+    assert.ok(actors.some(actor => actor.kind === 'internal'), moduleName);
+    assert.equal('actors' in artifact, false, moduleName);
+    assert.equal('scope' in artifact, false, moduleName);
   }
 });
 
 void test('normalize + gate accept a valid payload', () => {
-  const { artifact, i18nWarnings } = normalizeNs5ModuleArtifact(validPayload(), {
+  const { artifact, actors, i18nWarnings } = normalizeNs5ModuleArtifact(validPayload(), {
     sourcePrompt: SOURCE,
     fixedModuleName: 'comandaRestaurante5',
   });
   assert.equal(i18nWarnings.length, 0);
-  const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: 'comandaRestaurante5' });
+  const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: 'comandaRestaurante5', actors });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   assert.equal(artifact.schemaVersion, NS5_MODULE_SCHEMA_VERSION);
   assert.equal(artifact.sourcePrompt, SOURCE);
 });
 
 void test('gate rejects a module with no internal actor', () => {
-  const { artifact } = normalizeNs5ModuleArtifact(validPayload({
+  const { artifact, actors } = normalizeNs5ModuleArtifact(validPayload({
     actors: [{
       actorId: 'cliente',
       kind: 'external',
@@ -97,24 +99,24 @@ void test('gate rejects a module with no internal actor', () => {
       description: 'Pays at the table.',
     }],
   }), { sourcePrompt: SOURCE });
-  const gate = validateNs5ModuleArtifact(artifact);
+  const gate = validateNs5ModuleArtifact(artifact, { actors });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_MODULE_INTERNAL_ACTOR'));
 });
 
 void test('gate rejects a default language outside productLanguages', () => {
-  const { artifact } = normalizeNs5ModuleArtifact(validPayload({
+  const { artifact, actors } = normalizeNs5ModuleArtifact(validPayload({
     productLanguages: ['pt-BR'],
     defaultLanguage: 'pt-BR',
   }), { sourcePrompt: SOURCE });
   const broken: Ns5ModuleArtifact = { ...artifact, defaultLanguage: 'en' };
-  const gate = validateNs5ModuleArtifact(broken);
+  const gate = validateNs5ModuleArtifact(broken, { actors });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE'));
 });
 
 void test('gate rejects a duplicate actor id', () => {
-  const { artifact } = normalizeNs5ModuleArtifact(validPayload({
+  const { artifact, actors } = normalizeNs5ModuleArtifact(validPayload({
     actors: [
       {
         actorId: 'garcom',
@@ -132,7 +134,7 @@ void test('gate rejects a duplicate actor id', () => {
       },
     ],
   }), { sourcePrompt: SOURCE });
-  const gate = validateNs5ModuleArtifact(artifact);
+  const gate = validateNs5ModuleArtifact(artifact, { actors });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_MODULE_ACTOR_DUPLICATE'));
 });
@@ -144,13 +146,16 @@ void test('gate rejects a moduleName that does not match /module', () => {
   });
   assert.equal(artifact.moduleName, 'comandaRestaurante5');
   const unfixed = normalizeNs5ModuleArtifact(validPayload({ moduleName: 'otherModule' }), { sourcePrompt: SOURCE });
-  const gate = validateNs5ModuleArtifact(unfixed.artifact, { fixedModuleName: 'comandaRestaurante5' });
+  const gate = validateNs5ModuleArtifact(unfixed.artifact, {
+    fixedModuleName: 'comandaRestaurante5',
+    actors: unfixed.actors,
+  });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_MODULE_NAME_MISMATCH'));
 });
 
-void test('inferred external actor stays on the artifact', () => {
-  const { artifact } = normalizeNs5ModuleArtifact(validPayload({
+void test('inferred external actor stays on the pipeline list, not the artifact', () => {
+  const { artifact, actors } = normalizeNs5ModuleArtifact(validPayload({
     actors: [
       {
         actorId: 'caixa',
@@ -168,21 +173,22 @@ void test('inferred external actor stays on the artifact', () => {
       },
     ],
   }), { sourcePrompt: SOURCE });
-  const gate = validateNs5ModuleArtifact(artifact);
+  const gate = validateNs5ModuleArtifact(artifact, { actors });
   assert.equal(gate.ok, true, gate.issues.map(issue => issue.code).join(', '));
-  assert.equal(artifact.actors[1].origin, 'inferred');
-  assert.equal(artifact.actors[1].kind, 'external');
+  assert.equal('actors' in artifact, false);
+  assert.equal(actors[1].origin, 'inferred');
+  assert.equal(actors[1].kind, 'external');
 });
 
 void test('languages not cited in the request are discarded', () => {
-  const { artifact, i18nWarnings } = normalizeNs5ModuleArtifact(validPayload({
+  const { artifact, actors, i18nWarnings } = normalizeNs5ModuleArtifact(validPayload({
     productLanguages: ['pt-BR', 'en', 'es'],
     defaultLanguage: 'en',
   }), { sourcePrompt: SOURCE });
   assert.deepEqual(artifact.productLanguages, ['pt-BR']);
   assert.equal(artifact.defaultLanguage, 'pt-BR');
   assert.ok(i18nWarnings.length > 0);
-  const gate = validateNs5ModuleArtifact(artifact);
+  const gate = validateNs5ModuleArtifact(artifact, { actors });
   assert.equal(gate.ok, true);
 });
 

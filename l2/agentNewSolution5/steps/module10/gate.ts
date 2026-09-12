@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/module10/gate.ts" enhancement="_blank"/>
 
 import { normalizeNs4Languages } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
+import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleActor, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 
@@ -20,6 +20,8 @@ export interface Ns5ModuleGateResult {
 export interface Ns5ModuleGateContext {
   /** When the invocation fixed /module, the artifact must use that token. */
   fixedModuleName?: string;
+  /** Born by the LLM; stored on pipeline.json, not on module.defs.ts. */
+  actors?: readonly Ns5ModuleActor[];
 }
 
 export function validateNs5ModuleArtifact(
@@ -55,12 +57,13 @@ export function validateNs5ModuleArtifact(
   if (!artifact.defaultLanguage || !artifact.productLanguages.includes(artifact.defaultLanguage)) {
     error(issues, 'NS5_MODULE_DEFAULT_LANGUAGE', 'defaultLanguage must belong to productLanguages.', 'defaultLanguage');
   }
-  if (!artifact.actors.length) {
+  const actors = context.actors || [];
+  if (!actors.length) {
     error(issues, 'NS5_MODULE_ACTORS', 'At least one actor is required.', 'actors');
   }
   const ids = new Set<string>();
   let internalCount = 0;
-  artifact.actors.forEach((actor, index) => {
+  actors.forEach((actor, index) => {
     const path = `actors[${index}]`;
     if (!MEMBER_ID.test(actor.actorId)) {
       error(issues, 'NS5_MODULE_ACTOR_ID', 'actorId must be lowerCamel.', `${path}.actorId`);
@@ -81,15 +84,9 @@ export function validateNs5ModuleArtifact(
     }
     if (actor.kind === 'internal') internalCount += 1;
   });
-  if (artifact.actors.length && internalCount === 0) {
+  if (actors.length && internalCount === 0) {
     error(issues, 'NS5_MODULE_INTERNAL_ACTOR', 'At least one internal actor is required.', 'actors');
   }
-  const inScope = new Set(artifact.scope.inScope.map(item => item.trim().toLowerCase()).filter(Boolean));
-  artifact.scope.outOfScope.forEach((item, index) => {
-    if (inScope.has(item.trim().toLowerCase())) {
-      error(issues, 'NS5_MODULE_SCOPE_CONTRADICTION', 'The same item cannot be both in and out of scope.', `scope.outOfScope[${index}]`);
-    }
-  });
   const details = artifact.details || {};
   const detailNames = new Set<string>();
   for (const [name, description] of Object.entries(details)) {

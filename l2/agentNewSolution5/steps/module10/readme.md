@@ -1,7 +1,8 @@
-# module10 — the module, its actors and its scope
+# module10 — the module, its actors and languages
 
 One LLM call with tool `submitNs5Module`. Writes `l4/<mod>/module.defs.ts` and a draft at
-`pipeline/module10-draft.json`. Clarification is reserved and has no screen; `/fast` auto-approves.
+`pipeline/module10-draft.json`. Actors go to `pipeline.json` `module10.actors`. No clarification
+anchor; `/fast` auto-approves.
 
 ## Input
 
@@ -11,8 +12,8 @@ One LLM call with tool `submitNs5Module`. Writes `l4/<mod>/module.defs.ts` and a
 
 ## Output
 
-`Ns5ModuleArtifact`: `moduleName`, `title`, languages, `actors[]` (`actorId`, `kind`, `origin`,
-`title`, `description`), `scope.inScope` / `scope.outOfScope`. No features, no strategy.
+`Ns5ModuleArtifact`: `moduleName`, `title`, languages, `sourcePrompt`. Actors are pipeline
+state (`readNs5Actors`). No features, no strategy, no `scope`.
 
 ## Invariants
 

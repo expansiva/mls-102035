@@ -3,29 +3,29 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "schemaVersion": "2026-09-10-ns5-access-v2",
   "moduleName": "ordenServicio5",
-  "profiles": [
+  "actors": [
     {
-      "profileId": "recepcionista",
-      "actorRefs": [
-        "recepcionista"
-      ],
-      "kind": "internal"
+      "actorId": "recepcionista",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Recepcionista",
+      "description": "Personal que recibe aparatos y gestiona su entrega al cliente."
     },
     {
-      "profileId": "tecnico",
-      "actorRefs": [
-        "tecnico"
-      ],
-      "kind": "internal"
+      "actorId": "tecnico",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Técnico",
+      "description": "Personal que analiza los aparatos y realiza las reparaciones."
     },
     {
-      "profileId": "cliente",
-      "actorRefs": [
-        "cliente"
-      ],
-      "kind": "external"
+      "actorId": "cliente",
+      "kind": "external",
+      "origin": "named",
+      "title": "Cliente",
+      "description": "Persona que presenta un aparato para servicio y consulta o responde al presupuesto desde el portal."
     }
   ],
   "authorities": [
@@ -63,7 +63,7 @@ export const ordenServicio5Access = {
   "grants": [
     {
       "grantId": "recepcionistaRegistrarRecepcion",
-      "profileRef": "recepcionista",
+      "actorRef": "recepcionista",
       "authorityRef": "registrarRecepcion",
       "entityRefs": [
         "OrdenServicio",
@@ -95,7 +95,7 @@ export const ordenServicio5Access = {
     },
     {
       "grantId": "recepcionistaEntregarYfinalizar",
-      "profileRef": "recepcionista",
+      "actorRef": "recepcionista",
       "authorityRef": "entregarYfinalizar",
       "entityRefs": [
         "OrdenServicio",
@@ -132,7 +132,7 @@ export const ordenServicio5Access = {
     },
     {
       "grantId": "tecnicoAnalizarYpresupuestar",
-      "profileRef": "tecnico",
+      "actorRef": "tecnico",
       "authorityRef": "analizarYpresupuestar",
       "entityRefs": [
         "OrdenServicio",
@@ -155,7 +155,7 @@ export const ordenServicio5Access = {
     },
     {
       "grantId": "tecnicoRegistrarReparacion",
-      "profileRef": "tecnico",
+      "actorRef": "tecnico",
       "authorityRef": "registrarReparacion",
       "entityRefs": [
         "OrdenServicio",
@@ -176,7 +176,7 @@ export const ordenServicio5Access = {
     },
     {
       "grantId": "clienteConsultarMisOrdenes",
-      "profileRef": "cliente",
+      "actorRef": "cliente",
       "authorityRef": "consultarMisOrdenes",
       "entityRefs": [
         "OrdenServicio"
@@ -215,7 +215,7 @@ export const ordenServicio5Access = {
     },
     {
       "grantId": "clienteResponderPresupuesto",
-      "profileRef": "cliente",
+      "actorRef": "cliente",
       "authorityRef": "responderPresupuesto",
       "entityRefs": [
         "OrdenServicio"

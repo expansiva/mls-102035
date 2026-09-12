@@ -9,18 +9,8 @@ operations or integrations.
 
 Call the tool `submitNs5Access` once. Do not write Markdown around the tool arguments.
 
-## Profiles
-
-A profile is an access archetype, not a demographic persona. `profileId` is lowerCamel. `kind` is
-`internal`, `external` or `anonymous`. `actorRefs` lists actor ids from the module. Two actors with
-the same authorities and the same scope are one profile.
-
-- An `internal` profile maps to at least one actor.
-- An `external` profile only receives grants whose `dataScope.mode` is `own`.
-- An `anonymous` profile only receives grants whose `dataScope.mode` is `public`. `public` is not
-  used on any other kind.
-
-Do not add a title, landing intent, page copy or workspace to a profile.
+The actors are given. Copy none of them. Do not emit an `actors` list and do not invent a profile
+layer. Authorities and grants are yours.
 
 ## Authorities
 
@@ -29,9 +19,9 @@ it in the user's language. Do not attach journey steps, information-need lists o
 
 ## Grants
 
-Each grant is one `profileRef` and `authorityRef` pair, with the entities it covers. `grantId` is
-lowerCamel. Every profile receives at least one grant. Every journey actor is covered by some
-profile.
+Each grant is one `actorRef` and `authorityRef` pair, with the entities it covers. `grantId` is
+lowerCamel. `actorRef` is an actor id from the given list. Every actor receives at least one grant.
+Every journey actor is covered.
 
 `entityRefs` are UpperCamel entity ids that exist in the ontology. Do not invent an entity.
 
@@ -42,8 +32,10 @@ profile.
   whose login row is the session). Name `anchorEntity` as the `party: person` entity those records
   reach by required relationships. Do not emit hops or field paths; the consumer derives the path.
   `docType`/`docId` is the national document and is not the own-anchor.
-- `public` — only on `anonymous`.
+- `public` — records anyone may see.
 - `custom` — a predicate that is not a person path; explain it in `description`.
+
+An `external` actor only receives grants whose `dataScope.mode` is `own`.
 
 ### disclosure
 
@@ -65,11 +57,11 @@ Do not add landing intent, realization, source references, journey step lists, `
 
 Counter-example (placeholders — use only ids that exist in the module): an external grant with
 `dataScope.mode` other than `own` is invalid. A valid own grant is
-`{ "grantId": "<grantId>", "profileRef": "<profileId>", "authorityRef": "<authorityId>", "entityRefs": ["<Entity>"], "dataScope": { "mode": "own", "anchorEntity": "<PersonEntity>", "description": "<description>" }, "disclosure": { "mode": "fieldsOnly", "deniedFields": ["<Entity>.<field>"], "description": "<description>" } }`.
+`{ "grantId": "<grantId>", "actorRef": "<actorId>", "authorityRef": "<authorityId>", "entityRefs": ["<Entity>"], "dataScope": { "mode": "own", "anchorEntity": "<PersonEntity>", "description": "<description>" }, "disclosure": { "mode": "fieldsOnly", "deniedFields": ["<Entity>.<field>"], "description": "<description>" } }`.
 
 ## Language
 
 Write every human-facing value (`title`, `description`) in the module `userLanguage`. Ids stay
 lowerCamel. Entity ids stay UpperCamel.
 
-`schemaVersion` is `2026-09-10-ns5-access-v1`.
+`schemaVersion` is `2026-09-10-ns5-access-v2`.

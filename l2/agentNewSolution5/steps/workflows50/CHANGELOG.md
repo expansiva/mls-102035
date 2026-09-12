@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-09-11
+
+- Actors come from `readNs5Actors` (pipeline), not `module.defs.ts`.
+
 ## 2026-09-10
 
 - First workflows step of agentNewSolution5: orchestrated processes of human/system/wait tasks

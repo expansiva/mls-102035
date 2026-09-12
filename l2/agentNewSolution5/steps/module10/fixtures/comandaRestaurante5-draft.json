@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2026-09-10-ns5-module-v1",
+  "schemaVersion": "2026-09-10-ns5-module-v2",
   "moduleName": "comandaRestaurante5",
   "title": "Comanda de restaurante",
   "userLanguage": "pt-BR",
@@ -23,19 +23,5 @@
       "title": "Caixa",
       "description": "Confere comandas, aplica descontos pontuais e recebe pagamentos para fechar contas."
     }
-  ],
-  "scope": {
-    "inScope": [
-      "Registro de comandas por mesa",
-      "Lançamento e cancelamento de itens pedidos",
-      "Conferência, desconto pontual e fechamento de contas",
-      "Registro de pagamento dividido entre pessoas da mesa"
-    ],
-    "outOfScope": [
-      "Gestão do cardápio",
-      "Controle de estoque",
-      "Gestão de reservas e atendimento de mesas",
-      "Gestão financeira além do recebimento da conta"
-    ]
-  }
+  ]
 }

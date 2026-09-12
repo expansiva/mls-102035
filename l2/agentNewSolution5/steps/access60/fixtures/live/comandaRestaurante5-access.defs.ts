@@ -3,22 +3,22 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v1",
+  "schemaVersion": "2026-09-10-ns5-access-v2",
   "moduleName": "comandaRestaurante5",
-  "profiles": [
+  "actors": [
     {
-      "profileId": "garcom",
-      "actorRefs": [
-        "garcom"
-      ],
-      "kind": "internal"
+      "actorId": "garcom",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Garçom",
+      "description": "Abre comandas nas mesas e registra ou cancela itens pedidos."
     },
     {
-      "profileId": "caixa",
-      "actorRefs": [
-        "caixa"
-      ],
-      "kind": "internal"
+      "actorId": "caixa",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Caixa",
+      "description": "Confere comandas, aplica descontos pontuais e recebe pagamentos para fechar contas."
     }
   ],
   "authorities": [
@@ -36,7 +36,7 @@ export const comandaRestaurante5Access = {
   "grants": [
     {
       "grantId": "garcomGerenciaComandas",
-      "profileRef": "garcom",
+      "actorRef": "garcom",
       "authorityRef": "gerenciarComandasEmAtendimento",
       "entityRefs": [
         "Mesa",
@@ -56,7 +56,7 @@ export const comandaRestaurante5Access = {
     },
     {
       "grantId": "caixaFechaContas",
-      "profileRef": "caixa",
+      "actorRef": "caixa",
       "authorityRef": "fecharContas",
       "entityRefs": [
         "Comanda",

@@ -30,7 +30,6 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
   Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
   Ns5WorkflowsArtifact: { file: TYPES, name: 'Ns5WorkflowsArtifact' },
-  Ns5AccessProfile: { file: TYPES, name: 'Ns5AccessProfile' },
   Ns5AccessAuthority: { file: TYPES, name: 'Ns5AccessAuthority' },
   Ns5AccessGrant: { file: TYPES, name: 'Ns5AccessGrant' },
   Ns5AccessDataScope: { file: TYPES, name: 'Ns5AccessDataScope' },
@@ -57,8 +56,6 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     productLanguages: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
     defaultLanguage: { reader: 'steps/module10/gate.ts', since: '2026-09-10' },
     sourcePrompt: { reader: 'resume and /rebuild all', since: '2026-09-10' },
-    actors: { reader: 'steps/journeys20, steps/access60, finalize80', since: '2026-09-10' },
-    scope: { reader: 'planner / UI', since: '2026-09-10' },
     details: { reader: 'steps/ontology30 persist (module aggregates), later screens/backend', since: '2026-09-11' },
   },
   Ns5JourneyStep: {
@@ -164,11 +161,6 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     moduleName: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     processes: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
   },
-  Ns5AccessProfile: {
-    profileId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-    actorRefs: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-    kind: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-  },
   Ns5AccessAuthority: {
     authorityId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     title: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
@@ -176,7 +168,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
   },
   Ns5AccessGrant: {
     grantId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-    profileRef: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    actorRef: { reader: 'steps/access60/gate.ts', since: '2026-09-11' },
     authorityRef: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     entityRefs: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     dataScope: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
@@ -196,7 +188,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
   Ns5AccessArtifact: {
     schemaVersion: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-    profiles: { reader: 'steps/access60/gate.ts, finalize80 I3', since: '2026-09-10' },
+    actors: { reader: 'steps/access60 persist from pipeline, finalize80 I3', since: '2026-09-11' },
     authorities: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     grants: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
   },
@@ -310,8 +302,15 @@ test('integration70 inbound/outbound/plugins are registered with the sidecar as 
   assert.match(KEYS.Ns5IntegrationPlugin.pluginId.reader, /integration70\/gate/);
 });
 
+test('module.actors and module.scope were removed; access.actors is the reader', () => {
+  assert.equal('actors' in KEYS.Ns5ModuleArtifact, false);
+  assert.equal('scope' in KEYS.Ns5ModuleArtifact, false);
+  assert.equal('Ns5AccessProfile' in KEYS, false);
+  assert.match(KEYS.Ns5AccessArtifact.actors.reader, /finalize80 I3/);
+  assert.match(KEYS.Ns5AccessGrant.actorRef.reader, /access60\/gate/);
+});
+
 test('module10 and journeys20 contracts are registered with non-LLM readers', () => {
-  assert.match(KEYS.Ns5ModuleArtifact.actors.reader, /journeys20/);
   assert.match(KEYS.Ns5ModuleActor.origin.reader, /journeys20/);
   assert.match(KEYS.Ns5JourneyStep.kind.reader, /finalize80/);
   assert.match(KEYS.Ns5JourneyArtifact.businessHash.reader, /finalize80/);

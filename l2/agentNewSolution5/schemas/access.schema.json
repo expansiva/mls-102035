@@ -1,22 +1,16 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/access/2026-09-10-ns5-access-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/access/2026-09-10-ns5-access-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schemaVersion",
-    "profiles",
     "authorities",
     "grants"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-access-v1" },
+    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-access-v2" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-    "profiles": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/profile" }
-    },
     "authorities": {
       "type": "array",
       "minItems": 1,
@@ -29,19 +23,6 @@
     }
   },
   "$defs": {
-    "profile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["profileId", "actorRefs", "kind"],
-      "properties": {
-        "profileId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "actorRefs": {
-          "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
-        },
-        "kind": { "type": "string", "enum": ["internal", "external", "anonymous"] }
-      }
-    },
     "authority": {
       "type": "object",
       "additionalProperties": false,
@@ -55,10 +36,10 @@
     "grant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["grantId", "profileRef", "authorityRef", "entityRefs", "dataScope", "disclosure"],
+      "required": ["grantId", "actorRef", "authorityRef", "entityRefs", "dataScope", "disclosure"],
       "properties": {
         "grantId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "profileRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "authorityRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "entityRefs": {
           "type": "array",

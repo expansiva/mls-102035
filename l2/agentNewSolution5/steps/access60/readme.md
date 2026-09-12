@@ -13,16 +13,16 @@ and has no screen; `/fast` auto-approves.
 
 ## Output
 
-`Ns5AccessArtifact`: `profiles[]`, `authorities[]`, `grants[]`. A grant carries `entityRefs`,
-`dataScope` (`mode` + optional `anchorEntity` + description) and `disclosure` (`mode` +
-`allowedFields`/`deniedFields` as `Entity.field` + description). No landing intent, realization,
-hops, `allowedInformation` or journey-step lists.
+`Ns5AccessArtifact`: `actors[]` (copied from the pipeline), `authorities[]`, `grants[]`. A grant
+carries `actorRef`, `entityRefs`, `dataScope` (`mode` + optional `anchorEntity` + description)
+and `disclosure` (`mode` + `allowedFields`/`deniedFields` as `Entity.field` + description). No
+profiles, landing intent, realization, hops, `allowedInformation` or journey-step lists.
 
 ## Invariants
 
 - Ids are unique lowerCamel. Authorities have a title and a description.
-- Every profile has at least one grant. Every journey actor is covered by some profile.
-- An `external` profile only receives `own` grants. `public` is only for `anonymous`.
+- Every actor has at least one grant. Every journey actor is covered.
+- An `external` actor only receives `own` grants.
 - `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields` as a proper restriction
   (non-empty and not the complete resolvable set). Unrestricted `fieldsOnly` is normalized to
   `fullRecord` before the gate. Every ref resolves (`fields[]` ∪ `storage.idField` ∪ `details.<name>`).

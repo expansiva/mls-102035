@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- Actors leave `module.defs.ts` (`-module-v2`, no `scope`) and live on the pipeline
+  during generation, then on `access.defs.ts` (`-access-v2`, no `profiles`, grants by
+  `actorRef`). Six clarifications; module10 and finalize80 have none.
 - `/rebuild all` removes the whole module via `solution/removeModule` (l4/l1/l2/l5 trees,
   `l5/config.json`, `l5/project.json` including nested `routeKeys`, organization registry).
   Pipeline records `rebuildAll: { deleted, edited, at }`. `deleteModuleL4` is gone.

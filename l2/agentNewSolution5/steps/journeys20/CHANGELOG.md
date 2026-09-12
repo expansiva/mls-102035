@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- Inferred-actor drop writes `droppedActors` on `pipeline.json` `journeys20` and
+  no longer rewrites `module.defs.ts`. Actors are read via `readNs5Actors`.
 - System prompt prepends `skills/mdm.md` (same `composeNs5SystemPrompt` as
   module10/ontology30/access60). Skill § Identity and login: registering a
   login person is an `act`; the platform invites; no invite/verify-email step.

@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import { parseNs4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
 import {
+  loadNs5Actors,
   loadNs5Entities,
   loadNs5FixtureJson,
   loadNs5FixtureText,
@@ -113,12 +114,12 @@ function workflowJourneyView(journeys: Ns5JourneyArtifact[]) {
 
 for (const moduleName of NS5_REAL_MODULES) {
   void test(`${moduleName} module10 draft replays to module.defs.ts`, () => {
-    const draft = loadNs5FixtureJson<Ns5ModuleArtifact>('steps/module10/fixtures', `${moduleName}-draft.json`);
-    const { artifact } = normalizeNs5ModuleArtifact(draft, {
+    const draft = loadNs5FixtureJson<Ns5ModuleArtifact & { actors: unknown[] }>('steps/module10/fixtures', `${moduleName}-draft.json`);
+    const { artifact, actors } = normalizeNs5ModuleArtifact(draft, {
       sourcePrompt: draft.sourcePrompt,
       fixedModuleName: moduleName,
     });
-    const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName });
+    const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName, actors });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
     const rendered = render(moduleName, 'module', `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
     assertDefsMatch(rendered, loadNs5FixtureText('steps/module10/fixtures', `${moduleName}-module.defs.ts`), 'module');
@@ -129,11 +130,11 @@ for (const moduleName of NS5_REAL_MODULES) {
       'steps/journeys20/fixtures',
       `${moduleName}-draft.json`,
     );
-    const moduleArtifact = loadNs5Module(moduleName);
+    const actors = loadNs5Actors(moduleName);
     const { journeys } = normalizeNs5JourneysPayload(draft);
-    const gate = validateNs5Journeys(journeys, { actors: moduleArtifact.actors, moduleName });
+    const gate = validateNs5Journeys(journeys, { actors, moduleName });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const dropped = applyNs5InferredActorDrop(journeys, moduleArtifact.actors);
+    const dropped = applyNs5InferredActorDrop(journeys, actors);
     const artifacts: Ns5JourneyArtifact[] = [];
     for (const journey of dropped.journeys) artifacts.push(await hashNs5Journey(journey));
     const index = buildNs5JourneyIndex(moduleName, artifacts, dropped.systemDecisions);
@@ -168,7 +169,6 @@ for (const moduleName of NS5_REAL_MODULES) {
   void test(`${moduleName} ontology30 drafts replay to ontology/*.defs.ts`, () => {
     const planDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-plan-draft.json`);
     const bindingsDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-bindings-draft.json`);
-    const moduleArtifact = loadNs5Module(moduleName);
     const journeys = loadNs5Journeys(moduleName);
     const plan = normalizeNs5OntologyPlan(planDraft, moduleName, journeys);
     const details = plan.entities.map(entity => {
@@ -178,7 +178,7 @@ for (const moduleName of NS5_REAL_MODULES) {
     const bindings = normalizeNs5OntologyBindings(bindingsDraft);
     const gate = validateNs5OntologyBindings(plan, details, bindings, {
       moduleName,
-      actors: moduleArtifact.actors,
+      actors: loadNs5Actors(moduleName),
       journeys,
     });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
@@ -224,12 +224,11 @@ for (const moduleName of NS5_REAL_MODULES) {
   void test(`${moduleName} workflows50 draft replays to workflows.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/workflows50/fixtures', `${moduleName}-draft.json`);
     const { processes } = normalizeNs5WorkflowsPayload(draft);
-    const moduleArtifact = loadNs5Module(moduleName);
     const journeys = loadNs5Journeys(moduleName);
     const entities = loadNs5Entities(moduleName);
     const gate = validateNs5Workflows(processes, {
       moduleName,
-      actorIds: moduleArtifact.actors.map(actor => actor.actorId),
+      actorIds: loadNs5Actors(moduleName).map(actor => actor.actorId),
       journeys: workflowJourneyView(journeys),
       entities: entities.map(entity => ({
         entityId: entity.entityId,
@@ -244,15 +243,15 @@ for (const moduleName of NS5_REAL_MODULES) {
 
   void test(`${moduleName} access60 draft replays to access.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/access60/fixtures', `${moduleName}-draft.json`);
-    const { profiles, authorities, grants: rawGrants } = normalizeNs5AccessPayload(draft);
-    const moduleArtifact = loadNs5Module(moduleName);
+    const { authorities, grants: rawGrants } = normalizeNs5AccessPayload(draft);
+    const actors = loadNs5Actors(moduleName);
     const entities = loadNs5Entities(moduleName);
     const { grants } = applyNs5AccessFormNormalizations(rawGrants, accessView(entities));
     const index = loadNs5OntologyIndex(moduleName);
     const journeys = loadNs5Journeys(moduleName);
-    const gate = validateNs5Access(profiles, authorities, grants, {
+    const gate = validateNs5Access(authorities, grants, {
       moduleName,
-      actorIds: moduleArtifact.actors.map(actor => actor.actorId),
+      actors,
       entities: accessView(entities),
       relationships: index.relationships.map(rel => ({
         relationshipId: rel.relationshipId,
@@ -266,7 +265,7 @@ for (const moduleName of NS5_REAL_MODULES) {
       })),
     });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const artifact = buildNs5AccessArtifact(moduleName, profiles, authorities, grants);
+    const artifact = buildNs5AccessArtifact(moduleName, actors, authorities, grants);
     const rendered = render(moduleName, 'access', `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
     assertDefsMatch(rendered, loadNs5FixtureText('steps/access60/fixtures', `${moduleName}-access.defs.ts`), 'access');
   });
@@ -278,7 +277,7 @@ for (const moduleName of NS5_REAL_MODULES) {
     const entities = loadNs5Entities(moduleName);
     const gate = validateNs5Integration(inbound, outbound, plugins, {
       moduleName,
-      actors: moduleArtifact.actors,
+      actors: loadNs5Actors(moduleName),
       entities: entities.map(entity => ({ entityId: entity.entityId })),
       registryModuleNames: [],
       sourcePrompt: moduleArtifact.sourcePrompt,

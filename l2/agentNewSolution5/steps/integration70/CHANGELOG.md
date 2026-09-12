@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-09-11
+
+- Actors come from `readNs5Actors` (pipeline), not `module.defs.ts`.
+
 ## 2026-09-10
 
 - First integration step of agentNewSolution5: inbound/outbound module endpoints, events and

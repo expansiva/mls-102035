@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2026-09-10-ns5-module-v1",
+  "schemaVersion": "2026-09-10-ns5-module-v2",
   "moduleName": "ordenServicio5",
   "title": "Órdenes de servicio técnico",
   "userLanguage": "es",
@@ -30,17 +30,5 @@
       "title": "Cliente",
       "description": "Persona que presenta un aparato para servicio y consulta o responde al presupuesto desde el portal."
     }
-  ],
-  "scope": {
-    "inScope": [
-      "Gestión de órdenes para servicio técnico de electrónica",
-      "Recepción, diagnóstico, presupuesto, reparación y entrega de aparatos",
-      "Consulta y respuesta del cliente sobre sus propias órdenes"
-    ],
-    "outOfScope": [
-      "Gestión general de inventario o compras",
-      "Contabilidad, facturación y cobros",
-      "Servicios técnicos ajenos a aparatos electrónicos"
-    ]
-  }
+  ]
 }
