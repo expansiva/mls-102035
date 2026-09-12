@@ -5,7 +5,7 @@ export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
 export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const;
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
-export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-10-ns5-workflows-v1' as const;
+export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-12-ns5-workflows-v2' as const;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-10-ns5-integration-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
@@ -56,7 +56,7 @@ export interface Ns5ModuleArtifact {
 }
 
 export interface Ns5JourneyStep {
-  /** workflows50 may point a task at this id. */
+  /** Identity of the step; I6 names a handoff by this id. */
   stepId: string;
   /** journeys20 gate; finalize80 maps act/decide onto ontology transitions. */
   kind: 'locate' | 'inspect' | 'act' | 'decide' | 'handoff';
@@ -303,20 +303,35 @@ export interface Ns5RulesArtifact {
   rules: Ns5Rule[];
 }
 
-export interface Ns5WorkflowTask {
-  /** Graph node id. */
-  taskId: string;
-  /** Gate: human requires actorRef. */
-  kind: 'human' | 'system' | 'wait';
-  /** Actor of a human task. */
+export interface Ns5WorkflowTrigger {
+  /** Gate: scheduled needs schedule, event needs event, manual needs actorRef. */
+  kind: 'scheduled' | 'event' | 'manual';
+  /** Required iff kind === 'scheduled'. Prose ("every month, day 1"). Backend job. */
+  schedule?: string;
+  /** Required iff kind === 'event'. '<Entity>.<transitionId>' of this module (inbound '<mod>.<eventId>' is ns5_31). */
+  event?: string;
+  /** Required iff kind === 'manual'. */
   actorRef?: string;
-  /** Must exist in the journey index. */
+}
+
+export interface Ns5WorkflowTask {
+  /** Graph node id. Unique in the process. */
+  taskId: string;
+  /** Gate: no neutral value; every stage is one of these. */
+  kind: 'human' | 'mechanical' | 'llm' | 'wait';
+  /** Required on human. */
+  actorRef?: string;
+  /** Required on human. The journey the person runs, never a screen step. */
   journeyRef?: string;
-  /** Must exist on that journey. */
-  stepRef?: string;
+  /** Required on mechanical|llm. Entity the stage acts on. */
+  entityRef?: string;
+  /** Required on mechanical|llm. Same form as act.effect (ns5_28). */
+  effect?: 'create' | 'update' | 'transition';
+  /** Required iff effect === 'transition'. Ontology transitionId; by is system or the actor. */
+  transitionRef?: string;
   /** Acyclic unless a wait is on the cycle. */
   next: string[];
-  /** Planner / UI. */
+  /** Planner / UI. Wait: the pause (time or event) in prose. */
   description: string;
 }
 
@@ -327,17 +342,32 @@ export interface Ns5WorkflowProcess {
   title: string;
   /** Planner / UI. */
   description: string;
-  /** finalize80 I6: every journey handoff appears in some process. */
+  /** How the process starts. Tela da Fase 2, harness, backend job. */
+  trigger: Ns5WorkflowTrigger;
+  /** finalize80 I6: every journey handoff appears as a human journeyRef. */
   tasks: Ns5WorkflowTask[];
 }
 
+export interface Ns5JourneyDecision {
+  /** Must exist in the journey index. Tela da Fase 2 shows why a journey stayed out. */
+  journeyId: string;
+  /** One decision per journey in the same LLM call. */
+  inProcess: boolean;
+  /** Required iff inProcess. */
+  processId?: string;
+}
+
 export interface Ns5WorkflowsArtifact {
-  /** Gate of workflows50. Empty list is valid. */
+  /** Gate of workflows50. Empty processes is valid. */
   schemaVersion: typeof NS5_WORKFLOWS_SCHEMA_VERSION;
   /** Folder. */
   moduleName: string;
   /** Orchestration only; not the entity FSM. */
   processes: Ns5WorkflowProcess[];
+  /** One row per journey; the screen lists who is in a process. */
+  journeyDecisions: Ns5JourneyDecision[];
+  /** workflows50 normalize: dropped duplicate stages. */
+  systemDecisions?: Ns5SystemDecision[];
 }
 
 export interface Ns5AccessDataScope {
@@ -447,7 +477,7 @@ export interface Ns5PipelineStepState {
   actors?: Ns5ModuleActor[];
   /** journeys20: actorIds dropped as inferred-external without an exclusive step. */
   droppedActors?: string[];
-  /** workflows50: true when processes is [] because no handoff, foreign-by transition or cross-actor decide. */
+  /** workflows50: true when processes is [] because no handoff, foreign-by, cross-actor decide, system/time transition or time/event phrase. */
   noProcessSignal?: boolean;
   /** integration70: true when inbound/outbound/plugins are [] because no system actor and no plugin-catalog term. */
   noIntegrationSignal?: boolean;

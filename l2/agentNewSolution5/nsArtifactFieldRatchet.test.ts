@@ -30,8 +30,10 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5OntologyIndexArtifact: { file: TYPES, name: 'Ns5OntologyIndexArtifact' },
   Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
   Ns5RulesArtifact: { file: TYPES, name: 'Ns5RulesArtifact' },
+  Ns5WorkflowTrigger: { file: TYPES, name: 'Ns5WorkflowTrigger' },
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
   Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
+  Ns5JourneyDecision: { file: TYPES, name: 'Ns5JourneyDecision' },
   Ns5WorkflowsArtifact: { file: TYPES, name: 'Ns5WorkflowsArtifact' },
   Ns5AccessGrant: { file: TYPES, name: 'Ns5AccessGrant' },
   Ns5AccessDataScope: { file: TYPES, name: 'Ns5AccessDataScope' },
@@ -61,7 +63,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     details: { reader: 'steps/ontology30 persist (typed module aggregates), later screens/backend', since: '2026-09-11' },
   },
   Ns5JourneyStep: {
-    stepId: { reader: 'steps/workflows50/gate.ts, finalize80', since: '2026-09-10' },
+    stepId: { reader: 'steps/workflows50/gate.ts (handoff coverage), finalize80 I6', since: '2026-09-10' },
     kind: { reader: 'steps/journeys20/gate.ts, finalize80 I2 I8', since: '2026-09-10' },
     entity: { reader: 'steps/ontology30/gate.ts, finalize80 I1 I8', since: '2026-09-10' },
     affects: { reader: 'steps/ontology30 collectNs5CitedEntities, finalize80 I1 I8', since: '2026-09-10' },
@@ -164,25 +166,41 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     moduleName: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
     rules: { reader: 'steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
   },
+  Ns5WorkflowTrigger: {
+    kind: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, harness, backend job', since: '2026-09-12' },
+    schedule: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, backend job', since: '2026-09-12' },
+    event: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I6, backend', since: '2026-09-12' },
+    actorRef: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },
+  },
   Ns5WorkflowTask: {
     taskId: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
-    kind: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    kind: { reader: 'steps/workflows50/gate.ts, harness (task by kind)', since: '2026-09-10' },
     actorRef: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
-    journeyRef: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
-    stepRef: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    journeyRef: { reader: 'steps/workflows50/gate.ts, finalize80 I6, tela da Fase 2', since: '2026-09-10' },
+    entityRef: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I2, backend job, executor LLM', since: '2026-09-12' },
+    effect: { reader: 'steps/workflows50/gate.ts, finalize80 I2, backend job', since: '2026-09-12' },
+    transitionRef: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I2', since: '2026-09-12' },
     next: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
-    description: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    description: { reader: 'steps/workflows50/gate.ts, executor LLM', since: '2026-09-10' },
   },
   Ns5WorkflowProcess: {
     processId: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     title: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
+    trigger: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, harness, backend job', since: '2026-09-12' },
     tasks: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
+  },
+  Ns5JourneyDecision: {
+    journeyId: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },
+    inProcess: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },
+    processId: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },
   },
   Ns5WorkflowsArtifact: {
     schemaVersion: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     processes: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
+    journeyDecisions: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },
+    systemDecisions: { reader: 'steps/workflows50 normalize (dropDuplicateTask), tela da Fase 2', since: '2026-09-12' },
   },
   Ns5AccessGrant: {
     grantId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
@@ -313,6 +331,10 @@ test('module.details is registered with the ontology30 persist as reader', () =>
 test('workflows50 tasks are registered with the workflows gate as reader', () => {
   assert.match(KEYS.Ns5WorkflowTask.actorRef.reader, /workflows50\/gate/);
   assert.match(KEYS.Ns5WorkflowsArtifact.processes.reader, /finalize80/);
+  assert.equal('stepRef' in KEYS.Ns5WorkflowTask, false);
+  assert.match(KEYS.Ns5WorkflowTrigger.kind.reader, /tela da Fase 2/);
+  assert.match(KEYS.Ns5WorkflowTask.entityRef.reader, /backend job/);
+  assert.match(KEYS.Ns5JourneyDecision.inProcess.reader, /tela da Fase 2/);
 });
 
 test('access60 disclosure fields are registered with the basic backend as reader', () => {

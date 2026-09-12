@@ -1,5 +1,15 @@
 # workflows50
 
+## 2026-09-12
+
+- G13 form (`-workflows-v2`): process `trigger` (`scheduled` | `event` | `manual`);
+  stage `kind` `human` | `mechanical` | `llm` | `wait`; `human` points at a journey
+  (no `stepRef`); `mechanical`/`llm` point at an entity with `effect` (same form as
+  `act`). One `journeyDecisions[]` row per journey. Time/event phrases are extracted
+  in code (`todo|cada|quando|automaticamente|a cada|mensal|diario`, accents folded) and injected as
+  data. Normalize drops duplicate `kind`+`journeyRef|entityRef`+`effect` in the same
+  process. `trigger.event` is `Entity.transitionId` until inbound (ns5_31).
+
 ## 2026-09-11
 
 - Actors come from `readNs5Actors` (pipeline), not `module.defs.ts`.

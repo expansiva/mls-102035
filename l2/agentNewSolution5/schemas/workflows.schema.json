@@ -1,29 +1,35 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/workflows/2026-09-10-ns5-workflows-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/workflows/2026-09-12-ns5-workflows-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schemaVersion",
-    "processes"
+    "processes",
+    "journeyDecisions"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-workflows-v1" },
+    "schemaVersion": { "type": "string", "const": "2026-09-12-ns5-workflows-v2" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "processes": {
       "type": "array",
       "items": { "$ref": "#/$defs/process" }
+    },
+    "journeyDecisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/journeyDecision" }
     }
   },
   "$defs": {
     "process": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["processId", "title", "description", "tasks"],
+      "required": ["processId", "title", "description", "trigger", "tasks"],
       "properties": {
         "processId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string", "minLength": 1 },
+        "trigger": { "$ref": "#/$defs/trigger" },
         "tasks": {
           "type": "array",
           "minItems": 1,
@@ -31,22 +37,111 @@
         }
       }
     },
-    "task": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["taskId", "kind", "next", "description"],
-      "properties": {
-        "taskId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "kind": { "type": "string", "enum": ["human", "system", "wait"] },
-        "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "journeyRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "stepRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "next": {
-          "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+    "trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "schedule"],
+          "properties": {
+            "kind": { "type": "string", "const": "scheduled" },
+            "schedule": { "type": "string", "minLength": 1 }
+          }
         },
-        "description": { "type": "string", "minLength": 1 }
-      }
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "event"],
+          "properties": {
+            "kind": { "type": "string", "const": "event" },
+            "event": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "actorRef"],
+          "properties": {
+            "kind": { "type": "string", "const": "manual" },
+            "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+          }
+        }
+      ]
+    },
+    "task": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taskId", "kind", "actorRef", "journeyRef", "next", "description"],
+          "properties": {
+            "taskId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "kind": { "type": "string", "const": "human" },
+            "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "journeyRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "next": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+            },
+            "description": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taskId", "kind", "entityRef", "effect", "next", "description"],
+          "properties": {
+            "taskId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "kind": { "type": "string", "enum": ["mechanical", "llm"] },
+            "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "entityRef": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+            "effect": { "type": "string", "enum": ["create", "update", "transition"] },
+            "transitionRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "next": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+            },
+            "description": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taskId", "kind", "next", "description"],
+          "properties": {
+            "taskId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "kind": { "type": "string", "const": "wait" },
+            "next": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+            },
+            "description": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "journeyDecision": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["journeyId", "inProcess", "processId"],
+          "properties": {
+            "journeyId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "inProcess": { "type": "boolean", "const": true },
+            "processId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["journeyId", "inProcess"],
+          "properties": {
+            "journeyId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "inProcess": { "type": "boolean", "const": false }
+          }
+        }
+      ]
     }
   }
 }

@@ -227,7 +227,7 @@ for (const moduleName of NS5_REAL_MODULES) {
 
   void test(`${moduleName} workflows50 draft replays to workflows.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/workflows50/fixtures', `${moduleName}-draft.json`);
-    const { processes } = normalizeNs5WorkflowsPayload(draft);
+    const { processes, journeyDecisions, systemDecisions } = normalizeNs5WorkflowsPayload(draft);
     const journeys = loadNs5Journeys(moduleName);
     const entities = loadNs5Entities(moduleName);
     const gate = validateNs5Workflows(processes, {
@@ -238,9 +238,10 @@ for (const moduleName of NS5_REAL_MODULES) {
         entityId: entity.entityId,
         transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
       })),
+      journeyDecisions,
     });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const artifact = buildNs5WorkflowsArtifact(moduleName, processes);
+    const artifact = buildNs5WorkflowsArtifact(moduleName, processes, journeyDecisions, systemDecisions);
     const rendered = render(moduleName, 'workflows', `${moduleName}Workflows`, artifact, 'Ns5WorkflowsArtifact');
     assertDefsMatch(rendered, loadNs5FixtureText('steps/workflows50/fixtures', `${moduleName}-workflows.defs.ts`), 'workflows');
   });

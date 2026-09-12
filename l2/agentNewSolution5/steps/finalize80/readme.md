@@ -24,11 +24,11 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | check | meaning | on fail |
 |---|---|---|
 | I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey). A journey `entity`/`affects` naming an id in `pipeline.json` `ontology30.liftedAggregateEntities` is a `module.details` ref when that map has keys — not an unknown entity | error |
-| I2 | an `act` with `effect: 'transition'` must cite a declared `transitionRef` whose `by` includes the journey actor and whose `from` intersects states reachable from source-SCC births (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); `create` is not an I2 error; `update` with a declared actor transition is a warning. Every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal for `decide` (`requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error (warning does not fail) |
+| I2 | an `act` with `effect: 'transition'` must cite a declared `transitionRef` whose `by` includes the journey actor and whose `from` intersects states reachable from source-SCC births (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); the same citation + reachability applies to workflow `mechanical`/`llm` stages (`by` is `system`/`time` or the actor). `create` is not an I2 error; `update` with a declared actor transition is a warning. Every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal for `decide` (`requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error (warning does not fail) |
 | I3 | every `access.actors` row has at least one journey and one grant | error |
 | I4 | every cited `transitions[].ruleRefs` exists in `rules.defs.ts`. An uncited rule is not a defect at l4 | error |
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
-| I6 | a `handoff` without a covering process, or a foreign-by / cross-actor decide with `processes: []` | warning |
+| I6 | a `handoff` without a covering human `journeyRef`, or a foreign-by / cross-actor decide with `processes: []`; a `by: system`/`time` transition that is not a mechanical/llm `effect: transition` or `trigger.event` (`NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED`) | warning |
 | I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |
 | I8 | every `own`/`related` grant whose `anchorEntity` is `party: person` is registered: internal-actor write (`act` entity or `affects`), or `maintenance: 'crud'` with an internal-actor grant, or an `act` of her own external actor (self-registration). No public `entry.mode` exists | error (`NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`) |
 | I9 | every `uniqueKeys` fieldId exists on the entity | error (`NS5_FINALIZE_I9`) |
@@ -45,6 +45,7 @@ fails a `decide` without a branching origin if that shape reaches here; an `upda
 - One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`; I7 uses `NS5_FINALIZE_I7_ORPHAN_FILE`;
   I2 act-without-transition uses `NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`;
   possible missing `transitionRef` uses `NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF`;
+  I6 unowned system/time transition uses `NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED`;
   I8 uses `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`; I9 uses `NS5_FINALIZE_I9`;
   I10 uses `NS5_FINALIZE_I10`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).

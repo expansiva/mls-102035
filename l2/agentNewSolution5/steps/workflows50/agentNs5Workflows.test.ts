@@ -25,7 +25,9 @@ import {
   buildNs5WorkflowsArtifact,
   buildNs5WorkflowsTool,
   collectNs5ProcessSignals,
+  collectNs5TimeEventPhrases,
   normalizeNs5WorkflowsPayload,
+  ns5WorkflowsNeedsLlm,
   type Ns5WorkflowsEntityView,
   type Ns5WorkflowsJourneyView,
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
@@ -61,22 +63,22 @@ const ORDEN_ACTORS = ['recepcionista', 'tecnico', 'cliente'];
 
 const ORDEN_JOURNEYS: Ns5WorkflowsJourneyView[] = [
   journey('abrirOrdenServicio', 'recepcionista', [
-    { stepId: 'createServiceOrder', kind: 'act', entity: 'ServiceOrder' },
+    { stepId: 'createServiceOrder', kind: 'act', entity: 'ServiceOrder', effect: 'create' },
     { stepId: 'handToTechnician', kind: 'handoff', entity: 'ServiceOrder', handoffTo: 'tecnico' },
   ]),
   journey('prepararPresupuestoServicio', 'tecnico', [
-    { stepId: 'publishBudget', kind: 'act', entity: 'ServiceOrder' },
+    { stepId: 'publishBudget', kind: 'act', entity: 'ServiceOrder', effect: 'transition', transitionRef: 'publishBudget' },
     { stepId: 'handToCustomer', kind: 'handoff', entity: 'ServiceOrder', handoffTo: 'cliente' },
   ]),
   journey('consultarYDecidirPresupuesto', 'cliente', [
     { stepId: 'decideBudget', kind: 'decide', entity: 'ServiceOrder' },
   ]),
   journey('repararAparato', 'tecnico', [
-    { stepId: 'markServiceOrderReady', kind: 'act', entity: 'ServiceOrder' },
+    { stepId: 'markServiceOrderReady', kind: 'act', entity: 'ServiceOrder', effect: 'transition', transitionRef: 'markServiceOrderReady' },
     { stepId: 'handToReception', kind: 'handoff', entity: 'ServiceOrder', handoffTo: 'recepcionista' },
   ]),
   journey('entregarAparato', 'recepcionista', [
-    { stepId: 'recordDelivery', kind: 'act', entity: 'ServiceOrder' },
+    { stepId: 'recordDelivery', kind: 'act', entity: 'ServiceOrder', effect: 'transition', transitionRef: 'completeServiceOrder' },
   ]),
 ];
 
@@ -92,16 +94,16 @@ const ORDEN_ENTITIES: Ns5WorkflowsEntityView[] = [
 
 const COMANDA_JOURNEYS: Ns5WorkflowsJourneyView[] = [
   journey('abrirComandaParaMesa', 'garcom', [
-    { stepId: 'open', kind: 'act', entity: 'Comanda' },
+    { stepId: 'open', kind: 'act', entity: 'Comanda', effect: 'create' },
   ]),
   journey('lancarItemNaComanda', 'garcom', [
-    { stepId: 'addItem', kind: 'act', entity: 'ItemComanda', affects: ['Comanda'] },
+    { stepId: 'addItem', kind: 'act', entity: 'ItemComanda', effect: 'create', affects: ['Comanda'] },
   ]),
   journey('cancelarItemLancado', 'garcom', [
-    { stepId: 'cancelItem', kind: 'act', entity: 'ItemComanda' },
+    { stepId: 'cancelItem', kind: 'act', entity: 'ItemComanda', effect: 'transition', transitionRef: 'cancelarItem' },
   ]),
   journey('fecharComanda', 'caixa', [
-    { stepId: 'close', kind: 'act', entity: 'Comanda' },
+    { stepId: 'close', kind: 'act', entity: 'Comanda', effect: 'transition', transitionRef: 'fecharComanda' },
   ]),
 ];
 
@@ -112,64 +114,31 @@ const COMANDA_ENTITIES: Ns5WorkflowsEntityView[] = [
 
 const COMANDA_ACTORS = ['garcom', 'caixa'];
 
+const MANUAL_TRIGGER = { kind: 'manual' as const, actorRef: 'recepcionista' };
+
+function humanTask(taskId: string, actorRef: string, journeyRef: string, next: string[], description: string) {
+  return { taskId, kind: 'human' as const, actorRef, journeyRef, next, description };
+}
+
 function validProcess(overrides: Partial<Ns5WorkflowProcess> = {}): Record<string, unknown> {
   return {
     processId: 'serviceOrderFulfillment',
     title: 'Service order fulfillment',
     description: 'Reception, analysis, customer decision, repair, delivery.',
+    trigger: MANUAL_TRIGGER,
     tasks: [
-      {
-        taskId: 'receive',
-        kind: 'human',
-        actorRef: 'recepcionista',
-        journeyRef: 'abrirOrdenServicio',
-        stepRef: 'createServiceOrder',
-        next: ['analyze'],
-        description: 'Reception opens the order.',
-      },
-      {
-        taskId: 'analyze',
-        kind: 'human',
-        actorRef: 'tecnico',
-        journeyRef: 'prepararPresupuestoServicio',
-        stepRef: 'publishBudget',
-        next: ['decide'],
-        description: 'Technician publishes the budget.',
-      },
-      {
-        taskId: 'decide',
-        kind: 'human',
-        actorRef: 'cliente',
-        journeyRef: 'consultarYDecidirPresupuesto',
-        stepRef: 'decideBudget',
-        next: ['repair'],
-        description: 'Customer approves or rejects the budget.',
-      },
-      {
-        taskId: 'repair',
-        kind: 'human',
-        actorRef: 'tecnico',
-        journeyRef: 'repararAparato',
-        stepRef: 'markServiceOrderReady',
-        next: ['deliver'],
-        description: 'Technician marks the order ready.',
-      },
-      {
-        taskId: 'deliver',
-        kind: 'human',
-        actorRef: 'recepcionista',
-        journeyRef: 'entregarAparato',
-        stepRef: 'recordDelivery',
-        next: [],
-        description: 'Reception delivers the device.',
-      },
+      humanTask('receive', 'recepcionista', 'abrirOrdenServicio', ['analyze'], 'Reception opens the order.'),
+      humanTask('analyze', 'tecnico', 'prepararPresupuestoServicio', ['decide'], 'Technician publishes the budget.'),
+      humanTask('decide', 'cliente', 'consultarYDecidirPresupuesto', ['repair'], 'Customer approves or rejects the budget.'),
+      humanTask('repair', 'tecnico', 'repararAparato', ['deliver'], 'Technician marks the order ready.'),
+      humanTask('deliver', 'recepcionista', 'entregarAparato', [], 'Reception delivers the device.'),
     ],
     ...overrides,
   };
 }
 
-function drafts(payload: unknown): Ns5WorkflowProcess[] {
-  return normalizeNs5WorkflowsPayload(payload).processes;
+function drafts(payload: unknown, journeyIds?: readonly string[]) {
+  return normalizeNs5WorkflowsPayload(payload, journeyIds ? { journeyIds } : undefined);
 }
 
 function gateOf(
@@ -177,8 +146,9 @@ function gateOf(
   journeys = ORDEN_JOURNEYS,
   entities = ORDEN_ENTITIES,
   actorIds = ORDEN_ACTORS,
+  journeyDecisions?: ReturnType<typeof drafts>['journeyDecisions'],
 ) {
-  return validateNs5Workflows(processes, { actorIds, journeys, entities });
+  return validateNs5Workflows(processes, { actorIds, journeys, entities, journeyDecisions });
 }
 
 void test('workflows50 tool schema is provider-clean', () => {
@@ -187,17 +157,17 @@ void test('workflows50 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
-void test('real ordenServicio5 workflows draft is one process covering the decide and passes the gate', () => {
+void test('real ordenServicio5 workflows draft is one process of human stages per journey, no locate/inspect', () => {
   const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('steps/workflows50/fixtures', 'ordenServicio5-draft.json');
   assert.equal(draft.processes.length, 1);
   const process = draft.processes[0];
   assert.equal(process.processId, 'gestionarOrdenServicio');
-  const decide = process.tasks.find(task => task.taskId === 'decidirPresupuesto');
-  assert.ok(decide);
-  assert.equal(decide.kind, 'human');
-  assert.equal(decide.actorRef, 'cliente');
-  assert.equal(decide.journeyRef, 'responderPresupuesto');
-  const processes = drafts(draft);
+  assert.equal(process.trigger.kind, 'manual');
+  assert.ok(process.tasks.length <= 6);
+  assert.equal(process.tasks.every(task => task.kind === 'human'), true);
+  assert.equal(process.tasks.every(task => Boolean(task.journeyRef) && !('stepRef' in task)), true);
+  const keys = process.tasks.map(task => `${task.kind}|${task.journeyRef}`);
+  assert.equal(new Set(keys).size, keys.length);
   const journeys = loadNs5Journeys('ordenServicio5').map(item => ({
     journeyId: item.journeyId,
     business: {
@@ -210,14 +180,16 @@ void test('real ordenServicio5 workflows draft is one process covering the decid
       })),
     },
   }));
-  const entities = loadNs5Entities('ordenServicio5').map(entity => ({
-    entityId: entity.entityId,
-    transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
+  const entities = loadNs5Entities('ordenServicio5').map(item => ({
+    entityId: item.entityId,
+    transitions: item.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
   }));
-  const gate = validateNs5Workflows(processes, {
+  const normalized = drafts(draft, journeys.map(item => item.journeyId));
+  const gate = validateNs5Workflows(normalized.processes, {
     actorIds: loadNs5Actors('ordenServicio5').map(actor => actor.actorId),
     journeys,
     entities,
+    journeyDecisions: normalized.journeyDecisions,
   });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
@@ -230,6 +202,7 @@ void test('real comandaRestaurante5 workflows draft is empty and has no process 
 void test('comanda-like journeys have no process signal (skip LLM)', () => {
   const signals = collectNs5ProcessSignals(COMANDA_JOURNEYS, COMANDA_ENTITIES);
   assert.deepEqual(signals, []);
+  assert.equal(ns5WorkflowsNeedsLlm(signals, []), false);
   const gate = validateNs5Workflows([], {
     actorIds: COMANDA_ACTORS,
     journeys: COMANDA_JOURNEYS,
@@ -267,42 +240,35 @@ void test('cross-actor decide is a process signal when transitions are empty', (
   assert.ok(signals.some(signal => signal.kind === 'crossActorDecide' && signal.stepId === 'decideBudget'));
 });
 
-void test('normalize + gate accept a valid chained process covering handoffs', () => {
-  const withHandoffTasks = drafts({
-    processes: [validProcess({
-      tasks: [
-        ...(validProcess().tasks as Record<string, unknown>[]),
-        {
-          taskId: 'handToTechnician',
-          kind: 'human',
-          actorRef: 'tecnico',
-          journeyRef: 'abrirOrdenServicio',
-          stepRef: 'handToTechnician',
-          next: ['analyze'],
-          description: 'Work passes to the technician.',
-        },
-        {
-          taskId: 'handToCustomer',
-          kind: 'human',
-          actorRef: 'cliente',
-          journeyRef: 'prepararPresupuestoServicio',
-          stepRef: 'handToCustomer',
-          next: ['decide'],
-          description: 'Work passes to the customer.',
-        },
-        {
-          taskId: 'handToReception',
-          kind: 'human',
-          actorRef: 'recepcionista',
-          journeyRef: 'repararAparato',
-          stepRef: 'handToReception',
-          next: ['deliver'],
-          description: 'Work passes back to reception.',
-        },
-      ],
-    })],
+void test('system and time transitions are process signals and do not force an empty-process error', () => {
+  const signals = collectNs5ProcessSignals(
+    [journey('watchWaitlist', 'organizador', [{ stepId: 'watch', kind: 'inspect', entity: 'Inscricao' }])],
+    [entity('Inscricao', [{ transitionId: 'promoteFromWaitlist', by: 'system' }])],
+  );
+  assert.ok(signals.some(signal => signal.kind === 'systemBy' && signal.transitionId === 'promoteFromWaitlist'));
+  const gate = validateNs5Workflows([], {
+    actorIds: ['organizador'],
+    journeys: [journey('watchWaitlist', 'organizador', [{ stepId: 'watch', kind: 'inspect', entity: 'Inscricao' }])],
+    entities: [entity('Inscricao', [{ transitionId: 'promoteFromWaitlist', by: 'system' }])],
   });
-  const gate = gateOf(withHandoffTasks);
+  assert.equal(gate.ok, true);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_SIGNAL_WITHOUT_PROCESS'), false);
+});
+
+void test('time/event phrases are extracted in code and force the LLM call', () => {
+  const phrases = collectNs5TimeEventPhrases(
+    'Todo mês, dia 1, gerar as mensalidades. Quando o plano vence, avisar. Fechar automaticamente.',
+  );
+  assert.ok(phrases.some(phrase => /todo m/i.test(phrase)));
+  assert.ok(phrases.some(phrase => /quando o plano vence/i.test(phrase)));
+  assert.ok(phrases.some(phrase => /automaticamente/i.test(phrase)));
+  assert.equal(ns5WorkflowsNeedsLlm([], phrases), true);
+  assert.equal(ns5WorkflowsNeedsLlm([], []), false);
+});
+
+void test('normalize + gate accept a valid chained process covering handoffs by journeyRef', () => {
+  const normalized = drafts({ processes: [validProcess()] });
+  const gate = gateOf(normalized.processes);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
@@ -313,19 +279,17 @@ void test('empty catalog is invalid when a handoff exists', () => {
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_HANDOFF_UNCOVERED'));
 });
 
-void test('gate rejects a human task without actorRef', () => {
+void test('gate rejects a human task without actorRef or journeyRef', () => {
   const processes = drafts({
     processes: [validProcess({
       tasks: [{
         taskId: 'decide',
         kind: 'human',
-        journeyRef: 'consultarYDecidirPresupuesto',
-        stepRef: 'decideBudget',
         next: [],
         description: 'Customer decides.',
       }],
     })],
-  });
+  }).processes;
   const noHandoff = ORDEN_JOURNEYS.map(item => ({
     ...item,
     business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
@@ -333,9 +297,10 @@ void test('gate rejects a human task without actorRef', () => {
   const gate = gateOf(processes, noHandoff, ORDEN_ENTITIES);
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_HUMAN_ACTOR'));
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_HUMAN_JOURNEY'));
 });
 
-void test('gate rejects unknown actor, journey, step and next refs', () => {
+void test('gate rejects unknown actor, journey, entity and next refs', () => {
   const processes = drafts({
     processes: [validProcess({
       tasks: [{
@@ -343,12 +308,11 @@ void test('gate rejects unknown actor, journey, step and next refs', () => {
         kind: 'human',
         actorRef: 'ghost',
         journeyRef: 'ghostJourney',
-        stepRef: 'ghostStep',
         next: ['missing'],
         description: 'Broken refs.',
       }],
     })],
-  });
+  }).processes;
   const noHandoff = ORDEN_JOURNEYS.map(item => ({
     ...item,
     business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
@@ -364,27 +328,11 @@ void test('gate rejects a cycle that does not go through wait', () => {
   const processes = drafts({
     processes: [validProcess({
       tasks: [
-        {
-          taskId: 'a',
-          kind: 'human',
-          actorRef: 'tecnico',
-          journeyRef: 'prepararPresupuestoServicio',
-          stepRef: 'publishBudget',
-          next: ['b'],
-          description: 'A.',
-        },
-        {
-          taskId: 'b',
-          kind: 'human',
-          actorRef: 'cliente',
-          journeyRef: 'consultarYDecidirPresupuesto',
-          stepRef: 'decideBudget',
-          next: ['a'],
-          description: 'B.',
-        },
+        humanTask('a', 'tecnico', 'prepararPresupuestoServicio', ['b'], 'A.'),
+        humanTask('b', 'cliente', 'consultarYDecidirPresupuesto', ['a'], 'B.'),
       ],
     })],
-  });
+  }).processes;
   const noHandoff = ORDEN_JOURNEYS.map(item => ({
     ...item,
     business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
@@ -400,33 +348,12 @@ void test('a cycle through wait is allowed', () => {
   const processes = drafts({
     processes: [validProcess({
       tasks: [
-        {
-          taskId: 'a',
-          kind: 'human',
-          actorRef: 'tecnico',
-          journeyRef: 'prepararPresupuestoServicio',
-          stepRef: 'publishBudget',
-          next: ['pause'],
-          description: 'A.',
-        },
-        {
-          taskId: 'pause',
-          kind: 'wait',
-          next: ['b'],
-          description: 'Wait for the customer.',
-        },
-        {
-          taskId: 'b',
-          kind: 'human',
-          actorRef: 'cliente',
-          journeyRef: 'consultarYDecidirPresupuesto',
-          stepRef: 'decideBudget',
-          next: ['a'],
-          description: 'B.',
-        },
+        humanTask('a', 'tecnico', 'prepararPresupuestoServicio', ['pause'], 'A.'),
+        { taskId: 'pause', kind: 'wait', next: ['b'], description: 'Wait for the customer.' },
+        humanTask('b', 'cliente', 'consultarYDecidirPresupuesto', ['a'], 'B.'),
       ],
     })],
-  });
+  }).processes;
   const noHandoff = ORDEN_JOURNEYS.map(item => ({
     ...item,
     business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
@@ -436,42 +363,209 @@ void test('a cycle through wait is allowed', () => {
 });
 
 void test('uncovered handoff fails NS5_WORKFLOWS_HANDOFF_UNCOVERED', () => {
-  const processes = drafts({ processes: [validProcess()] });
+  const processes = drafts({
+    processes: [validProcess({
+      tasks: [humanTask('receive', 'recepcionista', 'abrirOrdenServicio', [], 'Reception opens the order.')],
+    })],
+  }).processes;
   const gate = gateOf(processes);
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_HANDOFF_UNCOVERED'));
 });
 
-void test('normalize maps id to processId/taskId and drops empty next', () => {
-  const processes = drafts({
+void test('normalize maps id to processId/taskId, drops empty next, and drops duplicate stages', () => {
+  const normalized = drafts({
     processes: [{
       id: 'serviceOrderFulfillment',
       title: 'Fulfillment',
       description: 'Chain.',
-      tasks: [{
-        id: 'decide',
-        kind: 'human',
-        actorRef: 'cliente',
-        journeyRef: 'consultarYDecidirPresupuesto',
-        stepRef: 'decideBudget',
-        next: ['repair', 'repair', ''],
-        description: 'Customer decides.',
-      }],
+      trigger: MANUAL_TRIGGER,
+      tasks: [
+        {
+          id: 'decide',
+          kind: 'human',
+          actorRef: 'cliente',
+          journeyRef: 'consultarYDecidirPresupuesto',
+          next: ['repair', 'repair', ''],
+          description: 'Customer decides.',
+        },
+        {
+          taskId: 'decideAgain',
+          kind: 'human',
+          actorRef: 'cliente',
+          journeyRef: 'consultarYDecidirPresupuesto',
+          next: ['repair'],
+          description: 'Duplicate decide.',
+        },
+      ],
     }],
   });
-  assert.equal(processes[0].processId, 'serviceOrderFulfillment');
-  assert.equal(processes[0].tasks[0].taskId, 'decide');
-  assert.equal(processes[0].tasks[0].journeyRef, 'consultarYDecidirPresupuesto');
-  assert.deepEqual(processes[0].tasks[0].next, ['repair']);
+  assert.equal(normalized.processes[0].processId, 'serviceOrderFulfillment');
+  assert.equal(normalized.processes[0].tasks.length, 1);
+  assert.equal(normalized.processes[0].tasks[0].taskId, 'decide');
+  assert.equal(normalized.processes[0].tasks[0].journeyRef, 'consultarYDecidirPresupuesto');
+  assert.equal('stepRef' in normalized.processes[0].tasks[0], false);
+  assert.deepEqual(normalized.processes[0].tasks[0].next, ['repair']);
+  assert.ok(normalized.systemDecisions.some(decision => decision.decisionId === 'dropDuplicateTaskDecideAgain'));
+});
+
+void test('mechanical create Mensalidade is the academia scheduled shape', () => {
+  const journeys = [
+    journey('gerarMensalidadesDoMes', 'financeiro', [
+      { stepId: 'gerar', kind: 'act', entity: 'Mensalidade', effect: 'create' },
+    ]),
+  ];
+  const entities = [entity('Mensalidade')];
+  const normalized = drafts({
+    processes: [{
+      processId: 'gerarMensalidadesMensal',
+      title: 'Gerar mensalidades do mês',
+      description: 'Todo mês cria as mensalidades dos alunos ativos.',
+      trigger: { kind: 'scheduled', schedule: 'todo mês, dia 1' },
+      tasks: [{
+        taskId: 'criarMensalidades',
+        kind: 'mechanical',
+        entityRef: 'Mensalidade',
+        effect: 'create',
+        next: [],
+        description: 'Criar as mensalidades do mês.',
+      }],
+    }],
+    journeyDecisions: [{ journeyId: 'gerarMensalidadesDoMes', inProcess: true, processId: 'gerarMensalidadesMensal' }],
+  }, ['gerarMensalidadesDoMes']);
+  const gate = validateNs5Workflows(normalized.processes, {
+    actorIds: ['financeiro'],
+    journeys,
+    entities,
+    journeyDecisions: normalized.journeyDecisions,
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(normalized.processes[0].trigger.kind, 'scheduled');
+  assert.equal(normalized.processes[0].tasks[0].kind, 'mechanical');
+  assert.equal(normalized.processes[0].tasks[0].effect, 'create');
+  assert.equal(normalized.journeyDecisions[0].inProcess, true);
+});
+
+void test('frota preventiva is event plus a human journey stage', () => {
+  const journeys = [
+    journey('abrirOrdemPreventiva', 'gestorFrota', [
+      { stepId: 'abrir', kind: 'act', entity: 'OrdemManutencao', effect: 'create' },
+    ]),
+  ];
+  const entities = [entity('Preventiva', [{ transitionId: 'vencer', by: 'time' }])];
+  const normalized = drafts({
+    processes: [{
+      processId: 'tratarPreventivaVencida',
+      title: 'Tratar preventiva vencida',
+      description: 'Quando a preventiva vence, o gestor abre a ordem.',
+      trigger: { kind: 'event', event: 'Preventiva.vencer' },
+      tasks: [humanTask('abrirOrdemPreventiva', 'gestorFrota', 'abrirOrdemPreventiva', [], 'Abrir a ordem preventiva.')],
+    }],
+    journeyDecisions: [{ journeyId: 'abrirOrdemPreventiva', inProcess: true, processId: 'tratarPreventivaVencida' }],
+  }, ['abrirOrdemPreventiva']);
+  const gate = validateNs5Workflows(normalized.processes, {
+    actorIds: ['gestorFrota'],
+    journeys,
+    entities,
+    journeyDecisions: normalized.journeyDecisions,
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(normalized.processes[0].trigger.kind, 'event');
+  assert.equal(normalized.processes[0].tasks[0].kind, 'human');
+});
+
+void test('evento waitlist is event plus mechanical transition', () => {
+  const journeys = [
+    journey('cancelarInscricao', 'participante', [
+      { stepId: 'cancelar', kind: 'act', entity: 'Inscricao', effect: 'transition', transitionRef: 'cancelar' },
+    ]),
+  ];
+  const entities = [entity('Inscricao', [
+    { transitionId: 'cancelar', by: ['participante'] },
+    { transitionId: 'promoteFromWaitlist', by: 'system' },
+  ])];
+  const normalized = drafts({
+    processes: [{
+      processId: 'promoverListaDeEspera',
+      title: 'Promover lista de espera',
+      description: 'Quando uma inscrição cancela, o sistema promove a lista de espera.',
+      trigger: { kind: 'event', event: 'Inscricao.cancelar' },
+      tasks: [{
+        taskId: 'promover',
+        kind: 'mechanical',
+        entityRef: 'Inscricao',
+        effect: 'transition',
+        transitionRef: 'promoteFromWaitlist',
+        next: [],
+        description: 'Promover o próximo da lista de espera.',
+      }],
+    }],
+    journeyDecisions: [{ journeyId: 'cancelarInscricao', inProcess: true, processId: 'promoverListaDeEspera' }],
+  }, ['cancelarInscricao']);
+  const gate = validateNs5Workflows(normalized.processes, {
+    actorIds: ['participante'],
+    journeys,
+    entities,
+    journeyDecisions: normalized.journeyDecisions,
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('mechanical transitionRef must exist with by system or the actor', () => {
+  const processes = drafts({
+    processes: [validProcess({
+      trigger: { kind: 'manual', actorRef: 'recepcionista' },
+      tasks: [{
+        taskId: 'autoClose',
+        kind: 'mechanical',
+        entityRef: 'ServiceOrder',
+        effect: 'transition',
+        transitionRef: 'approveBudget',
+        next: [],
+        description: 'Wrong by.',
+      }],
+    })],
+  }).processes;
+  const noHandoff = ORDEN_JOURNEYS.map(item => ({
+    ...item,
+    business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
+  }));
+  const gate = gateOf(processes, noHandoff, ORDEN_ENTITIES);
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_TRANSITION_BY'));
+});
+
+void test('trigger.event must cite Entity.transitionId until inbound exists', () => {
+  const processes = drafts({
+    processes: [validProcess({
+      trigger: { kind: 'event', event: 'otherModule.ticketClosed' },
+    })],
+  }).processes;
+  const gate = gateOf(processes);
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_TRIGGER_EVENT'));
 });
 
 void test('buildNs5WorkflowsArtifact keeps schemaVersion and process order', () => {
-  const processes = drafts({ processes: [validProcess()] });
-  const artifact = buildNs5WorkflowsArtifact('ordenServicio5', processes);
-  assert.equal(artifact.schemaVersion, '2026-09-10-ns5-workflows-v1');
+  const normalized = drafts({
+    processes: [validProcess()],
+    journeyDecisions: ORDEN_JOURNEYS.map(item => ({
+      journeyId: item.journeyId,
+      inProcess: true,
+      processId: 'serviceOrderFulfillment',
+    })),
+  }, ORDEN_JOURNEYS.map(item => item.journeyId));
+  const artifact = buildNs5WorkflowsArtifact(
+    'ordenServicio5',
+    normalized.processes,
+    normalized.journeyDecisions,
+    normalized.systemDecisions,
+  );
+  assert.equal(artifact.schemaVersion, '2026-09-12-ns5-workflows-v2');
   assert.equal(artifact.moduleName, 'ordenServicio5');
   assert.equal(artifact.processes[0].processId, 'serviceOrderFulfillment');
   assert.equal(artifact.processes[0].tasks[2].actorRef, 'cliente');
+  assert.equal(artifact.journeyDecisions.length, 5);
 });
 
 void test('ownerStepId maps workflows50 repair planIds', () => {
@@ -480,7 +574,7 @@ void test('ownerStepId maps workflows50 repair planIds', () => {
   assert.equal(ownerStepId('workflows50-done'), '');
 });
 
-void test('human prompt carries source request, journeys, handoffs and transitions', () => {
+void test('human prompt carries source request, journeys, write acts, phrases and transitions', () => {
   const serviceOrder = {
     schemaVersion: '2026-09-11-ns5-ontology-v2',
     moduleName: 'ordenServicio5',
@@ -528,7 +622,15 @@ void test('human prompt carries source request, journeys, handoffs and transitio
       goal: 'Publish a budget.',
       entry: { mode: 'contextOrLookup' },
       steps: [
-        { stepId: 'publishBudget', kind: 'act', entity: 'ServiceOrder', title: 'Publish', description: 'Budget is published.' },
+        {
+          stepId: 'publishBudget',
+          kind: 'act',
+          entity: 'ServiceOrder',
+          effect: 'transition',
+          transitionRef: 'publishBudget',
+          title: 'Publish',
+          description: 'Budget is published.',
+        },
         { stepId: 'handToCustomer', kind: 'handoff', entity: 'ServiceOrder', handoffTo: 'cliente', title: 'Hand off', description: 'Customer decides next.' },
       ],
       outcome: { statement: 'Published.', evidence: ['Published.'] },
@@ -536,7 +638,7 @@ void test('human prompt carries source request, journeys, handoffs and transitio
     businessHash: 'sha256:1',
   } as Ns5JourneyArtifact;
   const human = buildNs5WorkflowsHumanPrompt({
-    sourcePrompt: 'modulo orden de servicio. perfiles: recepcionista, tecnico, cliente.',
+    sourcePrompt: 'modulo orden de servicio. perfiles: recepcionista, tecnico, cliente. cuando el cliente responde, continuar.',
     userLanguage: 'es',
     actorIds: ORDEN_ACTORS,
     journeys: [analyzeJourney, decideJourney],
@@ -547,6 +649,10 @@ void test('human prompt carries source request, journeys, handoffs and transitio
   assert.match(human, /handoffTo=cliente/);
   assert.match(human, /ServiceOrder\.publishBudget/);
   assert.match(human, /"kind": "handoff"/);
+  assert.match(human, /effect=transition/);
+  assert.match(human, /Time and event phrases/);
+  assert.match(human, /cuando el cliente responde/i);
+  assert.doesNotMatch(human, /stepRefs/);
 });
 
 void test('workflows50 prompt has no domain examples and keeps process vs FSM', () => {
@@ -554,5 +660,8 @@ void test('workflows50 prompt has no domain examples and keeps process vs FSM', 
   assert.match(prompt, /submitNs5Workflows/);
   assert.match(prompt, /not the entity lifecycle/);
   assert.match(prompt, /placeholders — use only ids that exist in the module/);
+  assert.match(prompt, /journeyDecisions/);
+  assert.match(prompt, /mechanical/);
+  assert.doesNotMatch(prompt, /stepRef/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto|recepcionista/i);
 });

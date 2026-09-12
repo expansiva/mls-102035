@@ -2,6 +2,13 @@
 
 ## 2026-09-12
 
+- I6: a journey `handoff` is covered by a human `journeyRef` (not a screen `stepRef`).
+  A `by: system`/`time` transition that is neither `effect: transition` of a
+  `mechanical`/`llm` stage nor `trigger.event` warns
+  `NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED` (warning, does not fail).
+- I2 also checks `transitionRef` on workflow `mechanical`/`llm` stages (same citation
+  + SCC reachability as `act`). I1 cites `trigger.event`, `entityRef`, `transitionRef`,
+  `journeyDecisions`.
 - I1 no longer checks `authorityRef` (the grant is the capability; `authorities[]` removed).
 - I2 is citation + reachability: an `act` with `effect: 'transition'` needs that
   `transitionRef`, actor in `by`, and `from` intersecting states reachable from source-SCC

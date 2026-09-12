@@ -1,15 +1,24 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/workflows50/gate.ts" enhancement="_blank"/>
 
-import type { Ns5WorkflowProcess, Ns5WorkflowTask } from '/_102035_/l2/solution/types.js';
+import type {
+  Ns5JourneyDecision,
+  Ns5WorkflowProcess,
+  Ns5WorkflowTask,
+  Ns5WorkflowTrigger,
+} from '/_102035_/l2/solution/types.js';
 import {
   collectNs5Handoffs,
   collectNs5ProcessSignals,
+  parseNs5TriggerEvent,
   type Ns5WorkflowsEntityView,
   type Ns5WorkflowsJourneyView,
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
-const TASK_KINDS = new Set(['human', 'system', 'wait']);
+const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
+const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait']);
+const EFFECTS = new Set(['create', 'update', 'transition']);
+const MUST_PROCESS = new Set(['handoff', 'foreignBy', 'crossActorDecide']);
 
 export interface Ns5WorkflowsGateIssue {
   severity: 'error' | 'warning';
@@ -28,6 +37,7 @@ export interface Ns5WorkflowsGateContext {
   actorIds: readonly string[];
   journeys: readonly Ns5WorkflowsJourneyView[];
   entities: readonly Ns5WorkflowsEntityView[];
+  journeyDecisions?: readonly Ns5JourneyDecision[];
 }
 
 export function validateNs5Workflows(
@@ -37,11 +47,13 @@ export function validateNs5Workflows(
   const issues: Ns5WorkflowsGateIssue[] = [];
   const actorIds = new Set(context.actorIds.filter(Boolean));
   const journeyById = new Map(context.journeys.map(journey => [journey.journeyId, journey]));
+  const entityById = new Map(context.entities.map(entity => [entity.entityId, entity]));
   const processIds = new Set<string>();
   const coveredHandoffs = new Set<string>();
   const signals = collectNs5ProcessSignals(context.journeys, context.entities);
+  const mustProcess = signals.filter(signal => MUST_PROCESS.has(signal.kind));
 
-  if (!processes.length && signals.length) {
+  if (!processes.length && mustProcess.length) {
     error(
       issues,
       'NS5_WORKFLOWS_SIGNAL_WITHOUT_PROCESS',
@@ -62,6 +74,7 @@ export function validateNs5Workflows(
     if (!process.description.trim()) {
       error(issues, 'NS5_WORKFLOWS_DESCRIPTION', 'Process description is required.', `${base}.description`);
     }
+    validateTrigger(process.trigger, `${base}.trigger`, { actorIds, entityById, issues });
     if (!process.tasks.length) {
       error(issues, 'NS5_WORKFLOWS_TASKS', 'A process lists at least one task.', `${base}.tasks`);
     }
@@ -69,7 +82,7 @@ export function validateNs5Workflows(
     const taskIds = new Set<string>();
     process.tasks.forEach((task, taskIndex) => {
       const path = `${base}.tasks[${taskIndex}]`;
-      validateTask(task, path, { actorIds, journeyById, taskIds, coveredHandoffs, issues });
+      validateTask(task, path, { actorIds, journeyById, entityById, taskIds, coveredHandoffs, issues });
     });
 
     process.tasks.forEach((task, taskIndex) => {
@@ -91,6 +104,12 @@ export function validateNs5Workflows(
     }
   });
 
+  validateJourneyDecisions(context.journeyDecisions || [], {
+    journeyById,
+    processIds,
+    issues,
+  });
+
   const handoffs = collectNs5Handoffs(context.journeys);
   handoffs.forEach((handoff, index) => {
     const key = `${handoff.journeyId}.${handoff.stepId}`;
@@ -98,7 +117,7 @@ export function validateNs5Workflows(
     error(
       issues,
       'NS5_WORKFLOWS_HANDOFF_UNCOVERED',
-      `Journey handoff ${key} must appear as a task journeyRef+stepRef.`,
+      `Journey handoff ${key} must appear as a human task journeyRef.`,
       `handoffs[${index}]`,
     );
   });
@@ -116,12 +135,70 @@ export function formatNs5WorkflowsGate(issues: Ns5WorkflowsGateIssue[]): string 
     .join('\n');
 }
 
+function validateTrigger(
+  trigger: Ns5WorkflowTrigger,
+  path: string,
+  ctx: {
+    actorIds: Set<string>;
+    entityById: Map<string, Ns5WorkflowsEntityView>;
+    issues: Ns5WorkflowsGateIssue[];
+  },
+): void {
+  const { issues } = ctx;
+  if (trigger.kind === 'scheduled') {
+    if (!trigger.schedule?.trim()) {
+      error(issues, 'NS5_WORKFLOWS_TRIGGER', 'A scheduled trigger names schedule.', `${path}.schedule`);
+    }
+    return;
+  }
+  if (trigger.kind === 'manual') {
+    if (!trigger.actorRef) {
+      error(issues, 'NS5_WORKFLOWS_TRIGGER_ACTOR', 'A manual trigger names actorRef.', `${path}.actorRef`);
+    } else if (!ctx.actorIds.has(trigger.actorRef)) {
+      error(issues, 'NS5_WORKFLOWS_ACTOR_UNKNOWN', `Unknown actorRef ${trigger.actorRef}.`, `${path}.actorRef`);
+    }
+    return;
+  }
+  if (trigger.kind !== 'event') {
+    error(issues, 'NS5_WORKFLOWS_TRIGGER', 'trigger.kind must be scheduled, event or manual.', `${path}.kind`);
+    return;
+  }
+  if (!trigger.event?.trim()) {
+    error(issues, 'NS5_WORKFLOWS_TRIGGER_EVENT', 'An event trigger names event.', `${path}.event`);
+    return;
+  }
+  const parsed = parseNs5TriggerEvent(trigger.event);
+  if (!parsed) {
+    error(
+      issues,
+      'NS5_WORKFLOWS_TRIGGER_EVENT',
+      'trigger.event must be Entity.transitionId of this module.',
+      `${path}.event`,
+    );
+    return;
+  }
+  const entity = ctx.entityById.get(parsed.entityId);
+  if (!entity) {
+    error(issues, 'NS5_WORKFLOWS_ENTITY_UNKNOWN', `Unknown entity ${parsed.entityId}.`, `${path}.event`);
+    return;
+  }
+  if (!entity.transitions.some(item => item.transitionId === parsed.transitionId)) {
+    error(
+      issues,
+      'NS5_WORKFLOWS_TRIGGER_EVENT',
+      `Unknown transition ${parsed.entityId}.${parsed.transitionId}.`,
+      `${path}.event`,
+    );
+  }
+}
+
 function validateTask(
   task: Ns5WorkflowTask,
   path: string,
   ctx: {
     actorIds: Set<string>;
     journeyById: Map<string, Ns5WorkflowsJourneyView>;
+    entityById: Map<string, Ns5WorkflowsEntityView>;
     taskIds: Set<string>;
     coveredHandoffs: Set<string>;
     issues: Ns5WorkflowsGateIssue[];
@@ -136,7 +213,7 @@ function validateTask(
   }
   if (task.taskId) ctx.taskIds.add(task.taskId);
   if (!TASK_KINDS.has(task.kind)) {
-    error(issues, 'NS5_WORKFLOWS_KIND', 'kind must be human, system or wait.', `${path}.kind`);
+    error(issues, 'NS5_WORKFLOWS_KIND', 'kind must be human, mechanical, llm or wait.', `${path}.kind`);
   }
   if (!task.description.trim()) {
     error(issues, 'NS5_WORKFLOWS_DESCRIPTION', 'Task description is required.', `${path}.description`);
@@ -148,28 +225,124 @@ function validateTask(
     } else if (!ctx.actorIds.has(task.actorRef)) {
       error(issues, 'NS5_WORKFLOWS_ACTOR_UNKNOWN', `Unknown actorRef ${task.actorRef}.`, `${path}.actorRef`);
     }
-  } else if (task.actorRef && !ctx.actorIds.has(task.actorRef)) {
+    if (!task.journeyRef) {
+      error(issues, 'NS5_WORKFLOWS_HUMAN_JOURNEY', 'A human task names journeyRef.', `${path}.journeyRef`);
+    } else {
+      validateJourneyRef(task.journeyRef, `${path}.journeyRef`, ctx);
+    }
+    return;
+  }
+
+  if (task.actorRef && !ctx.actorIds.has(task.actorRef)) {
     error(issues, 'NS5_WORKFLOWS_ACTOR_UNKNOWN', `Unknown actorRef ${task.actorRef}.`, `${path}.actorRef`);
   }
 
-  if (task.stepRef && !task.journeyRef) {
-    error(issues, 'NS5_WORKFLOWS_STEP_JOURNEY', 'stepRef requires journeyRef.', `${path}.stepRef`);
-  }
-  if (task.journeyRef) {
-    const journey = ctx.journeyById.get(task.journeyRef);
-    if (!MEMBER_ID.test(task.journeyRef)) {
-      error(issues, 'NS5_WORKFLOWS_JOURNEY_ID', 'journeyRef must be lowerCamel.', `${path}.journeyRef`);
-    } else if (!journey) {
-      error(issues, 'NS5_WORKFLOWS_JOURNEY_UNKNOWN', `Unknown journeyRef ${task.journeyRef}.`, `${path}.journeyRef`);
-    } else if (task.stepRef) {
-      const step = journey.business.steps.find(item => item.stepId === task.stepRef);
-      if (!step) {
-        error(issues, 'NS5_WORKFLOWS_STEP_UNKNOWN', `Unknown stepRef ${task.journeyRef}.${task.stepRef}.`, `${path}.stepRef`);
-      } else if (step.kind === 'handoff') {
-        ctx.coveredHandoffs.add(`${task.journeyRef}.${task.stepRef}`);
-      }
+  if (task.kind === 'wait') return;
+
+  if (task.kind === 'mechanical' || task.kind === 'llm') {
+    if (!task.entityRef || !ENTITY_ID.test(task.entityRef)) {
+      error(issues, 'NS5_WORKFLOWS_ENTITY', 'A mechanical or llm task names entityRef.', `${path}.entityRef`);
+    } else if (!ctx.entityById.has(task.entityRef)) {
+      error(issues, 'NS5_WORKFLOWS_ENTITY_UNKNOWN', `Unknown entityRef ${task.entityRef}.`, `${path}.entityRef`);
+    }
+    if (!task.effect || !EFFECTS.has(task.effect)) {
+      error(issues, 'NS5_WORKFLOWS_EFFECT', 'A mechanical or llm task names effect.', `${path}.effect`);
+    } else if (task.effect === 'transition') {
+      validateTransitionRef(task, path, ctx);
     }
   }
+}
+
+function validateJourneyRef(
+  journeyRef: string,
+  path: string,
+  ctx: {
+    journeyById: Map<string, Ns5WorkflowsJourneyView>;
+    coveredHandoffs: Set<string>;
+    issues: Ns5WorkflowsGateIssue[];
+  },
+): void {
+  const journey = ctx.journeyById.get(journeyRef);
+  if (!MEMBER_ID.test(journeyRef)) {
+    error(ctx.issues, 'NS5_WORKFLOWS_JOURNEY_ID', 'journeyRef must be lowerCamel.', path);
+    return;
+  }
+  if (!journey) {
+    error(ctx.issues, 'NS5_WORKFLOWS_JOURNEY_UNKNOWN', `Unknown journeyRef ${journeyRef}.`, path);
+    return;
+  }
+  for (const step of journey.business.steps) {
+    if (step.kind === 'handoff' && step.stepId) {
+      ctx.coveredHandoffs.add(`${journeyRef}.${step.stepId}`);
+    }
+  }
+}
+
+function validateTransitionRef(
+  task: Ns5WorkflowTask,
+  path: string,
+  ctx: {
+    entityById: Map<string, Ns5WorkflowsEntityView>;
+    issues: Ns5WorkflowsGateIssue[];
+  },
+): void {
+  if (!task.transitionRef) {
+    error(ctx.issues, 'NS5_WORKFLOWS_TRANSITION', 'effect transition names transitionRef.', `${path}.transitionRef`);
+    return;
+  }
+  const entity = task.entityRef ? ctx.entityById.get(task.entityRef) : undefined;
+  if (!entity) return;
+  const transition = entity.transitions.find(item => item.transitionId === task.transitionRef);
+  if (!transition) {
+    error(
+      ctx.issues,
+      'NS5_WORKFLOWS_TRANSITION',
+      `Unknown transitionRef ${task.entityRef}.${task.transitionRef}.`,
+      `${path}.transitionRef`,
+    );
+    return;
+  }
+  if (!transitionByAllows(transition.by, task.actorRef)) {
+    error(
+      ctx.issues,
+      'NS5_WORKFLOWS_TRANSITION_BY',
+      `transitionRef ${task.transitionRef} by must be system or include the actor.`,
+      `${path}.transitionRef`,
+    );
+  }
+}
+
+function validateJourneyDecisions(
+  decisions: readonly Ns5JourneyDecision[],
+  ctx: {
+    journeyById: Map<string, Ns5WorkflowsJourneyView>;
+    processIds: Set<string>;
+    issues: Ns5WorkflowsGateIssue[];
+  },
+): void {
+  const seen = new Set<string>();
+  decisions.forEach((decision, index) => {
+    const path = `journeyDecisions[${index}]`;
+    if (!decision.journeyId || !MEMBER_ID.test(decision.journeyId)) {
+      error(ctx.issues, 'NS5_WORKFLOWS_DECISION', 'journeyId must be lowerCamel.', `${path}.journeyId`);
+    } else if (seen.has(decision.journeyId)) {
+      error(ctx.issues, 'NS5_WORKFLOWS_DECISION', `Duplicate journeyId ${decision.journeyId}.`, `${path}.journeyId`);
+    } else if (!ctx.journeyById.has(decision.journeyId)) {
+      error(ctx.issues, 'NS5_WORKFLOWS_JOURNEY_UNKNOWN', `Unknown journeyId ${decision.journeyId}.`, `${path}.journeyId`);
+    }
+    if (decision.journeyId) seen.add(decision.journeyId);
+    if (!decision.inProcess) return;
+    if (!decision.processId) {
+      error(ctx.issues, 'NS5_WORKFLOWS_DECISION', 'inProcess requires processId.', `${path}.processId`);
+    } else if (!ctx.processIds.has(decision.processId)) {
+      error(ctx.issues, 'NS5_WORKFLOWS_DECISION', `Unknown processId ${decision.processId}.`, `${path}.processId`);
+    }
+  });
+}
+
+function transitionByAllows(by: string[] | 'system' | 'time', actorRef?: string): boolean {
+  if (by === 'system' || by === 'time') return true;
+  return Boolean(actorRef && Array.isArray(by) && by.includes(actorRef));
 }
 
 function hasCycleWithoutWait(tasks: readonly Ns5WorkflowTask[]): boolean {

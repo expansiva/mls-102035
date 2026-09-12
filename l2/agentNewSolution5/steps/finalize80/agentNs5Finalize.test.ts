@@ -22,6 +22,7 @@ import {
   ensureConfigListsModule,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
   NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF,
+  NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED,
   NS5_FINALIZE_I7_ORPHAN_FILE,
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
   type Ns5OracleSources,
@@ -458,7 +459,7 @@ function i2OnlySources(
       systemDecisions: [],
     },
     rules: { schemaVersion: '2026-09-10-ns5-rules-v1', moduleName, rules: [] },
-    workflows: { schemaVersion: '2026-09-10-ns5-workflows-v1', moduleName, processes: [] },
+    workflows: { schemaVersion: '2026-09-12-ns5-workflows-v2', moduleName, processes: [], journeyDecisions: [] },
     access: {
       schemaVersion: '2026-09-12-ns5-access-v3',
       moduleName,
@@ -873,6 +874,57 @@ void test('I6 warns when a handoff has no covering process', () => {
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'passed');
   assert.ok(report.warnings.some(issue => issue.code === 'NS5_FINALIZE_I6' && /handToCashier/.test(issue.message)));
+});
+
+void test('I6 warns when a system/time transition is not owned by a stage or trigger', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  comanda.lifecycleStates.push({ state: 'autoClosed', reachedBy: 'command' });
+  comanda.transitions.push({
+    transitionId: 'autoClose',
+    from: ['aberta'],
+    to: 'autoClosed',
+    by: 'system',
+    description: 'System closes the tab.',
+  });
+  const report = runNs5Oracle(sources);
+  assert.equal(report.finalStatus, 'passed');
+  assert.ok(report.warnings.some(issue => issue.code === NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED && /autoClose/.test(issue.message)));
+});
+
+void test('I2 checks a mechanical transitionRef the same way as an act', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  comanda.lifecycleStates.push({ state: 'autoClosed', reachedBy: 'command' });
+  comanda.transitions.push({
+    transitionId: 'autoClose',
+    from: ['aberta'],
+    to: 'autoClosed',
+    by: 'system',
+    description: 'System closes the tab.',
+  });
+  sources.workflows.processes.push({
+    processId: 'fecharComandaAutomatico',
+    title: 'Fechar comanda',
+    description: 'Fecha a comanda.',
+    trigger: { kind: 'event', event: 'Comanda.fecharComanda' },
+    tasks: [{
+      taskId: 'autoClose',
+      kind: 'mechanical',
+      entityRef: 'Comanda',
+      effect: 'transition',
+      transitionRef: 'autoClose',
+      next: [],
+      description: 'Fecha automaticamente.',
+    }],
+  });
+  const report = runNs5Oracle(sources);
+  assert.equal(
+    report.errors.filter(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /autoClose/.test(issue.message)).length,
+    0,
+    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+  assert.equal(report.warnings.some(issue => issue.code === NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED && /autoClose/.test(issue.message)), false);
 });
 
 void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {

@@ -3,9 +3,27 @@
 import type { Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Workflows = {
-  "schemaVersion": "2026-09-10-ns5-workflows-v1",
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
   "moduleName": "comandaRestaurante5",
-  "processes": []
+  "processes": [],
+  "journeyDecisions": [
+    {
+      "journeyId": "abrirComandaNaMesa",
+      "inProcess": false
+    },
+    {
+      "journeyId": "lancarItemNaComanda",
+      "inProcess": false
+    },
+    {
+      "journeyId": "cancelarItemLancadoPorEngano",
+      "inProcess": false
+    },
+    {
+      "journeyId": "conferirEfecharConta",
+      "inProcess": false
+    }
+  ]
 } as const satisfies Ns5WorkflowsArtifact;
 
 export type ComandaRestaurante5WorkflowsType = typeof comandaRestaurante5Workflows;

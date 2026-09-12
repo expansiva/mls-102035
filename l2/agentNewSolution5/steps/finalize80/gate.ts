@@ -5,7 +5,8 @@
  * Errors fail the run; warnings do not.
  *
  * I2 checks `effect: 'transition'` + `transitionRef` against ontology (actor in `by`,
- * `from` reachable from source-SCC births). `create` and `update` are not I2 errors.
+ * `from` reachable from source-SCC births) for journey `act` and for workflow
+ * `mechanical`/`llm` stages. `create` and `update` are not I2 errors.
  * collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin still gate `decide`.
  * ontology30 rejects appendOnly plus a repeated act or decide first, with repair.
  */
@@ -27,12 +28,14 @@ import {
 import {
   collectNs5Handoffs,
   collectNs5ProcessSignals,
+  parseNs5TriggerEvent,
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
 import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5FinalizeReport,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
   NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF,
+  NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED,
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
   oracleCode,
   type Ns5FinalizeReport,
@@ -140,20 +143,53 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
   }
 
   sources.workflows.processes.forEach((process, processIndex) => {
+    const base = `workflows.processes[${processIndex}]`;
+    if (process.trigger.kind === 'manual' && process.trigger.actorRef && !actorIds.has(process.trigger.actorRef)) {
+      error('I1', `${base}.trigger.actorRef`, `Unknown actor ${process.trigger.actorRef}.`);
+    }
+    if (process.trigger.kind === 'event' && process.trigger.event) {
+      const parsed = parseNs5TriggerEvent(process.trigger.event);
+      if (!parsed) {
+        error('I1', `${base}.trigger.event`, `Unknown transition ${process.trigger.event}.`);
+      } else if (!entityIds.has(parsed.entityId)) {
+        error('I1', `${base}.trigger.event`, `Unknown entity ${parsed.entityId}.`);
+      } else {
+        const ids = new Set((entityById.get(parsed.entityId)?.transitions || []).map(item => item.transitionId));
+        if (!ids.has(parsed.transitionId)) {
+          error('I1', `${base}.trigger.event`, `Unknown transition ${parsed.entityId}.${parsed.transitionId}.`);
+        }
+      }
+    }
     process.tasks.forEach((task, taskIndex) => {
-      const path = `workflows.processes[${processIndex}].tasks[${taskIndex}]`;
+      const path = `${base}.tasks[${taskIndex}]`;
       if (task.actorRef && !actorIds.has(task.actorRef)) {
         error('I1', `${path}.actorRef`, `Unknown actor ${task.actorRef}.`);
       }
       if (task.journeyRef && !journeyIds.has(task.journeyRef)) {
         error('I1', `${path}.journeyRef`, `Unknown journey ${task.journeyRef}.`);
       }
-      if (task.stepRef && task.journeyRef) {
-        const journey = journeyById.get(task.journeyRef);
-        const stepIds = new Set((journey?.business.steps || []).map(step => step.stepId));
-        if (!stepIds.has(task.stepRef)) error('I1', `${path}.stepRef`, `Unknown step ${task.stepRef}.`);
+      if (task.entityRef && !entityIds.has(task.entityRef)) {
+        error('I1', `${path}.entityRef`, `Unknown entity ${task.entityRef}.`);
+      }
+      if (task.transitionRef && task.entityRef) {
+        const ids = new Set((entityById.get(task.entityRef)?.transitions || []).map(item => item.transitionId));
+        if (!ids.has(task.transitionRef)) {
+          error('I1', `${path}.transitionRef`, `Unknown transition ${task.transitionRef}.`);
+        }
       }
     });
+  });
+  (sources.workflows.journeyDecisions || []).forEach((decision, index) => {
+    const path = `workflows.journeyDecisions[${index}]`;
+    if (decision.journeyId && !journeyIds.has(decision.journeyId)) {
+      error('I1', `${path}.journeyId`, `Unknown journey ${decision.journeyId}.`);
+    }
+    if (decision.processId) {
+      const ids = new Set(sources.workflows.processes.map(process => process.processId));
+      if (!ids.has(decision.processId)) {
+        error('I1', `${path}.processId`, `Unknown process ${decision.processId}.`);
+      }
+    }
   });
 
   sources.access.grants.forEach((grant, index) => {
@@ -244,6 +280,35 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
       );
     });
   }
+  sources.workflows.processes.forEach((process, processIndex) => {
+    process.tasks.forEach((task, taskIndex) => {
+      if (task.kind !== 'mechanical' && task.kind !== 'llm') return;
+      if (task.effect !== 'transition') return;
+      if (!task.transitionRef || !task.entityRef) return;
+      const path = `workflows.processes[${processIndex}].tasks[${taskIndex}]`;
+      const entity = entityById.get(task.entityRef);
+      const transition = (entity?.transitions || []).find(item => item.transitionId === task.transitionRef);
+      if (!transition) return;
+      if (!taskTransitionByAllows(transition.by, task.actorRef)) {
+        error(
+          'I2',
+          path,
+          `task ${task.taskId} transitionRef ${task.transitionRef} on ${task.entityRef} does not include ${task.actorRef || 'system'} in by.`,
+          NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
+        );
+        return;
+      }
+      const reachable = reachableByEntity.get(task.entityRef) ?? null;
+      if (!fromIntersects(transition.from, reachable)) {
+        error(
+          'I2',
+          path,
+          `task ${task.taskId} transitionRef ${task.transitionRef} on ${task.entityRef} has from states unreachable from source-SCC births.`,
+          NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
+        );
+      }
+    });
+  });
 }
 
 function checkI3(sources: Ns5OracleSources, error: IssueFn): void {
@@ -326,14 +391,27 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
     entityId: entity.entityId,
     transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
   }));
-  const covered = new Set<string>();
+  const coveredJourneys = new Set<string>();
+  const ownedTransitions = new Set<string>();
   for (const process of sources.workflows.processes) {
+    if (process.trigger.kind === 'event' && process.trigger.event) {
+      const parsed = parseNs5TriggerEvent(process.trigger.event);
+      if (parsed) ownedTransitions.add(`${parsed.entityId}.${parsed.transitionId}`);
+    }
     for (const task of process.tasks) {
-      if (task.journeyRef && task.stepRef) covered.add(`${task.journeyRef}|${task.stepRef}`);
+      if (task.kind === 'human' && task.journeyRef) coveredJourneys.add(task.journeyRef);
+      if (
+        (task.kind === 'mechanical' || task.kind === 'llm')
+        && task.effect === 'transition'
+        && task.entityRef
+        && task.transitionRef
+      ) {
+        ownedTransitions.add(`${task.entityRef}.${task.transitionRef}`);
+      }
     }
   }
   for (const handoff of collectNs5Handoffs(journeyViews)) {
-    if (covered.has(`${handoff.journeyId}|${handoff.stepId}`)) continue;
+    if (coveredJourneys.has(handoff.journeyId)) continue;
     warning(
       'I6',
       `journeys.${handoff.journeyId}.${handoff.stepId}`,
@@ -348,6 +426,19 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
       'workflows.processes',
       'A foreign-by transition or cross-actor decide has no process in workflows.',
     );
+  }
+  for (const entity of sources.entities) {
+    for (const transition of entity.transitions) {
+      if (transition.by !== 'system' && transition.by !== 'time') continue;
+      const key = `${entity.entityId}.${transition.transitionId}`;
+      if (ownedTransitions.has(key)) continue;
+      warning(
+        'I6',
+        `ontology.${entity.entityId}.${transition.transitionId}`,
+        `system/time transition ${key} is not an effect:transition stage or trigger.event.`,
+        NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED,
+      );
+    }
   }
 }
 
@@ -482,6 +573,14 @@ function reachableFromBirths(entity: Ns5OntologyEntityArtifact): Set<string> | n
 
 function actorMatches(by: Ns5OntologyEntityArtifact['transitions'][number]['by'], actor: string): boolean {
   return Boolean(actor && Array.isArray(by) && by.includes(actor));
+}
+
+function taskTransitionByAllows(
+  by: Ns5OntologyEntityArtifact['transitions'][number]['by'],
+  actorRef?: string,
+): boolean {
+  if (by === 'system' || by === 'time') return true;
+  return Boolean(actorRef && Array.isArray(by) && by.includes(actorRef));
 }
 
 function fromIntersects(from: readonly string[], reachable: Set<string> | null): boolean {

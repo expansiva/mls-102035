@@ -32,19 +32,23 @@ import {
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import type {
   Ns5JourneyArtifact,
+  Ns5JourneyDecision,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
   Ns5PipelineState,
+  Ns5SystemDecision,
   Ns5WorkflowProcess,
 } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5WorkflowsArtifact,
   buildNs5WorkflowsTool,
   collectNs5ProcessSignals,
+  collectNs5TimeEventPhrases,
   collectNs5WorkflowsRefCatalog,
   normalizeNs5WorkflowsPayload,
+  ns5WorkflowsNeedsLlm,
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
 import {
   formatNs5WorkflowsGate,
@@ -72,7 +76,8 @@ export function buildNs5WorkflowsHumanPrompt(input: {
   previousDraft?: unknown;
 }): string {
   const signals = collectNs5ProcessSignals(input.journeys, input.entities);
-  const catalog = collectNs5WorkflowsRefCatalog(input.journeys, input.actorIds);
+  const phrases = collectNs5TimeEventPhrases(input.sourcePrompt);
+  const catalog = collectNs5WorkflowsRefCatalog(input.journeys, input.actorIds, input.entities);
   return [
     '## Source request',
     input.sourcePrompt,
@@ -86,17 +91,24 @@ export function buildNs5WorkflowsHumanPrompt(input: {
     '## Journeys (business)',
     formatJourneys(input.journeys),
     '',
-    '## Ontology transitions (by actor)',
+    '## Acts with effect create or transition',
+    formatWriteActs(input.journeys),
+    '',
+    '## Entities with lifecycle',
     formatTransitions(input.entities),
     '',
+    '## Time and event phrases from the request',
+    phrases.length ? phrases.map(phrase => `- ${phrase}`).join('\n') : '(none)',
+    '',
     '## Process signals (why this call ran)',
-    signals.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
+    signals.length || phrases.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
     '',
     '## Valid reference ids',
     JSON.stringify({
       actorIds: catalog.actorIds,
       journeyIds: catalog.journeyIds,
-      stepRefs: catalog.stepRefs,
+      entityIds: catalog.entityIds,
+      transitionRefs: catalog.transitionRefs,
       handoffs: catalog.handoffs,
     }, null, 2),
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
@@ -124,16 +136,24 @@ export async function beforeNs5WorkflowsPromptStep(
       readNs5Actors(moduleName),
     ]);
     const actorIds = actors.map(actor => actor.actorId).filter(Boolean);
+    const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     const signals = collectNs5ProcessSignals(journeys, entities);
-    if (!signals.length) {
+    const phrases = collectNs5TimeEventPhrases(sourcePrompt);
+    if (!ns5WorkflowsNeedsLlm(signals, phrases)) {
       const pipeline = await requirePipeline(moduleName);
-      const artifactPath = await persistArtifacts(moduleName, [], pipeline, true);
+      const artifactPath = await persistArtifacts(
+        moduleName,
+        [],
+        idleJourneyDecisions(journeys),
+        [],
+        pipeline,
+        true,
+      );
       return [
         doneAnchor(context, findMutableParent(context, parentStep), moduleName, [artifactPath]),
         updateStatus(context, parentStep, step, hookSequential, 'completed', `workflows50 approved with noProcessSignal: ${artifactPath}`),
       ];
     }
-    const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     const [prompt, schema, previous] = await Promise.all([
       readAgentText('steps/workflows50', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'workflows.schema', '.json'),
@@ -184,7 +204,8 @@ export async function afterNs5WorkflowsPromptStep(
       throw new Error(failure);
     }
 
-    const { processes } = normalizeNs5WorkflowsPayload(payload);
+    const journeyIds = (await readJourneys(moduleName)).map(journey => journey.journeyId);
+    const { processes, journeyDecisions, systemDecisions } = normalizeNs5WorkflowsPayload(payload, { journeyIds });
     const moduleArtifact = await readModule(moduleName);
     const [journeys, entities, actors] = await Promise.all([
       readJourneys(moduleName),
@@ -196,12 +217,17 @@ export async function afterNs5WorkflowsPromptStep(
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'workflows50'), { processes });
+    const draftPath = await writeJson(draftFile(moduleName, 'workflows50'), {
+      processes,
+      journeyDecisions,
+      ...(systemDecisions.length ? { systemDecisions } : {}),
+    });
     const gate = validateNs5Workflows(processes, {
       moduleName,
       actorIds: actors.map(actor => actor.actorId),
       journeys,
       entities,
+      journeyDecisions,
     });
     if (!gate.ok) {
       const feedback = formatNs5WorkflowsGate(gate.issues);
@@ -220,7 +246,14 @@ export async function afterNs5WorkflowsPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, processes, pipeline, false);
+    const artifactPath = await persistArtifacts(
+      moduleName,
+      processes,
+      journeyDecisions,
+      systemDecisions,
+      pipeline,
+      false,
+    );
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `workflows50 approved: ${artifactPath}`),
@@ -238,10 +271,12 @@ export async function afterNs5WorkflowsPromptStep(
 async function persistArtifacts(
   moduleName: string,
   processes: Ns5WorkflowProcess[],
+  journeyDecisions: Ns5JourneyDecision[],
+  systemDecisions: Ns5SystemDecision[],
   pipeline: Ns5PipelineState,
   noProcessSignal: boolean,
 ): Promise<string> {
-  const artifact = buildNs5WorkflowsArtifact(moduleName, processes);
+  const artifact = buildNs5WorkflowsArtifact(moduleName, processes, journeyDecisions, systemDecisions);
   const artifactPath = await writeDefs(workflowsFile(moduleName), `${moduleName}Workflows`, artifact, 'Ns5WorkflowsArtifact');
   await writeJson(draftFile(moduleName, 'workflows50'), artifact);
   await writeStepState(pipeline, {
@@ -252,6 +287,13 @@ async function persistArtifacts(
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;
+}
+
+function idleJourneyDecisions(journeys: readonly Ns5JourneyArtifact[]): Ns5JourneyDecision[] {
+  return journeys.filter(journey => journey.journeyId).map(journey => ({
+    journeyId: journey.journeyId,
+    inProcess: false,
+  }));
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
@@ -348,9 +390,24 @@ function formatJourneys(journeys: Ns5JourneyArtifact[]): string {
     journey.business.goal,
     ...journey.business.steps.map(step => {
       const handoff = step.kind === 'handoff' && step.handoffTo ? ` handoffTo=${step.handoffTo}` : '';
-      return `- ${step.stepId} ${step.kind} ${step.entity}${handoff}: ${step.description}`;
+      const effect = step.kind === 'act' && step.effect ? ` effect=${step.effect}` : '';
+      const transition = step.transitionRef ? ` transitionRef=${step.transitionRef}` : '';
+      return `- ${step.stepId} ${step.kind} ${step.entity}${effect}${transition}${handoff}: ${step.description}`;
     }),
   ].join('\n')).join('\n\n');
+}
+
+function formatWriteActs(journeys: Ns5JourneyArtifact[]): string {
+  const lines: string[] = [];
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      if (step.kind !== 'act') continue;
+      if (step.effect !== 'create' && step.effect !== 'transition') continue;
+      const transition = step.transitionRef ? ` transitionRef=${step.transitionRef}` : '';
+      lines.push(`- ${journey.journeyId}.${step.stepId} effect=${step.effect} entity=${step.entity}${transition}`);
+    }
+  }
+  return lines.length ? lines.join('\n') : '(none)';
 }
 
 function formatTransitions(entities: Ns5OntologyEntityArtifact[]): string {
