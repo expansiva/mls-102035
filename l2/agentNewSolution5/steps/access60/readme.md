@@ -31,7 +31,12 @@ carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + 
   `fullRecord` before the gate. Every ref resolves (`fields[]` ∪ `storage.idField` ∪ `details.<name>`).
 - `own` / `assigned` / `related` name `anchorEntity` as a `party: person` entity reachable from
   every `entityRef` by required relationships. `anchorPath()` computes that walk and is not stored.
-  `anchorEntity` on any other mode is dropped before the gate.
+  `anchorEntity` on any other mode is dropped before the gate. `assigned` is a direct FK to the
+  login Person; `related` is a level-1 relationship (`MemberOf`, `ReportsTo`, `Employs`…).
+- `custom` is valid when no `party: person` is reachable from the grant entities. A reachable
+  Person plus a description that cites the actor (id or title) is
+  `NS5_ACCESS_CUSTOM_HAS_ANCHOR`. No Person in the module is warning
+  `NS5_ACCESS_CUSTOM_WITHOUT_PERSON` (access60 cannot create the entity).
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `access60-done` result. `integration70` still waits for `rules40-done` and
   `workflows50-done`. A run then stops at the first unimplemented step (`finalize80`).

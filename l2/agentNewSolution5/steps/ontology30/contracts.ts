@@ -534,6 +534,72 @@ export interface Ns5CitedTransition {
   stepId: string;
 }
 
+/** Journey prose that names a personal scope (own / team / assigned). Data for the plan prompt. */
+export const NS5_PERSONAL_SCOPE_PATTERN = new RegExp(
+  'próprio|própria|minhas|seus|sua equipe|atribuído',
+  'i',
+);
+
+export interface Ns5PersonalScopeActor {
+  actorId: string;
+  title: string;
+  journeyIds: string[];
+}
+
+export function collectNs5PersonalScopeActors(
+  actors: ReadonlyArray<{ actorId: string; kind: string; title: string }>,
+  journeys: ReadonlyArray<{
+    journeyId: string;
+    business: {
+      actorRef?: string;
+      title?: string;
+      goal?: string;
+      steps: ReadonlyArray<{ title?: string; description?: string }>;
+      outcome?: { statement?: string; evidence?: readonly string[] };
+    };
+  }>,
+): Ns5PersonalScopeActor[] {
+  const result: Ns5PersonalScopeActor[] = [];
+  for (const actor of actors) {
+    if (actor.kind !== 'internal' || !actor.actorId) continue;
+    const journeyIds: string[] = [];
+    for (const journey of journeys) {
+      if (journey.business.actorRef !== actor.actorId) continue;
+      if (!NS5_PERSONAL_SCOPE_PATTERN.test(personalScopeJourneyText(journey))) continue;
+      if (journey.journeyId) journeyIds.push(journey.journeyId);
+    }
+    if (journeyIds.length) result.push({ actorId: actor.actorId, title: actor.title || '', journeyIds });
+  }
+  return result;
+}
+
+export function formatNs5PersonalScopeActors(items: readonly Ns5PersonalScopeActor[]): string {
+  if (!items.length) return '';
+  return [
+    '## Actors whose scope is personal',
+    'Internal actors whose journeys name a personal scope (own records, team, or assignment). This is data, not a rule.',
+    ...items.map(item => `- ${item.actorId}${item.title ? ` (${item.title})` : ''}: ${item.journeyIds.join(', ')}`),
+  ].join('\n');
+}
+
+function personalScopeJourneyText(journey: {
+  business: {
+    title?: string;
+    goal?: string;
+    steps: ReadonlyArray<{ title?: string; description?: string }>;
+    outcome?: { statement?: string; evidence?: readonly string[] };
+  };
+}): string {
+  const parts = [
+    journey.business.title,
+    journey.business.goal,
+    ...journey.business.steps.flatMap(step => [step.title, step.description]),
+    journey.business.outcome?.statement,
+    ...(journey.business.outcome?.evidence || []),
+  ];
+  return parts.filter(Boolean).join('\n');
+}
+
 export function collectNs5CitedTransitions(
   journeys: ReadonlyArray<{
     business: {

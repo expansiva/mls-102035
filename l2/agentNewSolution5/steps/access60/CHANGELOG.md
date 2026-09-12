@@ -2,6 +2,9 @@
 
 ## 2026-09-12
 
+- `custom` with a reachable `party: person` whose description cites the actor is
+  `NS5_ACCESS_CUSTOM_HAS_ANCHOR` (repair: own/assigned/related + `anchorEntity`).
+  `custom` with no Person in the module is warning `NS5_ACCESS_CUSTOM_WITHOUT_PERSON`.
 - CRUD grant: `writer: 'crud'` (was `maintenance: 'crud'`). `writer: 'inbound'` does not need a crud grant.
 - Artifact is actors + grants (`-access-v3`). `authorities` gone; the grant carries
   `title`/`description`. Gate: unique `grantId`, required `title`. ns5_12 form

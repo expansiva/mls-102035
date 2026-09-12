@@ -11,7 +11,7 @@ import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpe
 import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
-import type { Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5OntologyBindingsHumanPrompt,
   buildNs5OntologyEntityHumanPrompt,
@@ -23,6 +23,8 @@ import {
   buildNs5OntologyEntityTool,
   buildNs5OntologyPlanTool,
   collectNs5LifecycleSignal,
+  collectNs5PersonalScopeActors,
+  formatNs5PersonalScopeActors,
   liftNs5AggregateOnlyEntities,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
@@ -929,6 +931,60 @@ void test('plan human prompt includes journeys, actors and level-1 placeholders'
   assert.match(prompt, /affects=Mesa/);
   assert.match(prompt, /<Person>/);
   assert.match(prompt, /Restaurant table orders/);
+  assert.doesNotMatch(prompt, /Actors whose scope is personal/);
+});
+
+void test('plan prompt injects internal actors whose journeys name a personal scope', () => {
+  const actors: Ns5ModuleActor[] = [
+    { actorId: 'colaborador', kind: 'internal', origin: 'named', title: 'Colaborador', description: 'Files expenses.' },
+    { actorId: 'gestor', kind: 'internal', origin: 'named', title: 'Gestor', description: 'Approves the team.' },
+    { actorId: 'motorista', kind: 'internal', origin: 'named', title: 'Motorista', description: 'Drives assigned vehicles.' },
+    { actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Recepção', description: 'Front desk.' },
+    { actorId: 'cliente', kind: 'external', origin: 'named', title: 'Cliente', description: 'Sees próprias orders.' },
+  ];
+  const journey = (
+    journeyId: string,
+    actorRef: string,
+    title: string,
+    description: string,
+  ): Ns5JourneyArtifact => ({
+    schemaVersion: '2026-09-10-ns5-journey-v1',
+    journeyId,
+    business: {
+      actorRef,
+      title,
+      goal: title,
+      entry: { mode: 'contextOrLookup' },
+      steps: [{ stepId: journeyId, kind: 'act', entity: 'Record', title, description, effect: 'create' }],
+      outcome: { statement: title, evidence: [description] },
+    },
+    businessHash: 'sha256:x',
+  });
+  const journeys = [
+    journey('lancarDespesa', 'colaborador', 'Lançar despesa', 'O colaborador lança as próprias despesas.'),
+    journey('aprovarEquipe', 'gestor', 'Aprovar equipe', 'O gestor aprova as despesas da sua equipe.'),
+    journey('usarVeiculo', 'motorista', 'Usar veículo', 'O motorista usa o veículo atribuído a ele.'),
+    journey('receberVisitante', 'recepcao', 'Receber', 'A recepção recebe visitantes.'),
+    journey('verPedidos', 'cliente', 'Ver pedidos', 'O cliente vê as próprias compras.'),
+  ];
+  const scoped = collectNs5PersonalScopeActors(actors, journeys);
+  assert.deepEqual(scoped.map(item => item.actorId), ['colaborador', 'gestor', 'motorista']);
+  assert.deepEqual(scoped.find(item => item.actorId === 'gestor')?.journeyIds, ['aprovarEquipe']);
+  const prompt = buildNs5OntologyPlanHumanPrompt({
+    sourcePrompt: 'Reembolso e frota.',
+    userLanguage: 'pt-BR',
+    actors,
+    journeys,
+    level1Catalog: '## Platform level-1 catalog\nSubtypes: <Person>',
+  });
+  assert.match(prompt, /Actors whose scope is personal/);
+  assert.match(prompt, /colaborador \(Colaborador\): lancarDespesa/);
+  assert.match(prompt, /gestor \(Gestor\): aprovarEquipe/);
+  assert.match(prompt, /motorista \(Motorista\): usarVeiculo/);
+  const section = prompt.slice(prompt.indexOf('Actors whose scope is personal'));
+  assert.doesNotMatch(section, /recepcao/);
+  assert.doesNotMatch(section, /cliente/);
+  assert.equal(formatNs5PersonalScopeActors([]), '');
 });
 
 void test('bindings human prompt lists the synthetic mdm identity', () => {

@@ -2,6 +2,9 @@
 
 ## 2026-09-12
 
+- Plan prompt injects internal actors whose journeys name a personal scope
+  (`próprio|própria|minhas|seus|sua equipe|atribuído`) as data
+  ("Actors whose scope is personal"); the model decides the Person role.
 - `writer: 'journey' | 'crud' | 'inbound'` replaces `maintenance?: 'crud'` (required in the tool
   schema; omitted on the artifact means journey). `inbound` is a writer without an `act`.
   Siblings from the registry are injected as data; same `entityId`+`mdmSubtype` or core/event

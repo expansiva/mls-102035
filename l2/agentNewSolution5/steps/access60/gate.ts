@@ -134,6 +134,30 @@ export function validateNs5Access(
       }
     }
 
+    if (grant.dataScope.mode === 'custom') {
+      const personIds = context.entities
+        .filter(entity => entity.party === 'person' && entity.entityId)
+        .map(entity => entity.entityId);
+      if (!personIds.length) {
+        warning(
+          issues,
+          'NS5_ACCESS_CUSTOM_WITHOUT_PERSON',
+          `custom grant ${grant.grantId} has no party: person entity in the module; access60 cannot create one.`,
+          `${base}.dataScope.mode`,
+        );
+      } else {
+        const reachable = reachablePersonIds(grant.entityRefs, personIds, context.relationships);
+        if (reachable.length && descriptionCitesActor(grant, actor)) {
+          error(
+            issues,
+            'NS5_ACCESS_CUSTOM_HAS_ANCHOR',
+            `custom grant ${grant.grantId} has a reachable person; use own/assigned/related with anchorEntity ${reachable[0]}.`,
+            `${base}.dataScope.mode`,
+          );
+        }
+      }
+    }
+
     if (!(NS5_ACCESS_DISCLOSURE_MODES as readonly string[]).includes(grant.disclosure.mode)) {
       error(issues, 'NS5_ACCESS_DISCLOSURE_MODE', 'Unknown disclosure.mode.', `${base}.disclosure.mode`);
     }
@@ -235,4 +259,39 @@ function checkFieldList(
 
 function error(issues: Ns5AccessGateIssue[], code: string, message: string, path?: string): void {
   issues.push({ severity: 'error', code, message, ...(path ? { path } : {}) });
+}
+
+function warning(issues: Ns5AccessGateIssue[], code: string, message: string, path?: string): void {
+  issues.push({ severity: 'warning', code, message, ...(path ? { path } : {}) });
+}
+
+function descriptionCitesActor(
+  grant: Ns5AccessGrant,
+  actor: Ns5ModuleActor | undefined,
+): boolean {
+  if (!actor) return false;
+  const hay = `${grant.description}\n${grant.dataScope.description}`.toLowerCase();
+  if (actor.actorId && hay.includes(actor.actorId.toLowerCase())) return true;
+  const title = (actor.title || '').trim();
+  return Boolean(title) && hay.includes(title.toLowerCase());
+}
+
+function reachablePersonIds(
+  entityRefs: readonly string[],
+  personIds: readonly string[],
+  relationships: Ns5AccessGateContext['relationships'],
+): string[] {
+  const hits: Array<{ id: string; hops: number }> = [];
+  for (const personId of personIds) {
+    let best = Infinity;
+    for (const entityId of entityRefs) {
+      if (!entityId) continue;
+      const path = anchorPath(entityId, personId, relationships);
+      if (path === null) continue;
+      best = Math.min(best, path.length);
+    }
+    if (best !== Infinity) hits.push({ id: personId, hops: best });
+  }
+  hits.sort((left, right) => left.hops - right.hops);
+  return hits.map(item => item.id);
 }

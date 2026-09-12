@@ -10,6 +10,8 @@ has no screen; `/fast` auto-approves.
 - The original request (`sourcePrompt`)
 - Actors from `module.defs.ts`
 - Journeys (`business` entire: `entity`, `affects`, `decide`)
+- Plan prompt: internal actors whose journeys name a personal scope (own / team / assigned)
+  as data ("Actors whose scope is personal"); not a rule — the model decides the Person role
 - Platform level-1 catalog as placeholders, plus the platform catalog (services and role rules) from `platform.defs.ts`
 
 ## Output

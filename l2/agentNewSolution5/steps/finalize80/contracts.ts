@@ -15,7 +15,7 @@ import type {
 
 export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-report-v1' as const;
 
-export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12'] as const;
+export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13'] as const;
 export type Ns5OracleCheckId = typeof NS5_ORACLE_CHECK_IDS[number];
 export const NS5_FINALIZE_I7_ORPHAN_FILE = 'NS5_FINALIZE_I7_ORPHAN_FILE' as const;
 export const NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION = 'NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION' as const;

@@ -963,6 +963,21 @@ void test('I11 warns when inbound event is not published by the sibling; I12 che
   assert.ok(report.errors.some(issue => issue.checkId === 'I12' && /Ghost/.test(issue.message)));
 });
 
+void test('I13 warns remaining custom grants and does not fail the run', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  sources.access.grants[0] = {
+    ...sources.access.grants[0],
+    dataScope: { mode: 'custom', description: 'Tabs of the shift.' },
+  };
+  const report = runNs5Oracle(sources);
+  assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
+  const i13 = report.warnings.filter(issue => issue.checkId === 'I13');
+  assert.equal(i13.length, 1);
+  assert.match(i13[0].message, /custom grant/);
+  assert.equal(report.checks.find(check => check.checkId === 'I13')?.status, 'warned');
+  assert.equal(report.checks.find(check => check.checkId === 'I13')?.warningCount, 1);
+});
+
 void test('I10 accepts writer inbound covered by inbound.writes', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   const entity = sources.entities.find(item => item.entityId === 'Comanda')!;

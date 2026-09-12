@@ -64,7 +64,10 @@ inactivated and can be reactivated.
 
 Actors are not roles. A receptionist or a manager is an actor (someone who acts) and a profile (a set of
 authorities); she becomes an MDM entity only when the business needs to record something **about** her
-(an employee file, a commission). Do not create a `Person` entity per actor.
+(an employee file, a commission). Do not create a `Person` entity per actor. An internal actor whose
+records are scoped to *her own*, *her team's* or *what is assigned to her* is a `Person` role of the
+module (the actor id as entity name is fine); team and assignment are level-1 relationships
+(`MemberOf`, `ReportsTo`, `Employs`) or a foreign key to that Person — never a free-text filter.
 
 ## Relationships
 
@@ -81,7 +84,8 @@ or transaction** of its own (an enrollment, an order, a payment).
 
 Who may see a record is decided by the access matrix, and enforced by the backend as a path:
 - `own`: the entity reaches, through its foreign keys, the `Person` whose login row is the session login;
-- `related`: the same path, then one MDM relationship (`GuardianOf`, `Family`…) to the login person;
+- `assigned`: a direct foreign key to the Person of the login;
+- `related`: a level-1 relationship (`MemberOf`, `ReportsTo`, `Employs`, `GuardianOf`, `Family`…) to the login person;
 - `organization`: no path; every record of the organization.
 A journey step that reads "my orders" or "my students" is therefore a `dataScope`, never a filter field
 the user types.

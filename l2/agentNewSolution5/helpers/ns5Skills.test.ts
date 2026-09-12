@@ -21,6 +21,15 @@ void test('composeNs5SystemPrompt starts with the MDM skill heading', () => {
   assert.match(composed, /You are module10/);
 });
 
+void test('mdm skill: internal actor with personal scope is a Person role; assigned is a FK', () => {
+  const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
+  assert.match(skill, /internal actor whose\s+records are scoped to \*her own\*/);
+  assert.match(skill, /`Person` role of the\s+module/);
+  assert.match(skill, /`MemberOf`, `ReportsTo`, `Employs`/);
+  assert.match(skill, /`assigned`: a direct foreign key to the Person of the login/);
+  assert.match(skill, /`related`: a level-1 relationship/);
+});
+
 void test('mdm skill says registering a login person is an act, never an invite step', () => {
   const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
   assert.match(skill, /Registering a person who will sign in is a write by an internal actor/);

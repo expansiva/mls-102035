@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I12).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I13).
  * Errors fail the run; warnings do not.
  *
  * I2 checks `effect: 'transition'` + `transitionRef` against ontology (actor in `by`,
@@ -79,6 +79,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI10(sources, error);
   checkI11(sources, warning);
   checkI12(sources, error);
+  checkI13(sources, warning);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.access.actors.length,
@@ -638,6 +639,17 @@ function checkI12(sources: Ns5OracleSources, error: IssueFn): void {
       }
       error('I12', path, `Unknown journey or process ${parsed.ownerId}.`);
     });
+  });
+}
+
+function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {
+  sources.access.grants.forEach((grant, index) => {
+    if (grant.dataScope.mode !== 'custom') return;
+    warning(
+      'I13',
+      `access.grants[${index}]`,
+      `custom grant ${grant.grantId || index} for actor ${grant.actorRef || '(missing)'}; the backend does not apply custom.`,
+    );
   });
 }
 

@@ -2,6 +2,8 @@
 
 ## 2026-09-12
 
+- I13 (warning): remaining `custom` grants, one per grant; count is `checks.I13.warningCount`
+  (backend does not apply `custom`).
 - I10/I8: `writer: 'crud' | 'inbound'` replaces `maintenance: 'crud'`. I11 (warning)
   `NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING` queues
   `l4/<sibling|/organization>/tobe/integration/<requestedBy>--<eventId>.defs.ts`.

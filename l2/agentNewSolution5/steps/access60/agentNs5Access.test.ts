@@ -694,3 +694,134 @@ void test('fieldsOnly covering every resolvable field fails the gate unless norm
   const after = validateNs5Access(grants, ctx);
   assert.equal(after.ok, true, after.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
+
+void test('custom with a reachable person that cites the actor is NS5_ACCESS_CUSTOM_HAS_ANCHOR', () => {
+  const colaborador = entity('Colaborador', 'person', [], { idField: 'colaboradorId' });
+  const despesa = entity('Despesa', 'none', ['despesaId', 'colaboradorId'], { idField: 'despesaId' });
+  const payload = {
+    grants: [{
+      grantId: 'colaboradorProprias',
+      actorRef: 'colaborador',
+      title: 'Own expenses',
+      description: 'Colaborador sees own expenses.',
+      entityRefs: ['Despesa'],
+      dataScope: { mode: 'custom', description: 'próprias despesas do colaborador' },
+      disclosure: { mode: 'fullRecord', description: 'Expense record.' },
+    }],
+  };
+  const gate = gateOf(payload, {
+    actors: actorsOf(['colaborador']),
+    entities: [colaborador, despesa],
+    relationships: [rel('despesaOfColaborador', 'Despesa', 'Colaborador')],
+    journeys: [{ journeyId: 'lancarDespesa', business: { actorRef: 'colaborador' } }],
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_ACCESS_CUSTOM_HAS_ANCHOR' && /Colaborador/.test(issue.message)));
+  assert.match(formatNs5AccessGate(gate.issues), /own\/assigned\/related with anchorEntity Colaborador/);
+});
+
+void test('custom without any person is NS5_ACCESS_CUSTOM_WITHOUT_PERSON warning', () => {
+  const payload = {
+    grants: [{
+      grantId: 'caixaClose',
+      actorRef: 'caixa',
+      title: 'Close',
+      description: 'Close a tab.',
+      entityRefs: ['Comanda'],
+      dataScope: { mode: 'custom', description: 'Tabs of the shift.' },
+      disclosure: { mode: 'fullRecord', description: 'Operational record.' },
+    }],
+  };
+  const gate = gateOf(payload, {
+    actors: actorsOf(['caixa']),
+    entities: COMANDA_ENTITIES,
+    relationships: COMANDA_RELATIONSHIPS,
+    journeys: [{ journeyId: 'fecharComanda', business: { actorRef: 'caixa' } }],
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_ACCESS_CUSTOM_WITHOUT_PERSON' && issue.severity === 'warning'));
+  assert.doesNotMatch(formatNs5AccessGate(gate.issues), /NS5_ACCESS_CUSTOM_WITHOUT_PERSON/);
+});
+
+void test('reembolso own and frota assigned and MemberOf related pass', () => {
+  const colaborador = entity('Colaborador', 'person', [], { idField: 'colaboradorId' });
+  const gestor = entity('Gestor', 'person', [], { idField: 'gestorId' });
+  const despesa = entity('Despesa', 'none', ['despesaId', 'colaboradorId'], { idField: 'despesaId' });
+  const motorista = entity('Motorista', 'person', [], { idField: 'motoristaId' });
+  const veiculo = entity('Veiculo', 'none', ['veiculoId', 'motoristaId'], { idField: 'veiculoId' });
+  const ownRelated = gateOf({
+    grants: [
+      {
+        grantId: 'colaboradorOwn',
+        actorRef: 'colaborador',
+        title: 'Own',
+        description: 'Own expenses.',
+        entityRefs: ['Despesa'],
+        dataScope: { mode: 'own', anchorEntity: 'Colaborador', description: 'Own expenses.' },
+        disclosure: { mode: 'fullRecord', description: 'Expense record.' },
+      },
+      {
+        grantId: 'gestorRelated',
+        actorRef: 'gestor',
+        title: 'Team',
+        description: 'Team expenses.',
+        entityRefs: ['Despesa'],
+        dataScope: { mode: 'related', anchorEntity: 'Gestor', description: 'MemberOf team.' },
+        disclosure: { mode: 'fullRecord', description: 'Expense record.' },
+      },
+    ],
+  }, {
+    actors: actorsOf(['colaborador', 'gestor']),
+    entities: [colaborador, gestor, despesa],
+    relationships: [
+      rel('despesaOfColaborador', 'Despesa', 'Colaborador'),
+      rel('colaboradorMemberOf', 'Colaborador', 'Gestor'),
+    ],
+    journeys: [
+      { journeyId: 'lancarDespesa', business: { actorRef: 'colaborador' } },
+      { journeyId: 'aprovarDespesa', business: { actorRef: 'gestor' } },
+    ],
+  });
+  assert.equal(ownRelated.ok, true, ownRelated.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+
+  const assigned = gateOf({
+    grants: [{
+      grantId: 'motoristaAssigned',
+      actorRef: 'motorista',
+      title: 'Assigned',
+      description: 'Vehicles assigned to the driver.',
+      entityRefs: ['Veiculo'],
+      dataScope: { mode: 'assigned', anchorEntity: 'Motorista', description: 'Direct FK motoristaId.' },
+      disclosure: { mode: 'fullRecord', description: 'Vehicle record.' },
+    }],
+  }, {
+    actors: actorsOf(['motorista']),
+    entities: [motorista, veiculo],
+    relationships: [rel('veiculoAssignedToMotorista', 'Veiculo', 'Motorista')],
+    journeys: [{ journeyId: 'registrarUso', business: { actorRef: 'motorista' } }],
+  });
+  assert.equal(assigned.ok, true, assigned.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('custom that does not cite the actor stays custom when a person is reachable', () => {
+  const colaborador = entity('Colaborador', 'person', [], { idField: 'colaboradorId' });
+  const despesa = entity('Despesa', 'none', ['despesaId', 'colaboradorId'], { idField: 'despesaId' });
+  const gate = gateOf({
+    grants: [{
+      grantId: 'financeiroStatus',
+      actorRef: 'financeiro',
+      title: 'By status',
+      description: 'Filter by approval status.',
+      entityRefs: ['Despesa'],
+      dataScope: { mode: 'custom', description: 'Approved expenses of the period.' },
+      disclosure: { mode: 'fullRecord', description: 'Expense record.' },
+    }],
+  }, {
+    actors: actorsOf(['financeiro']),
+    entities: [colaborador, despesa],
+    relationships: [rel('despesaOfColaborador', 'Despesa', 'Colaborador')],
+    journeys: [{ journeyId: 'pagarDespesa', business: { actorRef: 'financeiro' } }],
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_ACCESS_CUSTOM_HAS_ANCHOR'), false);
+});

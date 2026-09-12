@@ -2,6 +2,9 @@
 
 ## 2026-09-12
 
+- Internal actor with own/team/assigned scope is a Person role (mdm skill); access60
+  `NS5_ACCESS_CUSTOM_HAS_ANCHOR` / `NS5_ACCESS_CUSTOM_WITHOUT_PERSON`; ontology30 plan
+  injects personal-scope actors as data; finalize80 I13 counts remaining `custom` grants.
 - Integration v2 (ns5_31 / G7): inbound `writes`+`effect` is a writer; outbound `on` binds the
   event to a transition/create; registry stores `entities`/`events`; sibling modules are data
   for module10/ontology30/integration70; `tobe/integration` queues a request to a sibling

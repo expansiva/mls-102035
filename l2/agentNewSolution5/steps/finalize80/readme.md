@@ -11,7 +11,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 ## Output
 
-- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I12, `errors` and `warnings`
+- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I13, `errors` and `warnings`
 - organization `l4/organization/registry.defs.ts` — module block with actors,
   `mdmSubtype <- <mod>.<Entity>` roles, `entities`, outbound `events`
 - `l5/config.json` / `l5/project.json` — workspaceDependencies, projects, platform block
@@ -35,6 +35,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | I10 | written entity is an `act` `entity` or `affects`, or `writer: 'crud'` / `'inbound'`; crud has an internal-actor grant; inbound appears in `inbound.writes`. Same predicates as ontology30 / access60 | error (`NS5_FINALIZE_I10`) |
 | I11 | inbound event from a sibling (or predicted module) that does not publish it; queues `l4/<target>/tobe/integration/<requestedBy>--<eventId>.defs.ts` | warning (`NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING`) |
 | I12 | `outbound.on` is `Entity.transitionId` or `Entity.create` of this module; `plugins.usedBy` is an existing journey.step or process.task; `from: organization` events are in the platform catalog | error (`NS5_FINALIZE_I12`) |
+| I13 | remaining `custom` grants (count in `checks.I13.warningCount`) | warning (`NS5_FINALIZE_I13`) |
 
 Errors fail the run with the report. Warnings only continue.
 
@@ -49,7 +50,8 @@ fails a `decide` without a branching origin if that shape reaches here; an `upda
   possible missing `transitionRef` uses `NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF`;
   I6 unowned system/time transition uses `NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED`;
   I8 uses `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`; I9 uses `NS5_FINALIZE_I9`;
-  I10 uses `NS5_FINALIZE_I10`; I11 uses `NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING`; I12 uses `NS5_FINALIZE_I12`.
+  I10 uses `NS5_FINALIZE_I10`; I11 uses `NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING`; I12 uses `NS5_FINALIZE_I12`;
+  I13 uses `NS5_FINALIZE_I13`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).
 - Status updates use `cleaner: input_output`.
 - Converted ce02 / ce05 fixtures: comandaRestaurante5 and ordenServicio5 pass I1-I10
