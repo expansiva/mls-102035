@@ -32,7 +32,6 @@ import {
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import type {
-  Ns5AccessAuthority,
   Ns5AccessGrant,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
@@ -181,7 +180,7 @@ export async function afterNs5AccessPromptStep(
       throw new Error(failure);
     }
 
-    const { authorities, grants: rawGrants } = normalizeNs5AccessPayload(payload);
+    const { grants: rawGrants } = normalizeNs5AccessPayload(payload);
     await readModule(moduleName);
     const [journeys, ontology, actors] = await Promise.all([
       readJourneys(moduleName),
@@ -194,8 +193,8 @@ export async function afterNs5AccessPromptStep(
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'access60'), { authorities, grants, normalizations });
-    const gate = validateNs5Access(authorities, grants, {
+    const draftPath = await writeJson(draftFile(moduleName, 'access60'), { grants, normalizations });
+    const gate = validateNs5Access(grants, {
       moduleName,
       actors,
       entities: ontology.entities,
@@ -219,7 +218,7 @@ export async function afterNs5AccessPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, actors, authorities, grants, pipeline);
+    const artifactPath = await persistArtifacts(moduleName, actors, grants, pipeline);
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `access60 approved: ${artifactPath}`),
@@ -237,11 +236,10 @@ export async function afterNs5AccessPromptStep(
 async function persistArtifacts(
   moduleName: string,
   actors: Ns5ModuleActor[],
-  authorities: Ns5AccessAuthority[],
   grants: Ns5AccessGrant[],
   pipeline: Ns5PipelineState,
 ): Promise<string> {
-  const artifact = buildNs5AccessArtifact(moduleName, actors, authorities, grants);
+  const artifact = buildNs5AccessArtifact(moduleName, actors, grants);
   const artifactPath = await writeDefs(accessFile(moduleName), `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
   await writeJson(draftFile(moduleName, 'access60'), artifact);
   await writeStepState(pipeline, {

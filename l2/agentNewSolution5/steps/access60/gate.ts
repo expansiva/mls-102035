@@ -1,7 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/access60/gate.ts" enhancement="_blank"/>
 
 import type {
-  Ns5AccessAuthority,
   Ns5AccessGrant,
   Ns5ModuleActor,
 } from '/_102035_/l2/solution/types.js';
@@ -44,7 +43,6 @@ export interface Ns5AccessGateContext {
 }
 
 export function validateNs5Access(
-  authorities: Ns5AccessAuthority[],
   grants: Ns5AccessGrant[],
   context: Ns5AccessGateContext,
 ): Ns5AccessGateResult {
@@ -53,9 +51,7 @@ export function validateNs5Access(
   const actors = context.actors || [];
   const actorById = new Map(actors.map(actor => [actor.actorId, actor]));
   const actorIds = new Set(actors.map(actor => actor.actorId).filter(Boolean));
-  const authorityIds = new Set<string>();
   const grantedActors = new Set<string>();
-  const grantPairs = new Set<string>();
 
   if (!actors.length) {
     error(issues, 'NS5_ACCESS_ACTORS', 'At least one actor is required.', 'actors');
@@ -72,37 +68,20 @@ export function validateNs5Access(
     if (actor.actorId) seenActorIds.add(actor.actorId);
   });
 
-  authorities.forEach((authority, index) => {
-    const base = `authorities[${index}]`;
-    if (!MEMBER_ID.test(authority.authorityId)) {
-      error(issues, 'NS5_ACCESS_AUTHORITY_ID', 'authorityId must be lowerCamel.', `${base}.authorityId`);
-    }
-    if (authority.authorityId && authorityIds.has(authority.authorityId)) {
-      error(issues, 'NS5_ACCESS_AUTHORITY_ID_DUPLICATE', `Duplicate authorityId ${authority.authorityId}.`, `${base}.authorityId`);
-    }
-    if (authority.authorityId) authorityIds.add(authority.authorityId);
-    if (!authority.title.trim()) error(issues, 'NS5_ACCESS_AUTHORITY_TITLE', 'Authority title is required.', `${base}.title`);
-    if (!authority.description.trim()) {
-      error(issues, 'NS5_ACCESS_AUTHORITY_DESCRIPTION', 'Authority description is required.', `${base}.description`);
-    }
-  });
-
   grants.forEach((grant, index) => {
     const base = `grants[${index}]`;
     if (!MEMBER_ID.test(grant.grantId)) {
       error(issues, 'NS5_ACCESS_GRANT_ID', 'grantId must be lowerCamel.', `${base}.grantId`);
     }
+    if (!grant.title.trim()) {
+      error(issues, 'NS5_ACCESS_GRANT_TITLE', 'Grant title is required.', `${base}.title`);
+    }
+    if (!grant.description.trim()) {
+      error(issues, 'NS5_ACCESS_GRANT_DESCRIPTION', 'Grant description is required.', `${base}.description`);
+    }
     if (!actorIds.has(grant.actorRef)) {
       error(issues, 'NS5_ACCESS_GRANT_ACTOR', `Unknown actor ${grant.actorRef}.`, `${base}.actorRef`);
     }
-    if (!authorityIds.has(grant.authorityRef)) {
-      error(issues, 'NS5_ACCESS_GRANT_AUTHORITY', `Unknown authority ${grant.authorityRef}.`, `${base}.authorityRef`);
-    }
-    const pair = `${grant.actorRef}\u0000${grant.authorityRef}`;
-    if (grant.actorRef && grant.authorityRef && grantPairs.has(pair)) {
-      error(issues, 'NS5_ACCESS_GRANT_DUPLICATE_PAIR', `Duplicate grant for ${grant.actorRef} and ${grant.authorityRef}.`, base);
-    }
-    if (grant.actorRef && grant.authorityRef) grantPairs.add(pair);
     grantedActors.add(grant.actorRef);
 
     if (!grant.entityRefs.length) {

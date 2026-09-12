@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "ordenServicio5",
   "actors": [
     {
@@ -28,33 +28,12 @@ export const ordenServicio5Access = {
       "description": "Persona que presenta un aparato para servicio y consulta o responde al presupuesto desde el portal."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "gestionarRecepcionYentrega",
-      "title": "Gestionar recepción y entrega",
-      "description": "Registrar la recepción de aparatos y completar su entrega al cliente."
-    },
-    {
-      "authorityId": "analizarYpresupuestar",
-      "title": "Analizar y presupuestar órdenes",
-      "description": "Analizar aparatos recibidos y registrar diagnósticos, piezas y presupuestos."
-    },
-    {
-      "authorityId": "repararOrden",
-      "title": "Reparar y dejar lista una orden",
-      "description": "Registrar la reparación autorizada y marcar la orden como lista para entrega."
-    },
-    {
-      "authorityId": "consultarYresponderPresupuesto",
-      "title": "Consultar y responder presupuestos",
-      "description": "Consultar el diagnóstico y presupuesto de las órdenes propias y aprobarlos o rechazarlos."
-    }
-  ],
   "grants": [
     {
       "grantId": "recepcionGestionaRecepcionYentrega",
       "actorRef": "recepcionista",
-      "authorityRef": "gestionarRecepcionYentrega",
+      "title": "Gestionar recepción y entrega",
+      "description": "Registrar la recepción de aparatos y completar su entrega al cliente.",
       "entityRefs": [
         "OrdenServicio",
         "Cliente",
@@ -95,7 +74,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "tecnicoAnalizaYpresupuesta",
       "actorRef": "tecnico",
-      "authorityRef": "analizarYpresupuestar",
+      "title": "Analizar y presupuestar órdenes",
+      "description": "Analizar aparatos recibidos y registrar diagnósticos, piezas y presupuestos.",
       "entityRefs": [
         "OrdenServicio",
         "Aparato",
@@ -144,7 +124,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "tecnicoReparaOrden",
       "actorRef": "tecnico",
-      "authorityRef": "repararOrden",
+      "title": "Reparar y dejar lista una orden",
+      "description": "Registrar la reparación autorizada y marcar la orden como lista para entrega.",
       "entityRefs": [
         "OrdenServicio",
         "Aparato",
@@ -187,7 +168,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "clienteConsultaYrespondePresupuesto",
       "actorRef": "cliente",
-      "authorityRef": "consultarYresponderPresupuesto",
+      "title": "Consultar y responder presupuestos",
+      "description": "Consultar el diagnóstico y presupuesto de las órdenes propias y aprobarlos o rechazarlos.",
       "entityRefs": [
         "OrdenServicio"
       ],

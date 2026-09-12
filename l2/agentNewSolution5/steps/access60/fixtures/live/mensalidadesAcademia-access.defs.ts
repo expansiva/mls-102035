@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const mensalidadesAcademiaAccess = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "mensalidadesAcademia",
   "actors": [
     {
@@ -28,38 +28,12 @@ export const mensalidadesAcademiaAccess = {
       "description": "Pode cancelar sua matrícula, encerrando futuras gerações de mensalidades."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "gerirMatriculas",
-      "title": "Gerenciar matrículas",
-      "description": "Cadastrar alunos, consultar planos disponíveis e iniciar matrículas."
-    },
-    {
-      "authorityId": "registrarPagamentos",
-      "title": "Registrar pagamentos",
-      "description": "Consultar mensalidades e registrar os pagamentos recebidos."
-    },
-    {
-      "authorityId": "gerirPlanos",
-      "title": "Gerenciar planos",
-      "description": "Cadastrar e atualizar os planos oferecidos pela academia."
-    },
-    {
-      "authorityId": "gerarEcentralizarMensalidades",
-      "title": "Gerar e acompanhar mensalidades",
-      "description": "Gerar mensalidades do mês e consultar os indicadores mensais financeiros e de alunos."
-    },
-    {
-      "authorityId": "cancelarPropriaMatricula",
-      "title": "Cancelar própria matrícula",
-      "description": "Consultar e cancelar a matrícula ativa do próprio aluno."
-    }
-  ],
   "grants": [
     {
       "grantId": "recepcaoGerirMatriculas",
       "actorRef": "recepcao",
-      "authorityRef": "gerirMatriculas",
+      "title": "Gerenciar matrículas",
+      "description": "Cadastrar alunos, consultar planos disponíveis e iniciar matrículas.",
       "entityRefs": [
         "Plano",
         "Aluno",
@@ -90,7 +64,8 @@ export const mensalidadesAcademiaAccess = {
     {
       "grantId": "recepcaoRegistrarPagamentos",
       "actorRef": "recepcao",
-      "authorityRef": "registrarPagamentos",
+      "title": "Registrar pagamentos",
+      "description": "Consultar mensalidades e registrar os pagamentos recebidos.",
       "entityRefs": [
         "Mensalidade",
         "Pagamento"
@@ -123,7 +98,8 @@ export const mensalidadesAcademiaAccess = {
     {
       "grantId": "gerenciaGerirPlanos",
       "actorRef": "gerencia",
-      "authorityRef": "gerirPlanos",
+      "title": "Gerenciar planos",
+      "description": "Cadastrar e atualizar os planos oferecidos pela academia.",
       "entityRefs": [
         "Plano"
       ],
@@ -146,7 +122,8 @@ export const mensalidadesAcademiaAccess = {
     {
       "grantId": "gerenciaGerarEacompanharMensalidades",
       "actorRef": "gerencia",
-      "authorityRef": "gerarEcentralizarMensalidades",
+      "title": "Gerar e acompanhar mensalidades",
+      "description": "Gerar mensalidades do mês e consultar os indicadores mensais financeiros e de alunos.",
       "entityRefs": [
         "Plano",
         "Matricula",
@@ -193,7 +170,8 @@ export const mensalidadesAcademiaAccess = {
     {
       "grantId": "alunoCancelarPropriaMatricula",
       "actorRef": "aluno",
-      "authorityRef": "cancelarPropriaMatricula",
+      "title": "Cancelar própria matrícula",
+      "description": "Consultar e cancelar a matrícula ativa do próprio aluno.",
       "entityRefs": [
         "Matricula"
       ],

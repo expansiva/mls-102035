@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- I1 no longer checks `authorityRef` (the grant is the capability; `authorities[]` removed).
 - I2 is citation + reachability: an `act` with `transitionRef` needs that transition, actor in
   `by`, and `from` intersecting states reachable from source-SCC births
   (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`). `creates` or neither is not an error; possible

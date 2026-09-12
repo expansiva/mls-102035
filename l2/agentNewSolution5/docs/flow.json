@@ -104,7 +104,7 @@
       "clarificationAnchor": { "id": "access60-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/access.defs.ts",
-      "goal": "Actors (from pipeline), authorities, grants with structured disclosure."
+      "goal": "Actors (from pipeline), grants with title and structured disclosure."
     },
     {
       "id": "integration70",

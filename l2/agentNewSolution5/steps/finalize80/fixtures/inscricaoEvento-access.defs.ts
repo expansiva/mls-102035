@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const inscricaoEventoAccess = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "inscricaoEvento",
   "actors": [
     {
@@ -21,33 +21,12 @@ export const inscricaoEventoAccess = {
       "description": "Pessoa que acessa a página pública de um evento para realizar ou cancelar sua inscrição."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "gerenciarEventos",
-      "title": "Gerenciar eventos e locais",
-      "description": "Cadastrar, alterar, publicar e acompanhar os eventos da organização e os locais utilizados."
-    },
-    {
-      "authorityId": "acompanharInscricoes",
-      "title": "Acompanhar e exportar inscrições",
-      "description": "Consultar inscrições, participantes e ocupação dos eventos, incluindo a exportação da lista de inscritos."
-    },
-    {
-      "authorityId": "consultarEventoPublicado",
-      "title": "Consultar evento publicado",
-      "description": "Consultar a referência de evento publicada vinculada à própria inscrição."
-    },
-    {
-      "authorityId": "gerenciarPropriaInscricao",
-      "title": "Gerenciar própria inscrição",
-      "description": "Realizar, consultar e cancelar a própria inscrição em evento."
-    }
-  ],
   "grants": [
     {
       "grantId": "organizadorGerenciaEventos",
       "actorRef": "organizador",
-      "authorityRef": "gerenciarEventos",
+      "title": "Gerenciar eventos e locais",
+      "description": "Cadastrar, alterar, publicar e acompanhar os eventos da organização e os locais utilizados.",
       "entityRefs": [
         "Evento",
         "Venue"
@@ -64,7 +43,8 @@ export const inscricaoEventoAccess = {
     {
       "grantId": "organizadorAcompanhaInscricoes",
       "actorRef": "organizador",
-      "authorityRef": "acompanharInscricoes",
+      "title": "Acompanhar e exportar inscrições",
+      "description": "Consultar inscrições, participantes e ocupação dos eventos, incluindo a exportação da lista de inscritos.",
       "entityRefs": [
         "Evento",
         "Inscricao",
@@ -82,7 +62,8 @@ export const inscricaoEventoAccess = {
     {
       "grantId": "publicoConsultaEventoPublicado",
       "actorRef": "publico",
-      "authorityRef": "consultarEventoPublicado",
+      "title": "Consultar evento publicado",
+      "description": "Consultar a referência de evento publicada vinculada à própria inscrição.",
       "entityRefs": [
         "Inscricao"
       ],
@@ -108,7 +89,8 @@ export const inscricaoEventoAccess = {
     {
       "grantId": "publicoGerenciaPropriaInscricao",
       "actorRef": "publico",
-      "authorityRef": "gerenciarPropriaInscricao",
+      "title": "Gerenciar própria inscrição",
+      "description": "Realizar, consultar e cancelar a própria inscrição em evento.",
       "entityRefs": [
         "Inscricao",
         "Participant"

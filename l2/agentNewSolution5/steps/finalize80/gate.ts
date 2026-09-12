@@ -83,7 +83,6 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
   const entityIds = new Set(entityById.keys());
   const journeyById = new Map(sources.journeys.map(journey => [journey.journeyId, journey]));
   const journeyIds = new Set(journeyById.keys());
-  const authorityIds = new Set(sources.access.authorities.map(item => item.authorityId).filter(Boolean));
 
   for (const entry of sources.journeyIndex.journeys) {
     if (entry.actorRef && !actorIds.has(entry.actorRef)) {
@@ -161,9 +160,6 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
     const path = `access.grants[${index}]`;
     if (grant.actorRef && !actorIds.has(grant.actorRef)) {
       error('I1', `${path}.actorRef`, `Unknown actor ${grant.actorRef}.`);
-    }
-    if (grant.authorityRef && !authorityIds.has(grant.authorityRef)) {
-      error('I1', `${path}.authorityRef`, `Unknown authority ${grant.authorityRef}.`);
     }
     for (const entityId of grant.entityRefs) {
       if (entityId && !entityIds.has(entityId)) error('I1', `${path}.entityRefs`, `Unknown entity ${entityId}.`);

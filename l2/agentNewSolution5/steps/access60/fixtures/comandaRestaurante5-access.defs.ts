@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "comandaRestaurante5",
   "actors": [
     {
@@ -21,43 +21,12 @@ export const comandaRestaurante5Access = {
       "description": "Confere comandas, aplica descontos pontuais e recebe pagamentos para fechar contas."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "consultarCardapio",
-      "title": "Consultar cardápio",
-      "description": "Consulta os itens e preços disponíveis no cardápio."
-    },
-    {
-      "authorityId": "gerirAtendimentoMesa",
-      "title": "Gerir atendimento da mesa",
-      "description": "Localiza mesas e abre ou consulta comandas durante o atendimento."
-    },
-    {
-      "authorityId": "gerirItensComanda",
-      "title": "Gerir itens da comanda",
-      "description": "Registra itens pedidos e cancela lançamentos feitos por engano em comandas abertas."
-    },
-    {
-      "authorityId": "conferirEfecharConta",
-      "title": "Conferir e fechar conta",
-      "description": "Consulta a comanda e seus valores para conferir e encerrar a conta após a quitação."
-    },
-    {
-      "authorityId": "concederDescontoPontual",
-      "title": "Conceder desconto pontual",
-      "description": "Registra descontos pontuais em uma comanda durante a conferência."
-    },
-    {
-      "authorityId": "registrarPagamento",
-      "title": "Registrar pagamento",
-      "description": "Registra pagamentos totais ou divididos destinados à comanda."
-    }
-  ],
   "grants": [
     {
       "grantId": "garcomConsultaCardapio",
       "actorRef": "garcom",
-      "authorityRef": "consultarCardapio",
+      "title": "Consultar cardápio",
+      "description": "Consulta os itens e preços disponíveis no cardápio.",
       "entityRefs": [
         "ItemCardapio"
       ],
@@ -73,7 +42,8 @@ export const comandaRestaurante5Access = {
     {
       "grantId": "garcomGerenciaAtendimento",
       "actorRef": "garcom",
-      "authorityRef": "gerirAtendimentoMesa",
+      "title": "Gerir atendimento da mesa",
+      "description": "Localiza mesas e abre ou consulta comandas durante o atendimento.",
       "entityRefs": [
         "Mesa",
         "Comanda"
@@ -97,7 +67,8 @@ export const comandaRestaurante5Access = {
     {
       "grantId": "garcomGerenciaItens",
       "actorRef": "garcom",
-      "authorityRef": "gerirItensComanda",
+      "title": "Gerir itens da comanda",
+      "description": "Registra itens pedidos e cancela lançamentos feitos por engano em comandas abertas.",
       "entityRefs": [
         "ItemComanda"
       ],
@@ -113,7 +84,8 @@ export const comandaRestaurante5Access = {
     {
       "grantId": "caixaConfereEfechaConta",
       "actorRef": "caixa",
-      "authorityRef": "conferirEfecharConta",
+      "title": "Conferir e fechar conta",
+      "description": "Consulta a comanda e seus valores para conferir e encerrar a conta após a quitação.",
       "entityRefs": [
         "Comanda",
         "ItemComanda"
@@ -130,7 +102,8 @@ export const comandaRestaurante5Access = {
     {
       "grantId": "caixaConcedeDesconto",
       "actorRef": "caixa",
-      "authorityRef": "concederDescontoPontual",
+      "title": "Conceder desconto pontual",
+      "description": "Registra descontos pontuais em uma comanda durante a conferência.",
       "entityRefs": [
         "Desconto"
       ],
@@ -146,7 +119,8 @@ export const comandaRestaurante5Access = {
     {
       "grantId": "caixaRegistraPagamento",
       "actorRef": "caixa",
-      "authorityRef": "registrarPagamento",
+      "title": "Registrar pagamento",
+      "description": "Registra pagamentos totais ou divididos destinados à comanda.",
       "entityRefs": [
         "Pagamento"
       ],

@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const agendaClinicaAccess = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "agendaClinica",
   "actors": [
     {
@@ -21,33 +21,12 @@ export const agendaClinicaAccess = {
       "description": "Médico ou terapeuta da clínica que consulta a própria agenda e registra os atendimentos realizados."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "gerirPacientes",
-      "title": "Gerir pacientes",
-      "description": "Cadastrar ou vincular pacientes da clínica e consultar seus registros para o agendamento."
-    },
-    {
-      "authorityId": "gerirProfissionais",
-      "title": "Gerir profissionais",
-      "description": "Manter os registros dos médicos e terapeutas que podem realizar consultas na clínica."
-    },
-    {
-      "authorityId": "gerirConsultas",
-      "title": "Gerir consultas",
-      "description": "Agendar consultas, consultar seus dados operacionais, registrar confirmações telefônicas e registrar faltas de pacientes."
-    },
-    {
-      "authorityId": "consultarEatenderPropriasConsultas",
-      "title": "Consultar e atender próprias consultas",
-      "description": "Consultar a própria agenda e registrar o atendimento realizado com sua anotação."
-    }
-  ],
   "grants": [
     {
       "grantId": "recepcionistaGerirPacientes",
       "actorRef": "recepcionista",
-      "authorityRef": "gerirPacientes",
+      "title": "Gerir pacientes",
+      "description": "Cadastrar ou vincular pacientes da clínica e consultar seus registros para o agendamento.",
       "entityRefs": [
         "Paciente"
       ],
@@ -63,7 +42,8 @@ export const agendaClinicaAccess = {
     {
       "grantId": "recepcionistaGerirProfissionais",
       "actorRef": "recepcionista",
-      "authorityRef": "gerirProfissionais",
+      "title": "Gerir profissionais",
+      "description": "Manter os registros dos médicos e terapeutas que podem realizar consultas na clínica.",
       "entityRefs": [
         "Profissional"
       ],
@@ -79,7 +59,8 @@ export const agendaClinicaAccess = {
     {
       "grantId": "recepcionistaGerirConsultas",
       "actorRef": "recepcionista",
-      "authorityRef": "gerirConsultas",
+      "title": "Gerir consultas",
+      "description": "Agendar consultas, consultar seus dados operacionais, registrar confirmações telefônicas e registrar faltas de pacientes.",
       "entityRefs": [
         "Consulta"
       ],
@@ -105,7 +86,8 @@ export const agendaClinicaAccess = {
     {
       "grantId": "profissionalConsultarEatenderPropriasConsultas",
       "actorRef": "profissional",
-      "authorityRef": "consultarEatenderPropriasConsultas",
+      "title": "Consultar e atender próprias consultas",
+      "description": "Consultar a própria agenda e registrar o atendimento realizado com sua anotação.",
       "entityRefs": [
         "Consulta"
       ],

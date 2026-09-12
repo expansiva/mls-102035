@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "ordenServicio5",
   "actors": [
     {
@@ -28,43 +28,12 @@ export const ordenServicio5Access = {
       "description": "Persona que presenta un aparato para servicio y consulta o responde al presupuesto desde el portal."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "registrarRecepcion",
-      "title": "Registrar recepción de orden",
-      "description": "Registrar la recepción del aparato, los datos de la orden, el defecto informado y las fotos asociadas."
-    },
-    {
-      "authorityId": "entregarYfinalizar",
-      "title": "Entregar y finalizar orden",
-      "description": "Consultar las órdenes disponibles para retiro, registrar la entrega del aparato y finalizar la orden."
-    },
-    {
-      "authorityId": "analizarYpresupuestar",
-      "title": "Analizar y presupuestar orden",
-      "description": "Consultar órdenes para análisis y registrar el diagnóstico, las piezas necesarias, sus costos internos y el presupuesto para el cliente."
-    },
-    {
-      "authorityId": "registrarReparacion",
-      "title": "Registrar reparación terminada",
-      "description": "Consultar órdenes aprobadas y registrar la reparación realizada para dejarlas listas para entrega."
-    },
-    {
-      "authorityId": "consultarMisOrdenes",
-      "title": "Consultar mis órdenes",
-      "description": "Consultar el estado, el diagnóstico y el valor del presupuesto de las órdenes propias."
-    },
-    {
-      "authorityId": "responderPresupuesto",
-      "title": "Responder presupuesto",
-      "description": "Aprobar o rechazar el presupuesto de una orden propia."
-    }
-  ],
   "grants": [
     {
       "grantId": "recepcionistaRegistrarRecepcion",
       "actorRef": "recepcionista",
-      "authorityRef": "registrarRecepcion",
+      "title": "Registrar recepción de orden",
+      "description": "Registrar la recepción del aparato, los datos de la orden, el defecto informado y las fotos asociadas.",
       "entityRefs": [
         "OrdenServicio",
         "Cliente",
@@ -96,7 +65,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "recepcionistaEntregarYfinalizar",
       "actorRef": "recepcionista",
-      "authorityRef": "entregarYfinalizar",
+      "title": "Entregar y finalizar orden",
+      "description": "Consultar las órdenes disponibles para retiro, registrar la entrega del aparato y finalizar la orden.",
       "entityRefs": [
         "OrdenServicio",
         "Cliente",
@@ -133,7 +103,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "tecnicoAnalizarYpresupuestar",
       "actorRef": "tecnico",
-      "authorityRef": "analizarYpresupuestar",
+      "title": "Analizar y presupuestar orden",
+      "description": "Consultar órdenes para análisis y registrar el diagnóstico, las piezas necesarias, sus costos internos y el presupuesto para el cliente.",
       "entityRefs": [
         "OrdenServicio",
         "Cliente",
@@ -156,7 +127,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "tecnicoRegistrarReparacion",
       "actorRef": "tecnico",
-      "authorityRef": "registrarReparacion",
+      "title": "Registrar reparación terminada",
+      "description": "Consultar órdenes aprobadas y registrar la reparación realizada para dejarlas listas para entrega.",
       "entityRefs": [
         "OrdenServicio",
         "Diagnostico",
@@ -177,7 +149,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "clienteConsultarMisOrdenes",
       "actorRef": "cliente",
-      "authorityRef": "consultarMisOrdenes",
+      "title": "Consultar mis órdenes",
+      "description": "Consultar el estado, el diagnóstico y el valor del presupuesto de las órdenes propias.",
       "entityRefs": [
         "OrdenServicio"
       ],
@@ -216,7 +189,8 @@ export const ordenServicio5Access = {
     {
       "grantId": "clienteResponderPresupuesto",
       "actorRef": "cliente",
-      "authorityRef": "responderPresupuesto",
+      "title": "Responder presupuesto",
+      "description": "Aprobar o rechazar el presupuesto de una orden propia.",
       "entityRefs": [
         "OrdenServicio"
       ],

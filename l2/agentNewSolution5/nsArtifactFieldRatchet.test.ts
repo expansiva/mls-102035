@@ -33,7 +33,6 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
   Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
   Ns5WorkflowsArtifact: { file: TYPES, name: 'Ns5WorkflowsArtifact' },
-  Ns5AccessAuthority: { file: TYPES, name: 'Ns5AccessAuthority' },
   Ns5AccessGrant: { file: TYPES, name: 'Ns5AccessGrant' },
   Ns5AccessDataScope: { file: TYPES, name: 'Ns5AccessDataScope' },
   Ns5AccessDisclosure: { file: TYPES, name: 'Ns5AccessDisclosure' },
@@ -185,15 +184,11 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     moduleName: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     processes: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
   },
-  Ns5AccessAuthority: {
-    authorityId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-    title: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-    description: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
-  },
   Ns5AccessGrant: {
     grantId: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     actorRef: { reader: 'steps/access60/gate.ts', since: '2026-09-11' },
-    authorityRef: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
+    title: { reader: 'tela da matriz', since: '2026-09-12' },
+    description: { reader: 'tela da matriz', since: '2026-09-12' },
     entityRefs: { reader: 'steps/access60/gate.ts, finalize80 I8', since: '2026-09-10' },
     dataScope: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
     disclosure: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
@@ -213,7 +208,6 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     schemaVersion: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     actors: { reader: 'steps/access60 persist from pipeline, finalize80 I3', since: '2026-09-11' },
-    authorities: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
     grants: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
   },
   Ns5IntegrationItem: {
@@ -341,6 +335,14 @@ test('module.actors and module.scope were removed; access.actors is the reader',
   assert.equal('Ns5AccessProfile' in KEYS, false);
   assert.match(KEYS.Ns5AccessArtifact.actors.reader, /finalize80 I3/);
   assert.match(KEYS.Ns5AccessGrant.actorRef.reader, /access60\/gate/);
+});
+
+test('access.authorities and grant.authorityRef were removed; grant title is the matrix screen', () => {
+  assert.equal('Ns5AccessAuthority' in KEYS, false);
+  assert.equal('authorities' in KEYS.Ns5AccessArtifact, false);
+  assert.equal('authorityRef' in KEYS.Ns5AccessGrant, false);
+  assert.equal(KEYS.Ns5AccessGrant.title.reader, 'tela da matriz');
+  assert.equal(KEYS.Ns5AccessGrant.description.reader, 'tela da matriz');
 });
 
 test('module10 and journeys20 contracts are registered with non-LLM readers', () => {

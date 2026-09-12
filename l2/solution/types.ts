@@ -6,7 +6,7 @@ export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
 export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const;
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-10-ns5-workflows-v1' as const;
-export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-10-ns5-access-v2' as const;
+export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-10-ns5-integration-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
 
@@ -339,15 +339,6 @@ export interface Ns5WorkflowsArtifact {
   processes: Ns5WorkflowProcess[];
 }
 
-export interface Ns5AccessAuthority {
-  /** grants.authorityRef. */
-  authorityId: string;
-  /** Planner / UI. */
-  title: string;
-  /** Planner / UI. */
-  description: string;
-}
-
 export interface Ns5AccessDataScope {
   /** own|assigned|related require anchorEntity. Other modes drop it before the gate. */
   mode: 'own' | 'assigned' | 'related' | 'public' | 'organization' | 'custom';
@@ -369,12 +360,14 @@ export interface Ns5AccessDisclosure {
 }
 
 export interface Ns5AccessGrant {
-  /** Index identity. */
+  /** Index identity. Unique. */
   grantId: string;
   /** Must be an actorId from access.actors. */
   actorRef: string;
-  /** Must be an authorityId. */
-  authorityRef: string;
+  /** Access matrix screen. */
+  title: string;
+  /** Access matrix screen. */
+  description: string;
   /** Must be entityIds. */
   entityRefs: string[];
   dataScope: Ns5AccessDataScope;
@@ -388,9 +381,7 @@ export interface Ns5AccessArtifact {
   moduleName: string;
   /** Copied from the pipeline (survivors of the journeys20 drop). The LLM does not rewrite this list. */
   actors: Ns5ModuleActor[];
-  /** grants.authorityRef. */
-  authorities: Ns5AccessAuthority[];
-  /** Backend applies scope and disclosure from these rows. */
+  /** The grant is the capability. Backend applies scope and disclosure from these rows. */
   grants: Ns5AccessGrant[];
 }
 

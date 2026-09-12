@@ -1,5 +1,11 @@
 # access60
 
+## 2026-09-12
+
+- Artifact is actors + grants (`-access-v3`). `authorities` gone; the grant carries
+  `title`/`description`. Gate: unique `grantId`, required `title`. ns5_12 form
+  normalizations unchanged.
+
 ## 2026-09-11
 
 - `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT`: an entity with `maintenance: 'crud'`

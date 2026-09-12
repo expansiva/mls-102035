@@ -108,7 +108,8 @@ function withAcademiaEnrollment(
   sources.access.grants.push({
     grantId: 'alunoCancelarPropriaMatricula',
     actorRef: sources.access.actors[0].actorId,
-    authorityRef: sources.access.authorities[0].authorityId,
+    title: sources.access.grants[0]?.title || 'Own student',
+    description: sources.access.grants[0]?.description || 'Own student record.',
     entityRefs: ['Aluno'],
     dataScope: { mode: 'own', anchorEntity: 'Aluno', description: 'Own student record.' },
     disclosure: { mode: 'fullRecord', description: 'The student record.' },
@@ -459,7 +460,7 @@ function i2OnlySources(
     rules: { schemaVersion: '2026-09-10-ns5-rules-v1', moduleName, rules: [] },
     workflows: { schemaVersion: '2026-09-10-ns5-workflows-v1', moduleName, processes: [] },
     access: {
-      schemaVersion: '2026-09-10-ns5-access-v2',
+      schemaVersion: '2026-09-12-ns5-access-v3',
       moduleName,
       actors: [...actors].map(actorId => ({
         actorId,
@@ -468,7 +469,6 @@ function i2OnlySources(
         title: actorId,
         description: actorId,
       })),
-      authorities: [],
       grants: [],
     },
     integration: {
@@ -832,7 +832,8 @@ void test('I10 fails Plano without a writer; crud plus Aluno act passes; crud wi
   withCrud.access.grants.push({
     grantId: 'recepcaoPlanos',
     actorRef: internal.actorId,
-    authorityRef: withCrud.access.authorities[0].authorityId,
+    title: 'Plans',
+    description: 'Plan catalog.',
     entityRefs: ['Plano'],
     dataScope: { mode: 'organization', description: 'All plans.' },
     disclosure: { mode: 'fullRecord', description: 'Plan catalog.' },

@@ -3,7 +3,7 @@
 import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Access = {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "comandaRestaurante5",
   "actors": [
     {
@@ -21,23 +21,12 @@ export const comandaRestaurante5Access = {
       "description": "Confere comandas, aplica descontos pontuais e recebe pagamentos para fechar contas."
     }
   ],
-  "authorities": [
-    {
-      "authorityId": "gerenciarComandasEmAtendimento",
-      "title": "Gerenciar comandas em atendimento",
-      "description": "Permite abrir comandas em mesas, consultar o cardápio e registrar ou cancelar itens lançados nas comandas."
-    },
-    {
-      "authorityId": "fecharContas",
-      "title": "Fechar contas",
-      "description": "Permite conferir comandas, registrar descontos pontuais, receber pagamentos divididos e encerrar contas quitadas."
-    }
-  ],
   "grants": [
     {
       "grantId": "garcomGerenciaComandas",
       "actorRef": "garcom",
-      "authorityRef": "gerenciarComandasEmAtendimento",
+      "title": "Gerenciar comandas em atendimento",
+      "description": "Permite abrir comandas em mesas, consultar o cardápio e registrar ou cancelar itens lançados nas comandas.",
       "entityRefs": [
         "Mesa",
         "ItemCardapio",
@@ -57,7 +46,8 @@ export const comandaRestaurante5Access = {
     {
       "grantId": "caixaFechaContas",
       "actorRef": "caixa",
-      "authorityRef": "fecharContas",
+      "title": "Fechar contas",
+      "description": "Permite conferir comandas, registrar descontos pontuais, receber pagamentos divididos e encerrar contas quitadas.",
       "entityRefs": [
         "Comanda",
         "ItemComanda",

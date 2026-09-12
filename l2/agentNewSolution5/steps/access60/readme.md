@@ -13,14 +13,15 @@ and has no screen; `/fast` auto-approves.
 
 ## Output
 
-`Ns5AccessArtifact`: `actors[]` (copied from the pipeline), `authorities[]`, `grants[]`. A grant
-carries `actorRef`, `entityRefs`, `dataScope` (`mode` + optional `anchorEntity` + description)
-and `disclosure` (`mode` + `allowedFields`/`deniedFields` as `Entity.field` + description). No
-profiles, landing intent, realization, hops, `allowedInformation` or journey-step lists.
+`Ns5AccessArtifact`: `actors[]` (copied from the pipeline) and `grants[]`. A grant
+carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + optional
+`anchorEntity` + description) and `disclosure` (`mode` + `allowedFields`/`deniedFields` as
+`Entity.field` + description). No authorities, profiles, landing intent, realization, hops,
+`allowedInformation` or journey-step lists.
 
 ## Invariants
 
-- Ids are unique lowerCamel. Authorities have a title and a description.
+- Ids are unique lowerCamel. Every grant has a title and a description.
 - Every actor has at least one grant. Every journey actor is covered.
 - A `maintenance: 'crud'` entity is in `entityRefs` of ≥1 grant of an `internal`
   actor (`NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT`).

@@ -10,19 +10,15 @@ operations or integrations.
 Call the tool `submitNs5Access` once. Do not write Markdown around the tool arguments.
 
 The actors are given. Copy none of them. Do not emit an `actors` list and do not invent a profile
-layer. Authorities and grants are yours.
-
-## Authorities
-
-An authority is a named capability. `authorityId` is lowerCamel. `title` and `description` explain
-it in the user's language. Do not attach journey steps, information-need lists or JWT syntax.
+or authority layer. Grants are yours.
 
 ## Grants
 
-Each grant is one `actorRef` and `authorityRef` pair, with the entities it covers. `grantId` is
-lowerCamel. `actorRef` is an actor id from the given list. Every actor receives at least one grant.
-Every journey actor is covered. An entity with `maintenance: 'crud'` appears in `entityRefs` of at
-least one grant whose `actorRef` is an `internal` actor.
+Each grant is one `actorRef` with the entities it covers. `grantId` is lowerCamel. `title` and
+`description` explain the grant in the user's language. `actorRef` is an actor id from the given
+list. Every actor receives at least one grant. Every journey actor is covered. An entity with
+`maintenance: 'crud'` appears in `entityRefs` of at least one grant whose `actorRef` is an
+`internal` actor.
 
 `entityRefs` are UpperCamel entity ids that exist in the ontology. Do not invent an entity.
 
@@ -58,11 +54,11 @@ Do not add landing intent, realization, source references, journey step lists, `
 
 Counter-example (placeholders — use only ids that exist in the module): an external grant with
 `dataScope.mode` other than `own` is invalid. A valid own grant is
-`{ "grantId": "<grantId>", "actorRef": "<actorId>", "authorityRef": "<authorityId>", "entityRefs": ["<Entity>"], "dataScope": { "mode": "own", "anchorEntity": "<PersonEntity>", "description": "<description>" }, "disclosure": { "mode": "fieldsOnly", "deniedFields": ["<Entity>.<field>"], "description": "<description>" } }`.
+`{ "grantId": "<grantId>", "actorRef": "<actorId>", "title": "<title>", "description": "<description>", "entityRefs": ["<Entity>"], "dataScope": { "mode": "own", "anchorEntity": "<PersonEntity>", "description": "<description>" }, "disclosure": { "mode": "fieldsOnly", "deniedFields": ["<Entity>.<field>"], "description": "<description>" } }`.
 
 ## Language
 
 Write every human-facing value (`title`, `description`) in the module `userLanguage`. Ids stay
 lowerCamel. Entity ids stay UpperCamel.
 
-`schemaVersion` is `2026-09-10-ns5-access-v2`.
+`schemaVersion` is `2026-09-12-ns5-access-v3`.

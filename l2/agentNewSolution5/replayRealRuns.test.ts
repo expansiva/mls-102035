@@ -247,13 +247,13 @@ for (const moduleName of NS5_REAL_MODULES) {
 
   void test(`${moduleName} access60 draft replays to access.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/access60/fixtures', `${moduleName}-draft.json`);
-    const { authorities, grants: rawGrants } = normalizeNs5AccessPayload(draft);
+    const { grants: rawGrants } = normalizeNs5AccessPayload(draft);
     const actors = loadNs5Actors(moduleName);
     const entities = loadNs5Entities(moduleName);
     const { grants } = applyNs5AccessFormNormalizations(rawGrants, accessView(entities));
     const index = loadNs5OntologyIndex(moduleName);
     const journeys = loadNs5Journeys(moduleName);
-    const gate = validateNs5Access(authorities, grants, {
+    const gate = validateNs5Access(grants, {
       moduleName,
       actors,
       entities: accessView(entities),
@@ -269,7 +269,7 @@ for (const moduleName of NS5_REAL_MODULES) {
       })),
     });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const artifact = buildNs5AccessArtifact(moduleName, actors, authorities, grants);
+    const artifact = buildNs5AccessArtifact(moduleName, actors, grants);
     const rendered = render(moduleName, 'access', `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
     assertDefsMatch(rendered, loadNs5FixtureText('steps/access60/fixtures', `${moduleName}-access.defs.ts`), 'access');
   });

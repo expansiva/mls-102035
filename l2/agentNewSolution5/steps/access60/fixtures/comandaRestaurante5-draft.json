@@ -1,42 +1,12 @@
 {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "comandaRestaurante5",
-  "authorities": [
-    {
-      "authorityId": "consultarCardapio",
-      "title": "Consultar cardápio",
-      "description": "Consulta os itens e preços disponíveis no cardápio."
-    },
-    {
-      "authorityId": "gerirAtendimentoMesa",
-      "title": "Gerir atendimento da mesa",
-      "description": "Localiza mesas e abre ou consulta comandas durante o atendimento."
-    },
-    {
-      "authorityId": "gerirItensComanda",
-      "title": "Gerir itens da comanda",
-      "description": "Registra itens pedidos e cancela lançamentos feitos por engano em comandas abertas."
-    },
-    {
-      "authorityId": "conferirEfecharConta",
-      "title": "Conferir e fechar conta",
-      "description": "Consulta a comanda e seus valores para conferir e encerrar a conta após a quitação."
-    },
-    {
-      "authorityId": "concederDescontoPontual",
-      "title": "Conceder desconto pontual",
-      "description": "Registra descontos pontuais em uma comanda durante a conferência."
-    },
-    {
-      "authorityId": "registrarPagamento",
-      "title": "Registrar pagamento",
-      "description": "Registra pagamentos totais ou divididos destinados à comanda."
-    }
-  ],
   "grants": [
     {
       "grantId": "garcomConsultaCardapio",
-      "authorityRef": "consultarCardapio",
+      "actorRef": "garcom",
+      "title": "Consultar cardápio",
+      "description": "Consulta os itens e preços disponíveis no cardápio.",
       "entityRefs": [
         "ItemCardapio"
       ],
@@ -52,12 +22,13 @@
           "ItemCardapio.id",
           "ItemCardapio.price"
         ]
-      },
-      "actorRef": "garcom"
+      }
     },
     {
       "grantId": "garcomGerenciaAtendimento",
-      "authorityRef": "gerirAtendimentoMesa",
+      "actorRef": "garcom",
+      "title": "Gerir atendimento da mesa",
+      "description": "Localiza mesas e abre ou consulta comandas durante o atendimento.",
       "entityRefs": [
         "Mesa",
         "Comanda"
@@ -77,12 +48,13 @@
           "Comanda.mesa",
           "Comanda.status"
         ]
-      },
-      "actorRef": "garcom"
+      }
     },
     {
       "grantId": "garcomGerenciaItens",
-      "authorityRef": "gerirItensComanda",
+      "actorRef": "garcom",
+      "title": "Gerir itens da comanda",
+      "description": "Registra itens pedidos e cancela lançamentos feitos por engano em comandas abertas.",
       "entityRefs": [
         "ItemComanda"
       ],
@@ -104,12 +76,13 @@
           "ItemComanda.status",
           "ItemComanda.details.valorTotal"
         ]
-      },
-      "actorRef": "garcom"
+      }
     },
     {
       "grantId": "caixaConfereEfechaConta",
-      "authorityRef": "conferirEfecharConta",
+      "actorRef": "caixa",
+      "title": "Conferir e fechar conta",
+      "description": "Consulta a comanda e seus valores para conferir e encerrar a conta após a quitação.",
       "entityRefs": [
         "Comanda",
         "ItemComanda"
@@ -141,12 +114,13 @@
           "ItemComanda.status",
           "ItemComanda.details.valorTotal"
         ]
-      },
-      "actorRef": "caixa"
+      }
     },
     {
       "grantId": "caixaConcedeDesconto",
-      "authorityRef": "concederDescontoPontual",
+      "actorRef": "caixa",
+      "title": "Conceder desconto pontual",
+      "description": "Registra descontos pontuais em uma comanda durante a conferência.",
       "entityRefs": [
         "Desconto"
       ],
@@ -164,12 +138,13 @@
           "Desconto.motivo",
           "Desconto.valor"
         ]
-      },
-      "actorRef": "caixa"
+      }
     },
     {
       "grantId": "caixaRegistraPagamento",
-      "authorityRef": "registrarPagamento",
+      "actorRef": "caixa",
+      "title": "Registrar pagamento",
+      "description": "Registra pagamentos totais ou divididos destinados à comanda.",
       "entityRefs": [
         "Pagamento"
       ],
@@ -187,8 +162,7 @@
           "Pagamento.comanda",
           "Pagamento.recebidoEm"
         ]
-      },
-      "actorRef": "caixa"
+      }
     }
   ]
 }

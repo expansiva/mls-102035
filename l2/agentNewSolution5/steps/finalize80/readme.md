@@ -23,7 +23,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 | check | meaning | on fail |
 |---|---|---|
-| I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey, authority). A journey `entity`/`affects` naming an id in `pipeline.json` `ontology30.liftedAggregateEntities` is a `module.details` ref when that map has keys — not an unknown entity | error |
+| I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey). A journey `entity`/`affects` naming an id in `pipeline.json` `ontology30.liftedAggregateEntities` is a `module.details` ref when that map has keys — not an unknown entity | error |
 | I2 | an `act` with `transitionRef` must cite a declared transition whose `by` includes the journey actor and whose `from` intersects states reachable from source-SCC births (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); `creates` or neither is not an I2 error (possible missing `transitionRef` is a warning). Every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal for `decide` (`requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error (warning does not fail) |
 | I3 | every `access.actors` row has at least one journey and one grant | error |
 | I4 | every cited `transitions[].ruleRefs` exists in `rules.defs.ts`. An uncited rule is not a defect at l4 | error |

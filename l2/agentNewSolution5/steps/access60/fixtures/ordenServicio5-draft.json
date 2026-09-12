@@ -1,32 +1,12 @@
 {
-  "schemaVersion": "2026-09-10-ns5-access-v2",
+  "schemaVersion": "2026-09-12-ns5-access-v3",
   "moduleName": "ordenServicio5",
-  "authorities": [
-    {
-      "authorityId": "gestionarRecepcionYentrega",
-      "title": "Gestionar recepción y entrega",
-      "description": "Registrar la recepción de aparatos y completar su entrega al cliente."
-    },
-    {
-      "authorityId": "analizarYpresupuestar",
-      "title": "Analizar y presupuestar órdenes",
-      "description": "Analizar aparatos recibidos y registrar diagnósticos, piezas y presupuestos."
-    },
-    {
-      "authorityId": "repararOrden",
-      "title": "Reparar y dejar lista una orden",
-      "description": "Registrar la reparación autorizada y marcar la orden como lista para entrega."
-    },
-    {
-      "authorityId": "consultarYresponderPresupuesto",
-      "title": "Consultar y responder presupuestos",
-      "description": "Consultar el diagnóstico y presupuesto de las órdenes propias y aprobarlos o rechazarlos."
-    }
-  ],
   "grants": [
     {
       "grantId": "recepcionGestionaRecepcionYentrega",
-      "authorityRef": "gestionarRecepcionYentrega",
+      "actorRef": "recepcionista",
+      "title": "Gestionar recepción y entrega",
+      "description": "Registrar la recepción de aparatos y completar su entrega al cliente.",
       "entityRefs": [
         "OrdenServicio",
         "Cliente",
@@ -63,12 +43,13 @@
           "EntregaAparato.id",
           "EntregaAparato.fechaEntrega"
         ]
-      },
-      "actorRef": "recepcionista"
+      }
     },
     {
       "grantId": "tecnicoAnalizaYpresupuesta",
-      "authorityRef": "analizarYpresupuestar",
+      "actorRef": "tecnico",
+      "title": "Analizar y presupuestar órdenes",
+      "description": "Analizar aparatos recibidos y registrar diagnósticos, piezas y presupuestos.",
       "entityRefs": [
         "OrdenServicio",
         "Aparato",
@@ -113,12 +94,13 @@
           "Presupuesto.piezasNecesarias",
           "Presupuesto.status"
         ]
-      },
-      "actorRef": "tecnico"
+      }
     },
     {
       "grantId": "tecnicoReparaOrden",
-      "authorityRef": "repararOrden",
+      "actorRef": "tecnico",
+      "title": "Reparar y dejar lista una orden",
+      "description": "Registrar la reparación autorizada y marcar la orden como lista para entrega.",
       "entityRefs": [
         "OrdenServicio",
         "Aparato",
@@ -157,12 +139,13 @@
           "Reparacion.id",
           "Reparacion.detalleTrabajo"
         ]
-      },
-      "actorRef": "tecnico"
+      }
     },
     {
       "grantId": "clienteConsultaYrespondePresupuesto",
-      "authorityRef": "consultarYresponderPresupuesto",
+      "actorRef": "cliente",
+      "title": "Consultar y responder presupuestos",
+      "description": "Consultar el diagnóstico y presupuesto de las órdenes propias y aprobarlos o rechazarlos.",
       "entityRefs": [
         "OrdenServicio"
       ],
@@ -189,8 +172,7 @@
         "deniedFields": [
           "Presupuesto.piezasNecesarias"
         ]
-      },
-      "actorRef": "cliente"
+      }
     }
   ]
 }

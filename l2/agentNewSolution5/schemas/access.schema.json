@@ -1,21 +1,15 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/access/2026-09-10-ns5-access-v2",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/access/2026-09-12-ns5-access-v3",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schemaVersion",
-    "authorities",
     "grants"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-access-v2" },
+    "schemaVersion": { "type": "string", "const": "2026-09-12-ns5-access-v3" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-    "authorities": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/authority" }
-    },
     "grants": {
       "type": "array",
       "minItems": 1,
@@ -23,24 +17,15 @@
     }
   },
   "$defs": {
-    "authority": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["authorityId", "title", "description"],
-      "properties": {
-        "authorityId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "title": { "type": "string", "minLength": 1 },
-        "description": { "type": "string", "minLength": 1 }
-      }
-    },
     "grant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["grantId", "actorRef", "authorityRef", "entityRefs", "dataScope", "disclosure"],
+      "required": ["grantId", "actorRef", "title", "description", "entityRefs", "dataScope", "disclosure"],
       "properties": {
         "grantId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "authorityRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
         "entityRefs": {
           "type": "array",
           "minItems": 1,

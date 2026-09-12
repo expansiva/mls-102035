@@ -5,7 +5,6 @@ import { resolvableFieldIds } from '/_102035_/l2/solution/lib.js';
 import {
   NS5_ACCESS_SCHEMA_VERSION,
   type Ns5AccessArtifact,
-  type Ns5AccessAuthority,
   type Ns5AccessDataScope,
   type Ns5AccessGrant,
   type Ns5ModuleActor,
@@ -26,7 +25,6 @@ export type Ns5AccessScopeMode = typeof NS5_ACCESS_SCOPE_MODES[number];
 export type Ns5AccessDisclosureMode = typeof NS5_ACCESS_DISCLOSURE_MODES[number];
 
 export interface Ns5AccessNormalization {
-  authorities: Ns5AccessAuthority[];
   grants: Ns5AccessGrant[];
 }
 
@@ -75,7 +73,7 @@ export function buildNs5AccessTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Access',
-    'Submit authorities and grants by actorRef. Do not emit actors, profiles, hops, landing or realization. Disclosure names Entity.field; own/assigned/related name the person anchorEntity.',
+    'Submit grants by actorRef with title and description. Do not emit actors, profiles, authorities, hops, landing or realization. Disclosure names Entity.field; own/assigned/related name the person anchorEntity.',
     schema,
   );
 }
@@ -83,7 +81,6 @@ export function buildNs5AccessTool(
 export function normalizeNs5AccessPayload(value: unknown): Ns5AccessNormalization {
   const root = record(value);
   return {
-    authorities: list(root.authorities).map(normalizeAuthority).filter(item => item.authorityId || item.title),
     grants: list(root.grants).map(normalizeGrant).filter(grant => grant.grantId || grant.actorRef),
   };
 }
@@ -173,14 +170,12 @@ function coversAllResolvable(list: readonly string[], total: readonly string[]):
 export function buildNs5AccessArtifact(
   moduleName: string,
   actors: Ns5ModuleActor[],
-  authorities: Ns5AccessAuthority[],
   grants: Ns5AccessGrant[],
 ): Ns5AccessArtifact {
   return {
     schemaVersion: NS5_ACCESS_SCHEMA_VERSION,
     moduleName,
     actors,
-    authorities,
     grants,
   };
 }
@@ -314,15 +309,6 @@ function requiredEdges(relationships: readonly Ns5AccessRelationshipView[]): Map
   return edges;
 }
 
-function normalizeAuthority(value: unknown): Ns5AccessAuthority {
-  const source = record(value);
-  return {
-    authorityId: memberId(text(source.authorityId) || text(source.authorityRef) || text(source.id), ''),
-    title: text(source.title),
-    description: text(source.description),
-  };
-}
-
 function normalizeGrant(value: unknown): Ns5AccessGrant {
   const source = record(value);
   const scope = record(source.dataScope);
@@ -336,7 +322,8 @@ function normalizeGrant(value: unknown): Ns5AccessGrant {
   const next: Ns5AccessGrant = {
     grantId: memberId(text(source.grantId) || text(source.id), ''),
     actorRef: memberId(text(source.actorRef) || text(source.profileRef), ''),
-    authorityRef: memberId(text(source.authorityRef) || text(source.authorityId), ''),
+    title: text(source.title),
+    description: text(source.description),
     entityRefs: unique(strings(source.entityRefs).map(entityId).filter(Boolean)),
     dataScope,
     disclosure: {
