@@ -92,7 +92,8 @@ export type Ns5OntologyFormNormalizationKind =
   | 'dropUniqueKeyIdField'
   | 'dropValueObjectTableAttrs'
   | 'liftedFields'
-  | 'addTransitionBy';
+  | 'addTransitionBy'
+  | 'replacePlanModuleDetails';
 
 /** Cited `transitionRef` exists but `by` omitted the journey actor; normalize adds it. */
 export const NS5_ONTOLOGY_TRANSITION_BY_ADDED = 'addTransitionBy' as const;
@@ -316,7 +317,9 @@ export interface Ns5AggregateLiftResult {
  * drop them from the plan. Extra fields besides idField are reading parameters —
  * discarded and recorded on `normalizations[]`. A relationship to another entity
  * is not lifted (the gate stays as the net). Two lifted entities claiming the same
- * details key is an error; a key already on `moduleDetails` is kept, not overwritten.
+ * details key is an error. When a panel is lifted, it is the source: its keys
+ * replace the same keys on `plan.moduleDetails`; plan keys the panel does not
+ * name are kept.
  */
 export function liftNs5AggregateOnlyEntities(
   plan: Ns5OntologyPlanDraft,
@@ -329,6 +332,7 @@ export function liftNs5AggregateOnlyEntities(
   for (const key of Object.keys(merged)) origin.set(key, 'moduleDetails');
   const toRemove = new Set<string>();
   const liftedFields: Ns5OntologyFormNormalization[] = [];
+  const replacedPlanKeys: Ns5OntologyFormNormalization[] = [];
   const issues: Ns5AggregateLiftIssue[] = [];
 
   for (const entity of plan.entities) {
@@ -346,6 +350,7 @@ export function liftNs5AggregateOnlyEntities(
     if (plan.relationships.some(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId)) {
       continue;
     }
+    const replaced: string[] = [];
     for (const [key, entry] of Object.entries(detail.details || {})) {
       const previous = origin.get(key);
       if (previous && previous !== 'moduleDetails') {
@@ -355,10 +360,18 @@ export function liftNs5AggregateOnlyEntities(
           message: `Aggregate '${key}' is defined on ${previous}.details and ${entity.entityId}.details.`,
           path: `entities.${entity.entityId}.details.${key}`,
         });
-      } else if (!previous) {
+      } else {
+        if (previous === 'moduleDetails') replaced.push(key);
         merged[key] = entry;
         origin.set(key, entity.entityId);
       }
+    }
+    if (replaced.length) {
+      replacedPlanKeys.push({
+        kind: 'replacePlanModuleDetails',
+        entityId: entity.entityId,
+        detail: replaced.join(', '),
+      });
     }
     const extra = (detail.fields || [])
       .map(field => field.fieldId)
@@ -381,7 +394,7 @@ export function liftNs5AggregateOnlyEntities(
   }
 
   const liftedEntityIds = uniqueIds([...(plan.liftedAggregateEntities || []), ...toRemove]);
-  const nextNormalizations = [...(plan.normalizations || []), ...liftedFields];
+  const nextNormalizations = [...(plan.normalizations || []), ...replacedPlanKeys, ...liftedFields];
   const nextPlan: Ns5OntologyPlanDraft = {
     ...plan,
     entities: plan.entities.filter(entity => !toRemove.has(entity.entityId)),
@@ -661,8 +674,9 @@ export interface Ns5LifecycleJourneyView {
 }
 
 /**
- * Structural signal for one entity: a second `act` (after the first create) requires
- * declared transitions; a `decide` requires a branching origin. ontology30 uses this
+ * Structural signal for one entity: an `act` with `effect: 'transition'` requires
+ * declared transitions; a `decide` requires a branching origin. `create` / `update`
+ * do not count (ns5_33: frota relote2, 2 create + 1 update). ontology30 uses this
  * to demand lifecycle; finalize80 I2 uses it only for the decide branching check.
  */
 export interface Ns5LifecycleSignal {
@@ -674,16 +688,16 @@ export function collectNs5LifecycleSignal(
   journeys: ReadonlyArray<Ns5LifecycleJourneyView>,
   entityId: string,
 ): Ns5LifecycleSignal {
-  let acts = 0;
+  let requiresTransitions = false;
   let requiresBranching = false;
   for (const journey of journeys) {
     for (const step of journey.business.steps) {
       if (step.entity !== entityId) continue;
-      if (step.kind === 'act') acts += 1;
+      if (step.kind === 'act' && step.effect === 'transition') requiresTransitions = true;
       else if (step.kind === 'decide') requiresBranching = true;
     }
   }
-  return { requiresTransitions: acts >= 2, requiresBranching };
+  return { requiresTransitions, requiresBranching };
 }
 
 export function ns5LifecycleHasBranchingOrigin(
@@ -907,8 +921,8 @@ function normalizePlanEntity(
   const kind = text(source.kind) as Ns5OntologyKind;
   const entityId = normalizeEntityId(source.entityId);
   // The model fills mdmSubtype and mutability on every entity. mdmSubtype is a role on
-  // kind mdm; appendOnly contradicts mdm. A second act or a decide also contradicts
-  // appendOnly (the plan freezes mutability). Drop them here — same class as journeys20 handoffTo.
+  // kind mdm; appendOnly contradicts mdm. An act with effect:transition or a decide also
+  // contradicts appendOnly (the plan freezes mutability). Drop them here — same class as journeys20 handoffTo.
   const mdmSubtype = kind === 'mdm' ? text(source.mdmSubtype) : '';
   const signal = collectNs5LifecycleSignal(journeys, entityId);
   const mutability = kind !== 'mdm'

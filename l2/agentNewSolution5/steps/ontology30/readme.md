@@ -50,12 +50,13 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - `unique` on `storage.idField` and `uniqueKeys` that contain the idField are dropped
   (`dropUniqueIdField` / `dropUniqueKeyIdField`). `NS5_ONTOLOGY_UNIQUE_ID_FIELD` is
   gone. `NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD` stays as the skip-normalize net.
-- Journeys that include a second `act` or a `decide` on an entity require `lifecycleStates` /
-  `transitions` (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`). Normalize drops `appendOnly` on that entity
-  before the gate (mutability is frozen on the plan). The gate still rejects `appendOnly` if
-  normalize is skipped. A `decide` also needs two transitions from the same origin
-  (`NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED`). Same predicate as finalize80 I2
-  (`collectNs5LifecycleSignal`); I2 checks a cited `transitionRef` (`effect: 'transition'`, `by` and reachable `from`).
+- Journeys that include an `act` with `effect: 'transition'` or a `decide` on an entity require
+  `lifecycleStates` / `transitions` (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`). `create` / `update` do
+  not count. Normalize drops `appendOnly` on that entity before the gate (mutability is frozen
+  on the plan). The gate still rejects `appendOnly` if normalize is skipped. A `decide` also
+  needs two transitions from the same origin (`NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED`). Same
+  predicate as finalize80 I2 (`collectNs5LifecycleSignal`); I2 checks a cited `transitionRef`
+  (`effect: 'transition'`, `by` and reachable `from`).
 - A journey `transitionRef` (`effect: 'transition'`) on this entity must be a declared `transitionId`
   (`NS5_ONTOLOGY_TRANSITION_REF_MISSING`). Normalize adds the journey actor to `by` when
   the transition exists without it (`addTransitionBy`). `effect: 'create'` on mdm is valid.
@@ -90,12 +91,14 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
   `liftedAggregateEntities[]` on the ontology30 `pipeline.json` step so finalize80 I1
   can accept journey refs to them. A relationship to another entity is not lifted —
   the gate remains the net. Two entities claiming the same details key fail
-  `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION`.
+  `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION`. When a panel is lifted, it replaces the
+  same keys on `plan.moduleDetails`; plan keys the panel does not name stay.
+  `normalizations[]` and `liftedFields` are stored on `pipeline.json` `ontology30`.
 - MDM `fields[]` is the module namespace and may be empty. Identity is `storage.idField`.
 - Do not add prompt examples of a domain. Placeholders (`<Person>`, `<Entity>`) are context.
 - `mdmSubtype` is only on `kind: mdm`. `mutability: appendOnly` is never on mdm. The model fills
   both on every entity; normalize drops them before the gate. The gate still fails a real mdm
   entity that lacks `mdmSubtype`.
-- Normalize also drops `appendOnly` when `collectNs5LifecycleSignal` is on (second `act` or a
-  `decide`). Prompt plus gate feedback did not stop the model from keeping the label. The gate
+- Normalize also drops `appendOnly` when `collectNs5LifecycleSignal` is on (`effect: 'transition'`
+  or a `decide`). Prompt plus gate feedback did not stop the model from keeping the label. The gate
   still fails if someone skips normalize.

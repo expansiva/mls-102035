@@ -479,6 +479,9 @@ void test('afterPrompt applies form normalizations before the gate and records t
   const source = readFileSync(path.join(HERE, 'agentNs5Access.ts'), 'utf8');
   assert.match(source, /applyNs5AccessFormNormalizations/);
   assert.match(source, /normalizations/);
+  const persist = source.slice(source.indexOf('async function persistArtifacts'));
+  assert.match(persist, /normalizations/);
+  assert.match(persist, /writeStepState/);
 });
 
 void test('human prompt carries source request, actors, journeys, fields, party and required relationships', () => {

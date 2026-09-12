@@ -178,7 +178,7 @@ export async function afterNs5JourneysPromptStep(
     }
 
     const dropped = applyNs5InferredActorDrop(journeys, actors);
-    const artifactPaths = await persistArtifacts(moduleName, dropped, pipeline);
+    const artifactPaths = await persistArtifacts(moduleName, dropped, pipeline, normalizations);
     return [
       doneAnchor(context, mutationParent, moduleName, artifactPaths),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `journeys20 approved: ${artifactPaths.join(', ')}`),
@@ -202,6 +202,7 @@ async function persistArtifacts(
     droppedActorIds: string[];
   },
   pipeline: Ns5PipelineState,
+  normalizations: { kind: string; detail: string; journeyId?: string; stepId?: string }[] = [],
 ): Promise<string[]> {
   const artifacts: Ns5JourneyArtifact[] = [];
   for (const draft of dropped.journeys) artifacts.push(await hashNs5Journey(draft));
@@ -225,6 +226,7 @@ async function persistArtifacts(
     systemDecisions: dropped.systemDecisions,
     droppedActors: dropped.droppedActorIds,
     removedOrphans,
+    ...(normalizations.length ? { normalizations } : {}),
   });
   await writeStepState(pipeline, {
     status: 'approved',
@@ -232,6 +234,7 @@ async function persistArtifacts(
     artifactPaths,
     decideStepCount: countNs5DecideSteps(dropped.journeys),
     droppedActors: dropped.droppedActorIds,
+    ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPaths;

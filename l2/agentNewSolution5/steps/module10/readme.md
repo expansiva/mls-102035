@@ -20,6 +20,8 @@ state (`readNs5Actors`). No features, no strategy, no `scope`.
 - Ids are unique lowerCamel. At least one `internal` actor.
 - `defaultLanguage` belongs to `productLanguages`.
 - Product languages are only those the request cites.
+- `pt` is rewritten to `pt-BR` (BCP-47 with region). `en` is not rewritten to `en-US`.
+  Recorded on `pipeline.json` `module10.normalizations[]` (`ptToPtBR`).
 - `origin: inferred` on an external actor is recorded here; `journeys20` drops it when it has no
   exclusive step.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.

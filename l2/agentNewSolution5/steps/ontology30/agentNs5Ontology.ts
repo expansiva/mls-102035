@@ -603,12 +603,18 @@ async function persistArtifacts(
     );
   }
   const liftedAggregateEntities = plan.liftedAggregateEntities || [];
+  const normalizations = plan.normalizations || [];
+  const liftedFields = normalizations
+    .filter(item => item.kind === 'liftedFields')
+    .map(item => ({ entityId: item.entityId, detail: item.detail }));
   await writeJson(draftFile(moduleName, 'ontology30'), {
     plan,
     entities: assembled.entities,
     relationships: assembled.index.relationships,
     removedOrphans,
     liftedAggregateEntities,
+    ...(normalizations.length ? { normalizations } : {}),
+    ...(liftedFields.length ? { liftedFields } : {}),
   });
   await writeStepState(pipeline, {
     status: 'approved',
@@ -616,6 +622,8 @@ async function persistArtifacts(
     artifactPaths,
     uncitedEntities,
     liftedAggregateEntities,
+    ...(normalizations.length ? { normalizations } : {}),
+    ...(liftedFields.length ? { liftedFields } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPaths;

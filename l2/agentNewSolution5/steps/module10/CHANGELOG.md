@@ -1,5 +1,10 @@
 # module10
 
+## 2026-09-12
+
+- `pt` → `pt-BR` on `userLanguage` / `productLanguages` / `defaultLanguage`. `en` stays
+  `en`. Recorded as `ptToPtBR` on `pipeline.json` `module10.normalizations[]`.
+
 ## 2026-09-11
 
 - Actors go to `pipeline.json` `module10.actors`, not `module.defs.ts`. `scope` is gone.

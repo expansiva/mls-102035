@@ -476,8 +476,8 @@ function validateEntity(
   }
 
   // Plan freezes mutability. A later entity pass cannot drop appendOnly, so the plan
-  // must not freeze it when journeys need transitions. Lifecycle states do not exist
-  // on the plan — that half of the check runs only on the entity/bindings pass.
+  // must not freeze it when journeys have a transition act or a decide. Lifecycle
+  // states do not exist on the plan — that half of the check runs only on the entity/bindings pass.
   if (
     planOverview
     && entity.kind !== 'mdm'
@@ -984,7 +984,7 @@ function validateMdmEndpointFields(
 
 function lifecycleRequiredMessage(entityId: string, signal: Ns5LifecycleSignal, stage: 'plan' | 'entity'): string {
   const reasons: string[] = [];
-  if (signal.requiresTransitions) reasons.push('a repeated act');
+  if (signal.requiresTransitions) reasons.push('a transition act');
   if (signal.requiresBranching) reasons.push('a decide');
   const reason = reasons.join(' and ');
   if (stage === 'plan') {

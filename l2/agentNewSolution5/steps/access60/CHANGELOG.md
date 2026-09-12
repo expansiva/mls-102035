@@ -8,7 +8,7 @@
 - CRUD grant: `writer: 'crud'` (was `maintenance: 'crud'`). `writer: 'inbound'` does not need a crud grant.
 - Artifact is actors + grants (`-access-v3`). `authorities` gone; the grant carries
   `title`/`description`. Gate: unique `grantId`, required `title`. ns5_12 form
-  normalizations unchanged.
+  normalizations unchanged; they persist on `pipeline.json` `access60.normalizations[]`.
 
 ## 2026-09-11
 

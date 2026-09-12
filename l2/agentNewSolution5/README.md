@@ -5,10 +5,12 @@ finalize. Does not emit derived copies (operations, workspaces, usecases, landin
 never dispatches agentChangeBackend or agentChangeFrontend.
 
 `module10`, `journeys20`, `ontology30`, `rules40`, `workflows50`, `access60`, `integration70`
-and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle, organization
-registry, l5 config/project.json, `pipeline.status: complete`. It never dispatches CB or CF.
-Gate tests run on the two complete-run fixtures plus live access of the three measured
-modules; `replayRealRuns.test.ts` replays `normalize → gate → writeDefs` against those defs.
+and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle I1–I13,
+organization registry, l5 config/project.json, `pipeline.status: complete`. It never
+dispatches CB or CF. Gate tests run on the two complete-run fixtures plus live access of
+the measured modules; `replayRealRuns.test.ts` replays `normalize → gate → writeDefs`
+against those defs. The 12 leva modules are listed in `NS5_LEVA_MODULES` (byte copies
+after the final leva).
 
 ## Invocation
 
@@ -49,11 +51,9 @@ Types live in `/_102035_/l2/solution/types.ts`. Shared pure helpers are re-expor
 `docs/flow.json` is the contract: `module10 → journeys20 → ontology30 → {rules40, workflows50, access60} → integration70 → finalize80`.
 `finalize80` writes `pipeline/finalize-report.json` and `pipeline/runNN_newsolution5.json`.
 Oracle errors fail the run; warnings do not. The step never dispatches CB or CF.
-Rules are `{ruleId, description}`. Ontology v2: `unique`/`uniqueKeys`, typed `details`,
-relationship `description`, `enum[{value,title}]`, intrinsic `constraints`. Module aggregates
-live in `module.details`. After
-the ontology fan-out, an aggregate-only entity is lifted into `module.details` and
-not written as `.defs.ts`. Lifted ids are stored on `pipeline.json`
-`ontology30.liftedAggregateEntities`; finalize80 I1 accepts a journey ref to one
-when `module.details` still has keys. A locate→inspect journey is valid. The MDM
-skill is prepended to module10, ontology30 and access60 system prompts.
+
+`pt` → `pt-BR` (`en` stays `en`). An `act` declares `effect: 'create' | 'update' | 'transition'`;
+lifecycle is required only for `transition` or a `decide`. `writer` is `'journey' | 'crud' |
+'inbound'`. Workflows carry a process `trigger` and stage `human`/`mechanical`/`llm`/`wait`.
+A lifted panel replaces the same keys on `module.details`. `normalizations[]` and
+`liftedFields` persist on `pipeline.json` `steps.<step>`.

@@ -2,6 +2,13 @@
 
 ## 2026-09-12
 
+- Lifecycle signal by `effect` (ns5_33): `requiresTransitions` is an `act` with
+  `effect: 'transition'`; `create`/`update` do not count. `pt` → `pt-BR` only.
+  Lifted panel replaces the same `module.details` keys. `normalizations[]` /
+  `liftedFields` persist on `pipeline.json` `steps.<step>`. Replay lists the 12
+  leva modules (byte copies after the final leva).
+
+
 - Internal actor with own/team/assigned scope is a Person role (mdm skill); access60
   `NS5_ACCESS_CUSTOM_HAS_ANCHOR` / `NS5_ACCESS_CUSTOM_WITHOUT_PERSON`; ontology30 plan
   injects personal-scope actors as data; finalize80 I13 counts remaining `custom` grants.

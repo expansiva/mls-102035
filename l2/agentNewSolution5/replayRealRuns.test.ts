@@ -13,7 +13,7 @@ import {
   loadNs5Module,
   loadNs5OntologyIndex,
   loadNs5OracleSources,
-  NS5_REAL_MODULES,
+  ns5ReplayModules,
   stripNs5Hashes,
   stripNs5HashSource,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
@@ -113,7 +113,7 @@ function workflowJourneyView(journeys: Ns5JourneyArtifact[]) {
   }));
 }
 
-for (const moduleName of NS5_REAL_MODULES) {
+for (const moduleName of ns5ReplayModules()) {
   void test(`${moduleName} module10 draft replays to module.defs.ts`, () => {
     const draft = loadNs5FixtureJson<Ns5ModuleArtifact & { actors: unknown[] }>('steps/module10/fixtures', `${moduleName}-draft.json`);
     const { artifact, actors } = normalizeNs5ModuleArtifact(draft, {

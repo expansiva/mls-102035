@@ -94,7 +94,9 @@ the user types.
 
 Values derived from other data (a total, a balance, a due situation) are not fields and not entities:
 they are `details: { <name>: { type, description } }` on the entity that owns them (or on the module,
-for organization-wide aggregates). The backend computes them; a rule may cite them.
+for organization-wide aggregates). A panel entity that only stores those aggregates is lifted into
+`module.details`; the panel is the source of overlapping keys. The backend computes them; a rule may
+cite them.
 
 ## What the MDM already answers (do not model it in the module)
 

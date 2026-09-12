@@ -2,6 +2,14 @@
 
 ## 2026-09-12
 
+- `collectNs5LifecycleSignal.requiresTransitions` is an `act` with `effect: 'transition'`
+  (not a count of `act`s). `create`/`update` do not demand lifecycle. Frota relote2
+  `OrdemManutencao` (2 create + 1 update) is the fixture.
+- Lifted panel replaces the same keys on `plan.moduleDetails`; plan-only keys stay
+  (`replacePlanModuleDetails`). `normalizations[]` and `liftedFields` are stored on
+  `pipeline.json` `ontology30`.
+
+
 - Plan prompt injects internal actors whose journeys name a personal scope
   (`próprio|própria|minhas|seus|sua equipe|atribuído`) as data
   ("Actors whose scope is personal"); the model decides the Person role.

@@ -218,7 +218,7 @@ export async function afterNs5AccessPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, actors, grants, pipeline);
+    const artifactPath = await persistArtifacts(moduleName, actors, grants, pipeline, normalizations);
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `access60 approved: ${artifactPath}`),
@@ -238,14 +238,19 @@ async function persistArtifacts(
   actors: Ns5ModuleActor[],
   grants: Ns5AccessGrant[],
   pipeline: Ns5PipelineState,
+  normalizations: { kind: string; detail: string; grantId?: string }[] = [],
 ): Promise<string> {
   const artifact = buildNs5AccessArtifact(moduleName, actors, grants);
   const artifactPath = await writeDefs(accessFile(moduleName), `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
-  await writeJson(draftFile(moduleName, 'access60'), artifact);
+  await writeJson(draftFile(moduleName, 'access60'), {
+    ...artifact,
+    ...(normalizations.length ? { normalizations } : {}),
+  });
   await writeStepState(pipeline, {
     status: 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;

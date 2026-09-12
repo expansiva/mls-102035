@@ -487,6 +487,21 @@ export interface Ns5IntegrationArtifact {
 
 export type Ns5PipelineStatus = 'inProgress' | 'awaitingStep' | 'complete' | 'failed';
 
+/** Form change recorded on `pipeline.json` `steps.<step>`. Shape is step-specific. */
+export interface Ns5PipelineNormalization {
+  kind: string;
+  detail: string;
+  entityId?: string;
+  grantId?: string;
+  journeyId?: string;
+  stepId?: string;
+}
+
+export interface Ns5PipelineLiftedField {
+  entityId: string;
+  detail: string;
+}
+
 export interface Ns5PipelineStepState {
   /** Monotonic: approved is never overwritten by running/failed. */
   status: 'running' | 'approved' | 'failed';
@@ -505,6 +520,16 @@ export interface Ns5PipelineStepState {
    * `module.details` still has the corresponding aggregate keys.
    */
   liftedAggregateEntities?: string[];
+  /**
+   * Form changes this step applied (pt→pt-BR, dropCrud, liftedFields, …).
+   * Same records as the step draft `normalizations[]`. Fase 2 reads this.
+   */
+  normalizations?: Ns5PipelineNormalization[];
+  /**
+   * ontology30: extra fields discarded when a panel entity was lifted
+   * (`normalizations[].kind === 'liftedFields'`).
+   */
+  liftedFields?: Ns5PipelineLiftedField[];
   /** module10: actors born by the step. Later steps read them via `readNs5Actors`. */
   actors?: Ns5ModuleActor[];
   /** journeys20: actorIds dropped as inferred-external without an exclusive step. */

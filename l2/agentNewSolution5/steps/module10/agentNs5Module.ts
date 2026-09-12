@@ -140,7 +140,7 @@ export async function afterNs5ModulePromptStep(
     const sourcePrompt = await readSourcePrompt(context, moduleName);
     const invocation = invocationOf(context, moduleName ? await readPipeline(moduleName) : null);
     const fixedModuleName = invocation.module;
-    const { artifact, actors, i18nWarnings } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
+    const { artifact, actors, i18nWarnings, normalizations } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
     moduleName = artifact.moduleName;
     if (!moduleTokenOk(moduleName)) throw new Error('moduleName must be lowerCamel.');
     await assertModuleWritable(moduleName, invocation.rebuildAll);
@@ -150,7 +150,11 @@ export async function afterNs5ModulePromptStep(
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'module10'), { ...artifact, actors });
+    const draftPath = await writeJson(draftFile(moduleName, 'module10'), {
+      ...artifact,
+      actors,
+      ...(normalizations.length ? { normalizations } : {}),
+    });
     const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName, actors });
     if (!gate.ok) {
       const feedback = formatNs5ModuleGate(gate.issues);
@@ -169,7 +173,7 @@ export async function afterNs5ModulePromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation);
+    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation, normalizations);
     const warningNote = i18nWarnings.map(item => `\nwarning: ${item}`).join('');
     return [
       doneAnchor(context, mutationParent, moduleName, artifactPath),
@@ -190,6 +194,7 @@ async function persistArtifact(
   artifact: Ns5ModuleArtifact,
   actors: Ns5ModuleActor[],
   invocation: Ns5Invocation,
+  normalizations: { kind: string; detail: string }[],
 ): Promise<string> {
   await assertModuleWritable(moduleName, invocation.rebuildAll);
   const artifactPath = await writeDefs(moduleFile(moduleName), `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
@@ -199,6 +204,7 @@ async function persistArtifact(
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
     actors,
+    ...(normalizations.length ? { normalizations } : {}),
     ...(invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;

@@ -77,6 +77,40 @@ void test('real module10 drafts of both runs pass the gate', () => {
   }
 });
 
+void test('normalize rewrites pt to pt-BR and leaves en alone', () => {
+  const portuguese = normalizeNs5ModuleArtifact(validPayload({
+    userLanguage: 'pt',
+    productLanguages: ['pt'],
+    defaultLanguage: 'pt',
+  }), { sourcePrompt: SOURCE, fixedModuleName: 'comandaRestaurante5' });
+  assert.equal(portuguese.artifact.userLanguage, 'pt-BR');
+  assert.deepEqual(portuguese.artifact.productLanguages, ['pt-BR']);
+  assert.equal(portuguese.artifact.defaultLanguage, 'pt-BR');
+  assert.ok(portuguese.normalizations.some(item => item.kind === 'ptToPtBR'));
+  const mixed = normalizeNs5ModuleArtifact(validPayload({
+    userLanguage: 'pt',
+    productLanguages: ['pt', 'pt-BR'],
+    defaultLanguage: 'pt',
+  }), { sourcePrompt: SOURCE, fixedModuleName: 'comandaRestaurante5' });
+  assert.deepEqual(mixed.artifact.productLanguages, ['pt-BR']);
+  const english = normalizeNs5ModuleArtifact(validPayload({
+    userLanguage: 'en',
+    productLanguages: ['en'],
+    defaultLanguage: 'en',
+    sourcePrompt: 'module in english. profiles: waiter and cashier.',
+  }), { sourcePrompt: 'module in english. profiles: waiter and cashier.', fixedModuleName: 'hiringPipeline' });
+  assert.equal(english.artifact.userLanguage, 'en');
+  assert.deepEqual(english.artifact.productLanguages, ['en']);
+  assert.equal(english.normalizations.some(item => item.kind === 'ptToPtBR'), false);
+});
+
+void test('persistArtifact writes language normalizations on pipeline.json module10', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const persist = source.slice(source.indexOf('async function persistArtifact'));
+  assert.match(persist, /normalizations/);
+  assert.match(persist, /writeStepState/);
+});
+
 void test('normalize + gate accept a valid payload', () => {
   const { artifact, actors, i18nWarnings } = normalizeNs5ModuleArtifact(validPayload(), {
     sourcePrompt: SOURCE,

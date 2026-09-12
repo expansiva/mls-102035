@@ -20,10 +20,19 @@ export interface Ns5ModuleNormalizeOptions {
   fixedModuleName?: string;
 }
 
+export type Ns5ModuleFormNormalizationKind = 'ptToPtBR';
+
+/** Deterministic language rewrite. Only `pt` → `pt-BR` (measured); `en` stays `en`. */
+export interface Ns5ModuleFormNormalization {
+  kind: Ns5ModuleFormNormalizationKind;
+  detail: string;
+}
+
 export interface Ns5ModuleNormalization {
   artifact: Ns5ModuleArtifact;
   actors: Ns5ModuleActor[];
   i18nWarnings: string[];
+  normalizations: Ns5ModuleFormNormalization[];
 }
 
 export function buildNs5ModuleTool(
@@ -39,14 +48,19 @@ export function normalizeNs5ModuleArtifact(
 ): Ns5ModuleNormalization {
   const root = record(value);
   const sourcePrompt = text(options.sourcePrompt) || text(root.sourcePrompt);
-  const userLanguage = normalizeNs4Languages(root.userLanguage || 'en')[0];
-  const requested = normalizeNs4Languages(root.productLanguages || userLanguage, userLanguage);
+  const userLanguageRaw = normalizeNs4Languages(root.userLanguage || 'en')[0];
+  const requested = normalizeNs4Languages(root.productLanguages || userLanguageRaw, userLanguageRaw);
   const i18nWarnings: string[] = [];
-  const languages = filterLanguagesByProvenance(requested, userLanguage, sourcePrompt, i18nWarnings);
-  const declaredDefault = normalizeNs4Languages(root.defaultLanguage || languages[0], languages[0])[0];
-  const defaultLanguage = languages.some(language => sameLanguage(language, declaredDefault))
-    ? languages.find(language => sameLanguage(language, declaredDefault)) || languages[0]
-    : languages[0];
+  const languagesRaw = filterLanguagesByProvenance(requested, userLanguageRaw, sourcePrompt, i18nWarnings);
+  const declaredDefault = normalizeNs4Languages(root.defaultLanguage || languagesRaw[0], languagesRaw[0])[0];
+  const defaultRaw = languagesRaw.some(language => sameLanguage(language, declaredDefault))
+    ? languagesRaw.find(language => sameLanguage(language, declaredDefault)) || languagesRaw[0]
+    : languagesRaw[0];
+  const { userLanguage, productLanguages, defaultLanguage, normalizations } = canonicalizeNs5Languages(
+    userLanguageRaw,
+    languagesRaw,
+    defaultRaw,
+  );
   const proposedName = normalizeModuleName(text(root.moduleName) || options.fixedModuleName || sourcePrompt, 'newModule');
   const moduleName = options.fixedModuleName || proposedName;
   const actors = list(root.actors).map((item, index) => normalizeActor(item, index)).filter(actor => actor.title);
@@ -56,12 +70,60 @@ export function normalizeNs5ModuleArtifact(
       moduleName,
       title: text(root.title) || humanize(moduleName),
       userLanguage,
-      productLanguages: languages,
+      productLanguages,
       defaultLanguage,
       sourcePrompt,
     },
     actors,
     i18nWarnings,
+    normalizations,
+  };
+}
+
+/** Platform canonical for Portuguese is BCP-47 with region. `en` is not rewritten to `en-US`. */
+function canonicalizeNs5Language(tag: string): string {
+  return tag === 'pt' ? 'pt-BR' : tag;
+}
+
+function canonicalizeNs5Languages(
+  userLanguage: string,
+  productLanguages: string[],
+  defaultLanguage: string,
+): {
+  userLanguage: string;
+  productLanguages: string[];
+  defaultLanguage: string;
+  normalizations: Ns5ModuleFormNormalization[];
+} {
+  const replaced: string[] = [];
+  const map = (tag: string): string => {
+    const next = canonicalizeNs5Language(tag);
+    if (next !== tag) replaced.push(`${tag}→${next}`);
+    return next;
+  };
+  const seen = new Set<string>();
+  const languages: string[] = [];
+  for (const tag of productLanguages) {
+    const next = map(tag);
+    const key = next.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    languages.push(next);
+  }
+  const user = map(userLanguage);
+  if (!languages.some(language => sameLanguage(language, user))) languages.unshift(user);
+  const fallback = languages[0] || user;
+  const declared = map(defaultLanguage);
+  const normalizedDefault = languages.some(language => sameLanguage(language, declared))
+    ? languages.find(language => sameLanguage(language, declared)) || fallback
+    : fallback;
+  return {
+    userLanguage: user,
+    productLanguages: languages,
+    defaultLanguage: normalizedDefault,
+    normalizations: replaced.length
+      ? [{ kind: 'ptToPtBR', detail: [...new Set(replaced)].join(', ') }]
+      : [],
   };
 }
 

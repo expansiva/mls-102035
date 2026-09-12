@@ -311,10 +311,12 @@ void test('collectNs5LifecycleSignal is the I2 structural predicate', () => {
   const once = [journey('garcom', [step('openTab', 'act', 'Tab')])];
   assert.deepEqual(collectNs5LifecycleSignal(once, 'Tab'), { requiresTransitions: false, requiresBranching: false });
   const twice = [
-    journey('garcom', [step('openTab', 'act', 'Tab')]),
-    journey('caixa', [step('closeTab', 'act', 'Tab')]),
+    journey('garcom', [step('openTab', 'act', 'Tab', { effect: 'create' })]),
+    journey('caixa', [step('closeTab', 'act', 'Tab', { effect: 'update' })]),
   ];
-  assert.deepEqual(collectNs5LifecycleSignal(twice, 'Tab'), { requiresTransitions: true, requiresBranching: false });
+  assert.deepEqual(collectNs5LifecycleSignal(twice, 'Tab'), { requiresTransitions: false, requiresBranching: false });
+  const transition = [journey('caixa', [step('closeTab', 'act', 'Tab', { effect: 'transition', transitionRef: 'close' })])];
+  assert.deepEqual(collectNs5LifecycleSignal(transition, 'Tab'), { requiresTransitions: true, requiresBranching: false });
   const decide = [journey('caixa', [step('openTab', 'act', 'Tab'), step('choose', 'decide', 'Tab')])];
   assert.deepEqual(collectNs5LifecycleSignal(decide, 'Tab'), { requiresTransitions: false, requiresBranching: true });
   assert.equal(collectNs5LifecycleSignal(twice, 'Ghost').requiresTransitions, false);
@@ -322,37 +324,78 @@ void test('collectNs5LifecycleSignal is the I2 structural predicate', () => {
   assert.equal(ns5LifecycleHasBranchingOrigin({ transitions: [{ from: ['open'] }] }), false);
 });
 
-void test('repeated act with appendOnly empty lifecycle fails isolated entity validation', () => {
+void test('transition act with appendOnly empty lifecycle fails isolated entity validation', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Tickets',
     entities: [{ ...corePlan('Ticket', 'ticketId', 'ticketId'), mutability: 'appendOnly' }],
     relationships: [],
   }, 'comandaRestaurante5');
   const journeys = [
-    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
-    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+    journey('garcom', [step('openTicket', 'act', 'Ticket', { effect: 'create' })]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'accept' })]),
   ];
   const isolated = validateNs5OntologyEntity(plan, emptyCoreDetail('Ticket', 'ticketId'), ctx({ journeys }));
   assert.equal(isolated.ok, false);
-  assert.ok(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /repeated act/.test(issue.message)));
+  assert.ok(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /transition act/.test(issue.message)));
 
   const overview = validateNs5OntologyPlan(plan, ctx({ journeys }));
   assert.equal(overview.ok, false);
   assert.ok(overview.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED' && /appendOnly/.test(issue.message)));
 });
 
-void test('repeated act with lifecycle covering the second act passes isolated entity validation', () => {
+void test('create and update acts do not require lifecycle', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Fleet',
+    entities: [corePlan('OrdemManutencao', 'id', 'descricao')],
+    relationships: [],
+  }, 'manutencaoFrota');
+  const journeys = [
+    journey('gestor', [step('abrirOrdemDoAviso', 'act', 'OrdemManutencao', { effect: 'create' })]),
+    journey('gestor', [step('abrirOrdemDefeito', 'act', 'OrdemManutencao', { effect: 'create' })]),
+    journey('gestor', [step('registrarSaidaOrdem', 'act', 'OrdemManutencao', { effect: 'update' })]),
+  ];
+  const isolated = validateNs5OntologyEntity(plan, emptyCoreDetail('OrdemManutencao', 'id', 'descricao'), ctx({
+    moduleName: 'manutencaoFrota',
+    actors: [{ actorId: 'gestor', kind: 'internal', origin: 'named', title: 'Gestor', description: 'Opens orders.' }],
+    journeys,
+  }));
+  assert.equal(isolated.ok, true, isolated.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(isolated.issues.some(issue => issue.code === 'NS5_ONTOLOGY_LIFECYCLE_REQUIRED'), false);
+});
+
+void test('manutencaoFrota relote2 OrdemManutencao create+update without lifecycle passes', () => {
+  const fixture = loadNs5FixtureJson<{
+    plan: Ns5OntologyPlanEntity;
+    detail: Ns5OntologyEntityDraft;
+    journeys: ReturnType<typeof journey>[];
+  }>('steps/ontology30/fixtures', 'manutencaoFrota-relote2-ordem.json');
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Fleet',
+    entities: [fixture.plan],
+    relationships: [],
+  }, 'manutencaoFrota', fixture.journeys);
+  const signal = collectNs5LifecycleSignal(fixture.journeys, 'OrdemManutencao');
+  assert.deepEqual(signal, { requiresTransitions: false, requiresBranching: false });
+  const gate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(fixture.detail, 'OrdemManutencao'), ctx({
+    moduleName: 'manutencaoFrota',
+    actors: [{ actorId: 'gestor', kind: 'internal', origin: 'named', title: 'Gestor', description: 'Opens orders.' }],
+    journeys: fixture.journeys,
+  }));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('transition act with lifecycle covering the cited transition passes isolated entity validation', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Tickets',
     entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
     relationships: [],
   }, 'comandaRestaurante5');
   const journeys = [
-    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
-    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+    journey('garcom', [step('openTicket', 'act', 'Ticket', { effect: 'create' })]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'accept' })]),
   ];
   const detail = ticketLifecycle(false);
-  const gate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(detail, 'Ticket'), ctx({ journeys }));
+  const gate = validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(detail, 'Ticket', journeys), ctx({ journeys }));
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
@@ -736,10 +779,10 @@ void test('gate still requires mdmSubtype on mdm and rejects off-kind fields whe
   assert.ok(skippedGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_MDM_SUBTYPE_UNKNOWN' && /only valid on kind mdm/.test(issue.message)));
 });
 
-void test('normalize drops appendOnly when journeys repeat act or decide; plan then approves', () => {
+void test('normalize drops appendOnly when journeys have a transition act or decide; plan then approves', () => {
   const twice = [
-    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
-    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+    journey('garcom', [step('openTicket', 'act', 'Ticket', { effect: 'create' })]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'accept' })]),
   ];
   const twicePlan = normalizeNs5OntologyPlan({
     businessDomain: 'Tickets',
@@ -776,8 +819,8 @@ void test('normalize keeps appendOnly when a single act does not require lifecyc
 
 void test('gate still rejects appendOnly with lifecycle signal when normalize is skipped', () => {
   const journeys = [
-    journey('garcom', [step('openTicket', 'act', 'Ticket')]),
-    journey('caixa', [step('closeTicket', 'act', 'Ticket')]),
+    journey('garcom', [step('openTicket', 'act', 'Ticket', { effect: 'create' })]),
+    journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'accept' })]),
   ];
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Tickets',
@@ -1003,6 +1046,8 @@ void test('persistArtifacts reconciles ontology defs against the index', () => {
   assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'ontology'/);
   assert.match(persist, /removedOrphans/);
   assert.match(persist, /liftedAggregateEntities/);
+  assert.match(persist, /normalizations/);
+  assert.match(persist, /liftedFields/);
   assert.match(persist, /applyNs5PlatformServiceCandidateDecisions/);
   assert.match(persist, /writeStepState/);
 });
@@ -1394,13 +1439,28 @@ void test('lift moves PainelGerencial and PainelMensalidades into module.details
   const gerencialModule = applyNs5ModuleDetails(emptyModule(), gerencialLift.plan.moduleDetails);
   assert.deepEqual(gerencialModule.details?.quantidadeAlunosAtivos, painelGerencial.details?.quantidadeAlunosAtivos);
   const overlapping = liftNs5AggregateOnlyEntities(
-    { ...gerencialPlan, moduleDetails: { quantidadeAlunosAtivos: { type: 'integer', description: 'From the plan.' } } },
+    {
+      ...gerencialPlan,
+      moduleDetails: {
+        quantidadeAlunosAtivos: { type: 'integer', description: 'From the plan.' },
+        planOnlyKpi: { type: 'integer', description: 'Plan only.' },
+      },
+    },
     [emptyCoreDetail('Mensalidade', 'mensalidadeId'), painelGerencial],
     [generate, inspectPanel],
   );
   assert.deepEqual(overlapping.issues, []);
-  assert.deepEqual(overlapping.plan.moduleDetails?.quantidadeAlunosAtivos, { type: 'integer', description: 'From the plan.' });
+  assert.deepEqual(
+    overlapping.plan.moduleDetails?.quantidadeAlunosAtivos,
+    painelGerencial.details?.quantidadeAlunosAtivos,
+  );
+  assert.deepEqual(overlapping.plan.moduleDetails?.planOnlyKpi, { type: 'integer', description: 'Plan only.' });
   assert.ok(overlapping.plan.moduleDetails?.totalAreceberMes);
+  assert.ok(overlapping.plan.normalizations?.some(item => (
+    item.kind === 'replacePlanModuleDetails'
+    && item.entityId === 'PainelGerencial'
+    && /quantidadeAlunosAtivos/.test(item.detail)
+  )));
 
   const painelMensalidades = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
     'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelMensalidades-draft.json',

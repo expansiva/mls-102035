@@ -21,6 +21,12 @@ void test('composeNs5SystemPrompt starts with the MDM skill heading', () => {
   assert.match(composed, /You are module10/);
 });
 
+void test('mdm skill: a lifted panel is the source of overlapping module.details keys', () => {
+  const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
+  assert.match(skill, /lifted into\s+`module.details`/);
+  assert.match(skill, /the panel is the source of overlapping keys/);
+});
+
 void test('mdm skill: internal actor with personal scope is a Person role; assigned is a FK', () => {
   const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
   assert.match(skill, /internal actor whose\s+records are scoped to \*her own\*/);

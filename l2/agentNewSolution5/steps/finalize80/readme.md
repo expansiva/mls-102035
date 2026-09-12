@@ -39,7 +39,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 Errors fail the run with the report. Warnings only continue.
 
-ontology30 rejects `appendOnly` plus a repeated `act` or a `decide` first, with repair. I2 still
+ontology30 rejects `appendOnly` plus a transition `act` or a `decide` first, with repair. I2 still
 fails a `decide` without a branching origin if that shape reaches here; an `update` `act` without
 `transitionRef` is a warning, not an error.
 

@@ -8,7 +8,7 @@
  * `from` reachable from source-SCC births) for journey `act` and for workflow
  * `mechanical`/`llm` stages. `create` and `update` are not I2 errors.
  * collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin still gate `decide`.
- * ontology30 rejects appendOnly plus a repeated act or decide first, with repair.
+ * ontology30 rejects appendOnly plus a transition act or decide first, with repair.
  */
 
 import { anchorPath } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';

@@ -355,8 +355,8 @@ void test('loadSources reads ontology30 liftedAggregateEntities from pipeline.js
 
 void test('I2 uses ontology30 collectNs5LifecycleSignal without changing messages', () => {
   const sources = loadSources('comandaRestaurante.json');
-  assert.equal(collectNs5LifecycleSignal(sources.journeys, 'Comanda').requiresTransitions, true);
-  assert.equal(collectNs5LifecycleSignal(sources.journeys, 'ItemComanda').requiresTransitions, true);
+  assert.equal(collectNs5LifecycleSignal(sources.journeys, 'Comanda').requiresTransitions, false);
+  assert.equal(collectNs5LifecycleSignal(sources.journeys, 'ItemComanda').requiresTransitions, false);
   const report = runNs5Oracle(sources);
   assert.equal(report.errors.filter(issue => issue.code === 'NS5_FINALIZE_I2').length, 0);
 });

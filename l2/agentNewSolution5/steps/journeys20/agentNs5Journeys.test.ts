@@ -550,6 +550,7 @@ void test('persistArtifacts reconciles journey defs against the index', () => {
   const persist = source.slice(source.indexOf('async function persistArtifacts'));
   assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'journeys'/);
   assert.match(persist, /removedOrphans/);
+  assert.match(persist, /normalizations/);
 });
 
 void test('human prompt carries the source request and module actors', () => {
