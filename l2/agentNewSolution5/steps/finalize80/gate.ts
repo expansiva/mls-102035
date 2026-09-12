@@ -348,20 +348,15 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
 
 /**
  * A party:person that anchors an own/related grant is someone who will sign in.
- * An internal actor must `act` on that entity (not merely `affects`). Journey
+ * An internal actor must write that entity (`act` entity or `affects` — same
+ * writer predicate as I10, restricted to internal-actor journeys). Journey
  * `entry.mode` has no public value (`coldStart` | `contextOrLookup` | `fromNotification`).
  */
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
-  const registered = new Set<string>();
-  for (const journey of sources.journeys) {
-    const actor = actorById.get(journey.business.actorRef);
-    if (actor?.kind !== 'internal') continue;
-    for (const step of journey.business.steps) {
-      if (step.kind === 'act' && step.entity) registered.add(step.entity);
-    }
-  }
+  const internalJourneys = sources.journeys.filter(journey =>
+    actorById.get(journey.business.actorRef)?.kind === 'internal');
   sources.access.grants.forEach((grant, index) => {
     const mode = grant.dataScope.mode;
     if (mode !== 'own' && mode !== 'related') return;
@@ -369,11 +364,11 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     if (!personId) return;
     const entity = entityById.get(personId);
     if (!entity || entity.party !== 'person') return;
-    if (registered.has(personId)) return;
+    if (ns5EntityHasActOrAffects(internalJourneys, personId)) return;
     error(
       'I8',
       `access.grants[${index}]`,
-      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but no internal actor has an act step on that entity.`,
+      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but no internal actor writes that entity (act entity or affects).`,
       NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
     );
   });

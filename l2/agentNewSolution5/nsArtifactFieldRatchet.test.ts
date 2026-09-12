@@ -65,7 +65,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     stepId: { reader: 'steps/workflows50/gate.ts, finalize80', since: '2026-09-10' },
     kind: { reader: 'steps/journeys20/gate.ts, finalize80 I2 I8', since: '2026-09-10' },
     entity: { reader: 'steps/ontology30/gate.ts, finalize80 I1 I8', since: '2026-09-10' },
-    affects: { reader: 'steps/ontology30 collectNs5CitedEntities, finalize80 I1', since: '2026-09-10' },
+    affects: { reader: 'steps/ontology30 collectNs5CitedEntities, finalize80 I1 I8', since: '2026-09-10' },
     title: { reader: 'planner / UI', since: '2026-09-10' },
     description: { reader: 'planner / UI', since: '2026-09-10' },
     handoffTo: { reader: 'steps/journeys20/gate.ts, steps/workflows50, finalize80 I6', since: '2026-09-10' },

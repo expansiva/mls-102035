@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-09-12
+
+- I8: an internal-actor write on the login person is `act` entity or `affects` (same writer predicate as I10). Frozen `ordenServicio5` and live `matricularAluno` (`affects: [Aluno]`) pass; empty `affects` fails.
+
 ## 2026-09-11
 
 - I10: same writer predicates as ontology30 / access60 (`NS5_FINALIZE_I10`) —

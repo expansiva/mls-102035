@@ -40,8 +40,9 @@ part in, and `details[<moduleId>]` holds that module's data about her. The platf
 person (`sessionContext.person`); a module never does. Nothing about permissions is stored in the MDM;
 nothing about identity is stored in a module table.
 
-Registering a person who will sign in is an `act` of an internal actor on that person entity (or a
-public self-registration entry). The platform does the rest: looks the e-mail up in the login index
+Registering a person who will sign in is a write by an internal actor — an `act` on that person entity,
+or an `act` that attaches her (`affects`) such as an enrollment or an order opening (or a public self-registration
+entry). The platform does the rest: looks the e-mail up in the login index
 and the document in the record, attaches the role when it is the same person, refuses when the
 e-mail belongs to another record, and issues the invitation. A journey never has an 'invite' or
 'verify e-mail' step.

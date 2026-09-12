@@ -23,7 +23,8 @@ void test('composeNs5SystemPrompt starts with the MDM skill heading', () => {
 
 void test('mdm skill says registering a login person is an act, never an invite step', () => {
   const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
-  assert.match(skill, /Registering a person who will sign in is an `act`/);
+  assert.match(skill, /Registering a person who will sign in is a write by an internal actor/);
+  assert.match(skill, /`act` that attaches her \(`affects`\)/);
   assert.match(skill, /A journey never has an 'invite' or\s+'verify e-mail' step/);
 });
 
