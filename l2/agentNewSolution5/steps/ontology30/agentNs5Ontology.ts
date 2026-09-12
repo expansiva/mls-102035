@@ -400,10 +400,10 @@ async function handleEntityResult(
   if (!isRecord(payload)) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} returned no usable payload; finalizer will repair it.`)];
   }
-  const detail = normalizeNs5OntologyEntity(payload, entityId);
-  await writeJson(entityDraftFile(parsed.moduleName, entityId), detail);
   await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
+  const detail = normalizeNs5OntologyEntity(payload, entityId, journeys);
+  await writeJson(entityDraftFile(parsed.moduleName, entityId), detail);
   const gate = validateNs5OntologyEntity(plan, detail, {
     moduleName: parsed.moduleName,
     actors: await readNs5Actors(parsed.moduleName),

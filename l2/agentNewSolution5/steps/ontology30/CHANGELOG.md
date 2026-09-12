@@ -2,13 +2,14 @@
 
 ## 2026-09-11
 
+- Normalize drops `maintenance: 'crud'` when an `act` writes the entity (`entity`
+  or `affects`) or it has lifecycle; recorded on `normalizations[]`. Writer is
+  `act.entity ∪ act.affects` (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`).
+  `NS5_ONTOLOGY_CRUD_WITH_ACT` / `NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE` gone. Live
+  `mensalidadesAcademia` plan-draft (crud on every entity) is the strip fixture.
 - `maintenance?: 'crud'` on the plan and the entity artifact. Gate:
-  `NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER` (written fields, not the `entity` of an
-  `act`, not crud — `affects` does not count), `NS5_ONTOLOGY_CRUD_WITH_ACT`,
-  `NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE`. Plan prompt: one sentence. Fixtures:
-  `ItemCardapio` crud; ordenServicio5 n10 children (no lifecycle) crud.
-  `Presupuesto` (lifecycle, cannot be crud) gets an `act` in
-  `analizarYpresupuestarOrden` so the writer gate closes.
+  `NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER` (written fields, not written by an `act`
+  as `entity` or `affects`, not crud). Plan prompt: one sentence.
 - Schema `2026-09-11-ns5-ontology-v2`: `unique` / `uniqueKeys`, typed `details`
   (`{ type, description }`), required relationship `description`, `enum[{ value, title }]`,
   intrinsic `constraints` (`min`/`max`/`maxLength`/`precision`). String `details` and

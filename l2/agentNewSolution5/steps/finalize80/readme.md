@@ -32,7 +32,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |
 | I8 | every `own`/`related` grant whose `anchorEntity` is `party: person` has an internal-actor `act` on that entity (`entity == P`, not `affects`). No public `entry.mode` exists | error (`NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`) |
 | I9 | every `uniqueKeys` fieldId exists on the entity | error (`NS5_FINALIZE_I9`) |
-| I10 | written entity is an `act` entity or `maintenance: 'crud'` (not both; crud has no lifecycle); crud has an internal-actor grant. Same predicates as ontology30 / access60 | error (`NS5_FINALIZE_I10`) |
+| I10 | written entity is an `act` `entity` or `affects`, or `maintenance: 'crud'`; crud has an internal-actor grant. Same predicates as ontology30 / access60. Conflicting crud is dropped by ontology30 normalize | error (`NS5_FINALIZE_I10`) |
 
 Errors fail the run with the report. Warnings only continue.
 
@@ -50,5 +50,5 @@ still fails the same shape if it reaches here; do not invent a transition and do
 - Status updates use `cleaner: input_output`.
 - Converted ce02 / ce05 fixtures: comandaRestaurante5 passes I1-I9 with no warnings
   when disk matches the index; ordenServicio5 fails I8 (`Cliente` only in `affects`).
-  I10 passes on both after ns5_21 fixture re-record (`Presupuesto` gained an
-  `act`; n10 children and `ItemCardapio` are crud).
+  I10 passes on both: n10 children and `ItemCardapio` are written via `affects`
+  (`Presupuesto` too); I8 still requires the person's own `act`.

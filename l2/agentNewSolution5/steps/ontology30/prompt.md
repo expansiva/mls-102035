@@ -51,8 +51,8 @@ in `details`. An aggregate that does not belong to one entity goes in `moduleDet
 `mutability: appendOnly` only when the record is a fact that is never corrected. An append-only
 fact has no lifecycle. MDM is never append-only.
 
-An entity with written fields is either the `entity` of at least one `act` step, or declares
-`maintenance: 'crud'` (a reference catalog with no lifecycle); never both. `affects` is not a writer.
+A reference catalog nobody creates in a journey (a price list, a category) is `maintenance: 'crud'`;
+an entity written by an `act` — as its `entity` or in `affects` — is not.
 
 If the journeys show more than one `act` step on this entity (beyond the one that first creates
 it), or a `decide` step on it, omit `mutability` here — the entity is not append-only. The entity

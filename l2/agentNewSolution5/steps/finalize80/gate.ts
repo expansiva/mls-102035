@@ -13,7 +13,7 @@
 import { anchorPath } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
 import {
   collectNs5LifecycleSignal,
-  ns5EntityHasAct,
+  ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
   ns5LifecycleHasBranchingOrigin,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
@@ -398,34 +398,21 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
 
 /**
  * Same writer predicates as ontology30 / access60: a written entity is an `act`
- * entity or `maintenance: 'crud'` (not both, and crud has no lifecycle); a crud
- * entity has an internal-actor grant.
+ * entity or listed in an act's `affects`, or `maintenance: 'crud'`; a crud
+ * entity has an internal-actor grant. Conflicting crud is dropped by ontology30
+ * normalize, not by this check.
  */
 function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   for (const entity of sources.entities) {
     const path = `ontology.${entity.entityId}`;
     const crud = entity.maintenance === 'crud';
-    const hasAct = ns5EntityHasAct(sources.journeys, entity.entityId);
-    if (crud && hasAct) {
+    const hasWriter = ns5EntityHasActOrAffects(sources.journeys, entity.entityId);
+    if (!crud && !hasWriter && ns5EntityHasWrittenFields(entity)) {
       error(
         'I10',
         `${path}.maintenance`,
-        `Entity ${entity.entityId} cannot be maintenance: 'crud' and the entity of an act step; choose one.`,
-      );
-    }
-    if (crud && (entity.lifecycleStates.length || entity.transitions.length)) {
-      error(
-        'I10',
-        `${path}.lifecycleStates`,
-        `Entity ${entity.entityId} with maintenance: 'crud' must not declare lifecycleStates or transitions.`,
-      );
-    }
-    if (!crud && !hasAct && ns5EntityHasWrittenFields(entity)) {
-      error(
-        'I10',
-        `${path}.maintenance`,
-        `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
+        `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
       );
     }
     if (!crud) continue;

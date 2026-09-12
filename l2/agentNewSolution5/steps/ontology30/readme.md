@@ -40,9 +40,10 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - `displayField` is a field of the entity, or of level-1 identification/base when mdm.
 - `appendOnly` has no lifecycle.
 - An entity with written fields (`fields` besides `idField`; mdm namespace) is the
-  `entity` of an `act` **or** `maintenance: 'crud'` (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`).
-  `affects` does not count. Not both (`NS5_ONTOLOGY_CRUD_WITH_ACT`). crud has no
-  lifecycle (`NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE`). `valueObject` is out.
+  `entity` of an `act`, listed in an act's `affects`, **or** `maintenance: 'crud'`
+  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Normalize drops `crud` when an `act`
+  already writes it or the entity has lifecycle (`normalizations[]`).
+  `valueObject` is out.
 - Journeys that include a second `act` or a `decide` on an entity require `lifecycleStates` /
   `transitions` (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`). Normalize drops `appendOnly` on that entity
   before the gate (mutability is frozen on the plan). The gate still rejects `appendOnly` if

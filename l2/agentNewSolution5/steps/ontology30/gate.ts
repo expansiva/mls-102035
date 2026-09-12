@@ -30,7 +30,7 @@ import {
   collectNs5LifecycleSignal,
   isNs5AggregateOnlyEntity,
   ns5AsFieldSource,
-  ns5EntityHasAct,
+  ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
   ns5LifecycleHasBranchingOrigin,
   type Ns5LifecycleSignal,
@@ -458,28 +458,12 @@ function validateEntity(
     error(issues, 'NS5_ONTOLOGY_MAINTENANCE', "maintenance is omitted (journey) or 'crud'.", `${path}.maintenance`);
   }
   const crud = entity.maintenance === 'crud';
-  const hasAct = ns5EntityHasAct(journeys, entity.entityId);
-  if (crud && hasAct) {
-    error(
-      issues,
-      'NS5_ONTOLOGY_CRUD_WITH_ACT',
-      `Entity ${entity.entityId} cannot be maintenance: 'crud' and the entity of an act step; choose one.`,
-      `${path}.maintenance`,
-    );
-  }
-  if (crud && !planOverview && (entity.lifecycleStates.length || entity.transitions.length)) {
-    error(
-      issues,
-      'NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE',
-      `Entity ${entity.entityId} with maintenance: 'crud' must not declare lifecycleStates or transitions.`,
-      `${path}.lifecycleStates`,
-    );
-  }
-  if (!planOverview && !crud && !hasAct && ns5EntityHasWrittenFields(entity)) {
+  const hasWriter = ns5EntityHasActOrAffects(journeys, entity.entityId);
+  if (!planOverview && !crud && !hasWriter && ns5EntityHasWrittenFields(entity)) {
     error(
       issues,
       'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER',
-      `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
+      `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
       `${path}.maintenance`,
     );
   }

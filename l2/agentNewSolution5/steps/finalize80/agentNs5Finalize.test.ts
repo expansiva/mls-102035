@@ -392,6 +392,17 @@ void test('I10 fails Plano without a writer; crud plus Aluno act passes; crud wi
     withoutWriter.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
   );
 
+  const viaAffects = clone(sources);
+  const enroll = viaAffects.journeys.find(journey => journey.journeyId === 'matricularAlunoEmPlano');
+  const act = enroll?.business.steps.find(step => step.kind === 'act');
+  if (act) act.affects = [...(act.affects || []), 'Plano'];
+  const affectsReport = runNs5Oracle(viaAffects);
+  assert.equal(
+    affectsReport.errors.filter(issue => issue.checkId === 'I10' && /Plano/.test(issue.message)).length,
+    0,
+    affectsReport.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
   const withCrud = clone(sources);
   const crudPlano = withCrud.entities.find(entity => entity.entityId === 'Plano')!;
   crudPlano.maintenance = 'crud';

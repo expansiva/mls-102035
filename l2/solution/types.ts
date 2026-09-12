@@ -228,9 +228,10 @@ export interface Ns5OntologyEntityArtifact {
   /** appendOnly entities have no lifecycle; E-like backends skip update/delete. */
   mutability?: 'appendOnly';
   /**
-   * How this entity is written. Absent = a journey `act` has `entity == entityId`.
-   * `crud` = reference catalog (create/edit/inactivate, no lifecycle); master
+   * How this entity is written. Absent = an `act` writes it (`entity` or `affects`).
+   * `crud` = reference catalog nobody creates in a journey (no lifecycle); master
    * frontend emits a data grid, master backend emits CRUD usecases.
+   * ontology30 normalize drops crud when an act already writes it.
    * ontology30 / access60 / finalize80 I10.
    */
   maintenance?: 'crud';

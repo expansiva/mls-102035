@@ -34,8 +34,7 @@ export const ordenServicio5EntityReparacion = {
     "scope": "module",
     "idField": "id"
   },
-  "mutability": "appendOnly",
-  "maintenance": "crud"
+  "mutability": "appendOnly"
 } as const satisfies Ns5OntologyEntityArtifact;
 
 export type OrdenServicio5EntityReparacionType = typeof ordenServicio5EntityReparacion;

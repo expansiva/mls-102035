@@ -38,13 +38,6 @@ export const analizarYpresupuestarOrdenJourney = {
         ],
         "title": "Registrar el diagnóstico, las piezas necesarias y el presupuesto.",
         "description": "Registrar el diagnóstico, las piezas necesarias con costo interno y el valor del presupuesto para el cliente."
-      },
-      {
-        "stepId": "registrarPresupuesto",
-        "kind": "act",
-        "entity": "Presupuesto",
-        "title": "Registrar el presupuesto.",
-        "description": "Registrar el presupuesto comunicado al cliente."
       }
     ],
     "outcome": {

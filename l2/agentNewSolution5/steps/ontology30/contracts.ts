@@ -79,6 +79,20 @@ export interface Ns5OntologyPlanDraft {
    * names so a locate→inspect of the former panel still closes ontology30.
    */
   liftedAggregateEntities?: string[];
+  /**
+   * Deterministic form changes recorded on the ontology30-plan draft, not on the
+   * entity artifact. Normalize writes it; not an LLM field.
+   */
+  normalizations?: Ns5OntologyFormNormalization[];
+}
+
+export type Ns5OntologyFormNormalizationKind = 'dropCrud';
+
+/** Same shape as access60 `draft.normalizations[]`. */
+export interface Ns5OntologyFormNormalization {
+  kind: Ns5OntologyFormNormalizationKind;
+  entityId: string;
+  detail: string;
 }
 
 export interface Ns5OntologyEntityDraft {
@@ -90,6 +104,8 @@ export interface Ns5OntologyEntityDraft {
   transitions: Ns5OntologyEntityArtifact['transitions'];
   /** Repair path: entity worker may set crud when the plan omitted it. */
   maintenance?: 'crud';
+  /** Normalize drops conflicting crud; not an LLM field. */
+  normalizations?: Ns5OntologyFormNormalization[];
 }
 
 export interface Ns5OntologyBinding {
@@ -145,7 +161,15 @@ export function normalizeNs5OntologyPlan(
   journeys: ReadonlyArray<Ns5LifecycleJourneyView> = [],
 ): Ns5OntologyPlanDraft {
   const root = record(value);
-  const entities = list(root.entities).map(item => normalizePlanEntity(item, moduleName, journeys)).filter(entity => entity.entityId);
+  const normalizations: Ns5OntologyFormNormalization[] = [];
+  const entities = list(root.entities)
+    .map(item => normalizePlanEntity(item, moduleName, journeys))
+    .filter(entity => entity.entityId)
+    .map(entity => {
+      const next = dropConflictingCrud(entity, journeys, false);
+      if (next.normalization) normalizations.push(next.normalization);
+      return next.entity;
+    });
   const moduleDetails = normalizeDetails(root.moduleDetails);
   return {
     moduleName: memberId(text(root.moduleName) || moduleName, moduleName),
@@ -153,6 +177,7 @@ export function normalizeNs5OntologyPlan(
     entities,
     relationships: list(root.relationships).map(normalizePlanRelationship).filter(item => item.relationshipId),
     ...(moduleDetails ? { moduleDetails } : {}),
+    ...(normalizations.length ? { normalizations } : {}),
   };
 }
 
@@ -203,19 +228,6 @@ export function ns5EntityHasActOrAffects(
       if (step.kind !== 'act') continue;
       if (step.entity === entityId) return true;
       if ((step.affects || []).includes(entityId)) return true;
-    }
-  }
-  return false;
-}
-
-/** True when an `act` step has `entity == entityId`. `affects` does not count. */
-export function ns5EntityHasAct(
-  journeys: ReadonlyArray<Ns5AggregateJourneyView>,
-  entityId: string,
-): boolean {
-  for (const journey of journeys) {
-    for (const step of journey.business.steps) {
-      if (step.kind === 'act' && step.entity === entityId) return true;
     }
   }
   return false;
@@ -343,18 +355,31 @@ function uniqueIds(ids: string[]): string[] {
   return out;
 }
 
-export function normalizeNs5OntologyEntity(value: unknown, entityId: string): Ns5OntologyEntityDraft {
+export function normalizeNs5OntologyEntity(
+  value: unknown,
+  entityId: string,
+  journeys: ReadonlyArray<Ns5AggregateJourneyView> = [],
+): Ns5OntologyEntityDraft {
   const root = record(value);
   const details = normalizeDetails(root.details);
   const uniqueKeys = normalizeUniqueKeys(root.uniqueKeys);
+  const lifecycleStates = list(root.lifecycleStates).map(normalizeLifecycleState).filter(item => item.state);
+  const transitions = list(root.transitions).map(normalizeTransition).filter(item => item.transitionId);
+  const id = normalizeEntityId(root.entityId) || entityId;
+  const dropped = dropConflictingCrud(
+    { entityId: id, ...(text(root.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}) },
+    journeys,
+    lifecycleStates.length > 0 || transitions.length > 0,
+  );
   return {
-    entityId: normalizeEntityId(root.entityId) || entityId,
+    entityId: id,
     fields: list(root.fields).map(normalizeField).filter(field => field.fieldId),
     ...(uniqueKeys ? { uniqueKeys } : {}),
     ...(details ? { details } : {}),
-    lifecycleStates: list(root.lifecycleStates).map(normalizeLifecycleState).filter(item => item.state),
-    transitions: list(root.transitions).map(normalizeTransition).filter(item => item.transitionId),
-    ...(text(root.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}),
+    lifecycleStates,
+    transitions,
+    ...(dropped.entity.maintenance ? { maintenance: 'crud' as const } : {}),
+    ...(dropped.normalization ? { normalizations: [dropped.normalization] } : {}),
   };
 }
 
@@ -425,7 +450,7 @@ export function collectNs5CitedEntities(
 /** Journey view the lifecycle walk understands. Caller supplies index order. */
 export interface Ns5LifecycleJourneyView {
   business: {
-    steps: ReadonlyArray<{ kind: string; entity: string }>;
+    steps: ReadonlyArray<{ kind: string; entity: string; affects?: string[] }>;
   };
 }
 
@@ -493,7 +518,34 @@ function assembleEntity(
     transitions: detail?.transitions || [],
     storage,
     ...(plan.mutability ? { mutability: plan.mutability } : {}),
-    ...(plan.maintenance === 'crud' || detail?.maintenance === 'crud' ? { maintenance: 'crud' as const } : {}),
+    ...(!entityHasLifecycle(detail) && (plan.maintenance === 'crud' || detail?.maintenance === 'crud')
+      ? { maintenance: 'crud' as const }
+      : {}),
+  };
+}
+
+function entityHasLifecycle(detail: Ns5OntologyEntityDraft | undefined): boolean {
+  return (detail?.lifecycleStates.length || 0) > 0 || (detail?.transitions.length || 0) > 0;
+}
+
+function dropConflictingCrud<T extends { entityId: string; maintenance?: 'crud' }>(
+  entity: T,
+  journeys: ReadonlyArray<Ns5AggregateJourneyView>,
+  hasLifecycle: boolean,
+): { entity: T; normalization?: Ns5OntologyFormNormalization } {
+  if (entity.maintenance !== 'crud') return { entity };
+  const writtenByAct = ns5EntityHasActOrAffects(journeys, entity.entityId);
+  if (!writtenByAct && !hasLifecycle) return { entity };
+  const { maintenance: _dropped, ...rest } = entity;
+  return {
+    entity: rest as T,
+    normalization: {
+      kind: 'dropCrud',
+      entityId: entity.entityId,
+      detail: writtenByAct
+        ? 'maintenance crud removed; an act writes this entity as entity or affects.'
+        : 'maintenance crud removed; lifecycleStates or transitions are present.',
+    },
   };
 }
 

@@ -208,18 +208,22 @@ void test('real Cliente is mdm Person with empty fields and passes the gate', ()
 });
 
 void test('real ItemCardapio keeps namespace fields and level-1 displayField', () => {
+  const itemJourneys = [journey('garcom', [
+    step('consultarItem', 'inspect', 'ItemCardapio'),
+    { ...step('registrarItem', 'act', 'ItemComanda'), affects: ['ItemCardapio'] },
+  ])];
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
     entities: [planEntity('comandaRestaurante5', 'ItemCardapio')],
     relationships: [],
-  }, 'comandaRestaurante5');
-  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'ItemCardapio'), 'ItemCardapio');
+  }, 'comandaRestaurante5', itemJourneys);
+  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'ItemCardapio'), 'ItemCardapio', itemJourneys);
   assert.equal(plan.entities[0].mdmSubtype, 'Product');
   assert.equal(detail.fields.some(field => field.fieldId === 'price'), true);
   assert.equal(detail.fields.some(field => field.fieldId === 'id'), false);
   const gate = validateNs5OntologyEntity(plan, detail, ctx({
     moduleName: 'comandaRestaurante5',
-    journeys: [{ business: { ...FECHAR.business, steps: [{ ...FECHAR.business.steps[0], entity: 'ItemCardapio' }] } }],
+    journeys: itemJourneys,
   }));
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
@@ -747,8 +751,9 @@ void test('ontology30 plan prompt omits mutability when journeys repeat act or d
   assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
   assert.match(prompt, /moduleDetails/);
   assert.match(prompt, /one-sentence `description`/);
-  assert.match(prompt, /maintenance: 'crud'/);
-  assert.match(prompt, /`affects` is not a writer/);
+  assert.match(prompt, /A reference catalog nobody creates in a journey/);
+  assert.match(prompt, /as its `entity` or in `affects`/);
+  assert.doesNotMatch(prompt, /never both/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|abrir|fechar/i);
 });
 
@@ -758,6 +763,8 @@ void test('ontology30 entity prompt states uniqueKeys, typed details, enum title
   assert.match(prompt, /intrinsic to the type, never a business\s+policy/);
   assert.match(prompt, /Each enum entry is `\{ "value", "title" \}`/);
   assert.match(prompt, /\{ "name", "type", "description" \}/);
+  assert.match(prompt, /A reference catalog nobody creates in a journey/);
+  assert.doesNotMatch(prompt, /never both/);
 });
 
 void test('plan human prompt includes journeys, actors and level-1 placeholders', () => {
@@ -1466,8 +1473,8 @@ function gatePlano(
     businessDomain: 'Gym fees',
     entities: [planoPlan(maintenance)],
     relationships: [],
-  }, 'comandaRestaurante5');
-  return validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(detail, 'Plano'), ctx({
+  }, 'comandaRestaurante5', journeys);
+  return validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(detail, 'Plano', journeys), ctx({
     moduleName: 'comandaRestaurante5',
     actors: [
       { actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Reception', description: 'Enrolls.' },
@@ -1476,7 +1483,7 @@ function gatePlano(
   }));
 }
 
-void test('Plano with namespace and no act fails WITHOUT_WRITER; affects does not count', () => {
+void test('Plano with namespace and no act fails WITHOUT_WRITER; affects counts as a writer', () => {
   const locate = journey('recepcao', [step('consultarPlanos', 'locate', 'Plano')]);
   const failing = gatePlano(undefined, [locate]);
   assert.equal(failing.ok, false);
@@ -1489,7 +1496,8 @@ void test('Plano with namespace and no act fails WITHOUT_WRITER; affects does no
     affects: ['Plano'],
   }]);
   const affectsGate = gatePlano(undefined, [onlyAffects]);
-  assert.ok(affectsGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER'));
+  assert.equal(affectsGate.ok, true, affectsGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(affectsGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER'), false);
 });
 
 void test('Plano maintenance crud passes; Aluno empty-namespace mdm without act is not a writer defect', () => {
@@ -1509,30 +1517,75 @@ void test('Plano maintenance crud passes; Aluno empty-namespace mdm without act 
   assert.equal(aluno.ok, true, aluno.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
-void test('crud plus act is NS5_ONTOLOGY_CRUD_WITH_ACT; crud plus lifecycle is NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE', () => {
+void test('normalize drops crud when an act writes the entity or it has lifecycle', () => {
   const withAct = gatePlano('crud', [journey('recepcao', [step('criarPlano', 'act', 'Plano')])]);
-  assert.equal(withAct.ok, false);
-  assert.ok(withAct.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CRUD_WITH_ACT' && /Plano/.test(issue.message)));
+  assert.equal(withAct.ok, true, withAct.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(withAct.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CRUD_WITH_ACT'), false);
 
-  const withLifecycle = gatePlano('crud', [journey('recepcao', [step('consultarPlanos', 'locate', 'Plano')])], {
+  const locate = [journey('recepcao', [step('consultarPlanos', 'locate', 'Plano')])];
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [planoPlan('crud')],
+    relationships: [],
+  }, 'comandaRestaurante5', locate);
+  assert.equal(plan.entities[0].maintenance, 'crud');
+  const withLifecycle = normalizeNs5OntologyEntity({
     ...planoDetail(),
+    maintenance: 'crud',
     lifecycleStates: [{ state: 'active', reachedBy: 'actor' }],
     transitions: [{ transitionId: 'activate', from: ['active'], to: 'active', by: ['recepcao'], description: 'Keep.' }],
-  });
-  assert.ok(withLifecycle.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE'));
+  }, 'Plano', locate);
+  assert.equal(withLifecycle.maintenance, undefined);
+  assert.equal(withLifecycle.normalizations?.[0]?.kind, 'dropCrud');
+  const lifecycleGate = validateNs5OntologyEntity(plan, withLifecycle, ctx({
+    moduleName: 'comandaRestaurante5',
+    actors: [{ actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Reception', description: 'Enrolls.' }],
+    journeys: locate,
+  }));
+  assert.ok(lifecycleGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER'));
+  assert.equal(lifecycleGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE'), false);
 });
 
-void test('real ItemCardapio fixture is maintenance crud and still passes', () => {
-  assert.equal(planEntity('comandaRestaurante5', 'ItemCardapio').maintenance, 'crud');
+void test('real ItemCardapio has no crud; an act that affects it is the writer', () => {
+  assert.equal(planEntity('comandaRestaurante5', 'ItemCardapio').maintenance, undefined);
+  const journeys = loadNs5Journeys('comandaRestaurante5');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Restaurant orders',
     entities: [planEntity('comandaRestaurante5', 'ItemCardapio')],
     relationships: [],
-  }, 'comandaRestaurante5');
-  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'ItemCardapio'), 'ItemCardapio');
+  }, 'comandaRestaurante5', journeys);
+  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'ItemCardapio'), 'ItemCardapio', journeys);
   const gate = validateNs5OntologyEntity(plan, detail, ctx({
     moduleName: 'comandaRestaurante5',
-    journeys: [{ business: { ...FECHAR.business, steps: [{ ...FECHAR.business.steps[0], entity: 'ItemCardapio' }] } }],
+    journeys,
   }));
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('live mensalidadesAcademia plan with crud on every entity: normalize drops five, gate passes', () => {
+  const draft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-plan-draft.json');
+  const journeys = [
+    journey('recepcao', [step('registrarAluno', 'act', 'Aluno')]),
+    journey('recepcao', [step('registrarPlano', 'act', 'Plano')]),
+    journey('recepcao', [step('matricular', 'act', 'Matricula')]),
+    journey('recepcao', [step('gerarMensalidades', 'act', 'Mensalidade')]),
+    journey('recepcao', [step('registrarPagamento', 'act', 'Pagamento')]),
+    journey('gerencia', [
+      step('verPainel', 'locate', 'PainelGerencial'),
+      step('lerPainel', 'inspect', 'PainelGerencial'),
+    ]),
+  ];
+  const plan = normalizeNs5OntologyPlan(draft, 'mensalidadesAcademia', journeys);
+  assert.equal(plan.normalizations?.length, 5);
+  assert.deepEqual(
+    (plan.normalizations || []).map(item => item.entityId).sort(),
+    ['Aluno', 'Matricula', 'Mensalidade', 'Pagamento', 'Plano'],
+  );
+  assert.ok((plan.normalizations || []).every(item => item.kind === 'dropCrud'));
+  for (const id of ['Aluno', 'Plano', 'Matricula', 'Mensalidade', 'Pagamento']) {
+    assert.equal(plan.entities.find(entity => entity.entityId === id)?.maintenance, undefined);
+  }
+  assert.equal(plan.entities.find(entity => entity.entityId === 'PainelGerencial')?.maintenance, 'crud');
+  const gate = validateNs5OntologyPlan(plan, ctx({ moduleName: 'mensalidadesAcademia', journeys }));
+  assert.equal(gate.ok, true, gate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
