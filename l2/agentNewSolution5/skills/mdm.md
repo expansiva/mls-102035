@@ -36,8 +36,9 @@ document, and a record that never signs in has no login row.
 
 The JWT says **who** (login e-mail) and **what she may do** (authorities `<moduleId>:<actorId>`). The MDM
 says **where she exists**: the role tags `<moduleId>.<EntityId>` on her record list every module she takes
-part in, and `details[<moduleId>]` holds that module's data about her. Nothing about permissions is
-stored in the MDM; nothing about identity is stored in a module table.
+part in, and `details[<moduleId>]` holds that module's data about her. The platform resolves the session
+person (`sessionContext.person`); a module never does. Nothing about permissions is stored in the MDM;
+nothing about identity is stored in a module table.
 
 ## Roles
 
