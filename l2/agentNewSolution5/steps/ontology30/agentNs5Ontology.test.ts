@@ -1295,7 +1295,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
   );
 });
 
-void test('PainelMensalidades aggregate-only entity fails; module.details version passes', () => {
+void test('PainelMensalidades with a period field is not a panel (WITHOUT_WRITER); module.details version passes', () => {
   const panelPlan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
     businessDomain: 'Gym fees',
@@ -1333,7 +1333,8 @@ void test('PainelMensalidades aggregate-only entity fails; module.details versio
     journeys: [inspectOnly],
   }));
   assert.equal(failing.ok, false);
-  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY' && /module.details/.test(issue.message)));
+  assert.equal(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY'), false);
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER' && /PainelMensalidades/.test(issue.message)));
 
   const mensalidadePlan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1954,7 +1955,7 @@ void test('real Matricula draft: cycle lifecycle is reachable as written', () =>
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_STATE_UNREACHABLE'), false);
 });
 
-void test('real IndicadorAcademia draft: lift of valueObject panel records mesReferencia', () => {
+void test('real IndicadorAcademia draft: a period field is not a panel so it is not lifted', () => {
   const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'IndicadorAcademia-draft.json');
   const generate = journey('recepcao', [step('gerar', 'act', 'Mensalidade')]);
   const inspect = journey('gerencia', [step('inspecionarIndicadores', 'inspect', 'IndicadorAcademia')]);
@@ -1993,26 +1994,7 @@ void test('real IndicadorAcademia draft: lift of valueObject panel records mesRe
     [generate, inspect],
   );
   assert.deepEqual(lift.issues, []);
-  assert.deepEqual(lift.liftedEntityIds, ['IndicadorAcademia']);
-  assert.equal(lift.plan.entities.some(entity => entity.entityId === 'IndicadorAcademia'), false);
-  assert.deepEqual(Object.keys(lift.plan.moduleDetails || {}).sort(), [
-    'quantidadeAlunosAtivos',
-    'quantidadeAlunosBloqueados',
-    'quantidadeAlunosInadimplentes',
-    'totalAreceber',
-    'totalRecebido',
-  ]);
-  assert.equal(lift.plan.moduleDetails?.totalAreceber?.type, 'money');
-  assert.equal(lift.plan.moduleDetails?.quantidadeAlunosAtivos?.type, 'integer');
-  assert.ok(lift.plan.normalizations?.some(item => (
-    item.kind === 'liftedFields'
-    && item.entityId === 'IndicadorAcademia'
-    && item.detail === 'mesReferencia'
-  )));
-  const gate = validateNs5OntologyBindings(lift.plan, lift.details, { bindings: [] }, ctx({
-    moduleName: 'mensalidadesAcademia',
-    journeys: [generate, inspect],
-    requireRelationshipRealization: false,
-  }));
-  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(lift.liftedEntityIds.includes('IndicadorAcademia'), false);
+  assert.equal(lift.plan.entities.some(entity => entity.entityId === 'IndicadorAcademia'), true);
+  assert.equal(lift.plan.normalizations?.some(item => item.kind === 'liftedFields' && item.entityId === 'IndicadorAcademia'), false);
 });

@@ -19,6 +19,7 @@ import {
   ns5EntityWriter,
   ns5LifecycleHasBranchingOrigin,
   ns5ReachableStates,
+  ns5ResolveEntityWriter,
   ns5SourceSccStates,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
@@ -473,12 +474,17 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  * or `affects` — same writer predicate as I10, restricted to internal-actor
  * journeys); (b) `writer: 'crud'` covered by an internal-actor grant (same
  * predicate as `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT` / I10); (c) an `act` of
- * her own external actor writes her (self-registration). Journey `entry.mode`
- * has no public value (`coldStart` | `contextOrLookup` | `fromNotification`).
+ * her own external actor writes her (self-registration); (d) derived `parent`
+ * or `attach` — attach by an internal actor is cadastro, by an external actor
+ * is self-registration. Journey `entry.mode` has no public value.
  */
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
+  const writerPlan = {
+    entities: sources.entities,
+    relationships: sources.ontologyIndex.relationships,
+  };
   const internalJourneys = sources.journeys.filter(journey =>
     actorById.get(journey.business.actorRef)?.kind === 'internal');
   sources.access.grants.forEach((grant, index) => {
@@ -499,6 +505,8 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
       const ownJourneys = sources.journeys.filter(journey => journey.business.actorRef === grant.actorRef);
       if (ns5EntityHasActOrAffects(ownJourneys, personId)) return;
     }
+    const resolved = ns5ResolveEntityWriter(entity, writerPlan, sources.journeys);
+    if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
     error(
       'I8',
       `access.grants[${index}]`,
@@ -527,20 +535,24 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
 
 /**
  * Same writer predicates as ontology30 / access60: a written entity is an `act`
- * entity or listed in an act's `affects`, or `writer: 'crud'` / `writer: 'inbound'`;
- * a crud entity has an internal-actor grant; inbound must appear in inbound.writes.
- * Conflicting crud is dropped by ontology30 normalize, not by this check.
+ * entity or listed in an act's `affects`, or `writer: 'crud'` / `writer: 'inbound'`,
+ * or derived `parent`/`attach`; a crud entity has an internal-actor grant; inbound
+ * must appear in inbound.writes. Conflicting crud is dropped by ontology30
+ * normalize, not by this check.
  */
 function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   const inboundWrites = new Set(sources.integration.inbound.flatMap(item => item.writes || []));
+  const writerPlan = {
+    entities: sources.entities,
+    relationships: sources.ontologyIndex.relationships,
+  };
   for (const entity of sources.entities) {
     const path = `ontology.${entity.entityId}`;
-    const writer = ns5EntityWriter(entity);
-    const crud = writer === 'crud';
-    const inbound = writer === 'inbound';
-    const hasWriter = ns5EntityHasActOrAffects(sources.journeys, entity.entityId);
-    if (!crud && !inbound && !hasWriter && ns5EntityHasWrittenFields(entity)) {
+    const resolved = ns5ResolveEntityWriter(entity, writerPlan, sources.journeys);
+    const crud = resolved.kind === 'crud';
+    const inbound = resolved.kind === 'inbound';
+    if (resolved.kind === 'none' && ns5EntityHasWrittenFields(entity)) {
       error(
         'I10',
         `${path}.writer`,

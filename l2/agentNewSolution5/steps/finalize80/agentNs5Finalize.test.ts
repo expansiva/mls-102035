@@ -197,7 +197,7 @@ function withAgendaClinicaProfissional(sources: Ns5OracleSources): Ns5OracleSour
 /** Live event: `Participant` + public own grant + organizer grant covering Participant. */
 function withInscricaoEventoParticipant(
   sources: Ns5OracleSources,
-  opts?: { crud?: boolean; publicAffects?: string[] },
+  opts?: { crud?: boolean; publicAffects?: string[]; attach?: boolean },
 ): Ns5OracleSources {
   const participant = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
     'steps/finalize80/fixtures',
@@ -219,6 +219,40 @@ function withInscricaoEventoParticipant(
   if (opts?.publicAffects !== undefined) {
     const registrar = journey.business.steps.find(step => step.stepId === 'registrarInscricao');
     if (registrar) registrar.affects = opts.publicAffects;
+  }
+  if (opts?.attach) {
+    const registrar = journey.business.steps.find(step => step.stepId === 'registrarInscricao');
+    if (registrar) registrar.effect = 'create';
+    const inscricao: Ns5OntologyEntityArtifact = {
+      ...clone(participant),
+      entityId: 'Inscricao',
+      kind: 'core',
+      party: 'none',
+      mdmSubtype: undefined,
+      writer: undefined,
+      storage: { target: 'moduleDatabase', scope: 'module', idField: 'id', mdmType: 'inscricaoEvento.Inscricao' },
+      fields: [
+        { fieldId: 'id', title: 'Id', type: 'uuid', required: true, description: 'Id.' },
+        { fieldId: 'participanteId', title: 'Participant', type: 'uuid', required: true, description: 'Person.' },
+      ],
+    };
+    sources.entities.push(inscricao);
+    sources.ontologyIndex.entities.push('Inscricao');
+    sources.ontologyIndex.relationships.push({
+      relationshipId: 'inscricaoParticipante',
+      fromEntity: 'Inscricao',
+      toEntity: 'Participant',
+      type: 'manyToOne',
+      required: true,
+      description: 'Each enrollment names the participant.',
+      persistence: { mode: 'crossStoreReference' },
+      realization: {
+        kind: 'fieldReference',
+        ownerEntity: 'Inscricao',
+        from: { entityId: 'Inscricao', fieldIds: ['participanteId'] },
+        to: { entityId: 'Participant', fieldIds: ['id'] },
+      },
+    });
   }
   sources.access.actors.push(publico);
   sources.entities.push(participant);
@@ -759,6 +793,14 @@ void test('I8 passes when the public act affects Participant (self-registration,
   const report = runNs5Oracle(withInscricaoEventoParticipant(
     clone(loadSources('comandaRestaurante.json')),
     { crud: false, publicAffects: ['Participant'] },
+  ));
+  assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 passes when publico create on Inscricao attaches Participant', () => {
+  const report = runNs5Oracle(withInscricaoEventoParticipant(
+    clone(loadSources('comandaRestaurante.json')),
+    { crud: false, publicAffects: [], attach: true },
   ));
   assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
 });

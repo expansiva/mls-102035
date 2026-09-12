@@ -39,7 +39,11 @@ not a signal and is not an integration item.
 
 - Ids are unique lowerCamel across inbound and outbound. Plugin ids are unique.
 - Inbound items name `from`. Outbound items name `to`.
-- `writes` / `entityRefs` exist in the ontology when set.
+- `writes` / `entityRefs` exist in the ontology when set. `transitionRef` only with
+  `effect: 'transition'`; leftover refs are dropped (`dropTransitionRef` on
+  `normalizations[]`). `effect: 'transition'` without `transitionRef` is
+  `NS5_INTEGRATION_TRANSITION_REF`; a named id that does not exist is
+  `NS5_INTEGRATION_TRANSITION_UNKNOWN`.
 - `pluginId` is in the platform catalog; `usedBy` is `journeyId.stepId` or `processId.taskId`.
 - `from` / `to` that is not a registry sibling, `organization` or `any` is a warning
   (`NS5_INTEGRATION_UNKNOWN_MODULE` / `unknownModule`), not an error (`kind: external` never warns).

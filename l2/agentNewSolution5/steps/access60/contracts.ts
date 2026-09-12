@@ -40,6 +40,7 @@ export interface Ns5AccessFormNormalization {
 export interface Ns5AccessEntityView {
   entityId: string;
   party: 'person' | 'organization' | 'none' | string;
+  kind?: string;
   fields: ReadonlyArray<{ fieldId: string }>;
   details?: Record<string, unknown>;
   storage?: { idField: string };
@@ -51,6 +52,7 @@ export interface Ns5AccessRelationshipView {
   fromEntity: string;
   toEntity: string;
   required: boolean;
+  type?: string;
 }
 
 export interface Ns5AccessAnchorHop {

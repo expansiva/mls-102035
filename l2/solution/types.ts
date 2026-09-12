@@ -495,6 +495,7 @@ export interface Ns5PipelineNormalization {
   grantId?: string;
   journeyId?: string;
   stepId?: string;
+  inboundId?: string;
 }
 
 export interface Ns5PipelineLiftedField {

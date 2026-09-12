@@ -1,0 +1,97 @@
+{
+  "entityId": "Inscricao",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador da inscrição",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único da inscrição."
+    },
+    {
+      "fieldId": "eventoId",
+      "title": "Evento",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao evento ao qual a inscrição pertence."
+    },
+    {
+      "fieldId": "participanteId",
+      "title": "Participante",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à pessoa participante que realizou a inscrição."
+    },
+    {
+      "fieldId": "dataInscricao",
+      "title": "Data da inscrição",
+      "type": "datetime",
+      "required": true,
+      "description": "Data e hora de registro da inscrição, usada para ordenar a lista de espera."
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação",
+      "type": "string",
+      "required": true,
+      "enum": [
+        {
+          "value": "confirmed",
+          "title": "Confirmada"
+        },
+        {
+          "value": "waitlisted",
+          "title": "Lista de espera"
+        },
+        {
+          "value": "cancelled",
+          "title": "Cancelada"
+        }
+      ],
+      "description": "Situação atual da inscrição no evento."
+    }
+  ],
+  "uniqueKeys": [
+    [
+      "eventoId",
+      "participanteId"
+    ]
+  ],
+  "lifecycleStates": [
+    {
+      "state": "confirmed",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "waitlisted",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "cancelled",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "cancelarInscricao",
+      "from": [
+        "confirmed",
+        "waitlisted"
+      ],
+      "to": "cancelled",
+      "by": [
+        "publico"
+      ],
+      "description": "O participante cancela sua própria inscrição no evento."
+    },
+    {
+      "transitionId": "promoverListaEspera",
+      "from": [
+        "waitlisted"
+      ],
+      "to": "confirmed",
+      "by": "system",
+      "description": "O sistema promove a primeira inscrição da lista de espera quando uma vaga é liberada."
+    }
+  ]
+}

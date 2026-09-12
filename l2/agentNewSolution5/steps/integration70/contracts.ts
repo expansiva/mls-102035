@@ -32,10 +32,19 @@ export const NS5_PLUGIN_IDS: readonly string[] = NS5_PLUGIN_CATALOG.map(item => 
 export type Ns5IntegrationItemKind = 'moduleEndpoint' | 'event' | 'external';
 export type Ns5IntegrationEffect = 'create' | 'update' | 'transition';
 
+export const NS5_INTEGRATION_DROP_TRANSITION_REF = 'dropTransitionRef' as const;
+
+export interface Ns5IntegrationFormNormalization {
+  kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF;
+  inboundId: string;
+  detail: string;
+}
+
 export interface Ns5IntegrationNormalization {
   inbound: Ns5IntegrationItem[];
   outbound: Ns5IntegrationItem[];
   plugins: Ns5IntegrationPlugin[];
+  normalizations: Ns5IntegrationFormNormalization[];
 }
 
 export interface Ns5IntegrationActorView {
@@ -90,10 +99,14 @@ export function buildNs5IntegrationTool(
 
 export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNormalization {
   const root = record(value);
+  const normalizations: Ns5IntegrationFormNormalization[] = [];
   return {
-    inbound: list(root.inbound).map(item => normalizeInbound(item)).filter(item => item.id || item.description),
+    inbound: list(root.inbound)
+      .map(item => normalizeInbound(item, normalizations))
+      .filter(item => item.id || item.description),
     outbound: list(root.outbound).map(item => normalizeOutbound(item)).filter(item => item.id || item.description),
     plugins: list(root.plugins).map(normalizePlugin).filter(plugin => plugin.pluginId || plugin.description),
+    normalizations,
   };
 }
 
@@ -228,7 +241,7 @@ export function collectNs5InboundPending(
   return pending;
 }
 
-function normalizeInbound(value: unknown): Ns5IntegrationItem {
+function normalizeInbound(value: unknown, normalizations: Ns5IntegrationFormNormalization[]): Ns5IntegrationItem {
   const source = record(value);
   const kind = text(source.kind);
   const from = memberId(text(source.from), '');
@@ -237,14 +250,24 @@ function normalizeInbound(value: unknown): Ns5IntegrationItem {
   const writes = unique(strings(source.writes).map(item => entityId(item)).filter(Boolean));
   const entityRefs = unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean));
   const resolvedWrites = writes.length ? writes : entityRefs;
-  const transitionRef = memberId(text(source.transitionRef), '');
+  const resolvedEffect = EFFECTS.has(effect) ? effect as Ns5IntegrationEffect : 'create';
+  const rawTransitionRef = memberId(text(source.transitionRef), '');
+  const id = memberId(text(source.id) || text(source.itemId), '');
+  if (rawTransitionRef && resolvedEffect !== 'transition') {
+    normalizations.push({
+      kind: NS5_INTEGRATION_DROP_TRANSITION_REF,
+      inboundId: id,
+      detail: `transitionRef ${rawTransitionRef} dropped; effect is ${resolvedEffect || '(missing)'}.`,
+    });
+  }
+  const transitionRef = resolvedEffect === 'transition' ? rawTransitionRef : '';
   return {
-    id: memberId(text(source.id) || text(source.itemId), ''),
+    id,
     kind: ITEM_KINDS.has(kind) ? kind as Ns5IntegrationItemKind : 'event',
     ...(from ? { from } : {}),
     ...(event ? { event } : {}),
     writes: resolvedWrites,
-    effect: EFFECTS.has(effect) ? effect as Ns5IntegrationEffect : 'create',
+    effect: resolvedEffect,
     ...(transitionRef ? { transitionRef } : {}),
     description: text(source.description),
     entityRefs: [],

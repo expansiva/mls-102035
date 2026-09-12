@@ -12,6 +12,7 @@ import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import type { Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
 import { buildNs5IntegrationHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
 import {
+  NS5_INTEGRATION_DROP_TRANSITION_REF,
   NS5_PLUGIN_CATALOG,
   NS5_PLUGIN_IDS,
   buildNs5IntegrationArtifact,
@@ -95,6 +96,38 @@ function gateOf(
     journeySteps: extras.journeySteps || [{ journeyId: 'pagarComPlugin', stepIds: ['pagarTitulo'] }],
   });
 }
+
+void test('inbound transitionRef with effect other than transition is dropped', () => {
+  const { inbound, normalizations } = drafts({
+    inbound: [{
+      id: 'produtoMdmCreated',
+      kind: 'event',
+      from: 'organization',
+      event: 'mdmCreated',
+      writes: ['Produto'],
+      effect: 'create',
+      transitionRef: 'produtoMdmCreated',
+      description: 'Creates the product reference.',
+    }],
+    outbound: [],
+    plugins: [],
+  });
+  assert.equal(inbound[0].transitionRef, undefined);
+  assert.equal(inbound[0].effect, 'create');
+  assert.ok(normalizations.some(item => (
+    item.kind === NS5_INTEGRATION_DROP_TRANSITION_REF
+    && item.inboundId === 'produtoMdmCreated'
+  )));
+  const gate = validateNs5Integration(inbound, [], [], {
+    actors: CE11_ACTORS,
+    entities: [{ entityId: 'Produto' }],
+    registryModuleNames: CE11_REGISTRY,
+    sourcePrompt: CE11_PROMPT,
+    platformEventIds: ['mdmCreated'],
+  });
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_TRANSITION_UNKNOWN'), false);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
 
 void test('integration70 tool schema is provider-clean', () => {
   const tool = buildNs5IntegrationTool(loadSchema(), createNs4FlexibleWorkerTool);

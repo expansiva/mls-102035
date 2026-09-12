@@ -208,7 +208,7 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(failure);
     }
 
-    const { inbound, outbound, plugins } = normalizeNs5IntegrationPayload(payload);
+    const { inbound, outbound, plugins, normalizations } = normalizeNs5IntegrationPayload(payload);
     const moduleArtifact = await readModule(moduleName);
     const [entities, actors, siblings, coverage] = await Promise.all([
       readEntities(moduleName),
@@ -222,7 +222,12 @@ export async function afterNs5IntegrationPromptStep(
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'integration70'), { inbound, outbound, plugins });
+    const draftPath = await writeJson(draftFile(moduleName, 'integration70'), {
+      inbound,
+      outbound,
+      plugins,
+      ...(normalizations.length ? { normalizations } : {}),
+    });
     const gate = validateNs5Integration(inbound, outbound, plugins, {
       moduleName,
       actors,
@@ -255,7 +260,7 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false);
+    const artifactPath = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations);
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `integration70 approved: ${artifactPath}`),
@@ -277,15 +282,20 @@ async function persistArtifacts(
   plugins: Ns5IntegrationPlugin[],
   pipeline: Ns5PipelineState,
   noIntegrationSignal: boolean,
+  normalizations: Array<{ kind: string; inboundId?: string; detail: string }> = [],
 ): Promise<string> {
   const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins);
   const artifactPath = await writeDefs(integrationFile(moduleName), `${moduleName}Integration`, artifact, 'Ns5IntegrationArtifact');
-  await writeJson(draftFile(moduleName, 'integration70'), artifact);
+  await writeJson(draftFile(moduleName, 'integration70'), {
+    ...artifact,
+    ...(normalizations.length ? { normalizations } : {}),
+  });
   await writeStepState(pipeline, {
     status: 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
     ...(noIntegrationSignal ? { noIntegrationSignal: true } : {}),
+    ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;

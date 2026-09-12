@@ -131,7 +131,7 @@ function validateInbound(
   if (item.effect === 'transition' && !item.transitionRef) {
     error(ctx.issues, 'NS5_INTEGRATION_TRANSITION_REF', 'Inbound effect transition names transitionRef.', `${path}.transitionRef`);
   }
-  if (item.transitionRef && item.writes?.[0]) {
+  if (item.effect === 'transition' && item.transitionRef && item.writes?.[0]) {
     const entity = ctx.entityById.get(item.writes[0]);
     if (entity?.transitions && !entity.transitions.some(row => row.transitionId === item.transitionRef)) {
       error(

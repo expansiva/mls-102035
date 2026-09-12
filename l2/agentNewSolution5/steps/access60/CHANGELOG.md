@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- CRUD grant uses `ns5ResolveEntityWriter` (`kind === 'crud'`), same resolution as ontology30 / I10.
 - `custom` with a reachable `party: person` whose description cites the actor is
   `NS5_ACCESS_CUSTOM_HAS_ANCHOR` (repair: own/assigned/related + `anchorEntity`).
   `custom` with no Person in the module is warning `NS5_ACCESS_CUSTOM_WITHOUT_PERSON`.

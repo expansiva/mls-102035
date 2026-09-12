@@ -1,0 +1,35 @@
+{
+  "entityId": "EstornoRecebimento",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do estorno de recebimento."
+    },
+    {
+      "fieldId": "recebimentoId",
+      "title": "Recebimento",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao recebimento específico que este estorno reverte."
+    },
+    {
+      "fieldId": "valorEstornado",
+      "title": "Valor estornado",
+      "type": "money",
+      "required": true,
+      "description": "Valor do recebimento que foi estornado."
+    },
+    {
+      "fieldId": "estornadoEm",
+      "title": "Data e hora do estorno",
+      "type": "datetime",
+      "required": true,
+      "description": "Data e hora em que o estorno foi registrado."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

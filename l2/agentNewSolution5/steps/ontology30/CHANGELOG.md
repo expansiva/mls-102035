@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- Writer resolution `ns5ResolveEntityWriter`: child of a written parent (`parent`) and MDM attached by a create act (`attach`) count as writers; recorded as `writerDerived`. WITHOUT_WRITER only when `kind === 'none'`. Panel requires no field besides `idField`.
 - `collectNs5LifecycleSignal.requiresTransitions` is an `act` with `effect: 'transition'`
   (not a count of `act`s). `create`/`update` do not demand lifecycle. Frota relote2
   `OrdemManutencao` (2 create + 1 update) is the fixture.

@@ -1,0 +1,69 @@
+{
+  "entityId": "Recebimento",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do recebimento."
+    },
+    {
+      "fieldId": "tituloReceberId",
+      "title": "Título a receber",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao título a receber ao qual esta baixa total ou parcial se refere."
+    },
+    {
+      "fieldId": "valorRecebido",
+      "title": "Valor recebido",
+      "type": "money",
+      "required": true,
+      "constraints": {
+        "precision": 2
+      },
+      "description": "Valor efetivamente recebido e baixado no título."
+    },
+    {
+      "fieldId": "formaPagamento",
+      "title": "Forma de pagamento",
+      "type": "string",
+      "required": true,
+      "enum": [
+        {
+          "value": "dinheiro",
+          "title": "Dinheiro"
+        },
+        {
+          "value": "pix",
+          "title": "Pix"
+        },
+        {
+          "value": "cartao",
+          "title": "Cartão"
+        }
+      ],
+      "description": "Meio utilizado para realizar o recebimento."
+    },
+    {
+      "fieldId": "recebidoEm",
+      "title": "Recebido em",
+      "type": "datetime",
+      "required": true,
+      "description": "Data e hora em que o recebimento foi confirmado."
+    },
+    {
+      "fieldId": "referenciaTransacao",
+      "title": "Referência da transação",
+      "type": "string",
+      "required": false,
+      "constraints": {
+        "maxLength": 255
+      },
+      "description": "Identificador ou comprovante da transação de Pix ou cartão, incluindo a referência processada pela Stripe quando aplicável."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

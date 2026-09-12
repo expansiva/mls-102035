@@ -42,11 +42,13 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - `displayField` is a field of the entity, or of level-1 identification/base when mdm.
 - `appendOnly` has no lifecycle.
 - An entity with written fields (`fields` besides `idField`; mdm namespace) is the
-  `entity` of an `act`, listed in an act's `affects`, **or** `writer: 'crud'` / `'inbound'`
-  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Normalize drops `crud`/`inbound` when an `act`
-  already writes it (`normalizations[]`); crud plus lifecycle is also dropped.
-  `valueObject` is out; normalize also drops its `writer`/`mutability`
-  (`dropValueObjectTableAttrs` — no table).
+  `entity` of an `act`, listed in an act's `affects`, **or** `writer: 'crud'` / `'inbound'`,
+  **or** derived `parent` (many-side of a `manyToOne`/`oneToMany` whose other side has a
+  writer) / `attach` (mdm referenced by a required FK of a create `act`)
+  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Derived writers land on `normalizations[]`
+  as `writerDerived`. Normalize drops `crud`/`inbound` when an `act` already writes it;
+  crud plus lifecycle is also dropped. `valueObject` is out; normalize also drops its
+  `writer`/`mutability` (`dropValueObjectTableAttrs` — no table).
 - `unique` on `storage.idField` and `uniqueKeys` that contain the idField are dropped
   (`dropUniqueIdField` / `dropUniqueKeyIdField`). `NS5_ONTOLOGY_UNIQUE_ID_FIELD` is
   gone. `NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD` stays as the skip-normalize net.
@@ -84,10 +86,11 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - Calculated totals are `details` on the owning entity, or `module.details` when they
   belong to the module (`NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`). Not a projection entity.
   After fan-out, `liftNs5AggregateOnlyEntities` moves a non-mdm aggregate-only entity
-  (`core`/`supporting`/`valueObject`/`event`, details not empty, no act/affects, no
-  lifecycle) into `module.details` and drops it (the model keeps creating a panel;
-  prompt plus gate did not stop it). Extra fields besides idField are reading
-  parameters — discarded and recorded as `liftedFields`. Lifted ids are stored as
+  (`core`/`supporting`/`valueObject`/`event`, details not empty, writer kind none, no
+  field besides `idField`, no lifecycle) into `module.details` and drops it (the model
+  keeps creating a panel; prompt plus gate did not stop it). A period field is not a
+  panel — it belongs in `module.details` description. Extra identity-only panels still
+  record leftover fields as `liftedFields`. Lifted ids are stored as
   `liftedAggregateEntities[]` on the ontology30 `pipeline.json` step so finalize80 I1
   can accept journey refs to them. A relationship to another entity is not lifted —
   the gate remains the net. Two entities claiming the same details key fail

@@ -1,0 +1,73 @@
+{
+  "moduleName": "inscricaoEvento",
+  "businessDomain": "Gestão de eventos publicados e inscrições públicas, incluindo lista de espera e cancelamentos.",
+  "entities": [
+    {
+      "entityId": "Evento",
+      "title": "Evento",
+      "description": "Evento organizado com informações, capacidade e publicação para inscrições públicas.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "titulo",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "inscricaoEvento.Evento"
+      }
+    },
+    {
+      "entityId": "Inscricao",
+      "title": "Inscrição",
+      "description": "Registro da participação de uma pessoa em um evento, incluindo sua situação de confirmação, espera ou cancelamento.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "id",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "inscricaoEvento.Inscricao"
+      }
+    },
+    {
+      "entityId": "Participante",
+      "title": "Participante",
+      "description": "Pessoa identificada para realizar inscrições em eventos deste módulo.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "inscricaoEvento.Participante"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "inscricaoEvento",
+      "fromEntity": "Inscricao",
+      "toEntity": "Evento",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada inscrição pertence a um único evento.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "inscricaoParticipante",
+      "fromEntity": "Inscricao",
+      "toEntity": "Participante",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada inscrição identifica a pessoa participante que a realizou.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- I8/I10 use `ns5ResolveEntityWriter`: derived `parent`/`attach` count (attach by the public create act is self-registration).
 - I2 structural signal: `requiresTransitions` is `effect: 'transition'`, not a second `act`.
   `create`/`update` still do not fail I2.
 

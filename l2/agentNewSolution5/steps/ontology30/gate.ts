@@ -34,16 +34,16 @@ import {
   ns5SourceSccStates,
   isNs5AggregateOnlyEntity,
   ns5AsFieldSource,
-  ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
-  ns5EntityWriter,
   ns5LifecycleHasBranchingOrigin,
+  ns5ResolveEntityWriter,
   type Ns5LifecycleSignal,
   type Ns5OntologyAssembly,
   type Ns5OntologyBindingsDraft,
   type Ns5OntologyEntityDraft,
   type Ns5OntologyPlanDraft,
   type Ns5OntologyRealizationKind,
+  type Ns5WriterPlanView,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 
 const MODULE_ID = /^[a-z][A-Za-z0-9]*$/;
@@ -87,6 +87,8 @@ export interface Ns5OntologyGateContext {
   liftedAggregateEntityIds?: readonly string[];
   /** Sibling modules from the organization registry. SIBLING_ENTITY is a warning. */
   siblings?: readonly Ns5SiblingModule[];
+  /** Full plan for writer resolution (parent/attach). Isolated entity validation strips relationships. */
+  writerPlan?: Ns5WriterPlanView;
 }
 
 export function validateNs5OntologyPlan(
@@ -103,6 +105,7 @@ export function validateNs5OntologyPlan(
     ...context,
     planOverview: true,
     requireRelationshipRealization: false,
+    writerPlan: context.writerPlan || plan,
   });
   const extra: Ns5OntologyGateIssue[] = [];
   validateNamedDetails(plan.moduleDetails, 'moduleDetails', extra);
@@ -130,6 +133,7 @@ export function validateNs5OntologyEntity(
     planOverview: false,
     requireRelationshipRealization: false,
     requireJourneyCitation: false,
+    writerPlan: context.writerPlan || plan,
   });
 }
 
@@ -164,6 +168,7 @@ export function validateNs5OntologyBindings(
     planOverview: false,
     requireRelationshipRealization: true,
     liftedAggregateEntityIds: context.liftedAggregateEntityIds || plan.liftedAggregateEntities,
+    writerPlan: context.writerPlan || plan,
   });
 }
 
@@ -201,6 +206,7 @@ export function validateNs5OntologyAssembly(
       issues,
       signal,
       journeys,
+      context.writerPlan || { entities, relationships: index.relationships },
     );
     if (entity.entityId) {
       if (entityIds.has(entity.entityId)) {
@@ -338,6 +344,7 @@ function validateEntity(
   issues: Ns5OntologyGateIssue[],
   signal: Ns5LifecycleSignal,
   journeys: ReadonlyArray<Pick<Ns5JourneyArtifact, 'business'>>,
+  writerPlan: Ns5WriterPlanView | undefined,
 ): void {
   if (!ENTITY_ID.test(entity.entityId)) {
     error(issues, 'NS5_ONTOLOGY_ENTITY_ID', 'entityId must be a PascalCase business noun.', `${path}.entityId`);
@@ -459,14 +466,11 @@ function validateEntity(
     error(issues, 'NS5_ONTOLOGY_MUTABILITY', "mutability 'appendOnly' contradicts kind mdm.", `${path}.mutability`);
   }
 
-  const writer = ns5EntityWriter(entity);
   if (entity.writer && entity.writer !== 'journey' && entity.writer !== 'crud' && entity.writer !== 'inbound') {
     error(issues, 'NS5_ONTOLOGY_WRITER', "writer is omitted (journey), 'crud' or 'inbound'.", `${path}.writer`);
   }
-  const crud = writer === 'crud';
-  const inbound = writer === 'inbound';
-  const hasWriter = ns5EntityHasActOrAffects(journeys, entity.entityId);
-  if (!planOverview && !crud && !inbound && !hasWriter && ns5EntityHasWrittenFields(entity)) {
+  const resolved = ns5ResolveEntityWriter(entity, writerPlan, journeys);
+  if (!planOverview && resolved.kind === 'none' && ns5EntityHasWrittenFields(entity)) {
     error(
       issues,
       'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER',
@@ -490,7 +494,7 @@ function validateEntity(
   if (!planOverview) {
     validateDetails(entity, path, issues);
     validateLifecycle(entity, actorIds, path, issues, signal, journeys);
-    if (isNs5AggregateOnlyEntity(entity, journeys)) {
+    if (isNs5AggregateOnlyEntity(entity, journeys, writerPlan)) {
       error(
         issues,
         'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY',

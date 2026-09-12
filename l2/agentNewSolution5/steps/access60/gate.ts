@@ -18,6 +18,7 @@ import {
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
 } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
+import { ns5ResolveEntityWriter } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
@@ -39,7 +40,19 @@ export interface Ns5AccessGateContext {
   actors: readonly Ns5ModuleActor[];
   entities: readonly Ns5AccessEntityView[];
   relationships: readonly Ns5AccessRelationshipView[];
-  journeys: ReadonlyArray<{ journeyId: string; business: { actorRef: string } }>;
+  journeys: ReadonlyArray<{
+    journeyId: string;
+    business: {
+      actorRef: string;
+      steps?: ReadonlyArray<{
+        stepId?: string;
+        kind: string;
+        entity: string;
+        affects?: readonly string[];
+        effect?: string;
+      }>;
+    };
+  }>;
 }
 
 export function validateNs5Access(
@@ -209,8 +222,30 @@ export function validateNs5Access(
     );
   });
 
+  const writerPlan = {
+    entities: context.entities.map(entity => ({
+      entityId: entity.entityId,
+      kind: entity.kind || '',
+      writer: entity.writer,
+    })),
+    relationships: context.relationships.map(item => ({
+      relationshipId: item.relationshipId,
+      fromEntity: item.fromEntity,
+      toEntity: item.toEntity,
+      type: item.type || '',
+      required: item.required,
+    })),
+  };
+  const writerJourneys = context.journeys.map(journey => ({
+    journeyId: journey.journeyId,
+    business: {
+      actorRef: journey.business.actorRef,
+      steps: journey.business.steps || [],
+    },
+  }));
   context.entities.forEach((entity, index) => {
-    if (entity.writer !== 'crud' || !entity.entityId) return;
+    if (!entity.entityId) return;
+    if (ns5ResolveEntityWriter(entity, writerPlan, writerJourneys).kind !== 'crud') return;
     const covered = grants.some(grant => {
       if (!grant.entityRefs.includes(entity.entityId)) return false;
       return actorById.get(grant.actorRef)?.kind === 'internal';

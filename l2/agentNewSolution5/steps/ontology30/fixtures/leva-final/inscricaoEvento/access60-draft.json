@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "2026-09-12-ns5-access-v3",
+  "moduleName": "inscricaoEvento",
+  "actors": [
+    {
+      "actorId": "organizador",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Organizador",
+      "description": "Pessoa da organização que cadastra, publica e acompanha os eventos e suas inscrições."
+    },
+    {
+      "actorId": "publico",
+      "kind": "external",
+      "origin": "named",
+      "title": "Público",
+      "description": "Pessoa que acessa a página pública de um evento e realiza sua própria inscrição."
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "gerenciarEventosEinscricoes",
+      "actorRef": "organizador",
+      "title": "Gerenciar eventos e inscrições",
+      "description": "Permite ao organizador cadastrar, publicar e acompanhar todos os eventos e suas inscrições, incluindo a lista de participantes e os indicadores de ocupação.",
+      "entityRefs": [
+        "Evento",
+        "Inscricao",
+        "Participante"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Abrange os eventos, inscrições e participantes da organização."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Disponibiliza todos os dados dos eventos, inscrições e participantes necessários para a gestão."
+      }
+    },
+    {
+      "grantId": "consultarEadministrarInscricaoPropria",
+      "actorRef": "publico",
+      "title": "Consultar eventos e administrar inscrição própria",
+      "description": "Permite ao público consultar as informações de eventos publicadas e visualizar ou cancelar somente a própria inscrição.",
+      "entityRefs": [
+        "Evento",
+        "Inscricao",
+        "Participante"
+      ],
+      "dataScope": {
+        "mode": "own",
+        "description": "Abrange somente a inscrição vinculada à própria pessoa participante e os dados do evento consultados no contexto dessa inscrição.",
+        "anchorEntity": "Participante"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Exibe somente dados públicos do evento, a disponibilidade de vagas e os dados necessários para consultar ou cancelar a própria inscrição.",
+        "allowedFields": [
+          "Evento.id",
+          "Evento.titulo",
+          "Evento.descricao",
+          "Evento.data",
+          "Evento.local",
+          "Evento.numeroVagas",
+          "Evento.status",
+          "Evento.details.vagasDisponiveis",
+          "Inscricao.id",
+          "Inscricao.eventoId",
+          "Inscricao.dataInscricao",
+          "Inscricao.status"
+        ],
+        "deniedFields": [
+          "Inscricao.participanteId",
+          "Evento.details.totalVagasOcupadas",
+          "Participante.id"
+        ]
+      }
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "dropAnchorEntity",
+      "grantId": "gerenciarEventosEinscricoes",
+      "detail": "anchorEntity removed; organization is not own/assigned/related."
+    }
+  ]
+}

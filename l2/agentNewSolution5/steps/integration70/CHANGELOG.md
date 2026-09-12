@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- Inbound `transitionRef` with `effect ≠ transition` is dropped (`dropTransitionRef`); `effect: transition` without `transitionRef` stays `NS5_INTEGRATION_TRANSITION_REF`; unknown id stays `NS5_INTEGRATION_TRANSITION_UNKNOWN`.
 - Form `-integration-v2` (ns5_31): inbound `{ id, kind, from, event?, writes[], effect, transitionRef? }`;
   outbound `{ id, kind, to, event, on, entityRefs[] }`; plugins `{ pluginId, usedBy[], description }`.
   `inbound.writes` is a writer. `outbound.on` is `Entity.transitionId` or `Entity.create`.
