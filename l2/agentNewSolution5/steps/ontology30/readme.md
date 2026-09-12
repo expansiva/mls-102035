@@ -43,7 +43,11 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
   `entity` of an `act`, listed in an act's `affects`, **or** `maintenance: 'crud'`
   (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Normalize drops `crud` when an `act`
   already writes it or the entity has lifecycle (`normalizations[]`).
-  `valueObject` is out.
+  `valueObject` is out; normalize also drops its `maintenance`/`mutability`
+  (`dropValueObjectTableAttrs` — no table).
+- `unique` on `storage.idField` and `uniqueKeys` that contain the idField are dropped
+  (`dropUniqueIdField` / `dropUniqueKeyIdField`). `NS5_ONTOLOGY_UNIQUE_ID_FIELD` is
+  gone. `NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD` stays as the skip-normalize net.
 - Journeys that include a second `act` or a `decide` on an entity require `lifecycleStates` /
   `transitions` (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`). Normalize drops `appendOnly` on that entity
   before the gate (mutability is frozen on the plan). The gate still rejects `appendOnly` if
@@ -51,8 +55,9 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
   (`NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED`). Same predicate as finalize80 I2
   (`collectNs5LifecycleSignal`); I2 still checks that a later `act` matches `by`.
 - Transitions: `from`/`to` are declared states; `by` is actor ids, `system` or `time`. An
-  actor/command state with no arriving transition fails (birth states are the ones no transition
-  targets). `time` states must not be arrived at by a transition.
+  actor/command state not reachable from a source SCC fails (a cycle back to the birth
+  state is reachable; an isolated state in an entity with transitions stays
+  `NS5_ONTOLOGY_STATE_UNREACHABLE`). `time` states must not be arrived at by a transition.
 - Relationships follow n15 plus a real FK: resolvable fields, non-owning mdm endpoint exactly
   `[idField]`, both ends required. Owner stores a `uuid` FK or a `json` collection, never
   `id → id`. MDM with `fields: []` cannot be owner
@@ -72,12 +77,15 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 
 - Calculated totals are `details` on the owning entity, or `module.details` when they
   belong to the module (`NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`). Not a projection entity.
-  After fan-out, `liftNs5AggregateOnlyEntities` moves that entity into `module.details`
-  and drops it (the model keeps creating a panel; prompt plus gate did not stop it).
-  Lifted ids are stored as `liftedAggregateEntities[]` on the ontology30
-  `pipeline.json` step so finalize80 I1 can accept journey refs to them.
-  A relationship to another entity is not lifted — the gate remains the net. Two
-  entities claiming the same details key fail `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION`.
+  After fan-out, `liftNs5AggregateOnlyEntities` moves a non-mdm aggregate-only entity
+  (`core`/`supporting`/`valueObject`/`event`, details not empty, no act/affects, no
+  lifecycle) into `module.details` and drops it (the model keeps creating a panel;
+  prompt plus gate did not stop it). Extra fields besides idField are reading
+  parameters — discarded and recorded as `liftedFields`. Lifted ids are stored as
+  `liftedAggregateEntities[]` on the ontology30 `pipeline.json` step so finalize80 I1
+  can accept journey refs to them. A relationship to another entity is not lifted —
+  the gate remains the net. Two entities claiming the same details key fail
+  `NS5_ONTOLOGY_AGGREGATE_DETAIL_COLLISION`.
 - MDM `fields[]` is the module namespace and may be empty. Identity is `storage.idField`.
 - Do not add prompt examples of a domain. Placeholders (`<Person>`, `<Entity>`) are context.
 - `mdmSubtype` is only on `kind: mdm`. `mutability: appendOnly` is never on mdm. The model fills

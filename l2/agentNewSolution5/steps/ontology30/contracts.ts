@@ -86,7 +86,12 @@ export interface Ns5OntologyPlanDraft {
   normalizations?: Ns5OntologyFormNormalization[];
 }
 
-export type Ns5OntologyFormNormalizationKind = 'dropCrud';
+export type Ns5OntologyFormNormalizationKind =
+  | 'dropCrud'
+  | 'dropUniqueIdField'
+  | 'dropUniqueKeyIdField'
+  | 'dropValueObjectTableAttrs'
+  | 'liftedFields';
 
 /** Same shape as access60 `draft.normalizations[]`. */
 export interface Ns5OntologyFormNormalization {
@@ -168,7 +173,16 @@ export function normalizeNs5OntologyPlan(
     .map(entity => {
       const next = dropConflictingCrud(entity, journeys, false);
       if (next.normalization) normalizations.push(next.normalization);
-      return next.entity;
+      if (next.entity.kind !== 'valueObject' || (!next.entity.maintenance && !next.entity.mutability)) {
+        return next.entity;
+      }
+      const { maintenance: _droppedMaintenance, mutability: _droppedMutability, ...rest } = next.entity;
+      normalizations.push({
+        kind: 'dropValueObjectTableAttrs',
+        entityId: next.entity.entityId,
+        detail: 'valueObject has no table; maintenance and mutability removed.',
+      });
+      return rest;
     });
   const moduleDetails = normalizeDetails(root.moduleDetails);
   return {
@@ -249,18 +263,28 @@ export function ns5EntityHasWrittenFields(entity: {
   return fields.some(field => field.fieldId && field.fieldId !== idField);
 }
 
+const AGGREGATE_LIFT_KINDS = new Set(['core', 'supporting', 'valueObject', 'event']);
+
 /**
- * Same predicate as `NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`: core/supporting, details
- * not empty, no journey `act` on it or in `affects`.
+ * Same predicate as `NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY`: non-mdm kind, details
+ * not empty, no journey `act` on it or in `affects`, no lifecycle.
  */
 export function isNs5AggregateOnlyEntity(
-  entity: { entityId: string; kind: string; details?: Record<string, unknown> },
+  entity: {
+    entityId: string;
+    kind: string;
+    details?: Record<string, unknown>;
+    lifecycleStates?: ReadonlyArray<unknown>;
+    transitions?: ReadonlyArray<unknown>;
+  },
   journeys: ReadonlyArray<Ns5AggregateJourneyView>,
 ): boolean {
-  return (entity.kind === 'core' || entity.kind === 'supporting')
+  return AGGREGATE_LIFT_KINDS.has(entity.kind)
     && !!entity.details
     && Object.keys(entity.details).length > 0
-    && !ns5EntityHasActOrAffects(journeys, entity.entityId);
+    && !ns5EntityHasActOrAffects(journeys, entity.entityId)
+    && !(entity.lifecycleStates && entity.lifecycleStates.length)
+    && !(entity.transitions && entity.transitions.length);
 }
 
 export interface Ns5AggregateLiftIssue {
@@ -279,9 +303,10 @@ export interface Ns5AggregateLiftResult {
 
 /**
  * After entity fan-out: move aggregate-only entities into `plan.moduleDetails` and
- * drop them from the plan. A relationship to another entity is not lifted (the gate
- * stays as the net). Two lifted entities claiming the same details key is an error;
- * a key already on `moduleDetails` is kept, not overwritten.
+ * drop them from the plan. Extra fields besides idField are reading parameters —
+ * discarded and recorded on `normalizations[]`. A relationship to another entity
+ * is not lifted (the gate stays as the net). Two lifted entities claiming the same
+ * details key is an error; a key already on `moduleDetails` is kept, not overwritten.
  */
 export function liftNs5AggregateOnlyEntities(
   plan: Ns5OntologyPlanDraft,
@@ -293,12 +318,19 @@ export function liftNs5AggregateOnlyEntities(
   const origin = new Map<string, string>();
   for (const key of Object.keys(merged)) origin.set(key, 'moduleDetails');
   const toRemove = new Set<string>();
+  const liftedFields: Ns5OntologyFormNormalization[] = [];
   const issues: Ns5AggregateLiftIssue[] = [];
 
   for (const entity of plan.entities) {
     const detail = byId.get(entity.entityId);
     if (!detail) continue;
-    if (!isNs5AggregateOnlyEntity({ entityId: entity.entityId, kind: entity.kind, details: detail.details }, journeys)) {
+    if (!isNs5AggregateOnlyEntity({
+      entityId: entity.entityId,
+      kind: entity.kind,
+      details: detail.details,
+      lifecycleStates: detail.lifecycleStates,
+      transitions: detail.transitions,
+    }, journeys)) {
       continue;
     }
     if (plan.relationships.some(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId)) {
@@ -318,6 +350,16 @@ export function liftNs5AggregateOnlyEntities(
         origin.set(key, entity.entityId);
       }
     }
+    const extra = (detail.fields || [])
+      .map(field => field.fieldId)
+      .filter(fieldId => fieldId && fieldId !== entity.storage.idField);
+    if (extra.length) {
+      liftedFields.push({
+        kind: 'liftedFields',
+        entityId: entity.entityId,
+        detail: extra.join(', '),
+      });
+    }
     toRemove.add(entity.entityId);
   }
 
@@ -329,12 +371,14 @@ export function liftNs5AggregateOnlyEntities(
   }
 
   const liftedEntityIds = uniqueIds([...(plan.liftedAggregateEntities || []), ...toRemove]);
+  const nextNormalizations = [...(plan.normalizations || []), ...liftedFields];
   const nextPlan: Ns5OntologyPlanDraft = {
     ...plan,
     entities: plan.entities.filter(entity => !toRemove.has(entity.entityId)),
     relationships: plan.relationships.filter(item => !toRemove.has(item.fromEntity) && !toRemove.has(item.toEntity)),
     ...(Object.keys(merged).length ? { moduleDetails: merged } : {}),
     liftedAggregateEntities: liftedEntityIds,
+    ...(nextNormalizations.length ? { normalizations: nextNormalizations } : {}),
   };
   return {
     plan: nextPlan,
@@ -359,27 +403,63 @@ export function normalizeNs5OntologyEntity(
   value: unknown,
   entityId: string,
   journeys: ReadonlyArray<Ns5AggregateJourneyView> = [],
+  opts: { idField?: string; kind?: string } = {},
 ): Ns5OntologyEntityDraft {
   const root = record(value);
   const details = normalizeDetails(root.details);
-  const uniqueKeys = normalizeUniqueKeys(root.uniqueKeys);
   const lifecycleStates = list(root.lifecycleStates).map(normalizeLifecycleState).filter(item => item.state);
   const transitions = list(root.transitions).map(normalizeTransition).filter(item => item.transitionId);
   const id = normalizeEntityId(root.entityId) || entityId;
+  const idField = opts.idField || memberId(text(record(root.storage).idField), '');
+  const kind = opts.kind || text(root.kind);
+  const normalizations: Ns5OntologyFormNormalization[] = [];
+  let fields = list(root.fields).map(normalizeField).filter(field => field.fieldId);
+  if (idField && fields.some(field => field.fieldId === idField && field.unique === true)) {
+    fields = fields.map(field => {
+      if (field.fieldId !== idField || field.unique !== true) return field;
+      const { unique: _dropped, ...rest } = field;
+      return rest;
+    });
+    normalizations.push({
+      kind: 'dropUniqueIdField',
+      entityId: id,
+      detail: 'idField unique removed; the id is unique by definition.',
+    });
+  }
+  let uniqueKeys = normalizeUniqueKeys(root.uniqueKeys);
+  if (idField && uniqueKeys?.some(key => key.includes(idField))) {
+    const next = uniqueKeys.filter(key => !key.includes(idField));
+    uniqueKeys = next.length ? next : undefined;
+    normalizations.push({
+      kind: 'dropUniqueKeyIdField',
+      entityId: id,
+      detail: 'uniqueKeys containing idField removed; the id is unique by definition.',
+    });
+  }
   const dropped = dropConflictingCrud(
     { entityId: id, ...(text(root.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}) },
     journeys,
     lifecycleStates.length > 0 || transitions.length > 0,
   );
+  if (dropped.normalization) normalizations.push(dropped.normalization);
+  let maintenance = dropped.entity.maintenance;
+  if (kind === 'valueObject' && maintenance) {
+    maintenance = undefined;
+    normalizations.push({
+      kind: 'dropValueObjectTableAttrs',
+      entityId: id,
+      detail: 'valueObject has no table; maintenance removed.',
+    });
+  }
   return {
     entityId: id,
-    fields: list(root.fields).map(normalizeField).filter(field => field.fieldId),
+    fields,
     ...(uniqueKeys ? { uniqueKeys } : {}),
     ...(details ? { details } : {}),
     lifecycleStates,
     transitions,
-    ...(dropped.entity.maintenance ? { maintenance: 'crud' as const } : {}),
-    ...(dropped.normalization ? { normalizations: [dropped.normalization] } : {}),
+    ...(maintenance ? { maintenance: 'crud' as const } : {}),
+    ...(normalizations.length ? { normalizations } : {}),
   };
 }
 

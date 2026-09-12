@@ -20,7 +20,7 @@ not a list of fields to copy onto this entity.
 - `fieldId` is lowerCamel. Types: `uuid`, `string`, `text`, `number`, `integer`, `boolean`, `money`,
   `date`, `datetime`, `json`.
 - Honour the frozen `displayField`. Do not invent a second identifying field from a name suffix.
-- Declare `unique`/`uniqueKeys` for what must not repeat; the rule text explains why.
+- Declare `unique`/`uniqueKeys` for what must not repeat; the id is unique by definition; do not mark it.
 - `constraints` (`min`, `max`, `maxLength`, `precision`) are intrinsic to the type, never a business
   policy — that is a rule; a value that varies is a field.
 - Closed-domain values (`enum`, lifecycle state ids) are stable English codes: lowerCamel ASCII

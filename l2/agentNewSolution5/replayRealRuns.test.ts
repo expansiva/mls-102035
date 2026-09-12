@@ -174,7 +174,10 @@ for (const moduleName of NS5_REAL_MODULES) {
     const plan = normalizeNs5OntologyPlan(planDraft, moduleName, journeys);
     const details = plan.entities.map(entity => {
       const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', moduleName, `${entity.entityId}-draft.json`);
-      return normalizeNs5OntologyEntity(raw, entity.entityId, journeys);
+      return normalizeNs5OntologyEntity(raw, entity.entityId, journeys, {
+        idField: entity.storage.idField,
+        kind: entity.kind,
+      });
     });
     const bindings = normalizeNs5OntologyBindings(bindingsDraft);
     const gate = validateNs5OntologyBindings(plan, details, bindings, {

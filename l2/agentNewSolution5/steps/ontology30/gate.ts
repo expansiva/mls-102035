@@ -365,9 +365,6 @@ function validateEntity(
     if (!FIELD_TYPE_SET.has(field.type)) {
       error(issues, 'NS5_ONTOLOGY_FIELD_TYPE', `Unknown field type ${field.type || '(empty)'}.`, `${fieldPath}.type`);
     }
-    if (field.unique === true && field.fieldId && field.fieldId === entity.storage.idField) {
-      error(issues, 'NS5_ONTOLOGY_UNIQUE_ID_FIELD', 'idField is already unique; do not set unique on it.', `${fieldPath}.unique`);
-    }
     const enumSeen = new Set<string>();
     (field.enum || []).forEach((entry, enumIndex) => {
       const enumPath = `${fieldPath}.enum[${enumIndex}]`;
@@ -752,24 +749,18 @@ function validateLifecycle(
   if (actorCommand.length > 1 && !entity.transitions.length) {
     error(issues, 'NS5_ONTOLOGY_STATE_UNREACHABLE', `${entity.entityId} names more than one actor/command state and no allowed transitions.`, `${path}.transitions`);
   }
-  const usedFrom = new Set(entity.transitions.flatMap(transition => transition.from));
-  const births = actorCommand
-    .filter(entry => !incoming.has(entry.state) && usedFrom.has(entry.state))
-    .map(entry => entry.state);
-  const roots = births.length ? births : actorCommand.filter(entry => !incoming.has(entry.state)).map(entry => entry.state);
-  const reached = reachableStates(roots, entity.transitions);
-  actorCommand.forEach((entry, index) => {
-    const isBirth = !incoming.has(entry.state) && (usedFrom.has(entry.state) || !entity.transitions.length);
-    if (isBirth) return;
-    if (!reached.has(entry.state)) {
+  if (entity.transitions.length) {
+    const reached = reachableStates(sourceSccStates(entity.transitions), entity.transitions);
+    actorCommand.forEach((entry, index) => {
+      if (reached.has(entry.state)) return;
       error(
         issues,
         'NS5_ONTOLOGY_STATE_UNREACHABLE',
         `actor/command state ${entity.entityId}.${entry.state} has no transition that reaches it.`,
         `${path}.lifecycleStates[${index}]`,
       );
-    }
-  });
+    });
+  }
   entity.lifecycleStates.forEach((entry, index) => {
     if (entry.reachedBy !== 'time') return;
     if (incoming.has(entry.state)) {
@@ -801,6 +792,70 @@ function validateTransitionBy(
       error(issues, 'NS5_ONTOLOGY_TRANSITION_BY_UNKNOWN', `Unknown actor ${actorId}.`, `${path}.by[${index}]`);
     }
   });
+}
+
+/** Source-SCC states of the transition graph (Tarjan). Isolated states are not nodes. */
+function sourceSccStates(
+  transitions: Ns5OntologyEntityArtifact['transitions'],
+): string[] {
+  const nodes: string[] = [];
+  const seen = new Set<string>();
+  const add = (id: string) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    nodes.push(id);
+  };
+  const edges: Array<[string, string]> = [];
+  for (const transition of transitions) {
+    add(transition.to);
+    for (const from of transition.from) {
+      add(from);
+      if (from && transition.to) edges.push([from, transition.to]);
+    }
+  }
+  if (!nodes.length) return [];
+  const adj = new Map(nodes.map(node => [node, [] as string[]]));
+  for (const [from, to] of edges) adj.get(from)!.push(to);
+  let next = 0;
+  const index = new Map<string, number>();
+  const low = new Map<string, number>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const sccOf = new Map<string, number>();
+  let sccCount = 0;
+  const connect = (v: string) => {
+    index.set(v, next);
+    low.set(v, next);
+    next += 1;
+    stack.push(v);
+    onStack.add(v);
+    for (const w of adj.get(v) || []) {
+      if (!index.has(w)) {
+        connect(w);
+        low.set(v, Math.min(low.get(v)!, low.get(w)!));
+      } else if (onStack.has(w)) {
+        low.set(v, Math.min(low.get(v)!, index.get(w)!));
+      }
+    }
+    if (low.get(v) !== index.get(v)) return;
+    let w = '';
+    do {
+      w = stack.pop()!;
+      onStack.delete(w);
+      sccOf.set(w, sccCount);
+    } while (w !== v);
+    sccCount += 1;
+  };
+  for (const node of nodes) {
+    if (!index.has(node)) connect(node);
+  }
+  const hasIncoming = new Array<boolean>(sccCount).fill(false);
+  for (const [from, to] of edges) {
+    const a = sccOf.get(from);
+    const b = sccOf.get(to);
+    if (a !== undefined && b !== undefined && a !== b) hasIncoming[b] = true;
+  }
+  return nodes.filter(node => !hasIncoming[sccOf.get(node)!]);
 }
 
 function reachableStates(

@@ -402,7 +402,11 @@ async function handleEntityResult(
   }
   await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
-  const detail = normalizeNs5OntologyEntity(payload, entityId, journeys);
+  const frozen = plan.entities.find(item => item.entityId === entityId);
+  const detail = normalizeNs5OntologyEntity(payload, entityId, journeys, {
+    idField: frozen?.storage.idField,
+    kind: frozen?.kind,
+  });
   await writeJson(entityDraftFile(parsed.moduleName, entityId), detail);
   const gate = validateNs5OntologyEntity(plan, detail, {
     moduleName: parsed.moduleName,

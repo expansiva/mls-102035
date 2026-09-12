@@ -1,0 +1,46 @@
+{
+  "entityId": "IndicadorAcademia",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "unique": true,
+      "description": "Identificador único do conjunto de indicadores mensais."
+    },
+    {
+      "fieldId": "mesReferencia",
+      "title": "Mês de referência",
+      "type": "date",
+      "required": true,
+      "unique": true,
+      "description": "Mês ao qual os indicadores financeiros e de alunos se referem."
+    }
+  ],
+  "details": {
+    "totalAreceber": {
+      "type": "money",
+      "description": "Valor total das mensalidades a receber no mês de referência."
+    },
+    "totalRecebido": {
+      "type": "money",
+      "description": "Valor total dos pagamentos registrados para as mensalidades do mês de referência."
+    },
+    "quantidadeAlunosAtivos": {
+      "type": "integer",
+      "description": "Quantidade de alunos com matrícula ativa no mês de referência."
+    },
+    "quantidadeAlunosBloqueados": {
+      "type": "integer",
+      "description": "Quantidade de alunos bloqueados no mês de referência."
+    },
+    "quantidadeAlunosInadimplentes": {
+      "type": "integer",
+      "description": "Quantidade de alunos com mensalidades vencidas no mês de referência."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": [],
+  "maintenance": "crud"
+}

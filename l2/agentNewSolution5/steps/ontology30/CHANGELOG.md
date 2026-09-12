@@ -1,5 +1,14 @@
 # ontology30
 
+## 2026-09-12
+
+- Normalize drops `unique` on `idField` and `uniqueKeys` that contain it (`dropUniqueIdField` /
+  `dropUniqueKeyIdField`); `NS5_ONTOLOGY_UNIQUE_ID_FIELD` is gone. Lifecycle reachability uses
+  source SCCs so a cycle back to the birth state passes; an isolated state still fails. Lift covers
+  any non-mdm aggregate-only kind (valueObject/event too), discards extra fields into
+  `liftedFields`, and strips valueObject `maintenance`/`mutability`. Fixtures: live `Pagamento`,
+  `Matricula`, `IndicadorAcademia`.
+
 ## 2026-09-11
 
 - Normalize drops `maintenance: 'crud'` when an `act` writes the entity (`entity`

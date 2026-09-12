@@ -428,6 +428,71 @@ void test('appendOnly with transitions fails', () => {
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_MUTABILITY_LIFECYCLE'));
 });
 
+void test('lifecycle cycle back to the birth state is reachable; an isolated state is not', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [corePlan('Matricula', 'id', 'dataInicio')],
+    relationships: [],
+  }, 'mensalidadesAcademia');
+  const journeys = [journey('recepcao', [step('registrarMatricula', 'act', 'Matricula')])];
+  const actors: Ns5ModuleActor[] = [
+    { actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Reception', description: 'Enrolls.' },
+    { actorId: 'aluno', kind: 'external', origin: 'named', title: 'Student', description: 'Cancels.' },
+  ];
+  const cycle = normalizeNs5OntologyEntity({
+    entityId: 'Matricula',
+    fields: [
+      idField('Matricula', 'id'),
+      { fieldId: 'dataInicio', title: 'Start', type: 'date', required: true, description: 'Start.' },
+      {
+        fieldId: 'status',
+        title: 'Status',
+        type: 'string',
+        required: true,
+        enum: [
+          { value: 'ativa', title: 'Ativa' },
+          { value: 'bloqueada', title: 'Bloqueada' },
+          { value: 'cancelada', title: 'Cancelada' },
+        ],
+        description: 'Status.',
+      },
+    ],
+    lifecycleStates: [
+      { state: 'ativa', reachedBy: 'actor' },
+      { state: 'bloqueada', reachedBy: 'command' },
+      { state: 'cancelada', reachedBy: 'actor' },
+    ],
+    transitions: [
+      { transitionId: 'bloquear', from: ['ativa'], to: 'bloqueada', by: 'system', description: 'Block.' },
+      { transitionId: 'reativar', from: ['bloqueada'], to: 'ativa', by: 'system', description: 'Reactivate.' },
+      { transitionId: 'cancelar', from: ['ativa', 'bloqueada'], to: 'cancelada', by: ['aluno'], description: 'Cancel.' },
+    ],
+  }, 'Matricula', journeys, { idField: 'id' });
+  const passing = validateNs5OntologyEntity(plan, cycle, ctx({
+    moduleName: 'mensalidadesAcademia',
+    actors,
+    journeys,
+    requireJourneyCitation: false,
+  }));
+  assert.equal(passing.ok, true, passing.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(passing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_STATE_UNREACHABLE'), false);
+
+  const isolated = normalizeNs5OntologyEntity({
+    ...cycle,
+    fields: cycle.fields.map(field => field.fieldId === 'status'
+      ? { ...field, enum: [...(field.enum || []), { value: 'arquivada', title: 'Arquivada' }] }
+      : field),
+    lifecycleStates: [...cycle.lifecycleStates, { state: 'arquivada', reachedBy: 'actor' }],
+  }, 'Matricula', journeys, { idField: 'id' });
+  const failing = validateNs5OntologyEntity(plan, isolated, ctx({
+    moduleName: 'mensalidadesAcademia',
+    actors,
+    journeys,
+  }));
+  assert.equal(failing.ok, false);
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_STATE_UNREACHABLE' && /arquivada/.test(issue.message)));
+});
+
 void test('actor/command state without an arriving transition fails', () => {
   const source = realDetail('comandaRestaurante5', 'Comanda');
   const plan = normalizeNs5OntologyPlan({
@@ -1299,7 +1364,7 @@ void test('aggregate-only entity with a relationship is not lifted; gate stays t
   assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_AGGREGATE_ONLY_ENTITY'));
 });
 
-void test('uniqueKeys require existing fields, reject idField, and unique is not on idField', () => {
+void test('uniqueKeys require existing fields; normalize drops unique and uniqueKeys on idField', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Gym fees',
     entities: [corePlan('Mensalidade', 'id', 'id')],
@@ -1315,40 +1380,54 @@ void test('uniqueKeys require existing fields, reject idField, and unique is not
     lifecycleStates: [],
     transitions: [],
   };
+  const journeys = [journey('garcom', [step('gerar', 'act', 'Mensalidade')])];
   const good = normalizeNs5OntologyEntity({
     ...base,
     uniqueKeys: [['matriculaId', 'competencia']],
-  }, 'Mensalidade');
+  }, 'Mensalidade', [], { idField: 'id' });
   const passing = validateNs5OntologyEntity(plan, good, ctx({
     moduleName: 'mensalidadesAcademia',
-    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+    journeys,
     requireJourneyCitation: false,
   }));
   assert.equal(passing.ok, true, passing.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 
-  const missing = normalizeNs5OntologyEntity({ ...base, uniqueKeys: [['matriculaId', 'ghost']] }, 'Mensalidade');
+  const missing = normalizeNs5OntologyEntity({ ...base, uniqueKeys: [['matriculaId', 'ghost']] }, 'Mensalidade', [], { idField: 'id' });
   const missingGate = validateNs5OntologyEntity(plan, missing, ctx({
     moduleName: 'mensalidadesAcademia',
-    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+    journeys,
   }));
   assert.ok(missingGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_KEYS_UNKNOWN'));
 
-  const withId = normalizeNs5OntologyEntity({ ...base, uniqueKeys: [['id', 'competencia']] }, 'Mensalidade');
+  const withIdRaw = { ...base, uniqueKeys: [['id', 'competencia']] };
+  const withId = normalizeNs5OntologyEntity(withIdRaw, 'Mensalidade', [], { idField: 'id' });
+  assert.equal(withId.uniqueKeys, undefined);
+  assert.ok(withId.normalizations?.some(item => item.kind === 'dropUniqueKeyIdField'));
   const idGate = validateNs5OntologyEntity(plan, withId, ctx({
     moduleName: 'mensalidadesAcademia',
-    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+    journeys,
+    requireJourneyCitation: false,
   }));
-  assert.ok(idGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD'));
+  assert.equal(idGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD'), false);
+  const skipId = validateNs5OntologyEntity(plan, withIdRaw, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys,
+  }));
+  assert.ok(skipId.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_KEYS_ID_FIELD'));
 
   const uniqueId = normalizeNs5OntologyEntity({
     ...base,
     fields: [{ ...idField('Mensalidade', 'id'), unique: true }, base.fields[1], base.fields[2]],
-  }, 'Mensalidade');
+  }, 'Mensalidade', [], { idField: 'id' });
+  assert.equal(uniqueId.fields.find(field => field.fieldId === 'id')?.unique, undefined);
+  assert.ok(uniqueId.normalizations?.some(item => item.kind === 'dropUniqueIdField'));
   const uniqueIdGate = validateNs5OntologyEntity(plan, uniqueId, ctx({
     moduleName: 'mensalidadesAcademia',
-    journeys: [journey('garcom', [step('gerar', 'act', 'Mensalidade')])],
+    journeys,
+    requireJourneyCitation: false,
   }));
-  assert.ok(uniqueIdGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_ID_FIELD'));
+  assert.equal(uniqueIdGate.ok, true, uniqueIdGate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(uniqueIdGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_UNIQUE_ID_FIELD'), false);
 });
 
 void test('constraints match the field type; enum values need titles; details need a catalog type', () => {
@@ -1588,4 +1667,126 @@ void test('live mensalidadesAcademia plan with crud on every entity: normalize d
   assert.equal(plan.entities.find(entity => entity.entityId === 'PainelGerencial')?.maintenance, 'crud');
   const gate = validateNs5OntologyPlan(plan, ctx({ moduleName: 'mensalidadesAcademia', journeys }));
   assert.equal(gate.ok, true, gate.issues.filter(issue => issue.severity === 'error').map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('real Pagamento draft: normalize drops unique on idField; gate passes', () => {
+  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'Pagamento-draft.json');
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [{
+      entityId: 'Pagamento',
+      title: 'Pagamento',
+      description: 'Registro do pagamento de uma mensalidade.',
+      kind: 'event',
+      party: 'none',
+      displayField: 'dataPagamento',
+      mutability: 'appendOnly',
+      storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+    }],
+    relationships: [],
+  }, 'mensalidadesAcademia');
+  const journeys = [journey('recepcao', [step('registrarPagamento', 'act', 'Pagamento')])];
+  const detail = normalizeNs5OntologyEntity(raw, 'Pagamento', journeys, { idField: 'id', kind: 'event' });
+  assert.equal(detail.fields.find(field => field.fieldId === 'id')?.unique, undefined);
+  assert.ok(detail.normalizations?.some(item => item.kind === 'dropUniqueIdField'));
+  const gate = validateNs5OntologyEntity(plan, detail, ctx({
+    moduleName: 'mensalidadesAcademia',
+    actors: [{ actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Reception', description: 'Registers payment.' }],
+    journeys,
+    requireJourneyCitation: false,
+  }));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('real Matricula draft: cycle lifecycle is reachable as written', () => {
+  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'Matricula-draft.json');
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [{
+      entityId: 'Matricula',
+      title: 'Matrícula',
+      description: 'Vínculo de um aluno a um plano.',
+      kind: 'core',
+      party: 'none',
+      displayField: 'dataInicio',
+      storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+    }],
+    relationships: [],
+  }, 'mensalidadesAcademia');
+  const journeys = [journey('recepcao', [step('registrarMatricula', 'act', 'Matricula')])];
+  const detail = normalizeNs5OntologyEntity(raw, 'Matricula', journeys, { idField: 'id', kind: 'core' });
+  const gate = validateNs5OntologyEntity(plan, detail, ctx({
+    moduleName: 'mensalidadesAcademia',
+    actors: [
+      { actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Reception', description: 'Enrolls.' },
+      { actorId: 'aluno', kind: 'external', origin: 'named', title: 'Student', description: 'Cancels.' },
+    ],
+    journeys,
+    requireJourneyCitation: false,
+  }));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_STATE_UNREACHABLE'), false);
+});
+
+void test('real IndicadorAcademia draft: lift of valueObject panel records mesReferencia', () => {
+  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'IndicadorAcademia-draft.json');
+  const generate = journey('recepcao', [step('gerar', 'act', 'Mensalidade')]);
+  const inspect = journey('gerencia', [step('inspecionarIndicadores', 'inspect', 'IndicadorAcademia')]);
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [
+      corePlan('Mensalidade', 'mensalidadeId', 'mensalidadeId'),
+      {
+        entityId: 'IndicadorAcademia',
+        title: 'Indicadores da academia',
+        description: 'Conjunto mensal de indicadores financeiros e de situação dos alunos.',
+        kind: 'valueObject',
+        party: 'none',
+        displayField: 'mesReferencia',
+        mutability: 'appendOnly',
+        maintenance: 'crud',
+        storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+      },
+    ],
+    relationships: [],
+  }, 'mensalidadesAcademia');
+  assert.equal(plan.entities.find(entity => entity.entityId === 'IndicadorAcademia')?.maintenance, undefined);
+  assert.equal(plan.entities.find(entity => entity.entityId === 'IndicadorAcademia')?.mutability, undefined);
+  assert.ok(plan.normalizations?.some(item => item.kind === 'dropValueObjectTableAttrs' && item.entityId === 'IndicadorAcademia'));
+  const detail = normalizeNs5OntologyEntity(raw, 'IndicadorAcademia', [generate, inspect], {
+    idField: 'id',
+    kind: 'valueObject',
+  });
+  assert.equal(detail.fields.find(field => field.fieldId === 'id')?.unique, undefined);
+  assert.equal(detail.maintenance, undefined);
+  assert.ok(detail.normalizations?.some(item => item.kind === 'dropUniqueIdField'));
+  assert.ok(detail.normalizations?.some(item => item.kind === 'dropValueObjectTableAttrs'));
+  const lift = liftNs5AggregateOnlyEntities(
+    plan,
+    [emptyCoreDetail('Mensalidade', 'mensalidadeId'), detail],
+    [generate, inspect],
+  );
+  assert.deepEqual(lift.issues, []);
+  assert.deepEqual(lift.liftedEntityIds, ['IndicadorAcademia']);
+  assert.equal(lift.plan.entities.some(entity => entity.entityId === 'IndicadorAcademia'), false);
+  assert.deepEqual(Object.keys(lift.plan.moduleDetails || {}).sort(), [
+    'quantidadeAlunosAtivos',
+    'quantidadeAlunosBloqueados',
+    'quantidadeAlunosInadimplentes',
+    'totalAreceber',
+    'totalRecebido',
+  ]);
+  assert.equal(lift.plan.moduleDetails?.totalAreceber?.type, 'money');
+  assert.equal(lift.plan.moduleDetails?.quantidadeAlunosAtivos?.type, 'integer');
+  assert.ok(lift.plan.normalizations?.some(item => (
+    item.kind === 'liftedFields'
+    && item.entityId === 'IndicadorAcademia'
+    && item.detail === 'mesReferencia'
+  )));
+  const gate = validateNs5OntologyBindings(lift.plan, lift.details, { bindings: [] }, ctx({
+    moduleName: 'mensalidadesAcademia',
+    journeys: [generate, inspect],
+    requireRelationshipRealization: false,
+  }));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
