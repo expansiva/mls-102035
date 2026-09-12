@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- I10: same writer predicates as ontology30 / access60 (`NS5_FINALIZE_I10`) —
+  written entity is an `act` entity or `maintenance: 'crud'` (not both, crud has
+  no lifecycle); crud has an internal-actor grant.
 - I9: each `uniqueKeys` fieldId exists on the entity (`NS5_FINALIZE_I9`). A uniqueness
   claim that lives only in rule prose is not checkable — I9 is the inverse.
 - I3: every `access.actors` row has ≥1 journey and ≥1 grant. I1 cites `grant.actorRef`.

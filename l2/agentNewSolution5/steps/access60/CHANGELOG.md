@@ -2,6 +2,8 @@
 
 ## 2026-09-11
 
+- `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT`: an entity with `maintenance: 'crud'`
+  must appear in `entityRefs` of a grant whose actor is `internal`.
 - Artifact is actors + authorities + grants (`-access-v2`). `profiles` gone;
   grants use `actorRef`. LLM does not emit actors. No `anonymous` (no fixture used it).
 - System prompt prepends the MDM skill. `own` reaches the Person whose `mdm_tag`

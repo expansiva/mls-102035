@@ -747,6 +747,8 @@ void test('ontology30 plan prompt omits mutability when journeys repeat act or d
   assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
   assert.match(prompt, /moduleDetails/);
   assert.match(prompt, /one-sentence `description`/);
+  assert.match(prompt, /maintenance: 'crud'/);
+  assert.match(prompt, /`affects` is not a writer/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|abrir|fechar/i);
 });
 
@@ -842,7 +844,7 @@ void test('supporting file-or-note entity linked to mdm is a platform-service ca
   const gate = validateNs5OntologyAssembly(assembled, {
     moduleName: 'comandaRestaurante5',
     actors: ACTORS,
-    journeys: [],
+    journeys: [journey('garcom', [step('attach', 'act', 'Foto')])],
     requireJourneyCitation: false,
     requireRelationshipRealization: false,
   });
@@ -916,6 +918,12 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
     { actorId: 'tecnico', kind: 'internal', origin: 'named', title: 'Tech', description: 'Repairs.' },
     { actorId: 'cliente', kind: 'external', origin: 'named', title: 'Customer', description: 'Owns orders.' },
   ];
+  const writerJourneys = [
+    journey('recepcionista', [
+      step('openOrder', 'act', 'OrdenServicio'),
+      step('attachPhoto', 'act', 'FotoOrdenServicio'),
+    ]),
+  ];
   const bad: Ns5OntologyRelationship = {
     relationshipId: 'serviceOrderPhotos',
     fromEntity: 'OrdenServicio',
@@ -982,7 +990,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
         relationships: [collection],
       },
     },
-    { moduleName: 'ordenServicio5', actors, requireJourneyCitation: false, requireRelationshipRealization: true },
+    { moduleName: 'ordenServicio5', actors, journeys: writerJourneys, requireJourneyCitation: false, requireRelationshipRealization: true },
   );
   assert.equal(
     collectionGate.ok,
@@ -1020,7 +1028,7 @@ void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection 
         relationships: [fk],
       },
     },
-    { moduleName: 'ordenServicio5', actors, requireJourneyCitation: false, requireRelationshipRealization: true },
+    { moduleName: 'ordenServicio5', actors, journeys: writerJourneys, requireJourneyCitation: false, requireRelationshipRealization: true },
   );
   assert.equal(
     fkGate.ok,
@@ -1427,4 +1435,104 @@ void test('ownerStepId keeps ontology fan-out on the ontology30 hook and ignores
   assert.equal(ns5OntologyEntitySelector('entity:Customer'), 'Customer');
   assert.equal(typeof NS5_STEP_HOOKS.ontology30?.beforePromptStep, 'function');
   assert.equal(typeof hooksFor('', 'entity:Mesa')?.beforePromptStep, 'function');
+});
+
+function planoPlan(maintenance?: 'crud'): Ns5OntologyPlanEntity {
+  return {
+    ...mdmPlan('Plano', 'Service', 'none', 'id'),
+    ...(maintenance ? { maintenance } : {}),
+  };
+}
+
+function planoDetail(): Ns5OntologyEntityDraft {
+  return {
+    entityId: 'Plano',
+    fields: [
+      { fieldId: 'periodicidade', title: 'Period', type: 'string', required: true, description: 'Billing period.' },
+      { fieldId: 'valor', title: 'Price', type: 'money', required: true, description: 'Price.' },
+      { fieldId: 'diaVencimento', title: 'Due day', type: 'integer', required: true, description: 'Due day.' },
+    ],
+    lifecycleStates: [],
+    transitions: [],
+  };
+}
+
+function gatePlano(
+  maintenance: 'crud' | undefined,
+  journeys: ReturnType<typeof journey>[],
+  detail: Ns5OntologyEntityDraft = planoDetail(),
+) {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [planoPlan(maintenance)],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  return validateNs5OntologyEntity(plan, normalizeNs5OntologyEntity(detail, 'Plano'), ctx({
+    moduleName: 'comandaRestaurante5',
+    actors: [
+      { actorId: 'recepcao', kind: 'internal', origin: 'named', title: 'Reception', description: 'Enrolls.' },
+    ],
+    journeys,
+  }));
+}
+
+void test('Plano with namespace and no act fails WITHOUT_WRITER; affects does not count', () => {
+  const locate = journey('recepcao', [step('consultarPlanos', 'locate', 'Plano')]);
+  const failing = gatePlano(undefined, [locate]);
+  assert.equal(failing.ok, false);
+  assert.ok(failing.issues.some(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER' && /Plano/.test(issue.message)));
+  assert.match(failing.issues.find(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER')!.message, /maintenance: 'crud'/);
+  assert.match(failing.issues.find(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER')!.message, /act step/);
+
+  const onlyAffects = journey('recepcao', [{
+    ...step('matricular', 'act', 'Matricula'),
+    affects: ['Plano'],
+  }]);
+  const affectsGate = gatePlano(undefined, [onlyAffects]);
+  assert.ok(affectsGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER'));
+});
+
+void test('Plano maintenance crud passes; Aluno empty-namespace mdm without act is not a writer defect', () => {
+  const locate = journey('recepcao', [step('consultarPlanos', 'locate', 'Plano')]);
+  const passing = gatePlano('crud', [locate]);
+  assert.equal(passing.ok, true, passing.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Gym fees',
+    entities: [mdmPlan('Aluno', 'Person', 'person', 'id')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const aluno = validateNs5OntologyEntity(plan, emptyMdmDetail('Aluno'), ctx({
+    moduleName: 'comandaRestaurante5',
+    journeys: [locate],
+  }));
+  assert.equal(aluno.ok, true, aluno.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('crud plus act is NS5_ONTOLOGY_CRUD_WITH_ACT; crud plus lifecycle is NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE', () => {
+  const withAct = gatePlano('crud', [journey('recepcao', [step('criarPlano', 'act', 'Plano')])]);
+  assert.equal(withAct.ok, false);
+  assert.ok(withAct.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CRUD_WITH_ACT' && /Plano/.test(issue.message)));
+
+  const withLifecycle = gatePlano('crud', [journey('recepcao', [step('consultarPlanos', 'locate', 'Plano')])], {
+    ...planoDetail(),
+    lifecycleStates: [{ state: 'active', reachedBy: 'actor' }],
+    transitions: [{ transitionId: 'activate', from: ['active'], to: 'active', by: ['recepcao'], description: 'Keep.' }],
+  });
+  assert.ok(withLifecycle.issues.some(issue => issue.code === 'NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE'));
+});
+
+void test('real ItemCardapio fixture is maintenance crud and still passes', () => {
+  assert.equal(planEntity('comandaRestaurante5', 'ItemCardapio').maintenance, 'crud');
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Restaurant orders',
+    entities: [planEntity('comandaRestaurante5', 'ItemCardapio')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const detail = normalizeNs5OntologyEntity(realDetail('comandaRestaurante5', 'ItemCardapio'), 'ItemCardapio');
+  const gate = validateNs5OntologyEntity(plan, detail, ctx({
+    moduleName: 'comandaRestaurante5',
+    journeys: [{ business: { ...FECHAR.business, steps: [{ ...FECHAR.business.steps[0], entity: 'ItemCardapio' }] } }],
+  }));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });

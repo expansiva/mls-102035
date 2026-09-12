@@ -11,7 +11,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 ## Output
 
-- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I9, `errors` and `warnings`
+- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I10, `errors` and `warnings`
 - organization `l4/organization/registry.defs.ts` — module block with actors and
   `mdmSubtype <- <mod>.<Entity>` roles
 - `l5/config.json` / `l5/project.json` — workspaceDependencies, projects, platform block
@@ -32,6 +32,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |
 | I8 | every `own`/`related` grant whose `anchorEntity` is `party: person` has an internal-actor `act` on that entity (`entity == P`, not `affects`). No public `entry.mode` exists | error (`NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`) |
 | I9 | every `uniqueKeys` fieldId exists on the entity | error (`NS5_FINALIZE_I9`) |
+| I10 | written entity is an `act` entity or `maintenance: 'crud'` (not both; crud has no lifecycle); crud has an internal-actor grant. Same predicates as ontology30 / access60 | error (`NS5_FINALIZE_I10`) |
 
 Errors fail the run with the report. Warnings only continue.
 
@@ -43,8 +44,11 @@ still fails the same shape if it reaches here; do not invent a transition and do
 
 - One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`; I7 uses `NS5_FINALIZE_I7_ORPHAN_FILE`;
   I2 act-without-transition uses `NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`;
-  I8 uses `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`; I9 uses `NS5_FINALIZE_I9`.
+  I8 uses `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`; I9 uses `NS5_FINALIZE_I9`;
+  I10 uses `NS5_FINALIZE_I10`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).
 - Status updates use `cleaner: input_output`.
 - Converted ce02 / ce05 fixtures: comandaRestaurante5 passes I1-I9 with no warnings
   when disk matches the index; ordenServicio5 fails I8 (`Cliente` only in `affects`).
+  I10 passes on both after ns5_21 fixture re-record (`Presupuesto` gained an
+  `act`; n10 children and `ItemCardapio` are crud).

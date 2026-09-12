@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I9).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I10).
  * Errors fail the run; warnings do not.
  *
  * I2 uses collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin from ontology30
@@ -13,6 +13,8 @@
 import { anchorPath } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
 import {
   collectNs5LifecycleSignal,
+  ns5EntityHasAct,
+  ns5EntityHasWrittenFields,
   ns5LifecycleHasBranchingOrigin,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
@@ -60,6 +62,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI7(sources, error);
   checkI8(sources, error);
   checkI9(sources, error);
+  checkI10(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.access.actors.length,
@@ -390,6 +393,52 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
         );
       });
     });
+  }
+}
+
+/**
+ * Same writer predicates as ontology30 / access60: a written entity is an `act`
+ * entity or `maintenance: 'crud'` (not both, and crud has no lifecycle); a crud
+ * entity has an internal-actor grant.
+ */
+function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
+  const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
+  for (const entity of sources.entities) {
+    const path = `ontology.${entity.entityId}`;
+    const crud = entity.maintenance === 'crud';
+    const hasAct = ns5EntityHasAct(sources.journeys, entity.entityId);
+    if (crud && hasAct) {
+      error(
+        'I10',
+        `${path}.maintenance`,
+        `Entity ${entity.entityId} cannot be maintenance: 'crud' and the entity of an act step; choose one.`,
+      );
+    }
+    if (crud && (entity.lifecycleStates.length || entity.transitions.length)) {
+      error(
+        'I10',
+        `${path}.lifecycleStates`,
+        `Entity ${entity.entityId} with maintenance: 'crud' must not declare lifecycleStates or transitions.`,
+      );
+    }
+    if (!crud && !hasAct && ns5EntityHasWrittenFields(entity)) {
+      error(
+        'I10',
+        `${path}.maintenance`,
+        `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
+      );
+    }
+    if (!crud) continue;
+    const covered = sources.access.grants.some(grant => {
+      if (!grant.entityRefs.includes(entity.entityId)) return false;
+      return actorById.get(grant.actorRef)?.kind === 'internal';
+    });
+    if (covered) continue;
+    error(
+      'I10',
+      `${path}.maintenance`,
+      `CRUD entity ${entity.entityId} has no grant from an internal actor.`,
+    );
   }
 }
 

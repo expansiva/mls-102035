@@ -110,6 +110,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     transitions: { reader: 'steps/ontology30/gate.ts, finalize80', since: '2026-09-10' },
     storage: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     mutability: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    maintenance: { reader: 'steps/ontology30/gate.ts, steps/access60/gate.ts, finalize80 I10', since: '2026-09-11' },
   },
   Ns5OntologyField: {
     fieldId: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },

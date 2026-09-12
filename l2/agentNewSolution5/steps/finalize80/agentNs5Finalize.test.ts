@@ -150,7 +150,7 @@ void test('I7 fails on the captured comandaRestaurante5 disk (19 journeys / inde
   assert.equal(passing.checks.find(check => check.checkId === 'I7')?.status, 'passed');
 });
 
-void test('real comandaRestaurante5 sources pass I1–I9 with no warnings', () => {
+void test('real comandaRestaurante5 sources pass I1–I10 with no warnings', () => {
   const report = runNs5Oracle(loadSources('comandaRestaurante.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
@@ -158,6 +158,7 @@ void test('real comandaRestaurante5 sources pass I1–I9 with no warnings', () =
   assert.ok(report.checks.every(check => check.status === 'passed'));
   assert.equal(report.checks.find(check => check.checkId === 'I8')?.status, 'passed');
   assert.equal(report.checks.find(check => check.checkId === 'I9')?.status, 'passed');
+  assert.equal(report.checks.find(check => check.checkId === 'I10')?.status, 'passed');
 });
 
 void test('real ordenServicio5 sources pass I1–I7 and fail I8: Cliente is only in affects', () => {
@@ -375,6 +376,46 @@ void test('I5 fails an own grant whose non-mdm entity does not reach a person', 
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I5' && /party:person/.test(issue.message)));
+});
+
+void test('I10 fails Plano without a writer; crud plus Aluno act passes; crud without internal grant fails', () => {
+  const sources = withAcademiaEnrollment(clone(loadSources('comandaRestaurante.json')), 'act');
+  const plano = sources.entities.find(entity => entity.entityId === 'Plano')!;
+  plano.fields = [
+    { fieldId: 'periodicidade', title: 'Period', type: 'string', required: true, description: 'Period.' },
+    { fieldId: 'valor', title: 'Price', type: 'money', required: true, description: 'Price.' },
+    { fieldId: 'diaVencimento', title: 'Due day', type: 'integer', required: true, description: 'Due day.' },
+  ];
+  const withoutWriter = runNs5Oracle(sources);
+  assert.ok(
+    withoutWriter.errors.some(issue => issue.checkId === 'I10' && /Plano/.test(issue.message) && /writer/.test(issue.message)),
+    withoutWriter.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
+  const withCrud = clone(sources);
+  const crudPlano = withCrud.entities.find(entity => entity.entityId === 'Plano')!;
+  crudPlano.maintenance = 'crud';
+  crudPlano.fields = plano.fields;
+  const internal = withCrud.access.actors.find(actor => actor.kind === 'internal')!;
+  withCrud.access.grants.push({
+    grantId: 'recepcaoPlanos',
+    actorRef: internal.actorId,
+    authorityRef: withCrud.access.authorities[0].authorityId,
+    entityRefs: ['Plano'],
+    dataScope: { mode: 'organization', description: 'All plans.' },
+    disclosure: { mode: 'fullRecord', description: 'Plan catalog.' },
+  });
+  const passing = runNs5Oracle(withCrud);
+  assert.equal(
+    passing.errors.filter(issue => issue.checkId === 'I10').length,
+    0,
+    passing.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
+  const noGrant = clone(withCrud);
+  noGrant.access.grants = noGrant.access.grants.filter(grant => !grant.entityRefs.includes('Plano'));
+  const missingGrant = runNs5Oracle(noGrant);
+  assert.ok(missingGrant.errors.some(issue => issue.checkId === 'I10' && /internal actor/.test(issue.message)));
 });
 
 void test('I9 fails uniqueKeys that cite an unknown field and passes a real composite key', () => {

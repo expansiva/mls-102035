@@ -45,6 +45,7 @@ export interface Ns5AccessEntityView {
   fields: ReadonlyArray<{ fieldId: string }>;
   details?: Record<string, unknown>;
   storage?: { idField: string };
+  maintenance?: 'crud';
 }
 
 export interface Ns5AccessRelationshipView {

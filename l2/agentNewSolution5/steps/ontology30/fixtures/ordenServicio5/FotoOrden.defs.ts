@@ -48,7 +48,8 @@ export const ordenServicio5EntityFotoOrden = {
     "scope": "module",
     "idField": "id"
   },
-  "mutability": "appendOnly"
+  "mutability": "appendOnly",
+  "maintenance": "crud"
 } as const satisfies Ns5OntologyEntityArtifact;
 
 export type OrdenServicio5EntityFotoOrdenType = typeof ordenServicio5EntityFotoOrden;

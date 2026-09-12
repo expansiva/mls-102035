@@ -2,6 +2,13 @@
 
 ## 2026-09-11
 
+- `maintenance?: 'crud'` on the plan and the entity artifact. Gate:
+  `NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER` (written fields, not the `entity` of an
+  `act`, not crud — `affects` does not count), `NS5_ONTOLOGY_CRUD_WITH_ACT`,
+  `NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE`. Plan prompt: one sentence. Fixtures:
+  `ItemCardapio` crud; ordenServicio5 n10 children (no lifecycle) crud.
+  `Presupuesto` (lifecycle, cannot be crud) gets an `act` in
+  `analizarYpresupuestarOrden` so the writer gate closes.
 - Schema `2026-09-11-ns5-ontology-v2`: `unique` / `uniqueKeys`, typed `details`
   (`{ type, description }`), required relationship `description`, `enum[{ value, title }]`,
   intrinsic `constraints` (`min`/`max`/`maxLength`/`precision`). String `details` and

@@ -373,7 +373,7 @@ function formatOntology(entities: Ns5OntologyEntityArtifact[]): string {
       ? Object.entries(entity.details).map(([name, detail]) => `- ${entity.entityId}.details.${name} (${detail.type}): ${detail.description}`)
       : [];
     return [
-      `### ${entity.entityId} (${entity.kind}, party=${entity.party})`,
+      `### ${entity.entityId} (${entity.kind}, party=${entity.party}${entity.maintenance === 'crud' ? ', maintenance=crud' : ''})`,
       entity.description,
       'Fields:',
       ...(fields.length ? fields : ['- (none)']),

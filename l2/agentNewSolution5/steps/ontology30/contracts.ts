@@ -52,6 +52,7 @@ export interface Ns5OntologyPlanEntity {
   mdmSubtype?: string;
   displayField: string;
   mutability?: 'appendOnly';
+  maintenance?: 'crud';
   storage: Ns5OntologyEntityArtifact['storage'];
 }
 
@@ -87,6 +88,8 @@ export interface Ns5OntologyEntityDraft {
   details?: Record<string, Ns5OntologyDetail>;
   lifecycleStates: Ns5OntologyEntityArtifact['lifecycleStates'];
   transitions: Ns5OntologyEntityArtifact['transitions'];
+  /** Repair path: entity worker may set crud when the plan omitted it. */
+  maintenance?: 'crud';
 }
 
 export interface Ns5OntologyBinding {
@@ -109,7 +112,7 @@ export function buildNs5OntologyPlanTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5OntologyPlan',
-    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
+    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, mutability, maintenance, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
     schema,
   );
 }
@@ -120,7 +123,7 @@ export function buildNs5OntologyEntityTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Entity',
-    'Submit fields, uniqueKeys, calculated details, lifecycle states and allowed transitions for one frozen entity.',
+    'Submit fields, uniqueKeys, calculated details, lifecycle states, allowed transitions and optional maintenance: crud for one frozen entity.',
     schema,
   );
 }
@@ -203,6 +206,35 @@ export function ns5EntityHasActOrAffects(
     }
   }
   return false;
+}
+
+/** True when an `act` step has `entity == entityId`. `affects` does not count. */
+export function ns5EntityHasAct(
+  journeys: ReadonlyArray<Ns5AggregateJourneyView>,
+  entityId: string,
+): boolean {
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      if (step.kind === 'act' && step.entity === entityId) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Fields a person writes: namespace on mdm; any field other than idField otherwise.
+ * valueObject has no table and is never a writer check.
+ */
+export function ns5EntityHasWrittenFields(entity: {
+  kind: string;
+  fields?: ReadonlyArray<{ fieldId: string }>;
+  storage?: { idField?: string };
+}): boolean {
+  if (entity.kind === 'valueObject') return false;
+  const fields = entity.fields || [];
+  if (entity.kind === 'mdm') return fields.length > 0;
+  const idField = entity.storage?.idField;
+  return fields.some(field => field.fieldId && field.fieldId !== idField);
 }
 
 /**
@@ -322,6 +354,7 @@ export function normalizeNs5OntologyEntity(value: unknown, entityId: string): Ns
     ...(details ? { details } : {}),
     lifecycleStates: list(root.lifecycleStates).map(normalizeLifecycleState).filter(item => item.state),
     transitions: list(root.transitions).map(normalizeTransition).filter(item => item.transitionId),
+    ...(text(root.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}),
   };
 }
 
@@ -460,6 +493,7 @@ function assembleEntity(
     transitions: detail?.transitions || [],
     storage,
     ...(plan.mutability ? { mutability: plan.mutability } : {}),
+    ...(plan.maintenance === 'crud' || detail?.maintenance === 'crud' ? { maintenance: 'crud' as const } : {}),
   };
 }
 
@@ -505,6 +539,7 @@ function normalizePlanEntity(
     ...(mdmSubtype ? { mdmSubtype } : {}),
     displayField: memberId(text(source.displayField), ''),
     ...(mutability ? { mutability } : {}),
+    ...(text(source.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}),
     storage: {
       target,
       scope,

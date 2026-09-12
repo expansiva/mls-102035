@@ -16,7 +16,7 @@ has no screen; `/fast` auto-approves.
 
 `Ns5OntologyEntityArtifact` per entity: kind, party, mdmSubtype, displayField, namespace fields,
 `unique` / `uniqueKeys`, typed `details`, lifecycle states, allowed transitions (`ruleRefs`
-optional), storage. Index: entity order plus relationships with field realization and a
+optional), storage, optional `maintenance: 'crud'`. Index: entity order plus relationships with field realization and a
 one-sentence `description`. Organization-wide aggregates go in typed `module.details` (plan
 `moduleDetails`). No `kind: projection`, `derivation`, `role`, `sourceRefs`, `useRules` or
 `lifecyclePredicates`.
@@ -39,6 +39,10 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - Non-mdm stored identity: `idField` in `fields[]`, uuid, required.
 - `displayField` is a field of the entity, or of level-1 identification/base when mdm.
 - `appendOnly` has no lifecycle.
+- An entity with written fields (`fields` besides `idField`; mdm namespace) is the
+  `entity` of an `act` **or** `maintenance: 'crud'` (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`).
+  `affects` does not count. Not both (`NS5_ONTOLOGY_CRUD_WITH_ACT`). crud has no
+  lifecycle (`NS5_ONTOLOGY_CRUD_WITH_LIFECYCLE`). `valueObject` is out.
 - Journeys that include a second `act` or a `decide` on an entity require `lifecycleStates` /
   `transitions` (`NS5_ONTOLOGY_LIFECYCLE_REQUIRED`). Normalize drops `appendOnly` on that entity
   before the gate (mutability is frozen on the plan). The gate still rejects `appendOnly` if

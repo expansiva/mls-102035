@@ -20,7 +20,7 @@ for what the platform already stores; do not copy those names as entities of thi
   `entityId`.
 - Entity ids are PascalCase nouns. Relationship ids are lowerCamel.
 - Freeze `entityId`, `kind`, `party`, `mdmSubtype` (when `kind` is `mdm`), `displayField`,
-  `mutability` when append-only, `storage` and every relationship **without** `realization`.
+  `mutability` when append-only, `maintenance` when `crud`, `storage` and every relationship **without** `realization`.
 - `displayField` is the field a person reads to recognise the record: a `fieldId` of this entity, or
   of the level-1 subtype when `kind` is `mdm`. Never guess it from a name suffix.
 - Do not emit `kind: projection`, `derivation`, `role`, `sourceRefs`, `useRules` or
@@ -50,6 +50,9 @@ in `details`. An aggregate that does not belong to one entity goes in `moduleDet
 
 `mutability: appendOnly` only when the record is a fact that is never corrected. An append-only
 fact has no lifecycle. MDM is never append-only.
+
+An entity with written fields is either the `entity` of at least one `act` step, or declares
+`maintenance: 'crud'` (a reference catalog with no lifecycle); never both. `affects` is not a writer.
 
 If the journeys show more than one `act` step on this entity (beyond the one that first creates
 it), or a `decide` step on it, omit `mutability` here — the entity is not append-only. The entity

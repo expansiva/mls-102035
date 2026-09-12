@@ -22,6 +22,7 @@
       "title": "Item do cardápio",
       "description": "Produto oferecido no cardápio do restaurante que pode ser lançado em uma comanda.",
       "kind": "mdm",
+      "maintenance": "crud",
       "party": "none",
       "mdmSubtype": "Product",
       "displayField": "name",

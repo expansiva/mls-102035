@@ -70,6 +70,7 @@ function realOrdenContext() {
       fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
       ...(entity.details ? { details: entity.details } : {}),
       storage: { idField: entity.storage.idField },
+      ...(entity.maintenance === 'crud' ? { maintenance: 'crud' as const } : {}),
     })),
     relationships: index.relationships.map(rel => ({
       relationshipId: rel.relationshipId,
@@ -197,6 +198,64 @@ void test('real ordenServicio5 access draft keeps cliente own with structured di
   assert.doesNotMatch(source, /landingIntent|allowedInformation|deniedInformation|journeyStepRefs|sourceRefs/);
   const gate = validateNs5Access(fixture.authorities, fixture.grants, realOrdenContext());
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('crud entity without an internal grant is NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT', () => {
+  const plano = entity('Plano', 'none', ['id', 'valor'], { idField: 'id' });
+  plano.maintenance = 'crud';
+  const aluno = entity('Aluno', 'person', [], { idField: 'id' });
+  const payload = {
+    authorities: [
+      { authorityId: 'gerirMatriculas', title: 'Enroll', description: 'Enroll students.' },
+      { authorityId: 'verProprio', title: 'Own', description: 'Own record.' },
+    ],
+    grants: [
+      {
+        grantId: 'recepcaoMatriculas',
+        actorRef: 'recepcao',
+        authorityRef: 'gerirMatriculas',
+        entityRefs: ['Aluno'],
+        dataScope: { mode: 'organization', description: 'All students.' },
+        disclosure: { mode: 'fullRecord', description: 'Enrollment record.' },
+      },
+      {
+        grantId: 'alunoProprio',
+        actorRef: 'aluno',
+        authorityRef: 'verProprio',
+        entityRefs: ['Aluno', 'Plano'],
+        dataScope: { mode: 'own', anchorEntity: 'Aluno', description: 'Own student record.' },
+        disclosure: { mode: 'fullRecord', description: 'Own record.' },
+      },
+    ],
+  };
+  const missing = gateOf(payload, {
+    actors: [actor('recepcao'), actor('aluno', 'external')],
+    entities: [plano, aluno],
+    relationships: [rel('alunoPlano', 'Aluno', 'Plano')],
+    journeys: [
+      { journeyId: 'matricular', business: { actorRef: 'recepcao' } },
+      { journeyId: 'verProprio', business: { actorRef: 'aluno' } },
+    ],
+  });
+  assert.equal(missing.ok, false);
+  assert.ok(missing.issues.some(issue => issue.code === 'NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT' && /Plano/.test(issue.message)));
+
+  const withInternal = gateOf({
+    ...payload,
+    grants: [
+      { ...payload.grants[0], entityRefs: ['Aluno', 'Plano'] },
+      { ...payload.grants[1], entityRefs: ['Aluno'] },
+    ],
+  }, {
+    actors: [actor('recepcao'), actor('aluno', 'external')],
+    entities: [plano, aluno],
+    relationships: [rel('alunoPlano', 'Aluno', 'Plano')],
+    journeys: [
+      { journeyId: 'matricular', business: { actorRef: 'recepcao' } },
+      { journeyId: 'verProprio', business: { actorRef: 'aluno' } },
+    ],
+  });
+  assert.equal(withInternal.ok, true, withInternal.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
 void test('two internal organization actors pass without an anchor', () => {
@@ -514,6 +573,8 @@ void test('access60 prompt has no domain examples and keeps structured disclosur
   assert.match(prompt, /submitNs5Access/);
   assert.match(prompt, /deniedFields/);
   assert.match(prompt, /anchorEntity/);
+  assert.match(prompt, /maintenance: 'crud'/);
+  assert.match(prompt, /internal/);
   assert.match(prompt, /placeholders — use only ids that exist in the module/);
   assert.match(prompt, /proper/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto|recepcionista/i);

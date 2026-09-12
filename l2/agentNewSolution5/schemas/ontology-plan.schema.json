@@ -62,6 +62,7 @@
         },
         "displayField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "mutability": { "type": "string", "enum": ["appendOnly"] },
+        "maintenance": { "type": "string", "enum": ["crud"] },
         "storage": { "$ref": "#/$defs/storage" }
       }
     },

@@ -21,7 +21,8 @@ it in the user's language. Do not attach journey steps, information-need lists o
 
 Each grant is one `actorRef` and `authorityRef` pair, with the entities it covers. `grantId` is
 lowerCamel. `actorRef` is an actor id from the given list. Every actor receives at least one grant.
-Every journey actor is covered.
+Every journey actor is covered. An entity with `maintenance: 'crud'` appears in `entityRefs` of at
+least one grant whose `actorRef` is an `internal` actor.
 
 `entityRefs` are UpperCamel entity ids that exist in the ontology. Do not invent an entity.
 

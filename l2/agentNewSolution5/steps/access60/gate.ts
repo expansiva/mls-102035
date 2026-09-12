@@ -206,6 +206,21 @@ export function validateNs5Access(
     );
   });
 
+  context.entities.forEach((entity, index) => {
+    if (entity.maintenance !== 'crud' || !entity.entityId) return;
+    const covered = grants.some(grant => {
+      if (!grant.entityRefs.includes(entity.entityId)) return false;
+      return actorById.get(grant.actorRef)?.kind === 'internal';
+    });
+    if (covered) return;
+    error(
+      issues,
+      'NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT',
+      `CRUD entity ${entity.entityId} has no grant from an internal actor.`,
+      `entities[${index}].entityId`,
+    );
+  });
+
   return { ok: !issues.some(issue => issue.severity === 'error'), issues };
 }
 

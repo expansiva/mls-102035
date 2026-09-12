@@ -22,6 +22,8 @@ profiles, landing intent, realization, hops, `allowedInformation` or journey-ste
 
 - Ids are unique lowerCamel. Authorities have a title and a description.
 - Every actor has at least one grant. Every journey actor is covered.
+- A `maintenance: 'crud'` entity is in `entityRefs` of ≥1 grant of an `internal`
+  actor (`NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT`).
 - An `external` actor only receives `own` grants.
 - `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields` as a proper restriction
   (non-empty and not the complete resolvable set). Unrestricted `fieldsOnly` is normalized to

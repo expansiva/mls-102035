@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- Writer mode (ns5_21): `maintenance?: 'crud'` on the ontology entity. ontology30
+  `WITHOUT_WRITER` / `CRUD_WITH_ACT` / `CRUD_WITH_LIFECYCLE`; access60
+  `CRUD_WITHOUT_INTERNAL_GRANT`; finalize80 I10. `affects` is not a writer.
 - Ontology v2 (ns5_19): `unique`/`uniqueKeys`, typed `details`, relationship
   `description`, `enum[{value,title}]`, intrinsic `constraints`; finalize80 I9.
 - Actors leave `module.defs.ts` (`-module-v2`, no `scope`) and live on the pipeline

@@ -22,6 +22,7 @@
       "type": "array",
       "items": { "$ref": "#/$defs/detail" }
     },
+    "maintenance": { "type": "string", "enum": ["crud"] },
     "lifecycleStates": {
       "type": "array",
       "items": { "$ref": "#/$defs/lifecycleState" }

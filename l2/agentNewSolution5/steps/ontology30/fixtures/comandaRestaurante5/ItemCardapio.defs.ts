@@ -28,7 +28,8 @@ export const comandaRestaurante5EntityItemCardapio = {
     "scope": "organization",
     "idField": "id",
     "mdmType": "comandaRestaurante5.ItemCardapio"
-  }
+  },
+  "maintenance": "crud"
 } as const satisfies Ns5OntologyEntityArtifact;
 
 export type ComandaRestaurante5EntityItemCardapioType = typeof comandaRestaurante5EntityItemCardapio;
