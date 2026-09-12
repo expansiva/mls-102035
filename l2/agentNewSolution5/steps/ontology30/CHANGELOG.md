@@ -2,6 +2,9 @@
 
 ## 2026-09-12
 
+- Journey `transitionRef` citations are required on the entity (`NS5_ONTOLOGY_TRANSITION_REF_MISSING`);
+  normalize adds a missing actor to `by` (`addTransitionBy`). Source-SCC helpers live on contracts
+  (`ns5SourceSccStates` / `ns5ReachableStates`) for I2.
 - Normalize drops `unique` on `idField` and `uniqueKeys` that contain it (`dropUniqueIdField` /
   `dropUniqueKeyIdField`); `NS5_ONTOLOGY_UNIQUE_ID_FIELD` is gone. Lifecycle reachability uses
   source SCCs so a cycle back to the birth state passes; an isolated state still fails. Lift covers

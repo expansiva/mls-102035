@@ -24,7 +24,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | check | meaning | on fail |
 |---|---|---|
 | I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey, authority). A journey `entity`/`affects` naming an id in `pipeline.json` `ontology30.liftedAggregateEntities` is a `module.details` ref when that map has keys — not an unknown entity | error |
-| I2 | first `act` on an entity is create; a later `act` on an already-provided entity with lifecycle needs a transition whose `by` includes the journey actor and whose `from` intersects reachable origin states (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal (`requiresTransitions` / `requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error |
+| I2 | an `act` with `transitionRef` must cite a declared transition whose `by` includes the journey actor and whose `from` intersects states reachable from source-SCC births (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); `creates` or neither is not an I2 error (possible missing `transitionRef` is a warning). Every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal for `decide` (`requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error (warning does not fail) |
 | I3 | every `access.actors` row has at least one journey and one grant | error |
 | I4 | every cited `transitions[].ruleRefs` exists in `rules.defs.ts`. An uncited rule is not a defect at l4 | error |
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
@@ -36,14 +36,15 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 Errors fail the run with the report. Warnings only continue.
 
-I2 is not relaxed for `mutability: appendOnly` with empty `lifecycleStates`/`transitions`. ontology30
-now rejects that shape when journeys show a repeated `act` or a `decide` (with repair). This oracle
-still fails the same shape if it reaches here; do not invent a transition and do not weaken the check.
+ontology30 rejects `appendOnly` plus a repeated `act` or a `decide` first, with repair. I2 still
+fails a `decide` without a branching origin if that shape reaches here; a write-only `act` without
+`transitionRef` is a warning, not an error.
 
 ## Invariants
 
 - One code per check: `NS5_FINALIZE_I1` ... `NS5_FINALIZE_I6`; I7 uses `NS5_FINALIZE_I7_ORPHAN_FILE`;
   I2 act-without-transition uses `NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`;
+  possible missing `transitionRef` uses `NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF`;
   I8 uses `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`; I9 uses `NS5_FINALIZE_I9`;
   I10 uses `NS5_FINALIZE_I10`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).

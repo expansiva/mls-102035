@@ -14,6 +14,7 @@ import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from 
 import type { Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5OntologyBindingsHumanPrompt,
+  buildNs5OntologyEntityHumanPrompt,
   buildNs5OntologyPlanHumanPrompt,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import {
@@ -27,6 +28,7 @@ import {
   normalizeNs5OntologyEntity,
   applyNs5ModuleDetails,
   normalizeNs5OntologyPlan,
+  NS5_ONTOLOGY_TRANSITION_BY_ADDED,
   ns5LifecycleHasBranchingOrigin,
   type Ns5OntologyBindingsDraft,
   type Ns5OntologyEntityDraft,
@@ -124,8 +126,13 @@ function emptyMdmDetail(entityId: string): Ns5OntologyEntityDraft {
   return { entityId, fields: [], lifecycleStates: [], transitions: [] };
 }
 
-function step(stepId: string, kind: 'act' | 'decide' | 'locate' | 'inspect', entity: string) {
-  return { stepId, kind, entity, title: stepId, description: 'Done.' };
+function step(
+  stepId: string,
+  kind: 'act' | 'decide' | 'locate' | 'inspect',
+  entity: string,
+  extra: { transitionRef?: string; creates?: true } = {},
+) {
+  return { stepId, kind, entity, title: stepId, description: 'Done.', ...extra };
 }
 
 function journey(actorRef: string, steps: ReturnType<typeof step>[]) {
@@ -814,6 +821,7 @@ void test('ontology30 plan prompt omits mutability when journeys repeat act or d
   assert.match(prompt, /more than one `act` step on this entity/);
   assert.match(prompt, /or a `decide` step on it, omit `mutability` here/);
   assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
+  assert.match(prompt, /An `act` that names\s+`transitionRef` requires that transition on the entity/);
   assert.match(prompt, /moduleDetails/);
   assert.match(prompt, /one-sentence `description`/);
   assert.match(prompt, /A reference catalog nobody creates in a journey/);
@@ -829,7 +837,84 @@ void test('ontology30 entity prompt states uniqueKeys, typed details, enum title
   assert.match(prompt, /Each enum entry is `\{ "value", "title" \}`/);
   assert.match(prompt, /\{ "name", "type", "description" \}/);
   assert.match(prompt, /A reference catalog nobody creates in a journey/);
+  assert.match(prompt, /Every `transitionRef` the journeys cite/);
   assert.doesNotMatch(prompt, /never both/);
+});
+
+void test('cited transitionRef missing on the entity is TRANSITION_REF_MISSING; normalize adds by', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const journeys = [journey('caixa', [step('closeTicket', 'act', 'Ticket', { transitionRef: 'closeTicket' })])];
+  const empty = validateNs5OntologyEntity(plan, emptyCoreDetail('Ticket', 'ticketId'), ctx({ journeys }));
+  assert.ok(empty.issues.some(issue => issue.code === 'NS5_ONTOLOGY_TRANSITION_REF_MISSING'));
+
+  const withoutActor = normalizeNs5OntologyEntity({
+    entityId: 'Ticket',
+    fields: [idField('Ticket', 'ticketId'), {
+      fieldId: 'status',
+      title: 'Status',
+      type: 'string',
+      required: true,
+      enum: [{ value: 'open', title: 'Open' }, { value: 'closed', title: 'Closed' }],
+      description: 'Status.',
+    }],
+    lifecycleStates: [{ state: 'open', reachedBy: 'actor' }, { state: 'closed', reachedBy: 'actor' }],
+    transitions: [{
+      transitionId: 'closeTicket',
+      from: ['open'],
+      to: 'closed',
+      by: ['garcom'],
+      description: 'Closes the ticket.',
+    }],
+  }, 'Ticket', journeys, { idField: 'ticketId' });
+  assert.deepEqual(withoutActor.transitions[0].by, ['garcom', 'caixa']);
+  assert.ok(withoutActor.normalizations?.some(item => item.kind === NS5_ONTOLOGY_TRANSITION_BY_ADDED));
+  const repaired = validateNs5OntologyEntity(plan, withoutActor, ctx({ journeys }));
+  assert.equal(
+    repaired.issues.some(issue => issue.code === 'NS5_ONTOLOGY_TRANSITION_REF_MISSING'),
+    false,
+    repaired.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'),
+  );
+
+  const createsMdm = journey('caixa', [step('attachPerson', 'act', 'Cliente', { creates: true })]);
+  const mdmGate = validateNs5OntologyEntity(
+    normalizeNs5OntologyPlan({
+      businessDomain: 'People',
+      entities: [mdmPlan('Cliente', 'Person', 'person', 'id')],
+      relationships: [],
+    }, 'comandaRestaurante5'),
+    emptyMdmDetail('Cliente'),
+    ctx({ journeys: [createsMdm], requireJourneyCitation: false }),
+  );
+  assert.equal(mdmGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_TRANSITION_REF_MISSING'), false);
+});
+
+void test('entity human prompt lists cited transitionRef as data', () => {
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Tickets',
+    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
+    relationships: [],
+  }, 'comandaRestaurante5');
+  const prompt = buildNs5OntologyEntityHumanPrompt({
+    sourcePrompt: 'Close tickets.',
+    userLanguage: 'en',
+    actors: ACTORS,
+    journeys: [{
+      schemaVersion: '2026-09-10-ns5-journey-v1',
+      journeyId: 'closeTicket',
+      business: journey('caixa', [step('closeTicket', 'act', 'Ticket', { transitionRef: 'closeTicket' })]).business,
+      businessHash: 'sha256:x',
+    }],
+    plan,
+    entityId: 'Ticket',
+    level1Catalog: '## Platform level-1 catalog\nSubtypes: <Person>',
+  });
+  assert.match(prompt, /Cited transitions this entity must declare/);
+  assert.match(prompt, /closeTicket by caixa/);
+  assert.match(prompt, /transitionRef=closeTicket/);
 });
 
 void test('plan human prompt includes journeys, actors and level-1 placeholders', () => {

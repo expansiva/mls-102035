@@ -2,6 +2,11 @@
 
 ## 2026-09-12
 
+- I2 is citation + reachability: an `act` with `transitionRef` needs that transition, actor in
+  `by`, and `from` intersecting states reachable from source-SCC births
+  (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`). `creates` or neither is not an error; possible
+  missing `transitionRef` is `NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF` (warning).
+  Carry-over between journeys is gone.
 - I8: a login person is also registered by `maintenance: 'crud'` with an internal-actor grant, or by an `act` of her own external actor (self-registration). Clinic `Profissional` and event `Participant` pass; no crud and no self-write fails.
 - I8: an internal-actor write on the login person is `act` entity or `affects` (same writer predicate as I10). Frozen `ordenServicio5` and live `matricularAluno` (`affects: [Aluno]`) pass; empty `affects` fails.
 

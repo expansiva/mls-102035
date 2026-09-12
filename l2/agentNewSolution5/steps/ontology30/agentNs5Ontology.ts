@@ -55,6 +55,7 @@ import {
   buildNs5OntologyBindingsTool,
   buildNs5OntologyEntityTool,
   buildNs5OntologyPlanTool,
+  collectNs5CitedTransitions,
   liftNs5AggregateOnlyEntities,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
@@ -138,6 +139,9 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
     '',
     '## Journeys that touch this entity',
     formatJourneys(input.journeys.filter(journey => journeyTouches(journey, input.entityId))),
+    '',
+    '## Cited transitions this entity must declare',
+    formatCitedTransitions(input.journeys, input.entityId),
     '',
     '## Frozen entity',
     JSON.stringify(entity, null, 2),
@@ -800,10 +804,18 @@ function formatJourneys(journeys: Ns5JourneyArtifact[]): string {
     journey.business.goal,
     ...journey.business.steps.map(step => {
       const affects = step.affects?.length ? ` affects=${step.affects.join(',')}` : '';
+      const creates = step.creates ? ' creates=true' : '';
+      const transition = step.transitionRef ? ` transitionRef=${step.transitionRef}` : '';
       const decide = step.kind === 'decide' ? ' decide' : '';
-      return `- ${step.stepId} ${step.kind} ${step.entity}${affects}${decide}: ${step.description}`;
+      return `- ${step.stepId} ${step.kind} ${step.entity}${affects}${creates}${transition}${decide}: ${step.description}`;
     }),
   ].join('\n')).join('\n\n');
+}
+
+function formatCitedTransitions(journeys: Ns5JourneyArtifact[], entityId: string): string {
+  const cited = collectNs5CitedTransitions(journeys).filter(item => item.entityId === entityId);
+  if (!cited.length) return '(none)';
+  return cited.map(item => `- ${item.transitionId} by ${item.actorRef} (${item.stepId})`).join('\n');
 }
 
 function journeyTouches(journey: Ns5JourneyArtifact, entityId: string): boolean {

@@ -53,7 +53,10 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
   before the gate (mutability is frozen on the plan). The gate still rejects `appendOnly` if
   normalize is skipped. A `decide` also needs two transitions from the same origin
   (`NS5_ONTOLOGY_LIFECYCLE_BRANCHING_REQUIRED`). Same predicate as finalize80 I2
-  (`collectNs5LifecycleSignal`); I2 still checks that a later `act` matches `by`.
+  (`collectNs5LifecycleSignal`); I2 checks a cited `transitionRef` (`by` and reachable `from`).
+- A journey `transitionRef` on this entity must be a declared `transitionId`
+  (`NS5_ONTOLOGY_TRANSITION_REF_MISSING`). Normalize adds the journey actor to `by` when
+  the transition exists without it (`addTransitionBy`). `creates: true` on mdm is valid.
 - Transitions: `from`/`to` are declared states; `by` is actor ids, `system` or `time`. An
   actor/command state not reachable from a source SCC fails (a cycle back to the birth
   state is reachable; an isolated state in an entity with transitions stays

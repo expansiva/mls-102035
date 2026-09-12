@@ -66,6 +66,8 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     kind: { reader: 'steps/journeys20/gate.ts, finalize80 I2 I8', since: '2026-09-10' },
     entity: { reader: 'steps/ontology30/gate.ts, finalize80 I1 I8', since: '2026-09-10' },
     affects: { reader: 'steps/ontology30 collectNs5CitedEntities, finalize80 I1 I8', since: '2026-09-10' },
+    creates: { reader: 'finalize80 I2, master backend (create usecase), master frontend (new form)', since: '2026-09-12' },
+    transitionRef: { reader: 'finalize80 I2, master backend (apply transition), master frontend (transition button)', since: '2026-09-12' },
     title: { reader: 'planner / UI', since: '2026-09-10' },
     description: { reader: 'planner / UI', since: '2026-09-10' },
     handoffTo: { reader: 'steps/journeys20/gate.ts, steps/workflows50, finalize80 I6', since: '2026-09-10' },
@@ -347,4 +349,14 @@ test('module10 and journeys20 contracts are registered with non-LLM readers', ()
   assert.match(KEYS.Ns5JourneyArtifact.businessHash.reader, /finalize80/);
   assert.match(KEYS.Ns5JourneyIndexArtifact.journeys.reader, /finalize80/);
   assert.match(KEYS.Ns5OntologyIndexArtifact.relationships.reader, /access60/);
+});
+
+test('ns5_28 act creates and transitionRef have I2 / backend / frontend readers', () => {
+  assert.match(KEYS.Ns5JourneyStep.creates.reader, /finalize80 I2/);
+  assert.match(KEYS.Ns5JourneyStep.creates.reader, /backend/);
+  assert.match(KEYS.Ns5JourneyStep.creates.reader, /frontend/);
+  assert.match(KEYS.Ns5JourneyStep.transitionRef.reader, /finalize80 I2/);
+  assert.match(KEYS.Ns5JourneyStep.transitionRef.reader, /backend/);
+  assert.match(KEYS.Ns5JourneyStep.transitionRef.reader, /frontend/);
+  assert.match(KEYS.Ns5JourneyStep.creates.since, /2026-09-12/);
 });

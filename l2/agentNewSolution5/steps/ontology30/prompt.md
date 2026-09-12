@@ -56,7 +56,9 @@ an entity written by an `act` — as its `entity` or in `affects` — is not.
 
 If the journeys show more than one `act` step on this entity (beyond the one that first creates
 it), or a `decide` step on it, omit `mutability` here — the entity is not append-only. The entity
-pass declares `lifecycleStates` and `transitions` covering those steps.
+pass declares `lifecycleStates` and `transitions` covering those steps. An `act` that names
+`transitionRef` requires that transition on the entity — the entity pass declares it, with the
+journey actor in `by`. The human prompt lists those citations as data.
 
 ## Relationships
 

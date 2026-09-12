@@ -431,6 +431,56 @@ void test('journeys20 prompt omits handoffTo except on handoff', () => {
   assert.doesNotMatch(prompt, /invite|verify e-mail|login index/i);
 });
 
+void test('act creates and transitionRef are exclusive; non-act drops them', () => {
+  const both = drafts({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close',
+        goal: 'Close.',
+        entry: { mode: 'coldStart' },
+        steps: [actStep({ creates: true, transitionRef: 'closeOrder' })],
+        outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+      },
+    })],
+  });
+  assert.equal(both[0].business.steps[0].creates, true);
+  assert.equal(both[0].business.steps[0].transitionRef, 'closeOrder');
+  const bothGate = validateNs5Journeys(both, { actors: ACTORS });
+  assert.ok(bothGate.issues.some(issue => issue.code === 'NS5_JOURNEY_ACT_INTENT_BOTH'));
+
+  const locate = drafts({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close',
+        goal: 'Close.',
+        entry: { mode: 'coldStart' },
+        steps: [{
+          stepId: 'findOrder',
+          kind: 'locate',
+          entity: 'Comanda',
+          title: 'Find.',
+          description: 'Found.',
+          creates: true,
+          transitionRef: 'closeOrder',
+        }],
+        outcome: { statement: 'Found.', evidence: ['Found.'] },
+      },
+    })],
+  });
+  assert.equal(locate[0].business.steps[0].creates, undefined);
+  assert.equal(locate[0].business.steps[0].transitionRef, undefined);
+  locate[0].business.steps[0].creates = true;
+  const kindGate = validateNs5Journeys(locate, { actors: ACTORS });
+  assert.ok(kindGate.issues.some(issue => issue.code === 'NS5_JOURNEY_ACT_INTENT_KIND'));
+
+  const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
+  assert.match(prompt, /creates: true/);
+  assert.match(prompt, /transitionRef/);
+  assert.match(prompt, /at most one of `creates` or `transitionRef`/);
+});
+
 void test('hashNs5Journey is stable across object key order', async () => {
   const left = await hashNs5Journey(drafts({ journeys: [validJourney()] })[0]);
   const right = await hashNs5Journey(drafts({ journeys: [validJourney()] })[0]);

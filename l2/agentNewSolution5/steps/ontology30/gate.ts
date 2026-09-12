@@ -27,7 +27,10 @@ import {
   NS5_ONTOLOGY_STORAGE_TARGETS,
   assembleNs5Ontology,
   collectNs5CitedEntities,
+  collectNs5CitedTransitions,
   collectNs5LifecycleSignal,
+  ns5ReachableStates,
+  ns5SourceSccStates,
   isNs5AggregateOnlyEntity,
   ns5AsFieldSource,
   ns5EntityHasActOrAffects,
@@ -479,7 +482,7 @@ function validateEntity(
 
   if (!planOverview) {
     validateDetails(entity, path, issues);
-    validateLifecycle(entity, actorIds, path, issues, signal);
+    validateLifecycle(entity, actorIds, path, issues, signal, journeys);
     if (isNs5AggregateOnlyEntity(entity, journeys)) {
       error(
         issues,
@@ -649,6 +652,7 @@ function validateLifecycle(
   path: string,
   issues: Ns5OntologyGateIssue[],
   signal: Ns5LifecycleSignal,
+  journeys: ReadonlyArray<Pick<Ns5JourneyArtifact, 'business'>>,
 ): void {
   if (entity.mutability === 'appendOnly' && (entity.lifecycleStates.length || entity.transitions.length)) {
     error(issues, 'NS5_ONTOLOGY_MUTABILITY_LIFECYCLE', `appendOnly ${entity.entityId} has no lifecycle or transitions.`, `${path}.lifecycleStates`);
@@ -745,12 +749,23 @@ function validateLifecycle(
     });
   });
 
+  const cited = collectNs5CitedTransitions(journeys).filter(item => item.entityId === entity.entityId);
+  for (const cite of cited) {
+    if (transitionIds.has(cite.transitionId)) continue;
+    error(
+      issues,
+      'NS5_ONTOLOGY_TRANSITION_REF_MISSING',
+      `Journey act ${cite.stepId || cite.transitionId} cites transitionRef ${cite.transitionId} on ${entity.entityId} but the entity does not declare it.`,
+      `${path}.transitions`,
+    );
+  }
+
   const actorCommand = entity.lifecycleStates.filter(entry => entry.reachedBy !== 'time');
   if (actorCommand.length > 1 && !entity.transitions.length) {
     error(issues, 'NS5_ONTOLOGY_STATE_UNREACHABLE', `${entity.entityId} names more than one actor/command state and no allowed transitions.`, `${path}.transitions`);
   }
   if (entity.transitions.length) {
-    const reached = reachableStates(sourceSccStates(entity.transitions), entity.transitions);
+    const reached = ns5ReachableStates(ns5SourceSccStates(entity.transitions), entity.transitions);
     actorCommand.forEach((entry, index) => {
       if (reached.has(entry.state)) return;
       error(
@@ -792,87 +807,6 @@ function validateTransitionBy(
       error(issues, 'NS5_ONTOLOGY_TRANSITION_BY_UNKNOWN', `Unknown actor ${actorId}.`, `${path}.by[${index}]`);
     }
   });
-}
-
-/** Source-SCC states of the transition graph (Tarjan). Isolated states are not nodes. */
-function sourceSccStates(
-  transitions: Ns5OntologyEntityArtifact['transitions'],
-): string[] {
-  const nodes: string[] = [];
-  const seen = new Set<string>();
-  const add = (id: string) => {
-    if (!id || seen.has(id)) return;
-    seen.add(id);
-    nodes.push(id);
-  };
-  const edges: Array<[string, string]> = [];
-  for (const transition of transitions) {
-    add(transition.to);
-    for (const from of transition.from) {
-      add(from);
-      if (from && transition.to) edges.push([from, transition.to]);
-    }
-  }
-  if (!nodes.length) return [];
-  const adj = new Map(nodes.map(node => [node, [] as string[]]));
-  for (const [from, to] of edges) adj.get(from)!.push(to);
-  let next = 0;
-  const index = new Map<string, number>();
-  const low = new Map<string, number>();
-  const stack: string[] = [];
-  const onStack = new Set<string>();
-  const sccOf = new Map<string, number>();
-  let sccCount = 0;
-  const connect = (v: string) => {
-    index.set(v, next);
-    low.set(v, next);
-    next += 1;
-    stack.push(v);
-    onStack.add(v);
-    for (const w of adj.get(v) || []) {
-      if (!index.has(w)) {
-        connect(w);
-        low.set(v, Math.min(low.get(v)!, low.get(w)!));
-      } else if (onStack.has(w)) {
-        low.set(v, Math.min(low.get(v)!, index.get(w)!));
-      }
-    }
-    if (low.get(v) !== index.get(v)) return;
-    let w = '';
-    do {
-      w = stack.pop()!;
-      onStack.delete(w);
-      sccOf.set(w, sccCount);
-    } while (w !== v);
-    sccCount += 1;
-  };
-  for (const node of nodes) {
-    if (!index.has(node)) connect(node);
-  }
-  const hasIncoming = new Array<boolean>(sccCount).fill(false);
-  for (const [from, to] of edges) {
-    const a = sccOf.get(from);
-    const b = sccOf.get(to);
-    if (a !== undefined && b !== undefined && a !== b) hasIncoming[b] = true;
-  }
-  return nodes.filter(node => !hasIncoming[sccOf.get(node)!]);
-}
-
-function reachableStates(
-  roots: string[],
-  transitions: Ns5OntologyEntityArtifact['transitions'],
-): Set<string> {
-  const seen = new Set(roots);
-  const queue = [...roots];
-  while (queue.length) {
-    const current = queue.shift()!;
-    for (const transition of transitions) {
-      if (!transition.from.includes(current) || seen.has(transition.to)) continue;
-      seen.add(transition.to);
-      queue.push(transition.to);
-    }
-  }
-  return seen;
 }
 
 function validateRelationshipRealization(

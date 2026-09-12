@@ -122,6 +122,26 @@ export function validateNs5Journeys(
           `${path}.handoffTo`,
         );
       }
+      if (step.kind !== 'act') {
+        if (step.creates || step.transitionRef) {
+          const stepName = step.stepId || `index ${stepPosition}`;
+          error(
+            issues,
+            'NS5_JOURNEY_ACT_INTENT_KIND',
+            `Step ${stepName}: creates and transitionRef belong only on an act step.`,
+            path,
+          );
+        }
+      } else if (step.creates && step.transitionRef) {
+        error(
+          issues,
+          'NS5_JOURNEY_ACT_INTENT_BOTH',
+          `Step ${step.stepId || `index ${stepPosition}`}: an act names at most one of creates or transitionRef.`,
+          path,
+        );
+      } else if (step.transitionRef && !MEMBER_ID.test(step.transitionRef)) {
+        error(issues, 'NS5_JOURNEY_TRANSITION_REF', 'transitionRef must be lowerCamel.', `${path}.transitionRef`);
+      }
       if (step.affects?.length) {
         if (step.kind !== 'act') {
           error(issues, 'NS5_JOURNEY_STEP_AFFECTS_KIND', 'Only an act step lists other business objects in affects.', `${path}.affects`);

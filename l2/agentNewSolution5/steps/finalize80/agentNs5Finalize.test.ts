@@ -21,6 +21,7 @@ import { collectNs5LifecycleSignal } from '/_102035_/l2/agentNewSolution5/steps/
 import {
   ensureConfigListsModule,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
+  NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF,
   NS5_FINALIZE_I7_ORPHAN_FILE,
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
   type Ns5OracleSources,
@@ -271,12 +272,14 @@ void test('I7 fails on the captured comandaRestaurante5 disk (19 journeys / inde
   assert.equal(passing.checks.find(check => check.checkId === 'I7')?.status, 'passed');
 });
 
-void test('real comandaRestaurante5 sources pass I1–I10 with no warnings', () => {
+void test('real comandaRestaurante5 sources pass I1–I10; I2 warns on acts without transitionRef', () => {
   const report = runNs5Oracle(loadSources('comandaRestaurante.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
-  assert.equal(report.warnings.length, 0);
-  assert.ok(report.checks.every(check => check.status === 'passed'));
+  assert.ok(report.warnings.length > 0);
+  assert.ok(report.warnings.every(issue => issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF));
+  assert.equal(report.checks.find(check => check.checkId === 'I2')?.status, 'warned');
+  assert.ok(report.checks.filter(check => check.checkId !== 'I2').every(check => check.status === 'passed'));
   assert.equal(report.checks.find(check => check.checkId === 'I8')?.status, 'passed');
   assert.equal(report.checks.find(check => check.checkId === 'I9')?.status, 'passed');
   assert.equal(report.checks.find(check => check.checkId === 'I10')?.status, 'passed');
@@ -290,7 +293,7 @@ void test('real ordenServicio5 sources pass I1–I10: Cliente in capturarDatosRe
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
-  assert.equal(report.warnings.length, 0);
+  assert.ok(report.warnings.every(issue => issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF));
   assert.equal(report.checks.find(check => check.checkId === 'I8')?.status, 'passed');
 });
 
@@ -355,18 +358,13 @@ void test('I2 uses ontology30 collectNs5LifecycleSignal without changing message
   assert.equal(report.errors.filter(issue => issue.code === 'NS5_FINALIZE_I2').length, 0);
 });
 
-void test('I2 fails when a later act has no matching transition', () => {
-  const sources = clone(loadSources('comandaRestaurante.json'));
-  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
-  comanda.transitions = [];
+void test('I2 warns when an act on a lifecycle entity omits transitionRef', () => {
+  const sources = loadSources('comandaRestaurante.json');
   const report = runNs5Oracle(sources);
-  assert.equal(report.finalStatus, 'failed');
-  assert.ok(report.errors.some(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /fecharComanda/.test(issue.message)));
-  assert.equal(
-    report.errors.every(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION),
-    true,
-    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
-  );
+  assert.equal(report.errors.filter(issue => issue.checkId === 'I2').length, 0);
+  assert.ok(report.warnings.some(issue =>
+    issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF && /fecharComanda/.test(issue.message + issue.path),
+  ));
 });
 
 void test('I2 fails a decide without two transitions from the same origin (task_6da10605 shape)', () => {
@@ -395,6 +393,181 @@ void test('I2 does not apply to consultarMisOrdenes when it is locate then inspe
   });
   const report = runNs5Oracle(sources);
   assert.equal(report.errors.filter(issue => issue.checkId === 'I2').length, 0, report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
+});
+
+function levaDefs<T>(name: string): T {
+  return loadNs5Defs<T>('steps/finalize80/fixtures/leva', name);
+}
+
+function withStepIntent(
+  journey: Ns5JourneyArtifact,
+  stepId: string,
+  patch: { creates?: true; transitionRef?: string },
+): Ns5JourneyArtifact {
+  const next = clone(journey);
+  const step = next.business.steps.find(item => item.stepId === stepId);
+  if (!step) throw new Error(`missing step ${stepId}`);
+  Object.assign(step, patch);
+  return next;
+}
+
+function i2OnlySources(
+  moduleName: string,
+  journeys: Ns5JourneyArtifact[],
+  entities: Ns5OntologyEntityArtifact[],
+): Ns5OracleSources {
+  const actors = new Set<string>();
+  for (const journey of journeys) {
+    if (journey.business.actorRef) actors.add(journey.business.actorRef);
+  }
+  for (const entity of entities) {
+    for (const transition of entity.transitions) {
+      if (!Array.isArray(transition.by)) continue;
+      for (const actor of transition.by) if (actor) actors.add(actor);
+    }
+  }
+  return {
+    module: {
+      schemaVersion: '2026-09-10-ns5-module-v2',
+      moduleName,
+      title: moduleName,
+      userLanguage: 'pt',
+      productLanguages: ['pt'],
+      defaultLanguage: 'pt',
+      sourcePrompt: moduleName,
+    },
+    journeys,
+    journeyIndex: {
+      schemaVersion: '2026-09-10-ns5-journey-v1',
+      moduleName,
+      journeys: journeys.map(journey => ({
+        journeyId: journey.journeyId,
+        actorRef: journey.business.actorRef,
+        title: journey.business.title,
+      })),
+      systemDecisions: [],
+    },
+    entities,
+    ontologyIndex: {
+      schemaVersion: '2026-09-11-ns5-ontology-v2',
+      moduleName,
+      businessDomain: moduleName,
+      entities: entities.map(entity => entity.entityId),
+      relationships: [],
+      systemDecisions: [],
+    },
+    rules: { schemaVersion: '2026-09-10-ns5-rules-v1', moduleName, rules: [] },
+    workflows: { schemaVersion: '2026-09-10-ns5-workflows-v1', moduleName, processes: [] },
+    access: {
+      schemaVersion: '2026-09-10-ns5-access-v2',
+      moduleName,
+      actors: [...actors].map(actorId => ({
+        actorId,
+        kind: 'internal' as const,
+        origin: 'named' as const,
+        title: actorId,
+        description: actorId,
+      })),
+      authorities: [],
+      grants: [],
+    },
+    integration: {
+      schemaVersion: '2026-09-10-ns5-integration-v1',
+      moduleName,
+      inbound: [],
+      outbound: [],
+      plugins: [],
+    },
+  };
+}
+
+function i2Issues(report: ReturnType<typeof runNs5Oracle>, bucket: 'errors' | 'warnings') {
+  return report[bucket].filter(issue => issue.checkId === 'I2');
+}
+
+void test('I1 fails an unknown transitionRef; I2 ignores it', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const step = sources.journeys.flatMap(journey => journey.business.steps).find(item => item.kind === 'act');
+  assert.ok(step);
+  step.transitionRef = 'ghostTransition';
+  const report = runNs5Oracle(sources);
+  assert.ok(report.errors.some(issue => issue.checkId === 'I1' && /ghostTransition/.test(issue.message)));
+  assert.equal(report.errors.filter(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION).length, 0);
+});
+
+void test('I2 passes leva acts with hand-placed transitionRef or creates', () => {
+  const orden = runNs5Oracle(i2OnlySources(
+    'ordenServicio',
+    [withStepIntent(levaDefs('entregarYfinalizarOrden.defs.ts'), 'registrarEntregaYfinalizacion', {
+      transitionRef: 'registrarEntregaYfinalizacion',
+    })],
+    [levaDefs('OrdenServicio.defs.ts')],
+  ));
+  assert.equal(i2Issues(orden, 'errors').length, 0, i2Issues(orden, 'errors').map(issue => issue.message).join('\n'));
+
+  const clinica = runNs5Oracle(i2OnlySources(
+    'agendaClinica',
+    [withStepIntent(levaDefs('registrarAtendimento.defs.ts'), 'registrarAtendimentoRealizado', {
+      transitionRef: 'recordAppointmentAttendance',
+    })],
+    [levaDefs('Consulta.defs.ts')],
+  ));
+  assert.equal(i2Issues(clinica, 'errors').length, 0, i2Issues(clinica, 'errors').map(issue => issue.message).join('\n'));
+
+  const reembolso = runNs5Oracle(i2OnlySources(
+    'reembolsoDespesas',
+    [
+      withStepIntent(levaDefs('corrigirEreenviarDespesa.defs.ts'), 'reenviarParaAprovacao', {
+        transitionRef: 'resubmitForApproval',
+      }),
+      withStepIntent(levaDefs('registrarPagamentoDeDespesa.defs.ts'), 'registrarDataDePagamento', {
+        transitionRef: 'recordPayment',
+      }),
+    ],
+    [levaDefs('Despesa.defs.ts')],
+  ));
+  assert.equal(i2Issues(reembolso, 'errors').length, 0, i2Issues(reembolso, 'errors').map(issue => issue.message).join('\n'));
+  assert.ok(i2Issues(reembolso, 'warnings').some(issue =>
+    issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF && /corrigirDespesa/.test(issue.message),
+  ));
+
+  const frota = runNs5Oracle(i2OnlySources(
+    'manutencaoFrota',
+    [withStepIntent(levaDefs('tratarAlertaPreventivaVencida.defs.ts'), 'abrirOrdemPorAlerta', { creates: true })],
+    [levaDefs('OrdemManutencao.defs.ts')],
+  ));
+  assert.equal(i2Issues(frota, 'errors').length, 0, i2Issues(frota, 'errors').map(issue => issue.message).join('\n'));
+  assert.equal(i2Issues(frota, 'warnings').length, 0);
+
+  const evento = runNs5Oracle(i2OnlySources(
+    'inscricaoEvento',
+    [levaDefs('acompanharEexportarInscricoes.defs.ts')],
+    [levaDefs('Evento.defs.ts')],
+  ));
+  assert.equal(i2Issues(evento, 'errors').length, 0, i2Issues(evento, 'errors').map(issue => issue.message).join('\n'));
+  assert.ok(i2Issues(evento, 'warnings').some(issue =>
+    issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF && /baixarListaCsv/.test(issue.message),
+  ));
+});
+
+void test('I2 fails a transitionRef whose from is unreachable from source-SCC births', () => {
+  const journey = withStepIntent(
+    levaDefs('registrarPagamentoDeDespesa.defs.ts'),
+    'registrarDataDePagamento',
+    { transitionRef: 'recordPayment' },
+  );
+  const entity = clone(levaDefs<Ns5OntologyEntityArtifact>('Despesa.defs.ts'));
+  entity.lifecycleStates = [...entity.lifecycleStates, { state: 'voided', reachedBy: 'time' }];
+  const payment = entity.transitions.find(item => item.transitionId === 'recordPayment');
+  assert.ok(payment);
+  payment.from = ['voided'];
+  const report = runNs5Oracle(i2OnlySources('reembolsoDespesas', [journey], [entity]));
+  assert.ok(
+    i2Issues(report, 'errors').some(issue =>
+      issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /registrarDataDePagamento/.test(issue.message),
+    ),
+    i2Issues(report, 'errors').map(issue => issue.message).join('\n'),
+  );
 });
 
 void test('I3 fails when an actor has no grant', () => {

@@ -4,10 +4,10 @@
  * Integrity oracle across the six NS5 sources. One code per check (I1–I10).
  * Errors fail the run; warnings do not.
  *
- * I2 uses collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin from ontology30
- * (the structural signal). An appendOnly entity with empty lifecycle plus a repeated
- * act or decide is rejected there first, with repair; this oracle still fails the same
- * shape — do not weaken this check and do not invent a transition to make a live module pass.
+ * I2 checks cited `transitionRef` against ontology (actor in `by`, `from` reachable
+ * from source-SCC births). `creates` and write-only acts are not I2 errors.
+ * collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin still gate `decide`.
+ * ontology30 rejects appendOnly plus a repeated act or decide first, with repair.
  */
 
 import { anchorPath } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
@@ -16,6 +16,8 @@ import {
   ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
   ns5LifecycleHasBranchingOrigin,
+  ns5ReachableStates,
+  ns5SourceSccStates,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
   ns5FieldRefExists,
@@ -30,6 +32,7 @@ import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5FinalizeReport,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
+  NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF,
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
   oracleCode,
   type Ns5FinalizeReport,
@@ -51,10 +54,10 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
     bucket.push({ checkId, code: code || oracleCode(checkId), path, message });
   };
   const error: IssueFn = (checkId, path, message, code) => add(errors, checkId, path, message, code);
-  const warning: IssueFn = (checkId, path, message) => add(warnings, checkId, path, message);
+  const warning: IssueFn = (checkId, path, message, code) => add(warnings, checkId, path, message, code);
 
   checkI1(sources, error);
-  checkI2(sources, error);
+  checkI2(sources, error, warning);
   checkI3(sources, error);
   checkI4(sources, error);
   checkI5(sources, error);
@@ -108,6 +111,13 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
       }
       if (step.handoffTo && !actorIds.has(step.handoffTo)) {
         error('I1', `${path}.handoffTo`, `Unknown actor ${step.handoffTo}.`);
+      }
+      if (step.transitionRef) {
+        const entity = entityById.get(step.entity);
+        const ids = new Set((entity?.transitions || []).map(item => item.transitionId).filter(Boolean));
+        if (!ids.has(step.transitionRef)) {
+          error('I1', `${path}.transitionRef`, `Unknown transition ${step.transitionRef}.`);
+        }
       }
     });
   }
@@ -178,60 +188,63 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
   }
 }
 
-function checkI2(sources: Ns5OracleSources, error: IssueFn): void {
+function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): void {
   const entityById = entityMap(sources);
-  const provided = new Set<string>();
-  const reachable = new Map<string, Set<string> | null>();
-  const ordered = orderedJourneys(sources);
-  for (const journey of ordered) {
+  const reachableByEntity = new Map<string, Set<string> | null>();
+  for (const entity of sources.entities) {
+    if (!entityHasLifecycle(entity)) continue;
+    reachableByEntity.set(entity.entityId, reachableFromBirths(entity));
+  }
+  for (const journey of sources.journeys) {
     const actor = journey.business.actorRef;
-    const matchedThisJourney = new Set<string>();
     journey.business.steps.forEach((step, index) => {
       const path = `journeys.${journey.journeyId}.steps[${index}]`;
-      if (step.kind === 'locate' || step.kind === 'inspect') {
-        if (!step.entity) return;
-        if (!provided.has(step.entity)) {
-          provided.add(step.entity);
-          reachable.set(step.entity, null);
-        }
-        return;
-      }
-      if (step.kind === 'act') {
-        if (!step.entity) return;
+      if (step.kind === 'decide') {
+        const signal = collectNs5LifecycleSignal(sources.journeys, step.entity);
         const entity = entityById.get(step.entity);
-        if (!provided.has(step.entity)) {
-          provided.add(step.entity);
-          reachable.set(step.entity, birthStates(entity));
-          return;
-        }
-        if (!entityHasLifecycle(entity)) return;
-        if (matchedThisJourney.has(step.entity)) return;
-        const current = reachable.get(step.entity) ?? null;
-        const matched = (entity?.transitions || []).filter(transition =>
-          actorMatches(transition.by, actor) && fromIntersects(transition.from, current));
-        if (!matched.length) {
+        if (signal.requiresBranching && (!entity || !ns5LifecycleHasBranchingOrigin(entity))) {
           error(
             'I2',
             path,
-            `act ${step.stepId} on ${step.entity} has no candidate transition for ${actor || '(missing actor)'} from reachable origin states.`,
+            `decide ${step.stepId} on ${step.entity} needs at least two transitions from the same origin state.`,
+          );
+        }
+        return;
+      }
+      if (step.kind !== 'act' || !step.entity) return;
+      const entity = entityById.get(step.entity);
+      if (step.transitionRef) {
+        const transition = (entity?.transitions || []).find(item => item.transitionId === step.transitionRef);
+        if (!transition) return;
+        if (!actorMatches(transition.by, actor)) {
+          error(
+            'I2',
+            path,
+            `act ${step.stepId} transitionRef ${step.transitionRef} on ${step.entity} does not include ${actor || '(missing actor)'} in by.`,
             NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
           );
           return;
         }
-        matchedThisJourney.add(step.entity);
-        reachable.set(step.entity, new Set(matched.map(transition => transition.to).filter(Boolean)));
+        const reachable = reachableByEntity.get(step.entity) ?? null;
+        if (!fromIntersects(transition.from, reachable)) {
+          error(
+            'I2',
+            path,
+            `act ${step.stepId} transitionRef ${step.transitionRef} on ${step.entity} has from states unreachable from source-SCC births.`,
+            NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
+          );
+        }
         return;
       }
-      if (step.kind !== 'decide') return;
-      const signal = collectNs5LifecycleSignal(ordered, step.entity);
-      const entity = entityById.get(step.entity);
-      if (signal.requiresBranching && (!entity || !ns5LifecycleHasBranchingOrigin(entity))) {
-        error(
-          'I2',
-          path,
-          `decide ${step.stepId} on ${step.entity} needs at least two transitions from the same origin state.`,
-        );
-      }
+      if (step.creates) return;
+      if (!entityHasLifecycle(entity)) return;
+      if (!(entity?.transitions || []).some(item => actorMatches(item.by, actor))) return;
+      warning(
+        'I2',
+        path,
+        `act ${step.stepId} on ${step.entity} has no transitionRef; ${actor || '(missing actor)'} has declared transitions (possible missing transitionRef).`,
+        NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF,
+      );
     });
   }
 }
@@ -459,15 +472,15 @@ function entityHasLifecycle(entity: Ns5OntologyEntityArtifact | undefined): bool
   return Boolean(entity && (entity.lifecycleStates.length || entity.transitions.length));
 }
 
-function birthStates(entity: Ns5OntologyEntityArtifact | undefined): Set<string> | null {
-  if (!entity?.lifecycleStates.length) return null;
-  const incoming = new Set(entity.transitions.map(transition => transition.to).filter(Boolean));
-  const births = entity.lifecycleStates
-    .filter(entry => entry.reachedBy !== 'time' && !incoming.has(entry.state))
+function reachableFromBirths(entity: Ns5OntologyEntityArtifact): Set<string> | null {
+  const time = new Set(entity.lifecycleStates.filter(entry => entry.reachedBy === 'time').map(entry => entry.state));
+  const roots = ns5SourceSccStates(entity.transitions).filter(state => !time.has(state));
+  if (roots.length) return ns5ReachableStates(roots, entity.transitions);
+  const fallback = entity.lifecycleStates
+    .filter(entry => entry.reachedBy !== 'time')
     .map(entry => entry.state)
     .filter(Boolean);
-  if (births.length) return new Set(births);
-  return new Set(entity.lifecycleStates.map(entry => entry.state).filter(Boolean));
+  return fallback.length ? new Set(fallback) : null;
 }
 
 function actorMatches(by: Ns5OntologyEntityArtifact['transitions'][number]['by'], actor: string): boolean {
@@ -480,22 +493,7 @@ function fromIntersects(from: readonly string[], reachable: Set<string> | null):
   return from.some(state => reachable.has(state));
 }
 
-function orderedJourneys(sources: Ns5OracleSources): Ns5OracleSources['journeys'] {
-  const byId = new Map(sources.journeys.map(journey => [journey.journeyId, journey]));
-  const ordered: Ns5OracleSources['journeys'] = [];
-  const seen = new Set<string>();
-  for (const entry of sources.journeyIndex.journeys) {
-    const journey = byId.get(entry.journeyId);
-    if (!journey || seen.has(journey.journeyId)) continue;
-    seen.add(journey.journeyId);
-    ordered.push(journey);
-  }
-  for (const journey of sources.journeys) {
-    if (seen.has(journey.journeyId)) continue;
-    ordered.push(journey);
-  }
-  return ordered;
-}
+
 
 function entityMap(sources: Ns5OracleSources): Map<string, Ns5OntologyEntityArtifact> {
   return new Map(sources.entities.map(entity => [entity.entityId, entity]));

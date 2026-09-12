@@ -91,7 +91,11 @@ export type Ns5OntologyFormNormalizationKind =
   | 'dropUniqueIdField'
   | 'dropUniqueKeyIdField'
   | 'dropValueObjectTableAttrs'
-  | 'liftedFields';
+  | 'liftedFields'
+  | 'addTransitionBy';
+
+/** Cited `transitionRef` exists but `by` omitted the journey actor; normalize adds it. */
+export const NS5_ONTOLOGY_TRANSITION_BY_ADDED = 'addTransitionBy' as const;
 
 /** Same shape as access60 `draft.normalizations[]`. */
 export interface Ns5OntologyFormNormalization {
@@ -408,7 +412,7 @@ export function normalizeNs5OntologyEntity(
   const root = record(value);
   const details = normalizeDetails(root.details);
   const lifecycleStates = list(root.lifecycleStates).map(normalizeLifecycleState).filter(item => item.state);
-  const transitions = list(root.transitions).map(normalizeTransition).filter(item => item.transitionId);
+  let transitions = list(root.transitions).map(normalizeTransition).filter(item => item.transitionId);
   const id = normalizeEntityId(root.entityId) || entityId;
   const idField = opts.idField || memberId(text(record(root.storage).idField), '');
   const kind = opts.kind || text(root.kind);
@@ -441,6 +445,11 @@ export function normalizeNs5OntologyEntity(
     journeys,
     lifecycleStates.length > 0 || transitions.length > 0,
   );
+  const withBy = addCitedTransitionActors(id, transitions, journeys);
+  if (withBy.normalizations.length) {
+    transitions = withBy.transitions;
+    normalizations.push(...withBy.normalizations);
+  }
   if (dropped.normalization) normalizations.push(dropped.normalization);
   let maintenance = dropped.entity.maintenance;
   if (kind === 'valueObject' && maintenance) {
@@ -512,6 +521,42 @@ export function applyNs5OntologyBindings(
   return { entities, relationships };
 }
 
+export interface Ns5CitedTransition {
+  entityId: string;
+  transitionId: string;
+  actorRef: string;
+  stepId: string;
+}
+
+export function collectNs5CitedTransitions(
+  journeys: ReadonlyArray<{
+    business: {
+      actorRef?: string;
+      steps: ReadonlyArray<{
+        kind: string;
+        entity: string;
+        stepId?: string;
+        transitionRef?: string;
+      }>;
+    };
+  }>,
+): Ns5CitedTransition[] {
+  const cited: Ns5CitedTransition[] = [];
+  for (const journey of journeys) {
+    const actorRef = journey.business.actorRef || '';
+    for (const step of journey.business.steps) {
+      if (step.kind !== 'act' || !step.transitionRef || !step.entity) continue;
+      cited.push({
+        entityId: step.entity,
+        transitionId: step.transitionRef,
+        actorRef,
+        stepId: step.stepId || '',
+      });
+    }
+  }
+  return cited;
+}
+
 export function collectNs5CitedEntities(
   journeys: ReadonlyArray<{ business: { steps: ReadonlyArray<{ entity: string; affects?: string[] }> } }>,
 ): Set<string> {
@@ -530,14 +575,22 @@ export function collectNs5CitedEntities(
 /** Journey view the lifecycle walk understands. Caller supplies index order. */
 export interface Ns5LifecycleJourneyView {
   business: {
-    steps: ReadonlyArray<{ kind: string; entity: string; affects?: string[] }>;
+    actorRef?: string;
+    steps: ReadonlyArray<{
+      kind: string;
+      entity: string;
+      affects?: string[];
+      stepId?: string;
+      transitionRef?: string;
+      creates?: true;
+    }>;
   };
 }
 
 /**
- * Structural I2 signal for one entity: a second `act` (after the first create) requires
- * declared transitions; a `decide` requires a branching origin. Same walk finalize80.checkI2
- * uses — ontology30 imports this; finalize80 must not recompute it.
+ * Structural signal for one entity: a second `act` (after the first create) requires
+ * declared transitions; a `decide` requires a branching origin. ontology30 uses this
+ * to demand lifecycle; finalize80 I2 uses it only for the decide branching check.
  */
 export interface Ns5LifecycleSignal {
   requiresTransitions: boolean;
@@ -606,6 +659,122 @@ function assembleEntity(
 
 function entityHasLifecycle(detail: Ns5OntologyEntityDraft | undefined): boolean {
   return (detail?.lifecycleStates.length || 0) > 0 || (detail?.transitions.length || 0) > 0;
+}
+
+function addCitedTransitionActors(
+  entityId: string,
+  transitions: Ns5OntologyEntityArtifact['transitions'],
+  journeys: ReadonlyArray<{
+    business: {
+      actorRef?: string;
+      steps: ReadonlyArray<{
+        kind: string;
+        entity: string;
+        stepId?: string;
+        transitionRef?: string;
+      }>;
+    };
+  }>,
+): { transitions: Ns5OntologyEntityArtifact['transitions']; normalizations: Ns5OntologyFormNormalization[] } {
+  const cited = collectNs5CitedTransitions(journeys).filter(item => item.entityId === entityId);
+  if (!cited.length) return { transitions, normalizations: [] };
+  const normalizations: Ns5OntologyFormNormalization[] = [];
+  const next = transitions.map(transition => {
+    const actors = [...new Set(
+      cited.filter(item => item.transitionId === transition.transitionId).map(item => item.actorRef).filter(Boolean),
+    )];
+    if (!actors.length || !Array.isArray(transition.by)) return transition;
+    const missing = actors.filter(actor => !transition.by.includes(actor));
+    if (!missing.length) return transition;
+    normalizations.push({
+      kind: NS5_ONTOLOGY_TRANSITION_BY_ADDED,
+      entityId,
+      detail: `by added ${missing.join(', ')} on ${transition.transitionId} (cited transitionRef).`,
+    });
+    return { ...transition, by: [...transition.by, ...missing] };
+  });
+  return { transitions: next, normalizations };
+}
+
+/** Source-SCC states of the transition graph (Tarjan). Isolated states are not nodes. */
+export function ns5SourceSccStates(
+  transitions: Ns5OntologyEntityArtifact['transitions'],
+): string[] {
+  const nodes: string[] = [];
+  const seen = new Set<string>();
+  const add = (id: string) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    nodes.push(id);
+  };
+  const edges: Array<[string, string]> = [];
+  for (const transition of transitions) {
+    add(transition.to);
+    for (const from of transition.from) {
+      add(from);
+      if (from && transition.to) edges.push([from, transition.to]);
+    }
+  }
+  if (!nodes.length) return [];
+  const adj = new Map(nodes.map(node => [node, [] as string[]]));
+  for (const [from, to] of edges) adj.get(from)!.push(to);
+  let next = 0;
+  const index = new Map<string, number>();
+  const low = new Map<string, number>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const sccOf = new Map<string, number>();
+  let sccCount = 0;
+  const connect = (v: string) => {
+    index.set(v, next);
+    low.set(v, next);
+    next += 1;
+    stack.push(v);
+    onStack.add(v);
+    for (const w of adj.get(v) || []) {
+      if (!index.has(w)) {
+        connect(w);
+        low.set(v, Math.min(low.get(v)!, low.get(w)!));
+      } else if (onStack.has(w)) {
+        low.set(v, Math.min(low.get(v)!, index.get(w)!));
+      }
+    }
+    if (low.get(v) !== index.get(v)) return;
+    let w = '';
+    do {
+      w = stack.pop()!;
+      onStack.delete(w);
+      sccOf.set(w, sccCount);
+    } while (w !== v);
+    sccCount += 1;
+  };
+  for (const node of nodes) {
+    if (!index.has(node)) connect(node);
+  }
+  const hasIncoming = new Array<boolean>(sccCount).fill(false);
+  for (const [from, to] of edges) {
+    const a = sccOf.get(from);
+    const b = sccOf.get(to);
+    if (a !== undefined && b !== undefined && a !== b) hasIncoming[b] = true;
+  }
+  return nodes.filter(node => !hasIncoming[sccOf.get(node)!]);
+}
+
+export function ns5ReachableStates(
+  roots: string[],
+  transitions: Ns5OntologyEntityArtifact['transitions'],
+): Set<string> {
+  const seen = new Set(roots);
+  const queue = [...roots];
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const transition of transitions) {
+      if (!transition.from.includes(current) || seen.has(transition.to)) continue;
+      seen.add(transition.to);
+      queue.push(transition.to);
+    }
+  }
+  return seen;
 }
 
 function dropConflictingCrud<T extends { entityId: string; maintenance?: 'crud' }>(

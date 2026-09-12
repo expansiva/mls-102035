@@ -64,6 +64,16 @@ export interface Ns5JourneyStep {
   entity: string;
   /** ontology30 must declare each extra entity the step also changes. */
   affects?: string[];
+  /**
+   * This act creates the `entity` record (or attaches, when the entity is mdm).
+   * At most one of `creates` / `transitionRef`. Readers: I2, master backend, master frontend.
+   */
+  creates?: true;
+  /**
+   * This act applies this ontology `transitionId` of `entity` (lowerCamel).
+   * At most one of `creates` / `transitionRef`. Readers: I2, master backend, master frontend.
+   */
+  transitionRef?: string;
   /** Planner / UI. */
   title: string;
   /** Planner / UI. */

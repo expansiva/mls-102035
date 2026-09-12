@@ -113,11 +113,16 @@ function normalizeStep(value: unknown): Ns5JourneyStep {
   const affects = uniquePascalIds(step.affects);
   // The model fills handoffTo on every step as "who does this". Only a handoff names a receiver.
   const handoffTo = kind === 'handoff' ? memberId(text(step.handoffTo), '') : '';
+  // creates / transitionRef are act intent. Other kinds drop them (same class as handoffTo).
+  const creates = kind === 'act' && step.creates === true;
+  const transitionRef = kind === 'act' ? memberId(text(step.transitionRef), '') : '';
   return {
     stepId: memberId(text(step.stepId) || text(step.title), ''),
     kind,
     entity: normalizeEntityId(step.entity),
     ...(affects.length ? { affects } : {}),
+    ...(creates ? { creates: true as const } : {}),
+    ...(transitionRef ? { transitionRef } : {}),
     title: text(step.title),
     description: text(step.description),
     ...(handoffTo ? { handoffTo } : {}),

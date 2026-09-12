@@ -1,5 +1,10 @@
 # journeys20
 
+## 2026-09-12
+
+- An `act` may declare `creates: true` or `transitionRef` (lowerCamel), never both; other
+  kinds drop the fields. Gate: `NS5_JOURNEY_ACT_INTENT_BOTH` / `NS5_JOURNEY_ACT_INTENT_KIND`.
+
 ## 2026-09-11
 
 - Inferred-actor drop writes `droppedActors` on `pipeline.json` `journeys20` and
