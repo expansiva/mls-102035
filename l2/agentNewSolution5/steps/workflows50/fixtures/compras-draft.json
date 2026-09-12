@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "compras",
+  "processes": [
+    {
+      "processId": "submeterEProcessarPedidoCompra",
+      "title": "Submeter e processar pedido de compra",
+      "description": "Orquestra o envio do pedido pelo comprador e o seu encaminhamento automático ou para decisão gerencial conforme o valor.",
+      "trigger": {
+        "kind": "manual",
+        "actorRef": "comprador"
+      },
+      "tasks": [
+        {
+          "taskId": "enviarPedidoParaProcessamento",
+          "kind": "human",
+          "actorRef": "comprador",
+          "journeyRef": "abrirEenviarPedidoCompra",
+          "next": [
+            "liberarPedidoAbaixoDoLimite",
+            "decidirPedidoAcimaDoLimite"
+          ],
+          "description": "O comprador abre e envia o pedido, encaminhando os pedidos que exigem aprovação ao gerente de compras."
+        },
+        {
+          "taskId": "liberarPedidoAbaixoDoLimite",
+          "kind": "mechanical",
+          "entityRef": "PedidoCompra",
+          "effect": "transition",
+          "transitionRef": "liberarPedidoSemAprovacao",
+          "next": [],
+          "description": "O sistema libera para processamento o pedido cujo valor não exige aprovação."
+        },
+        {
+          "taskId": "decidirPedidoAcimaDoLimite",
+          "kind": "human",
+          "actorRef": "gerenteCompras",
+          "journeyRef": "decidirPedidoAcimaDoLimite",
+          "next": [],
+          "description": "O gerente de compras aprova ou rejeita o pedido que exige autorização."
+        }
+      ]
+    },
+    {
+      "processId": "registrarEAtualizarRecebimento",
+      "title": "Registrar e atualizar recebimento de pedido",
+      "description": "Orquestra o registro do recebimento pelo almoxarife, a atualização do estoque e o status correspondente do pedido.",
+      "trigger": {
+        "kind": "manual",
+        "actorRef": "almoxarife"
+      },
+      "tasks": [
+        {
+          "taskId": "registrarRecebimentoDoPedido",
+          "kind": "human",
+          "actorRef": "almoxarife",
+          "journeyRef": "registrarRecebimentoDePedido",
+          "next": [
+            "atualizarEstoqueRecebido"
+          ],
+          "description": "O almoxarife registra as quantidades recebidas, total ou parcialmente, para o pedido."
+        },
+        {
+          "taskId": "atualizarEstoqueRecebido",
+          "kind": "mechanical",
+          "entityRef": "EstoqueProduto",
+          "effect": "update",
+          "next": [
+            "marcarRecebimentoParcial"
+          ],
+          "description": "O sistema atualiza o estoque dos produtos nas quantidades efetivamente recebidas."
+        },
+        {
+          "taskId": "marcarRecebimentoParcial",
+          "kind": "mechanical",
+          "entityRef": "PedidoCompra",
+          "effect": "transition",
+          "transitionRef": "registrarRecebimentoParcial",
+          "next": [],
+          "description": "O sistema registra o pedido como parcialmente recebido quando ainda houver quantidades pendentes."
+        }
+      ]
+    }
+  ],
+  "journeyDecisions": [
+    {
+      "journeyId": "cadastrarFornecedor",
+      "inProcess": false
+    },
+    {
+      "journeyId": "definirProdutosDoFornecedor",
+      "inProcess": false
+    },
+    {
+      "journeyId": "abrirEenviarPedidoCompra",
+      "inProcess": true,
+      "processId": "submeterEProcessarPedidoCompra"
+    },
+    {
+      "journeyId": "decidirPedidoAcimaDoLimite",
+      "inProcess": true,
+      "processId": "submeterEProcessarPedidoCompra"
+    },
+    {
+      "journeyId": "registrarRecebimentoDePedido",
+      "inProcess": true,
+      "processId": "registrarEAtualizarRecebimento"
+    },
+    {
+      "journeyId": "acompanharIndicadoresDeCompras",
+      "inProcess": false
+    }
+  ],
+  "systemDecisions": [
+    {
+      "decisionId": "dropDuplicateTaskMarcarRecebimentoTotal",
+      "chosen": "drop",
+      "alternatives": [
+        "keep",
+        "drop"
+      ],
+      "decidedBy": "system"
+    }
+  ]
+}

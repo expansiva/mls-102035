@@ -1,0 +1,72 @@
+{
+  "entityId": "PlanoManutencao",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do plano de manutenção preventiva."
+    },
+    {
+      "fieldId": "veiculoId",
+      "title": "Veículo",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao veículo ao qual este plano preventivo se aplica."
+    },
+    {
+      "fieldId": "intervaloQuilometragem",
+      "title": "Intervalo em quilômetros",
+      "type": "integer",
+      "required": false,
+      "constraints": {
+        "min": 1
+      },
+      "description": "Quantidade de quilômetros entre as manutenções preventivas quando o critério por quilometragem for utilizado."
+    },
+    {
+      "fieldId": "intervaloMeses",
+      "title": "Intervalo em meses",
+      "type": "integer",
+      "required": false,
+      "constraints": {
+        "min": 1
+      },
+      "description": "Quantidade de meses entre as manutenções preventivas quando o critério por tempo for utilizado."
+    },
+    {
+      "fieldId": "quilometragemReferencia",
+      "title": "Quilometragem de referência",
+      "type": "integer",
+      "required": true,
+      "constraints": {
+        "min": 0
+      },
+      "description": "Quilometragem do veículo usada como base para calcular a próxima preventiva por distância."
+    },
+    {
+      "fieldId": "dataReferencia",
+      "title": "Data de referência",
+      "type": "date",
+      "required": true,
+      "description": "Data usada como base para calcular a próxima preventiva por tempo."
+    }
+  ],
+  "details": {
+    "proximaQuilometragemPrevista": {
+      "type": "integer",
+      "description": "Quilometragem calculada em que a próxima manutenção preventiva deve ser realizada."
+    },
+    "proximaDataPrevista": {
+      "type": "date",
+      "description": "Data calculada em que a próxima manutenção preventiva deve ser realizada pelo critério de tempo."
+    },
+    "preventivaVencida": {
+      "type": "boolean",
+      "description": "Indica se a quilometragem atual do veículo já ultrapassou a quilometragem prevista para a preventiva."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

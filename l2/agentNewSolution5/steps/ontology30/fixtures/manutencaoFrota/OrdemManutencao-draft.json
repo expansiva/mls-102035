@@ -1,0 +1,63 @@
+{
+  "entityId": "OrdemManutencao",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único da ordem de manutenção."
+    },
+    {
+      "fieldId": "veiculoId",
+      "title": "Veículo",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao veículo encaminhado para manutenção."
+    },
+    {
+      "fieldId": "planoManutencaoId",
+      "title": "Plano de manutenção",
+      "type": "uuid",
+      "required": false,
+      "description": "Referência ao plano preventivo que motivou a abertura da ordem, quando aplicável."
+    },
+    {
+      "fieldId": "oficinaId",
+      "title": "Oficina",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à oficina responsável pela execução do serviço."
+    },
+    {
+      "fieldId": "descricao",
+      "title": "Descrição",
+      "type": "text",
+      "required": true,
+      "description": "Descrição do defeito identificado ou do serviço de manutenção solicitado."
+    },
+    {
+      "fieldId": "dataEntrada",
+      "title": "Data de entrada",
+      "type": "date",
+      "required": true,
+      "description": "Data em que o veículo foi encaminhado à oficina."
+    },
+    {
+      "fieldId": "custo",
+      "title": "Custo",
+      "type": "money",
+      "required": false,
+      "description": "Custo informado para o serviço de manutenção concluído."
+    },
+    {
+      "fieldId": "dataSaida",
+      "title": "Data de saída",
+      "type": "date",
+      "required": false,
+      "description": "Data em que o veículo foi liberado pela oficina."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

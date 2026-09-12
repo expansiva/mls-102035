@@ -1,0 +1,23 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "movimentacaoEstoqueProduto",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "MovimentacaoEstoque",
+        "from": {
+          "entityId": "MovimentacaoEstoque",
+          "fieldIds": [
+            "produtoId"
+          ]
+        },
+        "to": {
+          "entityId": "Produto",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

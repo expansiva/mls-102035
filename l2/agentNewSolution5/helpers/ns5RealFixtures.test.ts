@@ -43,6 +43,14 @@ export const NS5_LEVA_MODULES = [
 ] as const;
 export type Ns5LevaModule = typeof NS5_LEVA_MODULES[number];
 
+/**
+ * `financeiro` is the only leva-final module without a replay pack: leva 1+2 both
+ * failed on content (`journeys20` collapsed to 1 journey). Not a form defect.
+ */
+export const NS5_LEVA_REPLAY_EXCLUDED: Readonly<Record<string, string>> = {
+  financeiro: 'content: journeys20 collapsed to 1 journey (leva final 1+2); ns5_pendencias_fase2 P3',
+};
+
 const REPLAY_PACK = [
   ['steps/module10/fixtures', '-draft.json'],
   ['steps/module10/fixtures', '-module.defs.ts'],
@@ -191,7 +199,7 @@ void test('real fixture modules are the two complete NS5 runs', () => {
   assert.equal(loadNs5Access('comandaRestaurante5').actors.length, 2);
 });
 
-void test('leva replay set is the 12 ns5_26 modules; byte copies land after the final leva', () => {
+void test('leva replay set is the 11 complete modules; financeiro stays out (content)', () => {
   assert.equal(NS5_LEVA_MODULES.length, 12);
   assert.deepEqual([...NS5_LEVA_MODULES], [
     'comandaRestaurante',
@@ -207,5 +215,12 @@ void test('leva replay set is the 12 ns5_26 modules; byte copies land after the 
     'manutencaoFrota',
     'mensalidadesAcademia',
   ]);
-  assert.deepEqual(ns5ReplayModules(), [...NS5_REAL_MODULES]);
+  assert.equal(hasNs5ReplayFixtures('financeiro'), false);
+  assert.match(NS5_LEVA_REPLAY_EXCLUDED.financeiro, /journeys20 collapsed to 1 journey/);
+  const expected = [
+    ...NS5_REAL_MODULES,
+    ...NS5_LEVA_MODULES.filter(name => name !== 'financeiro'),
+  ];
+  assert.deepEqual(ns5ReplayModules(), expected);
+  assert.equal(ns5ReplayModules().length, 13);
 });

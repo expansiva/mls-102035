@@ -1,0 +1,161 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "criarContratoLocacao",
+      "business": {
+        "actorRef": "atendente",
+        "title": "Criar contrato de locação",
+        "goal": "Formalizar a locação de um cliente para um ou mais equipamentos em um período definido.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarCliente",
+            "kind": "locate",
+            "entity": "Cliente",
+            "title": "x",
+            "description": "Localiza o cliente para quem será feita a locação ou informa seus dados para criação ou vinculação."
+          },
+          {
+            "stepId": "consultarEquipamentos",
+            "kind": "locate",
+            "entity": "Equipamento",
+            "title": "x",
+            "description": "Localiza os equipamentos solicitados para a locação."
+          },
+          {
+            "stepId": "verificarEquipamentos",
+            "kind": "inspect",
+            "entity": "Equipamento",
+            "title": "x",
+            "description": "Confere a situação dos equipamentos e sua disponibilidade para as datas de retirada e devolução prevista."
+          },
+          {
+            "stepId": "registrarContrato",
+            "kind": "act",
+            "entity": "ContratoLocacao",
+            "affects": [
+              "Cliente",
+              "Equipamento"
+            ],
+            "effect": "create",
+            "title": "x",
+            "description": "Cria o contrato com o cliente, os equipamentos, a data de retirada e a data prevista de devolução."
+          }
+        ],
+        "outcome": {
+          "statement": "O contrato de locação é registrado para os equipamentos disponíveis no período solicitado.",
+          "evidence": [
+            "Contrato de locação criado com cliente, equipamentos e período de locação.",
+            "Equipamentos vinculados ao contrato passam a constar como locados para o período registrado."
+          ]
+        }
+      },
+      "businessHash": "sha256:a8e12be4223a6ab77910233bdd0520e657517fb2a1cc1731da2e415481cd13b9"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarDevolucao",
+      "business": {
+        "actorRef": "atendente",
+        "title": "Registrar devolução de equipamentos",
+        "goal": "Registrar a devolução efetiva e concluir a locação, incluindo a multa por atraso quando aplicável.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarContrato",
+            "kind": "locate",
+            "entity": "ContratoLocacao",
+            "title": "x",
+            "description": "Localiza o contrato em aberto, caso ele não esteja previamente em contexto."
+          },
+          {
+            "stepId": "conferirContrato",
+            "kind": "inspect",
+            "entity": "ContratoLocacao",
+            "title": "x",
+            "description": "Confere os equipamentos locados e a data prevista de devolução."
+          },
+          {
+            "stepId": "registrarDevolucaoReal",
+            "kind": "act",
+            "entity": "ContratoLocacao",
+            "affects": [
+              "Equipamento"
+            ],
+            "effect": "transition",
+            "transitionRef": "registrarDevolucao",
+            "title": "x",
+            "description": "Registra a data real de devolução, conclui o contrato e torna os equipamentos devolvidos disponíveis conforme sua situação."
+          },
+          {
+            "stepId": "consultarMultaCalculada",
+            "kind": "inspect",
+            "entity": "ContratoLocacao",
+            "title": "x",
+            "description": "Consulta a multa calculada quando a devolução ocorreu após a data prevista."
+          }
+        ],
+        "outcome": {
+          "statement": "A devolução é registrada e a multa por atraso, quando houver, fica disponível no contrato.",
+          "evidence": [
+            "Contrato marcado como devolvido com a data real de devolução.",
+            "Multa exibida no contrato quando houver dias de atraso.",
+            "Equipamentos devolvidos deixam de constar como locados."
+          ]
+        }
+      },
+      "businessHash": "sha256:5c8eceb98d96a9dbf6b273f31fb176d4ac3b2e34a0dc0690192fe52f03cf9a07"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "acompanharSituacaoEquipamentos",
+      "business": {
+        "actorRef": "gerente",
+        "title": "Acompanhar situação dos equipamentos",
+        "goal": "Visualizar quais equipamentos estão disponíveis, locados ou em manutenção.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarEquipamentos",
+            "kind": "locate",
+            "entity": "Equipamento",
+            "title": "x",
+            "description": "Localiza os equipamentos da locadora."
+          },
+          {
+            "stepId": "inspecionarSituacoes",
+            "kind": "inspect",
+            "entity": "Equipamento",
+            "title": "x",
+            "description": "Consulta a situação de cada equipamento, identificando os disponíveis, locados e em manutenção."
+          }
+        ],
+        "outcome": {
+          "statement": "O gerente obtém a visão da disponibilidade e da situação operacional dos equipamentos.",
+          "evidence": [
+            "Lista de equipamentos com suas situações de disponível, locado ou em manutenção."
+          ]
+        }
+      },
+      "businessHash": "sha256:f20dae9a0affca28e1ce7fa922ab9aac67ff30b21c977be9cf2379fe6717fb0a"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": [],
+  "normalizations": [
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "criarContratoLocacao",
+      "stepId": "registrarContrato",
+      "detail": "transitionRef x dropped; effect is create."
+    }
+  ]
+}

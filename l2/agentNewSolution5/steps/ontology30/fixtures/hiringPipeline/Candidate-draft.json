@@ -1,0 +1,27 @@
+{
+  "entityId": "Candidate",
+  "fields": [
+    {
+      "fieldId": "resumeLink",
+      "title": "Resume Link",
+      "type": "string",
+      "required": true,
+      "constraints": {
+        "maxLength": 2048
+      },
+      "description": "Link to the candidate's resume."
+    },
+    {
+      "fieldId": "source",
+      "title": "Source",
+      "type": "string",
+      "required": true,
+      "constraints": {
+        "maxLength": 255
+      },
+      "description": "Source through which the candidate was identified."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

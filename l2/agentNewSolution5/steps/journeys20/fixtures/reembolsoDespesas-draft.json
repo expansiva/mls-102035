@@ -1,0 +1,274 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarEenviarDespesa",
+      "business": {
+        "actorRef": "colaborador",
+        "title": "Registrar e enviar despesa para aprovação",
+        "goal": "Registrar uma despesa própria com seus dados e comprovante e encaminhá-la ao gestor da equipe.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "registrarDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "create",
+            "title": "Registrar despesa",
+            "description": "Informa data, categoria, valor, descrição e comprovante da despesa."
+          },
+          {
+            "stepId": "enviarParaAprovacao",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "submitForApproval",
+            "title": "Enviar para aprovação",
+            "description": "Encaminha a despesa registrada para avaliação do gestor da equipe."
+          },
+          {
+            "stepId": "encaminharAoGestor",
+            "kind": "handoff",
+            "entity": "Despesa",
+            "title": "Encaminhar ao gestor",
+            "description": "A despesa enviada passa para a avaliação do gestor da equipe.",
+            "handoffTo": "gestorEquipe"
+          }
+        ],
+        "outcome": {
+          "statement": "A despesa própria fica registrada e enviada para aprovação do gestor da equipe.",
+          "evidence": [
+            "Despesa criada com data, categoria, valor, descrição e comprovante.",
+            "Despesa identificada como enviada para aprovação.",
+            "Gestor da equipe recebe a responsabilidade de avaliá-la."
+          ]
+        }
+      },
+      "businessHash": "sha256:ce14ccc28f1d87c980d7595f2e45d7d6a0674e464c81591c4e11b61a7b90ff5e"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "acompanharMinhasDespesas",
+      "business": {
+        "actorRef": "colaborador",
+        "title": "Acompanhar minhas despesas",
+        "goal": "Consultar as próprias despesas e verificar sua situação de aprovação ou pagamento.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMinhasDespesas",
+            "kind": "locate",
+            "entity": "Despesa",
+            "title": "Localizar minhas despesas",
+            "description": "Localiza as despesas vinculadas ao próprio colaborador."
+          },
+          {
+            "stepId": "consultarSituacaoDespesa",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "title": "Consultar situação da despesa",
+            "description": "Verifica os dados da despesa, a decisão do gestor, o motivo de rejeição quando existir e a data de pagamento quando registrada."
+          }
+        ],
+        "outcome": {
+          "statement": "O colaborador acompanha a situação de suas próprias despesas.",
+          "evidence": [
+            "Lista de despesas do colaborador é apresentada.",
+            "Situação de aprovação, motivo de rejeição e pagamento podem ser consultados."
+          ]
+        }
+      },
+      "businessHash": "sha256:02c034c15d4142b6a905fc2ebdc527135d86404df5ea00886401ee53051e1c02"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "corrigirEreenviarDespesa",
+      "business": {
+        "actorRef": "colaborador",
+        "title": "Corrigir e reenviar despesa rejeitada",
+        "goal": "Corrigir uma despesa rejeitada e reenviá-la uma única vez para nova aprovação.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarDespesaRejeitada",
+            "kind": "locate",
+            "entity": "Despesa",
+            "title": "Localizar despesa rejeitada",
+            "description": "Localiza uma despesa própria rejeitada que ainda pode ser reenviada."
+          },
+          {
+            "stepId": "consultarMotivoRejeicao",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "title": "Consultar motivo da rejeição",
+            "description": "Consulta o motivo informado pelo gestor para a rejeição."
+          },
+          {
+            "stepId": "corrigirDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "update",
+            "title": "Corrigir despesa",
+            "description": "Corrige os dados ou o comprovante da despesa conforme necessário."
+          },
+          {
+            "stepId": "reenviarDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "resubmitForApproval",
+            "title": "Reenviar para aprovação",
+            "description": "Reenvia a despesa corrigida para nova avaliação do gestor."
+          },
+          {
+            "stepId": "encaminharDespesaReenviada",
+            "kind": "handoff",
+            "entity": "Despesa",
+            "title": "Encaminhar despesa reenviada",
+            "description": "A despesa corrigida segue para nova avaliação do gestor da equipe.",
+            "handoffTo": "gestorEquipe"
+          }
+        ],
+        "outcome": {
+          "statement": "A despesa rejeitada é corrigida e reenviada para uma única nova avaliação.",
+          "evidence": [
+            "Alterações da despesa ficam registradas.",
+            "Despesa passa novamente para aprovação.",
+            "Reenvio da despesa é identificado como realizado."
+          ]
+        }
+      },
+      "businessHash": "sha256:210ae97b6f01738f5e82d4315051823abd445b362499fcd9e2bdd7f89f91467e"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "avaliarDespesaDaEquipe",
+      "business": {
+        "actorRef": "gestorEquipe",
+        "title": "Avaliar despesa da equipe",
+        "goal": "Avaliar uma despesa de colaborador da equipe e decidir por sua aprovação para pagamento ou rejeição com motivo.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarDespesaPendente",
+            "kind": "locate",
+            "entity": "Despesa",
+            "title": "Localizar despesa pendente",
+            "description": "Localiza uma despesa pendente de aprovação de colaborador da equipe."
+          },
+          {
+            "stepId": "consultarDespesaPendente",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "title": "Consultar despesa",
+            "description": "Consulta os dados, a descrição e o comprovante da despesa."
+          },
+          {
+            "stepId": "decidirAprovacaoOuRejeicao",
+            "kind": "decide",
+            "entity": "Despesa",
+            "title": "Decidir sobre a despesa",
+            "description": "Escolhe aprovar a despesa para pagamento ou rejeitá-la, informando o motivo da rejeição quando essa for a decisão."
+          },
+          {
+            "stepId": "registrarDecisaoDaDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "recordApprovalDecision",
+            "title": "Registrar decisão",
+            "description": "Registra a aprovação para pagamento ou a rejeição com seu motivo e encaminha a despesa ao responsável pela próxima tratativa."
+          },
+          {
+            "stepId": "encaminharDespesaAposDecisao",
+            "kind": "handoff",
+            "entity": "Despesa",
+            "title": "Encaminhar após decisão",
+            "description": "A despesa aprovada segue para o financeiro; a rejeitada retorna ao colaborador.",
+            "handoffTo": "financeiro"
+          }
+        ],
+        "outcome": {
+          "statement": "A decisão do gestor sobre a despesa da equipe fica registrada, com aprovação para pagamento ou rejeição motivada.",
+          "evidence": [
+            "Decisão de aprovação ou rejeição fica registrada na despesa.",
+            "Motivo da rejeição pode ser consultado quando a despesa for rejeitada.",
+            "Despesa aprovada fica disponível para pagamento e despesa rejeitada fica disponível ao colaborador."
+          ]
+        }
+      },
+      "businessHash": "sha256:edd9fbf41940eb8b331606377d32248e65b72ce698a6edf05a5319d23ff57ec3"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarPagamentoDespesa",
+      "business": {
+        "actorRef": "financeiro",
+        "title": "Registrar pagamento de despesa aprovada",
+        "goal": "Consultar despesas aprovadas e registrar a data de pagamento de uma delas.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarDespesasAprovadas",
+            "kind": "locate",
+            "entity": "Despesa",
+            "title": "Localizar despesas aprovadas",
+            "description": "Localiza as despesas aprovadas disponíveis para pagamento."
+          },
+          {
+            "stepId": "consultarDespesaAprovada",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "title": "Consultar despesa aprovada",
+            "description": "Consulta os dados e o comprovante da despesa aprovada."
+          },
+          {
+            "stepId": "registrarPagamento",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "registerPayment",
+            "title": "Registrar pagamento",
+            "description": "Registra a data em que a despesa aprovada foi paga."
+          }
+        ],
+        "outcome": {
+          "statement": "O pagamento da despesa aprovada fica registrado com sua data.",
+          "evidence": [
+            "Despesa consultada consta como aprovada.",
+            "Data de pagamento fica registrada na despesa.",
+            "Despesa é identificada como paga."
+          ]
+        }
+      },
+      "businessHash": "sha256:96b2a3dc369f55cd902011a621ad1160228c3443d338e2b0f7eb819d5301fc47"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": [],
+  "normalizations": [
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "registrarEenviarDespesa",
+      "stepId": "registrarDespesa",
+      "detail": "transitionRef createExpense dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "corrigirEreenviarDespesa",
+      "stepId": "corrigirDespesa",
+      "detail": "transitionRef correctExpense dropped; effect is update."
+    }
+  ]
+}

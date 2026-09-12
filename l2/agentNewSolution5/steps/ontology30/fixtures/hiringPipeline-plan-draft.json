@@ -1,0 +1,74 @@
+{
+  "moduleName": "hiringPipeline",
+  "businessDomain": "Hiring pipeline management",
+  "entities": [
+    {
+      "entityId": "JobPosition",
+      "title": "Job Position",
+      "description": "An open hiring position with its requirements and capacity for hires.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "title",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "hiringPipeline.JobPosition"
+      }
+    },
+    {
+      "entityId": "Candidate",
+      "title": "Candidate",
+      "description": "A person registered as a candidate in the hiring pipeline.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "hiringPipeline.Candidate"
+      }
+    },
+    {
+      "entityId": "Application",
+      "title": "Application",
+      "description": "A candidate's application for a job position, tracked through the hiring pipeline.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "id",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "hiringPipeline.Application"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "candidateApplications",
+      "fromEntity": "Candidate",
+      "toEntity": "Application",
+      "type": "oneToMany",
+      "required": true,
+      "description": "A candidate submits one or more applications.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "jobPositionApplications",
+      "fromEntity": "JobPosition",
+      "toEntity": "Application",
+      "type": "oneToMany",
+      "required": true,
+      "description": "A job position receives one or more candidate applications.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ]
+}

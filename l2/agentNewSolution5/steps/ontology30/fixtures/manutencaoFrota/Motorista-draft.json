@@ -1,0 +1,7 @@
+{
+  "entityId": "Motorista",
+  "fields": [],
+  "lifecycleStates": [],
+  "transitions": [],
+  "writer": "crud"
+}

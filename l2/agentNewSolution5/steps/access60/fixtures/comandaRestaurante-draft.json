@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "2026-09-12-ns5-access-v3",
+  "moduleName": "comandaRestaurante",
+  "actors": [
+    {
+      "actorId": "garcom",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Garçom",
+      "description": "Profissional do restaurante que abre comandas para mesas, lança itens e cancela lançamentos realizados por engano enquanto a comanda está aberta."
+    },
+    {
+      "actorId": "caixa",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Caixa",
+      "description": "Profissional do restaurante que fecha comandas, aplica descontos opcionais, registra a forma de pagamento e libera a mesa."
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "garcomRecursosRestaurante",
+      "actorRef": "garcom",
+      "title": "Consultar mesas e cardápio",
+      "description": "Permite ao garçom consultar todas as mesas do restaurante e os itens disponíveis no cardápio para abrir comandas e registrar pedidos.",
+      "entityRefs": [
+        "Mesa",
+        "ItemCardapio"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Mesas e itens do cardápio de todo o restaurante."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Exibe todos os campos disponíveis de mesas e itens do cardápio."
+      }
+    },
+    {
+      "grantId": "garcomPropriasComandas",
+      "actorRef": "garcom",
+      "title": "Gerenciar próprias comandas",
+      "description": "Permite ao garçom manter seu próprio cadastro funcional, abrir comandas vinculadas a ele, lançar itens e cancelar lançamentos de suas comandas abertas.",
+      "entityRefs": [
+        "Garcom",
+        "Comanda",
+        "ItemComanda"
+      ],
+      "dataScope": {
+        "mode": "own",
+        "description": "Acesso ao cadastro do garçom autenticado e às comandas e lançamentos vinculados a ele.",
+        "anchorEntity": "Garcom"
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Exibe todos os campos disponíveis das próprias comandas e de seus lançamentos."
+      }
+    },
+    {
+      "grantId": "caixaFechamentoComandas",
+      "actorRef": "caixa",
+      "title": "Fechar comandas do restaurante",
+      "description": "Permite ao caixa consultar mesas, comandas e lançamentos de todo o restaurante para registrar pagamento, aplicar desconto, encerrar a comanda e liberar a mesa.",
+      "entityRefs": [
+        "Mesa",
+        "Comanda",
+        "ItemComanda"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Comandas, lançamentos e mesas de todo o restaurante."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Exibe todos os campos disponíveis necessários para conferir e fechar as comandas."
+      }
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "dropAnchorEntity",
+      "grantId": "garcomRecursosRestaurante",
+      "detail": "anchorEntity removed; organization is not own/assigned/related."
+    },
+    {
+      "kind": "dropAnchorEntity",
+      "grantId": "caixaFechamentoComandas",
+      "detail": "anchorEntity removed; organization is not own/assigned/related."
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "eventoInscricoes",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Inscricao",
+        "from": {
+          "entityId": "Evento",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "Inscricao",
+          "fieldIds": [
+            "eventoId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "participanteInscricoes",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Inscricao",
+        "from": {
+          "entityId": "Participante",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "Inscricao",
+          "fieldIds": [
+            "participanteId"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "entityId": "Fornecedor",
+  "fields": [],
+  "details": {
+    "totalCompradoNoMes": {
+      "type": "money",
+      "description": "Valor total dos pedidos de compra do fornecedor no mês corrente."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

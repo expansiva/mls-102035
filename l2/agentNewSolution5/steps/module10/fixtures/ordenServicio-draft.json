@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "2026-09-10-ns5-module-v2",
+  "moduleName": "ordenServicio",
+  "title": "Órdenes de servicio técnico",
+  "userLanguage": "es",
+  "productLanguages": [
+    "es"
+  ],
+  "defaultLanguage": "es",
+  "sourcePrompt": "crear el módulo ordenServicio, en español, para un servicio técnico de electrónica. el cliente trae un aparato y el recepcionista abre una orden de servicio con los datos del cliente, el aparato, el defecto informado y fotos. el técnico analiza y registra el diagnóstico, las piezas necesarias con costo interno y el valor del presupuesto para el cliente. el cliente recibe el presupuesto y lo aprueba o lo rechaza desde el portal; si lo rechaza, la orden se cierra como rechazada y el aparato queda disponible para retiro. si lo aprueba, el técnico realiza la reparación, registra lo que hizo y la marca como lista; el recepcionista entrega y finaliza. el cliente accede al portal y ve solamente sus propias órdenes, con estado, diagnóstico y valor del presupuesto — nunca el costo interno de las piezas ni las anotaciones del técnico. perfiles: recepcionista, técnico y cliente.",
+  "actors": [
+    {
+      "actorId": "recepcionista",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Recepcionista",
+      "description": "Personal que abre órdenes de servicio y entrega los aparatos reparados a los clientes."
+    },
+    {
+      "actorId": "tecnico",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Técnico",
+      "description": "Personal que analiza los aparatos, prepara presupuestos y realiza las reparaciones."
+    },
+    {
+      "actorId": "cliente",
+      "kind": "external",
+      "origin": "named",
+      "title": "Cliente",
+      "description": "Persona que consulta sus órdenes y aprueba o rechaza presupuestos desde el portal."
+    }
+  ]
+}

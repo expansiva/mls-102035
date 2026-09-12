@@ -1,0 +1,7 @@
+{
+  "entityId": "Profissional",
+  "fields": [],
+  "lifecycleStates": [],
+  "transitions": [],
+  "writer": "crud"
+}

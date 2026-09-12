@@ -7,10 +7,10 @@ never dispatches agentChangeBackend or agentChangeFrontend.
 `module10`, `journeys20`, `ontology30`, `rules40`, `workflows50`, `access60`, `integration70`
 and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle I1–I13,
 organization registry, l5 config/project.json, `pipeline.status: complete`. It never
-dispatches CB or CF. Gate tests run on the two complete-run fixtures plus live access of
+dispatches CB or CF. Gate tests run on the seed-run fixtures plus live access of
 the measured modules; `replayRealRuns.test.ts` replays `normalize → gate → writeDefs`
-against those defs. The 12 leva modules are listed in `NS5_LEVA_MODULES` (byte copies
-after the final leva).
+against the recorded defs of `comandaRestaurante5`, `ordenServicio5` and the 11 complete
+modules of the final leva (`NS5_LEVA_MODULES` minus `financeiro`, which failed on content).
 
 ## Invocation
 
@@ -32,16 +32,17 @@ after the final leva).
 
 ## L4 table
 
-| source | file |
-|---|---|
-| module | `l4/<mod>/module.defs.ts` |
-| journeys | `l4/<mod>/journeys/<journeyId>.defs.ts` + `journeys/index.defs.ts` |
-| ontology | `l4/<mod>/ontology/<Entity>.defs.ts` + `ontology/index.defs.ts` |
-| rules | `l4/<mod>/rules.defs.ts` |
-| workflows | `l4/<mod>/workflows.defs.ts` |
-| access | `l4/<mod>/access.defs.ts` |
-| integration | `l4/<mod>/integration.defs.ts` |
-| pipeline | `l4/<mod>/pipeline/pipeline.json` |
+| source | file | schema |
+|---|---|---|
+| module | `l4/<mod>/module.defs.ts` | module-v2 |
+| journeys | `l4/<mod>/journeys/<journeyId>.defs.ts` + `journeys/index.defs.ts` | journey-v1 (`effect`) |
+| ontology | `l4/<mod>/ontology/<Entity>.defs.ts` + `ontology/index.defs.ts` | ontology-v2 (`writer`, `uniqueKeys`, typed `details`) |
+| rules | `l4/<mod>/rules.defs.ts` | rules-v1 |
+| workflows | `l4/<mod>/workflows.defs.ts` | workflows-v2 |
+| access | `l4/<mod>/access.defs.ts` | access-v3 |
+| integration | `l4/<mod>/integration.defs.ts` | integration-v2 |
+| integration request | `l4/<target>/tobe/integration/<mod>--<eventId>.defs.ts` | integration-request-v1 |
+| pipeline | `l4/<mod>/pipeline/pipeline.json` | pipeline-v1 |
 
 Types live in `/_102035_/l2/solution/types.ts`. Shared pure helpers are re-exported from
 `/_102035_/l2/solution/lib.ts` without moving the NS4 files.
@@ -54,6 +55,7 @@ Oracle errors fail the run; warnings do not. The step never dispatches CB or CF.
 
 `pt` → `pt-BR` (`en` stays `en`). An `act` declares `effect: 'create' | 'update' | 'transition'`;
 lifecycle is required only for `transition` or a `decide`. `writer` is `'journey' | 'crud' |
-'inbound'`. Workflows carry a process `trigger` and stage `human`/`mechanical`/`llm`/`wait`.
-A lifted panel replaces the same keys on `module.details`. `normalizations[]` and
-`liftedFields` persist on `pipeline.json` `steps.<step>`.
+'inbound'`; a child of a written parent (`parent`) and an MDM attached by a create act (`attach`)
+also count. Workflows carry a process `trigger` and stage `human`/`mechanical`/`llm`/`wait`.
+A lifted panel replaces the same keys on `module.details`. `normalizations[]`, `liftedFields`
+and `writerDerived` persist on `pipeline.json` `steps.<step>`.

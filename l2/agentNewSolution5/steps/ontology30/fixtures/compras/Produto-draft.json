@@ -1,0 +1,31 @@
+{
+  "entityId": "Produto",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador do produto",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador do produto mestre no módulo de controle de estoque."
+    },
+    {
+      "fieldId": "name",
+      "title": "Nome do produto",
+      "type": "string",
+      "required": true,
+      "constraints": {
+        "maxLength": 255
+      },
+      "description": "Nome de exibição do produto mestre referenciado para compor fornecimentos, pedidos e recebimentos."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": [],
+  "normalizations": [
+    {
+      "kind": "dropCrud",
+      "entityId": "Produto",
+      "detail": "writer crud removed; an act writes this entity as entity or affects."
+    }
+  ]
+}

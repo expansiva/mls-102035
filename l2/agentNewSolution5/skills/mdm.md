@@ -43,7 +43,11 @@ nothing about identity is stored in a module table.
 Registering a person who will sign in is a write by an internal actor — an `act` on that person entity,
 or an `act` that attaches her (`affects`) such as an enrollment or an order opening (or a public self-registration
 entry), or she is reference data kept by an internal actor (`writer: 'crud'` with that actor's grant), or she
-registers herself (an `act` of her own external actor that writes her). The platform does the rest: looks the e-mail up in the login index
+registers herself (an `act` of her own external actor that writes her). The engine also counts two
+derived writes, recorded as `writerDerived` — do not invent `crud`/`inbound` for them: a non-mdm child
+that is the many-side of a required `manyToOne`/`oneToMany` whose parent already has a writer (`parent`);
+and an mdm role referenced by a required FK of a record whose writer is an `act` with `effect: 'create'`
+(`attach` — create-or-attach of that role). The platform does the rest: looks the e-mail up in the login index
 and the document in the record, attaches the role when it is the same person, refuses when the
 e-mail belongs to another record, and issues the invitation. A journey never has an 'invite' or
 'verify e-mail' step.
@@ -94,9 +98,10 @@ the user types.
 
 Values derived from other data (a total, a balance, a due situation) are not fields and not entities:
 they are `details: { <name>: { type, description } }` on the entity that owns them (or on the module,
-for organization-wide aggregates). A panel entity that only stores those aggregates is lifted into
+for organization-wide aggregates). A panel entity that only stores those aggregates (no writer, no
+fields besides the identity) is lifted into
 `module.details`; the panel is the source of overlapping keys. The backend computes them; a rule may
-cite them.
+cite them. An entity with real fields is never a panel.
 
 ## What the MDM already answers (do not model it in the module)
 

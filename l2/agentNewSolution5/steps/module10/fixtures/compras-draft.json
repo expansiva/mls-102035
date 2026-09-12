@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "2026-09-10-ns5-module-v2",
+  "moduleName": "compras",
+  "title": "Compras",
+  "userLanguage": "pt-BR",
+  "productLanguages": [
+    "pt-BR"
+  ],
+  "defaultLanguage": "pt-BR",
+  "sourcePrompt": "criar o módulo compras em português. a organização compra de fornecedores (empresas com CNPJ, razão social, contato). o comprador cadastra fornecedores e quais produtos cada um fornece, com preço combinado. o comprador abre um pedido de compra para um fornecedor com um ou mais produtos, quantidade e preço, e envia; o gerente de compras aprova ou rejeita pedidos acima de um valor limite. quando o pedido chega, o almoxarife registra o recebimento (total ou parcial) e isso dá entrada no estoque dos produtos recebidos. o gerente vê o painel de pedidos em aberto, atrasados e o total comprado por fornecedor no mês. perfis: comprador, gerente de compras e almoxarife.",
+  "actors": [
+    {
+      "actorId": "comprador",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Comprador",
+      "description": "Profissional da organização que cadastra fornecedores e seus produtos, abre e envia pedidos de compra."
+    },
+    {
+      "actorId": "gerenteCompras",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Gerente de compras",
+      "description": "Profissional da organização que aprova ou rejeita pedidos acima do valor limite e acompanha os indicadores de compras."
+    },
+    {
+      "actorId": "almoxarife",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Almoxarife",
+      "description": "Profissional da organização que registra o recebimento total ou parcial dos pedidos e a entrada dos produtos no estoque."
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "ptToPtBR",
+      "detail": "pt→pt-BR"
+    }
+  ]
+}

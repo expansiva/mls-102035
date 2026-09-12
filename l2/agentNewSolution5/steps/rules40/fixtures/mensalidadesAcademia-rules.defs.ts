@@ -1,0 +1,66 @@
+/// <mls fileReference="_102047_/l4/mensalidadesAcademia/rules.defs.ts" enhancement="_blank"/>
+
+import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+
+export const mensalidadesAcademiaRules = {
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "mensalidadesAcademia",
+  "rules": [
+    {
+      "ruleId": "modalidadePlanoPermitida",
+      "description": "A modalidade de um plano deve ser mensal, trimestral ou anual."
+    },
+    {
+      "ruleId": "gerarMensalidadeParaMatriculaAtiva",
+      "description": "Em cada mês, deve ser gerada uma mensalidade para cada aluno com matrícula ativa."
+    },
+    {
+      "ruleId": "unicidadeMensalidadePorAlunoEmes",
+      "description": "Um aluno pode ter no máximo uma mensalidade gerada para cada mês de referência."
+    },
+    {
+      "ruleId": "valorMensalidadeConformePlano",
+      "description": "O valor devido de uma mensalidade deve corresponder ao valor do plano da matrícula no momento de sua geração."
+    },
+    {
+      "ruleId": "vencimentoMensalidadeConformePlano",
+      "description": "A data de vencimento de uma mensalidade deve corresponder ao dia de vencimento do plano da matrícula no mês de referência."
+    },
+    {
+      "ruleId": "mensalidadeEmAtrasoFicaVencida",
+      "description": "Uma mensalidade não paga após sua data de vencimento deve ficar vencida."
+    },
+    {
+      "ruleId": "bloqueioPorDuasMensalidadesVencidas",
+      "description": "O aluno com duas ou mais mensalidades vencidas deve permanecer bloqueado para entrada até regularizar sua situação."
+    },
+    {
+      "ruleId": "cancelamentoImpedeCobrancasFuturas",
+      "description": "O cancelamento da matrícula deve impedir a geração de mensalidades para períodos futuros."
+    },
+    {
+      "ruleId": "totalAreceberMensal",
+      "description": "O total a receber no mês deve ser a soma dos saldos em aberto das mensalidades do período."
+    },
+    {
+      "ruleId": "totalRecebidoMensal",
+      "description": "O total recebido no mês deve ser a soma dos valores dos pagamentos registrados para as mensalidades do período."
+    },
+    {
+      "ruleId": "quantidadeAlunosAtivos",
+      "description": "A quantidade de alunos ativos deve corresponder ao número de alunos com matrícula ativa no período."
+    },
+    {
+      "ruleId": "quantidadeAlunosBloqueados",
+      "description": "A quantidade de alunos bloqueados deve corresponder ao número de alunos com duas ou mais mensalidades vencidas."
+    },
+    {
+      "ruleId": "quantidadeAlunosInadimplentes",
+      "description": "A quantidade de alunos inadimplentes deve corresponder ao número de alunos com pelo menos uma mensalidade vencida."
+    }
+  ]
+} as const satisfies Ns5RulesArtifact;
+
+export type MensalidadesAcademiaRulesType = typeof mensalidadesAcademiaRules;
+
+export default mensalidadesAcademiaRules;

@@ -1,0 +1,106 @@
+/// <mls fileReference="_102047_/l4/ordenServicio/workflows.defs.ts" enhancement="_blank"/>
+
+import type { Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+
+export const ordenServicioWorkflows = {
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "ordenServicio",
+  "processes": [
+    {
+      "processId": "abrirYPrepararPresupuesto",
+      "title": "Apertura y preparación de presupuesto",
+      "description": "Coordina la recepción del aparato y el análisis técnico hasta dejar el presupuesto disponible para el cliente.",
+      "trigger": {
+        "kind": "manual",
+        "actorRef": "recepcionista"
+      },
+      "tasks": [
+        {
+          "taskId": "abrirOrden",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "abrirOrdenServicio",
+          "next": [
+            "prepararPresupuesto"
+          ],
+          "description": "El recepcionista registra la recepción del aparato y abre la orden de servicio."
+        },
+        {
+          "taskId": "prepararPresupuesto",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "prepararPresupuesto",
+          "next": [],
+          "description": "El técnico analiza el aparato, registra el diagnóstico y deja el presupuesto disponible para el cliente."
+        }
+      ]
+    },
+    {
+      "processId": "repararYEntregarAparato",
+      "title": "Reparación y entrega del aparato",
+      "description": "Coordina la reparación autorizada y la entrega final del aparato al cliente.",
+      "trigger": {
+        "kind": "event",
+        "event": "OrdenServicio.aprobarPresupuesto"
+      },
+      "tasks": [
+        {
+          "taskId": "realizarReparacion",
+          "kind": "human",
+          "actorRef": "tecnico",
+          "journeyRef": "realizarReparacion",
+          "next": [
+            "entregarAparato"
+          ],
+          "description": "El técnico realiza la reparación autorizada, registra el trabajo efectuado y deja el aparato listo para entrega."
+        },
+        {
+          "taskId": "entregarAparato",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "entregarAparatoReparado",
+          "next": [],
+          "description": "El recepcionista verifica la entrega, entrega el aparato al cliente y finaliza la orden."
+        }
+      ]
+    }
+  ],
+  "journeyDecisions": [
+    {
+      "journeyId": "abrirOrdenServicio",
+      "inProcess": true,
+      "processId": "abrirYPrepararPresupuesto"
+    },
+    {
+      "journeyId": "prepararPresupuesto",
+      "inProcess": true,
+      "processId": "abrirYPrepararPresupuesto"
+    },
+    {
+      "journeyId": "aprobarPresupuesto",
+      "inProcess": false
+    },
+    {
+      "journeyId": "rechazarPresupuesto",
+      "inProcess": false
+    },
+    {
+      "journeyId": "realizarReparacion",
+      "inProcess": true,
+      "processId": "repararYEntregarAparato"
+    },
+    {
+      "journeyId": "entregarAparatoReparado",
+      "inProcess": true,
+      "processId": "repararYEntregarAparato"
+    },
+    {
+      "journeyId": "consultarMisOrdenes",
+      "inProcess": false
+    }
+  ]
+} as const satisfies Ns5WorkflowsArtifact;
+
+export type OrdenServicioWorkflowsType = typeof ordenServicioWorkflows;
+
+export default ordenServicioWorkflows;

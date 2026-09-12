@@ -62,6 +62,7 @@ import type {
   Ns5JourneyArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyEntityArtifact,
+  Ns5SystemDecision,
 } from '/_102035_/l2/solution/types.js';
 
 const PROJECT = 102047;
@@ -122,8 +123,15 @@ for (const moduleName of ns5ReplayModules()) {
     });
     const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName, actors });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const rendered = render(moduleName, 'module', `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
-    assertDefsMatch(rendered, loadNs5FixtureText('steps/module10/fixtures', `${moduleName}-module.defs.ts`), 'module');
+    const recordedText = loadNs5FixtureText('steps/module10/fixtures', `${moduleName}-module.defs.ts`);
+    const recorded = parseNs4ClassicDefsSource<Ns5ModuleArtifact>(recordedText);
+    // ontology30 may later write lifted `details` onto the same path; module10 does not.
+    const { details: _lifted, ...recordedModule10 } = recorded as Ns5ModuleArtifact & { details?: unknown };
+    assert.deepEqual(stripNs5Hashes(artifact), stripNs5Hashes(recordedModule10), 'module json');
+    if (!recorded.details) {
+      const rendered = render(moduleName, 'module', `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
+      assertDefsMatch(rendered, recordedText, 'module');
+    }
   });
 
   void test(`${moduleName} journeys20 draft replays to journeys/*.defs.ts`, async () => {
@@ -226,8 +234,16 @@ for (const moduleName of ns5ReplayModules()) {
   });
 
   void test(`${moduleName} workflows50 draft replays to workflows.defs.ts`, () => {
-    const draft = loadNs5FixtureJson<unknown>('steps/workflows50/fixtures', `${moduleName}-draft.json`);
-    const { processes, journeyDecisions, systemDecisions } = normalizeNs5WorkflowsPayload(draft);
+    const draft = loadNs5FixtureJson<{ systemDecisions?: Ns5SystemDecision[] }>(
+      'steps/workflows50/fixtures',
+      `${moduleName}-draft.json`,
+    );
+    const normalized = normalizeNs5WorkflowsPayload(draft);
+    const { processes, journeyDecisions } = normalized;
+    // Draft is the post-normalize payload; re-normalize will not re-emit already-dropped duplicates.
+    const systemDecisions = normalized.systemDecisions.length
+      ? normalized.systemDecisions
+      : (draft.systemDecisions ?? []);
     const journeys = loadNs5Journeys(moduleName);
     const entities = loadNs5Entities(moduleName);
     const gate = validateNs5Workflows(processes, {

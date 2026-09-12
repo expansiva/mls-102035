@@ -13,7 +13,7 @@
       "title": "Aluno",
       "type": "uuid",
       "required": true,
-      "description": "Referência ao aluno titular da matrícula."
+      "description": "Referência ao aluno ao qual a matrícula pertence."
     },
     {
       "fieldId": "planoId",
@@ -27,14 +27,7 @@
       "title": "Data de início",
       "type": "date",
       "required": true,
-      "description": "Data a partir da qual a matrícula fica ativa e pode gerar mensalidades."
-    },
-    {
-      "fieldId": "dataCancelamento",
-      "title": "Data de cancelamento",
-      "type": "date",
-      "required": false,
-      "description": "Data em que a matrícula foi encerrada pelo aluno."
+      "description": "Data a partir da qual a matrícula passa a vigorar."
     },
     {
       "fieldId": "status",
@@ -43,81 +36,38 @@
       "required": true,
       "enum": [
         {
-          "value": "ativa",
+          "value": "active",
           "title": "Ativa"
         },
         {
-          "value": "bloqueada",
-          "title": "Bloqueada"
-        },
-        {
-          "value": "cancelada",
+          "value": "cancelled",
           "title": "Cancelada"
         }
       ],
-      "description": "Situação atual da matrícula para acesso do aluno e geração de mensalidades."
+      "description": "Situação atual da matrícula."
     }
   ],
-  "details": {
-    "quantidadeMensalidadesVencidas": {
-      "type": "integer",
-      "description": "Quantidade atual de mensalidades não pagas cujo vencimento já passou."
-    },
-    "permiteAcesso": {
-      "type": "boolean",
-      "description": "Indica se o aluno pode acessar a academia conforme a situação atual da matrícula."
-    }
-  },
   "lifecycleStates": [
     {
-      "state": "ativa",
+      "state": "active",
       "reachedBy": "actor"
     },
     {
-      "state": "bloqueada",
-      "reachedBy": "command"
-    },
-    {
-      "state": "cancelada",
+      "state": "cancelled",
       "reachedBy": "actor"
     }
   ],
   "transitions": [
     {
-      "transitionId": "bloquearMatricula",
-      "from": [
-        "ativa"
-      ],
-      "to": "bloqueada",
-      "by": "system",
-      "description": "Bloqueia a matrícula quando o aluno passa a ter duas mensalidades vencidas.",
-      "ruleRefs": [
-        "bloquearComDuasMensalidadesVencidas"
-      ]
-    },
-    {
-      "transitionId": "reativarMatricula",
-      "from": [
-        "bloqueada"
-      ],
-      "to": "ativa",
-      "by": "system",
-      "description": "Reativa o acesso da matrícula quando a regularização dos pagamentos elimina a condição de bloqueio.",
-      "ruleRefs": [
-        "reativarAposRegularizacao"
-      ]
-    },
-    {
       "transitionId": "cancelarMatricula",
       "from": [
-        "ativa",
-        "bloqueada"
+        "active"
       ],
-      "to": "cancelada",
+      "to": "cancelled",
       "by": [
         "aluno"
       ],
-      "description": "Encerra a própria matrícula e impede a geração de mensalidades futuras."
+      "description": "Encerra a matrícula ativa do próprio aluno e impede a geração de mensalidades futuras."
     }
   ]
 }

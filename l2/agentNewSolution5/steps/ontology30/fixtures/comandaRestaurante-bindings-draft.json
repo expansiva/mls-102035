@@ -1,0 +1,80 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "comandaMesa",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Comanda",
+        "from": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "mesaId"
+          ]
+        },
+        "to": {
+          "entityId": "Mesa",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "comandaGarcom",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Comanda",
+        "from": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "garcomId"
+          ]
+        },
+        "to": {
+          "entityId": "Garcom",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemComandaComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemComandaItemCardapio",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "itemCardapioId"
+          ]
+        },
+        "to": {
+          "entityId": "ItemCardapio",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

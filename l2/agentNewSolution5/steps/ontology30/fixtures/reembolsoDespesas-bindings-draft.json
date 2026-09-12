@@ -1,0 +1,61 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "despesaPertenceAoColaborador",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Despesa",
+        "from": {
+          "entityId": "Despesa",
+          "fieldIds": [
+            "colaboradorId"
+          ]
+        },
+        "to": {
+          "entityId": "Colaborador",
+          "fieldIds": [
+            "colaboradorId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "despesaAvaliadaPeloGestor",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Despesa",
+        "from": {
+          "entityId": "Despesa",
+          "fieldIds": [
+            "gestorEquipeId"
+          ]
+        },
+        "to": {
+          "entityId": "GestorEquipe",
+          "fieldIds": [
+            "gestorEquipeId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "colaboradorReportaAoGestor",
+      "realization": {
+        "kind": "mdmRelationship",
+        "ownerEntity": "Colaborador",
+        "from": {
+          "entityId": "Colaborador",
+          "fieldIds": [
+            "colaboradorId"
+          ]
+        },
+        "to": {
+          "entityId": "GestorEquipe",
+          "fieldIds": [
+            "gestorEquipeId"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "openJobPosition",
+      "business": {
+        "actorRef": "recruiter",
+        "title": "Open a job position",
+        "goal": "Create an open position with its hiring requirements.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "enterPositionDetails",
+            "kind": "act",
+            "entity": "JobPosition",
+            "effect": "create",
+            "title": "Enter the position title, department, description, and headcount.",
+            "description": "Create the job position with its title, department, description, and required headcount."
+          }
+        ],
+        "outcome": {
+          "statement": "An open job position is available for candidate applications.",
+          "evidence": [
+            "The job position shows its title, department, description, and headcount.",
+            "The job position is available in the hiring pipeline."
+          ]
+        }
+      },
+      "businessHash": "sha256:d4dabe707059f458dea26e050c4ee82d13c0ec124291bf02d94244ef7951cabc"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registerCandidate",
+      "business": {
+        "actorRef": "recruiter",
+        "title": "Register a candidate",
+        "goal": "Add a candidate to the hiring pipeline.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "captureCandidateDetails",
+            "kind": "act",
+            "entity": "Candidate",
+            "effect": "create",
+            "title": "Capture candidate details.",
+            "description": "Register the candidate's name, email, resume link, and source."
+          }
+        ],
+        "outcome": {
+          "statement": "The candidate is available to be considered for job positions.",
+          "evidence": [
+            "The candidate record shows the name, email, resume link, and source."
+          ]
+        }
+      },
+      "businessHash": "sha256:84d48c38dd2ebd84d6fd485164df286baba6c55f39694db7645b91df1736bf1e"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "startApplicationScreening",
+      "business": {
+        "actorRef": "recruiter",
+        "title": "Start candidate screening",
+        "goal": "Record a candidate's application for an open job position and begin screening.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateCandidate",
+            "kind": "locate",
+            "entity": "Candidate",
+            "title": "Find the candidate.",
+            "description": "Locate the registered candidate, or use the candidate already in context."
+          },
+          {
+            "stepId": "locateOpenPosition",
+            "kind": "locate",
+            "entity": "JobPosition",
+            "title": "Find the open position.",
+            "description": "Locate the open job position for the application."
+          },
+          {
+            "stepId": "createApplication",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "create",
+            "title": "Create the application.",
+            "description": "Record the candidate's application for the selected job position in screening."
+          }
+        ],
+        "outcome": {
+          "statement": "The candidate has an application in the screening stage for the job position.",
+          "evidence": [
+            "An application links the candidate and job position.",
+            "The application shows the screening stage."
+          ]
+        }
+      },
+      "businessHash": "sha256:e3b29d46b4de044aaba2fae8ad2b8a046ebaef5cfaf6256c436f67652ee2cf4a"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "advanceApplicationToInterview",
+      "business": {
+        "actorRef": "recruiter",
+        "title": "Advance an application to interview",
+        "goal": "Move a screened application to the interview stage.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "title": "Find the application.",
+            "description": "Locate the application, or use the application already in context."
+          },
+          {
+            "stepId": "inspectScreening",
+            "kind": "inspect",
+            "entity": "Application",
+            "title": "Review screening details.",
+            "description": "Inspect the application and its current screening stage."
+          },
+          {
+            "stepId": "moveToInterview",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "advanceToInterview",
+            "title": "Move the application to interview.",
+            "description": "Advance the application from screening to interview."
+          }
+        ],
+        "outcome": {
+          "statement": "The application is ready for the interview stage.",
+          "evidence": [
+            "The application shows the interview stage."
+          ]
+        }
+      },
+      "businessHash": "sha256:3a3f768e869ef28e2d3a95f61415a4804b048a7434d3b0c2ed9197d21832b816"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "issueOffer",
+      "business": {
+        "actorRef": "hiringManager",
+        "title": "Decide and issue an offer",
+        "goal": "Authorize an offer for an interviewed candidate.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateInterviewApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "title": "Find the interviewed application.",
+            "description": "Locate the application, or use the application already in context."
+          },
+          {
+            "stepId": "inspectApplication",
+            "kind": "inspect",
+            "entity": "Application",
+            "title": "Review the application.",
+            "description": "Inspect the candidate, job position, and interview-stage application."
+          },
+          {
+            "stepId": "decideOffer",
+            "kind": "decide",
+            "entity": "Application",
+            "title": "Decide whether to authorize an offer.",
+            "description": "Choose to authorize an offer for the interviewed candidate."
+          },
+          {
+            "stepId": "moveToOffer",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "issueOffer",
+            "title": "Issue the offer.",
+            "description": "Move the application from interview to offer."
+          }
+        ],
+        "outcome": {
+          "statement": "The selected application has an authorized offer.",
+          "evidence": [
+            "The application shows the offer stage.",
+            "The application remains linked to the candidate and job position."
+          ]
+        }
+      },
+      "businessHash": "sha256:0e8ed208f84e85bd5fb24b4ab3f0f8a63add0c87059a89325545bab63f815d4b"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "hireCandidate",
+      "business": {
+        "actorRef": "hiringManager",
+        "title": "Decide and record a hire",
+        "goal": "Confirm that a candidate with an offer is hired.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateOfferApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "title": "Find the application with an offer.",
+            "description": "Locate the application, or use the application already in context."
+          },
+          {
+            "stepId": "inspectOfferApplication",
+            "kind": "inspect",
+            "entity": "Application",
+            "title": "Review the offer application.",
+            "description": "Inspect the candidate, job position, and offer-stage application."
+          },
+          {
+            "stepId": "inspectPositionCapacity",
+            "kind": "inspect",
+            "entity": "JobPosition",
+            "title": "Review position capacity.",
+            "description": "Inspect the position's remaining headcount before confirming the hire."
+          },
+          {
+            "stepId": "decideHire",
+            "kind": "decide",
+            "entity": "Application",
+            "title": "Decide whether to hire the candidate.",
+            "description": "Choose to confirm the candidate as hired."
+          },
+          {
+            "stepId": "markHired",
+            "kind": "act",
+            "entity": "Application",
+            "affects": [
+              "JobPosition"
+            ],
+            "effect": "transition",
+            "transitionRef": "markHired",
+            "title": "Record the hire.",
+            "description": "Move the application from offer to hired and update the position's filled headcount."
+          }
+        ],
+        "outcome": {
+          "statement": "The candidate is recorded as hired, and the job position reflects the filled headcount.",
+          "evidence": [
+            "The application shows the hired stage.",
+            "The job position's filled headcount reflects the hire.",
+            "A position whose headcount is filled is closed automatically."
+          ]
+        }
+      },
+      "businessHash": "sha256:c5858de30cd8c89fcddec2e9595acb709352b41d7126a07e0ce7f3b6c13a277b"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "rejectApplication",
+      "business": {
+        "actorRef": "recruiter",
+        "title": "Reject an application",
+        "goal": "Record that a candidate will not continue in the hiring pipeline.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "locateActiveApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "title": "Find the application.",
+            "description": "Locate the active application, or use the application already in context."
+          },
+          {
+            "stepId": "recordRejection",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "rejectApplication",
+            "title": "Record the rejection reason.",
+            "description": "Move the application to rejected and record the reason for rejection."
+          }
+        ],
+        "outcome": {
+          "statement": "The application is rejected with a recorded reason.",
+          "evidence": [
+            "The application shows the rejected stage.",
+            "The application includes a rejection reason."
+          ]
+        }
+      },
+      "businessHash": "sha256:b5dac1ac03246dda1f2974ce96106dc3e432c4bcb466d558014ef566ff5d25f4"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": [],
+  "normalizations": [
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "openJobPosition",
+      "stepId": "enterPositionDetails",
+      "detail": "transitionRef invalid dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "registerCandidate",
+      "stepId": "captureCandidateDetails",
+      "detail": "transitionRef invalid dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "startApplicationScreening",
+      "stepId": "createApplication",
+      "detail": "transitionRef invalid dropped; effect is create."
+    }
+  ]
+}

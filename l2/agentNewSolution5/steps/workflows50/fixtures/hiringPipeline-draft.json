@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "hiringPipeline",
+  "processes": [
+    {
+      "processId": "reviewInterviewForOffer",
+      "title": "Review interviewed candidate for offer",
+      "description": "Routes an interviewed application to the hiring manager for an offer decision.",
+      "trigger": {
+        "kind": "event",
+        "event": "Application.advanceToInterview"
+      },
+      "tasks": [
+        {
+          "taskId": "issueOfferDecision",
+          "kind": "human",
+          "actorRef": "hiringManager",
+          "journeyRef": "issueOffer",
+          "next": [],
+          "description": "The hiring manager reviews the interviewed application and decides whether to issue an offer."
+        }
+      ]
+    },
+    {
+      "processId": "confirmHireAndUpdatePosition",
+      "title": "Confirm hire and update position capacity",
+      "description": "Routes an offered application to the hiring manager and updates the associated position after a hire is recorded.",
+      "trigger": {
+        "kind": "event",
+        "event": "Application.issueOffer"
+      },
+      "tasks": [
+        {
+          "taskId": "confirmHire",
+          "kind": "human",
+          "actorRef": "hiringManager",
+          "journeyRef": "hireCandidate",
+          "next": [
+            "updatePositionCapacity"
+          ],
+          "description": "The hiring manager confirms whether the offered candidate is hired."
+        },
+        {
+          "taskId": "updatePositionCapacity",
+          "kind": "mechanical",
+          "entityRef": "JobPosition",
+          "effect": "update",
+          "next": [],
+          "description": "Update the position's filled headcount and close the position when its required headcount is filled."
+        }
+      ]
+    }
+  ],
+  "journeyDecisions": [
+    {
+      "journeyId": "openJobPosition",
+      "inProcess": false
+    },
+    {
+      "journeyId": "registerCandidate",
+      "inProcess": false
+    },
+    {
+      "journeyId": "startApplicationScreening",
+      "inProcess": false
+    },
+    {
+      "journeyId": "advanceApplicationToInterview",
+      "inProcess": false
+    },
+    {
+      "journeyId": "issueOffer",
+      "inProcess": true,
+      "processId": "reviewInterviewForOffer"
+    },
+    {
+      "journeyId": "hireCandidate",
+      "inProcess": true,
+      "processId": "confirmHireAndUpdatePosition"
+    },
+    {
+      "journeyId": "rejectApplication",
+      "inProcess": false
+    }
+  ]
+}

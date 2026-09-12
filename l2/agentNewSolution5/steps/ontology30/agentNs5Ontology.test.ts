@@ -1405,7 +1405,7 @@ void test('lift moves PainelGerencial and PainelMensalidades into module.details
     step('inspectPanel', 'inspect', 'PainelGerencial'),
   ]);
   const painelGerencial = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
-    'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelGerencial-draft.json',
+    'steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'PainelGerencial-draft.json',
   );
   const gerencialPlan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1464,7 +1464,7 @@ void test('lift moves PainelGerencial and PainelMensalidades into module.details
   )));
 
   const painelMensalidades = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
-    'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelMensalidades-draft.json',
+    'steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'PainelMensalidades-draft.json',
   );
   const mensalidadesPlan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1535,7 +1535,7 @@ void test('aggregate-only entity with a relationship is not lifted; gate stays t
     step('inspectPanel', 'inspect', 'PainelGerencial'),
   ]);
   const painelGerencial = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
-    'steps/ontology30/fixtures', 'mensalidadesAcademia', 'PainelGerencial-draft.json',
+    'steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'PainelGerencial-draft.json',
   );
   const plan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1869,7 +1869,7 @@ void test('real ItemCardapio has no crud; an act that affects it is the writer',
 });
 
 void test('live mensalidadesAcademia plan with crud on every entity: normalize drops five, gate passes', () => {
-  const draft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-plan-draft.json');
+  const draft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13-plan-draft.json');
   const journeys = [
     journey('recepcao', [step('registrarAluno', 'act', 'Aluno')]),
     journey('recepcao', [step('registrarPlano', 'act', 'Plano')]),
@@ -1897,7 +1897,7 @@ void test('live mensalidadesAcademia plan with crud on every entity: normalize d
 });
 
 void test('real Pagamento draft: normalize drops unique on idField; gate passes', () => {
-  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'Pagamento-draft.json');
+  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'Pagamento-draft.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Gym fees',
     entities: [{
@@ -1926,7 +1926,7 @@ void test('real Pagamento draft: normalize drops unique on idField; gate passes'
 });
 
 void test('real Matricula draft: cycle lifecycle is reachable as written', () => {
-  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'Matricula-draft.json');
+  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'Matricula-draft.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Gym fees',
     entities: [{
@@ -1956,7 +1956,7 @@ void test('real Matricula draft: cycle lifecycle is reachable as written', () =>
 });
 
 void test('real IndicadorAcademia draft: a period field is not a panel so it is not lifted', () => {
-  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia', 'IndicadorAcademia-draft.json');
+  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'IndicadorAcademia-draft.json');
   const generate = journey('recepcao', [step('gerar', 'act', 'Mensalidade')]);
   const inspect = journey('gerencia', [step('inspecionarIndicadores', 'inspect', 'IndicadorAcademia')]);
   const plan = normalizeNs5OntologyPlan({

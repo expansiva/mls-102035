@@ -1,0 +1,41 @@
+{
+  "entityId": "FornecimentoProduto",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do registro de fornecimento de produto."
+    },
+    {
+      "fieldId": "fornecedor",
+      "title": "Fornecedor",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à empresa fornecedora à qual a condição comercial pertence."
+    },
+    {
+      "fieldId": "produto",
+      "title": "Produto",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao produto fornecido sob esta condição comercial."
+    },
+    {
+      "fieldId": "precoCombinado",
+      "title": "Preço combinado",
+      "type": "money",
+      "required": true,
+      "description": "Preço comercial acordado entre a organização e o fornecedor para o produto."
+    }
+  ],
+  "uniqueKeys": [
+    [
+      "fornecedor",
+      "produto"
+    ]
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

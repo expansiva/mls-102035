@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "2026-09-10-ns5-module-v2",
+  "moduleName": "locacaoEquipamentos",
+  "title": "Locação de Equipamentos",
+  "userLanguage": "pt-BR",
+  "productLanguages": [
+    "pt-BR"
+  ],
+  "defaultLanguage": "pt-BR",
+  "sourcePrompt": "locacaoEquipamentos em português. locadora de equipamentos para construção. cada equipamento tem código, descrição, valor da diária e situação. o atendente cria um contrato de locação para um cliente com um ou mais equipamentos e período (data de retirada e data prevista de devolução); o mesmo equipamento não pode estar em dois contratos com períodos sobrepostos. na devolução registra a data real; se atrasou, o sistema calcula a multa (diária × dias de atraso × 1,5). o gerente vê quais equipamentos estão disponíveis, locados ou em manutenção. perfis: atendente e gerente.",
+  "actors": [
+    {
+      "actorId": "atendente",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Atendente",
+      "description": "Profissional da locadora que cria contratos de locação e registra devoluções."
+    },
+    {
+      "actorId": "gerente",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Gerente",
+      "description": "Responsável por acompanhar a disponibilidade, locações e manutenção dos equipamentos."
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "ptToPtBR",
+      "detail": "pt→pt-BR"
+    }
+  ]
+}

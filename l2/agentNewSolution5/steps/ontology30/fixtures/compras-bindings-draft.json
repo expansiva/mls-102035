@@ -1,0 +1,232 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "compradorGerenciaFornecedor",
+      "realization": {
+        "kind": "mdmRelationship",
+        "ownerEntity": "Comprador",
+        "from": {
+          "entityId": "Comprador",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "Fornecedor",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "fornecedorPossuiFornecimentos",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "FornecimentoProduto",
+        "from": {
+          "entityId": "Fornecedor",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "FornecimentoProduto",
+          "fieldIds": [
+            "fornecedor"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "produtoPossuiFornecimentos",
+      "realization": {
+        "kind": "externalReference",
+        "ownerEntity": "FornecimentoProduto",
+        "from": {
+          "entityId": "Produto",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "FornecimentoProduto",
+          "fieldIds": [
+            "produto"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "fornecedorRecebePedidos",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "PedidoCompra",
+        "from": {
+          "entityId": "Fornecedor",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "PedidoCompra",
+          "fieldIds": [
+            "fornecedorId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "pedidoPossuiItens",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemPedidoCompra",
+        "from": {
+          "entityId": "PedidoCompra",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ItemPedidoCompra",
+          "fieldIds": [
+            "pedidoCompra"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "fornecimentoOriginaItensPedido",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemPedidoCompra",
+        "from": {
+          "entityId": "FornecimentoProduto",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ItemPedidoCompra",
+          "fieldIds": [
+            "fornecimentoProduto"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "produtoComponeItensPedido",
+      "realization": {
+        "kind": "externalReference",
+        "ownerEntity": "ItemPedidoCompra",
+        "from": {
+          "entityId": "Produto",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ItemPedidoCompra",
+          "fieldIds": [
+            "produto"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "pedidoPossuiRecebimentos",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "RecebimentoCompra",
+        "from": {
+          "entityId": "PedidoCompra",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "RecebimentoCompra",
+          "fieldIds": [
+            "pedidoCompraId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "recebimentoPossuiItens",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemRecebimentoCompra",
+        "from": {
+          "entityId": "RecebimentoCompra",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ItemRecebimentoCompra",
+          "fieldIds": [
+            "recebimentoCompraId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemPedidoPossuiRecebimentos",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemRecebimentoCompra",
+        "from": {
+          "entityId": "ItemPedidoCompra",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ItemRecebimentoCompra",
+          "fieldIds": [
+            "itemPedidoCompraId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "produtoComponeItensRecebimento",
+      "realization": {
+        "kind": "externalReference",
+        "ownerEntity": "ItemRecebimentoCompra",
+        "from": {
+          "entityId": "Produto",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ItemRecebimentoCompra",
+          "fieldIds": [
+            "produto"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "itemRecebimentoAtualizaEstoque",
+      "realization": {
+        "kind": "externalReference",
+        "ownerEntity": "ItemRecebimentoCompra",
+        "from": {
+          "entityId": "ItemRecebimentoCompra",
+          "fieldIds": [
+            "estoqueProdutoId"
+          ]
+        },
+        "to": {
+          "entityId": "EstoqueProduto",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

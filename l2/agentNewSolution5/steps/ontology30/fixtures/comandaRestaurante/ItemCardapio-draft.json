@@ -1,0 +1,21 @@
+{
+  "entityId": "ItemCardapio",
+  "fields": [
+    {
+      "fieldId": "preco",
+      "title": "Preço",
+      "type": "money",
+      "required": true,
+      "description": "Preço de venda atual do item no cardápio."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": [],
+  "normalizations": [
+    {
+      "kind": "dropCrud",
+      "entityId": "ItemCardapio",
+      "detail": "writer crud removed; an act writes this entity as entity or affects."
+    }
+  ]
+}

@@ -1,0 +1,211 @@
+/// <mls fileReference="_102047_/l4/reembolsoDespesas/ontology/Despesa.defs.ts" enhancement="_blank"/>
+
+import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+
+export const reembolsoDespesasEntityDespesa = {
+  "schemaVersion": "2026-09-11-ns5-ontology-v2",
+  "moduleName": "reembolsoDespesas",
+  "entityId": "Despesa",
+  "title": "Despesa",
+  "description": "Solicitação de reembolso de uma despesa realizada por um colaborador, desde o registro até o pagamento.",
+  "kind": "core",
+  "party": "none",
+  "displayField": "descricao",
+  "fields": [
+    {
+      "fieldId": "despesaId",
+      "title": "Identificador da despesa",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único da solicitação de reembolso."
+    },
+    {
+      "fieldId": "colaboradorId",
+      "title": "Colaborador",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao colaborador responsável pela despesa e pelo reembolso."
+    },
+    {
+      "fieldId": "gestorEquipeId",
+      "title": "Gestor da equipe",
+      "type": "uuid",
+      "required": false,
+      "description": "Referência ao gestor da equipe que avaliou a despesa."
+    },
+    {
+      "fieldId": "dataDespesa",
+      "title": "Data da despesa",
+      "type": "date",
+      "required": true,
+      "description": "Data em que a despesa foi realizada."
+    },
+    {
+      "fieldId": "categoria",
+      "title": "Categoria",
+      "type": "string",
+      "required": true,
+      "description": "Categoria informada para classificar a despesa."
+    },
+    {
+      "fieldId": "valor",
+      "title": "Valor",
+      "type": "money",
+      "required": true,
+      "description": "Valor solicitado para reembolso."
+    },
+    {
+      "fieldId": "descricao",
+      "title": "Descrição",
+      "type": "text",
+      "required": true,
+      "description": "Descrição da despesa realizada."
+    },
+    {
+      "fieldId": "comprovanteId",
+      "title": "Comprovante",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador do comprovante anexado à despesa."
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação",
+      "type": "string",
+      "required": true,
+      "enum": [
+        {
+          "value": "draft",
+          "title": "Em elaboração"
+        },
+        {
+          "value": "pendingApproval",
+          "title": "Pendente de aprovação"
+        },
+        {
+          "value": "decisionRecorded",
+          "title": "Decisão registrada"
+        },
+        {
+          "value": "paid",
+          "title": "Paga"
+        }
+      ],
+      "description": "Etapa atual da solicitação de reembolso."
+    },
+    {
+      "fieldId": "decisaoAprovacao",
+      "title": "Decisão de aprovação",
+      "type": "string",
+      "required": false,
+      "enum": [
+        {
+          "value": "approved",
+          "title": "Aprovada"
+        },
+        {
+          "value": "rejected",
+          "title": "Rejeitada"
+        }
+      ],
+      "description": "Resultado da avaliação realizada pelo gestor da equipe."
+    },
+    {
+      "fieldId": "motivoRejeicao",
+      "title": "Motivo da rejeição",
+      "type": "text",
+      "required": false,
+      "description": "Motivo informado pelo gestor quando a despesa é rejeitada."
+    },
+    {
+      "fieldId": "dataPagamento",
+      "title": "Data de pagamento",
+      "type": "date",
+      "required": false,
+      "description": "Data em que o financeiro registrou o pagamento do reembolso."
+    }
+  ],
+  "lifecycleStates": [
+    {
+      "state": "draft",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "pendingApproval",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "decisionRecorded",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "paid",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "submitForApproval",
+      "from": [
+        "draft"
+      ],
+      "to": "pendingApproval",
+      "by": [
+        "colaborador"
+      ],
+      "description": "Encaminha a despesa registrada para avaliação do gestor da equipe."
+    },
+    {
+      "transitionId": "resubmitForApproval",
+      "from": [
+        "decisionRecorded"
+      ],
+      "to": "pendingApproval",
+      "by": [
+        "colaborador"
+      ],
+      "description": "Reencaminha para aprovação uma despesa rejeitada e corrigida.",
+      "ruleRefs": [
+        "resubmissionOnlyWhenRejected",
+        "onlyOneResubmission"
+      ]
+    },
+    {
+      "transitionId": "recordApprovalDecision",
+      "from": [
+        "pendingApproval"
+      ],
+      "to": "decisionRecorded",
+      "by": [
+        "gestorEquipe"
+      ],
+      "description": "Registra a aprovação ou a rejeição da despesa, incluindo o motivo quando rejeitada.",
+      "ruleRefs": [
+        "rejectionRequiresReason"
+      ]
+    },
+    {
+      "transitionId": "registerPayment",
+      "from": [
+        "decisionRecorded"
+      ],
+      "to": "paid",
+      "by": [
+        "financeiro"
+      ],
+      "description": "Registra a data de pagamento de uma despesa aprovada.",
+      "ruleRefs": [
+        "paymentOnlyForApprovedExpense"
+      ]
+    }
+  ],
+  "storage": {
+    "target": "moduleDatabase",
+    "scope": "module",
+    "idField": "despesaId"
+  }
+} as const satisfies Ns5OntologyEntityArtifact;
+
+export type ReembolsoDespesasEntityDespesaType = typeof reembolsoDespesasEntityDespesa;
+
+export default reembolsoDespesasEntityDespesa;

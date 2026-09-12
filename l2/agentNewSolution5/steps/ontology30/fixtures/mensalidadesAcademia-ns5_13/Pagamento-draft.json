@@ -1,0 +1,64 @@
+{
+  "entityId": "Pagamento",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "unique": true,
+      "description": "Identificador único do registro de pagamento."
+    },
+    {
+      "fieldId": "mensalidadeId",
+      "title": "Mensalidade",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à mensalidade à qual este pagamento registrado se refere."
+    },
+    {
+      "fieldId": "dataPagamento",
+      "title": "Data do pagamento",
+      "type": "date",
+      "required": true,
+      "description": "Data em que o pagamento foi realizado."
+    },
+    {
+      "fieldId": "valor",
+      "title": "Valor pago",
+      "type": "money",
+      "required": true,
+      "constraints": {
+        "precision": 2
+      },
+      "description": "Valor efetivamente recebido neste pagamento."
+    },
+    {
+      "fieldId": "formaPagamento",
+      "title": "Forma de pagamento",
+      "type": "string",
+      "required": true,
+      "enum": [
+        {
+          "value": "dinheiro",
+          "title": "Dinheiro"
+        },
+        {
+          "value": "pix",
+          "title": "PIX"
+        },
+        {
+          "value": "cartao",
+          "title": "Cartão"
+        },
+        {
+          "value": "transferencia",
+          "title": "Transferência"
+        }
+      ],
+      "description": "Forma utilizada pelo aluno para realizar o pagamento."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

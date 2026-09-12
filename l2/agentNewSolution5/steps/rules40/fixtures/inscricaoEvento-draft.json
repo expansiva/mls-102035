@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "inscricaoEvento",
+  "rules": [
+    {
+      "ruleId": "emailUnicoPorEvento",
+      "description": "Um mesmo e-mail pode ter apenas uma inscrição em cada evento."
+    },
+    {
+      "ruleId": "ocupacaoLimitadaAcapacidade",
+      "description": "A quantidade de inscrições confirmadas de um evento não pode exceder sua capacidade."
+    },
+    {
+      "ruleId": "inscricaoSemVagaEntraEmEspera",
+      "description": "Uma inscrição criada quando não houver vagas disponíveis deve ficar na lista de espera."
+    },
+    {
+      "ruleId": "listaEsperaPorOrdemDeChegada",
+      "description": "As inscrições em lista de espera devem respeitar a ordem de registro."
+    },
+    {
+      "ruleId": "promocaoAutomaticaDaListaEspera",
+      "description": "Quando o cancelamento de uma inscrição confirmada liberar uma vaga, a primeira inscrição da lista de espera deve ser promovida para confirmada."
+    },
+    {
+      "ruleId": "vagasOcupadasPorInscricoesConfirmadas",
+      "description": "O total de vagas ocupadas de um evento corresponde à quantidade de inscrições confirmadas."
+    },
+    {
+      "ruleId": "vagasDisponiveisPorCapacidade",
+      "description": "A quantidade de vagas disponíveis de um evento corresponde à sua capacidade menos o total de vagas ocupadas."
+    }
+  ]
+}

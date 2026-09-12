@@ -1,0 +1,70 @@
+/// <mls fileReference="_102047_/l4/manutencaoFrota/workflows.defs.ts" enhancement="_blank"/>
+
+import type { Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+
+export const manutencaoFrotaWorkflows = {
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "manutencaoFrota",
+  "processes": [
+    {
+      "processId": "notificarPreventivaVencida",
+      "title": "Notificar preventiva vencida",
+      "description": "Verifica planos preventivos vencidos por quilometragem e encaminha a abertura da ordem de manutenção.",
+      "trigger": {
+        "kind": "scheduled",
+        "schedule": "Quando um veículo ultrapassar a quilometragem prevista para a próxima manutenção preventiva."
+      },
+      "tasks": [
+        {
+          "taskId": "identificarPlanoVencido",
+          "kind": "mechanical",
+          "entityRef": "PlanoManutencao",
+          "effect": "update",
+          "next": [
+            "abrirOrdemPreventiva"
+          ],
+          "description": "Identifica o plano preventivo cuja quilometragem prevista foi ultrapassada e registra o aviso ao gestor de frota."
+        },
+        {
+          "taskId": "abrirOrdemPreventiva",
+          "kind": "human",
+          "actorRef": "gestorFrota",
+          "journeyRef": "abrirOrdemPorPreventivaVencida",
+          "next": [],
+          "description": "O gestor de frota analisa o aviso e abre a ordem de manutenção preventiva para o veículo."
+        }
+      ]
+    }
+  ],
+  "journeyDecisions": [
+    {
+      "journeyId": "cadastrarVeiculo",
+      "inProcess": false
+    },
+    {
+      "journeyId": "registrarAbastecimento",
+      "inProcess": false
+    },
+    {
+      "journeyId": "cadastrarPlanoPreventivo",
+      "inProcess": false
+    },
+    {
+      "journeyId": "abrirOrdemPorPreventivaVencida",
+      "inProcess": true,
+      "processId": "notificarPreventivaVencida"
+    },
+    {
+      "journeyId": "abrirOrdemPorDefeito",
+      "inProcess": false
+    },
+    {
+      "journeyId": "registrarConclusaoManutencao",
+      "inProcess": false
+    }
+  ]
+} as const satisfies Ns5WorkflowsArtifact;
+
+export type ManutencaoFrotaWorkflowsType = typeof manutencaoFrotaWorkflows;
+
+export default manutencaoFrotaWorkflows;

@@ -1,0 +1,27 @@
+{
+  "entityId": "Produto",
+  "fields": [
+    {
+      "fieldId": "quantidadeMinima",
+      "title": "Quantidade mínima",
+      "type": "integer",
+      "required": true,
+      "constraints": {
+        "min": 0
+      },
+      "description": "Quantidade mínima de unidades que deve permanecer disponível para o produto."
+    }
+  ],
+  "details": {
+    "saldoAtual": {
+      "type": "integer",
+      "description": "Quantidade atual de unidades disponíveis do produto, calculada a partir das movimentações registradas."
+    },
+    "estoqueBaixo": {
+      "type": "boolean",
+      "description": "Indica se o saldo atual do produto está abaixo da quantidade mínima configurada."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

@@ -1,0 +1,59 @@
+{
+  "entityId": "Abastecimento",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do registro de abastecimento."
+    },
+    {
+      "fieldId": "data",
+      "title": "Data do abastecimento",
+      "type": "date",
+      "required": true,
+      "description": "Data em que o abastecimento foi realizado."
+    },
+    {
+      "fieldId": "litros",
+      "title": "Litros abastecidos",
+      "type": "number",
+      "required": true,
+      "description": "Quantidade de litros abastecidos no veículo."
+    },
+    {
+      "fieldId": "valor",
+      "title": "Valor do abastecimento",
+      "type": "money",
+      "required": true,
+      "constraints": {
+        "precision": 2
+      },
+      "description": "Valor total pago pelo abastecimento."
+    },
+    {
+      "fieldId": "quilometragemPainel",
+      "title": "Quilometragem no painel",
+      "type": "integer",
+      "required": true,
+      "description": "Quilometragem exibida no painel do veículo no momento do abastecimento."
+    },
+    {
+      "fieldId": "veiculoId",
+      "title": "Veículo",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao veículo da frota que recebeu o abastecimento."
+    },
+    {
+      "fieldId": "motoristaId",
+      "title": "Motorista",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao motorista que registrou o abastecimento."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

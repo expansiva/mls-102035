@@ -2,11 +2,12 @@
 
 ## 2026-09-12
 
+- Replay fixtures of the 11 complete modules of the final leva (ns5_33 T6).
+  `financeiro` stays out (content: `journeys20` collapsed to 1 journey).
 - Lifecycle signal by `effect` (ns5_33): `requiresTransitions` is an `act` with
   `effect: 'transition'`; `create`/`update` do not count. `pt` → `pt-BR` only.
   Lifted panel replaces the same `module.details` keys. `normalizations[]` /
-  `liftedFields` persist on `pipeline.json` `steps.<step>`. Replay lists the 12
-  leva modules (byte copies after the final leva).
+  `liftedFields` persist on `pipeline.json` `steps.<step>`.
 
 
 - Internal actor with own/team/assigned scope is a Person role (mdm skill); access60

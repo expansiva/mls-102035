@@ -1,0 +1,7 @@
+{
+  "entityId": "Atendente",
+  "fields": [],
+  "lifecycleStates": [],
+  "transitions": [],
+  "writer": "crud"
+}

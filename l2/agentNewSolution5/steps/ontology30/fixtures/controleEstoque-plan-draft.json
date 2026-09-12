@@ -1,0 +1,49 @@
+{
+  "moduleName": "controleEstoque",
+  "businessDomain": "Controle de estoque de produtos, movimentações de entrada e saída, saldo disponível e alerta de estoque baixo.",
+  "entities": [
+    {
+      "entityId": "Produto",
+      "title": "Produto em estoque",
+      "description": "Produto disponibilizado para controle de estoque, com quantidade mínima definida para reposição.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "controleEstoque.Produto"
+      }
+    },
+    {
+      "entityId": "MovimentacaoEstoque",
+      "title": "Movimentação de estoque",
+      "description": "Registro imutável de entrada ou saída de unidades de um produto no estoque.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "tipoMovimentacao",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "controleEstoque.MovimentacaoEstoque"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "movimentacaoEstoqueProduto",
+      "fromEntity": "MovimentacaoEstoque",
+      "toEntity": "Produto",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada movimentação de estoque registra a entrada ou saída de um produto.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ]
+}

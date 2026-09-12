@@ -1,0 +1,95 @@
+/// <mls fileReference="_102047_/l4/mensalidadesAcademia/access.defs.ts" enhancement="_blank"/>
+
+import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
+
+export const mensalidadesAcademiaAccess = {
+  "schemaVersion": "2026-09-12-ns5-access-v3",
+  "moduleName": "mensalidadesAcademia",
+  "actors": [
+    {
+      "actorId": "recepcao",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Recepção",
+      "description": "Profissional da academia que matricula alunos em planos e registra pagamentos de mensalidades."
+    },
+    {
+      "actorId": "gerencia",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Gerência",
+      "description": "Profissional da academia que gera mensalidades mensais e acompanha indicadores financeiros e de alunos."
+    },
+    {
+      "actorId": "aluno",
+      "kind": "external",
+      "origin": "inferred",
+      "title": "Aluno",
+      "description": "Pessoa matriculada na academia que pode cancelar a própria matrícula."
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "gerenciaPlanosEmensalidades",
+      "actorRef": "gerencia",
+      "title": "Gerenciar planos e mensalidades",
+      "description": "Permite cadastrar e atualizar planos, gerar mensalidades e acompanhar as cobranças e indicadores da academia.",
+      "entityRefs": [
+        "Plano",
+        "Matricula",
+        "Mensalidade"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "A gerência acessa os planos, matrículas e mensalidades de toda a academia."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "A gerência visualiza todos os dados dos planos, matrículas e mensalidades necessários à gestão financeira."
+      }
+    },
+    {
+      "grantId": "recepcaoMatriculasEpagamentos",
+      "actorRef": "recepcao",
+      "title": "Registrar matrículas e pagamentos",
+      "description": "Permite cadastrar ou vincular alunos, realizar matrículas e consultar mensalidades para registrar seus pagamentos.",
+      "entityRefs": [
+        "Aluno",
+        "Plano",
+        "Matricula",
+        "Mensalidade",
+        "Pagamento"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "A recepção acessa os cadastros, planos, matrículas, mensalidades e pagamentos de toda a academia para atendimento."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "A recepção visualiza todos os dados necessários para matricular alunos e registrar pagamentos."
+      }
+    },
+    {
+      "grantId": "alunoCancelarPropriaMatricula",
+      "actorRef": "aluno",
+      "title": "Consultar e cancelar minha matrícula",
+      "description": "Permite ao aluno consultar e encerrar exclusivamente a própria matrícula ativa.",
+      "entityRefs": [
+        "Matricula"
+      ],
+      "dataScope": {
+        "mode": "own",
+        "description": "O aluno acessa somente matrículas vinculadas ao seu próprio cadastro de aluno autenticado.",
+        "anchorEntity": "Aluno"
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "O aluno visualiza todos os dados da própria matrícula necessários para consultar sua vigência e solicitar o cancelamento."
+      }
+    }
+  ]
+} as const satisfies Ns5AccessArtifact;
+
+export type MensalidadesAcademiaAccessType = typeof mensalidadesAcademiaAccess;
+
+export default mensalidadesAcademiaAccess;

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "2026-09-12-ns5-integration-v2",
+  "moduleName": "locacaoEquipamentos",
+  "inbound": [],
+  "outbound": [
+    {
+      "id": "registrarDevolucao",
+      "kind": "event",
+      "to": "any",
+      "event": "registrarDevolucao",
+      "on": "ContratoLocacao.registrarDevolucao",
+      "description": "Publica o registro de devolução do contrato, incluindo os itens locados, para módulos que precisem atualizar informações relacionadas aos equipamentos.",
+      "entityRefs": [
+        "ContratoLocacao",
+        "RentalItem"
+      ]
+    }
+  ],
+  "plugins": []
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "comandaRestaurante",
+  "processes": [],
+  "journeyDecisions": [
+    {
+      "journeyId": "abrirComanda",
+      "inProcess": false
+    },
+    {
+      "journeyId": "lancarItemNaComanda",
+      "inProcess": false
+    },
+    {
+      "journeyId": "cancelarItemLancado",
+      "inProcess": false
+    },
+    {
+      "journeyId": "fecharComanda",
+      "inProcess": false
+    }
+  ]
+}
