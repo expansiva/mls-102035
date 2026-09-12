@@ -25,6 +25,8 @@ void test('mdm skill says registering a login person is an act, never an invite 
   const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
   assert.match(skill, /Registering a person who will sign in is a write by an internal actor/);
   assert.match(skill, /`act` that attaches her \(`affects`\)/);
+  assert.match(skill, /`maintenance: 'crud'` with that actor's grant/);
+  assert.match(skill, /registers herself \(an `act` of her own external actor that writes her\)/);
   assert.match(skill, /A journey never has an 'invite' or\s+'verify e-mail' step/);
 });
 

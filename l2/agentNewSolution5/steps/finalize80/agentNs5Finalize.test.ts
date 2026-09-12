@@ -168,6 +168,70 @@ function withRealMatricularAluno(
   return sources;
 }
 
+/** Live clinic: `Profissional` crud + grant `recepcionistaGerirProfissionais` (I8 form b). */
+function withAgendaClinicaProfissional(sources: Ns5OracleSources): Ns5OracleSources {
+  const profissional = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
+    'steps/finalize80/fixtures',
+    'Profissional.defs.ts',
+  ));
+  const access = clone(loadNs5Defs<Ns5AccessArtifact>(
+    'steps/finalize80/fixtures',
+    'agendaClinica-access.defs.ts',
+  ));
+  const internal = sources.access.actors.find(item => item.kind === 'internal')!;
+  const own = access.grants.find(item => item.grantId === 'profissionalConsultarEatenderPropriasConsultas')!;
+  const crudGrant = access.grants.find(item => item.grantId === 'recepcionistaGerirProfissionais')!;
+  sources.entities.push(profissional);
+  sources.ontologyIndex.entities.push('Profissional');
+  sources.access.grants.push(
+    { ...own, actorRef: internal.actorId },
+    { ...crudGrant, actorRef: internal.actorId },
+  );
+  return sources;
+}
+
+/** Live event: `Participant` + public own grant + organizer grant covering Participant. */
+function withInscricaoEventoParticipant(
+  sources: Ns5OracleSources,
+  opts?: { crud?: boolean; publicAffects?: string[] },
+): Ns5OracleSources {
+  const participant = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
+    'steps/finalize80/fixtures',
+    'Participant.defs.ts',
+  ));
+  if (opts?.crud === false) delete participant.maintenance;
+  const access = clone(loadNs5Defs<Ns5AccessArtifact>(
+    'steps/finalize80/fixtures',
+    'inscricaoEvento-access.defs.ts',
+  ));
+  const journey = clone(loadNs5Defs<Ns5JourneyArtifact>(
+    'steps/finalize80/fixtures',
+    'realizarInscricaoNoEvento.defs.ts',
+  ));
+  const internal = sources.access.actors.find(item => item.kind === 'internal')!;
+  const publico = access.actors.find(item => item.actorId === 'publico')!;
+  const own = access.grants.find(item => item.grantId === 'publicoGerenciaPropriaInscricao')!;
+  const covering = access.grants.find(item => item.grantId === 'organizadorAcompanhaInscricoes')!;
+  if (opts?.publicAffects !== undefined) {
+    const registrar = journey.business.steps.find(step => step.stepId === 'registrarInscricao');
+    if (registrar) registrar.affects = opts.publicAffects;
+  }
+  sources.access.actors.push(publico);
+  sources.entities.push(participant);
+  sources.ontologyIndex.entities.push('Participant');
+  sources.journeys.push(journey);
+  sources.journeyIndex.journeys.push({
+    journeyId: journey.journeyId,
+    actorRef: journey.business.actorRef,
+    title: journey.business.title,
+  });
+  sources.access.grants.push(
+    { ...own, actorRef: 'publico' },
+    { ...covering, actorRef: internal.actorId },
+  );
+  return sources;
+}
+
 function i8Errors(report: { errors: Array<{ checkId: string; code: string; message: string }> }) {
   return report.errors.filter(issue => issue.code === NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION);
 }
@@ -385,6 +449,8 @@ void test('I8 fails the same matricularAluno journey when affects is empty', () 
   assert.match(i8[0].message, /Aluno/);
   assert.match(i8[0].message, /alunoCancelaPropriaMatricula/);
   assert.match(i8[0].message, /act entity or affects/);
+  assert.match(i8[0].message, /maintenance: 'crud'/);
+  assert.match(i8[0].message, /self-registration/);
 });
 
 void test('I8 passes when localizarOuCadastrarAluno is act Aluno', () => {
@@ -461,6 +527,86 @@ void test('I8 on ordenServicio5 passes when the reception act is on Cliente', ()
   });
   const report = runNs5Oracle(sources);
   assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 passes live agendaClinica Profissional (crud + recepcionistaGerirProfissionais)', () => {
+  const profissional = loadNs5Defs<Ns5OntologyEntityArtifact>(
+    'steps/finalize80/fixtures',
+    'Profissional.defs.ts',
+  );
+  const access = loadNs5Defs<Ns5AccessArtifact>(
+    'steps/finalize80/fixtures',
+    'agendaClinica-access.defs.ts',
+  );
+  assert.equal(profissional.maintenance, 'crud');
+  assert.equal(profissional.party, 'person');
+  const crudGrant = access.grants.find(item => item.grantId === 'recepcionistaGerirProfissionais');
+  assert.equal(crudGrant?.actorRef, 'recepcionista');
+  assert.deepEqual(crudGrant?.entityRefs, ['Profissional']);
+  const own = access.grants.find(item => item.grantId === 'profissionalConsultarEatenderPropriasConsultas');
+  assert.equal(own?.dataScope.mode, 'own');
+  assert.equal(own?.dataScope.anchorEntity, 'Profissional');
+  const sources = withAgendaClinicaProfissional(clone(loadSources('comandaRestaurante.json')));
+  assert.equal(
+    sources.journeys.some(journey =>
+      journey.business.steps.some(step =>
+        step.kind === 'act' && (step.entity === 'Profissional' || (step.affects || []).includes('Profissional')))),
+    false,
+  );
+  const report = runNs5Oracle(sources);
+  assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 passes live inscricaoEvento Participant (crud + organizador grant)', () => {
+  const participant = loadNs5Defs<Ns5OntologyEntityArtifact>(
+    'steps/finalize80/fixtures',
+    'Participant.defs.ts',
+  );
+  const access = loadNs5Defs<Ns5AccessArtifact>(
+    'steps/finalize80/fixtures',
+    'inscricaoEvento-access.defs.ts',
+  );
+  const journey = loadNs5Defs<Ns5JourneyArtifact>(
+    'steps/finalize80/fixtures',
+    'realizarInscricaoNoEvento.defs.ts',
+  );
+  assert.equal(participant.maintenance, 'crud');
+  assert.equal(participant.party, 'person');
+  const covering = access.grants.find(item => item.grantId === 'organizadorAcompanhaInscricoes');
+  assert.ok(covering?.entityRefs.includes('Participant'));
+  assert.equal(access.actors.find(item => item.actorId === covering?.actorRef)?.kind, 'internal');
+  const own = access.grants.find(item => item.grantId === 'publicoGerenciaPropriaInscricao');
+  assert.equal(own?.dataScope.mode, 'own');
+  assert.equal(own?.dataScope.anchorEntity, 'Participant');
+  assert.equal(journey.business.actorRef, 'publico');
+  const registrar = journey.business.steps.find(step => step.stepId === 'registrarInscricao');
+  assert.equal(registrar?.kind, 'act');
+  assert.equal(registrar?.entity, 'Inscricao');
+  assert.equal((registrar?.affects || []).includes('Participant'), false);
+  const report = runNs5Oracle(withInscricaoEventoParticipant(clone(loadSources('comandaRestaurante.json'))));
+  assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 passes when the public act affects Participant (self-registration, no crud)', () => {
+  const report = runNs5Oracle(withInscricaoEventoParticipant(
+    clone(loadSources('comandaRestaurante.json')),
+    { crud: false, publicAffects: ['Participant'] },
+  ));
+  assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 fails inscricaoEvento without crud and without public affects on Participant', () => {
+  const report = runNs5Oracle(withInscricaoEventoParticipant(
+    clone(loadSources('comandaRestaurante.json')),
+    { crud: false, publicAffects: [] },
+  ));
+  const i8 = i8Errors(report);
+  assert.equal(i8.length, 1, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+  assert.match(i8[0].message, /Participant/);
+  assert.match(i8[0].message, /publicoGerenciaPropriaInscricao/);
+  assert.match(i8[0].message, /act entity or affects/);
+  assert.match(i8[0].message, /maintenance: 'crud'/);
+  assert.match(i8[0].message, /self-registration/);
 });
 
 void test('I5 fails an mdm entity without mdmSubtype', () => {

@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- I8: a login person is also registered by `maintenance: 'crud'` with an internal-actor grant, or by an `act` of her own external actor (self-registration). Clinic `Profissional` and event `Participant` pass; no crud and no self-write fails.
 - I8: an internal-actor write on the login person is `act` entity or `affects` (same writer predicate as I10). Frozen `ordenServicio5` and live `matricularAluno` (`affects: [Aluno]`) pass; empty `affects` fails.
 
 ## 2026-09-11

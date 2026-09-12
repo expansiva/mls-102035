@@ -348,9 +348,12 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
 
 /**
  * A party:person that anchors an own/related grant is someone who will sign in.
- * An internal actor must write that entity (`act` entity or `affects` — same
- * writer predicate as I10, restricted to internal-actor journeys). Journey
- * `entry.mode` has no public value (`coldStart` | `contextOrLookup` | `fromNotification`).
+ * She is registered when any of: (a) an internal actor writes her (`act` entity
+ * or `affects` — same writer predicate as I10, restricted to internal-actor
+ * journeys); (b) `maintenance: 'crud'` covered by an internal-actor grant (same
+ * predicate as `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT` / I10); (c) an `act` of
+ * her own external actor writes her (self-registration). Journey `entry.mode`
+ * has no public value (`coldStart` | `contextOrLookup` | `fromNotification`).
  */
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
@@ -365,10 +368,20 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     const entity = entityById.get(personId);
     if (!entity || entity.party !== 'person') return;
     if (ns5EntityHasActOrAffects(internalJourneys, personId)) return;
+    const crudByInternal = entity.maintenance === 'crud' && sources.access.grants.some(item => {
+      if (!item.entityRefs.includes(personId)) return false;
+      return actorById.get(item.actorRef)?.kind === 'internal';
+    });
+    if (crudByInternal) return;
+    const grantActor = actorById.get(grant.actorRef);
+    if (grantActor?.kind === 'external') {
+      const ownJourneys = sources.journeys.filter(journey => journey.business.actorRef === grant.actorRef);
+      if (ns5EntityHasActOrAffects(ownJourneys, personId)) return;
+    }
     error(
       'I8',
       `access.grants[${index}]`,
-      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but no internal actor writes that entity (act entity or affects).`,
+      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not maintenance: 'crud' with an internal-actor grant, and the grant's own external actor does not write it (self-registration).`,
       NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
     );
   });
