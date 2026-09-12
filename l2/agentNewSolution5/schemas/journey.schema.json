@@ -74,7 +74,7 @@
           "type": "array",
           "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
         },
-        "creates": { "type": "boolean", "const": true },
+        "effect": { "type": "string", "enum": ["create", "update", "transition"] },
         "transitionRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string", "minLength": 1 },

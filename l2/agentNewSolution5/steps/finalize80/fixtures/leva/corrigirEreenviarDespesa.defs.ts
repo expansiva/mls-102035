@@ -31,6 +31,7 @@ export const corrigirEreenviarDespesaJourney = {
         "stepId": "corrigirDespesa",
         "kind": "act",
         "entity": "Despesa",
+        "effect": "update",
         "title": "Corrigir despesa",
         "description": "Corrige os dados ou o comprovante da despesa rejeitada."
       },
@@ -38,6 +39,8 @@ export const corrigirEreenviarDespesaJourney = {
         "stepId": "reenviarParaAprovacao",
         "kind": "act",
         "entity": "Despesa",
+        "effect": "transition",
+        "transitionRef": "resubmitForApproval",
         "title": "Reenviar para aprovação",
         "description": "Reenvia a despesa corrigida para nova avaliação, respeitando o único reenvio permitido."
       }

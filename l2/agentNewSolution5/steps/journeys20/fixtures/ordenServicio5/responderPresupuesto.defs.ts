@@ -42,6 +42,7 @@ export const responderPresupuestoJourney = {
           "Presupuesto",
           "Aparato"
         ],
+        "effect": "update",
         "title": "Registrar la respuesta al presupuesto.",
         "description": "Registrar la aprobación para dejar la orden disponible para reparación o el rechazo para cerrarla y dejar el aparato disponible para retiro."
       }

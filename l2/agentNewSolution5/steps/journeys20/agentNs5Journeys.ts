@@ -152,13 +152,13 @@ export async function afterNs5JourneysPromptStep(
 
     const moduleArtifact = await readModule(moduleName);
     const actors = await readNs5Actors(moduleName);
-    const { journeys } = normalizeNs5JourneysPayload(payload);
+    const { journeys, normalizations } = normalizeNs5JourneysPayload(payload);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'journeys20'), { journeys });
+    const draftPath = await writeJson(draftFile(moduleName, 'journeys20'), { journeys, normalizations });
     const gate = validateNs5Journeys(journeys, { actors, moduleName });
     if (!gate.ok) {
       const feedback = formatNs5JourneyGate(gate.issues);

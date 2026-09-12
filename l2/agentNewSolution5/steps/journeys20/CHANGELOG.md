@@ -2,8 +2,10 @@
 
 ## 2026-09-12
 
-- An `act` may declare `creates: true` or `transitionRef` (lowerCamel), never both; other
-  kinds drop the fields. Gate: `NS5_JOURNEY_ACT_INTENT_BOTH` / `NS5_JOURNEY_ACT_INTENT_KIND`.
+- An `act` declares `effect`: `create` | `update` | `transition` (required; not derived).
+  `transitionRef` only with `effect: 'transition'`; leftover refs are dropped and
+  recorded on `draft.normalizations[]`. `creates` / `NS5_JOURNEY_ACT_INTENT_BOTH` are gone.
+  Gate: `NS5_JOURNEY_ACT_EFFECT_REQUIRED` / `NS5_JOURNEY_TRANSITION_REF_REQUIRED`.
 
 ## 2026-09-11
 

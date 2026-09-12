@@ -123,24 +123,35 @@ export function validateNs5Journeys(
         );
       }
       if (step.kind !== 'act') {
-        if (step.creates || step.transitionRef) {
+        if (step.effect || step.transitionRef) {
           const stepName = step.stepId || `index ${stepPosition}`;
           error(
             issues,
-            'NS5_JOURNEY_ACT_INTENT_KIND',
-            `Step ${stepName}: creates and transitionRef belong only on an act step.`,
+            'NS5_JOURNEY_ACT_EFFECT_KIND',
+            `Step ${stepName}: effect and transitionRef belong only on an act step.`,
             path,
           );
         }
-      } else if (step.creates && step.transitionRef) {
+      } else if (!step.effect) {
+        const stepName = step.stepId || `index ${stepPosition}`;
         error(
           issues,
-          'NS5_JOURNEY_ACT_INTENT_BOTH',
-          `Step ${step.stepId || `index ${stepPosition}`}: an act names at most one of creates or transitionRef.`,
-          path,
+          'NS5_JOURNEY_ACT_EFFECT_REQUIRED',
+          `Step ${stepName}: an act must declare effect create, update or transition. Do not derive it.`,
+          `${path}.effect`,
         );
-      } else if (step.transitionRef && !MEMBER_ID.test(step.transitionRef)) {
-        error(issues, 'NS5_JOURNEY_TRANSITION_REF', 'transitionRef must be lowerCamel.', `${path}.transitionRef`);
+      } else if (step.effect === 'transition') {
+        if (!step.transitionRef) {
+          const stepName = step.stepId || `index ${stepPosition}`;
+          error(
+            issues,
+            'NS5_JOURNEY_TRANSITION_REF_REQUIRED',
+            `Step ${stepName}: effect transition names transitionRef (a lowerCamel id the ontology will declare).`,
+            `${path}.transitionRef`,
+          );
+        } else if (!MEMBER_ID.test(step.transitionRef)) {
+          error(issues, 'NS5_JOURNEY_TRANSITION_REF', 'transitionRef must be lowerCamel.', `${path}.transitionRef`);
+        }
       }
       if (step.affects?.length) {
         if (step.kind !== 'act') {

@@ -23,6 +23,7 @@ export const registrarRecepcionAparatoJourney = {
           "DefectoInformado",
           "FotoOrden"
         ],
+        "effect": "update",
         "title": "Registrar los datos del cliente, del aparato, el defecto informado y las fotos.",
         "description": "Registrar los datos del cliente, del aparato, el defecto informado y las fotos."
       }

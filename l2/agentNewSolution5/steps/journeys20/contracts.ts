@@ -16,8 +16,22 @@ export interface Ns5JourneyDraft {
   business: Ns5JourneyArtifact['business'];
 }
 
+export const NS5_JOURNEY_ACT_EFFECTS = ['create', 'update', 'transition'] as const;
+export type Ns5JourneyActEffect = typeof NS5_JOURNEY_ACT_EFFECTS[number];
+
+export const NS5_JOURNEY_DROP_TRANSITION_REF = 'dropTransitionRef' as const;
+
+/** Same shape as access60 / ontology30 `draft.normalizations[]`. */
+export interface Ns5JourneysFormNormalization {
+  kind: typeof NS5_JOURNEY_DROP_TRANSITION_REF;
+  journeyId: string;
+  stepId: string;
+  detail: string;
+}
+
 export interface Ns5JourneysNormalization {
   journeys: Ns5JourneyDraft[];
+  normalizations: Ns5JourneysFormNormalization[];
 }
 
 export function buildNs5JourneysTool(
@@ -33,8 +47,11 @@ export function buildNs5JourneysTool(
 
 export function normalizeNs5JourneysPayload(value: unknown): Ns5JourneysNormalization {
   const root = record(value);
-  const journeys = list(root.journeys).map(normalizeJourney).filter(journey => journey.journeyId || journey.business.title);
-  return { journeys };
+  const normalizations: Ns5JourneysFormNormalization[] = [];
+  const journeys = list(root.journeys)
+    .map(item => normalizeJourney(item, normalizations))
+    .filter(journey => journey.journeyId || journey.business.title);
+  return { journeys, normalizations };
 }
 
 export async function hashNs5Journey(draft: Ns5JourneyDraft): Promise<Ns5JourneyArtifact> {
@@ -83,14 +100,15 @@ export async function sha256Ns5(value: unknown): Promise<string> {
   return `sha256:${hex}`;
 }
 
-function normalizeJourney(value: unknown): Ns5JourneyDraft {
+function normalizeJourney(value: unknown, normalizations: Ns5JourneysFormNormalization[]): Ns5JourneyDraft {
   const source = record(value);
   const business = record(source.business);
   const entry = record(business.entry);
   const outcome = record(business.outcome);
   const mode = text(entry.mode);
+  const journeyId = memberId(text(source.journeyId) || text(business.title), '');
   return {
-    journeyId: memberId(text(source.journeyId) || text(business.title), ''),
+    journeyId,
     business: {
       actorRef: memberId(text(business.actorRef), ''),
       title: text(business.title),
@@ -98,7 +116,7 @@ function normalizeJourney(value: unknown): Ns5JourneyDraft {
       entry: {
         mode: mode as Ns5JourneyArtifact['business']['entry']['mode'],
       },
-      steps: list(business.steps).map(normalizeStep),
+      steps: list(business.steps).map(item => normalizeStep(item, journeyId, normalizations)),
       outcome: {
         statement: text(outcome.statement),
         evidence: strings(outcome.evidence),
@@ -107,26 +125,44 @@ function normalizeJourney(value: unknown): Ns5JourneyDraft {
   };
 }
 
-function normalizeStep(value: unknown): Ns5JourneyStep {
+function normalizeStep(
+  value: unknown,
+  journeyId: string,
+  normalizations: Ns5JourneysFormNormalization[],
+): Ns5JourneyStep {
   const step = record(value);
   const kind = text(step.kind) as Ns5JourneyStep['kind'];
   const affects = uniquePascalIds(step.affects);
+  const stepId = memberId(text(step.stepId) || text(step.title), '');
   // The model fills handoffTo on every step as "who does this". Only a handoff names a receiver.
   const handoffTo = kind === 'handoff' ? memberId(text(step.handoffTo), '') : '';
-  // creates / transitionRef are act intent. Other kinds drop them (same class as handoffTo).
-  const creates = kind === 'act' && step.creates === true;
-  const transitionRef = kind === 'act' ? memberId(text(step.transitionRef), '') : '';
+  // effect / transitionRef are act intent. Other kinds drop them (same class as handoffTo).
+  const effect = kind === 'act' ? actEffect(step.effect) : undefined;
+  const rawTransitionRef = kind === 'act' ? memberId(text(step.transitionRef), '') : '';
+  if (kind === 'act' && rawTransitionRef && effect !== 'transition') {
+    normalizations.push({
+      kind: NS5_JOURNEY_DROP_TRANSITION_REF,
+      journeyId,
+      stepId,
+      detail: `transitionRef ${rawTransitionRef} dropped; effect is ${effect || '(missing)'}.`,
+    });
+  }
+  const transitionRef = effect === 'transition' ? rawTransitionRef : '';
   return {
-    stepId: memberId(text(step.stepId) || text(step.title), ''),
+    stepId,
     kind,
     entity: normalizeEntityId(step.entity),
     ...(affects.length ? { affects } : {}),
-    ...(creates ? { creates: true as const } : {}),
+    ...(effect ? { effect } : {}),
     ...(transitionRef ? { transitionRef } : {}),
     title: text(step.title),
     description: text(step.description),
     ...(handoffTo ? { handoffTo } : {}),
   };
+}
+
+function actEffect(value: unknown): Ns5JourneyActEffect | undefined {
+  return value === 'create' || value === 'update' || value === 'transition' ? value : undefined;
 }
 
 function uniquePascalIds(value: unknown): string[] {

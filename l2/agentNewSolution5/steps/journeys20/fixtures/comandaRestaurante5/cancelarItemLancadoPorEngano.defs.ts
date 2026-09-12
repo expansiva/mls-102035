@@ -34,6 +34,7 @@ export const cancelarItemLancadoPorEnganoJourney = {
         "affects": [
           "Comanda"
         ],
+        "effect": "update",
         "title": "Cancelar item lançado",
         "description": "Cancela o item incorreto na comanda."
       }

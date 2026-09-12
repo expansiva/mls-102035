@@ -20,9 +20,11 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
 - A journey of only `locate`/`inspect` is valid (consultation). `act`/`decide` only
   when the request names a change or a human choice.
 - `affects` is only on `act`, does not repeat `entity`, has no duplicates.
-- An `act` that creates the record says `creates: true`; one that changes state names
-  `transitionRef`; one that only edits fields says neither. Both together is
-  `NS5_JOURNEY_ACT_INTENT_BOTH`; either field on a non-act is `NS5_JOURNEY_ACT_INTENT_KIND`.
+- An `act` declares `effect`: `create` (new record), `transition` (names `transitionRef`)
+  or `update` (edits fields). Missing `effect` is `NS5_JOURNEY_ACT_EFFECT_REQUIRED`.
+  `transitionRef` without `effect: 'transition'` is dropped (`normalizations[]`);
+  `effect: 'transition'` without `transitionRef` is `NS5_JOURNEY_TRANSITION_REF_REQUIRED`.
+  Either field on a non-act is `NS5_JOURNEY_ACT_EFFECT_KIND`.
 - `handoffTo` is an actor id and only on `handoff`.
 - Twin journeys (same actor, same set of `kind:entity`) fail the gate.
 - After the gate: inferred `external` actor without an exclusive step is dropped from

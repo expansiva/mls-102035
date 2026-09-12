@@ -24,7 +24,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | check | meaning | on fail |
 |---|---|---|
 | I1 | every id ref between sources exists (actor, entity, field, transition, rule, journey). A journey `entity`/`affects` naming an id in `pipeline.json` `ontology30.liftedAggregateEntities` is a `module.details` ref when that map has keys — not an unknown entity | error |
-| I2 | an `act` with `transitionRef` must cite a declared transition whose `by` includes the journey actor and whose `from` intersects states reachable from source-SCC births (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); `creates` or neither is not an I2 error (possible missing `transitionRef` is a warning). Every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal for `decide` (`requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error (warning does not fail) |
+| I2 | an `act` with `effect: 'transition'` must cite a declared `transitionRef` whose `by` includes the journey actor and whose `from` intersects states reachable from source-SCC births (`NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION`); `create` is not an I2 error; `update` with a declared actor transition is a warning. Every `decide` has at least two transitions from the same origin state. Does not apply to a locate→inspect journey. Structural signal for `decide` (`requiresBranching`) comes from ontology30 `collectNs5LifecycleSignal` — do not recompute it here | error (warning does not fail) |
 | I3 | every `access.actors` row has at least one journey and one grant | error |
 | I4 | every cited `transitions[].ruleRefs` exists in `rules.defs.ts`. An uncited rule is not a defect at l4 | error |
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
@@ -37,7 +37,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 Errors fail the run with the report. Warnings only continue.
 
 ontology30 rejects `appendOnly` plus a repeated `act` or a `decide` first, with repair. I2 still
-fails a `decide` without a branching origin if that shape reaches here; a write-only `act` without
+fails a `decide` without a branching origin if that shape reaches here; an `update` `act` without
 `transitionRef` is a warning, not an error.
 
 ## Invariants

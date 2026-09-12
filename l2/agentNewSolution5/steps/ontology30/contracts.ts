@@ -536,6 +536,7 @@ export function collectNs5CitedTransitions(
         kind: string;
         entity: string;
         stepId?: string;
+        effect?: 'create' | 'update' | 'transition';
         transitionRef?: string;
       }>;
     };
@@ -545,7 +546,7 @@ export function collectNs5CitedTransitions(
   for (const journey of journeys) {
     const actorRef = journey.business.actorRef || '';
     for (const step of journey.business.steps) {
-      if (step.kind !== 'act' || !step.transitionRef || !step.entity) continue;
+      if (step.kind !== 'act' || step.effect !== 'transition' || !step.transitionRef || !step.entity) continue;
       cited.push({
         entityId: step.entity,
         transitionId: step.transitionRef,
@@ -581,8 +582,8 @@ export interface Ns5LifecycleJourneyView {
       entity: string;
       affects?: string[];
       stepId?: string;
+      effect?: 'create' | 'update' | 'transition';
       transitionRef?: string;
-      creates?: true;
     }>;
   };
 }
@@ -671,6 +672,7 @@ function addCitedTransitionActors(
         kind: string;
         entity: string;
         stepId?: string;
+        effect?: 'create' | 'update' | 'transition';
         transitionRef?: string;
       }>;
     };

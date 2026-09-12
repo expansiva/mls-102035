@@ -26,7 +26,8 @@
               "Mesa"
             ],
             "title": "Abrir comanda",
-            "description": "Cria uma comanda aberta para a mesa selecionada."
+            "description": "Cria uma comanda aberta para a mesa selecionada.",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -73,7 +74,8 @@
               "ItemCardapio"
             ],
             "title": "Registrar item pedido",
-            "description": "Inclui na comanda o item pedido e sua quantidade."
+            "description": "Inclui na comanda o item pedido e sua quantidade.",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -119,7 +121,8 @@
               "Comanda"
             ],
             "title": "Cancelar item lançado",
-            "description": "Cancela o item incorreto na comanda."
+            "description": "Cancela o item incorreto na comanda.",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -165,7 +168,8 @@
               "Comanda"
             ],
             "title": "Aplicar desconto pontual",
-            "description": "Registra um desconto pontual quando ele for concedido."
+            "description": "Registra um desconto pontual quando ele for concedido.",
+            "effect": "update"
           },
           {
             "stepId": "registrarPagamentosDivididos",
@@ -175,14 +179,16 @@
               "Comanda"
             ],
             "title": "Registrar pagamentos",
-            "description": "Registra um ou mais pagamentos, inclusive valores divididos entre as pessoas da mesa."
+            "description": "Registra um ou mais pagamentos, inclusive valores divididos entre as pessoas da mesa.",
+            "effect": "update"
           },
           {
             "stepId": "fecharComanda",
             "kind": "act",
             "entity": "Comanda",
             "title": "Fechar comanda",
-            "description": "Encerra a conta após o recebimento integral do valor devido."
+            "description": "Encerra a conta após o recebimento integral do valor devido.",
+            "effect": "update"
           }
         ],
         "outcome": {

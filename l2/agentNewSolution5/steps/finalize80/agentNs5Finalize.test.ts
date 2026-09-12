@@ -403,7 +403,7 @@ function levaDefs<T>(name: string): T {
 function withStepIntent(
   journey: Ns5JourneyArtifact,
   stepId: string,
-  patch: { creates?: true; transitionRef?: string },
+  patch: { effect?: 'create' | 'update' | 'transition'; transitionRef?: string },
 ): Ns5JourneyArtifact {
   const next = clone(journey);
   const step = next.business.steps.find(item => item.stepId === stepId);
@@ -489,27 +489,24 @@ void test('I1 fails an unknown transitionRef; I2 ignores it', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   const step = sources.journeys.flatMap(journey => journey.business.steps).find(item => item.kind === 'act');
   assert.ok(step);
+  step.effect = 'transition';
   step.transitionRef = 'ghostTransition';
   const report = runNs5Oracle(sources);
   assert.ok(report.errors.some(issue => issue.checkId === 'I1' && /ghostTransition/.test(issue.message)));
   assert.equal(report.errors.filter(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION).length, 0);
 });
 
-void test('I2 passes leva acts with hand-placed transitionRef or creates', () => {
+void test('I2 passes leva acts with hand-placed effect', () => {
   const orden = runNs5Oracle(i2OnlySources(
     'ordenServicio',
-    [withStepIntent(levaDefs('entregarYfinalizarOrden.defs.ts'), 'registrarEntregaYfinalizacion', {
-      transitionRef: 'registrarEntregaYfinalizacion',
-    })],
+    [levaDefs('entregarYfinalizarOrden.defs.ts')],
     [levaDefs('OrdenServicio.defs.ts')],
   ));
   assert.equal(i2Issues(orden, 'errors').length, 0, i2Issues(orden, 'errors').map(issue => issue.message).join('\n'));
 
   const clinica = runNs5Oracle(i2OnlySources(
     'agendaClinica',
-    [withStepIntent(levaDefs('registrarAtendimento.defs.ts'), 'registrarAtendimentoRealizado', {
-      transitionRef: 'recordAppointmentAttendance',
-    })],
+    [levaDefs('registrarAtendimento.defs.ts')],
     [levaDefs('Consulta.defs.ts')],
   ));
   assert.equal(i2Issues(clinica, 'errors').length, 0, i2Issues(clinica, 'errors').map(issue => issue.message).join('\n'));
@@ -517,12 +514,8 @@ void test('I2 passes leva acts with hand-placed transitionRef or creates', () =>
   const reembolso = runNs5Oracle(i2OnlySources(
     'reembolsoDespesas',
     [
-      withStepIntent(levaDefs('corrigirEreenviarDespesa.defs.ts'), 'reenviarParaAprovacao', {
-        transitionRef: 'resubmitForApproval',
-      }),
-      withStepIntent(levaDefs('registrarPagamentoDeDespesa.defs.ts'), 'registrarDataDePagamento', {
-        transitionRef: 'recordPayment',
-      }),
+      levaDefs('corrigirEreenviarDespesa.defs.ts'),
+      levaDefs('registrarPagamentoDeDespesa.defs.ts'),
     ],
     [levaDefs('Despesa.defs.ts')],
   ));
@@ -533,7 +526,7 @@ void test('I2 passes leva acts with hand-placed transitionRef or creates', () =>
 
   const frota = runNs5Oracle(i2OnlySources(
     'manutencaoFrota',
-    [withStepIntent(levaDefs('tratarAlertaPreventivaVencida.defs.ts'), 'abrirOrdemPorAlerta', { creates: true })],
+    [levaDefs('tratarAlertaPreventivaVencida.defs.ts')],
     [levaDefs('OrdemManutencao.defs.ts')],
   ));
   assert.equal(i2Issues(frota, 'errors').length, 0, i2Issues(frota, 'errors').map(issue => issue.message).join('\n'));
@@ -554,7 +547,7 @@ void test('I2 fails a transitionRef whose from is unreachable from source-SCC bi
   const journey = withStepIntent(
     levaDefs('registrarPagamentoDeDespesa.defs.ts'),
     'registrarDataDePagamento',
-    { transitionRef: 'recordPayment' },
+    { effect: 'transition', transitionRef: 'recordPayment' },
   );
   const entity = clone(levaDefs<Ns5OntologyEntityArtifact>('Despesa.defs.ts'));
   entity.lifecycleStates = [...entity.lifecycleStates, { state: 'voided', reachedBy: 'time' }];

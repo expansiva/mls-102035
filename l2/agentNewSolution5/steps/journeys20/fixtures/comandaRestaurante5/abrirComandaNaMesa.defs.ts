@@ -27,6 +27,7 @@ export const abrirComandaNaMesaJourney = {
         "affects": [
           "Mesa"
         ],
+        "effect": "update",
         "title": "Abrir comanda",
         "description": "Cria uma comanda aberta para a mesa selecionada."
       }

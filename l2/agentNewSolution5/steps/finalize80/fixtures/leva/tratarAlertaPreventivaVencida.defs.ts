@@ -31,6 +31,7 @@ export const tratarAlertaPreventivaVencidaJourney = {
         "stepId": "abrirOrdemPorAlerta",
         "kind": "act",
         "entity": "OrdemManutencao",
+        "effect": "create",
         "affects": [
           "Veiculo",
           "PlanoManutencaoPreventiva"

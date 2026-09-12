@@ -34,6 +34,7 @@ export const conferirEfecharContaJourney = {
         "affects": [
           "Comanda"
         ],
+        "effect": "update",
         "title": "Aplicar desconto pontual",
         "description": "Registra um desconto pontual quando ele for concedido."
       },
@@ -44,6 +45,7 @@ export const conferirEfecharContaJourney = {
         "affects": [
           "Comanda"
         ],
+        "effect": "update",
         "title": "Registrar pagamentos",
         "description": "Registra um ou mais pagamentos, inclusive valores divididos entre as pessoas da mesa."
       },
@@ -51,6 +53,7 @@ export const conferirEfecharContaJourney = {
         "stepId": "fecharComanda",
         "kind": "act",
         "entity": "Comanda",
+        "effect": "update",
         "title": "Fechar comanda",
         "description": "Encerra a conta após o recebimento integral do valor devido."
       }

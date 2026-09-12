@@ -4,8 +4,8 @@
  * Integrity oracle across the six NS5 sources. One code per check (I1–I10).
  * Errors fail the run; warnings do not.
  *
- * I2 checks cited `transitionRef` against ontology (actor in `by`, `from` reachable
- * from source-SCC births). `creates` and write-only acts are not I2 errors.
+ * I2 checks `effect: 'transition'` + `transitionRef` against ontology (actor in `by`,
+ * `from` reachable from source-SCC births). `create` and `update` are not I2 errors.
  * collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin still gate `decide`.
  * ontology30 rejects appendOnly plus a repeated act or decide first, with repair.
  */
@@ -209,7 +209,8 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
       }
       if (step.kind !== 'act' || !step.entity) return;
       const entity = entityById.get(step.entity);
-      if (step.transitionRef) {
+      if (step.effect === 'transition') {
+        if (!step.transitionRef) return;
         const transition = (entity?.transitions || []).find(item => item.transitionId === step.transitionRef);
         if (!transition) return;
         if (!actorMatches(transition.by, actor)) {
@@ -232,7 +233,7 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
         }
         return;
       }
-      if (step.creates) return;
+      if (step.effect === 'create') return;
       if (!entityHasLifecycle(entity)) return;
       if (!(entity?.transitions || []).some(item => actorMatches(item.by, actor))) return;
       warning(

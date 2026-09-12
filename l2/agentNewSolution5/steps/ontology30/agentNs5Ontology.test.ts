@@ -130,7 +130,7 @@ function step(
   stepId: string,
   kind: 'act' | 'decide' | 'locate' | 'inspect',
   entity: string,
-  extra: { transitionRef?: string; creates?: true } = {},
+  extra: { effect?: 'create' | 'update' | 'transition'; transitionRef?: string } = {},
 ) {
   return { stepId, kind, entity, title: stepId, description: 'Done.', ...extra };
 }
@@ -821,7 +821,7 @@ void test('ontology30 plan prompt omits mutability when journeys repeat act or d
   assert.match(prompt, /more than one `act` step on this entity/);
   assert.match(prompt, /or a `decide` step on it, omit `mutability` here/);
   assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
-  assert.match(prompt, /An `act` that names\s+`transitionRef` requires that transition on the entity/);
+  assert.match(prompt, /An `act` with\s+`effect: 'transition'` requires that `transitionRef` on the entity/);
   assert.match(prompt, /moduleDetails/);
   assert.match(prompt, /one-sentence `description`/);
   assert.match(prompt, /A reference catalog nobody creates in a journey/);
@@ -837,7 +837,7 @@ void test('ontology30 entity prompt states uniqueKeys, typed details, enum title
   assert.match(prompt, /Each enum entry is `\{ "value", "title" \}`/);
   assert.match(prompt, /\{ "name", "type", "description" \}/);
   assert.match(prompt, /A reference catalog nobody creates in a journey/);
-  assert.match(prompt, /Every `transitionRef` the journeys cite/);
+  assert.match(prompt, /Every `transitionRef` an `act` with\s+`effect: 'transition'` cites/);
   assert.doesNotMatch(prompt, /never both/);
 });
 
@@ -847,7 +847,7 @@ void test('cited transitionRef missing on the entity is TRANSITION_REF_MISSING; 
     entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
     relationships: [],
   }, 'comandaRestaurante5');
-  const journeys = [journey('caixa', [step('closeTicket', 'act', 'Ticket', { transitionRef: 'closeTicket' })])];
+  const journeys = [journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'closeTicket' })])];
   const empty = validateNs5OntologyEntity(plan, emptyCoreDetail('Ticket', 'ticketId'), ctx({ journeys }));
   assert.ok(empty.issues.some(issue => issue.code === 'NS5_ONTOLOGY_TRANSITION_REF_MISSING'));
 
@@ -879,7 +879,7 @@ void test('cited transitionRef missing on the entity is TRANSITION_REF_MISSING; 
     repaired.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'),
   );
 
-  const createsMdm = journey('caixa', [step('attachPerson', 'act', 'Cliente', { creates: true })]);
+  const createsMdm = journey('caixa', [step('attachPerson', 'act', 'Cliente', { effect: 'create' })]);
   const mdmGate = validateNs5OntologyEntity(
     normalizeNs5OntologyPlan({
       businessDomain: 'People',
@@ -905,7 +905,7 @@ void test('entity human prompt lists cited transitionRef as data', () => {
     journeys: [{
       schemaVersion: '2026-09-10-ns5-journey-v1',
       journeyId: 'closeTicket',
-      business: journey('caixa', [step('closeTicket', 'act', 'Ticket', { transitionRef: 'closeTicket' })]).business,
+      business: journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'closeTicket' })]).business,
       businessHash: 'sha256:x',
     }],
     plan,

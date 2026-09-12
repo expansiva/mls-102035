@@ -34,6 +34,7 @@ export const repararYmarcarOrdenListaJourney = {
         "affects": [
           "Reparacion"
         ],
+        "effect": "update",
         "title": "Registrar la reparación realizada.",
         "description": "Registrar las tareas efectuadas durante la reparación del aparato."
       },
@@ -41,6 +42,7 @@ export const repararYmarcarOrdenListaJourney = {
         "stepId": "marcarOrdenLista",
         "kind": "act",
         "entity": "OrdenServicio",
+        "effect": "update",
         "title": "Marcar la orden como lista para entrega.",
         "description": "Actualizar la orden para indicar que el aparato está listo para ser entregado."
       },

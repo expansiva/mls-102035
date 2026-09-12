@@ -36,6 +36,7 @@ export const analizarYpresupuestarOrdenJourney = {
           "PiezaNecesaria",
           "Presupuesto"
         ],
+        "effect": "update",
         "title": "Registrar el diagnóstico, las piezas necesarias y el presupuesto.",
         "description": "Registrar el diagnóstico, las piezas necesarias con costo interno y el valor del presupuesto para el cliente."
       }

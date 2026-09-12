@@ -45,6 +45,7 @@ export const acompanharEexportarInscricoesJourney = {
         "stepId": "baixarListaCsv",
         "kind": "act",
         "entity": "Evento",
+        "effect": "update",
         "title": "Baixa a lista de inscrições em CSV.",
         "description": "Baixa a lista de inscrições do evento em formato CSV."
       }

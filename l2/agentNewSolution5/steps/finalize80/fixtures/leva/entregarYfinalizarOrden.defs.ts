@@ -31,6 +31,8 @@ export const entregarYfinalizarOrdenJourney = {
         "stepId": "registrarEntregaYfinalizacion",
         "kind": "act",
         "entity": "OrdenServicio",
+        "effect": "transition",
+        "transitionRef": "registrarEntregaYfinalizacion",
         "title": "Registrar la entrega y finalizar la orden.",
         "description": "Registrar la entrega del aparato al cliente y finalizar la orden."
       }

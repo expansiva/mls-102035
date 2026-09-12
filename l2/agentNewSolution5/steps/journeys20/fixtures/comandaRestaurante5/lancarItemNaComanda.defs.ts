@@ -35,6 +35,7 @@ export const lancarItemNaComandaJourney = {
           "Comanda",
           "ItemCardapio"
         ],
+        "effect": "update",
         "title": "Registrar item pedido",
         "description": "Inclui na comanda o item pedido e sua quantidade."
       }

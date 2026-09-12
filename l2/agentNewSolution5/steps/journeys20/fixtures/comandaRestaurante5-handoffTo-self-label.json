@@ -36,7 +36,8 @@
             ],
             "title": "Open the tab",
             "description": "Create an open tab for the selected table and mark the table as occupied.",
-            "handoffTo": "garcom"
+            "handoffTo": "garcom",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -99,7 +100,8 @@
             ],
             "title": "Add the item to the tab",
             "description": "Record the menu item on the open tab with its quantity and optional observation.",
-            "handoffTo": "garcom"
+            "handoffTo": "garcom",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -162,7 +164,8 @@
             ],
             "title": "Cancel the item",
             "description": "Cancel the mistaken item from the open tab.",
-            "handoffTo": "garcom"
+            "handoffTo": "garcom",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -206,7 +209,8 @@
             "entity": "OrderTab",
             "title": "Apply an optional discount",
             "description": "Apply a discount to the tab when one is needed.",
-            "handoffTo": "caixa"
+            "handoffTo": "caixa",
+            "effect": "update"
           },
           {
             "stepId": "registerPaymentAndCloseTab",
@@ -218,7 +222,8 @@
             ],
             "title": "Register payment and close the tab",
             "description": "Record the payment method, close the tab, and release its table.",
-            "handoffTo": "caixa"
+            "handoffTo": "caixa",
+            "effect": "update"
           }
         ],
         "outcome": {

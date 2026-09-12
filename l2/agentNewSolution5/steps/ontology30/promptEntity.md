@@ -50,9 +50,9 @@ Declare states and transitions only when the request names them.
 - An `actor` or `command` state other than the birth state needs a transition that arrives at it.
 - Transitions: `{ "transitionId", "from", "to", "by", "description", "ruleRefs"? }`. `by` is an
   array of actor ids from the module, or `"system"`, or `"time"`. `ruleRefs` are optional
-  lowerCamel ids of rules that constrain the transition. Every `transitionRef` the journeys cite
-  on this entity is required as a transition, with that journey's actor in `by`. The human prompt
-  lists the citations.
+  lowerCamel ids of rules that constrain the transition. Every `transitionRef` an `act` with
+  `effect: 'transition'` cites on this entity is required as a transition, with that journey's
+  actor in `by`. The human prompt lists the citations.
 - An entity with lifecycle states must include a `status` field whose `enum[].value` covers those
   state ids.
 - MDM entities have no lifecycle and no transitions.

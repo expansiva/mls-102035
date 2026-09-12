@@ -22,7 +22,8 @@
               "FotoOrden"
             ],
             "title": "Registrar los datos del cliente, del aparato, el defecto informado y las fotos.",
-            "description": "Registrar los datos del cliente, del aparato, el defecto informado y las fotos."
+            "description": "Registrar los datos del cliente, del aparato, el defecto informado y las fotos.",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -70,7 +71,8 @@
               "Presupuesto"
             ],
             "title": "Registrar el diagnóstico, las piezas necesarias y el presupuesto.",
-            "description": "Registrar el diagnóstico, las piezas necesarias con costo interno y el valor del presupuesto para el cliente."
+            "description": "Registrar el diagnóstico, las piezas necesarias con costo interno y el valor del presupuesto para el cliente.",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -125,7 +127,8 @@
               "Aparato"
             ],
             "title": "Registrar la respuesta al presupuesto.",
-            "description": "Registrar la aprobación para dejar la orden disponible para reparación o el rechazo para cerrarla y dejar el aparato disponible para retiro."
+            "description": "Registrar la aprobación para dejar la orden disponible para reparación o el rechazo para cerrarla y dejar el aparato disponible para retiro.",
+            "effect": "update"
           }
         ],
         "outcome": {
@@ -171,14 +174,16 @@
               "Reparacion"
             ],
             "title": "Registrar la reparación realizada.",
-            "description": "Registrar las tareas efectuadas durante la reparación del aparato."
+            "description": "Registrar las tareas efectuadas durante la reparación del aparato.",
+            "effect": "update"
           },
           {
             "stepId": "marcarOrdenLista",
             "kind": "act",
             "entity": "OrdenServicio",
             "title": "Marcar la orden como lista para entrega.",
-            "description": "Actualizar la orden para indicar que el aparato está listo para ser entregado."
+            "description": "Actualizar la orden para indicar que el aparato está listo para ser entregado.",
+            "effect": "update"
           },
           {
             "stepId": "derivarParaEntrega",
@@ -233,7 +238,8 @@
               "Aparato"
             ],
             "title": "Registrar la entrega y finalizar la orden.",
-            "description": "Registrar la entrega del aparato al cliente y finalizar la orden correspondiente."
+            "description": "Registrar la entrega del aparato al cliente y finalizar la orden correspondiente.",
+            "effect": "update"
           }
         ],
         "outcome": {

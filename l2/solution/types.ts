@@ -65,13 +65,14 @@ export interface Ns5JourneyStep {
   /** ontology30 must declare each extra entity the step also changes. */
   affects?: string[];
   /**
-   * This act creates the `entity` record (or attaches, when the entity is mdm).
-   * At most one of `creates` / `transitionRef`. Readers: I2, master backend, master frontend.
+   * Required on `kind: act`. `create` opens the record (or attaches, when mdm);
+   * `transition` applies `transitionRef`; `update` writes fields without a state change.
+   * Readers: I2, master backend, master frontend.
    */
-  creates?: true;
+  effect?: 'create' | 'update' | 'transition';
   /**
-   * This act applies this ontology `transitionId` of `entity` (lowerCamel).
-   * At most one of `creates` / `transitionRef`. Readers: I2, master backend, master frontend.
+   * Required iff `effect === 'transition'`. Ontology `transitionId` of `entity` (lowerCamel).
+   * Readers: I2, master backend, master frontend.
    */
   transitionRef?: string;
   /** Planner / UI. */

@@ -31,6 +31,8 @@ export const registrarAtendimentoJourney = {
         "stepId": "registrarAtendimentoRealizado",
         "kind": "act",
         "entity": "Consulta",
+        "effect": "transition",
+        "transitionRef": "recordAppointmentAttendance",
         "title": "Registrar atendimento",
         "description": "Marca a consulta como atendida e registra a anotação do atendimento."
       }

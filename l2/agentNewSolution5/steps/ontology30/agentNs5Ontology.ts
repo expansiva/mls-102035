@@ -804,10 +804,10 @@ function formatJourneys(journeys: Ns5JourneyArtifact[]): string {
     journey.business.goal,
     ...journey.business.steps.map(step => {
       const affects = step.affects?.length ? ` affects=${step.affects.join(',')}` : '';
-      const creates = step.creates ? ' creates=true' : '';
-      const transition = step.transitionRef ? ` transitionRef=${step.transitionRef}` : '';
+      const effect = step.effect ? ` effect=${step.effect}` : '';
+      const transition = step.effect === 'transition' && step.transitionRef ? ` transitionRef=${step.transitionRef}` : '';
       const decide = step.kind === 'decide' ? ' decide' : '';
-      return `- ${step.stepId} ${step.kind} ${step.entity}${affects}${creates}${transition}${decide}: ${step.description}`;
+      return `- ${step.stepId} ${step.kind} ${step.entity}${affects}${effect}${transition}${decide}: ${step.description}`;
     }),
   ].join('\n')).join('\n\n');
 }

@@ -31,6 +31,8 @@ export const registrarPagamentoDeDespesaJourney = {
         "stepId": "registrarDataDePagamento",
         "kind": "act",
         "entity": "Despesa",
+        "effect": "transition",
+        "transitionRef": "recordPayment",
         "title": "Registrar pagamento",
         "description": "Registra a data em que a despesa foi paga."
       }

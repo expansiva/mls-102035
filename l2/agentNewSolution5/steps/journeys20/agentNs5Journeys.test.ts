@@ -18,6 +18,7 @@ import {
   countNs5DecideSteps,
   hashNs5Journey,
   normalizeNs5JourneysPayload,
+  NS5_JOURNEY_DROP_TRANSITION_REF,
   type Ns5JourneyDraft,
 } from '/_102035_/l2/agentNewSolution5/steps/journeys20/contracts.js';
 import {
@@ -54,6 +55,7 @@ function actStep(overrides: Record<string, unknown> = {}): Record<string, unknow
     stepId: 'closeOrder',
     kind: 'act',
     entity: 'Comanda',
+    effect: 'update',
     title: 'Close the order.',
     description: 'The order is closed.',
     ...overrides,
@@ -431,23 +433,61 @@ void test('journeys20 prompt omits handoffTo except on handoff', () => {
   assert.doesNotMatch(prompt, /invite|verify e-mail|login index/i);
 });
 
-void test('act creates and transitionRef are exclusive; non-act drops them', () => {
-  const both = drafts({
+void test('act requires effect; transitionRef only with effect transition', () => {
+  const missing = drafts({
     journeys: [validJourney({
       business: {
         actorRef: 'caixa',
         title: 'Close',
         goal: 'Close.',
         entry: { mode: 'coldStart' },
-        steps: [actStep({ creates: true, transitionRef: 'closeOrder' })],
+        steps: [actStep({ effect: undefined })],
         outcome: { statement: 'Closed.', evidence: ['Closed.'] },
       },
     })],
   });
-  assert.equal(both[0].business.steps[0].creates, true);
-  assert.equal(both[0].business.steps[0].transitionRef, 'closeOrder');
-  const bothGate = validateNs5Journeys(both, { actors: ACTORS });
-  assert.ok(bothGate.issues.some(issue => issue.code === 'NS5_JOURNEY_ACT_INTENT_BOTH'));
+  assert.equal(missing[0].business.steps[0].effect, undefined);
+  const missingGate = validateNs5Journeys(missing, { actors: ACTORS });
+  const required = missingGate.issues.find(issue => issue.code === 'NS5_JOURNEY_ACT_EFFECT_REQUIRED');
+  assert.ok(required);
+  assert.match(required.message, /Do not derive/);
+  const requiredFeedback = formatNs5JourneyGate(missingGate.issues);
+  assert.match(requiredFeedback, /NS5_JOURNEY_ACT_EFFECT_REQUIRED/);
+  assert.match(requiredFeedback, /steps\[0\]\.effect/);
+
+  const noRef = drafts({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close',
+        goal: 'Close.',
+        entry: { mode: 'coldStart' },
+        steps: [actStep({ effect: 'transition' })],
+        outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+      },
+    })],
+  });
+  const noRefGate = validateNs5Journeys(noRef, { actors: ACTORS });
+  const refRequired = noRefGate.issues.find(issue => issue.code === 'NS5_JOURNEY_TRANSITION_REF_REQUIRED');
+  assert.ok(refRequired);
+  assert.match(formatNs5JourneyGate(noRefGate.issues), /NS5_JOURNEY_TRANSITION_REF_REQUIRED/);
+
+  const dropped = normalizeNs5JourneysPayload({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close',
+        goal: 'Close.',
+        entry: { mode: 'coldStart' },
+        steps: [actStep({ effect: 'update', transitionRef: 'dummy' })],
+        outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+      },
+    })],
+  });
+  assert.equal(dropped.journeys[0].business.steps[0].effect, 'update');
+  assert.equal(dropped.journeys[0].business.steps[0].transitionRef, undefined);
+  assert.ok(dropped.normalizations.some(item => item.kind === NS5_JOURNEY_DROP_TRANSITION_REF));
+  assert.equal(validateNs5Journeys(dropped.journeys, { actors: ACTORS }).ok, true);
 
   const locate = drafts({
     journeys: [validJourney({
@@ -462,23 +502,31 @@ void test('act creates and transitionRef are exclusive; non-act drops them', () 
           entity: 'Comanda',
           title: 'Find.',
           description: 'Found.',
-          creates: true,
+          effect: 'create',
           transitionRef: 'closeOrder',
         }],
         outcome: { statement: 'Found.', evidence: ['Found.'] },
       },
     })],
   });
-  assert.equal(locate[0].business.steps[0].creates, undefined);
+  assert.equal(locate[0].business.steps[0].effect, undefined);
   assert.equal(locate[0].business.steps[0].transitionRef, undefined);
-  locate[0].business.steps[0].creates = true;
+  locate[0].business.steps[0].effect = 'create';
   const kindGate = validateNs5Journeys(locate, { actors: ACTORS });
-  assert.ok(kindGate.issues.some(issue => issue.code === 'NS5_JOURNEY_ACT_INTENT_KIND'));
+  assert.ok(kindGate.issues.some(issue => issue.code === 'NS5_JOURNEY_ACT_EFFECT_KIND'));
 
   const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
-  assert.match(prompt, /creates: true/);
-  assert.match(prompt, /transitionRef/);
-  assert.match(prompt, /at most one of `creates` or `transitionRef`/);
+  assert.match(prompt, /Every `act` declares its `effect`/);
+  assert.match(prompt, /transitionRef` only with `effect: 'transition'`/);
+  assert.match(prompt, /"effect": "update"/);
+  assert.doesNotMatch(prompt, /creates: true/);
+  assert.doesNotMatch(prompt, /ACT_INTENT_BOTH/);
+});
+
+void test('afterPrompt records journeys20 form normalizations on the draft', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Journeys.ts'), 'utf8');
+  assert.match(source, /normalizations/);
+  assert.match(source, /normalizeNs5JourneysPayload/);
 });
 
 void test('hashNs5Journey is stable across object key order', async () => {

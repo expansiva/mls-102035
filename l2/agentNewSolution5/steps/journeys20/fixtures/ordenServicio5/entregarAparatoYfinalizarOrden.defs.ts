@@ -35,6 +35,7 @@ export const entregarAparatoYfinalizarOrdenJourney = {
           "EntregaAparato",
           "Aparato"
         ],
+        "effect": "update",
         "title": "Registrar la entrega y finalizar la orden.",
         "description": "Registrar la entrega del aparato al cliente y finalizar la orden correspondiente."
       }
