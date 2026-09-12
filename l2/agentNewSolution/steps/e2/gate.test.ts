@@ -257,7 +257,7 @@ test('E2 impact report records changed, new and removed journeys', () => {
     { journeyId: 'newJourney', reason: 'journeyNew' },
     { journeyId: 'removedJourney', reason: 'journeyRemoved' },
   ]);
-  assert.deepEqual(report.affectedSteps, ['e3-access-matrix', 'e4-ontology', 'e5-rules', 'e7-realization']);
+  assert.deepEqual(report.affectedSteps, ['e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e7-realization']);
   assert.deepEqual(report.stepKindHistogram, { locate: 1, inspect: 0, act: 0, decide: 1, handoff: 0 });
 });
 
@@ -314,6 +314,39 @@ test('a journey with no decision, no handoff and one entity is recorded as a dem
   assert.deepEqual(collectNs4DemotedJourneyIds(demoted, kept), []);
   // The honor gate never asks the generator to rewrite a decision the code owns.
   assert.equal(validateNs4E2PolicySelections(demoted, kept, true).ok, true);
+});
+
+test('an act with affects is not demoted; without affects it still is', () => {
+  const closeTab: any = {
+    planId: 'e2-review', moduleName: 'closeTabModule', userLanguage: 'en', title: 'Close tab', reviewRound: 1,
+    journeys: [{
+      journeyId: 'closeTab',
+      business: {
+        actorRef: 'cashier', title: 'Close tab', goal: 'Close the tab and free the table.',
+        entry: { mode: 'coldStart' },
+        steps: [
+          { stepId: 'locateTab', kind: 'locate', entity: 'Tab', title: 'Find the tab.', description: 'The tab is selected.', featureRefs: ['closeTab'] },
+          { stepId: 'inspectTab', kind: 'inspect', entity: 'Tab', title: 'Read the tab.', description: 'The tab totals are visible.', featureRefs: ['closeTab'] },
+          { stepId: 'closeTab', kind: 'act', entity: 'Tab', affects: ['Table'], title: 'Close the tab.', description: 'The tab is closed.', featureRefs: ['closeTab'] },
+        ],
+        outcome: { statement: 'The tab is closed and the table is free.', evidence: ['The table is free.'] },
+        useRules: [],
+      },
+      policyDecisions: [],
+    }],
+    features: [{ featureId: 'closeTab', title: 'Close tab', priority: 'now', journeyStepRefs: ['closeTab.locateTab', 'closeTab.inspectTab', 'closeTab.closeTab'] }],
+  };
+  const withAffects = normalizeNs4E2Review(closeTab);
+  assert.deepEqual(analyzeNs4E2MechanicalCoverage(withAffects).captureOnlyJourneys, []);
+  assert.deepEqual(collectNs4DemotedJourneyIds(withAffects), []);
+  assert.deepEqual(validateNs4E2Review(withAffects), { ok: true, issues: [] });
+
+  delete closeTab.journeys[0].business.steps[2].affects;
+  const withoutAffects = normalizeNs4E2Review(closeTab);
+  assert.deepEqual(analyzeNs4E2MechanicalCoverage(withoutAffects).captureOnlyJourneys, [
+    { journeyId: 'closeTab', entity: 'Tab' },
+  ]);
+  assert.deepEqual(collectNs4DemotedJourneyIds(withoutAffects), ['closeTab']);
 });
 
 test('a journey with a decide step is never demoted', () => {

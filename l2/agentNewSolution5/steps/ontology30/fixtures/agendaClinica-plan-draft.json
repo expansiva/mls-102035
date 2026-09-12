@@ -1,0 +1,75 @@
+{
+  "moduleName": "agendaClinica",
+  "businessDomain": "Agendamento e registro de consultas clínicas",
+  "entities": [
+    {
+      "entityId": "Paciente",
+      "title": "Paciente",
+      "description": "Pessoa cadastrada ou vinculada à clínica para receber consultas.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "agendaClinica.Paciente"
+      }
+    },
+    {
+      "entityId": "Profissional",
+      "title": "Profissional",
+      "description": "Médico ou terapeuta da clínica que realiza consultas e acessa a própria agenda.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "agendaClinica.Profissional"
+      }
+    },
+    {
+      "entityId": "Consulta",
+      "title": "Consulta",
+      "description": "Agendamento de atendimento de um paciente com um profissional em data e horário determinados.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "scheduledAt",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "agendaClinica.Consulta"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "consultaPaciente",
+      "fromEntity": "Consulta",
+      "toEntity": "Paciente",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada consulta é agendada para um paciente.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "consultaProfissional",
+      "fromEntity": "Consulta",
+      "toEntity": "Profissional",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada consulta é realizada por um profissional.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ]
+}

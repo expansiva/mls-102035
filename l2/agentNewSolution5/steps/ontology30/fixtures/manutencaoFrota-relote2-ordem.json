@@ -1,0 +1,85 @@
+{
+  "entityId": "OrdemManutencao",
+  "plan": {
+    "entityId": "OrdemManutencao",
+    "title": "Ordem de manutenção",
+    "description": "Ordem de manutenção preventiva ou corretiva do veículo, com oficina, descrição, custo e datas de entrada e saída.",
+    "kind": "core",
+    "party": "none",
+    "displayField": "descricao",
+    "storage": {
+      "target": "moduleDatabase",
+      "scope": "module",
+      "idField": "id"
+    }
+  },
+  "detail": {
+    "entityId": "OrdemManutencao",
+    "fields": [
+      {
+        "fieldId": "id",
+        "title": "Identificador",
+        "type": "uuid",
+        "required": true,
+        "description": "Identificador único da ordem de manutenção."
+      },
+      {
+        "fieldId": "veiculoId",
+        "title": "Veículo",
+        "type": "uuid",
+        "required": true,
+        "description": "Veículo da frota objeto desta ordem de manutenção."
+      },
+      {
+        "fieldId": "descricao",
+        "title": "Descrição",
+        "type": "text",
+        "required": true,
+        "description": "Descrição da preventiva a cumprir ou do defeito que motivou a ordem."
+      }
+    ],
+    "lifecycleStates": [],
+    "transitions": []
+  },
+  "journeys": [
+    {
+      "business": {
+        "actorRef": "gestor",
+        "steps": [
+          {
+            "stepId": "abrirOrdemDoAviso",
+            "kind": "act",
+            "entity": "OrdemManutencao",
+            "effect": "create"
+          }
+        ]
+      }
+    },
+    {
+      "business": {
+        "actorRef": "gestor",
+        "steps": [
+          {
+            "stepId": "abrirOrdemDefeito",
+            "kind": "act",
+            "entity": "OrdemManutencao",
+            "effect": "create"
+          }
+        ]
+      }
+    },
+    {
+      "business": {
+        "actorRef": "gestor",
+        "steps": [
+          {
+            "stepId": "registrarSaidaOrdem",
+            "kind": "act",
+            "entity": "OrdemManutencao",
+            "effect": "update"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+/// <mls fileReference="_102047_/l4/compras/access.defs.ts" enhancement="_blank"/>
+
+import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
+
+export const comprasAccess = {
+  "schemaVersion": "2026-09-12-ns5-access-v3",
+  "moduleName": "compras",
+  "actors": [
+    {
+      "actorId": "comprador",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Comprador",
+      "description": "Profissional da organização que cadastra fornecedores e seus produtos, abre e envia pedidos de compra."
+    },
+    {
+      "actorId": "gerenteCompras",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Gerente de compras",
+      "description": "Profissional da organização que aprova ou rejeita pedidos acima do valor limite e acompanha os indicadores de compras."
+    },
+    {
+      "actorId": "almoxarife",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Almoxarife",
+      "description": "Profissional da organização que registra o recebimento total ou parcial dos pedidos e a entrada dos produtos no estoque."
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "compradorGerenciaCompras",
+      "actorRef": "comprador",
+      "title": "Gerenciar fornecedores e pedidos de compra",
+      "description": "Permite cadastrar ou vincular fornecedores, definir produtos e preços combinados e abrir ou enviar pedidos de compra da organização.",
+      "entityRefs": [
+        "Comprador",
+        "Fornecedor",
+        "Produto",
+        "FornecimentoProduto",
+        "PedidoCompra",
+        "ItemPedidoCompra"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Abrange os cadastros comerciais e pedidos de compra de toda a organização."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Permite consultar todos os campos dos registros necessários para cadastrar fornecedores, condições comerciais e pedidos."
+      }
+    },
+    {
+      "grantId": "gerenteDecideEacompanhaPedidos",
+      "actorRef": "gerenteCompras",
+      "title": "Decidir e acompanhar pedidos de compra",
+      "description": "Permite consultar pedidos, aprovar ou rejeitar os que exigem autorização e acompanhar indicadores de compras da organização.",
+      "entityRefs": [
+        "Fornecedor",
+        "PedidoCompra",
+        "ItemPedidoCompra"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Abrange todos os fornecedores e pedidos de compra da organização."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Permite visualizar todos os campos dos fornecedores, pedidos e itens necessários para decisão e acompanhamento dos indicadores."
+      }
+    },
+    {
+      "grantId": "almoxarifeRegistraRecebimentos",
+      "actorRef": "almoxarife",
+      "title": "Registrar recebimentos de compras",
+      "description": "Permite consultar pedidos e seus itens, registrar recebimentos totais ou parciais e identificar os produtos e posições de estoque de destino.",
+      "entityRefs": [
+        "Produto",
+        "EstoqueProduto",
+        "PedidoCompra",
+        "ItemPedidoCompra",
+        "RecebimentoCompra",
+        "ItemRecebimentoCompra"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Abrange os pedidos, recebimentos e posições de estoque da organização."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Permite visualizar todos os campos necessários para conferir pedidos e registrar os recebimentos e entradas em estoque."
+      }
+    }
+  ]
+} as const satisfies Ns5AccessArtifact;
+
+export type ComprasAccessType = typeof comprasAccess;
+
+export default comprasAccess;

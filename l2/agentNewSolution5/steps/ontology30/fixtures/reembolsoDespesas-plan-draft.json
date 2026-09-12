@@ -1,0 +1,87 @@
+{
+  "moduleName": "reembolsoDespesas",
+  "businessDomain": "Reembolso de despesas de colaboradores, incluindo envio para aprovação, decisão do gestor e registro de pagamento.",
+  "entities": [
+    {
+      "entityId": "Despesa",
+      "title": "Despesa",
+      "description": "Solicitação de reembolso de uma despesa realizada por um colaborador, desde o registro até o pagamento.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "descricao",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "despesaId",
+        "mdmType": "reembolsoDespesas.Despesa"
+      }
+    },
+    {
+      "entityId": "Colaborador",
+      "title": "Colaborador",
+      "description": "Pessoa que registra, acompanha e corrige as próprias despesas para reembolso.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "colaboradorId",
+        "mdmType": "reembolsoDespesas.Colaborador"
+      }
+    },
+    {
+      "entityId": "GestorEquipe",
+      "title": "Gestor da equipe",
+      "description": "Pessoa responsável por avaliar as despesas dos colaboradores de sua equipe.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "gestorEquipeId",
+        "mdmType": "reembolsoDespesas.GestorEquipe"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "despesaPertenceAoColaborador",
+      "fromEntity": "Despesa",
+      "toEntity": "Colaborador",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada despesa é registrada por um colaborador responsável pelo seu reembolso.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "despesaAvaliadaPeloGestor",
+      "fromEntity": "Despesa",
+      "toEntity": "GestorEquipe",
+      "type": "manyToOne",
+      "required": false,
+      "description": "Uma despesa pode ser avaliada pelo gestor responsável pela equipe do colaborador.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "colaboradorReportaAoGestor",
+      "fromEntity": "Colaborador",
+      "toEntity": "GestorEquipe",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada colaborador reporta-se a um gestor da equipe para fins de aprovação de despesas.",
+      "persistence": {
+        "mode": "mdmRelationship"
+      }
+    }
+  ]
+}

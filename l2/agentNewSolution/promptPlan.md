@@ -22,6 +22,7 @@ Return JSON only with this exact envelope:
       "e2-journeys": "localized short title",
       "e3-access-matrix": "localized short title",
       "e4-ontology": "localized short title",
+      "e4b-access-realization": "localized short title",
       "e5-rules": "localized short title",
       "e6-behaviors": "localized short title",
       "e7-realization": "localized short title",

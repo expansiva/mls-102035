@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "mensalidadesAcademia",
+  "processes": [],
+  "journeyDecisions": [
+    {
+      "journeyId": "cadastrarPlano",
+      "inProcess": false
+    },
+    {
+      "journeyId": "atualizarPlano",
+      "inProcess": false
+    },
+    {
+      "journeyId": "matricularAluno",
+      "inProcess": false
+    },
+    {
+      "journeyId": "gerarMensalidadesDoMes",
+      "inProcess": false
+    },
+    {
+      "journeyId": "registrarPagamentoMensalidade",
+      "inProcess": false
+    },
+    {
+      "journeyId": "acompanharPainelMensal",
+      "inProcess": false
+    },
+    {
+      "journeyId": "cancelarPropriaMatricula",
+      "inProcess": false
+    }
+  ]
+}

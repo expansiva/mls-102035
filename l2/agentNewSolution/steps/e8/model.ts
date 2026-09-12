@@ -12,11 +12,30 @@
  * (`hostedStepRefs`); it is not another kind of page.
  */
 
+import { ns4EntityIdField } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { buildNs4ParentIndex, ns4FkParentOf } from '/_102035_/l2/agentNewSolution/helpers/ns4ForeignKeys.js';
 import type { Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import type { Ns4E8Sources } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
 
 export const NS4_E8_MODEL_VERSION = '2026-08-14-ns4-e8-model-v1' as const;
+
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_14_ns4_e8_model_v1: string[] = [
+  'title',
+  'workspaces[].title',
+  'workspaces[].purpose',
+  'workspaces[].sections[].intent',
+  'workspaces[].hubCatalogue.items[].label',
+  'workspaces[].navigation[].label',
+  'operations[].title',
+  'operations[].inputs[].description',
+  'operations[].story[]',
+  'menu[].label',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
 
 export type Ns4WorkspaceTier = 'recordCatalogue' | 'journey' | 'hub' | 'projection' | 'contentPage';
 
@@ -49,9 +68,7 @@ export function isNs4OwnerHandleInput(
   const person = referenced?.party === 'person' ? referenced : owner.party === 'person' ? owner : undefined;
   if (!person) return false;
   if (person.entityId === ownerId) {
-    const idField = person.storage?.idField
-      || person.fields.find(field => /Id$/.test(field.fieldId))?.fieldId
-      || '';
+    const idField = ns4EntityIdField(person);
     if (fieldId !== idField) return false;
     // Pagination borrows the identity fieldRef (`page`/`pageSize`); that is not a handle.
     if (input.inputId && input.inputId !== fieldId) return false;
@@ -144,6 +161,8 @@ export interface Ns4E8Operation {
   story: string[];
   /** Present when the operation is an approved E7 use case; absent when the catalogue derived it. */
   useCaseId?: string;
+  /** E3 authority refs or synthesized `synth:<entity>:<profile>` ids. Never empty. */
+  authorityRefs: string[];
   /** Present only on a catalogue operation of an entity whose storage.target is mdm. */
   mdm?: Ns4E8MdmSemantics;
 }
@@ -270,7 +289,19 @@ export interface Ns4E8Model {
   operations: Ns4E8Operation[];
   /** The menu lists places only: catalogues, hubs, projections and content pages. A journey is never a menu item. */
   menu: Ns4E8MenuEntry[];
-  landings: Array<{ profileRef: string; workspaceId: string }>;
+  landings: Ns4E8Landing[];
   systemDecisions: Ns4SystemDecision[];
   modelHash?: string;
+}
+
+/**
+ * Why this profile lands on this workspace. Closed machine token — never prose, never
+ * `landingIntent` (that stays E3 copy for the human and the CF).
+ */
+export type Ns4E8LandingReason = 'exclusive' | 'firstJourney' | 'rank';
+
+export interface Ns4E8Landing {
+  profileRef: string;
+  workspaceId: string;
+  reason: Ns4E8LandingReason;
 }

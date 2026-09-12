@@ -1,0 +1,345 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "abrirOrdenServicio",
+      "business": {
+        "actorRef": "recepcionista",
+        "title": "Abrir orden de servicio",
+        "goal": "Registrar la recepción del aparato y abrir su orden de servicio.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "identificarClienteYaparato",
+            "kind": "locate",
+            "entity": "Cliente",
+            "title": "Identificar cliente y aparato",
+            "description": "Identifica al cliente y su aparato; si no existen previamente, los datos aportados permiten crear o asociar sus registros maestros."
+          },
+          {
+            "stepId": "registrarRecepcion",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "affects": [
+              "Cliente",
+              "Aparato"
+            ],
+            "effect": "create",
+            "title": "Registrar recepción",
+            "description": "Abre la orden con el defecto informado, los datos de recepción y las fotografías del aparato."
+          }
+        ],
+        "outcome": {
+          "statement": "La orden queda abierta y el aparato queda registrado para su análisis técnico.",
+          "evidence": [
+            "Existe una orden de servicio asociada al cliente y al aparato.",
+            "La orden conserva el defecto informado y las fotografías de recepción."
+          ]
+        }
+      },
+      "businessHash": "sha256:82405cf01c03119c7ef464c7b7c34bb46af25bd566b8e13bafb0ccb2a765488d"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "prepararPresupuesto",
+      "business": {
+        "actorRef": "tecnico",
+        "title": "Analizar aparato y preparar presupuesto",
+        "goal": "Diagnosticar el aparato y poner un presupuesto a disposición del cliente.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarOrdenAbierta",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "title": "Localizar orden abierta",
+            "description": "Localiza la orden abierta del aparato recibido."
+          },
+          {
+            "stepId": "inspeccionarOrdenYaparato",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "title": "Inspeccionar orden y aparato",
+            "description": "Revisa los datos de recepción, el defecto informado, las fotografías y el aparato para realizar el análisis."
+          },
+          {
+            "stepId": "registrarDiagnosticoYpiezas",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "update",
+            "title": "Registrar diagnóstico y piezas",
+            "description": "Registra el diagnóstico, las piezas necesarias con su costo interno y el valor del presupuesto para el cliente."
+          },
+          {
+            "stepId": "enviarPresupuestoAlCliente",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "enviarPresupuesto",
+            "title": "Enviar presupuesto al cliente",
+            "description": "Deja el presupuesto disponible para que el cliente lo responda desde el portal."
+          }
+        ],
+        "outcome": {
+          "statement": "El cliente tiene un presupuesto disponible para aprobar o rechazar.",
+          "evidence": [
+            "La orden muestra el diagnóstico y el valor presupuestado para el cliente.",
+            "La orden está pendiente de respuesta del presupuesto."
+          ]
+        }
+      },
+      "businessHash": "sha256:497523fa22dfba656a9d7e89c00f2dfef3230eae26a0c5ecb02b8d4333d0dd75"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "aprobarPresupuesto",
+      "business": {
+        "actorRef": "cliente",
+        "title": "Aprobar presupuesto",
+        "goal": "Autorizar la reparación del aparato desde el portal.",
+        "entry": {
+          "mode": "fromNotification"
+        },
+        "steps": [
+          {
+            "stepId": "localizarOrdenNotificada",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "title": "Localizar orden notificada",
+            "description": "Localiza la orden asociada al presupuesto recibido en la notificación."
+          },
+          {
+            "stepId": "abrirPresupuestoRecibido",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "title": "Consultar presupuesto recibido",
+            "description": "Consulta el estado de la orden, el diagnóstico y el valor del presupuesto recibido."
+          },
+          {
+            "stepId": "decidirAprobacion",
+            "kind": "decide",
+            "entity": "OrdenServicio",
+            "title": "Decidir aprobación",
+            "description": "Elige aprobar el presupuesto en lugar de rechazarlo."
+          },
+          {
+            "stepId": "confirmarAprobacion",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "aprobarPresupuesto",
+            "title": "Confirmar aprobación",
+            "description": "Registra la aprobación del presupuesto y autoriza la reparación."
+          }
+        ],
+        "outcome": {
+          "statement": "La orden queda autorizada para reparación.",
+          "evidence": [
+            "La respuesta del cliente registra la aprobación del presupuesto.",
+            "La orden queda disponible para que el técnico realice la reparación."
+          ]
+        }
+      },
+      "businessHash": "sha256:39fc6780e33be8217552b0308e8b4a87eb3694073927ff0d682b40929cd1ded1"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "rechazarPresupuesto",
+      "business": {
+        "actorRef": "cliente",
+        "title": "Rechazar presupuesto",
+        "goal": "Rechazar el presupuesto y dejar el aparato disponible para retiro.",
+        "entry": {
+          "mode": "fromNotification"
+        },
+        "steps": [
+          {
+            "stepId": "abrirPresupuestoParaRechazo",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "title": "Consultar presupuesto para rechazo",
+            "description": "Consulta el estado de la orden, el diagnóstico y el valor del presupuesto recibido."
+          },
+          {
+            "stepId": "decidirRechazo",
+            "kind": "decide",
+            "entity": "OrdenServicio",
+            "title": "Decidir rechazo",
+            "description": "Elige rechazar el presupuesto en lugar de aprobarlo."
+          },
+          {
+            "stepId": "confirmarRechazo",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "rechazarPresupuesto",
+            "title": "Confirmar rechazo",
+            "description": "Registra el rechazo y cierra la orden, dejando el aparato disponible para retiro."
+          }
+        ],
+        "outcome": {
+          "statement": "La orden queda cerrada como rechazada y el aparato queda disponible para retiro.",
+          "evidence": [
+            "La orden registra el rechazo del presupuesto.",
+            "El estado de la orden indica que fue rechazada y que el aparato está disponible para retiro."
+          ]
+        }
+      },
+      "businessHash": "sha256:fecfc22126ba9f32271d6e21ea2cfaa838354ae1ee600d55768f85fc312d1e89"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "realizarReparacion",
+      "business": {
+        "actorRef": "tecnico",
+        "title": "Realizar reparación",
+        "goal": "Reparar un aparato con presupuesto aprobado y dejarlo listo para entrega.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarOrdenAprobada",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "title": "Localizar orden aprobada",
+            "description": "Localiza una orden cuyo presupuesto fue aprobado."
+          },
+          {
+            "stepId": "registrarReparacionRealizada",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "update",
+            "title": "Registrar reparación realizada",
+            "description": "Registra las acciones técnicas realizadas durante la reparación."
+          },
+          {
+            "stepId": "marcarAparatoListo",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "marcarLista",
+            "title": "Marcar aparato listo",
+            "description": "Marca la orden como lista para entregar el aparato al cliente."
+          }
+        ],
+        "outcome": {
+          "statement": "El aparato reparado queda listo para entrega.",
+          "evidence": [
+            "La orden conserva el registro de la reparación realizada.",
+            "El estado de la orden indica que está lista para entrega."
+          ]
+        }
+      },
+      "businessHash": "sha256:0b119e26774c79cfd598de5da6947ad7f82cbbeb07ca48d3243e8ffd668309aa"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "entregarAparatoReparado",
+      "business": {
+        "actorRef": "recepcionista",
+        "title": "Entregar aparato reparado",
+        "goal": "Entregar al cliente un aparato listo y finalizar la orden.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarOrdenLista",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "title": "Localizar orden lista",
+            "description": "Localiza la orden marcada como lista para entrega."
+          },
+          {
+            "stepId": "verificarEntrega",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "title": "Verificar entrega",
+            "description": "Verifica la identidad del cliente, el aparato y que la orden está lista para entrega."
+          },
+          {
+            "stepId": "entregarYfinalizarOrden",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "entregarYfinalizar",
+            "title": "Entregar y finalizar orden",
+            "description": "Entrega el aparato reparado al cliente y finaliza la orden."
+          }
+        ],
+        "outcome": {
+          "statement": "El aparato reparado fue entregado y la orden quedó finalizada.",
+          "evidence": [
+            "La orden registra la entrega al cliente.",
+            "El estado de la orden indica que está finalizada."
+          ]
+        }
+      },
+      "businessHash": "sha256:0d94a48b9c01e5a64a58a0e8cf7503c25c0541914925e562f48d5cbc5d39c60d"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "consultarMisOrdenes",
+      "business": {
+        "actorRef": "cliente",
+        "title": "Consultar mis órdenes de servicio",
+        "goal": "Ver el seguimiento de las órdenes propias desde el portal.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMisOrdenes",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "title": "Localizar mis órdenes",
+            "description": "Localiza únicamente las órdenes de servicio propias."
+          },
+          {
+            "stepId": "consultarEstadoYpresupuesto",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "title": "Consultar estado y presupuesto",
+            "description": "Consulta el estado, el diagnóstico y el valor del presupuesto de una orden propia, sin acceder al costo interno de las piezas ni a las anotaciones técnicas."
+          }
+        ],
+        "outcome": {
+          "statement": "El cliente conoce el estado y la información visible de sus propias órdenes.",
+          "evidence": [
+            "El portal muestra las órdenes asociadas al cliente autenticado.",
+            "Cada orden consultada muestra su estado, diagnóstico y valor del presupuesto."
+          ]
+        }
+      },
+      "businessHash": "sha256:bd87b28d25b94db61e9e7fb91b919f885a4123f47dd772248414141744adc90b"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": [],
+  "normalizations": [
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "abrirOrdenServicio",
+      "stepId": "registrarRecepcion",
+      "detail": "transitionRef x dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "prepararPresupuesto",
+      "stepId": "registrarDiagnosticoYpiezas",
+      "detail": "transitionRef x dropped; effect is update."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "realizarReparacion",
+      "stepId": "registrarReparacionRealizada",
+      "detail": "transitionRef x dropped; effect is update."
+    }
+  ]
+}

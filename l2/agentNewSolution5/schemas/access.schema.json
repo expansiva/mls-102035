@@ -1,0 +1,66 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/access/2026-09-12-ns5-access-v3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "grants"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "2026-09-12-ns5-access-v3" },
+    "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "grants": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/grant" }
+    }
+  },
+  "$defs": {
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grantId", "actorRef", "title", "description", "entityRefs", "dataScope", "disclosure"],
+      "properties": {
+        "grantId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "actorRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "entityRefs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        },
+        "dataScope": { "$ref": "#/$defs/dataScope" },
+        "disclosure": { "$ref": "#/$defs/disclosure" }
+      }
+    },
+    "dataScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "description"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["own", "assigned", "related", "public", "organization", "custom"] },
+        "anchorEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "disclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "description"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["fullRecord", "fieldsOnly", "summaryOnly", "aggregateOnly"] },
+        "allowedFields": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+        },
+        "deniedFields": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+        },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

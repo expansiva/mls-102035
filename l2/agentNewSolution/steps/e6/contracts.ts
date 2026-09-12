@@ -2,6 +2,13 @@ import { sha256Ns4 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 
 export const NS4_COMPOSITION_SCHEMA_VERSION = '2026-08-09-ns4-composition-v1' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_09_ns4_composition_v1: string[] = [
+  'analysisSummary',
+  'recommendations[].title',
+  'recommendations[].purpose',
+];
+
 export type Ns4AdditionalCapabilityKind = 'horizontalModule' | 'plugin';
 export type Ns4AdditionalCapabilityDecision = 'include' | 'defer';
 
@@ -11,6 +18,8 @@ export interface Ns4AdditionalCapability {
   title: string;
   purpose: string;
   decision: Ns4AdditionalCapabilityDecision;
+  /** True when the capability is already realized by a sibling module (reuse, never a new module). */
+  existing?: boolean;
 }
 
 export interface Ns4E6Review {
@@ -62,6 +71,7 @@ export function normalizeNs4E6Review(value: unknown, fallbackModule = ''): Ns4E6
         title: text(recommendation.title),
         purpose: text(recommendation.purpose),
         decision: text(recommendation.decision) as Ns4AdditionalCapabilityDecision,
+        ...(recommendation.existing === true ? { existing: true } : {}),
       };
     }),
     changeSummary: strings(root.changeSummary),

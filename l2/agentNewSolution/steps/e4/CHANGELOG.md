@@ -1,5 +1,28 @@
 # E4 changelog
 
+- 2026-09-09: Relationship bindings resolve fields through `ns4ResolvableFields` (`fields[]` ∪
+  `storage.idField`). An mdm endpoint of `fieldReference` / `fieldCollection` / `mdmRelationship`
+  must bind exactly `[storage.idField]` (`NS4_E4_RELATIONSHIP_MDM_ENDPOINT_ID`). Empty `fieldIds`
+  on a persisted edge is still `NS4_E4_RELATIONSHIP_FIELDS_REQUIRED`. The binding prompt lists the
+  synthetic identity so the model can name it. `promptRelationships.md` lost the natural-keys
+  sentence (it contradicted the mdm endpoint rule).
+
+- 2026-09-09: `lifecycleStates[]` is `{ state, reachedBy: actor|command|time, ruleRef? }`. A bare
+  string still means `actor`. `time` requires `ruleRef` (the rule is prose; the gate only checks
+  the id exists in `useRules`). MDM entities still have no lifecycle. An appendOnly fact has no
+  lifecycleStates. A time status stays on the entity; it is not a separate projection.
+
+- 2026-09-08: Ontology schema `2026-09-08-ns4-ontology-v7`. `kind: mdm` declares `mdmSubtype`
+  from the platform catalog, derived `role` `<moduleName>.<EntityId>`, and `displayField`.
+  MDM entities list only namespace fields (level-1 identification/base are not redeclared) and
+  have empty `lifecycleStates`. `storage.idField` is required with no `/Id$/` fallback.
+  `promoteToGeneral<Field>` is a Type B systemDecision (`general` / `moduleNamespace`).
+  Lexical `NS4_E4_DERIVED_PERSISTED` is removed; `NS4_E4_CORE_READ_ONLY` is the structural
+  registrar. v6 L4 keeps compiling — nothing is migrated.
+
+- 2026-09-08: Overview and entity prompts load the platform level-1 catalog
+  (`l4/organization/ontology/*`) as placeholders. No `mdmSubtype` semantics yet.
+
 - 2026-09-07: The ontology widget reads chrome from `presentation.phrases` (`widget.ontology.*`).
 
 - 2026-09-07: Removed `NS4_E4_PROJECT_PROJECTION_ORPHAN` — name-keyed special case of

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "2026-09-12-ns5-integration-v2",
+  "moduleName": "manutencaoFrota",
+  "inbound": [],
+  "outbound": [
+    {
+      "id": "preventivaVencida",
+      "kind": "event",
+      "to": "any",
+      "event": "preventivaVencida",
+      "on": "Abastecimento.create",
+      "description": "Publica um aviso para módulos interessados quando o registro de abastecimento indicar que um veículo ultrapassou a quilometragem prevista para a manutenção preventiva.",
+      "entityRefs": [
+        "Abastecimento",
+        "Veiculo",
+        "PlanoManutencao"
+      ]
+    }
+  ],
+  "plugins": []
+}

@@ -29,7 +29,7 @@ interface Ns4E2StepSource {
   journeys: Array<{
     journeyId?: unknown;
     business: {
-      steps: Array<{ kind: unknown; entity?: unknown }>;
+      steps: Array<{ kind: unknown; entity?: unknown; affects?: unknown }>;
     };
   }>;
 }
@@ -56,7 +56,7 @@ export function analyzeNs4E2MechanicalCoverage(source: Ns4E2StepSource): Ns4E2Me
       : [],
     captureOnlyJourneys: source.journeys.flatMap(journey => {
       const journeyId = typeof journey.journeyId === 'string' ? journey.journeyId : '';
-      const entities = [...new Set(journey.business.steps.map(step => typeof step.entity === 'string' ? step.entity : '').filter(Boolean))];
+      const entities = [...new Set(journey.business.steps.flatMap(stepEntities).filter(Boolean))];
       const hasProcess = journey.business.steps.some(step => step.kind === 'decide' || step.kind === 'handoff');
       const touchesRecords = journey.business.steps.some(step => step.kind === 'act');
       return journeyId && touchesRecords && !hasProcess && entities.length === 1
@@ -77,4 +77,13 @@ export function ns4E2DemotionDecisionId(journeyId: string): string {
 
 export function isNs4E2DemotionDecisionId(decisionId: string): boolean {
   return /^demote[A-Z][A-Za-z0-9]*ToRecordCatalogue$/.test(decisionId);
+}
+
+/** The step's own entity plus every business object it lists in `affects`. */
+function stepEntities(step: { entity?: unknown; affects?: unknown }): string[] {
+  const own = typeof step.entity === 'string' ? step.entity : '';
+  const affects = Array.isArray(step.affects)
+    ? step.affects.filter((item): item is string => typeof item === 'string' && !!item)
+    : [];
+  return own ? [own, ...affects] : affects;
 }

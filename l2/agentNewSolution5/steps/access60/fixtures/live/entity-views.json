@@ -1,0 +1,427 @@
+{
+  "comandaRestaurante5": [
+    {
+      "entityId": "Comanda",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "numero"
+        },
+        {
+          "fieldId": "mesa"
+        },
+        {
+          "fieldId": "status"
+        }
+      ],
+      "details": {
+        "valorItens": "Soma dos valores dos itens ativos lançados na comanda.",
+        "valorDescontos": "Soma dos descontos pontuais registrados para a comanda.",
+        "valorDevido": "Valor total a receber, calculado pelos itens ativos menos os descontos.",
+        "valorPago": "Soma dos pagamentos registrados para a comanda.",
+        "valorPendente": "Valor que ainda falta receber para encerrar a comanda."
+      },
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Desconto",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "descricao"
+        },
+        {
+          "fieldId": "valorDesconto"
+        },
+        {
+          "fieldId": "comanda"
+        },
+        {
+          "fieldId": "registradoEm"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "ItemCardapio",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "price"
+        },
+        {
+          "fieldId": "available"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "ItemComanda",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "descricao"
+        },
+        {
+          "fieldId": "quantidade"
+        },
+        {
+          "fieldId": "valorUnitario"
+        },
+        {
+          "fieldId": "comanda"
+        },
+        {
+          "fieldId": "itemCardapio"
+        },
+        {
+          "fieldId": "status"
+        }
+      ],
+      "details": {
+        "valorTotal": "Valor total calculado pela multiplicação da quantidade pelo valor unitário do item."
+      },
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Mesa",
+      "party": "none",
+      "fields": [],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Pagamento",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "valor"
+        },
+        {
+          "fieldId": "comanda"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    }
+  ],
+  "ordenServicio5": [
+    {
+      "entityId": "Aparato",
+      "party": "none",
+      "fields": [],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Cliente",
+      "party": "person",
+      "fields": [],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Diagnostico",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "diagnosisSummary"
+        },
+        {
+          "fieldId": "diagnosisDetail"
+        },
+        {
+          "fieldId": "technicalNotes"
+        },
+        {
+          "fieldId": "requiredParts"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "EntregaAparato",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "deliveryDate"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "FotoOrdenServicio",
+      "party": "none",
+      "fields": [],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "OrdenServicio",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "orderNumber"
+        },
+        {
+          "fieldId": "cliente"
+        },
+        {
+          "fieldId": "aparato"
+        },
+        {
+          "fieldId": "reportedDefect"
+        },
+        {
+          "fieldId": "receivedAt"
+        },
+        {
+          "fieldId": "diagnostico"
+        },
+        {
+          "fieldId": "presupuesto"
+        },
+        {
+          "fieldId": "reparacion"
+        },
+        {
+          "fieldId": "entregaAparato"
+        },
+        {
+          "fieldId": "status"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "PiezaNecesaria",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "partName"
+        },
+        {
+          "fieldId": "quantity"
+        },
+        {
+          "fieldId": "internalUnitCost"
+        }
+      ],
+      "details": {
+        "totalInternalCost": "Calcula el costo interno total multiplicando la cantidad requerida por el costo interno unitario."
+      },
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Presupuesto",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "quoteAmount"
+        },
+        {
+          "fieldId": "status"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Reparacion",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "repairSummary"
+        },
+        {
+          "fieldId": "performedAt"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    }
+  ],
+  "mensalidadesAcademia": [
+    {
+      "entityId": "Aluno",
+      "party": "person",
+      "fields": [],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Matricula",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "startDate"
+        },
+        {
+          "fieldId": "aluno"
+        },
+        {
+          "fieldId": "plano"
+        },
+        {
+          "fieldId": "status"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Mensalidade",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "referenceMonth"
+        },
+        {
+          "fieldId": "matricula"
+        },
+        {
+          "fieldId": "amount"
+        },
+        {
+          "fieldId": "dueDate"
+        }
+      ],
+      "details": {
+        "totalPaid": "Soma dos valores dos pagamentos registrados para esta mensalidade.",
+        "outstandingAmount": "Valor ainda devido, calculado pela diferença entre o valor da mensalidade e o total pago.",
+        "paymentSituation": "Situação financeira atual calculada a partir dos pagamentos registrados e da data de vencimento."
+      },
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Pagamento",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "mensalidade"
+        },
+        {
+          "fieldId": "paymentDate"
+        },
+        {
+          "fieldId": "amount"
+        },
+        {
+          "fieldId": "paymentMethod"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "PainelMensalidades",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "id"
+        },
+        {
+          "fieldId": "referenceMonth"
+        },
+        {
+          "fieldId": "mensalidades"
+        }
+      ],
+      "details": {
+        "totalAreceber": "Soma dos valores das mensalidades geradas para o mês de referência.",
+        "totalRecebido": "Soma dos pagamentos registrados para as mensalidades do mês de referência.",
+        "quantidadeAlunosAtivos": "Quantidade de alunos com matrícula ativa no mês de referência.",
+        "quantidadeAlunosBloqueados": "Quantidade de alunos bloqueados por possuírem duas mensalidades vencidas.",
+        "quantidadeAlunosInadimplentes": "Quantidade de alunos com ao menos uma mensalidade vencida no mês de referência."
+      },
+      "storage": {
+        "idField": "id"
+      }
+    },
+    {
+      "entityId": "Plano",
+      "party": "none",
+      "fields": [
+        {
+          "fieldId": "periodicity"
+        },
+        {
+          "fieldId": "amount"
+        },
+        {
+          "fieldId": "dueDay"
+        }
+      ],
+      "storage": {
+        "idField": "id"
+      }
+    }
+  ]
+}

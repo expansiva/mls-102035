@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "controleEstoque",
+  "processes": [],
+  "journeyDecisions": [
+    {
+      "journeyId": "cadastrarProdutoEstoque",
+      "inProcess": false
+    },
+    {
+      "journeyId": "atualizarQuantidadeMinima",
+      "inProcess": false
+    },
+    {
+      "journeyId": "registrarMovimentacaoEstoque",
+      "inProcess": false
+    },
+    {
+      "journeyId": "consultarSaldoProduto",
+      "inProcess": false
+    },
+    {
+      "journeyId": "tratarAvisoEstoqueBaixo",
+      "inProcess": false
+    }
+  ]
+}

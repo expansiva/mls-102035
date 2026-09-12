@@ -1,0 +1,42 @@
+/// <mls fileReference="_102047_/l4/comandaRestaurante/rules.defs.ts" enhancement="_blank"/>
+
+import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+
+export const comandaRestauranteRules = {
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "comandaRestaurante",
+  "rules": [
+    {
+      "ruleId": "mesaDeveEstarDisponivelParaAbrirComanda",
+      "description": "Uma comanda só pode ser aberta para uma mesa disponível."
+    },
+    {
+      "ruleId": "comandaDeveEstarAbertaParaLancamento",
+      "description": "Um item do cardápio só pode ser lançado em uma comanda aberta."
+    },
+    {
+      "ruleId": "comandaDeveEstarAbertaParaCancelarItem",
+      "description": "Um lançamento de item só pode ser cancelado enquanto sua comanda estiver aberta."
+    },
+    {
+      "ruleId": "formaDePagamentoDeveSerRegistradaParaFecharComanda",
+      "description": "Uma comanda só pode ser fechada após o registro da forma de pagamento."
+    },
+    {
+      "ruleId": "subtotalDoItemComanda",
+      "description": "O subtotal de um lançamento de item é igual à sua quantidade multiplicada pelo preço unitário registrado."
+    },
+    {
+      "ruleId": "subtotalDaComanda",
+      "description": "O subtotal da comanda é igual à soma dos subtotais dos lançamentos não cancelados."
+    },
+    {
+      "ruleId": "totalDaComanda",
+      "description": "O total da comanda é igual ao seu subtotal menos o desconto aplicado, considerando desconto zero quando nenhum desconto for aplicado."
+    }
+  ]
+} as const satisfies Ns5RulesArtifact;
+
+export type ComandaRestauranteRulesType = typeof comandaRestauranteRules;
+
+export default comandaRestauranteRules;

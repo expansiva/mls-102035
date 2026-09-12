@@ -1,0 +1,36 @@
+{
+  "actors": [
+    { "actorId": "clerk", "title": "Clerk", "kind": "internal", "origin": "named", "expectedOutcome": "Register a rental." },
+    { "actorId": "manager", "title": "Manager", "kind": "internal", "origin": "named", "expectedOutcome": "See availability." },
+    { "actorId": "client", "title": "Client", "kind": "external", "origin": "inferred", "expectedOutcome": "Receive equipment." }
+  ],
+  "review": {
+    "planId": "e2-review",
+    "moduleName": "equipmentRental",
+    "userLanguage": "en",
+    "title": "Review journeys",
+    "reviewRound": 1,
+    "journeys": [
+      {
+        "journeyId": "registerRental",
+        "policyDecisions": [],
+        "business": {
+          "actorRef": "clerk",
+          "title": "Register a rental",
+          "goal": "Create a rental contract.",
+          "entry": { "mode": "coldStart" },
+          "steps": [
+            { "stepId": "locateEquipment", "kind": "locate", "entity": "Equipment", "title": "Locate equipment.", "description": "Equipment is selected.", "featureRefs": ["rentals"] },
+            { "stepId": "createContract", "kind": "act", "entity": "RentalContract", "title": "Create the contract.", "description": "The contract is recorded.", "featureRefs": ["rentals"] }
+          ],
+          "outcome": { "statement": "A rental exists.", "evidence": ["The contract is visible."] },
+          "useRules": []
+        }
+      }
+    ],
+    "features": [
+      { "featureId": "rentals", "title": "Rentals", "priority": "now", "journeyStepRefs": ["registerRental.locateEquipment", "registerRental.createContract"] }
+    ],
+    "systemDecisions": []
+  }
+}

@@ -1,0 +1,304 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cadastrarPlano",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Cadastrar plano de academia",
+        "goal": "Disponibilizar um plano mensal, trimestral ou anual com valor e dia de vencimento para matrículas.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "informarCondicoesPlano",
+            "kind": "act",
+            "entity": "Plano",
+            "effect": "create",
+            "title": "Informar modalidade, valor e dia de vencimento do plano.",
+            "description": "Cadastra um plano que poderá ser selecionado nas matrículas."
+          }
+        ],
+        "outcome": {
+          "statement": "Um plano com suas condições de cobrança fica disponível para novas matrículas.",
+          "evidence": [
+            "O plano cadastrado apresenta modalidade, valor e dia de vencimento.",
+            "O plano pode ser selecionado ao matricular um aluno."
+          ]
+        }
+      },
+      "businessHash": "sha256:d18d870b737f57ba841881bdb2287795223db0c425ee99adab318588fa35f495"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "atualizarPlano",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Atualizar condições de um plano",
+        "goal": "Manter o valor e o dia de vencimento de um plano de academia atualizados.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarPlano",
+            "kind": "locate",
+            "entity": "Plano",
+            "title": "Localizar o plano a ser alterado.",
+            "description": "Busca o plano a partir do contexto disponível ou da lista de planos."
+          },
+          {
+            "stepId": "inspecionarCondicoesPlano",
+            "kind": "inspect",
+            "entity": "Plano",
+            "title": "Conferir as condições atuais do plano.",
+            "description": "Visualiza modalidade, valor e dia de vencimento cadastrados."
+          },
+          {
+            "stepId": "alterarCondicoesPlano",
+            "kind": "act",
+            "entity": "Plano",
+            "effect": "update",
+            "title": "Alterar as condições do plano.",
+            "description": "Atualiza o valor e/ou o dia de vencimento do plano."
+          }
+        ],
+        "outcome": {
+          "statement": "As condições do plano foram atualizadas para uso nas cobranças aplicáveis.",
+          "evidence": [
+            "O plano exibe o novo valor ou dia de vencimento.",
+            "A alteração fica registrada no plano."
+          ]
+        }
+      },
+      "businessHash": "sha256:8313981a46af047a3194325af6ac1397da277ed16690686c4adbbaeb99b00e4a"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "matricularAluno",
+      "business": {
+        "actorRef": "recepcao",
+        "title": "Matricular aluno em um plano",
+        "goal": "Registrar a matrícula de um aluno em um plano a partir da data informada.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "informarAlunoPlanoEdata",
+            "kind": "act",
+            "entity": "Matricula",
+            "affects": [
+              "Aluno"
+            ],
+            "effect": "create",
+            "title": "Informar o aluno, o plano e a data inicial.",
+            "description": "Cria a matrícula no plano escolhido e cria ou vincula o cadastro do aluno quando necessário."
+          }
+        ],
+        "outcome": {
+          "statement": "O aluno fica com uma matrícula ativa no plano escolhido a partir da data registrada.",
+          "evidence": [
+            "A matrícula apresenta o aluno, o plano e a data inicial.",
+            "O aluno passa a constar como ativo para a geração de mensalidades."
+          ]
+        }
+      },
+      "businessHash": "sha256:7069f1c2e4e085793f7e16a3161e961f44b513f0ce89198b6b933387a17f36f1"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "gerarMensalidadesDoMes",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Gerar mensalidades do mês",
+        "goal": "Criar uma mensalidade mensal para cada aluno com matrícula ativa.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "gerarCobrancasMensais",
+            "kind": "act",
+            "entity": "Mensalidade",
+            "effect": "create",
+            "title": "Gerar as mensalidades do mês.",
+            "description": "Cria uma mensalidade por aluno ativo, com o valor do plano e o vencimento correspondente."
+          }
+        ],
+        "outcome": {
+          "statement": "As mensalidades do período foram geradas para os alunos ativos.",
+          "evidence": [
+            "Cada aluno com matrícula ativa possui uma mensalidade do mês.",
+            "Cada mensalidade gerada mostra o valor do plano e a data de vencimento."
+          ]
+        }
+      },
+      "businessHash": "sha256:8284a84a8f19c17f0fd7342c15b4412cb475bf42b93b39c7e58160c1067651db"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarPagamentoMensalidade",
+      "business": {
+        "actorRef": "recepcao",
+        "title": "Registrar pagamento de mensalidade",
+        "goal": "Registrar a data, o valor e a forma de pagamento de uma mensalidade do aluno.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMensalidade",
+            "kind": "locate",
+            "entity": "Mensalidade",
+            "title": "Localizar a mensalidade do aluno.",
+            "description": "Busca a mensalidade a partir do contexto disponível ou consultando as mensalidades do aluno."
+          },
+          {
+            "stepId": "inspecionarMensalidade",
+            "kind": "inspect",
+            "entity": "Mensalidade",
+            "title": "Conferir os dados da mensalidade.",
+            "description": "Visualiza o aluno, o valor devido, o vencimento e a situação da mensalidade."
+          },
+          {
+            "stepId": "registrarDadosPagamento",
+            "kind": "act",
+            "entity": "Pagamento",
+            "affects": [
+              "Mensalidade"
+            ],
+            "effect": "create",
+            "title": "Registrar os dados do pagamento.",
+            "description": "Registra a data, o valor e a forma de pagamento vinculados à mensalidade."
+          }
+        ],
+        "outcome": {
+          "statement": "O pagamento fica registrado e a situação da mensalidade é atualizada conforme o valor recebido.",
+          "evidence": [
+            "Existe um pagamento com data, valor e forma de pagamento.",
+            "A mensalidade mostra o pagamento registrado e sua situação atual."
+          ]
+        }
+      },
+      "businessHash": "sha256:8abd8edd88bb7f9b2f97b21fd09f3ba7376938247b881264fef608abbcdfc3c4"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "acompanharPainelMensal",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Acompanhar painel mensal",
+        "goal": "Visualizar os indicadores financeiros e a situação dos alunos no período.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMensalidadesDoPeriodo",
+            "kind": "locate",
+            "entity": "Mensalidade",
+            "title": "Selecionar o período do acompanhamento.",
+            "description": "Localiza as mensalidades que compõem os indicadores do mês."
+          },
+          {
+            "stepId": "inspecionarIndicadoresMensais",
+            "kind": "inspect",
+            "entity": "Mensalidade",
+            "title": "Consultar os indicadores mensais.",
+            "description": "Visualiza total a receber, total recebido e as quantidades de alunos ativos, bloqueados e inadimplentes."
+          }
+        ],
+        "outcome": {
+          "statement": "A gerência acompanha a posição financeira mensal e a situação dos alunos.",
+          "evidence": [
+            "O painel mostra o total a receber e o total recebido no mês.",
+            "O painel mostra as quantidades de alunos ativos, bloqueados e inadimplentes."
+          ]
+        }
+      },
+      "businessHash": "sha256:f9b4a2236e888151d79cbf36f579d54667335a98842128b28f2fdcfee51fe1f3"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cancelarPropriaMatricula",
+      "business": {
+        "actorRef": "aluno",
+        "title": "Cancelar própria matrícula",
+        "goal": "Encerrar a própria matrícula para impedir a geração de mensalidades futuras.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarPropriaMatricula",
+            "kind": "locate",
+            "entity": "Matricula",
+            "title": "Localizar a própria matrícula ativa.",
+            "description": "Acessa a matrícula vinculada ao aluno autenticado."
+          },
+          {
+            "stepId": "inspecionarPropriaMatricula",
+            "kind": "inspect",
+            "entity": "Matricula",
+            "title": "Conferir os dados da matrícula.",
+            "description": "Visualiza o plano e a vigência da própria matrícula."
+          },
+          {
+            "stepId": "cancelarMatricula",
+            "kind": "act",
+            "entity": "Matricula",
+            "effect": "transition",
+            "transitionRef": "cancelarMatricula",
+            "title": "Cancelar a matrícula.",
+            "description": "Encerra a matrícula ativa do aluno."
+          }
+        ],
+        "outcome": {
+          "statement": "A matrícula do aluno é encerrada e não participa de gerações futuras de mensalidades.",
+          "evidence": [
+            "A matrícula apresenta situação de cancelada ou encerrada.",
+            "O aluno deixa de receber novas mensalidades após o encerramento."
+          ]
+        }
+      },
+      "businessHash": "sha256:c2750452f82a0d0269be9bc25aa83595560eea4f394a14c1b965bc9cc5001ed9"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": [],
+  "normalizations": [
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "cadastrarPlano",
+      "stepId": "informarCondicoesPlano",
+      "detail": "transitionRef criarPlano dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "atualizarPlano",
+      "stepId": "alterarCondicoesPlano",
+      "detail": "transitionRef atualizarPlano dropped; effect is update."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "matricularAluno",
+      "stepId": "informarAlunoPlanoEdata",
+      "detail": "transitionRef matricularAluno dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "gerarMensalidadesDoMes",
+      "stepId": "gerarCobrancasMensais",
+      "detail": "transitionRef gerarMensalidades dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "registrarPagamentoMensalidade",
+      "stepId": "registrarDadosPagamento",
+      "detail": "transitionRef registrarPagamento dropped; effect is create."
+    }
+  ]
+}

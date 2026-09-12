@@ -1,0 +1,40 @@
+{
+  "derivedFrom": "ce11 financeiro NS4 baseline (system actor + E6 plugin stripe)",
+  "inbound": [
+    {
+      "id": "comandaFechada",
+      "kind": "event",
+      "from": "comandaRestaurante",
+      "event": "comandaFechada",
+      "writes": ["ReceivableTitle"],
+      "effect": "create",
+      "description": "A closed restaurant tab arrives as a receivable title. inbound.id comandaFechada: valor = Comanda.details.totalAmount, pagador = Comanda.cliente, origem = comandaRestaurante."
+    },
+    {
+      "id": "mensalidadeGerada",
+      "kind": "event",
+      "from": "mensalidadesAcademia",
+      "event": "mensalidadeGerada",
+      "writes": ["ReceivableTitle"],
+      "effect": "create",
+      "description": "A generated membership fee arrives as a receivable title. inbound.id mensalidadeGerada: valor = Mensalidade.valor, pagador = Mensalidade.aluno, origem = mensalidadesAcademia."
+    },
+    {
+      "id": "ordemEntregue",
+      "kind": "event",
+      "from": "ordenServicio",
+      "event": "ordemEntregue",
+      "writes": ["ReceivableTitle"],
+      "effect": "create",
+      "description": "A delivered service order arrives as a receivable title. inbound.id ordemEntregue: valor = OrdenServicio.details.total, pagador = OrdenServicio.cliente, origem = ordenServicio."
+    }
+  ],
+  "outbound": [],
+  "plugins": [
+    {
+      "pluginId": "stripe",
+      "description": "Payments through the platform Stripe adapter. No payment-instrument entity.",
+      "usedBy": ["pagarComPlugin.pagarTitulo"]
+    }
+  ]
+}

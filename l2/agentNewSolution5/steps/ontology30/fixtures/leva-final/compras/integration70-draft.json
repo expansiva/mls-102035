@@ -1,0 +1,32 @@
+{
+  "inbound": [
+    {
+      "id": "produtoMdmCreated",
+      "kind": "event",
+      "from": "organization",
+      "event": "mdmCreated",
+      "writes": [
+        "Produto"
+      ],
+      "effect": "create",
+      "transitionRef": "produtoMdmCreated",
+      "description": "Recebe o cadastro de produto do catálogo organizacional e cria a referência de produto utilizada nas compras.",
+      "entityRefs": []
+    }
+  ],
+  "outbound": [
+    {
+      "id": "registrarEntradaEstoque",
+      "kind": "moduleEndpoint",
+      "to": "controleEstoque",
+      "event": "registrarEntradaEstoque",
+      "on": "RecebimentoCompra.create",
+      "description": "Solicita ao módulo de estoque o registro da entrada das quantidades efetivamente recebidas, inclusive em recebimentos parciais.",
+      "entityRefs": [
+        "RecebimentoCompra",
+        "Produto"
+      ]
+    }
+  ],
+  "plugins": []
+}

@@ -13,7 +13,7 @@ type Ns4JourneyView = {
   journeyId: string;
   business: {
     actorRef: string; title: string; goal: string;
-    steps: Array<{ stepId: string; kind: string; entity: string; title: string; description: string }>;
+    steps: Array<{ stepId: string; kind: string; entity: string; affects?: string[]; title: string; description: string }>;
     outcome: { statement: string; evidence: string[] };
     useRules?: string[];
   };
@@ -342,7 +342,7 @@ export class WidgetNs4Journeys102035 extends StateLitElement implements Ns4Clari
           <li>
             <span class="ns4-step-index">${index + 1}</span>
             <div>
-              <div class="ns4-step-title"><span>${step.kind}</span><strong>${step.title}</strong><code>${step.entity}</code></div>
+              <div class="ns4-step-title"><span>${step.kind}</span><strong>${step.title}</strong><code>${step.entity}</code>${step.affects?.length ? html` <code>${step.affects.join(', ')}</code>` : ''}</div>
               <p>${step.description}</p>
             </div>
           </li>

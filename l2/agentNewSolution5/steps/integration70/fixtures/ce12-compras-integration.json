@@ -1,0 +1,16 @@
+{
+  "derivedFrom": "ce12 compras — outbound Receipt.create to controleEstoque, or sibling StockEntry warning",
+  "inbound": [],
+  "outbound": [
+    {
+      "id": "receiptCreated",
+      "kind": "event",
+      "to": "controleEstoque",
+      "event": "receiptCreated",
+      "on": "Receipt.create",
+      "entityRefs": ["Receipt"],
+      "description": "A confirmed goods receipt is published so stock can move."
+    }
+  ],
+  "plugins": []
+}

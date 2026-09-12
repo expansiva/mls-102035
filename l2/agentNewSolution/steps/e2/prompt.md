@@ -28,6 +28,8 @@ approved ontology. Your job is the narrative and the right entity — nothing ab
 1. Every step declares `entity`: the exact future ontology entity or projection id, in stable
    PascalCase (`<EntityId>`, never the display label). `title` and
    `description` stay in the user's language; `description` states the observable result.
+   When an act step also changes another business object, list it in `affects`. Do not encode
+   that second object only in the description.
 2. Step `kind` is exactly one of `locate`, `inspect`, `act`, `decide` or `handoff`. Use `inspect`
    for reviewing ONE existing record; never invent synonyms such as `review`. Totals, counts and
    indicators of a listing are not an inspect of that record — they live on the listing, derived
@@ -69,8 +71,6 @@ system applies are **not** `decide` — they are `act` with `useRules`. A module
 is valid and common (facts, postings, readings). Never add a decide to make a journey look like a
 process or to avoid the catalogue demotion: a two-step locate→act already qualifies.
 
-## Journey quality
-
 ## Policy decisions first
 
 Before writing any journey, list the consequential policy bifurcations for that journey and select
@@ -88,14 +88,7 @@ one option. Then write journeys consistent with those selected choices. Attach t
   `decide` step is only a human choice between named outcomes in the request. Timing, thresholds and
   other product rules stay as policy or as `useRules` on an `act`.
 
-## Actors
-
-An actor exists only when it has **different permissions** (it can see or do something another actor
-cannot) or a **different data scope** (own records vs all records). A demographic persona does not
-create an actor: `<PersonaA>`, `<PersonaB>` who perform the same operations with the same access are
-**the same actor** (demographic personas doing the same things are one actor). A request that says
-"anyone" / "the public" is **one** public actor (no login), plus the privileged actors the request
-names (admin, and so on). Do not emit one journey per persona — that is one public journey.
+## Journey quality
 
 - Prefer a small complete set of outcome-oriented journeys over CRUD fragments.
 - Treat the complete approved E1 contract as a coverage checklist. Every explicit in-scope actor
@@ -187,6 +180,7 @@ Return exactly one JSON object (no markdown):
               "stepId": "recordFact",
               "kind": "act",
               "entity": "<FactEntity>",
+              "affects": ["<RelatedBusinessObject>"],
               "title": "<localized title>",
               "description": "<observable result in the user's language>",
               "featureRefs": ["<featureId>"]

@@ -6,6 +6,8 @@
  * E9) reads the same derivation so a context can never mean two things in two steps.
  */
 
+import { ns4EntityIdField } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
+
 export type Ns4ContextStepKind = 'locate' | 'inspect' | 'act' | 'decide' | 'handoff';
 
 export interface Ns4DerivedContext {
@@ -39,6 +41,7 @@ export interface Ns4ContextJourneyStep {
   stepId: string;
   kind: Ns4ContextStepKind;
   entity: string;
+  affects?: string[];
   targetProfile?: string;
 }
 
@@ -165,7 +168,10 @@ export function deriveNs4Contexts(sources: Ns4ContextSources): Ns4DerivedContext
 
 /** Business objects the ontology must realize: exactly the entities the journeys operate on. */
 export function collectNs4JourneyEntities(journeys: { journeys: Ns4ContextJourney[] }): string[] {
-  return [...new Set(journeys.journeys.flatMap(journey => journey.business.steps.map(step => step.entity)).filter(Boolean))].sort();
+  return [...new Set(journeys.journeys.flatMap(journey => journey.business.steps.flatMap(step => [
+    step.entity,
+    ...(step.affects || []),
+  ])).filter(Boolean))].sort();
 }
 
 function handoffTarget(sources: Ns4ContextSources, stepRef: string): string {
@@ -193,7 +199,7 @@ function requiredParents(relationships: Ns4ContextRelationship[], sessionOwned: 
 }
 
 function idFieldOf(entity: Ns4ContextEntity | undefined): string {
-  return entity?.storage?.idField || (entity?.fields || []).find(field => /id$/i.test(field.fieldId))?.fieldId || '';
+  return ns4EntityIdField(entity);
 }
 
 function sortContexts(values: Ns4DerivedContext[]): Ns4DerivedContext[] {

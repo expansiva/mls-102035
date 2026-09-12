@@ -21,14 +21,6 @@
       ]
     },
     {
-      "fieldId": "name",
-      "title": "Nome do produto",
-      "type": "string",
-      "required": true,
-      "description": "Nome de identificação de negócio do produto exibido no catálogo e selecionado nas movimentações de estoque.",
-      "constraints": []
-    },
-    {
       "fieldId": "minimumStock",
       "title": "Estoque mínimo",
       "type": "number",

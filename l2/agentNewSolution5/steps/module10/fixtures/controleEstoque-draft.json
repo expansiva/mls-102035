@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "2026-09-10-ns5-module-v2",
+  "moduleName": "controleEstoque",
+  "title": "Controle de estoque",
+  "userLanguage": "pt-BR",
+  "productLanguages": [
+    "pt-BR"
+  ],
+  "defaultLanguage": "pt-BR",
+  "sourcePrompt": "controle de estoque: produtos, entradas e saídas, saldo atual por produto e aviso quando o saldo ficar abaixo do mínimo. movimentação não pode ser alterada depois de registrada. um perfil: estoquista.",
+  "actors": [
+    {
+      "actorId": "estoquista",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Estoquista",
+      "description": "Profissional responsável por operar o controle de estoque, registrando entradas e saídas de produtos."
+    }
+  ]
+}

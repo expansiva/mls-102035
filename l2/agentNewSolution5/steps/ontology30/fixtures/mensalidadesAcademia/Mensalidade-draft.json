@@ -1,0 +1,62 @@
+{
+  "entityId": "Mensalidade",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único da mensalidade."
+    },
+    {
+      "fieldId": "matriculaId",
+      "title": "Matrícula",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à matrícula para a qual a mensalidade foi gerada."
+    },
+    {
+      "fieldId": "competencia",
+      "title": "Competência",
+      "type": "date",
+      "required": true,
+      "description": "Mês de referência da cobrança."
+    },
+    {
+      "fieldId": "valorDevido",
+      "title": "Valor devido",
+      "type": "money",
+      "required": true,
+      "description": "Valor da mensalidade definido pelo plano no momento da geração."
+    },
+    {
+      "fieldId": "dataVencimento",
+      "title": "Data de vencimento",
+      "type": "date",
+      "required": true,
+      "description": "Data limite para pagamento da mensalidade."
+    }
+  ],
+  "uniqueKeys": [
+    [
+      "matriculaId",
+      "competencia"
+    ]
+  ],
+  "details": {
+    "valorPago": {
+      "type": "money",
+      "description": "Soma dos pagamentos registrados para esta mensalidade."
+    },
+    "saldoEmAberto": {
+      "type": "money",
+      "description": "Diferença entre o valor devido e o valor pago registrado."
+    },
+    "situacaoCobranca": {
+      "type": "string",
+      "description": "Situação calculada da cobrança conforme pagamentos e vencimento."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

@@ -1,0 +1,11 @@
+{
+  "planId": "e4-ontology-entity",
+  "moduleName": "comandaRestaurante2",
+  "reviewRound": 1,
+  "entityId": "Mesa",
+  "fields": [],
+  "useRules": [
+    "mesaDisponivelParaAbertura",
+    "fechamentoRegistraPagamentoELiberaMesa"
+  ]
+}

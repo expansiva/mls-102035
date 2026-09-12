@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "comandaRestaurante5",
+  "processes": [],
+  "journeyDecisions": [
+    { "journeyId": "abrirComandaNaMesa", "inProcess": false },
+    { "journeyId": "lancarItemNaComanda", "inProcess": false },
+    { "journeyId": "cancelarItemLancadoPorEngano", "inProcess": false },
+    { "journeyId": "conferirEfecharConta", "inProcess": false }
+  ]
+}

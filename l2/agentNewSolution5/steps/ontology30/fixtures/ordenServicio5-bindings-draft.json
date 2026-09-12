@@ -1,0 +1,175 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "ordenTieneCliente",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "clienteId"
+          ]
+        },
+        "to": {
+          "entityId": "Cliente",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenTieneAparato",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "aparatoId"
+          ]
+        },
+        "to": {
+          "entityId": "Aparato",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraDefectoInformado",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "defectoInformadoId"
+          ]
+        },
+        "to": {
+          "entityId": "DefectoInformado",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenIncluyeFotos",
+      "realization": {
+        "kind": "fieldCollection",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "fotoOrdenIds"
+          ]
+        },
+        "to": {
+          "entityId": "FotoOrden",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenTieneDiagnostico",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "diagnosticoId"
+          ]
+        },
+        "to": {
+          "entityId": "Diagnostico",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenTienePresupuesto",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "presupuestoId"
+          ]
+        },
+        "to": {
+          "entityId": "Presupuesto",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "presupuestoIncluyePiezasNecesarias",
+      "realization": {
+        "kind": "fieldCollection",
+        "ownerEntity": "Presupuesto",
+        "from": {
+          "entityId": "Presupuesto",
+          "fieldIds": [
+            "piezasNecesarias"
+          ]
+        },
+        "to": {
+          "entityId": "PiezaNecesaria",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraReparacion",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "reparacionId"
+          ]
+        },
+        "to": {
+          "entityId": "Reparacion",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordenRegistraEntregaAparato",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "entregaAparatoId"
+          ]
+        },
+        "to": {
+          "entityId": "EntregaAparato",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

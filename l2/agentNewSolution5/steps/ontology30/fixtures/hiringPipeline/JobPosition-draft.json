@@ -1,0 +1,56 @@
+{
+  "entityId": "JobPosition",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Job Position ID",
+      "type": "uuid",
+      "required": true,
+      "description": "Unique identifier for the job position."
+    },
+    {
+      "fieldId": "title",
+      "title": "Title",
+      "type": "string",
+      "required": true,
+      "description": "Title of the job position."
+    },
+    {
+      "fieldId": "department",
+      "title": "Department",
+      "type": "string",
+      "required": true,
+      "description": "Department seeking to fill the position."
+    },
+    {
+      "fieldId": "description",
+      "title": "Description",
+      "type": "text",
+      "required": true,
+      "description": "Description of the position and its hiring requirements."
+    },
+    {
+      "fieldId": "headcount",
+      "title": "Required Headcount",
+      "type": "integer",
+      "required": true,
+      "description": "Number of candidates required for this position."
+    }
+  ],
+  "details": {
+    "filledHeadcount": {
+      "type": "integer",
+      "description": "Number of applications that have reached the hired stage for this position."
+    },
+    "remainingHeadcount": {
+      "type": "integer",
+      "description": "Number of additional hires needed to fulfill the required headcount."
+    },
+    "isHeadcountFilled": {
+      "type": "boolean",
+      "description": "Indicates whether the position's required headcount has been fulfilled."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

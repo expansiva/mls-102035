@@ -1,0 +1,35 @@
+{
+  "entityId": "Desconto",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do desconto concedido."
+    },
+    {
+      "fieldId": "comandaId",
+      "title": "Comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Comanda à qual o desconto é aplicado, selecionada durante a conferência."
+    },
+    {
+      "fieldId": "motivo",
+      "title": "Motivo",
+      "type": "text",
+      "required": true,
+      "description": "Justificativa para a concessão pontual do desconto."
+    },
+    {
+      "fieldId": "valor",
+      "title": "Valor do desconto",
+      "type": "money",
+      "required": true,
+      "description": "Valor monetário abatido do total da comanda."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

@@ -1,0 +1,177 @@
+{
+  "moduleName": "manutencaoFrota",
+  "businessDomain": "Gestão de abastecimentos, manutenção preventiva e ordens de manutenção da frota de uma transportadora.",
+  "entities": [
+    {
+      "entityId": "Abastecimento",
+      "title": "Abastecimento",
+      "description": "Registro do abastecimento realizado em um veículo por um motorista.",
+      "kind": "event",
+      "party": "none",
+      "displayField": "data",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "manutencaoFrota.Abastecimento"
+      }
+    },
+    {
+      "entityId": "Motorista",
+      "title": "Motorista",
+      "description": "Papel de motorista da transportadora, usado para registrar quem realizou abastecimentos e quais veículos lhe estão atribuídos.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "manutencaoFrota.Motorista"
+      }
+    },
+    {
+      "entityId": "Oficina",
+      "title": "Oficina",
+      "description": "Empresa prestadora de serviços de manutenção utilizada nas ordens de manutenção.",
+      "kind": "mdm",
+      "party": "organization",
+      "mdmSubtype": "Company",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "manutencaoFrota.Oficina"
+      }
+    },
+    {
+      "entityId": "Veiculo",
+      "title": "Veículo",
+      "description": "Veículo da frota identificado e acompanhado para abastecimentos e manutenções.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetVehicle",
+      "displayField": "plate",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "manutencaoFrota.Veiculo"
+      }
+    },
+    {
+      "entityId": "PlanoManutencao",
+      "title": "Plano de manutenção",
+      "description": "Definição da periodicidade de manutenção preventiva de um veículo por quilometragem, meses ou ambos.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "id",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "manutencaoFrota.PlanoManutencao"
+      }
+    },
+    {
+      "entityId": "OrdemManutencao",
+      "title": "Ordem de manutenção",
+      "description": "Registro do encaminhamento de um veículo para manutenção preventiva ou corretiva e da conclusão do serviço.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "descricao",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "manutencaoFrota.OrdemManutencao"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "veiculoMotoristaAtribuido",
+      "fromEntity": "Veiculo",
+      "toEntity": "Motorista",
+      "type": "manyToOne",
+      "required": false,
+      "description": "O veículo pode estar atribuído a um motorista responsável por conduzi-lo.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "abastecimentoVeiculo",
+      "fromEntity": "Abastecimento",
+      "toEntity": "Veiculo",
+      "type": "manyToOne",
+      "required": true,
+      "description": "O abastecimento é registrado para um veículo da frota.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "abastecimentoMotorista",
+      "fromEntity": "Abastecimento",
+      "toEntity": "Motorista",
+      "type": "manyToOne",
+      "required": true,
+      "description": "O abastecimento é registrado pelo motorista que realizou o lançamento.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "planoManutencaoVeiculo",
+      "fromEntity": "PlanoManutencao",
+      "toEntity": "Veiculo",
+      "type": "manyToOne",
+      "required": true,
+      "description": "O plano preventivo define a manutenção de um veículo específico.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordemManutencaoVeiculo",
+      "fromEntity": "OrdemManutencao",
+      "toEntity": "Veiculo",
+      "type": "manyToOne",
+      "required": true,
+      "description": "A ordem de manutenção encaminha um veículo para serviço.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordemManutencaoPlano",
+      "fromEntity": "OrdemManutencao",
+      "toEntity": "PlanoManutencao",
+      "type": "manyToOne",
+      "required": false,
+      "description": "A ordem pode ser aberta em decorrência do vencimento de um plano preventivo.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "ordemManutencaoOficina",
+      "fromEntity": "OrdemManutencao",
+      "toEntity": "Oficina",
+      "type": "manyToOne",
+      "required": true,
+      "description": "A ordem de manutenção é executada por uma oficina.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ]
+}

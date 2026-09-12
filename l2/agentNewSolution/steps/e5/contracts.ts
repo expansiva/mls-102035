@@ -4,6 +4,11 @@ import { sha256Ns4 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 
 export const NS4_RULES_SCHEMA_VERSION = '2026-08-09-ns4-rules-v2' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_09_ns4_rules_v2: string[] = [
+  'rules[].description',
+];
+
 /** The permanent business-rule contract. Meaning lives here; consumers keep only the id. */
 export interface Ns4RuleDefinition {
   id: string;

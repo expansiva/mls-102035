@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-09-09 — E8 uses ns4ResolvableFields; /Id$/ identity fallbacks removed
+
+The local mdm `idField` union in `validateNs4E8Model` is the shared resolver. Catalogue identity
+(`identityFieldOf`), list-sort identity, owner-handle identity, and `identityEntityOfInput` read
+`storage.idField` only — no `/Id$/` name fallback. The `/Id$/` pick of a projection key in
+`attachSynthesizedProjectionTile` stays: that list is a projection's declared fields.
+
+## 2026-09-09 — mdm storage.idField is a resolvable E8 input
+
+`validateNs4E8Model` includes `${entityId}.${storage.idField}` in the resolvable-field set.
+After n04, mdm `fields[]` is namespace-only, so a picker/FK that names the logical id
+(`ItemCardapio.itemCardapioId`, `Produto.produtoId`) was `NS4_E8_INPUT_FIELD`. A field that is
+neither in `fields[]` nor `storage.idField` is still rejected.
+
+## 2026-09-09 — profile without workspace is a gate error
+
+`NS4_E8_PROFILE_WITHOUT_WORKSPACE` fails when an E3 profile is absent from every workspace
+`profileRefs`. Distinct from `NS4_E8_PROFILE_WITHOUT_LANDING` (profile has a workspace, no landing).
+
+## 2026-09-09 — landing is exclusive workspace, else first journey, else rank
+
+`buildLandings` no longer sends every profile to the first non-journey by `tierRank`. Per profile:
+exclusive non-journey (`profileRefs` exactly `[profile]`) → journey workspace hosting the first step
+of that profile's first journey → the previous rank fallback. `landings[].reason` is the closed
+token `exclusive | firstJourney | rank`. `landingIntent` is not read. Gate
+`NS4_E8_PROFILE_WITHOUT_LANDING` fails when a profile has a workspace and no landing.
+
+## 2026-09-09 — journey operations of a limited external profile read the disclosure projection
+
+When an access-binding carries `projectionRef`, the journey read for that authority uses the
+disclosure view as `entityRef` (`outputRefs` are the view fields). Writes keep the source entity
+and only the view's fields as inputs. A step that also serves a full-record audience emits a
+second operation, not a union of fields. The view is loaded by `projectionRef`; it is not in the
+E4 ontology index.
+
+## 2026-09-08 — catalogue audience is organization grants; every operation has authorityRefs
+
+`catalogueProfiles` is profiles with an organization-scope grant covering the entity, not
+"who touches" via derived steps. Catalogue operations carry `synth:<entity>:<profile>`.
+Journey operations inherit E3 authorities of `compiledFrom`. The model gate fails
+`NS4_E8_OPERATION_WITHOUT_AUTHORITY` when `authorityRefs` is empty.
+
 ## 2026-09-07 — catalogue and hub copy read `presentation.phrases`
 
 Synthesized operation `title`/`story`/`description`, section intents, hub purpose and

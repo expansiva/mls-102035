@@ -1,0 +1,42 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "consultaPaciente",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Consulta",
+        "from": {
+          "entityId": "Consulta",
+          "fieldIds": [
+            "pacienteId"
+          ]
+        },
+        "to": {
+          "entityId": "Paciente",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "consultaProfissional",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Consulta",
+        "from": {
+          "entityId": "Consulta",
+          "fieldIds": [
+            "profissionalId"
+          ]
+        },
+        "to": {
+          "entityId": "Profissional",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

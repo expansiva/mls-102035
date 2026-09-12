@@ -1,0 +1,50 @@
+{
+  "entityId": "Equipamento",
+  "fields": [
+    {
+      "fieldId": "rentalCode",
+      "title": "Código do equipamento",
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "constraints": {
+        "maxLength": 100
+      },
+      "description": "Código interno usado pela locadora para identificar o equipamento."
+    },
+    {
+      "fieldId": "dailyRate",
+      "title": "Valor da diária",
+      "type": "money",
+      "required": true,
+      "constraints": {
+        "min": 0,
+        "precision": 2
+      },
+      "description": "Valor cobrado por dia de locação do equipamento."
+    },
+    {
+      "fieldId": "operationalSituation",
+      "title": "Situação operacional",
+      "type": "string",
+      "required": true,
+      "enum": [
+        {
+          "value": "available",
+          "title": "Disponível"
+        },
+        {
+          "value": "rented",
+          "title": "Locado"
+        },
+        {
+          "value": "maintenance",
+          "title": "Em manutenção"
+        }
+      ],
+      "description": "Situação operacional atual do equipamento para fins de locação."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

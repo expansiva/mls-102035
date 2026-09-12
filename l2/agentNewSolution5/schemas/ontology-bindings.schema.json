@@ -1,0 +1,51 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-bindings/2026-09-10-ns5-ontology-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bindings"],
+  "properties": {
+    "bindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/binding" }
+    }
+  },
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationshipId", "realization"],
+      "properties": {
+        "relationshipId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "realization": { "$ref": "#/$defs/realization" }
+      }
+    },
+    "realization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ownerEntity", "from", "to"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["fieldReference", "fieldCollection", "mdmRelationship", "externalReference"]
+        },
+        "ownerEntity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "from": { "$ref": "#/$defs/endpoint" },
+        "to": { "$ref": "#/$defs/endpoint" }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityId", "fieldIds"],
+      "properties": {
+        "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "fieldIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
+        }
+      }
+    }
+  }
+}

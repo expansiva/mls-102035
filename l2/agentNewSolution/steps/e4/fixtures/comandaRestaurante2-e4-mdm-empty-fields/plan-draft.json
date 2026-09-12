@@ -1,0 +1,347 @@
+{
+  "planId": "e4-ontology-plan",
+  "moduleName": "comandaRestaurante2",
+  "userLanguage": "pt-BR",
+  "title": "Ontologia de negócio da Comanda de Restaurante",
+  "reviewRound": 1,
+  "solutionMode": "new",
+  "businessDomain": "Cadastro das mesas e dos itens do cardápio, registro do consumo em comandas, cancelamento histórico de lançamentos, pagamento, desconto e fechamento do atendimento.",
+  "entities": [
+    {
+      "entityId": "Mesa",
+      "title": "Mesa",
+      "description": "Cadastro reutilizável de uma mesa do restaurante. A mesa pode receber comandas ao longo do tempo; ela está disponível quando não possui uma comanda que ocupa a mesa.",
+      "kind": "mdm",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "mdmSubtype": "Location",
+      "role": "comandaRestaurante2.Mesa",
+      "displayField": "name",
+      "sourceRefs": {
+        "journeyIds": [
+          "abrirComandaParaMesa",
+          "fecharComanda",
+          "cadastrarMesa"
+        ],
+        "featureIds": [
+          "selecionarMesaParaComanda",
+          "abrirComandaParaMesa",
+          "fecharComandaELiberarMesa",
+          "cadastrarMesaDisponivel"
+        ],
+        "authorityRefs": [
+          "comanda:abrir",
+          "comanda:fechar",
+          "comanda:configurar"
+        ]
+      },
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "mesaId",
+        "mdmType": "comandaRestaurante2.Mesa",
+        "notes": "Mesa é um local físico estável do restaurante, reutilizado entre atendimentos. A identificação da mesa usa o campo base name de Location; dados operacionais adicionais da mesa pertencem ao namespace do módulo."
+      }
+    },
+    {
+      "entityId": "ItemCardapio",
+      "title": "Item do cardápio",
+      "description": "Cadastro reutilizável de um produto oferecido pelo restaurante, com preço e disponibilidade operacional para seleção nos lançamentos de consumo. Alterações futuras de preço não modificam o preço preservado em itens já lançados.",
+      "kind": "mdm",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "role": "comandaRestaurante2.ItemCardapio",
+      "displayField": "name",
+      "sourceRefs": {
+        "journeyIds": [
+          "lancarItemNaComanda",
+          "cadastrarItemCardapio"
+        ],
+        "featureIds": [
+          "selecionarItemDoCardapio",
+          "lancarItemComQuantidadeEObservacao",
+          "cadastrarItemCardapioComPreco"
+        ],
+        "authorityRefs": [
+          "comanda:lancar",
+          "comanda:configurar"
+        ]
+      },
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "itemCardapioId",
+        "mdmType": "comandaRestaurante2.ItemCardapio",
+        "notes": "Item do cardápio é um produto mestre reutilizável. O nome usa o campo base name de Product; preço e disponibilidade operacional são informações específicas deste módulo."
+      }
+    },
+    {
+      "entityId": "Comanda",
+      "title": "Comanda",
+      "description": "Registro operacional do atendimento aberto para uma mesa. Reúne os itens lançados, conserva o desconto informado no fechamento, fornece o total calculado pelos itens não cancelados e registra a conclusão do atendimento.",
+      "kind": "core",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "displayField": "comandaNumber",
+      "sourceRefs": {
+        "journeyIds": [
+          "abrirComandaParaMesa",
+          "lancarItemNaComanda",
+          "cancelarItemDaComanda",
+          "fecharComanda"
+        ],
+        "featureIds": [
+          "abrirComandaParaMesa",
+          "selecionarComandaParaLancamento",
+          "lancarItemComQuantidadeEObservacao",
+          "selecionarComandaParaCancelamento",
+          "cancelarItemLancado",
+          "selecionarComandaParaFechamento",
+          "visualizarTotalDaComanda",
+          "aplicarDescontoNoFechamento",
+          "registrarFormaDePagamento",
+          "fecharComandaELiberarMesa"
+        ],
+        "authorityRefs": [
+          "comanda:abrir",
+          "comanda:lancar",
+          "comanda:cancelar",
+          "comanda:fechar"
+        ]
+      },
+      "lifecycleStates": [
+        {
+          "state": "open",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "closed",
+          "reachedBy": "actor"
+        }
+      ],
+      "statusEnum": [
+        "open",
+        "closed"
+      ],
+      "lifecycleLabels": [
+        {
+          "code": "open",
+          "label": "Aberta"
+        },
+        {
+          "code": "closed",
+          "label": "Fechada"
+        }
+      ],
+      "initialState": "open",
+      "terminalStates": [
+        "closed"
+      ],
+      "lifecyclePredicates": [
+        {
+          "predicateId": "openForItemLaunch",
+          "description": "Comandas que podem receber novos lançamentos de itens.",
+          "stateIds": [
+            "open"
+          ],
+          "source": "inferred"
+        },
+        {
+          "predicateId": "openForItemCancellation",
+          "description": "Comandas cujos itens lançados ainda podem ser cancelados.",
+          "stateIds": [
+            "open"
+          ],
+          "source": "inferred"
+        },
+        {
+          "predicateId": "openForPayment",
+          "description": "Comandas que podem receber desconto, pagamento e fechamento.",
+          "stateIds": [
+            "open"
+          ],
+          "source": "inferred"
+        },
+        {
+          "predicateId": "occupiesTable",
+          "description": "Comandas que mantêm a mesa vinculada ocupada.",
+          "stateIds": [
+            "open"
+          ],
+          "source": "inferred"
+        }
+      ],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "comandaId",
+        "notes": "Comanda é um registro transacional do módulo. O total é calculado a partir dos itens lançados não cancelados e do desconto registrado, sem uma tabela derivada própria."
+      }
+    },
+    {
+      "entityId": "ItemComanda",
+      "title": "Item da comanda",
+      "description": "Lançamento de consumo de um item do cardápio em uma comanda, incluindo quantidade, observação e os dados preservados do item e de seu preço no momento do lançamento. Um cancelamento mantém este registro no histórico e o exclui do total.",
+      "kind": "core",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "displayField": "itemNameSnapshot",
+      "sourceRefs": {
+        "journeyIds": [
+          "lancarItemNaComanda",
+          "cancelarItemDaComanda",
+          "fecharComanda"
+        ],
+        "featureIds": [
+          "lancarItemComQuantidadeEObservacao",
+          "selecionarItemLancadoParaCancelamento",
+          "cancelarItemLancado",
+          "visualizarTotalDaComanda"
+        ],
+        "authorityRefs": [
+          "comanda:lancar",
+          "comanda:cancelar",
+          "comanda:fechar"
+        ]
+      },
+      "lifecycleStates": [
+        {
+          "state": "launched",
+          "reachedBy": "actor"
+        },
+        {
+          "state": "cancelled",
+          "reachedBy": "actor"
+        }
+      ],
+      "statusEnum": [
+        "launched",
+        "cancelled"
+      ],
+      "lifecycleLabels": [
+        {
+          "code": "launched",
+          "label": "Lançado"
+        },
+        {
+          "code": "cancelled",
+          "label": "Cancelado"
+        }
+      ],
+      "initialState": "launched",
+      "terminalStates": [
+        "cancelled"
+      ],
+      "lifecyclePredicates": [
+        {
+          "predicateId": "includedInComandaTotal",
+          "description": "Itens que compõem o total da comanda.",
+          "stateIds": [
+            "launched"
+          ],
+          "source": "inferred"
+        },
+        {
+          "predicateId": "cancellableItem",
+          "description": "Itens que podem ser cancelados, desde que sua comanda relacionada também esteja aberta.",
+          "stateIds": [
+            "launched"
+          ],
+          "source": "inferred"
+        }
+      ],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "itemComandaId",
+        "notes": "Item da comanda é um lançamento operacional vinculado à comanda e ao item mestre do cardápio. Mantém o preço e a identificação aplicados no lançamento para preservar o histórico diante de alterações futuras do cardápio."
+      }
+    },
+    {
+      "entityId": "Pagamento",
+      "title": "Pagamento",
+      "description": "Registro do pagamento único associado ao fechamento de uma comanda, contendo a forma de pagamento e o valor final quitado após o desconto opcional.",
+      "kind": "core",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "mutability": "appendOnly",
+      "displayField": "paymentMethod",
+      "sourceRefs": {
+        "journeyIds": [
+          "fecharComanda"
+        ],
+        "featureIds": [
+          "registrarFormaDePagamento",
+          "fecharComandaELiberarMesa"
+        ],
+        "authorityRefs": [
+          "comanda:fechar"
+        ]
+      },
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "pagamentoId",
+        "notes": "Pagamento é um fato financeiro registrado uma única vez no fechamento da comanda. Após registrado, não é alterado nem removido; uma eventual correção futura exige registro compensatório."
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "comandaBelongsToMesa",
+      "fromEntity": "Comanda",
+      "toEntity": "Mesa",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada comanda é aberta para uma única mesa selecionada. Uma mesa pode possuir várias comandas históricas, mas somente uma comanda com o predicado occupiesTable pode ocupá-la por vez.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "itemComandaBelongsToComanda",
+      "fromEntity": "ItemComanda",
+      "toEntity": "Comanda",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada item lançado pertence a uma única comanda selecionada e compõe seu histórico e total conforme seu ciclo de vida.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "itemComandaReferencesItemCardapio",
+      "fromEntity": "ItemComanda",
+      "toEntity": "ItemCardapio",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada lançamento referencia o item do cardápio selecionado, preservando no próprio lançamento os dados necessários para o histórico de preço e identificação.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "pagamentoClosesComanda",
+      "fromEntity": "Pagamento",
+      "toEntity": "Comanda",
+      "type": "oneToOne",
+      "required": true,
+      "description": "Cada pagamento registrado quita uma única comanda, e cada comanda fechada possui um único pagamento.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ],
+  "changeSummary": [
+    "Corrigidos os mapeamentos dos predicados de ciclo de vida da Comanda e do Item da comanda para apontarem explicitamente para seus estados aplicáveis.",
+    "Comanda aberta agora define formalmente os significados de poder lançar itens, cancelar itens, receber pagamento e ocupar a mesa.",
+    "Item lançado agora define formalmente os significados de compor o total da comanda e poder ser cancelado enquanto a comanda relacionada estiver aberta."
+  ]
+}

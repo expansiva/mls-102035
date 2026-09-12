@@ -1,0 +1,100 @@
+{
+  "moduleName": "fleetLike",
+  "accessHash": "sha256:access-ce09",
+  "ontologyHash": "sha256:ontology-ce09",
+  "journeys": {
+    "moduleName": "fleetLike",
+    "journeys": [
+      {
+        "journeyId": "driveVehicle",
+        "business": {
+          "actorRef": "motorista",
+          "steps": [{ "stepId": "inspectVehicle", "kind": "inspect", "entity": "Vehicle" }]
+        }
+      }
+    ]
+  },
+  "access": {
+    "moduleName": "fleetLike",
+    "userLanguage": "pt-BR",
+    "profiles": [{ "profileId": "motorista", "kind": "internal", "actorRefs": ["motorista"] }],
+    "authorities": [{ "authorityRef": "fleet:assigned-vehicle", "journeyStepRefs": ["driveVehicle.inspectVehicle"] }],
+    "grants": [
+      {
+        "profileRef": "motorista",
+        "authorityRef": "fleet:assigned-vehicle",
+        "reason": "vehicles with an active assignment to the driver",
+        "dataScope": { "mode": "assigned", "description": "vehicles with an active assignment to the signed-in driver" },
+        "disclosure": { "mode": "fullRecord", "description": "full", "allowedInformation": [], "deniedInformation": [] },
+        "useRules": []
+      }
+    ]
+  },
+  "ontology": {
+    "moduleName": "fleetLike",
+    "entities": [
+      {
+        "entityId": "Driver",
+        "title": "Driver",
+        "kind": "mdm",
+        "party": "person",
+        "mdmSubtype": "Person",
+        "fields": [{ "fieldId": "driverId", "type": "uuid", "required": true }],
+        "storage": { "target": "mdm", "scope": "organization", "idField": "driverId", "notes": "" }
+      },
+      {
+        "entityId": "Vehicle",
+        "title": "Vehicle",
+        "kind": "mdm",
+        "mdmSubtype": "AssetVehicle",
+        "fields": [{ "fieldId": "vehicleId", "type": "uuid", "required": true }],
+        "storage": { "target": "mdm", "scope": "organization", "idField": "vehicleId", "notes": "" }
+      },
+      {
+        "entityId": "VehicleAssignment",
+        "title": "Vehicle assignment",
+        "kind": "core",
+        "fields": [
+          { "fieldId": "vehicleAssignmentId", "type": "uuid", "required": true },
+          { "fieldId": "vehicleId", "type": "uuid", "required": true },
+          { "fieldId": "driverId", "type": "uuid", "required": true }
+        ],
+        "storage": { "target": "moduleDatabase", "scope": "module", "idField": "vehicleAssignmentId", "notes": "" }
+      }
+    ],
+    "relationships": [
+      {
+        "relationshipId": "assignmentOfVehicle",
+        "fromEntity": "VehicleAssignment",
+        "toEntity": "Vehicle",
+        "type": "manyToOne",
+        "required": true,
+        "description": "assigned vehicle",
+        "persistence": { "mode": "crossStoreReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "VehicleAssignment",
+          "from": { "entityId": "VehicleAssignment", "fieldIds": ["vehicleId"] },
+          "to": { "entityId": "Vehicle", "fieldIds": ["vehicleId"] },
+          "description": "VehicleAssignment.vehicleId"
+        }
+      },
+      {
+        "relationshipId": "assignmentOfDriver",
+        "fromEntity": "VehicleAssignment",
+        "toEntity": "Driver",
+        "type": "manyToOne",
+        "required": true,
+        "description": "assigned driver",
+        "persistence": { "mode": "moduleReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "VehicleAssignment",
+          "from": { "entityId": "VehicleAssignment", "fieldIds": ["driverId"] },
+          "to": { "entityId": "Driver", "fieldIds": ["driverId"] },
+          "description": "VehicleAssignment.driverId"
+        }
+      }
+    ]
+  }
+}

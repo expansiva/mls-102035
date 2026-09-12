@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "locacaoEquipamentos",
+  "rules": [
+    {
+      "ruleId": "equipmentRentalPeriodsMustNotOverlap",
+      "description": "Um mesmo equipamento não pode constar em contratos de locação com períodos sobrepostos."
+    },
+    {
+      "ruleId": "lateFeeCalculation",
+      "description": "Quando a devolução ocorrer após a data prevista, a multa deve ser calculada como o valor da diária multiplicado pelos dias de atraso e por 1,5."
+    }
+  ]
+}

@@ -1,5 +1,28 @@
 # E9 changelog
 
+## 2026-09-09 — E9 uses ns4ResolvableFields; /Id$/ identity fallback removed
+
+`ontologyFieldOf` / `fieldTypeOf` / `resolveOutputRef` read the shared resolver. `identityFieldOf`
+is `storage.idField` with no `/Id$/` fallback.
+
+## 2026-09-09 — mdm storage.idField is a resolvable outputRef
+
+`resolveOutputRef` and `fieldTypeOf` treat `${entityId}.${storage.idField}` as a synthetic
+uuid field when it is absent from `fields[]` (n04: mdm namespace-only). Catalogue commands
+emit that ref as the identity; it was `NS4_E9_OUTPUT_REF_UNKNOWN`. A ref that is neither a
+real field nor the idField is still rejected. Wire type stays `string` (`classicType` of uuid).
+
+## 2026-09-09 — classic `writes` come from the usecase
+
+`transposeNs4ClassicOperation` copies `usecase.writes[].entityId` (dedup) onto the classic
+operation. `reads` is `entityRefs − writes`. Catalogue operations without a use case still
+write `[entityRef]`. Contract shape unchanged (`writes: string[]`).
+
+## 2026-09-08 — writes V4 operationAuthorityRefs
+
+`buildNs4NavigationRealizedAccess` maps every emitted bffCall route to the E8 operation's
+`authorityRefs` and writes `access-matrix.defs.ts` as `navigationCompiled`.
+
 ## 2026-09-07 — generated contract comments in English
 
 Empty input/output blocks emit `// no public inputs (resolved from context)` and

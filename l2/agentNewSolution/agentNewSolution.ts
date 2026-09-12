@@ -8,6 +8,7 @@ import {
   createNs4E2Step,
   createNs4E3Step,
   createNs4E4Step,
+  createNs4E4BStep,
   createNs4E5Step,
   createNs4E6Step,
   createNs4E7Step,
@@ -18,6 +19,7 @@ import {
   isNs4Pipeline,
   markNs4E3Approved,
   markNs4E4Approved,
+  markNs4E4BApproved,
   markNs4E5Approved,
   markNs4E6Approved,
   markNs4E7Approved,
@@ -41,6 +43,7 @@ import {
   applyNs4RebuildAll,
   ns4ModuleFile,
   ns4OntologyIndexFile,
+  ns4AccessBindingsFile,
   ns4RulesFile,
   ns4CompositionFile,
   ns4UseCaseIndexFile,
@@ -80,6 +83,10 @@ import {
   beforeNs4E4ClarificationStep,
   beforeNs4E4PromptStep,
 } from '/_102035_/l2/agentNewSolution/steps/e4/agentNs4E4.js';
+import {
+  afterNs4E4BPromptStep,
+  beforeNs4E4BPromptStep,
+} from '/_102035_/l2/agentNewSolution/steps/e4b/agentNs4E4B.js';
 import {
   afterNs4E5PromptStep,
   beforeNs4E5ClarificationStep,
@@ -188,6 +195,8 @@ async function beforePromptImplicit(
         .find(completed => completed.stepId === 'e3-access-matrix' && completed.status === 'approved');
       const approvedE4 = moduleArtifact?.specStatus.completedSteps
         .find(completed => completed.stepId === 'e4-ontology' && completed.status === 'approved');
+      const approvedE4B = moduleArtifact?.specStatus.completedSteps
+        .find(completed => completed.stepId === 'e4b-access-realization' && completed.status === 'approved');
       const approvedE5 = moduleArtifact?.specStatus.completedSteps
         .find(completed => completed.stepId === 'e5-rules' && completed.status === 'approved');
       const approvedE6 = moduleArtifact?.specStatus.completedSteps
@@ -216,6 +225,13 @@ async function beforePromptImplicit(
           approvedE4.approvedAt,
           undefined,
           approvedE4.autoReason,
+        );
+      }
+      if (pipeline.steps.e4b?.status !== 'approved' && approvedE4B && ns4FileExists(ns4AccessBindingsFile(existingModule))) {
+        pipeline = markNs4E4BApproved(
+          pipeline,
+          [`l4/${existingModule}/access/access-bindings.defs.ts`],
+          approvedE4B.approvedAt,
         );
       }
       if (pipeline.steps.e5?.status !== 'approved' && approvedE5 && ns4FileExists(ns4RulesFile(existingModule))) {
@@ -344,8 +360,8 @@ async function beforePromptImplicit(
       )];
     } else {
     resumeModule = existingModule;
-    resumeTarget = action === 'resume-e1' ? 'e1' : action === 'resume-e10' ? 'e10' : action === 'resume-e9' ? 'e9' : action === 'resume-e8' ? 'e8' : action === 'resume-e7' ? 'e7' : action === 'resume-e6' ? 'e6' : action === 'resume-e5' ? 'e5' : action === 'resume-e4' ? 'e4' : action === 'resume-e3' ? 'e3' : 'e2';
-    resumeRound = resumeTarget === 'e7' ? '' : resumeTarget === 'e8' ? String(Math.max(1, pipeline?.steps.e8?.reviewRound || 1)) : resumeTarget === 'e6'
+    resumeTarget = action === 'resume-e1' ? 'e1' : action === 'resume-e10' ? 'e10' : action === 'resume-e9' ? 'e9' : action === 'resume-e8' ? 'e8' : action === 'resume-e7' ? 'e7' : action === 'resume-e6' ? 'e6' : action === 'resume-e5' ? 'e5' : action === 'resume-e4b' ? 'e4b' : action === 'resume-e4' ? 'e4' : action === 'resume-e3' ? 'e3' : 'e2';
+    resumeRound = resumeTarget === 'e7' || resumeTarget === 'e4b' ? '' : resumeTarget === 'e8' ? String(Math.max(1, pipeline?.steps.e8?.reviewRound || 1)) : resumeTarget === 'e6'
       ? String(Math.max(1, pipeline?.steps.e6?.reviewRound || 1))
       : resumeTarget === 'e5'
       ? String(Math.max(1, pipeline?.steps.e5?.reviewRound || 1))
@@ -408,6 +424,7 @@ async function beforePromptStep(
     case 'e2': return beforeNs4E2PromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e3': return beforeNs4E3PromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e4': return beforeNs4E4PromptStep(agent, context, parentStep, step, hookSequential, args);
+    case 'e4b': return beforeNs4E4BPromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e5': return beforeNs4E5PromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e6': return beforeNs4E6PromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e7': return beforeNs4E7PromptStep(agent, context, parentStep, step, hookSequential, args);
@@ -438,6 +455,7 @@ async function afterPromptStep(
     case 'e2': return afterNs4E2PromptStep(agent, context, parentStep, step, hookSequential);
     case 'e3': return afterNs4E3PromptStep(agent, context, parentStep, step, hookSequential);
     case 'e4': return afterNs4E4PromptStep(agent, context, parentStep, step, hookSequential);
+    case 'e4b': return afterNs4E4BPromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e5': return afterNs4E5PromptStep(agent, context, parentStep, step, hookSequential);
     case 'e6': return afterNs4E6PromptStep(agent, context, parentStep, step, hookSequential, args);
     case 'e7': return afterNs4E7PromptStep(agent, context, parentStep, step, hookSequential, args);
@@ -457,7 +475,7 @@ async function afterPromptStep(
     }
     const resumeModule = memoryString(context, 'resumeModule');
     const resumeTarget = memoryString(context, 'resumeTarget');
-    const planned = resumeModule && (resumeTarget === 'e2' || resumeTarget === 'e3' || resumeTarget === 'e4' || resumeTarget === 'e5' || resumeTarget === 'e6' || resumeTarget === 'e7' || resumeTarget === 'e8' || resumeTarget === 'e9' || resumeTarget === 'e10')
+    const planned = resumeModule && (resumeTarget === 'e2' || resumeTarget === 'e3' || resumeTarget === 'e4' || resumeTarget === 'e4b' || resumeTarget === 'e5' || resumeTarget === 'e6' || resumeTarget === 'e7' || resumeTarget === 'e8' || resumeTarget === 'e9' || resumeTarget === 'e10')
       ? buildNs4ResumeSteps(plan, resumeModule, resumeTarget, normalizeResumeRound(memoryString(context, 'resumeRound')))
       : buildNs4PlannedSteps(plan);
     return planned.map(plannedStep => ({
@@ -511,26 +529,26 @@ export function getNs4RootPlan(context: mls.msg.ExecutionContext, rootHint?: mls
 function buildNs4ResumeSteps(
   plan: Ns4RootPlan,
   moduleName: string,
-  target: 'e2' | 'e3' | 'e4' | 'e5' | 'e6' | 'e7' | 'e8' | 'e9' | 'e10',
+  target: 'e2' | 'e3' | 'e4' | 'e4b' | 'e5' | 'e6' | 'e7' | 'e8' | 'e9' | 'e10',
   reviewRound: number,
 ): mls.msg.AIAgentStep[] {
   const all = buildNs4PlannedSteps(plan);
   if (target === 'e7') {
     return [
       createNs4E7Step(moduleName, [], plan.presentation.stepTitles['e7-realization']),
-      ...all.slice(8),
+      ...all.slice(9),
     ];
   }
   if (target === 'e8') {
     return [
       createNs4E8Step(moduleName, reviewRound, '', [], plan.presentation.stepTitles['e8-workspaces']),
-      ...all.slice(9),
+      ...all.slice(10),
     ];
   }
   if (target === 'e9') {
     return [
       createNs4E9Step(moduleName, [], plan.presentation.stepTitles['e9-navigation-compiler']),
-      ...all.slice(10),
+      ...all.slice(11),
     ];
   }
   if (target === 'e10') {
@@ -539,12 +557,18 @@ function buildNs4ResumeSteps(
   if (target === 'e6') {
     return [
       createNs4E6Step(moduleName, reviewRound, '', [], plan.presentation.stepTitles['e6-behaviors']),
-      ...all.slice(7),
+      ...all.slice(8),
     ];
   }
   if (target === 'e5') {
     return [
       createNs4E5Step(moduleName, reviewRound, '', [], plan.presentation.stepTitles['e5-rules']),
+      ...all.slice(7),
+    ];
+  }
+  if (target === 'e4b') {
+    return [
+      createNs4E4BStep(moduleName, [], plan.presentation.stepTitles['e4b-access-realization']),
       ...all.slice(6),
     ];
   }

@@ -16,6 +16,58 @@ export const NS4_JOURNEY_INDEX_SCHEMA_VERSION = '2026-08-15-ns4-journey-index-v7
 export const NS4_REALIZED_JOURNEY_SCHEMA_VERSION = '2026-08-14-ns4-journey-realized-v5' as const;
 export const NS4_E2_IMPACT_REPORT_SCHEMA_VERSION = '2026-08-13-ns4-e2-impact-report-v2' as const;
 
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_08_14_ns4_journey_v5: string[] = [
+  'business.title',
+  'business.goal',
+  'business.steps[].title',
+  'business.steps[].description',
+  'business.outcome.statement',
+  'business.outcome.evidence[]',
+  'policyDecisions[].question',
+  'policyDecisions[].chosen',
+  'policyDecisions[].alternatives[]',
+  'policyDecisions[].impact',
+];
+export const TEXT_PATHS_2026_08_14_ns4_journey_realized_v5 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_10_ns4_journey_v4 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_10_ns4_journey_v3 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_09_ns4_journey_v2 = TEXT_PATHS_2026_08_14_ns4_journey_v5;
+export const TEXT_PATHS_2026_08_04_ns4_journey_v1: string[] = [
+  'business.title',
+  'business.goal',
+  'business.prerequisites[].reason',
+  'business.entry.carries[].description',
+  'business.steps[].intent',
+  'business.steps[].result',
+  'business.outcome.statement',
+  'business.outcome.evidence[]',
+  'business.businessRules[].statement',
+  'policyDecisions[].question',
+  'policyDecisions[].chosen',
+  'policyDecisions[].alternatives[]',
+  'policyDecisions[].impact',
+];
+export const TEXT_PATHS_2026_08_15_ns4_journey_index_v7: string[] = [
+  'journeys[].title',
+  'journeys[].goal',
+  'features[].title',
+  'policyDecisions[].question',
+  'policyDecisions[].chosen',
+  'policyDecisions[].alternatives[]',
+  'policyDecisions[].impact',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_14_ns4_journey_index_v6 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_12_ns4_journey_index_v5 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_10_ns4_journey_index_v4 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_10_ns4_journey_index_v3 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_09_ns4_journey_index_v2 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+export const TEXT_PATHS_2026_08_04_ns4_journey_index_v1 = TEXT_PATHS_2026_08_15_ns4_journey_index_v7;
+
 export type Ns4JourneyEntryMode = 'coldStart' | 'contextRequired' | 'contextOrLookup' | 'eventDriven';
 export type Ns4JourneyStepKind = 'locate' | 'inspect' | 'act' | 'decide' | 'handoff';
 export type Ns4FeaturePriority = 'now' | 'next' | 'later';
@@ -29,6 +81,11 @@ export interface Ns4JourneyStep {
   stepId: string;
   kind: Ns4JourneyStepKind;
   entity: string;
+  /**
+   * Other business objects this act also changes. Same vocabulary as `entity`
+   * (PascalCase ids, no fields, no transition). Absent when the step records only `entity`.
+   */
+  affects?: string[];
   title: string;
   description: string;
   featureRefs: string[];
@@ -248,7 +305,7 @@ export interface Ns4E2ImpactReport {
   generatedAt: string;
   stepKindHistogram: Ns4E2StepKindHistogram;
   changes: Array<{ journeyId: string; reason: 'hashDivergent' | 'journeyNew' | 'journeyRemoved' }>;
-  affectedSteps: Array<'e3-access-matrix' | 'e4-ontology' | 'e5-rules' | 'e7-realization'>;
+  affectedSteps: Array<'e3-access-matrix' | 'e4-ontology' | 'e4b-access-realization' | 'e5-rules' | 'e7-realization'>;
 }
 
 export function normalizeNs4E2Review(value: unknown, fallbackModule = '', presentation?: Ns4Presentation): Ns4E2Review {
@@ -372,7 +429,7 @@ export function buildNs4E2ImpactReport(
     generatedAt,
     stepKindHistogram: analyzeNs4E2MechanicalCoverage(review).stepKindHistogram,
     changes: changes.sort((left, right) => left.journeyId.localeCompare(right.journeyId) || left.reason.localeCompare(right.reason)),
-    affectedSteps: changes.length ? ['e3-access-matrix', 'e4-ontology', 'e5-rules', 'e7-realization'] : [],
+    affectedSteps: changes.length ? ['e3-access-matrix', 'e4-ontology', 'e4b-access-realization', 'e5-rules', 'e7-realization'] : [],
   };
 }
 
@@ -423,10 +480,12 @@ function normalizeJourney(value: unknown): Ns4JourneyProposal {
       steps: array(business.steps).map(item => {
         const step = record(item);
         const targetProfile = text(step.targetProfile);
+        const affects = uniquePascalIds(step.affects);
         return {
           stepId: text(step.stepId),
           kind: stepKind(step.kind),
           entity: normalizeNs4BusinessObjectId(step.entity),
+          ...(affects.length ? { affects } : {}),
           title: text(step.title),
           description: text(step.description),
           featureRefs: strings(step.featureRefs),
@@ -515,6 +574,10 @@ function stepKind(value: unknown): Ns4JourneyStepKind {
 
 function featurePriority(value: unknown): Ns4FeaturePriority {
   return value === 'next' || value === 'later' ? value : 'now';
+}
+
+function uniquePascalIds(value: unknown): string[] {
+  return [...new Set(strings(value).map(normalizeNs4BusinessObjectId).filter(Boolean))];
 }
 
 function record(value: unknown): Record<string, unknown> {

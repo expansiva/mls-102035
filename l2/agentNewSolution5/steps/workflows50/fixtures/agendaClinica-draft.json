@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "agendaClinica",
+  "processes": [
+    {
+      "processId": "acompanharConsultaAgendada",
+      "title": "Acompanhar consulta agendada",
+      "description": "Coordena a confirmação da consulta e o atendimento pelo profissional no horário marcado.",
+      "trigger": {
+        "kind": "manual",
+        "actorRef": "recepcionista"
+      },
+      "tasks": [
+        {
+          "taskId": "agendarConsulta",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "agendarConsulta",
+          "next": [
+            "confirmarConsultaPorTelefone"
+          ],
+          "description": "A recepcionista agenda a consulta para o paciente com o profissional e horário definidos."
+        },
+        {
+          "taskId": "confirmarConsultaPorTelefone",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "confirmarConsultaPorTelefone",
+          "next": [
+            "aguardarHorarioDaConsulta"
+          ],
+          "description": "A recepcionista registra a confirmação telefônica da consulta agendada."
+        },
+        {
+          "taskId": "aguardarHorarioDaConsulta",
+          "kind": "wait",
+          "next": [
+            "consultarAgendaDiaria"
+          ],
+          "description": "Aguarda o horário programado da consulta."
+        },
+        {
+          "taskId": "consultarAgendaDiaria",
+          "kind": "human",
+          "actorRef": "profissional",
+          "journeyRef": "consultarAgendaDiaria",
+          "next": [
+            "registrarAtendimento"
+          ],
+          "description": "O profissional consulta a própria agenda do dia para preparar o atendimento."
+        },
+        {
+          "taskId": "registrarAtendimento",
+          "kind": "human",
+          "actorRef": "profissional",
+          "journeyRef": "registrarAtendimento",
+          "next": [],
+          "description": "O profissional registra o atendimento realizado e sua anotação."
+        }
+      ]
+    },
+    {
+      "processId": "registrarAusenciaEmConsulta",
+      "title": "Registrar ausência em consulta",
+      "description": "Registra a falta do paciente quando ele não comparece à consulta.",
+      "trigger": {
+        "kind": "manual",
+        "actorRef": "recepcionista"
+      },
+      "tasks": [
+        {
+          "taskId": "registrarFaltaPaciente",
+          "kind": "human",
+          "actorRef": "recepcionista",
+          "journeyRef": "registrarFaltaPaciente",
+          "next": [],
+          "description": "A recepcionista marca a consulta como falta do paciente após o não comparecimento."
+        }
+      ]
+    }
+  ],
+  "journeyDecisions": [
+    {
+      "journeyId": "cadastrarPaciente",
+      "inProcess": false
+    },
+    {
+      "journeyId": "agendarConsulta",
+      "inProcess": true,
+      "processId": "acompanharConsultaAgendada"
+    },
+    {
+      "journeyId": "confirmarConsultaPorTelefone",
+      "inProcess": true,
+      "processId": "acompanharConsultaAgendada"
+    },
+    {
+      "journeyId": "registrarFaltaPaciente",
+      "inProcess": true,
+      "processId": "registrarAusenciaEmConsulta"
+    },
+    {
+      "journeyId": "consultarAgendaDiaria",
+      "inProcess": true,
+      "processId": "acompanharConsultaAgendada"
+    },
+    {
+      "journeyId": "registrarAtendimento",
+      "inProcess": true,
+      "processId": "acompanharConsultaAgendada"
+    }
+  ]
+}

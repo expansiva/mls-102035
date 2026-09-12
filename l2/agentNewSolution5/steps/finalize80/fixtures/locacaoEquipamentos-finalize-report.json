@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "2026-09-10-ns5-finalize-report-v1",
+  "moduleName": "locacaoEquipamentos",
+  "finalStatus": "passed",
+  "checks": [
+    {
+      "checkId": "I1",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I2",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I3",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I4",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I5",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I6",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I7",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I8",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I9",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I10",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I11",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I12",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I13",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "counts": {
+    "actors": 2,
+    "journeys": 3,
+    "entities": 5,
+    "rules": 2,
+    "processes": 0,
+    "grants": 3
+  }
+}

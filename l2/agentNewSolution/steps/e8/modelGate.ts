@@ -6,6 +6,7 @@
  */
 
 import { isNs4CollectionInspect } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
+import { ns4EntityIdField, ns4ResolvableFieldIds } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import { buildNs4ParentIndex, ns4FkParentOf } from '/_102035_/l2/agentNewSolution/helpers/ns4ForeignKeys.js';
 import { resolveNs4Findings } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import type { Ns4ResolutionFinding, Ns4ResolutionResult } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
@@ -51,9 +52,7 @@ function identityEntityOfInput(
   input: Ns4E8Model['operations'][number]['inputs'][number], sources: Ns4E8Sources,
 ): { entityId: string; fieldId: string } | null {
   const entity = sources.ontology.entities.find(item => item.entityId === input.fieldRef.entityId);
-  const idField = entity?.storage.idField
-    || entity?.fields.find(field => /Id$/.test(field.fieldId))?.fieldId
-    || '';
+  const idField = ns4EntityIdField(entity);
   if (!idField || input.fieldRef.fieldId !== idField) return null;
   return { entityId: input.fieldRef.entityId, fieldId: idField };
 }
@@ -76,8 +75,11 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
   }
   const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
   const parentIndex = buildNs4ParentIndex(sources.ontology.relationships);
-  const fields = new Set(sources.ontology.entities.flatMap(entity => entity.fields.map(field => `${entity.entityId}.${field.fieldId}`)));
-  const entities = new Set(sources.ontology.entities.map(entity => entity.entityId));
+  const knownEntities = [...sources.ontology.entities, ...(sources.disclosureProjections || [])];
+  const fields = new Set(knownEntities.flatMap(entity =>
+    [...ns4ResolvableFieldIds(entity)].map(fieldId => `${entity.entityId}.${fieldId}`),
+  ));
+  const entities = new Set(knownEntities.map(entity => entity.entityId));
   // Master data is referenced by other records: removing the row breaks those
   // references, so the catalogue deactivates instead of deleting.
   const masterDataEntities = new Set(sources.ontology.entities
@@ -92,6 +94,10 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
     if (!entities.has(operation.entityRef)) add('NS4_E8_OPERATION_ENTITY', `${path}.entityRef`, `Unknown ontology entity ${operation.entityRef}.`);
     if (operation.useCaseId && !useCases.has(operation.useCaseId)) {
       add('NS4_E8_OPERATION_USECASE', `${path}.useCaseId`, `Unknown compiled use case ${operation.useCaseId}.`);
+    }
+    if (Array.isArray(operation.authorityRefs) && operation.authorityRefs.length === 0) {
+      add('NS4_E8_OPERATION_WITHOUT_AUTHORITY', `${path}.authorityRefs`,
+        `Operation ${operation.operationId} has no authorityRefs; authority may be anonymous, never undefined.`);
     }
     operation.inputs.forEach(input => {
       if (!fields.has(`${input.fieldRef.entityId}.${input.fieldRef.fieldId}`)) {
@@ -132,7 +138,7 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
           `List ${operation.operationId} has a title/name field but no optional search input.`,
           'warning');
       }
-      const idField = entity?.storage.idField || entity?.fields.find(field => /Id$/.test(field.fieldId))?.fieldId || '';
+      const idField = ns4EntityIdField(entity);
       if (entity?.fields.some(field => field.fieldId !== idField && (
         field.type === 'date' || field.type === 'datetime' || /At$/.test(field.fieldId) || (field.enum?.length ?? 0) > 0
       )) && !ids.has('sortBy')) {
@@ -351,6 +357,20 @@ export function validateNs4E8Model(model: Ns4E8Model, sources: Ns4E8Sources): Ns
   model.landings.forEach((landing, index) => {
     if (!profiles.has(landing.profileRef)) add('NS4_E8_LANDING_PROFILE', `landings[${index}]`, `Unknown E3 profile ${landing.profileRef}.`);
     if (!workspaceIds.has(landing.workspaceId)) add('NS4_E8_LANDING_WORKSPACE', `landings[${index}]`, `Unknown workspace ${landing.workspaceId}.`);
+  });
+  const landed = new Set(model.landings.map(landing => landing.profileRef));
+  sources.access.profiles.forEach(profile => {
+    const hosted = model.workspaces.some(workspace => workspace.profileRefs.includes(profile.profileId));
+    if (!hosted) {
+      if (model.workspaces.length) {
+        add('NS4_E8_PROFILE_WITHOUT_WORKSPACE', 'workspaces',
+          `E3 profile ${profile.profileId} does not appear in any workspace profileRefs.`);
+      }
+      return;
+    }
+    if (landed.has(profile.profileId)) return;
+    add('NS4_E8_PROFILE_WITHOUT_LANDING', 'landings',
+      `E3 profile ${profile.profileId} has a workspace but no landing.`);
   });
 
   return { ok: issues.every(issue => issue.severity === 'warning'), issues };

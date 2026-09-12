@@ -1,0 +1,226 @@
+{
+  "planId": "e4-ontology-review",
+  "moduleName": "sampleModule",
+  "userLanguage": "en",
+  "title": "Business ontology",
+  "reviewRound": 1,
+  "solutionMode": "new",
+  "businessDomain": "Shared master data roles",
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "title": "Client role",
+      "description": "Person acting as a client of this module.",
+      "kind": "mdm",
+      "ownership": "moduleOwned",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "sourceRefs": {
+        "journeyIds": ["registerClient"],
+        "featureIds": [],
+        "authorityRefs": []
+      },
+      "fields": [
+        {
+          "fieldId": "clienteId",
+          "title": "Client handle",
+          "type": "uuid",
+          "required": true,
+          "description": "Stable handle for this module role.",
+          "constraints": []
+        },
+        {
+          "fieldId": "loyaltyTier",
+          "title": "Loyalty tier",
+          "type": "string",
+          "required": false,
+          "description": "Module-namespace classification of the client role.",
+          "constraints": []
+        }
+      ],
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "useRules": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "clienteId",
+        "mdmType": "sampleModule.Cliente",
+        "notes": "Person role of this module; identity lives at level 1."
+      }
+    },
+    {
+      "entityId": "Supplier",
+      "title": "Supplier role",
+      "description": "Company acting as a supplier of this module.",
+      "kind": "mdm",
+      "ownership": "moduleOwned",
+      "party": "organization",
+      "mdmSubtype": "Company",
+      "displayField": "name",
+      "sourceRefs": {
+        "journeyIds": ["registerClient"],
+        "featureIds": [],
+        "authorityRefs": []
+      },
+      "fields": [
+        {
+          "fieldId": "supplierId",
+          "title": "Supplier handle",
+          "type": "uuid",
+          "required": true,
+          "description": "Stable handle for this module role.",
+          "constraints": []
+        },
+        {
+          "fieldId": "leadTimeDays",
+          "title": "Lead time days",
+          "type": "integer",
+          "required": false,
+          "description": "Module-namespace lead time for this supplier role.",
+          "constraints": []
+        }
+      ],
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "useRules": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "supplierId",
+        "mdmType": "sampleModule.Supplier",
+        "notes": "Company role of this module; identity lives at level 1."
+      }
+    },
+    {
+      "entityId": "Product",
+      "title": "Catalog product",
+      "description": "Product role of this module on the platform Product subtype.",
+      "kind": "mdm",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
+      "sourceRefs": {
+        "journeyIds": ["registerClient"],
+        "featureIds": [],
+        "authorityRefs": []
+      },
+      "fields": [
+        {
+          "fieldId": "productId",
+          "title": "Product id",
+          "type": "uuid",
+          "required": true,
+          "description": "Stable handle for this module role.",
+          "constraints": []
+        },
+        {
+          "fieldId": "reorderPoint",
+          "title": "Reorder point",
+          "type": "number",
+          "required": false,
+          "description": "Module-namespace threshold.",
+          "constraints": []
+        }
+      ],
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "useRules": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "productId",
+        "mdmType": "sampleModule.Product",
+        "notes": "Catalog product; name and sku stay at level 1."
+      }
+    },
+    {
+      "entityId": "FleetVehicle",
+      "title": "Fleet vehicle",
+      "description": "Vehicle role of this module on the platform AssetVehicle subtype.",
+      "kind": "mdm",
+      "ownership": "moduleOwned",
+      "party": "none",
+      "mdmSubtype": "AssetVehicle",
+      "displayField": "name",
+      "sourceRefs": {
+        "journeyIds": ["registerClient"],
+        "featureIds": [],
+        "authorityRefs": []
+      },
+      "fields": [
+        {
+          "fieldId": "fleetVehicleId",
+          "title": "Vehicle handle",
+          "type": "uuid",
+          "required": true,
+          "description": "Stable handle for this module role.",
+          "constraints": []
+        }
+      ],
+      "lifecycleStates": [],
+      "lifecyclePredicates": [],
+      "useRules": [],
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "fleetVehicleId",
+        "mdmType": "sampleModule.FleetVehicle",
+        "notes": "Empty namespace; plate and vin stay at level 1."
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "clientUsesProduct",
+      "fromEntity": "Cliente",
+      "toEntity": "Product",
+      "type": "manyToOne",
+      "required": false,
+      "description": "A client may be associated with a catalog product.",
+      "persistence": { "mode": "mdmRelationship" },
+      "realization": {
+        "kind": "mdmRelationship",
+        "ownerEntity": "Cliente",
+        "from": { "entityId": "Cliente", "fieldIds": ["clienteId"] },
+        "to": { "entityId": "Product", "fieldIds": ["productId"] },
+        "description": "MDM relationship between the two roles."
+      }
+    },
+    {
+      "relationshipId": "supplierProvidesProduct",
+      "fromEntity": "Supplier",
+      "toEntity": "Product",
+      "type": "manyToOne",
+      "required": false,
+      "description": "A supplier may provide a catalog product.",
+      "persistence": { "mode": "mdmRelationship" },
+      "realization": {
+        "kind": "mdmRelationship",
+        "ownerEntity": "Supplier",
+        "from": { "entityId": "Supplier", "fieldIds": ["supplierId"] },
+        "to": { "entityId": "Product", "fieldIds": ["productId"] },
+        "description": "MDM relationship between supplier and product."
+      }
+    },
+    {
+      "relationshipId": "vehicleCarriesProduct",
+      "fromEntity": "FleetVehicle",
+      "toEntity": "Product",
+      "type": "manyToOne",
+      "required": false,
+      "description": "A fleet vehicle may be associated with a catalog product.",
+      "persistence": { "mode": "mdmRelationship" },
+      "realization": {
+        "kind": "mdmRelationship",
+        "ownerEntity": "FleetVehicle",
+        "from": { "entityId": "FleetVehicle", "fieldIds": ["fleetVehicleId"] },
+        "to": { "entityId": "Product", "fieldIds": ["productId"] },
+        "description": "MDM relationship between vehicle and product."
+      }
+    }
+  ],
+  "changeSummary": ["v7 three-layer MDM fixture."]
+}

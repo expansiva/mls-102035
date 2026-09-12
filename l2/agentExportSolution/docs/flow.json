@@ -1,0 +1,31 @@
+{
+  "flowId": "agentExportSolution",
+  "schemaVersion": "2026-09-09-export-v1",
+  "status": "v1",
+  "description": "Deterministic l4 packager plus one LLM call for the catalog description. No checkpoint.",
+  "canonicalReferences": [
+    "mls-base/skills/00_index.md",
+    "mls-base/skills/agentNewSolution.md",
+    "mls-base/skills/agentsBestPractices.md",
+    "mls-base/skills/modelTypes.md",
+    "mls-base/mls-102035/l2/agentNewSolution/helpers/ns4TextPaths.ts"
+  ],
+  "principles": [
+    "Export is mechanical: l4 without pipeline/, hashes stripped (recomputable), headers normalized to _{project}_, human text copied to i18n via textPaths.",
+    "One LLM call writes catalog.description only. No checkpoint. No import. No translation.",
+    "textPaths live on the NS contracts per schemaVersion; they are metadata, not artifact fields.",
+    "A solution is one or more modules that share level-1 roles and actors; the manifest lists modules in invocation order."
+  ],
+  "invocation": {
+    "export": "@@exportSolution <module> [<module>…]"
+  },
+  "steps": [
+    {
+      "planId": "export-catalog",
+      "kind": "llm",
+      "modelType": "general",
+      "goal": "Catalog description (what the solution is, who it is for).",
+      "prompt": "promptCatalog.md"
+    }
+  ]
+}

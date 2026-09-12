@@ -36,6 +36,8 @@ function twoModuleStor() {
     // project-level l5
     l5_config: { project: 1, level: 5, folder: '', status: 'changed' },
     l5_project: { project: 1, level: 5, folder: '', status: 'changed' },
+    // solution registry lives above the module; /rebuild all must not delete it
+    org_registry: { project: 1, level: 4, folder: 'organization', status: 'changed' },
     // other project / already deleted
     other_project: { project: 9, level: 4, folder: 'listaAssinatura', status: 'changed' },
     already_gone: { project: 1, level: 4, folder: 'listaAssinatura/ontology', status: 'deleted' },
@@ -185,4 +187,5 @@ test('plain /rebuild selection still does not touch l1 or l2', () => {
   assert.equal(keys.has('la_l1_controller'), false);
   assert.equal(keys.has('la_l2_shared'), false);
   assert.equal(keys.has('todo_l4_module'), false);
+  assert.equal(keys.has('org_registry'), false);
 });

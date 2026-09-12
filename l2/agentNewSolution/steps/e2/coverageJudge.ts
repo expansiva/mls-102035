@@ -1,5 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution/steps/e2/coverageJudge.ts" enhancement="_blank"/>
 
+import type { Ns4BusinessActor } from '/_102035_/l2/agentNewSolution/steps/e1/contracts.js';
+import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 import type { Ns4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import { resolveNs4Findings, type Ns4TypeBFinding } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import {
@@ -8,6 +10,7 @@ import {
   Ns4E2MechanicalCoverageReport,
 } from '/_102035_/l2/agentNewSolution/steps/e2/coverageSignals.js';
 import {
+  applyNs4E2InferredActorDecisions,
   NS4_E2_DECIDE_ON_READ_MODEL,
   ns4E2DecideOnReadModelSteps,
 } from '/_102035_/l2/agentNewSolution/steps/e2/gate.js';
@@ -209,7 +212,12 @@ export function resolveNs4E2CoverageJudgeFailure(review: Ns4E2Review): Ns4E2Revi
  * Deterministic registrars recorded after the structural gate / coverage judge. Neither is a
  * blocking issue and neither may ask the generator to invent a decide step.
  */
-export function applyNs4E2RegistrarDecisions(review: Ns4E2Review): Ns4E2Review {
+export function applyNs4E2RegistrarDecisions(
+  review: Ns4E2Review,
+  actors: readonly Ns4BusinessActor[] = [],
+  presentation?: Ns4Presentation,
+): Ns4E2Review {
+  review = applyNs4E2InferredActorDecisions(review, actors, presentation);
   const findings: Ns4TypeBFinding[] = [];
   const known = new Set(review.systemDecisions.map(decision => decision.decisionId));
   const mechanical = analyzeNs4E2MechanicalCoverage(review);

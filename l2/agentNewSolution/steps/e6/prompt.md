@@ -26,6 +26,9 @@ human clarification before realization. Do not redesign journeys, access, ontolo
   unrelated proposal.
 - Keep the result easy for a product owner to approve. No APIs, packages, database design, pages,
   source references or implementation tasks.
+- The human prompt may list `roles` and `generalFields` already realized by sibling modules. A
+  capability those siblings already provide MUST enter `recommendations` as
+  `kind: "horizontalModule"`, `decision: "include"`, `existing: true` — reuse, never a new module.
 
 ## Output
 

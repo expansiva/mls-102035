@@ -1,0 +1,46 @@
+/// <mls fileReference="_102047_/l4/compras/rules.defs.ts" enhancement="_blank"/>
+
+import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+
+export const comprasRules = {
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "compras",
+  "rules": [
+    {
+      "ruleId": "pedidoDeveTerAoMenosUmItem",
+      "description": "Todo pedido de compra deve conter um ou mais itens de produto."
+    },
+    {
+      "ruleId": "itensDevemCorresponderAoFornecimento",
+      "description": "Cada item do pedido deve referenciar um produto fornecido pelo fornecedor do pedido e usar o preço comercial combinado."
+    },
+    {
+      "ruleId": "valorTotalDoPedido",
+      "description": "O valor total do pedido de compra deve ser calculado pela soma das quantidades dos itens multiplicadas por seus respectivos preços unitários."
+    },
+    {
+      "ruleId": "aprovacaoAcimaDoValorLimite",
+      "description": "Um pedido de compra cujo valor total seja superior ao valor limite deve ser aprovado ou rejeitado pelo gerente de compras antes de ser processado."
+    },
+    {
+      "ruleId": "recebimentoNaoPodeExcederQuantidadePedida",
+      "description": "A quantidade recebida acumulada de cada item do pedido não pode exceder a quantidade solicitada."
+    },
+    {
+      "ruleId": "entradaDeEstoquePorRecebimento",
+      "description": "Cada quantidade efetivamente recebida deve gerar entrada correspondente no estoque do produto."
+    },
+    {
+      "ruleId": "pedidoAtrasado",
+      "description": "Um pedido de compra deve ser considerado atrasado quando sua data prevista de entrega tiver passado e suas quantidades ainda não tiverem sido integralmente recebidas."
+    },
+    {
+      "ruleId": "totalCompradoMensalPorFornecedor",
+      "description": "O total comprado mensal por fornecedor deve ser calculado pela soma dos valores dos pedidos de compra do fornecedor no mês."
+    }
+  ]
+} as const satisfies Ns5RulesArtifact;
+
+export type ComprasRulesType = typeof comprasRules;
+
+export default comprasRules;

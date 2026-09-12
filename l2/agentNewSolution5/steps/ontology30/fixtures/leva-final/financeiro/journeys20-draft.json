@@ -1,0 +1,36 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarRecebimentoDireto",
+      "business": {
+        "actorRef": "caixa",
+        "title": "Registrar recebimento em dinheiro ou Pix",
+        "goal": "Dar baixa total ou parcial em um título com um recebimento confirmado no caixa.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarTituloEmAberto",
+            "kind": "locate",
+            "entity": "TituloReceber",
+            "title": "x",
+            "description": "x"
+          }
+        ],
+        "outcome": {
+          "statement": "O recebimento em dinheiro ou Pix fica registrado e o saldo do título é atualizado.",
+          "evidence": [
+            "Um recebimento vinculado ao título apresenta o valor e a forma de pagamento registrados.",
+            "O título apresenta o saldo pendente atualizado após a baixa total ou parcial."
+          ]
+        }
+      },
+      "businessHash": "sha256:74602a9ea8a0ecb22606f64a9914039b96d7323023edbfff38ce0de7b51b0a33"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": []
+}

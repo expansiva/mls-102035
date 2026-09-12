@@ -11,6 +11,7 @@ import type {
   Ns4OntologyEntityArtifact,
   Ns4OntologyIndexArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import type { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import type { Ns4CompositionArtifact } from '/_102035_/l2/agentNewSolution/steps/e6/contracts.js';
 import type {
@@ -27,6 +28,17 @@ import type {
 import type {
   Ns4L5ProcessArtifact, Ns4L5TodoBackendArtifact, Ns4L5TodoFrontendArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e10/contracts.js';
+import type {
+  Ns4Level1EntityArtifact,
+  Ns4Level1IndexArtifact,
+  Ns4SolutionRegistryArtifact,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+
+export type {
+  Ns4ActorKind,
+  Ns4ActorOrigin,
+  Ns4BusinessActor,
+} from '/_102035_/l2/agentNewSolution/steps/e1/contracts.js';
 
 export type {
   Ns4ApprovedBy,
@@ -35,6 +47,7 @@ export type {
   Ns4E2Status,
   Ns4E3Status,
   Ns4E4Status,
+  Ns4E4BStatus,
   Ns4E5Status,
   Ns4E6Status,
   Ns4E7Status,
@@ -95,6 +108,8 @@ export type {
   Ns4EntityOwnership,
   Ns4FieldConstraint,
   Ns4LifecyclePredicate,
+  Ns4LifecycleReachedBy,
+  Ns4LifecycleState,
   Ns4OntologyEntity,
   Ns4OntologyEntityArtifact,
   Ns4OntologyEntityPlan,
@@ -109,6 +124,14 @@ export type {
   Ns4StorageScope,
   Ns4StorageTarget,
 } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+
+export type {
+  Ns4AccessAnchor,
+  Ns4AccessAnchorHop,
+  Ns4AccessBinding,
+  Ns4AccessBindingsArtifact,
+  Ns4SynthesizedAuthority,
+} from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 
 export type {
   Ns4E5Review,
@@ -201,11 +224,38 @@ export type {
   Ns4L5TodoFrontendArtifact,
 } from '/_102035_/l2/agentNewSolution/steps/e10/contracts.js';
 
+export type {
+  Ns4Level1AllowedRelationship,
+  Ns4Level1EntityArtifact,
+  Ns4Level1Field,
+  Ns4Level1IndexArtifact,
+  Ns4Level1RelationshipRef,
+  Ns4Level1Subtype,
+  Ns4SolutionRegistryActor,
+  Ns4SolutionRegistryArtifact,
+  Ns4SolutionRegistryGeneralField,
+  Ns4SolutionRegistryModule,
+  Ns4SolutionRegistryRole,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+
+export {
+  NS4_LEVEL1_SCHEMA_VERSION,
+  NS4_LEVEL1_SUBTYPE_VALUES,
+  NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+
+export {
+  TEXT_PATHS_BY_SCHEMA,
+  TEXT_PATHS_VERSION,
+  textPathsForArtifact,
+} from '/_102035_/l2/agentNewSolution/helpers/ns4TextPaths.js';
+
 export const NS4_PERMANENT_ARTIFACT_TYPE_NAMES = [
   'Ns4ModuleArtifact',
   'Ns4JourneyArtifact',
   'Ns4JourneyIndex',
   'Ns4AccessMatrixArtifact',
+  'Ns4AccessBindingsArtifact',
   'Ns4OntologyEntityArtifact',
   'Ns4OntologyIndexArtifact',
   'Ns4RulesArtifact',
@@ -222,6 +272,9 @@ export const NS4_PERMANENT_ARTIFACT_TYPE_NAMES = [
   'Ns4L5TodoFrontendArtifact',
   'Ns4L5TodoBackendArtifact',
   'Ns4L5ProcessArtifact',
+  'Ns4Level1EntityArtifact',
+  'Ns4Level1IndexArtifact',
+  'Ns4SolutionRegistryArtifact',
 ] as const;
 
 export type Ns4PermanentArtifactTypeName = typeof NS4_PERMANENT_ARTIFACT_TYPE_NAMES[number];
@@ -231,6 +284,7 @@ export interface Ns4PermanentArtifactByType {
   Ns4JourneyArtifact: Ns4JourneyArtifact;
   Ns4JourneyIndex: Ns4JourneyIndex;
   Ns4AccessMatrixArtifact: Ns4AccessMatrixArtifact;
+  Ns4AccessBindingsArtifact: Ns4AccessBindingsArtifact;
   Ns4OntologyEntityArtifact: Ns4OntologyEntityArtifact;
   Ns4OntologyIndexArtifact: Ns4OntologyIndexArtifact;
   Ns4RulesArtifact: Ns4RulesArtifact;
@@ -247,4 +301,7 @@ export interface Ns4PermanentArtifactByType {
   Ns4L5TodoFrontendArtifact: Ns4L5TodoFrontendArtifact;
   Ns4L5TodoBackendArtifact: Ns4L5TodoBackendArtifact;
   Ns4L5ProcessArtifact: Ns4L5ProcessArtifact;
+  Ns4Level1EntityArtifact: Ns4Level1EntityArtifact;
+  Ns4Level1IndexArtifact: Ns4Level1IndexArtifact;
+  Ns4SolutionRegistryArtifact: Ns4SolutionRegistryArtifact;
 }

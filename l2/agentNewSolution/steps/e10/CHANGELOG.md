@@ -1,5 +1,43 @@
 # E10 changelog
 
+## 2026-09-09 — E10 uses ns4ResolvableFields
+
+`validateOutputShapeTypes` resolves fieldRefs through the shared helper. The projection-field set
+at the disclosure check is unchanged (declared projection fields, not entity resolvable set).
+
+## 2026-09-09 — mdm storage.idField is a resolvable outputShape fieldRef
+
+`validateOutputShapeTypes` resolves `storage.idField` as uuid when it is absent from
+`fields[]`, same class as the E8/E9 idField lookups. A fieldRef that is neither a real
+field nor the idField is still skipped (not invented as json).
+
+## 2026-09-09 — A8 fails actor/command without a transition; time passes
+
+`NS4_E10_STATE_UNREACHABLE` is an A8 error when an actor/command state has no reachable
+transition, or when an operation's inputs filter by that state. `reachedBy: time` passes.
+
+## 2026-09-09 — A8 unwritten state is an error; A4 disclosure is a real check
+
+A lifecycle state reached only by transitions whose use case does not list that entity in
+`writes` is `NS4_E10_DORMANT_COMMAND` as an **error** (repair E7). Commands whose
+`transitionRefs` are missing from compiled workflows stay a registrar.
+
+`validateDisclosureRegistrars` became `validateDisclosure`. A limited external grant without
+`projectionRef`, or an operation of that authority that still reads the source entity, is an
+error (`NS4_E10_DISCLOSURE_PROJECTION_MISSING` / `NS4_E10_DISCLOSURE_OPERATION_UNPROJECTED`).
+E3 prose is still not matched to field ids. Picker-source leftovers stay registrars.
+
+## 2026-09-08 — A9 authority and A6 access-bindings
+
+A9 fails when an operation has empty `authorityRefs`, when a V4 row has none, or when an
+external profile writes an entity it has no grant over. A6 compares `access-bindings`
+source hashes with the approved access matrix and ontology.
+
+## 2026-09-08 — solution registry
+
+After `passed`, E10 upserts only this module's block in `l4/organization/registry.defs.ts`.
+Sibling blocks stay byte-identical. `/rebuild all` of the module rewrites this block only.
+
 ## 2026-09-07 — dormant-command question from the phrase catalogue
 
 `NS4_E10_DORMANT_COMMAND` `question` reads `ns4Text(sources.presentation, 'dormant.question')`.

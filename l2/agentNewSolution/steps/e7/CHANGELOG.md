@@ -1,5 +1,28 @@
 # E7 changelog
 
+## 2026-09-09 — writes.fieldRefs resolve through ns4ResolvableFields
+
+`NS4_E7_WRITE_FIELD` accepts `storage.idField` of an mdm entity whose `fields[]` is namespace-only
+(or empty). A field that is neither declared nor the id is still rejected.
+
+## 2026-09-09 — time states stay; actor/command without a transition is an error
+
+`reachedBy: time` never enters the compiled workflow and is never shrunk. Actor/command states
+with no reachable transition fail `NS4_E7_STATE_UNREACHABLE` instead of a silent `shrinkLifecycle`.
+`omit*`/`shrink*`/`dormant*` survive only for a state the human unmarked at E4.
+
+## 2026-09-09 — usecase v4 `writes[]`
+
+The draft/artifact persist `writes: Array<{ entityId, fieldRefs? }>`. The gate requires
+`writes ⊇` the compiled act entity, its `affects`, and every transition entity
+(`NS4_E7_WRITES_MISSING_AFFECT`). Extra entities become a visible `writesBeyondIntent<UseCase>`
+system decision (alternative `drop`). Schema `2026-09-09-ns4-usecase-v4`. Queries have
+`writes: []`. TypeScript name remains `Ns4UseCaseArtifactV3`.
+
+## 2026-09-08 — V3 no longer writes empty operationAuthorityRefs
+
+E7 leaves operation-to-authority pending. E9 writes V4 `operationAuthorityRefs`.
+
 ## 2026-09-07 — lifecycle systemDecision copy from the phrase catalogue
 
 Unreachable-state, dormant-predicate and omitted-workflow `question`/`changeHint` read

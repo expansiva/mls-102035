@@ -1,0 +1,35 @@
+{
+  "entityId": "Pagamento",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do pagamento."
+    },
+    {
+      "fieldId": "valor",
+      "title": "Valor",
+      "type": "money",
+      "required": true,
+      "description": "Valor recebido neste pagamento."
+    },
+    {
+      "fieldId": "comanda",
+      "title": "Comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Comanda à qual este pagamento é destinado."
+    },
+    {
+      "fieldId": "recebidoEm",
+      "title": "Recebido em",
+      "type": "datetime",
+      "required": true,
+      "description": "Data e hora em que o pagamento foi recebido."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

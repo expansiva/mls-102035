@@ -1,0 +1,101 @@
+{
+  "moduleName": "locacaoEquipamentos",
+  "businessDomain": "Locação de equipamentos para construção",
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "title": "Cliente",
+      "description": "Pessoa cadastrada como cliente da locadora para celebrar contratos de locação.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.Cliente"
+      }
+    },
+    {
+      "entityId": "Equipamento",
+      "title": "Equipamento",
+      "description": "Equipamento de construção disponibilizado pela locadora, com código, diária e situação operacional próprios do módulo.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetEquipment",
+      "displayField": "codigo",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.Equipamento"
+      }
+    },
+    {
+      "entityId": "ContratoLocacao",
+      "title": "Contrato de locação",
+      "description": "Registro da locação de equipamentos por um cliente em um período, incluindo a devolução e sua eventual multa.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "dataRetirada",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.ContratoLocacao"
+      }
+    },
+    {
+      "entityId": "ItemLocacao",
+      "title": "Item de locação",
+      "description": "Item que registra cada equipamento incluído em um contrato de locação e preserva as condições aplicáveis à locação.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "id",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.ItemLocacao"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "contratoCliente",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "Cliente",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada contrato de locação é celebrado por um cliente.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "contratoItens",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "ItemLocacao",
+      "type": "oneToMany",
+      "required": true,
+      "description": "Um contrato de locação contém um ou mais itens de locação.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "itemEquipamento",
+      "fromEntity": "ItemLocacao",
+      "toEntity": "Equipamento",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada item de locação refere-se a um equipamento locado.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { compileNs4AccessBindings, ns4DisclosureProjectionId, type Ns4E4BProposal } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
+import { ns4OntologyWithDisclosure } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
 import { deriveNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/tiers.js';
 import { compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
 import { validateNs4E10 } from '/_102035_/l2/agentNewSolution/steps/e10/gate.js';
@@ -18,6 +20,12 @@ async function sources(): Promise<Ns4E10Sources> {
     journeys: run44.journeys, access: run44.access, ontology: run44.ontology,
     useCases: run44.useCases, workflows: run44.workflows,
   });
+  // run44's subcontractor is an E3 profile with no E8 workspace. n12 fails that at E8;
+  // this file measures E10, so drop the orphan profile from the access matrix used here.
+  input.access.profiles = input.access.profiles.filter((profile: { profileId: string }) => profile.profileId !== 'subcontractor');
+  if (Array.isArray(input.access.grants)) {
+    input.access.grants = input.access.grants.filter((grant: { profileRef?: string }) => grant.profileRef !== 'subcontractor');
+  }
   const model = deriveNs4E8Model(input);
   const saved = await compileNs4ClassicL4(model, input.ontology);
   const journeyIndex: any = {
@@ -41,7 +49,11 @@ async function sources(): Promise<Ns4E10Sources> {
   };
   return {
     moduleName: model.moduleName, userLanguage: model.userLanguage,
-    journeys: input.journeys, journeyIndex, ontology: input.ontology,
+    journeys: input.journeys, journeyIndex,
+    ontology: {
+      ...input.ontology,
+      entities: (input.ontology.entities || []).map((entity: any) => ({ ...entity, lifecycleStates: [] })),
+    },
     ontologyIndex: { ontologyHash: 'sha256:ontology' } as any,
     rules: { rulesHash: 'sha256:rules' } as any,
     access: { ...input.access, userLanguage: 'en', title: 'Access', accessHash: 'sha256:access' } as any,
@@ -65,6 +77,43 @@ test('E10 passes over a module E8 approved and E9 emitted, and previews the menu
   assert.ok(report.menuPreview.navigation.length);
   assert.equal(report.menuPreview.navigation.every(item => item.href === `/${report.moduleName}/${item.workspaceId}`), true);
   assert.equal(report.checks.find(check => check.checkId === 'A6-staleness')?.status, 'passed');
+});
+
+test('mdm storage.idField is a resolvable outputShape fieldRef even when absent from fields[]', async () => {
+  const input = await sources();
+  input.ontology.entities.push({
+    entityId: 'ItemCardapio',
+    kind: 'mdm',
+    fields: [{ fieldId: 'nome', title: 'Nome', type: 'string', required: true, description: '', constraints: [] }],
+    storage: { target: 'mdm', idField: 'itemCardapioId' },
+    lifecycleStates: [],
+  } as any);
+  const operation = input.saved.operations[0];
+  operation.outputShape = {
+    kind: operation.outputShape?.kind ?? 'object',
+    fields: [
+      { name: 'itemCardapioId', type: 'string', required: true, fieldRef: 'ItemCardapio.itemCardapioId' },
+    ],
+  };
+  const report = await validateNs4E10(input);
+  assert.equal(report.errors.some(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE'), false,
+    report.errors.filter(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE').map(issue => issue.message).join('; '));
+});
+
+test('an outputShape fieldRef that is neither a real field nor storage.idField is not treated as ontology json', async () => {
+  const input = await sources();
+  const operation = input.saved.operations[0];
+  const entity = input.ontology.entities.find((item: { entityId: string }) => item.entityId === operation.entity)
+    ?? input.ontology.entities[0];
+  operation.outputShape = {
+    kind: operation.outputShape?.kind ?? 'object',
+    fields: [
+      { name: 'campoInexistente', type: 'string', required: false, fieldRef: `${entity.entityId}.campoInexistente` },
+    ],
+  };
+  const report = await validateNs4E10(input);
+  assert.equal(report.errors.some(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE'), false,
+    report.errors.filter(issue => issue.code === 'NS4_E10_OUTPUT_SHAPE_TYPE').map(issue => issue.message).join('; '));
 });
 
 test('R6-3: e10 rejects outputShape string for an ontology json field', async () => {
@@ -112,6 +161,86 @@ test('a journey decision without its persisted selection sends the repair back t
   const report = await validateNs4E10(input);
   assert.ok(report.errors.some(issue => issue.code === 'NS4_E10_POLICY_SELECTION_MISSING'));
   assert.equal(report.repairStep, 'e2-journeys');
+});
+
+test('a state reached only by a transition whose use case does not write the entity fails A8', async () => {
+  const input = await sources();
+  const host = input.useCases.find(useCase => useCase.kind === 'command') || input.useCases[0];
+  host.writes = [{ entityId: host.entityRefs?.[0] || host.useCaseId }];
+  input.workflows = [{
+    workflowId: 'tableLifecycle', entityRef: 'Table', initialState: 'occupied', terminalStates: ['free'],
+    states: ['occupied', 'free'],
+    transitions: [{
+      transitionId: 'freeTable', entityRef: 'Table', fromStates: ['occupied'], toState: 'free',
+      useRules: [], useCaseId: host.useCaseId,
+    }],
+  } as any];
+  const report = await validateNs4E10(input);
+  assert.equal(report.finalStatus, 'failed');
+  assert.ok(report.errors.some(issue => issue.code === 'NS4_E10_DORMANT_COMMAND' && /Table/.test(issue.message)),
+    report.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(report.checks.find(check => check.checkId === 'A8-dormant-commands')?.status, 'failed');
+  assert.equal(report.repairStep, 'e7-realization');
+});
+
+test('A8 fails an actor/command state with no transition and lets a time state pass', async () => {
+  const input = await sources();
+  const host = input.ontology.entities[0];
+  host.lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'paid', reachedBy: 'command' },
+    { state: 'overdue', reachedBy: 'time', ruleRef: 'overdueWhenPastDue' },
+  ];
+  host.initialState = 'open';
+  input.workflows = [{
+    workflowId: 'hostLifecycle', entityRef: host.entityId, initialState: 'open', terminalStates: ['paid'],
+    states: ['open', 'paid'],
+    transitions: [{
+      transitionId: 'pay', entityRef: host.entityId, fromStates: ['open'], toState: 'paid',
+      useCaseId: (input.useCases[0] || { useCaseId: 'pay' }).useCaseId,
+    }],
+  } as any];
+  const report = await validateNs4E10(input);
+  assert.equal(report.errors.some(issue => issue.code === 'NS4_E10_STATE_UNREACHABLE' && /overdue/.test(issue.message)), false,
+    report.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const blocked = structuredClone(input);
+  blocked.ontology.entities[0].lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'archived', reachedBy: 'actor' },
+  ];
+  blocked.ontology.entities[0].initialState = 'open';
+  blocked.workflows = [{
+    workflowId: 'hostLifecycle', entityRef: host.entityId, initialState: 'open', terminalStates: [],
+    states: ['open'], transitions: [],
+  } as any];
+  const failed = await validateNs4E10(blocked);
+  assert.equal(failed.finalStatus, 'failed');
+  assert.ok(failed.errors.some(issue => issue.code === 'NS4_E10_STATE_UNREACHABLE' && /archived/.test(issue.message)),
+    failed.errors.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.equal(failed.checks.find(check => check.checkId === 'A8-dormant-commands')?.status, 'failed');
+});
+
+test('A8 fails when an operation filters by an unreachable actor state', async () => {
+  const input = await sources();
+  const host = input.ontology.entities[0];
+  host.lifecycleStates = [
+    { state: 'open', reachedBy: 'actor' },
+    { state: 'archived', reachedBy: 'actor' },
+  ];
+  host.initialState = 'open';
+  input.workflows = [{
+    workflowId: 'hostLifecycle', entityRef: host.entityId, initialState: 'open', terminalStates: [],
+    states: ['open'], transitions: [],
+  } as any];
+  const operation = input.model.operations[0];
+  operation.entityRef = host.entityId;
+  operation.inputs = [{
+    inputId: 'status', fieldRef: { entityId: host.entityId, fieldId: 'status' },
+    source: 'userInput', required: false, description: 'Filter.', enumValues: ['open', 'archived'],
+  }];
+  const report = await validateNs4E10(input);
+  assert.ok(report.errors.some(issue => issue.code === 'NS4_E10_STATE_UNREACHABLE' && issue.path.includes(operation.operationId)),
+    report.errors.map(issue => `${issue.code}: ${issue.path}`).join('\n'));
 });
 
 test('a command whose transitions no longer exist stays visible as a registrar, never a failure', async () => {
@@ -201,4 +330,130 @@ test('an incoherent decision is the product problem and still goes back to E2', 
         { decisionId: 'decisionNobodyGenerated', generatedChoice: 'x', selectedChoice: 'x', selectedBy: 'human', selectedAt: '2026-08-15T00:00:00.000Z' }] } });
   assert.equal(unknown.errors.some(issue => issue.code === 'NS4_E10_POLICY_SELECTION_UNKNOWN'), true);
   assert.equal(unknown.repairStep, 'e2-journeys');
+});
+
+const ce05 = JSON.parse(readFileSync(new URL('../e4b/fixtures/ce05-like.json', import.meta.url), 'utf8'));
+const CE05_VISIBLE = ['ordenServicioId', 'clienteId', 'estado', 'diagnostico', 'valorPresupuesto'];
+const CE05_EXCLUDED = ['costoInterno', 'anotacionesTecnicas'];
+
+function ce05DisclosureProposal(): Ns4E4BProposal {
+  return {
+    profileRef: 'cliente', authorityRef: 'svc:own-orders', entityRef: 'OrdenServicio', hops: [],
+    projection: { fields: CE05_VISIBLE, excludedFields: CE05_EXCLUDED },
+  };
+}
+
+async function ce05E10(opts: { dropProjection?: boolean } = {}): Promise<Ns4E10Sources> {
+  const compiled = await compileNs4AccessBindings({
+    moduleName: ce05.moduleName, access: ce05.access, ontology: ce05.ontology, journeys: ce05.journeys,
+    accessHash: ce05.accessHash, ontologyHash: ce05.ontologyHash, rules: ce05.rules,
+  }, [ce05DisclosureProposal()]);
+  const disclosureProjections = opts.dropProjection ? [] : compiled.projections;
+  const input: any = {
+    journeys: {
+      ...ce05.journeys, features: [], userLanguage: 'es', planId: 'e2-review', title: 'J', reviewRound: 1,
+      journeys: ce05.journeys.journeys.map((journey: any) => ({
+        ...journey,
+        business: {
+          ...journey.business, title: journey.journeyId, goal: journey.journeyId,
+          steps: journey.business.steps.map((step: any) => ({
+            ...step, title: step.stepId, description: step.stepId, featureRefs: [],
+          })),
+        },
+      })),
+    },
+    access: { ...ce05.access, planId: 'e3-access-review', title: 'A', reviewRound: 1, changeSummary: [] },
+    ontology: {
+      ...ce05.ontology, planId: 'e4-ontology-review', title: 'O', reviewRound: 1, userLanguage: 'es', changeSummary: [],
+      entities: ce05.ontology.entities.map((entity: any) => ({
+        ...entity, description: entity.title, ownership: entity.ownership || 'moduleOwned',
+        sourceRefs: { journeyIds: [], featureIds: [], authorityRefs: [] },
+        lifecycleStates: [], lifecyclePredicates: entity.lifecyclePredicates || [],
+        useRules: entity.useRules || [],
+      })),
+    },
+    useCases: ce05.useCases,
+    workflows: [],
+    accessBindings: compiled.artifact,
+    disclosureProjections,
+  };
+  const model = deriveNs4E8Model(input);
+  const saved = await compileNs4ClassicL4(model, ns4OntologyWithDisclosure(input.ontology, disclosureProjections));
+  const journeyIndex: any = {
+    schemaVersion: NS4_JOURNEY_INDEX_SCHEMA_VERSION, moduleName: model.moduleName,
+    approvedAt: '2026-09-09T00:00:00.000Z', approvedBy: 'auto',
+    journeys: input.journeys.journeys.map((journey: any) => ({
+      journeyId: journey.journeyId, actorRef: journey.business.actorRef, title: journey.business.title,
+      goal: journey.business.goal, entryMode: journey.business.entry.mode,
+      businessHash: `sha256:${journey.journeyId}`, artifactPath: `l4/${model.moduleName}/journeys/${journey.journeyId}.defs.ts`,
+    })),
+    features: [], policyDecisions: [], policyDecisionSelections: [], systemDecisions: [],
+  };
+  return {
+    moduleName: model.moduleName, userLanguage: 'es',
+    journeys: input.journeys, journeyIndex, ontology: input.ontology,
+    ontologyIndex: { ontologyHash: ce05.ontologyHash } as any,
+    rules: { rulesHash: 'sha256:rules' } as any,
+    access: { ...input.access, userLanguage: 'es', title: 'Access', accessHash: ce05.accessHash } as any,
+    accessBindings: compiled.artifact,
+    disclosureProjections,
+    useCases: input.useCases.map((useCase: any) => ({ ...useCase, useCaseHash: `sha256:${useCase.useCaseId}` })),
+    useCaseIndex: {
+      sourceHashes: {
+        journeys: journeyIndex.journeys.map((entry: any) => ({ journeyId: entry.journeyId, businessHash: entry.businessHash })),
+        ontologyHash: ce05.ontologyHash, rulesHash: 'sha256:rules',
+      },
+      useCases: input.useCases.map((useCase: any) => ({ useCaseId: useCase.useCaseId, useCaseHash: `sha256:${useCase.useCaseId}` })),
+    } as any,
+    workflows: [], workflowIndex: { workflows: [] } as any,
+    model, saved,
+  };
+}
+
+test('ce05-like A4 passes when the portal inspect reads the disclosure projection', async () => {
+  const input = await ce05E10();
+  const portal = input.model.operations.find(operation => operation.useCaseId === 'inspectOrden')!;
+  const projectionId = ns4DisclosureProjectionId('OrdenServicio', 'cliente');
+  assert.equal(portal.entityRef, projectionId);
+  const classic = input.saved.operations.find(operation => operation.operationId === portal.operationId)!;
+  assert.equal(classic.entity, projectionId);
+  assert.equal((classic.outputShape?.fields || []).some(field => field.name === 'costoInterno' || field.name === 'anotacionesTecnicas'), false);
+  const report = await validateNs4E10(input);
+  assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.message}`).join('; '));
+  const a4 = report.checks.find(check => check.checkId === 'A4-disclosure')!;
+  assert.equal(a4.status, 'passed');
+  assert.equal(a4.errorCount, 0);
+});
+
+test('A4 fails end-to-end when the disclosure projection is removed from the fixture', async () => {
+  const input = await ce05E10({ dropProjection: true });
+  const portal = input.model.operations.find(operation => operation.useCaseId === 'inspectOrden')!;
+  assert.equal(portal.entityRef, 'OrdenServicio');
+  const report = await validateNs4E10(input);
+  assert.equal(report.finalStatus, 'failed');
+  assert.ok(report.errors.some(issue => issue.code === 'NS4_E10_DISCLOSURE_OPERATION_UNPROJECTED'),
+    report.errors.map(issue => issue.code).join(','));
+  const a4 = report.checks.find(check => check.checkId === 'A4-disclosure')!;
+  assert.equal(a4.status, 'failed');
+  assert.ok(a4.errorCount > 0);
+  assert.equal(report.repairStep, 'e8-workspaces');
+});
+
+test('e10 disclosure wiring stays English in comments', () => {
+  const files = [
+    readFileSync(new URL('gate.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('contracts.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('agentNs4E10.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('../e9/agentNs4E9.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('../../helpers/ns4ApprovedArtifacts.ts', import.meta.url), 'utf8'),
+  ];
+  for (const source of files) {
+    assert.doesNotMatch(source, /portuguese\s*\?/);
+    for (const line of source.split('\n')) {
+      const trimmed = line.trim();
+      const isComment = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
+      if (!isComment) continue;
+      assert.doesNotMatch(line, /[À-ÿ]/, trimmed);
+    }
+  }
 });

@@ -1,0 +1,83 @@
+{
+  "planId": "e4-relationship-bindings",
+  "moduleName": "comandaRestaurante2",
+  "reviewRound": 1,
+  "bindings": [
+    {
+      "relationshipId": "comandaBelongsToMesa",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Comanda",
+        "from": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "mesaId"
+          ]
+        },
+        "to": {
+          "entityId": "Mesa",
+          "fieldIds": []
+        },
+        "description": "Comanda.mesaId armazena a referência cross-store à identidade MDM da mesa; Mesa não expõe campos próprios no módulo."
+      }
+    },
+    {
+      "relationshipId": "itemComandaBelongsToComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "description": "ItemComanda.comandaId referencia a comanda que recebe o lançamento."
+      }
+    },
+    {
+      "relationshipId": "itemComandaReferencesItemCardapio",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ItemComanda",
+        "from": {
+          "entityId": "ItemComanda",
+          "fieldIds": [
+            "itemCardapioId"
+          ]
+        },
+        "to": {
+          "entityId": "ItemCardapio",
+          "fieldIds": []
+        },
+        "description": "ItemComanda.itemCardapioId armazena a referência cross-store ao item MDM selecionado; ItemCardapio não expõe campos próprios no módulo."
+      }
+    },
+    {
+      "relationshipId": "pagamentoClosesComanda",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Pagamento",
+        "from": {
+          "entityId": "Pagamento",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "to": {
+          "entityId": "Comanda",
+          "fieldIds": [
+            "comandaId"
+          ]
+        },
+        "description": "Pagamento.comandaId identifica a comanda quitada pelo registro de pagamento."
+      }
+    }
+  ]
+}

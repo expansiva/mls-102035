@@ -157,4 +157,9 @@ test('the catalog is entity-keyed, id-field resolved and free of duplicates', ()
   assert.deepEqual(collectNs4JourneyEntities({ journeys: [
     { journeyId: 'a', business: { actorRef: 'x', entry: { mode: 'coldStart' }, steps: [{ stepId: 's', kind: 'act', entity: 'ChangeOrder' }] } },
   ] }), ['ChangeOrder']);
+  assert.deepEqual(collectNs4JourneyEntities({ journeys: [
+    { journeyId: 'closeTab', business: { actorRef: 'cashier', entry: { mode: 'coldStart' }, steps: [
+      { stepId: 'closeTab', kind: 'act', entity: 'Tab', affects: ['Table'] },
+    ] } },
+  ] }), ['Tab', 'Table']);
 });

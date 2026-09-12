@@ -1,0 +1,73 @@
+{
+  "moduleName": "inscricaoEvento",
+  "businessDomain": "Gestão de eventos publicados e inscrições públicas, incluindo lista de espera e cancelamentos.",
+  "entities": [
+    {
+      "entityId": "Evento",
+      "title": "Evento",
+      "description": "Evento cadastrado pelo organizador, com informações, capacidade e publicação para inscrições públicas.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "title",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "inscricaoEvento.Evento"
+      }
+    },
+    {
+      "entityId": "Inscricao",
+      "title": "Inscrição",
+      "description": "Registro da participação de uma pessoa em um evento, incluindo sua situação de confirmação, espera ou cancelamento.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "id",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "inscricaoEvento.Inscricao"
+      }
+    },
+    {
+      "entityId": "Participante",
+      "title": "Participante",
+      "description": "Pessoa inscrita ou em lista de espera para eventos deste módulo.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "inscricaoEvento.Participante"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "eventoInscricoes",
+      "fromEntity": "Evento",
+      "toEntity": "Inscricao",
+      "type": "oneToMany",
+      "required": true,
+      "description": "Um evento possui as inscrições realizadas para sua participação.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "participanteInscricoes",
+      "fromEntity": "Participante",
+      "toEntity": "Inscricao",
+      "type": "oneToMany",
+      "required": true,
+      "description": "Um participante pode possuir inscrições em eventos.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ]
+}

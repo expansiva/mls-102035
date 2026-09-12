@@ -43,6 +43,18 @@ test('E6 validates recommendation identity, kind and decision mechanically', () 
   assert.ok(result.issues.some(issue => issue.code === 'NS4_E6_DECISION'));
 });
 
+test('E6 keeps existing:true on a sibling horizontal reuse', () => {
+  const review = normalizeNs4E6Review({
+    moduleName: 'buildFlowFsm', analysisSummary: 'Reuse the sibling capability.',
+    recommendations: [{
+      id: 'existingPayments', kind: 'horizontalModule', title: 'Payments', purpose: 'Already realized.',
+      decision: 'include', existing: true,
+    }],
+  });
+  assert.equal(review.recommendations[0].existing, true);
+  assert.equal(validateNs4E6Review(review, module).ok, true);
+});
+
 test('current-flow E5 modules resume E6 and approved E6 modules resume E7', () => {
   const e1 = createNs4Pipeline('buildFlowFsm', 'Gerenciar projetos', '2026-08-09T00:00:00.000Z');
   const e5 = markNs4E5Approved(e1, 'human', ['l4/buildFlowFsm/rules/rules.defs.ts']);

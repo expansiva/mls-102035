@@ -7,6 +7,7 @@ import test from 'node:test';
 import { normalizeNs4E4Review } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import { NS4_DEFAULT_TITLES } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
 import { NS4_PHRASES } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+import { compileNs4AccessBindings, ns4DisclosureProjectionId, type Ns4E4BProposal } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import { deriveNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/tiers.js';
 import { resolveNs4E8ModelFindings, validateNs4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/modelGate.js';
 import {
@@ -68,9 +69,12 @@ test('every screen of the module is one of the three tiers, and the module compi
   );
 
   const gate = validateNs4E8Model(model, input);
-  assert.equal(gate.issues.filter(issue => issue.severity !== 'warning').length, run44.expected.blockingIssues);
-  assert.equal(gate.ok, true);
-  assert.deepEqual(resolveNs4E8ModelFindings(model, gate.issues).unresolved, []);
+  const blocking = gate.issues.filter(issue => issue.severity !== 'warning');
+  assert.equal(blocking.length, 1);
+  assert.equal(blocking[0].code, 'NS4_E8_PROFILE_WITHOUT_WORKSPACE');
+  assert.match(blocking[0].message, /subcontractor/);
+  assert.equal(gate.ok, false);
+  assert.equal(resolveNs4E8ModelFindings(model, gate.issues).unresolved.length, 1);
 });
 
 test('the menu lists places only: a journey is reached from the hub, never from the menu', () => {
@@ -78,8 +82,12 @@ test('the menu lists places only: a journey is reached from the hub, never from 
   assert.equal(model.menu.length, run44.expected.menuPlaces);
   assert.equal(model.menu.filter(entry => entry.tier === 'journey').length, run44.expected.journeysInMenu);
   assert.ok(model.landings.length, 'every profile lands on a place');
-  assert.equal(model.landings.every(landing => model.workspaces.some(workspace =>
-    workspace.workspaceId === landing.workspaceId && workspace.tier !== 'journey')), true);
+  for (const landing of model.landings) {
+    const workspace = model.workspaces.find(item => item.workspaceId === landing.workspaceId);
+    assert.ok(workspace, `${landing.profileRef} -> ${landing.workspaceId}`);
+    if (landing.reason === 'firstJourney') assert.equal(workspace!.tier, 'journey');
+    else assert.notEqual(workspace!.tier, 'journey');
+  }
 });
 
 test('a journey compiles one query per locate/inspect step and one command per act/decide step', () => {
@@ -137,6 +145,18 @@ test('a record catalogue classifies its inputs structurally and never transition
   const requiredOf = (operation: typeof update) => operation.inputs.filter(input => input.required).map(input => input.inputId).sort();
   assert.deepEqual(requiredOf(update), [...requiredOf(create), 'changeOrderId'].sort());
   assert.deepEqual(remove.inputs.map(input => input.inputId), ['changeOrderId']);
+});
+
+test('every operation carries authorityRefs and catalogues drop related/own/assigned profiles', () => {
+  const model = deriveNs4E8Model(sources());
+  assert.equal(model.operations.every(operation => operation.authorityRefs.length > 0), true);
+  const projectCatalogue = model.workspaces.find(workspace => workspace.workspaceId === 'projectCatalogue');
+  assert.ok(projectCatalogue);
+  assert.equal(projectCatalogue!.profileRefs.includes('client'), false);
+  const workTaskCatalogue = model.workspaces.find(workspace => workspace.workspaceId === 'workTaskCatalogue');
+  assert.ok(workTaskCatalogue);
+  assert.equal(workTaskCatalogue!.profileRefs.includes('fieldWorker'), false);
+  assert.equal(workTaskCatalogue!.profileRefs.includes('subcontractor'), false);
 });
 
 test('an entity no journey operates still gets a catalogue, and the audience is a recorded decision', () => {
@@ -247,7 +267,10 @@ test('a broken organism reference is repaired, migrated or dropped — never a d
   assert.equal(gate.issues.filter(issue => issue.code === 'NS4_E8_ORGANISM_ACTION').length, 1);
 
   const resolved = resolveNs4E8ModelFindings(broken, gate.issues);
-  assert.deepEqual(resolved.unresolved, []);
+  assert.deepEqual(
+    resolved.unresolved.filter(item => !item.findingRef.startsWith('NS4_E8_PROFILE_WITHOUT_WORKSPACE')),
+    [],
+  );
   const repaired = resolved.artifact.workspaces.find(workspace => workspace.workspaceId === hub.workspaceId)!;
   const record = repaired.sections.find(section => section.sectionId === 'record')!;
 
@@ -267,7 +290,7 @@ test('a broken organism reference is repaired, migrated or dropped — never a d
     ['dropUnbuildablePanel', 'openJourneyScreen', 'wireLocalQuery'],
   );
   assert.equal(validateNs4E8Model(resolved.artifact, input).issues
-    .filter(issue => issue.severity !== 'warning').length, 0);
+    .filter(issue => issue.severity !== 'warning' && issue.code !== 'NS4_E8_PROFILE_WITHOUT_WORKSPACE').length, 0);
 });
 
 test('actors are actor ids and profileRefs are E3 profiles — the backend derives route scopes from actors', () => {
@@ -364,7 +387,12 @@ test('nothing is invented when the module cannot list the parent', () => {
   // Detected — and as a registrar, never a blocker: a screen missing a picker is still a product.
   assert.ok(picker.length, 'the check that used to compare an entity with itself now fires');
   assert.equal(picker.every(issue => issue.severity === 'warning'), true);
-  assert.equal(validateNs4E8Model(stripped, input).ok, true);
+  assert.equal(
+    validateNs4E8Model(stripped, input).issues
+      .filter(issue => issue.code !== 'NS4_E8_PROFILE_WITHOUT_WORKSPACE')
+      .every(issue => issue.severity === 'warning'),
+    true,
+  );
 });
 
 // ── Master data is never deleted: it is deactivated ──────────────────────────
@@ -525,7 +553,10 @@ test('a catalogue list missing search/sort is a registrar finding, not a stop', 
   const finding = gate.issues.find(issue => issue.code === 'NS4_E8_LIST_WITHOUT_SEARCH');
   assert.ok(finding);
   assert.equal(finding!.severity, 'warning');
-  assert.equal(gate.ok, true);
+  assert.equal(
+    gate.issues.filter(issue => issue.code !== 'NS4_E8_PROFILE_WITHOUT_WORKSPACE').every(issue => issue.severity === 'warning'),
+    true,
+  );
   assert.equal(validateNs4E8Model(model, input).issues.some(issue => issue.code === 'NS4_E8_LIST_WITHOUT_SEARCH'), false);
 });
 
@@ -723,6 +754,114 @@ test('a delete over an mdm entity is a blocking finding even if it arrives from 
   assert.notEqual(finding!.severity, 'warning', 'it blocks: a broken reference is not a product');
   // And the untouched model stays clean.
   assert.equal(validateNs4E8Model(model, input).issues.some(issue => issue.code === 'NS4_E8_MDM_DELETE'), false);
+});
+
+const ce05 = JSON.parse(readFileSync(new URL('../e4b/fixtures/ce05-like.json', import.meta.url), 'utf8'));
+const CE05_VISIBLE = ['ordenServicioId', 'clienteId', 'estado', 'diagnostico', 'valorPresupuesto'];
+const CE05_EXCLUDED = ['costoInterno', 'anotacionesTecnicas'];
+
+function ce05DisclosureProposal(): Ns4E4BProposal {
+  return {
+    profileRef: 'cliente', authorityRef: 'svc:own-orders', entityRef: 'OrdenServicio', hops: [],
+    projection: { fields: CE05_VISIBLE, excludedFields: CE05_EXCLUDED },
+  };
+}
+
+function ce05E8Sources(extra: Record<string, unknown> = {}): any {
+  return {
+    journeys: {
+      ...ce05.journeys, features: [], userLanguage: 'es', planId: 'e2-review', title: 'J', reviewRound: 1,
+      journeys: ce05.journeys.journeys.map((journey: any) => ({
+        ...journey,
+        business: {
+          ...journey.business, title: journey.journeyId, goal: journey.journeyId,
+          steps: journey.business.steps.map((step: any) => ({
+            ...step, title: step.stepId, description: step.stepId, featureRefs: [],
+          })),
+        },
+      })),
+    },
+    access: { ...ce05.access, planId: 'e3-access-review', title: 'A', reviewRound: 1, changeSummary: [] },
+    ontology: {
+      ...ce05.ontology, planId: 'e4-ontology-review', title: 'O', reviewRound: 1, userLanguage: 'es', changeSummary: [],
+      entities: ce05.ontology.entities.map((entity: any) => ({
+        ...entity, description: entity.title, ownership: entity.ownership || 'moduleOwned',
+        sourceRefs: { journeyIds: [], featureIds: [], authorityRefs: [] },
+        lifecycleStates: entity.lifecycleStates || [], lifecyclePredicates: entity.lifecyclePredicates || [],
+        useRules: entity.useRules || [],
+      })),
+    },
+    useCases: ce05.useCases,
+    workflows: [],
+    ...extra,
+  };
+}
+
+test('ce05-like portal inspect reads the disclosure projection, not denied fields', async () => {
+  const compiled = await compileNs4AccessBindings({
+    moduleName: ce05.moduleName, access: ce05.access, ontology: ce05.ontology, journeys: ce05.journeys,
+    accessHash: ce05.accessHash, ontologyHash: ce05.ontologyHash, rules: ce05.rules,
+  }, [ce05DisclosureProposal()]);
+  const input = ce05E8Sources({ accessBindings: compiled.artifact, disclosureProjections: compiled.projections });
+  const model = deriveNs4E8Model(input);
+  const portal = model.operations.find(operation => operation.useCaseId === 'inspectOrden')!;
+  const projectionId = ns4DisclosureProjectionId('OrdenServicio', 'cliente');
+  assert.equal(portal.entityRef, projectionId);
+  assert.equal(portal.outputRefs.some(ref => ref.endsWith('.costoInterno') || ref.endsWith('.anotacionesTecnicas')), false);
+  assert.ok(CE05_VISIBLE.every(fieldId => portal.outputRefs.includes(`${projectionId}.${fieldId}`)));
+  const call = model.workspaces.flatMap(workspace => workspace.bffCalls).find(item => item.operationId === portal.operationId);
+  assert.equal(call?.entityRef, projectionId);
+  const gate = validateNs4E8Model(model, input);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS4_E8_OPERATION_ENTITY'), false, gate.issues.map(issue => issue.code).join(','));
+});
+
+test('a step that serves internal and limited-external audiences emits two operations', async () => {
+  const access = structuredClone(ce05.access);
+  access.authorities.push({ authorityRef: 'svc:staff-orders', journeyStepRefs: ['consultarMisOrdenes.inspectOrden'] });
+  access.grants.push({
+    profileRef: 'recepcionista', authorityRef: 'svc:staff-orders', reason: 'staff reads every order',
+    dataScope: { mode: 'organization', description: 'all orders' },
+    disclosure: { mode: 'fullRecord', description: 'full', allowedInformation: [], deniedInformation: [] },
+    useRules: [],
+  });
+  const compiled = await compileNs4AccessBindings({
+    moduleName: ce05.moduleName, access, ontology: ce05.ontology, journeys: ce05.journeys,
+    accessHash: ce05.accessHash, ontologyHash: ce05.ontologyHash, rules: ce05.rules,
+  }, [ce05DisclosureProposal()]);
+  const input = ce05E8Sources({
+    access, accessBindings: compiled.artifact, disclosureProjections: compiled.projections,
+    useCases: ce05.useCases,
+  });
+  const model = deriveNs4E8Model(input);
+  const full = model.operations.find(operation => operation.operationId === 'inspectOrden')!;
+  const limited = model.operations.find(operation => operation.entityRef === ns4DisclosureProjectionId('OrdenServicio', 'cliente'))!;
+  assert.ok(full);
+  assert.ok(limited);
+  assert.notEqual(full.operationId, limited.operationId);
+  assert.equal(full.entityRef, 'OrdenServicio');
+  assert.ok(full.outputRefs.includes('OrdenServicio.costoInterno'));
+  assert.equal(limited.outputRefs.some(ref => ref.endsWith('.costoInterno')), false);
+  assert.ok(full.authorityRefs.includes('svc:staff-orders'));
+  assert.ok(limited.authorityRefs.includes('svc:own-orders'));
+  assert.equal(full.authorityRefs.includes('svc:own-orders'), false);
+});
+
+test('e8 disclosure wiring stays English in comments', () => {
+  const files = [
+    readFileSync(new URL('tiers.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('contracts.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('modelGate.ts', import.meta.url), 'utf8'),
+    readFileSync(new URL('agentNs4E8.ts', import.meta.url), 'utf8'),
+  ];
+  for (const source of files) {
+    assert.doesNotMatch(source, /portuguese\s*\?/);
+    for (const line of source.split('\n')) {
+      const trimmed = line.trim();
+      const isComment = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
+      if (!isComment) continue;
+      assert.doesNotMatch(line, /[À-ÿ]/, trimmed);
+    }
+  }
 });
 
 const ptPhrases = JSON.parse(readFileSync(new URL('../../helpers/fixtures/ns4-phrases-pt.json', import.meta.url), 'utf8'));

@@ -33,9 +33,11 @@ import {
   listNs4ModuleFolders,
   readNs4AgentText,
   readNs4Pipeline,
+  readNs4SolutionRegistry,
   writeNs4Module,
   writeNs4Pipeline,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+import { formatNs4E1OrganizationContext } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
 import { parseNs4RebuildAllReport, stampNs4RebuildAll } from '/_102035_/l2/agentNewSolution/helpers/ns4RebuildAll.js';
 import { validateNs4E1Module } from '/_102035_/l2/agentNewSolution/steps/e1/gate.js';
 import {
@@ -84,6 +86,7 @@ export async function beforeNs4E1PromptStep(
     const reviewRound = positiveInteger(parsed.reviewRound, 1);
     const previousReview = isRecord(parsed.previousReview) ? parsed.previousReview : null;
     const adjustment = typeof parsed.adjustment === 'string' ? parsed.adjustment.trim() : '';
+    const organizationContext = formatNs4E1OrganizationContext(await readNs4SolutionRegistry());
     return [{
       type: 'prompt_ready',
       args: args || step.prompt || JSON.stringify({ planId: 'e1-clarification' }),
@@ -100,10 +103,11 @@ export async function beforeNs4E1PromptStep(
         '## Root planner clarification seed',
         JSON.stringify(plan.clarification, null, 2),
         '',
+        organizationContext,
         `## Required review round\n${reviewRound}`,
         previousReview ? `## Current E1 review, including direct human edits\n${JSON.stringify(previousReview, null, 2)}` : '',
         adjustment ? `## Human adjustment request\n${adjustment}` : '',
-      ].join('\n'),
+      ].filter(Boolean).join('\n'),
     } as mls.msg.AgentIntentPromptReady];
   }
   if (parsed.planId === 'e1-compile') {

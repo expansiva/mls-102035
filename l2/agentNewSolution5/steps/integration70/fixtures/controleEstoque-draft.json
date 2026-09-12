@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "2026-09-12-ns5-integration-v2",
+  "moduleName": "controleEstoque",
+  "inbound": [],
+  "outbound": [
+    {
+      "id": "estoqueAbaixoDoMinimo",
+      "kind": "event",
+      "to": "any",
+      "event": "estoqueAbaixoDoMinimo",
+      "on": "MovimentacaoEstoque.create",
+      "description": "Publica um aviso para módulos interessados quando uma movimentação registrada deixar o saldo do produto abaixo do estoque mínimo.",
+      "entityRefs": [
+        "Produto",
+        "MovimentacaoEstoque"
+      ]
+    }
+  ],
+  "plugins": []
+}

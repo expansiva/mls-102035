@@ -1,0 +1,80 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "clientHasRentalContracts",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ContratoLocacao",
+        "from": {
+          "entityId": "Cliente",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ContratoLocacao",
+          "fieldIds": [
+            "clienteId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "attendantCreatesRentalContracts",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "ContratoLocacao",
+        "from": {
+          "entityId": "Atendente",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "ContratoLocacao",
+          "fieldIds": [
+            "atendenteId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "rentalContractIncludesItems",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "RentalItem",
+        "from": {
+          "entityId": "ContratoLocacao",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "RentalItem",
+          "fieldIds": [
+            "rentalContract"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "rentalItemReservesEquipment",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "RentalItem",
+        "from": {
+          "entityId": "RentalItem",
+          "fieldIds": [
+            "equipment"
+          ]
+        },
+        "to": {
+          "entityId": "Equipamento",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

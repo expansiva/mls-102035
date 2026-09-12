@@ -37,15 +37,14 @@ Rules:
 - `ownerEntity` is the endpoint that stores or owns the relationship implementation.
 - `moduleReference` and `crossStoreReference` use `fieldReference` for a scalar reference or
   `fieldCollection` for an existing JSON/list-of-references field.
-- `mdmRelationship` uses `mdmRelationship`; normally bind each MDM endpoint's identity field because
+- `mdmRelationship` uses `mdmRelationship`; bind each MDM endpoint's identity field because
   the MDM edge owns the association rather than duplicating a foreign key.
 - `derivedJoin` uses `derived`. Bind existing join/projection fields when present; empty `fieldIds`
   are allowed only when the derivation genuinely has no stored key. Explain the derivation precisely.
 - `externalReference` uses `externalReference`; `embedded` uses `embedded`.
 - Every non-derived realization must name at least one existing field at both endpoints.
 - For a required relationship, the owning endpoint fields must themselves be required.
-- Prefer identity fields on the referenced endpoint. Use natural keys only when the frozen ontology
-  explicitly models that relationship that way.
+- Prefer identity fields on the referenced endpoint.
 - A relationship may be semantically important without having a database foreign key. Represent that
   honestly with `derived` or `mdmRelationship`; never manufacture a fake `<entity>Id`.
 - Keep descriptions concise and useful to a human maintaining frontend, backend and reports.

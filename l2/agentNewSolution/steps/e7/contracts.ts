@@ -10,17 +10,46 @@ import type {
 } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import { NS4_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
 import type { Ns4OntologyField } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
-import { resolveNs4Findings, type Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
+import { type Ns4SystemDecision } from '/_102035_/l2/agentNewSolution/helpers/ns4Resolve.js';
 import type { Ns4DerivedContextGraph } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
-import { shrinkNs4WorkflowToReachable } from '/_102035_/l2/agentNewSolution/steps/e7/reachability.js';
 import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { ns4Text } from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
 
-export const NS4_USE_CASE_DRAFT_VERSION = '2026-08-10-ns4-usecase-draft-minimal-v3' as const;
-export const NS4_USE_CASE_SCHEMA_VERSION = '2026-08-10-ns4-usecase-v3' as const;
-export const NS4_USE_CASE_INDEX_SCHEMA_VERSION = '2026-08-10-ns4-usecase-index-v3' as const;
+export const NS4_USE_CASE_DRAFT_VERSION = '2026-09-09-ns4-usecase-draft-v4' as const;
+export const NS4_USE_CASE_SCHEMA_VERSION = '2026-09-09-ns4-usecase-v4' as const;
+export const NS4_USE_CASE_INDEX_SCHEMA_VERSION = '2026-09-09-ns4-usecase-index-v4' as const;
 export const NS4_WORKFLOW_SCHEMA_VERSION = '2026-08-11-ns4-workflow-v4' as const;
 export const NS4_WORKFLOW_INDEX_SCHEMA_VERSION = '2026-08-12-ns4-workflow-index-v5' as const;
+
+/** Human-text JSON paths the importer may rewrite. Metadata per schemaVersion, not an artifact field. */
+export const TEXT_PATHS_2026_09_09_ns4_usecase_v4: string[] = [
+  'title',
+  'description',
+  'inputs[].description',
+  'outputs[].description',
+  'errors[].description',
+  'errors[].when',
+];
+export const TEXT_PATHS_2026_08_10_ns4_usecase_v3 = TEXT_PATHS_2026_09_09_ns4_usecase_v4;
+export const TEXT_PATHS_2026_08_10_ns4_usecase_v2 = TEXT_PATHS_2026_09_09_ns4_usecase_v4;
+export const TEXT_PATHS_2026_09_09_ns4_usecase_index_v4: string[] = [
+  'useCases[].title',
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_10_ns4_usecase_index_v2 = TEXT_PATHS_2026_09_09_ns4_usecase_index_v4;
+/** Workflow artifacts are ids and transitions; no human prose. */
+export const TEXT_PATHS_2026_08_11_ns4_workflow_v4: string[] = [];
+export const TEXT_PATHS_2026_08_10_ns4_workflow_v1 = TEXT_PATHS_2026_08_11_ns4_workflow_v4;
+export const TEXT_PATHS_2026_08_12_ns4_workflow_index_v5: string[] = [
+  'systemDecisions[].question',
+  'systemDecisions[].chosen',
+  'systemDecisions[].alternatives[]',
+  'systemDecisions[].changeHint',
+];
+export const TEXT_PATHS_2026_08_11_ns4_workflow_index_v4 = TEXT_PATHS_2026_08_12_ns4_workflow_index_v5;
+export const TEXT_PATHS_2026_08_10_ns4_workflow_index_v1 = TEXT_PATHS_2026_08_12_ns4_workflow_index_v5;
 
 export type Ns4UseCaseKind = 'query' | 'command';
 export type Ns4UseCaseFieldType = Ns4OntologyField['type'];
@@ -75,6 +104,12 @@ export interface Ns4UseCaseEntityAccess {
   fieldRefs: string[];
 }
 
+/** Entities this behavior records. fieldRefs optional: omit when the whole record is written. */
+export interface Ns4UseCaseWrite {
+  entityId: string;
+  fieldRefs?: string[];
+}
+
 export interface Ns4UseCaseTransition {
   transitionId: string;
   entityRef: string;
@@ -100,6 +135,7 @@ export interface Ns4UseCaseDraft extends Ns4E7PlanUseCase {
     provides: string[];
   };
   entityRefs: string[];
+  writes: Ns4UseCaseWrite[];
   useRules: string[];
   transitions: Ns4UseCaseTransition[];
 }
@@ -125,6 +161,7 @@ export interface Ns4UseCaseIndexArtifactV3 {
   }>;
   realizationHash: string;
   generatedAt: string;
+  systemDecisions: Ns4SystemDecision[];
 }
 
 export interface Ns4WorkflowTransition extends Ns4UseCaseTransition {
@@ -138,6 +175,28 @@ export interface Ns4WorkflowLifecycleDefinition {
   initialState?: string;
   terminalStates?: string[];
   lifecyclePredicates?: Array<{ predicateId: string; stateIds: string[] }>;
+  /** Per-state `reachedBy`. Absent keys default to `actor`. `time` never enters the workflow. */
+  reachedBy?: Record<string, 'actor' | 'command' | 'time'>;
+}
+
+export function workflowLifecycleOf(entity: {
+  lifecycleStates: Array<string | { state: string; reachedBy: 'actor' | 'command' | 'time' }>;
+  initialState?: string;
+  terminalStates?: string[];
+  lifecyclePredicates?: Array<{ predicateId: string; stateIds: string[] }>;
+}): Ns4WorkflowLifecycleDefinition {
+  const states = entity.lifecycleStates.map(entry => typeof entry === 'string' ? entry : entry.state);
+  return {
+    states,
+    initialState: entity.initialState,
+    terminalStates: entity.terminalStates,
+    lifecyclePredicates: (entity.lifecyclePredicates || []).map(predicate => ({
+      predicateId: predicate.predicateId, stateIds: predicate.stateIds,
+    })),
+    reachedBy: Object.fromEntries(entity.lifecycleStates.map(entry => (
+      typeof entry === 'string' ? [entry, 'actor' as const] : [entry.state, entry.reachedBy]
+    ))),
+  };
 }
 
 export interface Ns4WorkflowArtifactV2 {
@@ -272,7 +331,8 @@ export function normalizeNs4UseCaseDraft(
     title: text(root.title) || target.title, kind: target.kind,
     compiledFrom: [...target.compiledFrom], description: text(root.description),
     contexts: { requires: [...target.contexts.requires], provides: [...target.contexts.provides] },
-    entityRefs: uniqueStrings(root.entityRefs), useRules: uniqueStrings(root.useRules),
+    entityRefs: uniqueStrings(root.entityRefs), writes: normalizeWrites(root.writes),
+    useRules: uniqueStrings(root.useRules),
     transitions: array(root.transitions).map(normalizeTransition),
   };
 }
@@ -281,6 +341,7 @@ export async function buildNs4UseCaseArtifacts(
   plan: Ns4E7PlanDraft,
   drafts: Ns4UseCaseDraft[],
   generatedAt: string,
+  systemDecisions: Ns4SystemDecision[] = [],
 ): Promise<{ artifacts: Ns4UseCaseArtifactV3[]; index: Ns4UseCaseIndexArtifactV3 }> {
   const artifacts = await Promise.all(drafts.map(async draft => {
     const { planId: _planId, draftVersion: _draftVersion, transitions, ...contract } = draft;
@@ -299,7 +360,7 @@ export async function buildNs4UseCaseArtifacts(
       useCases: artifacts.map(item => ({ useCaseId: item.useCaseId, title: item.title, kind: item.kind,
         compiledFrom: item.compiledFrom, useCaseHash: item.useCaseHash,
         artifactPath: `l4/${plan.moduleName}/usecases/${item.useCaseId}.defs.ts` })),
-      realizationHash, generatedAt,
+      realizationHash, generatedAt, systemDecisions,
     },
   };
 }
@@ -320,69 +381,27 @@ export async function buildNs4WorkflowArtifacts(
   }
   const relevantEntities = [...ontologyLifecycles.entries()].filter(([entityRef, lifecycle]) => {
     const terminal = new Set(lifecycle.terminalStates || []);
-    return byEntity.has(entityRef) || lifecycle.states.some(state => state !== lifecycle.initialState && !terminal.has(state));
+    const reachedBy = lifecycle.reachedBy || {};
+    const operatedIntermediate = lifecycle.states.some(state =>
+      (reachedBy[state] || 'actor') !== 'time'
+      && state !== lifecycle.initialState
+      && !terminal.has(state));
+    return byEntity.has(entityRef) || operatedIntermediate;
   }).sort(([left], [right]) => left.localeCompare(right));
   const decisions: Ns4SystemDecision[] = [];
   const artifacts = (await Promise.all(relevantEntities.map(async ([entityRef, lifecycle]) => {
       const transitions = byEntity.get(entityRef) || [];
       const workflowId = `${entityRef.slice(0, 1).toLowerCase()}${entityRef.slice(1)}Lifecycle`;
       const initialState = lifecycle.initialState || '';
-      const presentation = plan.presentation;
-      const base = {
-        states: [...lifecycle.states],
-        terminalStates: [...(lifecycle.terminalStates || [])],
-        transitions,
-      };
-      const shrink = shrinkNs4WorkflowToReachable(initialState, base.states, base.transitions);
-      const resolution = resolveNs4Findings(base, shrink.removedStates
-        .map(state => ({
-          classification: 'C' as const,
-          decisionId: `shrink${entityRef}${state.slice(0, 1).toUpperCase()}${state.slice(1)}`,
-          findingRef: `workflow.state.unreachable:${entityRef}.${state}`,
-          stage: 'e7',
-          question: ns4Text(presentation, 'workflow.unreachable.question', { entity: entityRef, state }),
-          deterministicChoice: 'shrinkLifecycle',
-          alternatives: ['operateState'],
-          changeHint: ns4Text(presentation, 'workflow.unreachable.changeHint', { entity: entityRef, state }),
-          apply: (artifact: typeof base) => {
-            const next = shrinkNs4WorkflowToReachable(initialState, artifact.states.filter(item => item !== state), artifact.transitions
-              .filter(transition => transition.toState !== state)
-              .map(transition => ({ ...transition, fromStates: transition.fromStates.filter(item => item !== state) }))
-              .filter(transition => transition.fromStates.length));
-            return { states: next.states, transitions: next.transitions,
-              terminalStates: artifact.terminalStates.filter(item => next.states.includes(item)) };
-          },
-        })));
-      decisions.push(...resolution.systemDecisions);
-      const { states, terminalStates, transitions: resolvedTransitions } = resolution.artifact;
-      const dormantPredicates = (lifecycle.lifecyclePredicates || []).filter(predicate => predicate.stateIds.length
-        && predicate.stateIds.every(state => !states.includes(state)));
-      const predicateResolution = resolveNs4Findings(states, dormantPredicates.map(predicate => ({
-        classification: 'C' as const,
-        decisionId: `dormant${entityRef}${predicate.predicateId.slice(0, 1).toUpperCase()}${predicate.predicateId.slice(1)}`,
-        findingRef: `workflow.predicate.dead:${entityRef}.${predicate.predicateId}`,
-        stage: 'e7',
-        question: ns4Text(presentation, 'workflow.predicate.question', { predicateId: predicate.predicateId }),
-        deterministicChoice: 'leavePredicateDormant', alternatives: ['operateState'],
-        changeHint: ns4Text(presentation, 'workflow.predicate.changeHint', { states: predicate.stateIds.join(', ') }),
-        apply: (artifact: string[]) => artifact,
-      })));
-      decisions.push(...predicateResolution.systemDecisions);
-      if (!resolvedTransitions.length) {
-        const omission = resolveNs4Findings(true, [{
-          classification: 'C' as const, decisionId: `omit${entityRef}Workflow`,
-          findingRef: `workflow.missing:${entityRef}`, stage: 'e7',
-          question: ns4Text(presentation, 'workflow.omit.question', { entity: entityRef }),
-          deterministicChoice: 'omitWorkflow', alternatives: ['operateState'],
-          changeHint: ns4Text(presentation, 'workflow.omit.changeHint', { entity: entityRef }),
-          apply: () => false,
-        }]);
-        decisions.push(...omission.systemDecisions);
-        return null;
-      }
-      const workflowHash = await sha256Ns4({ entityRef, initialState, terminalStates, states, transitions: resolvedTransitions });
+      const reachedBy = lifecycle.reachedBy || {};
+      // Time states never enter the workflow and are never shrunk. Actor/command states stay so the
+      // gate can fail NS4_E7_STATE_UNREACHABLE instead of a silent shrinkLifecycle.
+      const states = lifecycle.states.filter(state => (reachedBy[state] || 'actor') !== 'time');
+      const terminalStates = (lifecycle.terminalStates || []).filter(state => states.includes(state));
+      if (!transitions.length) return null;
+      const workflowHash = await sha256Ns4({ entityRef, initialState, terminalStates, states, transitions });
       return { schemaVersion: NS4_WORKFLOW_SCHEMA_VERSION, moduleName: plan.moduleName,
-        workflowId, entityRef, initialState, terminalStates, states, transitions: resolvedTransitions, workflowHash } satisfies Ns4WorkflowArtifactV2;
+        workflowId, entityRef, initialState, terminalStates, states, transitions, workflowHash } satisfies Ns4WorkflowArtifactV2;
     }))).filter((artifact): artifact is Ns4WorkflowArtifactV2 => !!artifact);
   const realizationHash = await sha256Ns4(artifacts.map(item => ({ workflowId: item.workflowId, workflowHash: item.workflowHash })));
   return {
@@ -467,7 +486,7 @@ export async function buildNs4RealizedAccessArtifact(
     authorities: source.authorities, grants, accessHash: source.accessHash,
     approvedBy: source.approvedBy, approvedAt: source.approvedAt,
     realization: { status: 'useCasesCompiled', compiledFromAccessHash: source.accessHash,
-      useCaseAuthorityRefs, operationAuthorityRefs: [], realizationHash },
+      useCaseAuthorityRefs, realizationHash },
   };
 }
 
@@ -476,6 +495,17 @@ function normalizeTransition(value: unknown): Ns4UseCaseTransition {
     transitionId: text(transition.transitionId), entityRef: text(transition.entityRef),
     fromStates: strings(transition.fromStates), toState: text(transition.toState), useRules: strings(transition.useRules),
   };
+}
+function normalizeWrites(value: unknown): Ns4UseCaseWrite[] {
+  const byId = new Map<string, Ns4UseCaseWrite>();
+  for (const item of array(value)) {
+    const row = record(item);
+    const entityId = text(row.entityId);
+    if (!entityId || byId.has(entityId)) continue;
+    const fieldRefs = uniqueStrings(row.fieldRefs);
+    byId.set(entityId, fieldRefs.length ? { entityId, fieldRefs } : { entityId });
+  }
+  return [...byId.values()].sort((left, right) => left.entityId.localeCompare(right.entityId));
 }
 function record(value: unknown): Record<string, unknown> { return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function array(value: unknown): unknown[] { return Array.isArray(value) ? value : []; }

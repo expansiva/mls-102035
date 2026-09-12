@@ -1,0 +1,137 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "veiculoMotoristaAtribuido",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Veiculo",
+        "from": {
+          "entityId": "Veiculo",
+          "fieldIds": [
+            "motoristaId"
+          ]
+        },
+        "to": {
+          "entityId": "Motorista",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "abastecimentoVeiculo",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Abastecimento",
+        "from": {
+          "entityId": "Abastecimento",
+          "fieldIds": [
+            "veiculoId"
+          ]
+        },
+        "to": {
+          "entityId": "Veiculo",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "abastecimentoMotorista",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Abastecimento",
+        "from": {
+          "entityId": "Abastecimento",
+          "fieldIds": [
+            "motoristaId"
+          ]
+        },
+        "to": {
+          "entityId": "Motorista",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "planoManutencaoVeiculo",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "PlanoManutencao",
+        "from": {
+          "entityId": "PlanoManutencao",
+          "fieldIds": [
+            "veiculoId"
+          ]
+        },
+        "to": {
+          "entityId": "Veiculo",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordemManutencaoVeiculo",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdemManutencao",
+        "from": {
+          "entityId": "OrdemManutencao",
+          "fieldIds": [
+            "veiculoId"
+          ]
+        },
+        "to": {
+          "entityId": "Veiculo",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordemManutencaoPlano",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdemManutencao",
+        "from": {
+          "entityId": "OrdemManutencao",
+          "fieldIds": [
+            "planoManutencaoId"
+          ]
+        },
+        "to": {
+          "entityId": "PlanoManutencao",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "ordemManutencaoOficina",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdemManutencao",
+        "from": {
+          "entityId": "OrdemManutencao",
+          "fieldIds": [
+            "oficinaId"
+          ]
+        },
+        "to": {
+          "entityId": "Oficina",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "2026-09-10-ns5-integration-v1",
+  "moduleName": "ordenServicio5",
+  "inbound": [],
+  "outbound": [],
+  "plugins": []
+}

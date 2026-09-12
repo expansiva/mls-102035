@@ -1,0 +1,80 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "customerOwnsEquipment",
+      "realization": {
+        "kind": "mdmRelationship",
+        "ownerEntity": "Cliente",
+        "from": {
+          "entityId": "Cliente",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "Aparato",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "serviceOrderForCustomer",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "clienteId"
+          ]
+        },
+        "to": {
+          "entityId": "Cliente",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "serviceOrderForEquipment",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "OrdenServicio",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "aparatoId"
+          ]
+        },
+        "to": {
+          "entityId": "Aparato",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "serviceOrderHasBudgetParts",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "BudgetPart",
+        "from": {
+          "entityId": "OrdenServicio",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "BudgetPart",
+          "fieldIds": [
+            "ordenServicioId"
+          ]
+        }
+      }
+    }
+  ]
+}

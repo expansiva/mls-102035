@@ -1,0 +1,42 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "candidateApplications",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Application",
+        "from": {
+          "entityId": "Candidate",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "Application",
+          "fieldIds": [
+            "candidateId"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "jobPositionApplications",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Application",
+        "from": {
+          "entityId": "JobPosition",
+          "fieldIds": [
+            "id"
+          ]
+        },
+        "to": {
+          "entityId": "Application",
+          "fieldIds": [
+            "jobPositionId"
+          ]
+        }
+      }
+    }
+  ]
+}

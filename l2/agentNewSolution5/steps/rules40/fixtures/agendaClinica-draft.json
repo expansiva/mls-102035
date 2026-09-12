@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "agendaClinica",
+  "rules": [
+    {
+      "ruleId": "horarioProfissionalExclusivo",
+      "description": "Não pode haver duas consultas para o mesmo profissional na mesma data e horário."
+    },
+    {
+      "ruleId": "anotacaoObrigatoriaNoAtendimento",
+      "description": "O registro de atendimento deve incluir uma anotação do atendimento."
+    }
+  ]
+}

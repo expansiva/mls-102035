@@ -1,0 +1,21 @@
+{
+  "entityId": "DefectoInformado",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único del defecto informado."
+    },
+    {
+      "fieldId": "descripcion",
+      "title": "Descripción",
+      "type": "text",
+      "required": true,
+      "description": "Descripción del problema o manifestación del aparato informada por el cliente."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

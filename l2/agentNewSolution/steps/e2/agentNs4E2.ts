@@ -52,7 +52,12 @@ import {
   Ns4PolicyDecisionSelection,
   Ns4JourneyIndex,
 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
-import { validateNs4E2PolicySelections, validateNs4E2Review } from '/_102035_/l2/agentNewSolution/steps/e2/gate.js';
+import {
+  applyNs4E2InferredActorDecisions,
+  ns4E2DroppedInferredActorIds,
+  validateNs4E2PolicySelections,
+  validateNs4E2Review,
+} from '/_102035_/l2/agentNewSolution/steps/e2/gate.js';
 import { resolveNs4E2HookArgs } from '/_102035_/l2/agentNewSolution/steps/e2/hookArgs.js';
 import { decideNs4LaterCheckpoint, ns4E2SmartSignal } from '/_102035_/l2/agentNewSolution/helpers/ns4ReviewPolicy.js';
 import {
@@ -139,7 +144,7 @@ export async function beforeNs4E2PromptStep(
         systemPrompt: judgePrompt,
         humanPrompt: [
           '## Approved E1 coverage contract',
-          JSON.stringify(compactE1CoverageContract(moduleArtifact), null, 2),
+          JSON.stringify(compactE1CoverageContract(moduleArtifact, normalizedDraft), null, 2),
           '',
           '## Original module request',
           pipeline.sourcePrompt,
@@ -174,7 +179,7 @@ export async function beforeNs4E2PromptStep(
         systemPrompt: repairPrompt.replace('{{platformSkill}}', platform),
         humanPrompt: [
           '## Approved E1 coverage contract',
-          JSON.stringify(compactE1CoverageContract(moduleArtifact), null, 2),
+          JSON.stringify(compactE1CoverageContract(moduleArtifact, normalizeNs4E2Review(draft, moduleName, moduleArtifact.presentation)), null, 2),
           '',
           '## Complete current E2 draft (read-only base)',
           JSON.stringify(draft, null, 2),
@@ -266,6 +271,12 @@ export async function afterNs4E2PromptStep(
       review.moduleName = args.moduleName;
       review.reviewRound = args.reviewRound || review.reviewRound;
     }
+    const moduleForActors = await readNs4Module(args.moduleName);
+    review = applyNs4E2InferredActorDecisions(
+      review,
+      moduleForActors?.businessScope.actors || [],
+      moduleForActors?.presentation,
+    );
     const structuralGate = validateNs4E2Review(review);
     const selectionGate = validateNs4E2PolicySelections(review, args.policyDecisionSelections || [], true);
     const gate = {
@@ -447,7 +458,12 @@ async function continueNs4E2AfterCoverageJudge(
   statusPrefix = 'E2 coverage reviewed',
 ): Promise<mls.msg.AgentIntent[]> {
   const round = args.reviewRound || pipeline.steps.e2?.reviewRound || 1;
-  review = applyNs4E2RegistrarDecisions(review);
+  const moduleForActors = await readNs4Module(args.moduleName);
+  review = applyNs4E2RegistrarDecisions(
+    review,
+    moduleForActors?.businessScope.actors || [],
+    moduleForActors?.presentation,
+  );
   const draftPath = await writeNs4E2Draft(args.moduleName, review);
   await writeNs4E2VersionedDraft(args.moduleName, review.reviewRound, review);
   const reviewedPipeline = await requirePipeline(args.moduleName);
@@ -590,12 +606,12 @@ async function persistNs4E2(
   requestedSelections: Array<Pick<Ns4PolicyDecisionSelection, 'decisionId' | 'selectedChoice'>> = [],
   autoReason?: string,
 ): Promise<Ns4PersistedE2> {
-  review = applyNs4E2RegistrarDecisions(review);
-  const gate = validateNs4E2Review(review);
-  if (!gate.ok) throw new Error(gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   const moduleArtifact = await readNs4Module(moduleName);
   const pipeline = await requirePipeline(moduleName);
   if (!moduleArtifact || moduleArtifact.module.moduleName !== moduleName) throw new Error(`Invalid module artifact for ${moduleName}.`);
+  review = applyNs4E2RegistrarDecisions(review, moduleArtifact.businessScope.actors, moduleArtifact.presentation);
+  const gate = validateNs4E2Review(review);
+  if (!gate.ok) throw new Error(gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 
   const artifacts = await buildNs4JourneyArtifacts(review);
   const previousIndex = await readNs4DefsJson<Ns4JourneyIndex>(ns4JourneyIndexFile(moduleName));
@@ -608,7 +624,17 @@ async function persistNs4E2(
   const impactReport = buildNs4E2ImpactReport(moduleName, previousIndex, artifacts, approvedAt, review);
   const impactReportPath = await writeNs4E2ImpactReport(moduleName, impactReport);
   const invalidated = impactReport.changes.length > 0;
-  await writeNs4Module(moduleName, markNs4ModuleE2Approved(moduleArtifact, approvedBy, approvedAt, invalidated, autoReason));
+  const droppedActorIds = new Set(ns4E2DroppedInferredActorIds(review));
+  const moduleToApprove = droppedActorIds.size
+    ? {
+      ...moduleArtifact,
+      businessScope: {
+        ...moduleArtifact.businessScope,
+        actors: moduleArtifact.businessScope.actors.filter(actor => !droppedActorIds.has(actor.actorId)),
+      },
+    }
+    : moduleArtifact;
+  await writeNs4Module(moduleName, markNs4ModuleE2Approved(moduleToApprove, approvedBy, approvedAt, invalidated, autoReason));
   const approvedPipeline = markNs4E2Approved(pipeline, approvedBy, [...artifactPaths, indexPath, impactReportPath], approvedAt, autoReason);
   await writeNs4Pipeline(markNs4E2ImpactStale(approvedPipeline, invalidated, approvedAt));
   return { moduleName, journeyCount: artifacts.length, artifactPaths, indexPath };
@@ -789,10 +815,14 @@ function memoryString(context: mls.msg.ExecutionContext, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function compactE1CoverageContract(moduleArtifact: Ns4ModuleArtifact): unknown {
+function compactE1CoverageContract(moduleArtifact: Ns4ModuleArtifact, review?: Ns4E2Review): unknown {
+  const dropped = new Set(review ? ns4E2DroppedInferredActorIds(review) : []);
+  const actors = dropped.size
+    ? moduleArtifact.businessScope.actors.filter(actor => !dropped.has(actor.actorId))
+    : moduleArtifact.businessScope.actors;
   return {
     module: moduleArtifact.module,
-    businessScope: moduleArtifact.businessScope,
+    businessScope: { ...moduleArtifact.businessScope, actors },
     declaredConstraints: moduleArtifact.declaredConstraints,
     solutionStrategy: { mode: moduleArtifact.solutionStrategy.mode },
     localization: {

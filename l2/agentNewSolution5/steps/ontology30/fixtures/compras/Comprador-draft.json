@@ -1,0 +1,7 @@
+{
+  "entityId": "Comprador",
+  "fields": [],
+  "lifecycleStates": [],
+  "transitions": [],
+  "writer": "crud"
+}

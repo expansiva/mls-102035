@@ -1,0 +1,21 @@
+{
+  "entityId": "EntregaAparato",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único de la constancia de entrega del aparato."
+    },
+    {
+      "fieldId": "fechaEntrega",
+      "title": "Fecha y hora de entrega",
+      "type": "datetime",
+      "required": true,
+      "description": "Fecha y hora en que se entrega el aparato al cliente."
+    }
+  ],
+  "lifecycleStates": [],
+  "transitions": []
+}

@@ -1,0 +1,46 @@
+/// <mls fileReference="_102047_/l4/comandaRestaurante5/rules.defs.ts" enhancement="_blank"/>
+
+import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+
+export const comandaRestaurante5Rules = {
+  "schemaVersion": "2026-09-10-ns5-rules-v1",
+  "moduleName": "comandaRestaurante5",
+  "rules": [
+    {
+      "ruleId": "valorTotalDoLancamento",
+      "description": "O valor total de um item da comanda é a quantidade multiplicada pelo preço unitário e é desconsiderado quando o lançamento está cancelado."
+    },
+    {
+      "ruleId": "valorItensDaComanda",
+      "description": "O valor dos itens da comanda é a soma dos valores dos lançamentos que não foram cancelados."
+    },
+    {
+      "ruleId": "valorDescontosDaComanda",
+      "description": "O valor dos descontos da comanda é a soma dos descontos pontuais registrados para a comanda."
+    },
+    {
+      "ruleId": "valorDevidoDaComanda",
+      "description": "O valor devido da comanda é o valor a receber após deduzir os descontos do valor dos itens."
+    },
+    {
+      "ruleId": "valorPagoDaComanda",
+      "description": "O valor pago da comanda é a soma dos pagamentos registrados para a comanda."
+    },
+    {
+      "ruleId": "saldoDevedorDaComanda",
+      "description": "O saldo devedor da comanda é o valor que ainda falta receber para quitar a comanda, obtido subtraindo o valor pago do valor devido."
+    },
+    {
+      "ruleId": "fecharComandaAposQuitacao",
+      "description": "A comanda só pode ser fechada depois que o caixa conferir o consumo e o valor pago cobrir integralmente o valor devido."
+    },
+    {
+      "ruleId": "cancelarItemEmComandaAberta",
+      "description": "O garçom só pode cancelar um item lançado por engano enquanto a comanda permanece aberta."
+    }
+  ]
+} as const satisfies Ns5RulesArtifact;
+
+export type ComandaRestaurante5RulesType = typeof comandaRestaurante5Rules;
+
+export default comandaRestaurante5Rules;

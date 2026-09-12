@@ -1,0 +1,41 @@
+{
+  "entityId": "ItemLocacao",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único do item de locação."
+    },
+    {
+      "fieldId": "contratoLocacaoId",
+      "title": "Contrato de locação",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao contrato de locação ao qual o item pertence."
+    },
+    {
+      "fieldId": "equipamentoId",
+      "title": "Equipamento",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao equipamento incluído no item de locação."
+    },
+    {
+      "fieldId": "valorDiaria",
+      "title": "Valor da diária",
+      "type": "money",
+      "required": true,
+      "description": "Valor diário do equipamento aplicado a esta locação."
+    }
+  ],
+  "details": {
+    "multaCalculada": {
+      "type": "money",
+      "description": "Valor da multa deste item, calculado pela diária, pelos dias de atraso e pelo multiplicador de 1,5."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

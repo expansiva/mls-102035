@@ -7,6 +7,7 @@ import { planNs4RebuildAll } from '/_102035_/l2/agentNewSolution/helpers/ns4Rebu
 import { readNs4AvailableContent } from '/_102035_/l2/agentNewSolution/helpers/ns4ContentRead.js';
 import { renderNs4TypedDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4TypedDefs.js';
 import type {
+  Ns4AccessBindingsArtifact,
   Ns4AccessMatrixArtifact,
   Ns4CompositionArtifact,
   Ns4JourneyArtifact,
@@ -26,6 +27,7 @@ import type {
   Ns4L5TodoFrontendArtifact,
   Ns4L5TodoBackendArtifact,
   Ns4L5ProcessArtifact,
+  Ns4SolutionRegistryArtifact,
 } from '/_102035_/l2/agentNewSolution/types.js';
 
 export type Ns4FileInfo = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
@@ -39,6 +41,18 @@ export function ns4AgentFile(folder: string, shortName: string, extension: strin
 
 export function ns4ModuleFile(moduleName: string): Ns4FileInfo {
   return { project: mls.actualProject || 0, level: 4, folder: normalizeNs4ModuleName(moduleName), shortName: 'module', extension: '.defs.ts' };
+}
+
+export function ns4SolutionRegistryFile(): Ns4FileInfo {
+  return { project: mls.actualProject || 0, level: 4, folder: 'organization', shortName: 'registry', extension: '.defs.ts' };
+}
+
+export function ns4Level1IndexFile(): Ns4FileInfo {
+  return { project: AGENT_PROJECT, level: 4, folder: 'organization/ontology', shortName: 'index', extension: '.defs.ts' };
+}
+
+export function ns4Level1EntityFile(subtype: string): Ns4FileInfo {
+  return { project: AGENT_PROJECT, level: 4, folder: 'organization/ontology', shortName: subtype, extension: '.defs.ts' };
 }
 
 export function ns4PipelineFile(moduleName: string): Ns4FileInfo {
@@ -90,6 +104,10 @@ export function ns4E3DraftFile(moduleName: string): Ns4FileInfo {
 
 export function ns4AccessMatrixFile(moduleName: string): Ns4FileInfo {
   return { project: mls.actualProject || 0, level: 4, folder: `${normalizeNs4ModuleName(moduleName)}/access`, shortName: 'access-matrix', extension: '.defs.ts' };
+}
+
+export function ns4AccessBindingsFile(moduleName: string): Ns4FileInfo {
+  return { project: mls.actualProject || 0, level: 4, folder: `${normalizeNs4ModuleName(moduleName)}/access`, shortName: 'access-bindings', extension: '.defs.ts' };
 }
 
 export function ns4E4DraftFile(moduleName: string): Ns4FileInfo {
@@ -365,6 +383,12 @@ export async function writeNs4AccessMatrix(moduleName: string, artifact: Ns4Acce
   return displayPath(fileInfo);
 }
 
+export async function writeNs4AccessBindings(moduleName: string, artifact: Ns4AccessBindingsArtifact): Promise<string> {
+  const fileInfo = ns4AccessBindingsFile(moduleName);
+  await writeNs4Defs(fileInfo, `${normalizeNs4ModuleName(moduleName)}AccessBindings`, artifact, 'Ns4AccessBindingsArtifact');
+  return displayPath(fileInfo);
+}
+
 export async function writeNs4OntologyEntity(moduleName: string, entityId: string, artifact: Ns4OntologyEntityArtifact): Promise<string> {
   const fileInfo = ns4OntologyEntityFile(moduleName, entityId);
   await writeNs4Defs(fileInfo, `${normalizeNs4ModuleName(moduleName)}Entity${entityId}`, artifact, 'Ns4OntologyEntityArtifact');
@@ -456,6 +480,16 @@ export async function writeNs4TodoBackend(moduleName: string, artifact: Ns4L5Tod
 }
 export async function writeNs4Process(moduleName: string, artifact: Ns4L5ProcessArtifact): Promise<string> {
   const fileInfo = ns4ProcessFile(moduleName); await writeNs4Defs(fileInfo, `${normalizeNs4ModuleName(moduleName)}Process`, artifact, 'Ns4L5ProcessArtifact'); return displayPath(fileInfo);
+}
+
+export async function readNs4SolutionRegistry(): Promise<Ns4SolutionRegistryArtifact | null> {
+  return readNs4DefsJson<Ns4SolutionRegistryArtifact>(ns4SolutionRegistryFile(), false);
+}
+
+export async function writeNs4SolutionRegistry(artifact: Ns4SolutionRegistryArtifact): Promise<string> {
+  const fileInfo = ns4SolutionRegistryFile();
+  await writeNs4Defs(fileInfo, 'solutionRegistry', artifact, 'Ns4SolutionRegistryArtifact');
+  return displayPath(fileInfo);
 }
 
 export async function writeNs4Journey(moduleName: string, journeyId: string, artifact: Ns4JourneyArtifact): Promise<string> {
@@ -598,12 +632,16 @@ function displayPath(fileInfo: Ns4FileInfo): string {
 }
 
 function isGlobalFolder(level: number, folder: string): boolean {
-  return level === 4 && ['actors', 'operations', 'rules', 'trace', 'workflows'].includes(folder);
+  return level === 4 && ['actors', 'operations', 'organization', 'rules', 'trace', 'workflows'].includes(folder);
 }
 
 /**
  * Archives the module's whole l4/l5 through the platform channel (`libStor.deleteFile`): a persisted file
  * becomes `status: 'deleted'` and a never-saved one is removed. Nothing is unlinked outside that channel.
+ *
+ * 11/09/2026: on the host CLI this was a rewrite, not an unlink (same class as Q1 / ns5_11).
+ * NS4 is frozen — do not change this path. Host `localStor.deleteFile` + libStor capability
+ * branch fix the class for NS5 and later callers; NS4 still uses the Studio trash write.
  */
 export async function archiveNs4ModuleForRebuild(moduleName: string): Promise<string[]> {
   const project = mls.actualProject || 0;

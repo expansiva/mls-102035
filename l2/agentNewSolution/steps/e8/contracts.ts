@@ -3,9 +3,12 @@ import {
   deriveNs4Contexts, isNs4PlatformOwnedEntity, type Ns4DerivedContext,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Context.js';
 import type { Ns4E3Review } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
-import type { Ns4E4Review } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
+import type { Ns4E4Review, Ns4OntologyEntity } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4UseCaseArtifactV3, Ns4WorkflowArtifactV2 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import type { Ns4Presentation } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+
+export { TEXT_PATHS_2026_08_14_ns4_e8_model_v1 } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
 
 
 export interface Ns4E8HubScore {
@@ -48,6 +51,20 @@ export interface Ns4E8Sources {
   policyDecisionSelections?: Ns4PolicyDecisionSelection[];
   module?: Ns4E8ModuleSignals;
   presentation?: Ns4Presentation;
+  accessBindings?: Ns4AccessBindingsArtifact;
+  /** Disclosure views loaded by projectionRef; not listed on the E4 ontology index. */
+  disclosureProjections?: Ns4OntologyEntity[];
+}
+
+/** E9/E10 compile against the E4 index plus disclosure views that E8 already pointed at. */
+export function ns4OntologyWithDisclosure(
+  ontology: Ns4E4Review,
+  projections: readonly Ns4OntologyEntity[] = [],
+): Ns4E4Review {
+  if (!projections.length) return ontology;
+  const have = new Set(ontology.entities.map(entity => entity.entityId));
+  const extra = projections.filter(entity => !have.has(entity.entityId));
+  return extra.length ? { ...ontology, entities: [...ontology.entities, ...extra] } : ontology;
 }
 
 export interface Ns4E8Edge {

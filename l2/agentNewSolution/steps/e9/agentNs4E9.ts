@@ -5,14 +5,19 @@ import {
   isNs4Pipeline, markNs4E9Approved, markNs4E9Failed, markNs4E9Running, markNs4ModuleE9Approved,
   type Ns4PipelineState,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import { readNs4ApprovedJourneys, readNs4DisclosureProjections } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import {
-  listNs4E7UseCaseDraftFiles, ns4WorkspaceModelFile, readNs4DefsJson, readNs4Module, readNs4Pipeline, readNs4Text,
-  writeNs4ClassicContract, writeNs4ClassicWorkspace, writeNs4Module, writeNs4Operation, writeNs4Pipeline, writeNs4SiteMap,
+  listNs4E7UseCaseDraftFiles, ns4AccessBindingsFile, ns4AccessMatrixFile, ns4UseCaseFile, ns4UseCaseIndexFile, ns4WorkspaceModelFile, readNs4DefsJson, readNs4Module, readNs4Pipeline,
+  readNs4Text, writeNs4AccessMatrix, writeNs4ClassicContract, writeNs4ClassicWorkspace, writeNs4Module, writeNs4Operation,
+  writeNs4Pipeline, writeNs4SiteMap,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
 import { readNs4ApprovedOntology as readOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import type { Ns4E8Model } from '/_102035_/l2/agentNewSolution/steps/e8/model.js';
-import { compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
+import { ns4OntologyWithDisclosure } from '/_102035_/l2/agentNewSolution/steps/e8/contracts.js';
+import { buildNs4NavigationRealizedAccess, compileNs4ClassicL4 } from '/_102035_/l2/agentNewSolution/steps/e9/classic.js';
+import type { Ns4UseCaseArtifactV3, Ns4UseCaseIndexArtifactV3 } from '/_102035_/l2/agentNewSolution/steps/e7/contracts.js';
 import {
   applyNs4UseCaseCoverage, compareE7ToOperations, useCaseCoverageLogLine,
   type Ns4ApprovedUseCase, type Ns4UseCaseCoverageVerdict,
@@ -34,12 +39,19 @@ export async function beforeNs4E9PromptStep(
     await writeNs4Pipeline(markNs4E9Running(pipeline));
     // E9 takes no screen decision: it transposes the approved E8 model into the classic L4 format.
     const [model, ontology] = await Promise.all([readApprovedModel(moduleName), readOntology(moduleName)]);
-    const l4 = await compileNs4ClassicL4(model, ontology);
+    const accessBindings = await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined;
+    const useCases = await readApprovedUseCases(moduleName);
+    const l4 = await compileNs4ClassicL4(model, ns4OntologyWithDisclosure(ontology, await readNs4DisclosureProjections(moduleName, accessBindings)), useCases);
     const artifactPaths: string[] = [];
     for (const workspace of l4.workspaces) artifactPaths.push(await writeNs4ClassicWorkspace(moduleName, workspace.workspaceId, workspace));
     for (const operation of l4.operations) artifactPaths.push(await writeNs4Operation(moduleName, operation.operationId, operation));
     for (const contract of l4.contracts) artifactPaths.push(await writeNs4ClassicContract(moduleName, contract.workspaceId, contract.bffId, contract.source));
     artifactPaths.push(await writeNs4SiteMap(moduleName, l4.siteMap));
+    const access = await readNs4DefsJson<Ns4AccessMatrixArtifact>(ns4AccessMatrixFile(moduleName), true);
+    if (access) {
+      const realized = await buildNs4NavigationRealizedAccess(access, model, l4);
+      artifactPaths.push(await writeNs4AccessMatrix(moduleName, realized));
+    }
     const module = await readNs4Module(moduleName); if (!module) throw new Error(`Module artifact not found for ${moduleName}.`);
     const approvedAt = new Date().toISOString();
     await writeNs4Module(moduleName, markNs4ModuleE9Approved(module, approvedAt));
@@ -66,6 +78,13 @@ export async function afterNs4E9PromptStep(
   const message = 'E9 is deterministic and must never receive an LLM response.';
   const parsed = resolveArgs(context, step.prompt); await fail(parsed.moduleName, message, 'compiler');
   return [status(context, parent, step, hookSequential, 'failed', message, 'input_output')];
+}
+
+async function readApprovedUseCases(moduleName: string): Promise<Ns4UseCaseArtifactV3[]> {
+  const index = await readNs4DefsJson<Ns4UseCaseIndexArtifactV3>(ns4UseCaseIndexFile(moduleName), false);
+  if (!index?.useCases?.length) return [];
+  const loaded = await Promise.all(index.useCases.map(entry => readNs4DefsJson<Ns4UseCaseArtifactV3>(ns4UseCaseFile(moduleName, entry.useCaseId), false)));
+  return loaded.filter((item): item is Ns4UseCaseArtifactV3 => !!item);
 }
 
 async function readApprovedModel(moduleName: string): Promise<Ns4E8Model> {

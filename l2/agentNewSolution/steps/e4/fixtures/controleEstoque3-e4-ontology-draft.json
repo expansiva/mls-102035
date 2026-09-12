@@ -14,6 +14,8 @@
       "kind": "mdm",
       "ownership": "moduleOwned",
       "party": "none",
+      "mdmSubtype": "Product",
+      "displayField": "name",
       "sourceRefs": {
         "journeyIds": [
           "registerStockEntry",
@@ -53,22 +55,7 @@
             }
           ]
         },
-        {
-          "fieldId": "name",
-          "title": "Nome do produto",
-          "type": "string",
-          "required": true,
-          "description": "Nome de identificação do produto exibido no catálogo e durante a seleção para movimentações e consultas.",
-          "constraints": [
-            {
-              "constraintId": "nameMinLength",
-              "kind": "minLength",
-              "value": "1",
-              "description": "O nome do produto deve ser informado.",
-              "source": "journey"
-            }
-          ]
-        },
+
         {
           "fieldId": "minimumStockQuantity",
           "title": "Quantidade mínima de estoque",
@@ -104,6 +91,7 @@
       "kind": "core",
       "ownership": "moduleOwned",
       "party": "none",
+      "displayField": "stockEntryId",
       "mutability": "appendOnly",
       "sourceRefs": {
         "journeyIds": [
@@ -179,6 +167,7 @@
       "kind": "core",
       "ownership": "moduleOwned",
       "party": "none",
+      "displayField": "stockExitId",
       "mutability": "appendOnly",
       "sourceRefs": {
         "journeyIds": [
@@ -265,6 +254,7 @@
       "kind": "core",
       "ownership": "moduleOwned",
       "party": "none",
+      "displayField": "productId",
       "sourceRefs": {
         "journeyIds": [
           "registerStockEntry",

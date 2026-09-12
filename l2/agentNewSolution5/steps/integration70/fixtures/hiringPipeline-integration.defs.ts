@@ -1,0 +1,60 @@
+/// <mls fileReference="_102047_/l4/hiringPipeline/integration.defs.ts" enhancement="_blank"/>
+
+import type { Ns5IntegrationArtifact } from '/_102035_/l2/solution/types.js';
+
+export const hiringPipelineIntegration = {
+  "schemaVersion": "2026-09-12-ns5-integration-v2",
+  "moduleName": "hiringPipeline",
+  "inbound": [],
+  "outbound": [
+    {
+      "id": "applicationAdvancedToInterview",
+      "kind": "event",
+      "to": "any",
+      "event": "advanceToInterview",
+      "on": "Application.advanceToInterview",
+      "description": "Publishes when an application advances to the interview stage.",
+      "entityRefs": [
+        "Application"
+      ]
+    },
+    {
+      "id": "applicationOfferIssued",
+      "kind": "event",
+      "to": "any",
+      "event": "issueOffer",
+      "on": "Application.issueOffer",
+      "description": "Publishes when an offer is issued for an application.",
+      "entityRefs": [
+        "Application"
+      ]
+    },
+    {
+      "id": "applicationMarkedHired",
+      "kind": "event",
+      "to": "any",
+      "event": "markHired",
+      "on": "Application.markHired",
+      "description": "Publishes when an application is marked as hired.",
+      "entityRefs": [
+        "Application"
+      ]
+    },
+    {
+      "id": "applicationRejected",
+      "kind": "event",
+      "to": "any",
+      "event": "rejectApplication",
+      "on": "Application.rejectApplication",
+      "description": "Publishes when an application is rejected, including its rejection reason.",
+      "entityRefs": [
+        "Application"
+      ]
+    }
+  ],
+  "plugins": []
+} as const satisfies Ns5IntegrationArtifact;
+
+export type HiringPipelineIntegrationType = typeof hiringPipelineIntegration;
+
+export default hiringPipelineIntegration;

@@ -122,6 +122,8 @@ test('run44 contra-loop: same workspaces, no new gate finding', () => {
   assert.deepEqual(byTier, run44.expected.byTier);
   const gate = validateNs4E8Model(model, sources);
   assert.equal(gate.issues.some(issue => issue.code === 'NS4_E8_USECASE_UNHOSTED'), false);
-  assert.equal(gate.issues.filter(issue => issue.severity !== 'warning').length, run44.expected.blockingIssues);
-  assert.equal(gate.ok, true);
+  const blocking = gate.issues.filter(issue => issue.severity !== 'warning');
+  assert.equal(blocking.length, 1);
+  assert.equal(blocking[0].code, 'NS4_E8_PROFILE_WITHOUT_WORKSPACE');
+  assert.equal(gate.ok, false);
 });

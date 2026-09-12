@@ -1,0 +1,73 @@
+{
+  "entityId": "Matricula",
+  "fields": [
+    {
+      "fieldId": "id",
+      "title": "Identificador",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador único da matrícula."
+    },
+    {
+      "fieldId": "alunoId",
+      "title": "Aluno",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao aluno ao qual a matrícula pertence."
+    },
+    {
+      "fieldId": "planoId",
+      "title": "Plano",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência ao plano contratado na matrícula."
+    },
+    {
+      "fieldId": "dataInicio",
+      "title": "Data de início",
+      "type": "date",
+      "required": true,
+      "description": "Data a partir da qual a matrícula passa a vigorar."
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação",
+      "type": "string",
+      "required": true,
+      "enum": [
+        {
+          "value": "active",
+          "title": "Ativa"
+        },
+        {
+          "value": "cancelled",
+          "title": "Cancelada"
+        }
+      ],
+      "description": "Situação atual da matrícula."
+    }
+  ],
+  "lifecycleStates": [
+    {
+      "state": "active",
+      "reachedBy": "actor"
+    },
+    {
+      "state": "cancelled",
+      "reachedBy": "actor"
+    }
+  ],
+  "transitions": [
+    {
+      "transitionId": "cancelarMatricula",
+      "from": [
+        "active"
+      ],
+      "to": "cancelled",
+      "by": [
+        "aluno"
+      ],
+      "description": "Encerra a matrícula ativa do próprio aluno e impede a geração de mensalidades futuras."
+    }
+  ]
+}

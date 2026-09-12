@@ -1,0 +1,30 @@
+{
+  "entityId": "Veiculo",
+  "fields": [
+    {
+      "fieldId": "currentMileage",
+      "title": "Quilometragem atual",
+      "type": "integer",
+      "required": true,
+      "constraints": {
+        "min": 0
+      },
+      "description": "Quilometragem atualmente registrada para o veículo."
+    },
+    {
+      "fieldId": "motoristaId",
+      "title": "Motorista atribuído",
+      "type": "uuid",
+      "required": false,
+      "description": "Referência ao motorista atualmente atribuído para conduzir o veículo."
+    }
+  ],
+  "details": {
+    "preventiveMaintenanceOverdue": {
+      "type": "boolean",
+      "description": "Indica se algum plano preventivo do veículo ultrapassou a quilometragem prevista para manutenção."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

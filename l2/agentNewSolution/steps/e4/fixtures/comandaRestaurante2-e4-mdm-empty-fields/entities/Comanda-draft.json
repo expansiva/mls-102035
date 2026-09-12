@@ -1,0 +1,85 @@
+{
+  "planId": "e4-ontology-entity",
+  "moduleName": "comandaRestaurante2",
+  "reviewRound": 1,
+  "entityId": "Comanda",
+  "fields": [
+    {
+      "fieldId": "comandaId",
+      "title": "Identificador da comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador estável da comanda, mantido entre as etapas do atendimento.",
+      "constraints": [
+        {
+          "constraintId": "uniqueComandaId",
+          "kind": "unique",
+          "value": "true",
+          "description": "Cada comanda possui um identificador estável exclusivo.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "comandaNumber",
+      "title": "Número da comanda",
+      "type": "integer",
+      "required": true,
+      "description": "Número exibido para identificar a comanda durante o atendimento e o fechamento.",
+      "constraints": [
+        {
+          "constraintId": "uniqueComandaNumber",
+          "kind": "unique",
+          "value": "true",
+          "description": "Cada número identifica uma única comanda.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "mesaId",
+      "title": "Mesa",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à mesa selecionada para a qual a comanda foi aberta.",
+      "constraints": []
+    },
+    {
+      "fieldId": "status",
+      "title": "Situação da comanda",
+      "type": "string",
+      "required": true,
+      "description": "Indica se a comanda está aberta para atendimento ou já foi fechada.",
+      "constraints": [
+        {
+          "constraintId": "comandaStatusEnum",
+          "kind": "enum",
+          "value": "[\"open\",\"closed\"]",
+          "description": "Situações possíveis para o ciclo de vida da comanda.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "discountAmount",
+      "title": "Desconto",
+      "type": "money",
+      "required": false,
+      "description": "Valor monetário opcional de desconto informado no fechamento da comanda.",
+      "constraints": []
+    },
+    {
+      "fieldId": "totalAmount",
+      "title": "Total da comanda",
+      "type": "money",
+      "required": true,
+      "description": "Total calculado a partir dos itens lançados não cancelados, considerando o desconto informado no fechamento.",
+      "constraints": []
+    }
+  ],
+  "useRules": [
+    "comandaAbertaParaLancamentos",
+    "itemCancelavelEnquantoComandaAberta",
+    "fechamentoRegistraPagamentoELiberaMesa"
+  ]
+}

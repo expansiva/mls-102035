@@ -1,0 +1,88 @@
+/// <mls fileReference="_102047_/l4/inscricaoEvento/access.defs.ts" enhancement="_blank"/>
+
+import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
+
+export const inscricaoEventoAccess = {
+  "schemaVersion": "2026-09-12-ns5-access-v3",
+  "moduleName": "inscricaoEvento",
+  "actors": [
+    {
+      "actorId": "organizador",
+      "kind": "internal",
+      "origin": "named",
+      "title": "Organizador",
+      "description": "Pessoa da organização que cadastra, publica e acompanha eventos e inscrições."
+    },
+    {
+      "actorId": "publico",
+      "kind": "external",
+      "origin": "named",
+      "title": "Público",
+      "description": "Pessoa que acessa a página pública de um evento para realizar ou cancelar sua inscrição."
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "organizadorGerenciaEventosEinscricoes",
+      "actorRef": "organizador",
+      "title": "Gerenciar eventos e inscrições",
+      "description": "Permite cadastrar, publicar e acompanhar os eventos da organização, incluindo as inscrições e os participantes vinculados.",
+      "entityRefs": [
+        "Evento",
+        "Inscricao",
+        "Participante"
+      ],
+      "dataScope": {
+        "mode": "organization",
+        "description": "Abrange os eventos, inscrições e participantes de toda a organização."
+      },
+      "disclosure": {
+        "mode": "fullRecord",
+        "description": "Permite consultar todos os campos dos registros necessários para administrar eventos e inscrições."
+      }
+    },
+    {
+      "grantId": "publicoConsultaEgerenciaPropriaInscricao",
+      "actorRef": "publico",
+      "title": "Consultar e gerenciar a própria inscrição",
+      "description": "Permite consultar os dados do evento relacionado e realizar ou cancelar apenas a própria inscrição.",
+      "entityRefs": [
+        "Evento",
+        "Inscricao",
+        "Participante"
+      ],
+      "dataScope": {
+        "mode": "own",
+        "description": "Abrange somente a inscrição e o participante associados à pessoa identificada na sessão, bem como o evento dessa inscrição.",
+        "anchorEntity": "Participante"
+      },
+      "disclosure": {
+        "mode": "fieldsOnly",
+        "description": "Exibe os dados de divulgação e disponibilidade do evento e os dados da própria inscrição, sem expor identificadores internos do evento.",
+        "allowedFields": [
+          "Evento.title",
+          "Evento.description",
+          "Evento.eventDate",
+          "Evento.location",
+          "Evento.capacity",
+          "Evento.status",
+          "Evento.details.occupiedSeats",
+          "Evento.details.availableSeats",
+          "Inscricao.id",
+          "Inscricao.eventoId",
+          "Inscricao.participanteId",
+          "Inscricao.status",
+          "Inscricao.registeredAt",
+          "Participante.id"
+        ],
+        "deniedFields": [
+          "Evento.id"
+        ]
+      }
+    }
+  ]
+} as const satisfies Ns5AccessArtifact;
+
+export type InscricaoEventoAccessType = typeof inscricaoEventoAccess;
+
+export default inscricaoEventoAccess;

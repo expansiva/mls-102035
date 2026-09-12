@@ -3,16 +3,16 @@ import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { resolveNs4MutableParent } from '/_102035_/l2/agentNewSolution/helpers/ns4StepTree.js';
 import {
   isNs4Pipeline, markNs4E10Approved, markNs4E10Failed, markNs4E10PipelineDefect, markNs4E10Running, markNs4E10RuntimeFailed,
-  markNs4FastHandoff, markNs4ModuleE10Approved, type Ns4PipelineState,
+  markNs4FastHandoff, markNs4ModuleE10Approved, type Ns4ModuleArtifact, type Ns4PipelineState,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
-import { readNs4ApprovedJourneys, readNs4ApprovedOntology } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
+import { readNs4ApprovedJourneys, readNs4ApprovedOntology, readNs4DisclosureProjections } from '/_102035_/l2/agentNewSolution/helpers/ns4ApprovedArtifacts.js';
 import {
   ns4ClassicContractFile, ns4WorkspaceModelFile, ns4OperationFile, ns4SiteMapFile, readNs4Text,
-  ns4AccessMatrixFile, ns4JourneyIndexFile, ns4OntologyIndexFile, ns4RulesFile, ns4UseCaseFile, ns4UseCaseIndexFile,
+  ns4AccessBindingsFile, ns4AccessMatrixFile, ns4JourneyIndexFile, ns4OntologyIndexFile, ns4RulesFile, ns4UseCaseFile, ns4UseCaseIndexFile,
   ns4WorkflowFile, ns4WorkflowIndexFile, ns4WorkspaceFile, readNs4DefsJson, readNs4L5Config,
   readNs4Module, readNs4Pipeline, writeNs4E10ValidationReport, writeNs4L5Config, writeNs4Module, writeNs4Pipeline,
   writeNs4Process, writeNs4TodoBackend, writeNs4TodoFrontend,
-  readNs4L5Project, writeNs4L5Project,
+  readNs4L5Project, writeNs4L5Project, readNs4SolutionRegistry, writeNs4SolutionRegistry,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
 import {
   applyPlatformBlockDefaults, buildProjectsBlock, buildWorkspaceDependencies,
@@ -21,6 +21,7 @@ import {
 } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
 import type { Ns4JourneyIndex } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
 import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import type { Ns4AccessBindingsArtifact } from '/_102035_/l2/agentNewSolution/steps/e4b/contracts.js';
 import type { Ns4OntologyIndexArtifact } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type { Ns4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
 import type {
@@ -42,6 +43,13 @@ import {
   type Ns4FastHandoffDegradation,
 } from '/_102035_/l2/agentNewSolution/helpers/ns4FastHandoff.js';
 import { buildNsRunSummary, saveNsRunSummary, type PipelineRunDegradation } from '/_102035_/l2/agentNewSolution/helpers/nsPipelineRun.js';
+import { ns4Level1Subtypes } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
+import {
+  buildNs4SolutionRegistryModuleBlock,
+  emptyNs4SolutionRegistry,
+  upsertNs4SolutionRegistryModule,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationRegistry.js';
+import { validateNs4SolutionRegistry } from '/_102035_/l2/agentNewSolution/helpers/registryGate.js';
 
 interface Ns4E10Args { planId: 'e10-validation'; moduleName: string; }
 
@@ -107,6 +115,7 @@ export async function beforeNs4E10PromptStep(
     }
 
     const module = await readNs4Module(moduleName); if (!module) throw new Error(`Module artifact not found for ${moduleName}.`);
+    artifactPaths.push(await persistSolutionRegistry(moduleName, module, sources));
     const approvedAt = new Date().toISOString();
     await writeNs4Module(moduleName, markNs4ModuleE10Approved(module, 'auto', approvedAt));
     await writeNs4Pipeline(markNs4E10Approved(await requirePipeline(moduleName), 'auto', approvedAt, reportPath, artifactPaths));
@@ -140,6 +149,29 @@ export async function afterNs4E10PromptStep(
   return [status(context, parent, step, hookSequential, 'failed', message, 'input_output')];
 }
 
+async function persistSolutionRegistry(
+  moduleName: string,
+  module: Ns4ModuleArtifact,
+  sources: Ns4E10Sources,
+): Promise<string> {
+  const existing = await readNs4SolutionRegistry();
+  const current = existing ?? emptyNs4SolutionRegistry();
+  const subtypes = ns4Level1Subtypes();
+  if (existing) {
+    const gate = validateNs4SolutionRegistry(current, subtypes);
+    if (!gate.ok) throw new Error(`Solution registry is invalid: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('; ')}`);
+  }
+  const next = upsertNs4SolutionRegistryModule(current, buildNs4SolutionRegistryModuleBlock({
+    moduleName,
+    actors: module.businessScope.actors,
+    entities: sources.ontology.entities,
+    updatedAt: new Date().toISOString(),
+  }));
+  const gate = validateNs4SolutionRegistry(next, subtypes);
+  if (!gate.ok) throw new Error(`Solution registry write rejected: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('; ')}`);
+  return writeNs4SolutionRegistry(next);
+}
+
 async function loadSources(moduleName: string): Promise<Ns4E10Sources> {
   const [journeys, ontology, journeyIndex, access, ontologyIndex, rules, useCaseIndex, workflowIndex, model, module] = await Promise.all([
     readNs4ApprovedJourneys(moduleName), readNs4ApprovedOntology(moduleName), readRequired<Ns4JourneyIndex>(ns4JourneyIndexFile(moduleName), 'journey index'),
@@ -164,9 +196,13 @@ async function loadSources(moduleName: string): Promise<Ns4E10Sources> {
     })))),
     siteMap: await readRequired<Ns4ClassicSiteMap>(ns4SiteMapFile(moduleName), 'site map'),
   };
+  const accessBindings = await readNs4DefsJson<Ns4AccessBindingsArtifact>(ns4AccessBindingsFile(moduleName), false) || undefined;
+  const disclosureProjections = await readNs4DisclosureProjections(moduleName, accessBindings);
   return {
     moduleName, userLanguage: model.userLanguage, ...(module?.presentation ? { presentation: module.presentation } : {}),
     journeys, journeyIndex, ontology, ontologyIndex, rules, access,
+    ...(accessBindings ? { accessBindings } : {}),
+    ...(disclosureProjections.length ? { disclosureProjections } : {}),
     useCases, useCaseIndex, workflows, workflowIndex, model, saved,
   };
 }

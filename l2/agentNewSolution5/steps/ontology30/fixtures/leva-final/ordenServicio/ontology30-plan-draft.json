@@ -1,0 +1,127 @@
+{
+  "moduleName": "ordenServicio",
+  "businessDomain": "Servicio técnico de electrónica",
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "title": "Cliente",
+      "description": "Persona cliente que entrega un aparato, recibe el presupuesto y consulta o decide sobre sus propias órdenes.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio.Cliente"
+      }
+    },
+    {
+      "entityId": "Aparato",
+      "title": "Aparato",
+      "description": "Equipo electrónico recibido para diagnóstico, presupuesto, reparación y posterior entrega.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetEquipment",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio.Aparato"
+      }
+    },
+    {
+      "entityId": "Tecnico",
+      "title": "Técnico",
+      "description": "Persona del servicio técnico a quien se asignan órdenes para su análisis y reparación.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio.Tecnico"
+      }
+    },
+    {
+      "entityId": "OrdenServicio",
+      "title": "Orden de servicio",
+      "description": "Registro de la recepción, diagnóstico, presupuesto, decisión, reparación y entrega de un aparato.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "orderNumber",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio.OrdenServicio"
+      }
+    },
+    {
+      "entityId": "PiezaPresupuesto",
+      "title": "Pieza de presupuesto",
+      "description": "Pieza necesaria para una orden, con su costo interno y la información usada en el presupuesto técnico.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "description",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio.PiezaPresupuesto"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "ordenServicioCliente",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Cliente",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada orden de servicio corresponde a un cliente.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordenServicioAparato",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Aparato",
+      "type": "manyToOne",
+      "required": true,
+      "description": "Cada orden de servicio se abre para un aparato recibido.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordenServicioTecnico",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Tecnico",
+      "type": "manyToOne",
+      "required": false,
+      "description": "Una orden de servicio puede estar asignada a un técnico para su atención.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "ordenServicioPiezasPresupuesto",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "PiezaPresupuesto",
+      "type": "oneToMany",
+      "required": false,
+      "description": "Una orden de servicio puede incluir varias piezas necesarias en su presupuesto.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "moduleName": "reembolsoLike",
+  "accessHash": "sha256:access-ce03",
+  "ontologyHash": "sha256:ontology-ce03",
+  "journeys": {
+    "moduleName": "reembolsoLike",
+    "journeys": [
+      {
+        "journeyId": "approveExpense",
+        "business": {
+          "actorRef": "gestor",
+          "steps": [{ "stepId": "inspectExpense", "kind": "inspect", "entity": "Expense" }]
+        }
+      }
+    ]
+  },
+  "access": {
+    "moduleName": "reembolsoLike",
+    "userLanguage": "pt-BR",
+    "profiles": [{ "profileId": "gestor", "kind": "internal", "actorRefs": ["gestor"] }],
+    "authorities": [{ "authorityRef": "exp:team-expenses", "journeyStepRefs": ["approveExpense.inspectExpense"] }],
+    "grants": [
+      {
+        "profileRef": "gestor",
+        "authorityRef": "exp:team-expenses",
+        "reason": "expenses of collaborators on the assigned team",
+        "dataScope": { "mode": "assigned", "description": "expenses of collaborators linked to the team assigned to the manager" },
+        "disclosure": { "mode": "fullRecord", "description": "full", "allowedInformation": [], "deniedInformation": [] },
+        "useRules": []
+      }
+    ]
+  },
+  "ontology": {
+    "moduleName": "reembolsoLike",
+    "entities": [
+      {
+        "entityId": "Team",
+        "title": "Team",
+        "kind": "mdm",
+        "fields": [{ "fieldId": "teamId", "type": "uuid", "required": true }],
+        "storage": { "target": "mdm", "scope": "organization", "idField": "teamId", "notes": "" }
+      },
+      {
+        "entityId": "Expense",
+        "title": "Expense",
+        "kind": "core",
+        "fields": [
+          { "fieldId": "expenseId", "type": "uuid", "required": true },
+          { "fieldId": "teamId", "type": "uuid", "required": true }
+        ],
+        "storage": { "target": "moduleDatabase", "scope": "module", "idField": "expenseId", "notes": "" }
+      }
+    ],
+    "relationships": [
+      {
+        "relationshipId": "expenseOfTeam",
+        "fromEntity": "Expense",
+        "toEntity": "Team",
+        "type": "manyToOne",
+        "required": true,
+        "description": "team",
+        "persistence": { "mode": "crossStoreReference" },
+        "realization": {
+          "kind": "fieldReference",
+          "ownerEntity": "Expense",
+          "from": { "entityId": "Expense", "fieldIds": ["teamId"] },
+          "to": { "entityId": "Team", "fieldIds": ["teamId"] },
+          "description": "Expense.teamId"
+        }
+      }
+    ]
+  }
+}

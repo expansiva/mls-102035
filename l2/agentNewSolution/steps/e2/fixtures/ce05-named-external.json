@@ -1,0 +1,51 @@
+{
+  "actors": [
+    { "actorId": "clerk", "title": "Clerk", "kind": "internal", "origin": "named", "expectedOutcome": "Operate the shop." },
+    { "actorId": "client", "title": "Client", "kind": "external", "origin": "named", "expectedOutcome": "Request a service." }
+  ],
+  "review": {
+    "planId": "e2-review",
+    "moduleName": "serviceOrders",
+    "userLanguage": "en",
+    "title": "Review journeys",
+    "reviewRound": 1,
+    "journeys": [
+      {
+        "journeyId": "requestService",
+        "policyDecisions": [],
+        "business": {
+          "actorRef": "client",
+          "title": "Request a service",
+          "goal": "Ask for a repair.",
+          "entry": { "mode": "coldStart" },
+          "steps": [
+            { "stepId": "createOrder", "kind": "act", "entity": "ServiceOrder", "title": "Create the order.", "description": "The order is recorded.", "featureRefs": ["clientPortal"] }
+          ],
+          "outcome": { "statement": "The client requested a service.", "evidence": ["The order exists."] },
+          "useRules": []
+        }
+      },
+      {
+        "journeyId": "operateOrder",
+        "policyDecisions": [],
+        "business": {
+          "actorRef": "clerk",
+          "title": "Operate the order",
+          "goal": "Advance the repair.",
+          "entry": { "mode": "coldStart" },
+          "steps": [
+            { "stepId": "locateOrder", "kind": "locate", "entity": "ServiceOrder", "title": "Locate the order.", "description": "The order is selected.", "featureRefs": ["shopFloor"] },
+            { "stepId": "advanceOrder", "kind": "act", "entity": "ServiceOrder", "title": "Advance the order.", "description": "The order moved.", "featureRefs": ["shopFloor"] }
+          ],
+          "outcome": { "statement": "The shop advanced the order.", "evidence": ["Status changed."] },
+          "useRules": []
+        }
+      }
+    ],
+    "features": [
+      { "featureId": "clientPortal", "title": "Client portal", "priority": "now", "journeyStepRefs": ["requestService.createOrder"] },
+      { "featureId": "shopFloor", "title": "Shop floor", "priority": "now", "journeyStepRefs": ["operateOrder.locateOrder", "operateOrder.advanceOrder"] }
+    ],
+    "systemDecisions": []
+  }
+}

@@ -11,6 +11,13 @@
  * cfeL4Contract.bffCallCommandShape).
  */
 
+import { sha256Ns4 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
+import {
+  NS4_NAVIGATION_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION,
+  type Ns4AccessMatrixArtifact, type Ns4AccessMatrixArtifactV4, type Ns4AccessOperationAuthorityRef,
+  type Ns4AccessUseCaseAuthorityRef,
+} from '/_102035_/l2/agentNewSolution/steps/e3/contracts.js';
+import { ns4EntityIdField, ns4ResolvableFieldOf } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
 import type { Ns4E4Review, Ns4OntologyEntity, Ns4OntologyField } from '/_102035_/l2/agentNewSolution/steps/e4/contracts.js';
 import type {
   Ns4E8BffCall, Ns4E8Input, Ns4E8MdmSemantics, Ns4E8Model, Ns4E8ModelWorkspace, Ns4E8Operation,
@@ -18,6 +25,30 @@ import type {
 
 export const NS4_CLASSIC_WORKSPACE_VERSION = '2026-08-14-ns4-classic-workspace-v6' as const;
 export const NS4_E9_OUTPUT_REF_UNKNOWN = 'NS4_E9_OUTPUT_REF_UNKNOWN' as const;
+
+/** Human-text JSON paths the importer may rewrite. Classic L4 has no schemaVersion on operations/siteMap. */
+export const TEXT_PATHS_2026_08_14_ns4_classic_workspace_v6: string[] = [
+  'title',
+  'purpose',
+  'sections[].intent',
+  'presentation.classificationNote',
+];
+export const TEXT_PATHS_CLASSIC_WORKSPACE = TEXT_PATHS_2026_08_14_ns4_classic_workspace_v6;
+export const TEXT_PATHS_CLASSIC_OPERATION: string[] = [
+  'title',
+  'story.goal',
+  'story.steps[]',
+  'story.outcome',
+  'accessPattern.description',
+  'inputs[].description',
+];
+export const TEXT_PATHS_CLASSIC_SITE_MAP: string[] = [
+  'note',
+  'workspaces[].title',
+  'workspaces[].purpose',
+  'landings[].reason',
+  'navigationEdges[].description',
+];
 
 export class Ns4E9OutputRefError extends Error {
   readonly code = NS4_E9_OUTPUT_REF_UNKNOWN;
@@ -91,8 +122,14 @@ export function ns4ClassicFrom(operationId: string, member: string): string {
   return `${operationId}.${member}`;
 }
 
+export type Ns4ClassicUseCaseWrites = Array<{
+  useCaseId: string;
+  writes?: Array<{ entityId: string }>;
+}>;
+
 export function transposeNs4ClassicOperation(
   model: Ns4E8Model, operation: Ns4E8Operation, ontology: Ns4E4Review,
+  useCases: Ns4ClassicUseCaseWrites = [],
 ): Ns4ClassicOperation {
   const entity = ontology.entities.find(item => item.entityId === operation.entityRef);
   const owner = model.workspaces.find(workspace => workspace.bffCalls.some(call => call.operationId === operation.operationId));
@@ -100,14 +137,16 @@ export function transposeNs4ClassicOperation(
   const list = operation.accessPattern.kind === 'list';
   const paginated = isPaginated(operation.accessPattern.pagination, call?.outputKind);
   const outputFields = resolveClassicOutputFields(operation, ontology);
+  const writeIds = classicWriteIds(operation, useCases);
+  const writeSet = new Set(writeIds);
   return {
     operationId: operation.operationId,
     title: operation.title,
     actors: owner?.actors || [],
     entity: operation.entityRef,
     kind: operation.kind === 'query' ? 'query' : operation.accessPattern.kind,
-    reads: operation.entityRefs,
-    writes: operation.kind === 'command' ? [operation.entityRef] : [],
+    reads: uniqueStrings(operation.entityRefs.filter(id => !writeSet.has(id))),
+    writes: writeIds,
     rulesApplied: operation.useRules,
     story: {
       actor: owner?.actors[0] || '', goal: operation.title,
@@ -225,9 +264,15 @@ function inputSourceOf(call: Ns4E8BffCall, inputId: string): string {
   return (call.inputSources || []).find(entry => entry.inputId === inputId)?.bffId || '';
 }
 
-function fieldTypeOf(ontology: Ns4E4Review, entityId: string, fieldId: string): Ns4OntologyField['type'] {
-  return ontology.entities.find(entity => entity.entityId === entityId)
-    ?.fields.find(field => field.fieldId === fieldId)?.type || 'string';
+function ontologyFieldOf(
+  ontology: Ns4E4Review, entityId: string, fieldId: string,
+): Pick<Ns4OntologyField, 'type' | 'required'> | undefined {
+  const entity = ontology.entities.find(item => item.entityId === entityId);
+  return ns4ResolvableFieldOf(entity, fieldId);
+}
+
+export function fieldTypeOf(ontology: Ns4E4Review, entityId: string, fieldId: string): Ns4OntologyField['type'] {
+  return ontologyFieldOf(ontology, entityId, fieldId)?.type || 'string';
 }
 
 type ClassicOutputField = { name: string; type: string; required: boolean; fieldRef: string };
@@ -262,8 +307,7 @@ function resolveOutputRef(ref: string, ontology: Ns4E4Review): ClassicOutputFiel
   if (dot <= 0) throw new Ns4E9OutputRefError(ref);
   const entityId = ref.slice(0, dot);
   const fieldId = ref.slice(dot + 1);
-  const field = ontology.entities.find(entity => entity.entityId === entityId)
-    ?.fields.find(item => item.fieldId === fieldId);
+  const field = ontologyFieldOf(ontology, entityId, fieldId);
   if (!field) throw new Ns4E9OutputRefError(ref);
   return { name: fieldId, type: classicType(field.type), required: field.required, fieldRef: ref };
 }
@@ -353,7 +397,7 @@ export function buildNs4ClassicSiteMap(model: Ns4E8Model, classic: Ns4ClassicWor
 }
 
 function identityFieldOf(entity: Ns4OntologyEntity | undefined): string {
-  return entity?.storage.idField || entity?.fields.find(field => /Id$/.test(field.fieldId))?.fieldId || '';
+  return ns4EntityIdField(entity);
 }
 
 function isPaginated(pagination: string | undefined, outputKind?: string): boolean {
@@ -419,8 +463,63 @@ export interface Ns4ClassicL4 {
   siteMap: Ns4ClassicSiteMap;
 }
 
+export async function buildNs4NavigationRealizedAccess(
+  source: Ns4AccessMatrixArtifact,
+  model: Ns4E8Model,
+  classic: Ns4ClassicL4,
+): Promise<Ns4AccessMatrixArtifactV4> {
+  if (source.grants.some(grant => !('useRules' in grant))) throw new Error('E9 does not migrate a legacy access matrix.');
+  const grants = source.grants as Ns4AccessMatrixArtifactV4['grants'];
+  const useCaseAuthorityRefs: Ns4AccessUseCaseAuthorityRef[] = 'realization' in source
+    && source.realization
+    && 'useCaseAuthorityRefs' in source.realization
+    ? [...source.realization.useCaseAuthorityRefs]
+    : [];
+  const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
+  const operationAuthorityRefs: Ns4AccessOperationAuthorityRef[] = [];
+  for (const workspace of classic.workspaces) {
+    for (const call of workspace.bffCalls) {
+      const operation = operations.get(call.uses[0]?.operationId || call.bffId);
+      operationAuthorityRefs.push({
+        operationRef: call.uses[0]?.operationId || call.bffId,
+        route: call.route,
+        workspaceId: workspace.workspaceId,
+        functionId: call.bffId,
+        ...(operation?.useCaseId ? { useCaseId: operation.useCaseId } : {}),
+        authorityRefs: [...(operation?.authorityRefs || [])],
+      });
+    }
+  }
+  operationAuthorityRefs.sort((left, right) =>
+    `${left.route}|${left.operationRef}`.localeCompare(`${right.route}|${right.operationRef}`));
+  const realizationHash = await sha256Ns4({
+    accessHash: source.accessHash, useCaseAuthorityRefs, operationAuthorityRefs,
+  });
+  return {
+    schemaVersion: NS4_NAVIGATION_REALIZED_ACCESS_MATRIX_SCHEMA_VERSION,
+    moduleName: source.moduleName,
+    userLanguage: source.userLanguage,
+    title: source.title,
+    profiles: source.profiles,
+    authorities: source.authorities,
+    grants,
+    accessHash: source.accessHash,
+    approvedBy: source.approvedBy,
+    approvedAt: source.approvedAt,
+    realization: {
+      status: 'navigationCompiled',
+      compiledFromAccessHash: source.accessHash,
+      useCaseAuthorityRefs,
+      operationAuthorityRefs,
+      realizationHash,
+    },
+  };
+}
+
 /** The whole transposition: what E9 writes to L4 from an approved E8 model. */
-export async function compileNs4ClassicL4(model: Ns4E8Model, ontology: Ns4E4Review): Promise<Ns4ClassicL4> {
+export async function compileNs4ClassicL4(
+  model: Ns4E8Model, ontology: Ns4E4Review, useCases: Ns4ClassicUseCaseWrites = [],
+): Promise<Ns4ClassicL4> {
   const operations = new Map(model.operations.map(operation => [operation.operationId, operation]));
   const workspaces: Ns4ClassicWorkspace[] = [];
   for (const workspace of model.workspaces) {
@@ -437,10 +536,23 @@ export async function compileNs4ClassicL4(model: Ns4E8Model, ontology: Ns4E4Revi
   })));
   return {
     workspaces,
-    operations: model.operations.map(operation => transposeNs4ClassicOperation(model, operation, ontology)),
+    operations: model.operations.map(operation => transposeNs4ClassicOperation(model, operation, ontology, useCases)),
     contracts,
     siteMap: buildNs4ClassicSiteMap(model, workspaces),
   };
+}
+
+function classicWriteIds(operation: Ns4E8Operation, useCases: Ns4ClassicUseCaseWrites): string[] {
+  if (operation.kind !== 'command') return [];
+  const useCase = operation.useCaseId
+    ? useCases.find(item => item.useCaseId === operation.useCaseId)
+    : undefined;
+  const declared = (useCase?.writes || []).map(item => item.entityId).filter(Boolean);
+  return uniqueStrings(declared.length ? declared : [operation.entityRef]);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 async function hashNs4Slice(value: unknown): Promise<string> {

@@ -18,7 +18,16 @@ form input, actor session or the unique scenario target. The strict L1 call is p
 invalid presentation gets one constrained repair and then keeps the mechanical defaults, so presentation
 variance never blocks the run. E8 preview and E9 compilation both use the total `helpers/routeOf.ts`.
 
-A workspace is a place. A journey of the same actor on an entity the catalogue already shows is
+A workspace is a place. Each E3 profile lands on one workspace, chosen without an LLM and without
+reading `landingIntent`: the exclusive non-journey whose `profileRefs` is exactly that profile
+(by `tierRank`, then id); else the `tier: journey` workspace that hosts the first step of that
+profile's first journey (`hostedStepRefs`, journeys/index order); else the previous rank fallback
+(first non-journey that includes the profile). `landings[].reason` records which step fired
+(`exclusive | firstJourney | rank`). A profile that has a workspace and no landing fails
+`NS4_E8_PROFILE_WITHOUT_LANDING`. A profile that appears in no workspace `profileRefs` fails
+`NS4_E8_PROFILE_WITHOUT_WORKSPACE`.
+
+A journey of the same actor on an entity the catalogue already shows is
 hosted on that catalogue (`hostedStepRefs`) instead of becoming a second page. A hub is emitted only
 when its closed catalogue has a `relatedList` or `projectionTile`. `NS4_E8_STEP_UNHOSTED` requires
 every non-demoted journey step to be hosted somewhere; `NS4_E8_USECASE_UNHOSTED` is the same
@@ -32,9 +41,12 @@ singleton core entity does not get a record catalogue. `NS4_E8_CONTENT_ORGANISM`
 organism outside a `contentPage`.
 
 The gate rejects unhosted use cases, empty workspaces, unresolved page context, unbounded menu
-sections, invalid queues, skeleton drift and invented fields. Until E3 binds its business-language
-`allowedInformation` to ontology field refs, `fieldsOnly` projections are recorder warnings and
-durable system decisions; the backend remains responsible for enforcing the E3 projection.
+sections, invalid queues, skeleton drift and invented fields. A limited external grant is an E4B
+disclosure projection (`<Entity><Profile>View`, linked by `projectionRef` on the access-binding).
+Journey reads of that audience use the view as `entityRef` (fields loaded by
+`readNs4ApprovedOntologyEntity`, because the E4 index does not list it). Writes keep the source
+entity and only the view's fields as inputs. A step that serves a full-record audience and a limited
+external one emits two operations. E10 A4 fails when that wiring is missing.
 A review or a form backed by a command with declared `contexts.requires` still needs a frozen slice,
 workspace path or scenario context. A recognized context-free command, including a cold-start creation, may render a
 form from user-entered values; E8 does not invent a pre-existing record solely to satisfy the gate.

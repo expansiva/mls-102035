@@ -85,7 +85,7 @@ test('E1 preserves the rich strategy, scope and localization contract', () => {
     validPrompt: true, userPrompt: 'Criar pet shop', userLanguage: 'pt-BR',
     titles: Object.fromEntries([
       'e1-clarification', 'e1-compile', 'e2-journeys', 'e3-access-matrix', 'e4-ontology',
-      'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler', 'e10-validation',
+      'e4b-access-realization', 'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler', 'e10-validation',
     ].map(id => [id, id])), clarification,
   }, 'Criar pet shop');
   const artifact = buildNs4ModuleArtifactFromReview(review, plan.userPrompt, 'human', plan.presentation);
@@ -111,6 +111,27 @@ function e1ReviewBodyWithLanguages(productLanguages: string[]) {
   };
 }
 
+test('actor origin is named only when declared; omitted origin becomes inferred', () => {
+  const named = normalizeNs4E1Review({
+    ...e1ReviewBodyWithLanguages(['pt-BR']),
+    businessScope: {
+      mainGoal: 'Gerenciar tarefas da equipe.',
+      actors: [{ actorId: 'member', title: 'Membro da equipe', kind: 'internal', origin: 'named', expectedOutcome: 'Concluir tarefas.' }],
+      expectedOutcomes: [{ outcomeId: 'tasksDone', title: 'Tarefas concluidas', description: 'O quadro reflete o progresso.' }],
+      inScope: ['tarefas'], outOfScope: [],
+    },
+  });
+  assert.equal(named.businessScope.actors[0].origin, 'named');
+  assert.equal(validateNs4E1Review(named).ok, true);
+
+  const omitted = normalizeNs4E1Review(e1ReviewBodyWithLanguages(['pt-BR']));
+  assert.equal(omitted.businessScope.actors[0].origin, 'inferred');
+  assert.equal(validateNs4E1Review(omitted).ok, true);
+
+  const artifact = buildNs4ModuleArtifact('petShop', clarification, 'human', '2026-08-04T10:00:00.000Z');
+  assert.equal(artifact.businessScope.actors[0].origin, 'named');
+});
+
 test('languages the user never asked for are discarded with a visible warning — run02 102047', () => {
   // The LLM invented en/es for a pt-BR-only request: empty clarification answer, prompt without any
   // language mention. The l4 must carry exactly [userLanguage] and the discard must never be silent.
@@ -129,7 +150,7 @@ test('languages the user never asked for are discarded with a visible warning �
     validPrompt: true, userPrompt: 'Criar um aplicativo de tarefas para minha equipe', userLanguage: 'pt-BR',
     titles: Object.fromEntries([
       'e1-clarification', 'e1-compile', 'e2-journeys', 'e3-access-matrix', 'e4-ontology',
-      'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler', 'e10-validation',
+      'e4b-access-realization', 'e5-rules', 'e6-behaviors', 'e7-realization', 'e8-workspaces', 'e9-navigation-compiler', 'e10-validation',
     ].map(id => [id, id])), clarification,
   }, 'Criar um aplicativo de tarefas para minha equipe');
   const artifact = buildNs4ModuleArtifactFromReview(review, plan.userPrompt, 'auto', plan.presentation);
@@ -344,6 +365,7 @@ test('root plan localizes and creates the complete visible roadmap before E1 sta
     'e2-journeys': 'Definir jornadas de negócio',
     'e3-access-matrix': 'Revisar acessos',
     'e4-ontology': 'Definir ontologia',
+    'e4b-access-realization': 'Amarrar acessos',
     'e5-rules': 'Organizar regras',
     'e6-behaviors': 'Definir comportamentos',
     'e7-realization': 'Conectar jornadas',
@@ -356,7 +378,7 @@ test('root plan localizes and creates the complete visible roadmap before E1 sta
     result: { validPrompt: true, userPrompt: 'Criar pet shop', userLanguage: 'pt-BR', titles, clarification },
   }, 'Criar pet shop');
   const steps = buildNs4PlannedSteps(plan);
-  assert.equal(steps.length, 11);
+  assert.equal(steps.length, 12);
   assert.equal(steps[0].stepTitle, `👤 ${titles['e1-clarification']}`);
   assert.equal(steps[0].status, 'waiting_human_input');
   assert.equal(steps[0].onFailure, 'wait_after_prompt');
@@ -370,16 +392,17 @@ test('root plan localizes and creates the complete visible roadmap before E1 sta
   assert.equal(steps[4].planning?.executionMode, 'sequential');
   assert.equal(steps[4].onFailure, 'wait_after_prompt');
   assert.equal(steps[4].stepTitle, `👤 ${titles['e4-ontology']}`);
-  assert.equal(steps[5].planning?.executionMode, 'sequential');
-  assert.equal(steps[5].onFailure, 'wait_after_prompt');
-  assert.equal(steps[5].stepTitle, `👤 ${titles['e5-rules']}`);
-  assert.equal(steps[6].planning?.executionMode, 'sequential');
+  assert.equal(steps[5].stepTitle, titles['e4b-access-realization']);
+  assert.deepEqual(steps[6].planning?.dependsOn, ['e4b-result']);
   assert.equal(steps[6].onFailure, 'wait_after_prompt');
-  assert.equal(steps[6].stepTitle, `👤 ${titles['e6-behaviors']}`);
-  assert.equal(steps[7].stepTitle, titles['e7-realization']);
-  assert.equal(steps[8].stepTitle, titles['e8-workspaces']);
-  assert.equal(steps[9].stepTitle, titles['e9-navigation-compiler']);
-  assert.equal(steps[10].stepTitle, titles['e10-validation']);
+  assert.equal(steps[6].stepTitle, `👤 ${titles['e5-rules']}`);
+  assert.equal(steps[7].planning?.executionMode, 'sequential');
+  assert.equal(steps[7].onFailure, 'wait_after_prompt');
+  assert.equal(steps[7].stepTitle, `👤 ${titles['e6-behaviors']}`);
+  assert.equal(steps[8].stepTitle, titles['e7-realization']);
+  assert.equal(steps[9].stepTitle, titles['e8-workspaces']);
+  assert.equal(steps[10].stepTitle, titles['e9-navigation-compiler']);
+  assert.equal(steps[11].stepTitle, titles['e10-validation']);
   assert.equal(steps.filter(step => String(step.stepTitle || '').startsWith('👤 ')).length, 6);
   const artifact = buildNs4ModuleArtifact(plan.userPrompt, clarification, 'human', '2026-08-05T10:00:00.000Z', plan.presentation);
   const pipeline = createNs4Pipeline('petShop', plan.userPrompt, '2026-08-05T10:00:00.000Z', plan.presentation);

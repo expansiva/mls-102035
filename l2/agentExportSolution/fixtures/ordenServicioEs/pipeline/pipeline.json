@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "2026-08-06-ns4-pipeline-v5",
+  "flowId": "agentNewSolution",
+  "moduleName": "ordenServicioEs",
+  "sourcePrompt": "crear el módulo ordenServicio, en español, para un servicio técnico de electrónica.",
+  "presentation": { "userLanguage": "es", "stepTitles": {} },
+  "status": "complete"
+}

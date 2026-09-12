@@ -1,0 +1,12 @@
+{
+  "entityId": "Mesa",
+  "fields": [],
+  "details": {
+    "estaDisponivel": {
+      "type": "boolean",
+      "description": "Indica se a mesa está disponível para receber uma nova comanda, calculado a partir das comandas abertas."
+    }
+  },
+  "lifecycleStates": [],
+  "transitions": []
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "2026-09-12-ns5-workflows-v2",
+  "moduleName": "locacaoEquipamentos",
+  "processes": [],
+  "journeyDecisions": [
+    {
+      "journeyId": "criarContratoLocacao",
+      "inProcess": false
+    },
+    {
+      "journeyId": "registrarDevolucao",
+      "inProcess": false
+    },
+    {
+      "journeyId": "acompanharSituacaoEquipamentos",
+      "inProcess": false
+    }
+  ]
+}

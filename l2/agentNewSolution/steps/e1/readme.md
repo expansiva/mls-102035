@@ -42,6 +42,10 @@ Product languages under `/fast` are only those the original prompt cites; the pl
 answer is not a citation, and a discard is recorded on `skippedDefaults.i18nWarnings`.
 Without `/fast` the widget still opens. `reviewPolicy.mode=automatic` still opens E1.
 
+Each `businessScope.actors[]` entry carries `origin: named | inferred`. `named` is only for a
+profile the request itself names; omitted origin normalizes to `inferred`. The E1 gate requires the
+field. E2 reads it without an LLM to drop an inferred external actor that has no exclusive step.
+
 `userLanguage` controls the clarification language only. The editable `productLanguages` answer owns
 the application's complete language list and is normalized into unique BCP-47 tags in
 `module.languages` (for example `pt-br, en, es` becomes `pt-BR`, `en`, `es`).

@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "2026-09-10-ns5-finalize-report-v1",
+  "moduleName": "ordenServicio",
+  "finalStatus": "passed",
+  "checks": [
+    {
+      "checkId": "I1",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I2",
+      "status": "warned",
+      "errorCount": 0,
+      "warningCount": 2
+    },
+    {
+      "checkId": "I3",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I4",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I5",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I6",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I7",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I8",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I9",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I10",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I11",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I12",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I13",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    {
+      "checkId": "I2",
+      "code": "NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF",
+      "path": "journeys.prepararPresupuesto.steps[2]",
+      "message": "act registrarDiagnosticoYpiezas on OrdenServicio has no transitionRef; tecnico has declared transitions (possible missing transitionRef)."
+    },
+    {
+      "checkId": "I2",
+      "code": "NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF",
+      "path": "journeys.realizarReparacion.steps[1]",
+      "message": "act registrarReparacionRealizada on OrdenServicio has no transitionRef; tecnico has declared transitions (possible missing transitionRef)."
+    }
+  ],
+  "counts": {
+    "actors": 3,
+    "journeys": 7,
+    "entities": 4,
+    "rules": 6,
+    "processes": 2,
+    "grants": 3
+  }
+}

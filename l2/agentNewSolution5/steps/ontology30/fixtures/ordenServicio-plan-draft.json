@@ -1,0 +1,123 @@
+{
+  "moduleName": "ordenServicio",
+  "businessDomain": "Gestión de órdenes de servicio para diagnóstico, presupuesto, reparación y entrega de aparatos electrónicos.",
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "title": "Cliente",
+      "description": "Persona cliente identificada para registrar sus órdenes de servicio y consultar sus propias órdenes desde el portal.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio.Cliente"
+      }
+    },
+    {
+      "entityId": "Aparato",
+      "title": "Aparato",
+      "description": "Aparato electrónico recibido para diagnóstico, presupuesto, reparación o retiro.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetEquipment",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "ordenServicio.Aparato"
+      }
+    },
+    {
+      "entityId": "OrdenServicio",
+      "title": "Orden de servicio",
+      "description": "Registro transaccional de la recepción, diagnóstico, presupuesto, decisión del cliente, reparación y entrega de un aparato.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "numeroOrden",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio.OrdenServicio"
+      }
+    },
+    {
+      "entityId": "BudgetPart",
+      "title": "Pieza presupuestada",
+      "description": "Pieza necesaria identificada durante el diagnóstico de una orden, incluyendo su costo interno para el servicio técnico.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "descripcion",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "ordenServicio.BudgetPart"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "customerOwnsEquipment",
+      "fromEntity": "Cliente",
+      "toEntity": "Aparato",
+      "type": "oneToMany",
+      "required": false,
+      "description": "El cliente es propietario del aparato que presenta al servicio técnico.",
+      "persistence": {
+        "mode": "mdmRelationship"
+      }
+    },
+    {
+      "relationshipId": "serviceOrderForCustomer",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Cliente",
+      "type": "manyToOne",
+      "required": true,
+      "description": "La orden de servicio corresponde al cliente que presentó el aparato.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "serviceOrderForEquipment",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "Aparato",
+      "type": "manyToOne",
+      "required": true,
+      "description": "La orden de servicio registra el aparato recibido para su atención.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "serviceOrderHasBudgetParts",
+      "fromEntity": "OrdenServicio",
+      "toEntity": "BudgetPart",
+      "type": "oneToMany",
+      "required": false,
+      "description": "La orden de servicio incluye las piezas necesarias consideradas para el presupuesto.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "writerDerived",
+      "entityId": "BudgetPart",
+      "detail": "parent via OrdenServicio.serviceOrderHasBudgetParts",
+      "writerKind": "parent",
+      "via": {
+        "entityId": "OrdenServicio",
+        "relationshipId": "serviceOrderHasBudgetParts"
+      }
+    }
+  ]
+}

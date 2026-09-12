@@ -1,0 +1,80 @@
+{
+  "bindings": [
+    {
+      "relationshipId": "matriculaAluno",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Matricula",
+        "from": {
+          "entityId": "Matricula",
+          "fieldIds": [
+            "alunoId"
+          ]
+        },
+        "to": {
+          "entityId": "Aluno",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "matriculaPlano",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Matricula",
+        "from": {
+          "entityId": "Matricula",
+          "fieldIds": [
+            "planoId"
+          ]
+        },
+        "to": {
+          "entityId": "Plano",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "mensalidadeMatricula",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Mensalidade",
+        "from": {
+          "entityId": "Mensalidade",
+          "fieldIds": [
+            "matriculaId"
+          ]
+        },
+        "to": {
+          "entityId": "Matricula",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    },
+    {
+      "relationshipId": "pagamentoMensalidade",
+      "realization": {
+        "kind": "fieldReference",
+        "ownerEntity": "Pagamento",
+        "from": {
+          "entityId": "Pagamento",
+          "fieldIds": [
+            "mensalidadeId"
+          ]
+        },
+        "to": {
+          "entityId": "Mensalidade",
+          "fieldIds": [
+            "id"
+          ]
+        }
+      }
+    }
+  ]
+}

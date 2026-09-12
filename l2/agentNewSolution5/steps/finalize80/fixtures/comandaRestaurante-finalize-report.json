@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "2026-09-10-ns5-finalize-report-v1",
+  "moduleName": "comandaRestaurante",
+  "finalStatus": "passed",
+  "checks": [
+    {
+      "checkId": "I1",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I2",
+      "status": "warned",
+      "errorCount": 0,
+      "warningCount": 1
+    },
+    {
+      "checkId": "I3",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I4",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I5",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I6",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I7",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I8",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I9",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I10",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I11",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I12",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "checkId": "I13",
+      "status": "passed",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    {
+      "checkId": "I2",
+      "code": "NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF",
+      "path": "journeys.fecharComanda.steps[2]",
+      "message": "act registrarDescontoEpagamento on Comanda has no transitionRef; caixa has declared transitions (possible missing transitionRef)."
+    }
+  ],
+  "counts": {
+    "actors": 2,
+    "journeys": 4,
+    "entities": 5,
+    "rules": 7,
+    "processes": 0,
+    "grants": 3
+  }
+}

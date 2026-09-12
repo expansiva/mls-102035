@@ -1,0 +1,83 @@
+{
+  "planId": "e4-ontology-entity",
+  "moduleName": "comandaRestaurante2",
+  "reviewRound": 1,
+  "entityId": "Pagamento",
+  "fields": [
+    {
+      "fieldId": "pagamentoId",
+      "title": "Identificador do pagamento",
+      "type": "uuid",
+      "required": true,
+      "description": "Identificador estável do registro de pagamento.",
+      "constraints": [
+        {
+          "constraintId": "uniquePagamentoId",
+          "kind": "unique",
+          "value": "true",
+          "description": "Cada registro de pagamento possui um identificador único.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "comandaId",
+      "title": "Comanda",
+      "type": "uuid",
+      "required": true,
+      "description": "Referência à comanda quitada por este pagamento, selecionada no contexto do fechamento.",
+      "constraints": [
+        {
+          "constraintId": "uniqueComandaId",
+          "kind": "unique",
+          "value": "true",
+          "description": "Uma comanda fechada possui um único pagamento registrado.",
+          "source": "inferred"
+        }
+      ]
+    },
+    {
+      "fieldId": "paymentMethod",
+      "title": "Forma de pagamento",
+      "type": "string",
+      "required": true,
+      "description": "Forma de pagamento registrada pelo caixa para quitar a comanda.",
+      "constraints": []
+    },
+    {
+      "fieldId": "discountAmount",
+      "title": "Valor do desconto",
+      "type": "money",
+      "required": false,
+      "description": "Valor monetário de desconto opcional aplicado no fechamento da comanda.",
+      "constraints": [
+        {
+          "constraintId": "minDiscountAmount",
+          "kind": "min",
+          "value": "0",
+          "description": "O desconto informado não pode ser negativo.",
+          "source": "journey"
+        }
+      ]
+    },
+    {
+      "fieldId": "paidAmount",
+      "title": "Valor final pago",
+      "type": "money",
+      "required": true,
+      "description": "Valor final quitado após a aplicação do desconto opcional.",
+      "constraints": [
+        {
+          "constraintId": "minPaidAmount",
+          "kind": "min",
+          "value": "0",
+          "description": "O valor final pago não pode ser negativo.",
+          "source": "inferred"
+        }
+      ]
+    }
+  ],
+  "useRules": [
+    "fechamentoRegistraPagamentoELiberaMesa"
+  ]
+}

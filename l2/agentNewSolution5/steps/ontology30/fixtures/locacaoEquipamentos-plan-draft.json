@@ -1,0 +1,139 @@
+{
+  "moduleName": "locacaoEquipamentos",
+  "businessDomain": "Locação de equipamentos para construção, incluindo contratos, devoluções e acompanhamento da situação dos equipamentos.",
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "title": "Cliente",
+      "description": "Pessoa cadastrada como cliente da locadora e vinculada aos seus contratos de locação.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.Cliente"
+      }
+    },
+    {
+      "entityId": "Equipamento",
+      "title": "Equipamento",
+      "description": "Equipamento de construção disponibilizado para locação, com situação operacional acompanhada pela locadora.",
+      "kind": "mdm",
+      "party": "none",
+      "mdmSubtype": "AssetEquipment",
+      "displayField": "name",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.Equipamento"
+      }
+    },
+    {
+      "entityId": "Atendente",
+      "title": "Atendente",
+      "description": "Profissional da locadora responsável pelos contratos que cria e pelas devoluções que registra.",
+      "kind": "mdm",
+      "party": "person",
+      "mdmSubtype": "Person",
+      "displayField": "name",
+      "writer": "crud",
+      "storage": {
+        "target": "mdm",
+        "scope": "organization",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.Atendente"
+      }
+    },
+    {
+      "entityId": "ContratoLocacao",
+      "title": "Contrato de locação",
+      "description": "Registro da locação de equipamentos para um cliente, com período previsto e encerramento por devolução.",
+      "kind": "core",
+      "party": "none",
+      "displayField": "contractNumber",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.ContratoLocacao"
+      }
+    },
+    {
+      "entityId": "RentalItem",
+      "title": "Item de locação",
+      "description": "Item de um contrato que identifica o equipamento reservado para o período de locação.",
+      "kind": "supporting",
+      "party": "none",
+      "displayField": "equipment",
+      "mutability": "appendOnly",
+      "storage": {
+        "target": "moduleDatabase",
+        "scope": "module",
+        "idField": "id",
+        "mdmType": "locacaoEquipamentos.RentalItem"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "clientHasRentalContracts",
+      "fromEntity": "Cliente",
+      "toEntity": "ContratoLocacao",
+      "type": "oneToMany",
+      "required": true,
+      "description": "O cliente é titular dos contratos de locação realizados em seu nome.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "attendantCreatesRentalContracts",
+      "fromEntity": "Atendente",
+      "toEntity": "ContratoLocacao",
+      "type": "oneToMany",
+      "required": true,
+      "description": "O atendente é responsável pelos contratos de locação que cria.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    },
+    {
+      "relationshipId": "rentalContractIncludesItems",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "RentalItem",
+      "type": "oneToMany",
+      "required": true,
+      "description": "O contrato de locação contém um ou mais itens de locação.",
+      "persistence": {
+        "mode": "moduleReference"
+      }
+    },
+    {
+      "relationshipId": "rentalItemReservesEquipment",
+      "fromEntity": "RentalItem",
+      "toEntity": "Equipamento",
+      "type": "manyToOne",
+      "required": true,
+      "description": "O item de locação reserva um equipamento específico para o contrato.",
+      "persistence": {
+        "mode": "crossStoreReference"
+      }
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "writerDerived",
+      "entityId": "RentalItem",
+      "detail": "parent via ContratoLocacao.rentalContractIncludesItems",
+      "writerKind": "parent",
+      "via": {
+        "entityId": "ContratoLocacao",
+        "relationshipId": "rentalContractIncludesItems"
+      }
+    }
+  ]
+}
