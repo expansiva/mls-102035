@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I7).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I8).
  * Errors fail the run; warnings do not.
  *
  * I2 uses collectNs5LifecycleSignal / ns5LifecycleHasBranchingOrigin from ontology30
@@ -28,6 +28,7 @@ import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5FinalizeReport,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
+  NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
   oracleCode,
   type Ns5FinalizeReport,
   type Ns5OracleCheckId,
@@ -57,6 +58,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI5(sources, error);
   checkI6(sources, warning);
   checkI7(sources, error);
+  checkI8(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.module.actors.length,
@@ -357,6 +359,39 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
 function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
   reportOrphans('journeys', sources.journeyDiskFiles, sources.journeyIndex.journeys.map(entry => entry.journeyId), error);
   reportOrphans('ontology', sources.ontologyDiskFiles, sources.ontologyIndex.entities, error);
+}
+
+/**
+ * A party:person that anchors an own/related grant is someone who will sign in.
+ * An internal actor must `act` on that entity (not merely `affects`). Journey
+ * `entry.mode` has no public value (`coldStart` | `contextOrLookup` | `fromNotification`).
+ */
+function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
+  const entityById = entityMap(sources);
+  const actorById = new Map(sources.module.actors.map(actor => [actor.actorId, actor]));
+  const registered = new Set<string>();
+  for (const journey of sources.journeys) {
+    const actor = actorById.get(journey.business.actorRef);
+    if (actor?.kind !== 'internal') continue;
+    for (const step of journey.business.steps) {
+      if (step.kind === 'act' && step.entity) registered.add(step.entity);
+    }
+  }
+  sources.access.grants.forEach((grant, index) => {
+    const mode = grant.dataScope.mode;
+    if (mode !== 'own' && mode !== 'related') return;
+    const personId = grant.dataScope.anchorEntity || '';
+    if (!personId) return;
+    const entity = entityById.get(personId);
+    if (!entity || entity.party !== 'person') return;
+    if (registered.has(personId)) return;
+    error(
+      'I8',
+      `access.grants[${index}]`,
+      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but no internal actor has an act step on that entity.`,
+      NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
+    );
+  });
 }
 
 function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | undefined, indexIds: string[], error: IssueFn): void {

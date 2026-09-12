@@ -1,5 +1,5 @@
 <!-- mls fileReference="_102035_/l2/agentNewSolution5/skills/mdm.md" enhancement="_blank" -->
-<!-- injected into the prompts of module10, ontology30 and access60 (readAgentText('skills', 'mdm', '.md')); generic platform knowledge, no business domain -->
+<!-- injected into the prompts of module10, journeys20, ontology30 and access60 (readAgentText('skills', 'mdm', '.md')); generic platform knowledge, no business domain -->
 
 # MDM — how the platform keeps people, companies, products and places
 
@@ -39,6 +39,12 @@ says **where she exists**: the role tags `<moduleId>.<EntityId>` on her record l
 part in, and `details[<moduleId>]` holds that module's data about her. The platform resolves the session
 person (`sessionContext.person`); a module never does. Nothing about permissions is stored in the MDM;
 nothing about identity is stored in a module table.
+
+Registering a person who will sign in is an `act` of an internal actor on that person entity (or a
+public self-registration entry). The platform does the rest: looks the e-mail up in the login index
+and the document in the record, attaches the role when it is the same person, refuses when the
+e-mail belongs to another record, and issues the invitation. A journey never has an 'invite' or
+'verify e-mail' step.
 
 ## Roles
 

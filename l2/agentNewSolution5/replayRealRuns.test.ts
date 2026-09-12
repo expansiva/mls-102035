@@ -293,19 +293,31 @@ for (const moduleName of NS5_REAL_MODULES) {
     );
   });
 
-  void test(`${moduleName} finalize80 oracle passes on the recorded sources`, () => {
+  void test(`${moduleName} finalize80 oracle on the recorded sources`, () => {
     const sources = loadNs5OracleSources(moduleName);
     const report = runNs5Oracle(sources);
+    const recorded = loadNs5FixtureJson<{ finalStatus: string; errors: unknown[]; warnings: unknown[] }>(
+      'steps/finalize80/fixtures',
+      `${moduleName}-finalize-report.json`,
+    );
+    if (moduleName === 'ordenServicio5') {
+      assert.equal(report.finalStatus, 'failed');
+      assert.ok(
+        report.errors.some(issue =>
+          issue.code === 'NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION' && /Cliente/.test(issue.message)),
+        report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'),
+      );
+      assert.equal(report.errors.filter(issue => issue.checkId !== 'I8').length, 0);
+      assert.equal(recorded.finalStatus, 'passed');
+      assert.equal(recorded.errors.length, 0);
+      return;
+    }
     assert.equal(
       report.finalStatus,
       'passed',
       report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'),
     );
     assert.equal(report.errors.length, 0);
-    const recorded = loadNs5FixtureJson<{ finalStatus: string; errors: unknown[]; warnings: unknown[] }>(
-      'steps/finalize80/fixtures',
-      `${moduleName}-finalize-report.json`,
-    );
     assert.equal(recorded.finalStatus, 'passed');
     assert.equal(recorded.errors.length, 0);
   });

@@ -2,6 +2,10 @@
 
 ## 2026-09-11
 
+- I8: an `own`/`related` grant whose `anchorEntity` is `party: person` needs an
+  internal-actor `act` on that entity (not `affects`). Code
+  `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`. Fixture: live
+  `matricularAlunoEmPlano` (`locate` Aluno) fails; `act` Aluno passes.
 - I1 accepts a journey `entity`/`affects` that names an id ontology30 lifted into
   `module.details` (`pipeline.json` `ontology30.liftedAggregateEntities` and
   `module.details` still has keys). An unknown id that was not lifted stays an error.

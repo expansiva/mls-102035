@@ -44,7 +44,7 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
 const KEYS: Record<string, Record<string, KeyEntry>> = {
   Ns5ModuleActor: {
     actorId: { reader: 'steps/journeys20/gate.ts, steps/access60/gate.ts, finalize80 I3', since: '2026-09-10' },
-    kind: { reader: 'steps/journeys20/gate.ts, steps/integration70/contracts.ts', since: '2026-09-10' },
+    kind: { reader: 'steps/journeys20/gate.ts, steps/integration70/contracts.ts, finalize80 I8', since: '2026-09-10' },
     origin: { reader: 'steps/journeys20/gate.ts (inferred-actor drop)', since: '2026-09-10' },
     title: { reader: 'planner / UI', since: '2026-09-10' },
     description: { reader: 'planner / UI', since: '2026-09-10' },
@@ -63,8 +63,8 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
   },
   Ns5JourneyStep: {
     stepId: { reader: 'steps/workflows50/gate.ts, finalize80', since: '2026-09-10' },
-    kind: { reader: 'steps/journeys20/gate.ts, finalize80 I2', since: '2026-09-10' },
-    entity: { reader: 'steps/ontology30/gate.ts, finalize80 I1', since: '2026-09-10' },
+    kind: { reader: 'steps/journeys20/gate.ts, finalize80 I2 I8', since: '2026-09-10' },
+    entity: { reader: 'steps/ontology30/gate.ts, finalize80 I1 I8', since: '2026-09-10' },
     affects: { reader: 'steps/ontology30 collectNs5CitedEntities, finalize80 I1', since: '2026-09-10' },
     title: { reader: 'planner / UI', since: '2026-09-10' },
     description: { reader: 'planner / UI', since: '2026-09-10' },
@@ -100,7 +100,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     title: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     kind: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
-    party: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
+    party: { reader: 'steps/ontology30/gate.ts, finalize80 I8', since: '2026-09-10' },
     mdmSubtype: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     displayField: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     fields: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
@@ -183,8 +183,8 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     disclosure: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
   },
   Ns5AccessDataScope: {
-    mode: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
-    anchorEntity: { reader: 'steps/access60/gate.ts, basic backend', since: '2026-09-10' },
+    mode: { reader: 'steps/access60/gate.ts, basic backend, finalize80 I8', since: '2026-09-10' },
+    anchorEntity: { reader: 'steps/access60/gate.ts, basic backend, finalize80 I8', since: '2026-09-10' },
     description: { reader: 'steps/access60/gate.ts', since: '2026-09-10' },
   },
   Ns5AccessDisclosure: {

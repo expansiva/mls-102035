@@ -428,6 +428,7 @@ void test('journeys20 prompt omits handoffTo except on handoff', () => {
   assert.match(prompt, /only locates and inspects/);
   assert.doesNotMatch(prompt, /Every journey has at least one `act` or `decide`/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity/i);
+  assert.doesNotMatch(prompt, /invite|verify e-mail|login index/i);
 });
 
 void test('hashNs5Journey is stable across object key order', async () => {

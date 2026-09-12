@@ -21,9 +21,16 @@ void test('composeNs5SystemPrompt starts with the MDM skill heading', () => {
   assert.match(composed, /You are module10/);
 });
 
-void test('module10, ontology30 and access60 prepend the mdm skill in beforePromptStep', () => {
+void test('mdm skill says registering a login person is an act, never an invite step', () => {
+  const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'mdm.md'), 'utf8');
+  assert.match(skill, /Registering a person who will sign in is an `act`/);
+  assert.match(skill, /A journey never has an 'invite' or\s+'verify e-mail' step/);
+});
+
+void test('module10, journeys20, ontology30 and access60 prepend the mdm skill in beforePromptStep', () => {
   const files = [
     'steps/module10/agentNs5Module.ts',
+    'steps/journeys20/agentNs5Journeys.ts',
     'steps/ontology30/agentNs5Ontology.ts',
     'steps/access60/agentNs5Access.ts',
   ];

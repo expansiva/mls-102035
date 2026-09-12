@@ -14,14 +14,17 @@ import type {
 
 export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-report-v1' as const;
 
-export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7'] as const;
+export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8'] as const;
 export type Ns5OracleCheckId = typeof NS5_ORACLE_CHECK_IDS[number];
 export const NS5_FINALIZE_I7_ORPHAN_FILE = 'NS5_FINALIZE_I7_ORPHAN_FILE' as const;
 export const NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION = 'NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION' as const;
+export const NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION =
+  'NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION' as const;
 export type Ns5OracleIssueCode =
-  | `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7'>}`
+  | `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7' | 'I8'>}`
   | typeof NS5_FINALIZE_I7_ORPHAN_FILE
-  | typeof NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION;
+  | typeof NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION
+  | typeof NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION;
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;
@@ -79,7 +82,8 @@ export interface Ns5FinalizeReport {
 
 export function oracleCode(checkId: Ns5OracleCheckId): Ns5OracleIssue['code'] {
   if (checkId === 'I7') return NS5_FINALIZE_I7_ORPHAN_FILE;
-  return `NS5_FINALIZE_${checkId}` as `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7'>}`;
+  if (checkId === 'I8') return NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION;
+  return `NS5_FINALIZE_${checkId}` as `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7' | 'I8'>}`;
 }
 
 export function buildNs5FinalizeReport(

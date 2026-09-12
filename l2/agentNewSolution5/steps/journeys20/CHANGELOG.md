@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- System prompt prepends `skills/mdm.md` (same `composeNs5SystemPrompt` as
+  module10/ontology30/access60). Skill § Identity and login: registering a
+  login person is an `act`; the platform invites; no invite/verify-email step.
 - A journey of only `locate`/`inspect` is valid. The ≥1 `act|decide` gate
   (`NS5_JOURNEY_ACT_OR_DECIDE`) is gone; it had no business basis (G15). Fixture:
   `consultarMisOrdenes` without the fabricated `act`.
