@@ -21,7 +21,7 @@ export const agendaClinicaEntityProfissional = {
     "idField": "id",
     "mdmType": "agendaClinica.Profissional"
   },
-  "maintenance": "crud"
+  "writer": "crud"
 } as const satisfies Ns5OntologyEntityArtifact;
 
 export type AgendaClinicaEntityProfissionalType = typeof agendaClinicaEntityProfissional;

@@ -74,6 +74,25 @@ test('registry gate rejects a duplicate module, duplicate role and unknown subty
   ).issues.some(issue => issue.code === 'NS4_REGISTRY_UNKNOWN_SUBTYPE'));
 });
 
+test('module block lists entities and outbound events for siblings', () => {
+  const block = buildNs4SolutionRegistryModuleBlock({
+    moduleName: 'comandaRestaurante',
+    actors: [{ actorId: 'caixa', kind: 'internal' }],
+    entities: [
+      { entityId: 'Comanda', kind: 'core', party: 'none', storage: { target: 'moduleDatabase' } },
+      { entityId: 'ItemCardapio', kind: 'mdm', party: 'none', mdmSubtype: 'Product', storage: { target: 'mdm', mdmType: 'comandaRestaurante.ItemCardapio' } },
+    ],
+    events: [{ eventId: 'comandaFechada', on: 'Comanda.closeTab' }, { eventId: 'comandaFechada', on: 'Comanda.closeTab' }],
+    updatedAt: '2026-09-12T10:00:00.000Z',
+  });
+  assert.deepEqual(block.entities, [
+    { entityId: 'Comanda', kind: 'core' },
+    { entityId: 'ItemCardapio', kind: 'mdm', mdmSubtype: 'Product' },
+  ]);
+  assert.deepEqual(block.events, [{ eventId: 'comandaFechada', on: 'Comanda.closeTab' }]);
+  assert.equal(validateNs4SolutionRegistry({ ...emptyNs4SolutionRegistry(), modules: [block] }, SUBTYPES).ok, true);
+});
+
 test('party none MDM is omitted until a structural subtype exists', () => {
   const block = buildNs4SolutionRegistryModuleBlock({
     moduleName: 'moduleOne',

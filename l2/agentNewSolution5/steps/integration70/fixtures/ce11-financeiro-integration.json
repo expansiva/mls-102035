@@ -5,30 +5,36 @@
       "id": "comandaFechada",
       "kind": "event",
       "from": "comandaRestaurante",
-      "description": "A closed restaurant tab arrives as a receivable title.",
-      "entityRefs": ["ReceivableTitle"]
+      "event": "comandaFechada",
+      "writes": ["ReceivableTitle"],
+      "effect": "create",
+      "description": "A closed restaurant tab arrives as a receivable title. inbound.id comandaFechada: valor = Comanda.details.totalAmount, pagador = Comanda.cliente, origem = comandaRestaurante."
     },
     {
       "id": "mensalidadeGerada",
       "kind": "event",
       "from": "mensalidadesAcademia",
-      "description": "A generated membership fee arrives as a receivable title.",
-      "entityRefs": ["ReceivableTitle"]
+      "event": "mensalidadeGerada",
+      "writes": ["ReceivableTitle"],
+      "effect": "create",
+      "description": "A generated membership fee arrives as a receivable title. inbound.id mensalidadeGerada: valor = Mensalidade.valor, pagador = Mensalidade.aluno, origem = mensalidadesAcademia."
     },
     {
       "id": "ordemEntregue",
       "kind": "event",
       "from": "ordenServicio",
-      "description": "A delivered service order arrives as a receivable title.",
-      "entityRefs": ["ReceivableTitle"]
+      "event": "ordemEntregue",
+      "writes": ["ReceivableTitle"],
+      "effect": "create",
+      "description": "A delivered service order arrives as a receivable title. inbound.id ordemEntregue: valor = OrdenServicio.details.total, pagador = OrdenServicio.cliente, origem = ordenServicio."
     }
   ],
   "outbound": [],
   "plugins": [
     {
       "pluginId": "stripe",
-      "description": "Card payments through the platform Stripe adapter. No card entity.",
-      "entityRefs": ["ReceivableTitle"]
+      "description": "Payments through the platform Stripe adapter. No payment-instrument entity.",
+      "usedBy": ["pagarComPlugin.pagarTitulo"]
     }
   ]
 }

@@ -52,7 +52,7 @@ export interface Ns5OntologyPlanEntity {
   mdmSubtype?: string;
   displayField: string;
   mutability?: 'appendOnly';
-  maintenance?: 'crud';
+  writer?: 'journey' | 'crud' | 'inbound';
   storage: Ns5OntologyEntityArtifact['storage'];
 }
 
@@ -111,8 +111,8 @@ export interface Ns5OntologyEntityDraft {
   details?: Record<string, Ns5OntologyDetail>;
   lifecycleStates: Ns5OntologyEntityArtifact['lifecycleStates'];
   transitions: Ns5OntologyEntityArtifact['transitions'];
-  /** Repair path: entity worker may set crud when the plan omitted it. */
-  maintenance?: 'crud';
+  /** Repair path: entity worker may set crud/inbound when the plan omitted it. */
+  writer?: 'journey' | 'crud' | 'inbound';
   /** Normalize drops conflicting crud; not an LLM field. */
   normalizations?: Ns5OntologyFormNormalization[];
 }
@@ -131,13 +131,19 @@ export interface Ns5OntologyAssembly {
   index: Ns5OntologyIndexArtifact;
 }
 
+export type Ns5EntityWriter = 'journey' | 'crud' | 'inbound';
+
+export function ns5EntityWriter(entity: { writer?: Ns5EntityWriter }): Ns5EntityWriter {
+  return entity.writer === 'crud' || entity.writer === 'inbound' ? entity.writer : 'journey';
+}
+
 export function buildNs5OntologyPlanTool(
   schema: Record<string, unknown>,
   createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5OntologyPlan',
-    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, mutability, maintenance, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
+    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, mutability, writer, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
     schema,
   );
 }
@@ -148,7 +154,7 @@ export function buildNs5OntologyEntityTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Entity',
-    'Submit fields, uniqueKeys, calculated details, lifecycle states, allowed transitions and optional maintenance: crud for one frozen entity.',
+    'Submit fields, uniqueKeys, calculated details, lifecycle states, allowed transitions and writer (journey, crud or inbound) for one frozen entity.',
     schema,
   );
 }
@@ -175,16 +181,16 @@ export function normalizeNs5OntologyPlan(
     .map(item => normalizePlanEntity(item, moduleName, journeys))
     .filter(entity => entity.entityId)
     .map(entity => {
-      const next = dropConflictingCrud(entity, journeys, false);
+      const next = dropConflictingWriter(entity, journeys, false);
       if (next.normalization) normalizations.push(next.normalization);
-      if (next.entity.kind !== 'valueObject' || (!next.entity.maintenance && !next.entity.mutability)) {
+      if (next.entity.kind !== 'valueObject' || (!next.entity.writer && !next.entity.mutability)) {
         return next.entity;
       }
-      const { maintenance: _droppedMaintenance, mutability: _droppedMutability, ...rest } = next.entity;
+      const { writer: _droppedWriter, mutability: _droppedMutability, ...rest } = next.entity;
       normalizations.push({
         kind: 'dropValueObjectTableAttrs',
         entityId: next.entity.entityId,
-        detail: 'valueObject has no table; maintenance and mutability removed.',
+        detail: 'valueObject has no table; writer and mutability removed.',
       });
       return rest;
     });
@@ -440,8 +446,8 @@ export function normalizeNs5OntologyEntity(
       detail: 'uniqueKeys containing idField removed; the id is unique by definition.',
     });
   }
-  const dropped = dropConflictingCrud(
-    { entityId: id, ...(text(root.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}) },
+  const dropped = dropConflictingWriter(
+    { entityId: id, ...persistWriter(readWriter(root)) },
     journeys,
     lifecycleStates.length > 0 || transitions.length > 0,
   );
@@ -451,13 +457,13 @@ export function normalizeNs5OntologyEntity(
     normalizations.push(...withBy.normalizations);
   }
   if (dropped.normalization) normalizations.push(dropped.normalization);
-  let maintenance = dropped.entity.maintenance;
-  if (kind === 'valueObject' && maintenance) {
-    maintenance = undefined;
+  let writer = dropped.entity.writer;
+  if (kind === 'valueObject' && writer) {
+    writer = undefined;
     normalizations.push({
       kind: 'dropValueObjectTableAttrs',
       entityId: id,
-      detail: 'valueObject has no table; maintenance removed.',
+      detail: 'valueObject has no table; writer removed.',
     });
   }
   return {
@@ -467,7 +473,7 @@ export function normalizeNs5OntologyEntity(
     ...(details ? { details } : {}),
     lifecycleStates,
     transitions,
-    ...(maintenance ? { maintenance: 'crud' as const } : {}),
+    ...persistWriter(writer),
     ...(normalizations.length ? { normalizations } : {}),
   };
 }
@@ -652,9 +658,11 @@ function assembleEntity(
     transitions: detail?.transitions || [],
     storage,
     ...(plan.mutability ? { mutability: plan.mutability } : {}),
-    ...(!entityHasLifecycle(detail) && (plan.maintenance === 'crud' || detail?.maintenance === 'crud')
-      ? { maintenance: 'crud' as const }
-      : {}),
+    ...persistWriter(
+      !entityHasLifecycle(detail)
+        ? (detail?.writer && detail.writer !== 'journey' ? detail.writer : plan.writer)
+        : (detail?.writer === 'inbound' || plan.writer === 'inbound' ? 'inbound' : undefined),
+    ),
   };
 }
 
@@ -779,25 +787,39 @@ export function ns5ReachableStates(
   return seen;
 }
 
-function dropConflictingCrud<T extends { entityId: string; maintenance?: 'crud' }>(
+function dropConflictingWriter<T extends { entityId: string; writer?: Ns5EntityWriter }>(
   entity: T,
   journeys: ReadonlyArray<Ns5AggregateJourneyView>,
   hasLifecycle: boolean,
 ): { entity: T; normalization?: Ns5OntologyFormNormalization } {
-  if (entity.maintenance !== 'crud') return { entity };
+  const writer = entity.writer;
+  if (writer !== 'crud' && writer !== 'inbound') return { entity };
   const writtenByAct = ns5EntityHasActOrAffects(journeys, entity.entityId);
-  if (!writtenByAct && !hasLifecycle) return { entity };
-  const { maintenance: _dropped, ...rest } = entity;
+  if (writer === 'inbound' && !writtenByAct) return { entity };
+  if (writer === 'crud' && !writtenByAct && !hasLifecycle) return { entity };
+  const { writer: _dropped, ...rest } = entity;
   return {
     entity: rest as T,
     normalization: {
       kind: 'dropCrud',
       entityId: entity.entityId,
       detail: writtenByAct
-        ? 'maintenance crud removed; an act writes this entity as entity or affects.'
-        : 'maintenance crud removed; lifecycleStates or transitions are present.',
+        ? `writer ${writer} removed; an act writes this entity as entity or affects.`
+        : `writer ${writer} removed; lifecycleStates or transitions are present.`,
     },
   };
+}
+
+function readWriter(source: Record<string, unknown>): Ns5EntityWriter | undefined {
+  const writer = text(source.writer);
+  if (writer === 'crud' || writer === 'inbound' || writer === 'journey') return writer;
+  if (text(source.maintenance) === 'crud') return 'crud';
+  return undefined;
+}
+
+function persistWriter(writer: Ns5EntityWriter | undefined): { writer?: 'crud' | 'inbound' } {
+  if (writer === 'crud' || writer === 'inbound') return { writer };
+  return {};
 }
 
 function emptyRealization(relationship: Ns5OntologyPlanRelationship): Ns5OntologyRelationship['realization'] {
@@ -842,7 +864,7 @@ function normalizePlanEntity(
     ...(mdmSubtype ? { mdmSubtype } : {}),
     displayField: memberId(text(source.displayField), ''),
     ...(mutability ? { mutability } : {}),
-    ...(text(source.maintenance) === 'crud' ? { maintenance: 'crud' as const } : {}),
+    ...persistWriter(readWriter(source)),
     storage: {
       target,
       scope,

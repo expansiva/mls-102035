@@ -43,7 +43,7 @@ export interface Ns5AccessEntityView {
   fields: ReadonlyArray<{ fieldId: string }>;
   details?: Record<string, unknown>;
   storage?: { idField: string };
-  maintenance?: 'crud';
+  writer?: 'journey' | 'crud' | 'inbound';
 }
 
 export interface Ns5AccessRelationshipView {

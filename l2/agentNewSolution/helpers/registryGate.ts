@@ -69,6 +69,26 @@ export function validateNs4SolutionRegistry(
       }
       if (field.fieldId) fieldIds.add(field.fieldId);
     });
+    const entityIds = new Set<string>();
+    (block.entities || []).forEach((entity, entityIndex) => {
+      const entityPath = `${path}.entities[${entityIndex}]`;
+      if (!entity.entityId) add('NS4_REGISTRY_ENTITY_ID', `${entityPath}.entityId`, 'entityId is required.');
+      if (entity.entityId && entityIds.has(entity.entityId)) {
+        add('NS4_REGISTRY_DUPLICATE_ENTITY', `${entityPath}.entityId`, `Duplicate entityId ${entity.entityId}.`);
+      }
+      if (entity.entityId) entityIds.add(entity.entityId);
+      if (!entity.kind) add('NS4_REGISTRY_ENTITY_KIND', `${entityPath}.kind`, 'kind is required.');
+    });
+    const eventIds = new Set<string>();
+    (block.events || []).forEach((event, eventIndex) => {
+      const eventPath = `${path}.events[${eventIndex}]`;
+      if (!event.eventId) add('NS4_REGISTRY_EVENT_ID', `${eventPath}.eventId`, 'eventId is required.');
+      if (event.eventId && eventIds.has(event.eventId)) {
+        add('NS4_REGISTRY_DUPLICATE_EVENT', `${eventPath}.eventId`, `Duplicate eventId ${event.eventId}.`);
+      }
+      if (event.eventId) eventIds.add(event.eventId);
+      if (!event.on) add('NS4_REGISTRY_EVENT_ON', `${eventPath}.on`, 'on is required.');
+    });
     if (!block.updatedAt) add('NS4_REGISTRY_UPDATED_AT', `${path}.updatedAt`, 'updatedAt is required.');
   });
   return { ok: issues.length === 0, issues };

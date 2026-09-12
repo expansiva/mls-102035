@@ -16,7 +16,7 @@ has no screen; `/fast` auto-approves.
 
 `Ns5OntologyEntityArtifact` per entity: kind, party, mdmSubtype, displayField, namespace fields,
 `unique` / `uniqueKeys`, typed `details`, lifecycle states, allowed transitions (`ruleRefs`
-optional), storage, optional `maintenance: 'crud'`. Index: entity order plus relationships with field realization and a
+optional), storage, `writer: 'journey' | 'crud' | 'inbound'` (omitted = journey). Index: entity order plus relationships with field realization and a
 one-sentence `description`. Organization-wide aggregates go in typed `module.details` (plan
 `moduleDetails`). No `kind: projection`, `derivation`, `role`, `sourceRefs`, `useRules` or
 `lifecyclePredicates`.
@@ -40,10 +40,10 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - `displayField` is a field of the entity, or of level-1 identification/base when mdm.
 - `appendOnly` has no lifecycle.
 - An entity with written fields (`fields` besides `idField`; mdm namespace) is the
-  `entity` of an `act`, listed in an act's `affects`, **or** `maintenance: 'crud'`
-  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Normalize drops `crud` when an `act`
-  already writes it or the entity has lifecycle (`normalizations[]`).
-  `valueObject` is out; normalize also drops its `maintenance`/`mutability`
+  `entity` of an `act`, listed in an act's `affects`, **or** `writer: 'crud'` / `'inbound'`
+  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Normalize drops `crud`/`inbound` when an `act`
+  already writes it (`normalizations[]`); crud plus lifecycle is also dropped.
+  `valueObject` is out; normalize also drops its `writer`/`mutability`
   (`dropValueObjectTableAttrs` — no table).
 - `unique` on `storage.idField` and `uniqueKeys` that contain the idField are dropped
   (`dropUniqueIdField` / `dropUniqueKeyIdField`). `NS5_ONTOLOGY_UNIQUE_ID_FIELD` is

@@ -67,6 +67,52 @@ export function integrationFile(moduleName: string): Ns5FileInfo {
   return { project: currentProject(), level: 4, folder: moduleFolder(moduleName), shortName: 'integration', extension: '.defs.ts' };
 }
 
+/** `l4/<target>/tobe/integration/<requestedBy>--<eventId>.defs.ts` — no extra dot in shortName. */
+export function integrationRequestFile(targetModule: string, requestedBy: string, eventId: string): Ns5FileInfo {
+  return {
+    project: currentProject(),
+    level: 4,
+    folder: `${moduleFolder(targetModule)}/tobe/integration`,
+    shortName: `${normalizeModuleName(requestedBy)}--${normalizeModuleName(eventId)}`,
+    extension: '.defs.ts',
+  };
+}
+
+export function collectTobeIntegrationFilesCiting(moduleName: string): mls.stor.IFileInfo[] {
+  const name = normalizeModuleName(moduleName);
+  const prefix = `${name}--`;
+  const project = currentProject();
+  const collected: mls.stor.IFileInfo[] = [];
+  const seen = new Set<string>();
+  const consider = (file: Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>) => {
+    if (file.project !== project || Number(file.level) !== 4) return;
+    const folder = String(file.folder || '');
+    if (!folder.endsWith('/tobe/integration') && folder !== 'organization/tobe/integration') return;
+    const shortName = String(file.shortName || '');
+    if (!shortName.startsWith(prefix)) return;
+    const info = diskFileInfo(file);
+    const key = mls.stor.getKeyToFile(info);
+    if (seen.has(key)) return;
+    seen.add(key);
+    collected.push(info);
+  };
+  for (const file of Object.values(mls.stor.files)) {
+    if (file) consider(file);
+  }
+  const listFolder = hostListFolder();
+  if (listFolder) {
+    const folders = new Set<string>(['organization/tobe/integration']);
+    for (const file of Object.values(mls.stor.files)) {
+      const folder = String(file?.folder || '');
+      if (folder.endsWith('/tobe/integration')) folders.add(folder);
+    }
+    for (const folder of folders) {
+      for (const info of listFolder(project, 4, folder)) consider(info);
+    }
+  }
+  return collected;
+}
+
 export function pipelineFile(moduleName: string): Ns5FileInfo {
   return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: 'pipeline', extension: '.json' };
 }
@@ -150,7 +196,10 @@ export const MODULE_TREE_LEVELS = [1, 2, 4, 5] as const;
 
 export function isProtectedModuleFile(file: { level?: number; folder?: string; shortName?: string }): boolean {
   const first = String(file.folder || '').split('/').filter(Boolean)[0] || '';
-  if (Number(file.level) === 4 && first === 'organization') return true;
+  const folder = String(file.folder || '');
+  if (Number(file.level) === 4 && first === 'organization') {
+    return folder !== 'organization/tobe/integration' && !folder.startsWith('organization/tobe/');
+  }
   if (Number(file.level) === 2 && !first && (file.shortName === 'designSystem' || file.shortName === 'project')) return true;
   if (Number(file.level) === 5 && !first && (file.shortName === 'config' || file.shortName === 'project')) return true;
   return false;

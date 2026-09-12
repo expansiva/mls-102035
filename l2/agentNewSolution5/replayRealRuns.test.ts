@@ -94,7 +94,7 @@ function accessView(entities: Ns5OntologyEntityArtifact[]) {
     fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
     ...(entity.details ? { details: entity.details } : {}),
     storage: { idField: entity.storage.idField },
-    ...(entity.maintenance === 'crud' ? { maintenance: 'crud' as const } : {}),
+    ...(entity.writer && entity.writer !== 'journey' ? { writer: entity.writer } : {}),
   }));
 }
 

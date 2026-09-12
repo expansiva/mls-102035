@@ -17,8 +17,8 @@ or authority layer. Grants are yours.
 Each grant is one `actorRef` with the entities it covers. `grantId` is lowerCamel. `title` and
 `description` explain the grant in the user's language. `actorRef` is an actor id from the given
 list. Every actor receives at least one grant. Every journey actor is covered. An entity with
-`maintenance: 'crud'` appears in `entityRefs` of at least one grant whose `actorRef` is an
-`internal` actor.
+`writer: 'crud'` appears in `entityRefs` of at least one grant whose `actorRef` is an
+`internal` actor. `writer: 'inbound'` does not need a crud grant.
 
 `entityRefs` are UpperCamel entity ids that exist in the ontology. Do not invent an entity.
 

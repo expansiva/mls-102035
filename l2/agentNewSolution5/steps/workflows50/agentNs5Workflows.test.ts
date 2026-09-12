@@ -535,10 +535,20 @@ void test('mechanical transitionRef must exist with by system or the actor', () 
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_TRANSITION_BY'));
 });
 
-void test('trigger.event must cite Entity.transitionId until inbound exists', () => {
+void test('trigger.event accepts module.eventId inbound form', () => {
   const processes = drafts({
     processes: [validProcess({
-      trigger: { kind: 'event', event: 'otherModule.ticketClosed' },
+      trigger: { kind: 'event', event: 'comandaRestaurante.comandaFechada' },
+    })],
+  }).processes;
+  const gate = gateOf(processes);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('trigger.event still rejects a malformed event id', () => {
+  const processes = drafts({
+    processes: [validProcess({
+      trigger: { kind: 'event', event: 'not-an-event' },
     })],
   }).processes;
   const gate = gateOf(processes);

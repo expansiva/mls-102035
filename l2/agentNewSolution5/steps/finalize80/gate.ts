@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I10).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I12).
  * Errors fail the run; warnings do not.
  *
  * I2 checks `effect: 'transition'` + `transitionRef` against ontology (actor in `by`,
@@ -16,6 +16,7 @@ import {
   collectNs5LifecycleSignal,
   ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
+  ns5EntityWriter,
   ns5LifecycleHasBranchingOrigin,
   ns5ReachableStates,
   ns5SourceSccStates,
@@ -25,6 +26,12 @@ import {
   splitFieldRef,
   type Ns5RulesEntityView,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
+import {
+  collectNs5InboundPending,
+  parseNs5InboundEventRef,
+  parseNs5OutboundOn,
+  parseNs5UsedBy,
+} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
 import {
   collectNs5Handoffs,
   collectNs5ProcessSignals,
@@ -37,6 +44,7 @@ import {
   NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF,
   NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED,
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
+  NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING,
   oracleCode,
   type Ns5FinalizeReport,
   type Ns5OracleCheckId,
@@ -69,6 +77,8 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI8(sources, error);
   checkI9(sources, error);
   checkI10(sources, error);
+  checkI11(sources, warning);
+  checkI12(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.access.actors.length,
@@ -149,15 +159,25 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
     }
     if (process.trigger.kind === 'event' && process.trigger.event) {
       const parsed = parseNs5TriggerEvent(process.trigger.event);
-      if (!parsed) {
-        error('I1', `${base}.trigger.event`, `Unknown transition ${process.trigger.event}.`);
-      } else if (!entityIds.has(parsed.entityId)) {
-        error('I1', `${base}.trigger.event`, `Unknown entity ${parsed.entityId}.`);
-      } else {
-        const ids = new Set((entityById.get(parsed.entityId)?.transitions || []).map(item => item.transitionId));
-        if (!ids.has(parsed.transitionId)) {
-          error('I1', `${base}.trigger.event`, `Unknown transition ${parsed.entityId}.${parsed.transitionId}.`);
+      const inboundRef = parseNs5InboundEventRef(process.trigger.event);
+      if (parsed) {
+        if (!entityIds.has(parsed.entityId)) {
+          error('I1', `${base}.trigger.event`, `Unknown entity ${parsed.entityId}.`);
+        } else {
+          const ids = new Set((entityById.get(parsed.entityId)?.transitions || []).map(item => item.transitionId));
+          if (!ids.has(parsed.transitionId)) {
+            error('I1', `${base}.trigger.event`, `Unknown transition ${parsed.entityId}.${parsed.transitionId}.`);
+          }
         }
+      } else if (inboundRef) {
+        const inboundIds = new Set(
+          sources.integration.inbound.map(item => `${item.from || ''}.${item.event || item.id}`),
+        );
+        if (!inboundIds.has(`${inboundRef.moduleName}.${inboundRef.eventId}`)) {
+          error('I1', `${base}.trigger.event`, `Unknown inbound event ${process.trigger.event}.`);
+        }
+      } else {
+        error('I1', `${base}.trigger.event`, `Unknown transition ${process.trigger.event}.`);
       }
     }
     process.tasks.forEach((task, taskIndex) => {
@@ -211,7 +231,6 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
   const integrationItems = [
     ...sources.integration.inbound.map((item, index) => ({ path: `integration.inbound[${index}]`, item })),
     ...sources.integration.outbound.map((item, index) => ({ path: `integration.outbound[${index}]`, item })),
-    ...sources.integration.plugins.map((item, index) => ({ path: `integration.plugins[${index}]`, item })),
   ];
   for (const { path, item } of integrationItems) {
     for (const entityId of item.entityRefs) {
@@ -451,7 +470,7 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  * A party:person that anchors an own/related grant is someone who will sign in.
  * She is registered when any of: (a) an internal actor writes her (`act` entity
  * or `affects` — same writer predicate as I10, restricted to internal-actor
- * journeys); (b) `maintenance: 'crud'` covered by an internal-actor grant (same
+ * journeys); (b) `writer: 'crud'` covered by an internal-actor grant (same
  * predicate as `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT` / I10); (c) an `act` of
  * her own external actor writes her (self-registration). Journey `entry.mode`
  * has no public value (`coldStart` | `contextOrLookup` | `fromNotification`).
@@ -469,7 +488,7 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     const entity = entityById.get(personId);
     if (!entity || entity.party !== 'person') return;
     if (ns5EntityHasActOrAffects(internalJourneys, personId)) return;
-    const crudByInternal = entity.maintenance === 'crud' && sources.access.grants.some(item => {
+    const crudByInternal = ns5EntityWriter(entity) === 'crud' && sources.access.grants.some(item => {
       if (!item.entityRefs.includes(personId)) return false;
       return actorById.get(item.actorRef)?.kind === 'internal';
     });
@@ -482,7 +501,7 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     error(
       'I8',
       `access.grants[${index}]`,
-      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not maintenance: 'crud' with an internal-actor grant, and the grant's own external actor does not write it (self-registration).`,
+      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not writer: 'crud' with an internal-actor grant, and the grant's own external actor does not write it (self-registration).`,
       NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
     );
   });
@@ -507,21 +526,31 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
 
 /**
  * Same writer predicates as ontology30 / access60: a written entity is an `act`
- * entity or listed in an act's `affects`, or `maintenance: 'crud'`; a crud
- * entity has an internal-actor grant. Conflicting crud is dropped by ontology30
- * normalize, not by this check.
+ * entity or listed in an act's `affects`, or `writer: 'crud'` / `writer: 'inbound'`;
+ * a crud entity has an internal-actor grant; inbound must appear in inbound.writes.
+ * Conflicting crud is dropped by ontology30 normalize, not by this check.
  */
 function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
+  const inboundWrites = new Set(sources.integration.inbound.flatMap(item => item.writes || []));
   for (const entity of sources.entities) {
     const path = `ontology.${entity.entityId}`;
-    const crud = entity.maintenance === 'crud';
+    const writer = ns5EntityWriter(entity);
+    const crud = writer === 'crud';
+    const inbound = writer === 'inbound';
     const hasWriter = ns5EntityHasActOrAffects(sources.journeys, entity.entityId);
-    if (!crud && !hasWriter && ns5EntityHasWrittenFields(entity)) {
+    if (!crud && !inbound && !hasWriter && ns5EntityHasWrittenFields(entity)) {
       error(
         'I10',
-        `${path}.maintenance`,
-        `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
+        `${path}.writer`,
+        `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare writer: 'crud' (a reference catalog with no lifecycle), or writer: 'inbound' (created by an integration event).`,
+      );
+    }
+    if (inbound && !inboundWrites.has(entity.entityId)) {
+      error(
+        'I10',
+        `${path}.writer`,
+        `Entity ${entity.entityId} declares writer inbound but no inbound.writes names it.`,
       );
     }
     if (!crud) continue;
@@ -532,10 +561,84 @@ function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
     if (covered) continue;
     error(
       'I10',
-      `${path}.maintenance`,
+      `${path}.writer`,
       `CRUD entity ${entity.entityId} has no grant from an internal actor.`,
     );
   }
+}
+
+function checkI11(sources: Ns5OracleSources, warning: IssueFn): void {
+  const pending = collectNs5InboundPending(
+    sources.integration.inbound,
+    sources.module.moduleName,
+    sources.siblings || [],
+  );
+  pending.forEach((request, index) => {
+    warning(
+      'I11',
+      `integration.inbound pending[${index}]`,
+      `inbound ${request.eventId} from ${request.to || request.targetModule} is not published by that sibling; queued at l4/${request.targetModule}/tobe/integration/.`,
+      NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING,
+    );
+  });
+}
+
+function checkI12(sources: Ns5OracleSources, error: IssueFn): void {
+  const entityById = entityMap(sources);
+  const journeySteps = new Map<string, Set<string>>();
+  for (const journey of sources.journeys) {
+    journeySteps.set(journey.journeyId, new Set(journey.business.steps.map(step => step.stepId)));
+  }
+  const processTasks = new Map<string, Set<string>>();
+  for (const process of sources.workflows.processes) {
+    processTasks.set(process.processId, new Set(process.tasks.map(task => task.taskId)));
+  }
+  const platformEventIds = new Set(sources.platformEventIds || []);
+  sources.integration.outbound.forEach((item, index) => {
+    const path = `integration.outbound[${index}]`;
+    const parsed = parseNs5OutboundOn(item.on || '');
+    if (!parsed) {
+      error('I12', `${path}.on`, 'outbound.on must be Entity.transitionId or Entity.create.');
+      return;
+    }
+    const entity = entityById.get(parsed.entityId);
+    if (!entity) {
+      error('I12', `${path}.on`, `Unknown entity ${parsed.entityId}.`);
+      return;
+    }
+    if (parsed.transitionId === 'create') return;
+    if (!entity.transitions.some(row => row.transitionId === parsed.transitionId)) {
+      error('I12', `${path}.on`, `Unknown transition ${parsed.entityId}.${parsed.transitionId}.`);
+    }
+  });
+  sources.integration.inbound.forEach((item, index) => {
+    if (item.from !== 'organization') return;
+    const eventId = item.event || item.id;
+    if (platformEventIds.size && !platformEventIds.has(eventId)) {
+      error('I12', `integration.inbound[${index}].event`, `event ${eventId} is not in the platform catalog.`);
+    }
+  });
+  sources.integration.plugins.forEach((plugin, pluginIndex) => {
+    plugin.usedBy.forEach((ref, refIndex) => {
+      const path = `integration.plugins[${pluginIndex}].usedBy[${refIndex}]`;
+      const parsed = parseNs5UsedBy(ref);
+      if (!parsed) {
+        error('I12', path, 'usedBy must be journeyId.stepId or processId.taskId.');
+        return;
+      }
+      const steps = journeySteps.get(parsed.ownerId);
+      if (steps) {
+        if (!steps.has(parsed.memberId)) error('I12', path, `Unknown step ${ref}.`);
+        return;
+      }
+      const tasks = processTasks.get(parsed.ownerId);
+      if (tasks) {
+        if (!tasks.has(parsed.memberId)) error('I12', path, `Unknown task ${ref}.`);
+        return;
+      }
+      error('I12', path, `Unknown journey or process ${parsed.ownerId}.`);
+    });
+  });
 }
 
 function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | undefined, indexIds: string[], error: IssueFn): void {

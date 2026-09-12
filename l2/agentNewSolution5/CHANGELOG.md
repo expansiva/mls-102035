@@ -1,5 +1,12 @@
 # agentNewSolution5
 
+## 2026-09-12
+
+- Integration v2 (ns5_31 / G7): inbound `writes`+`effect` is a writer; outbound `on` binds the
+  event to a transition/create; registry stores `entities`/`events`; sibling modules are data
+  for module10/ontology30/integration70; `tobe/integration` queues a request to a sibling
+  (I11 warning). `writer` replaces `maintenance?: 'crud'`.
+
 ## 2026-09-11
 
 - Writer mode (ns5_21 r2): normalize drops `maintenance: 'crud'` when an `act` already

@@ -6,6 +6,7 @@ import type {
   Ns5WorkflowTask,
   Ns5WorkflowTrigger,
 } from '/_102035_/l2/solution/types.js';
+import { parseNs5InboundEventRef } from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
 import {
   collectNs5Handoffs,
   collectNs5ProcessSignals,
@@ -169,10 +170,11 @@ function validateTrigger(
   }
   const parsed = parseNs5TriggerEvent(trigger.event);
   if (!parsed) {
+    if (parseNs5InboundEventRef(trigger.event)) return;
     error(
       issues,
       'NS5_WORKFLOWS_TRIGGER_EVENT',
-      'trigger.event must be Entity.transitionId of this module.',
+      'trigger.event must be Entity.transitionId of this module or module.eventId of an inbound event.',
       `${path}.event`,
     );
     return;

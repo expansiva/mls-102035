@@ -25,6 +25,7 @@ import {
   NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED,
   NS5_FINALIZE_I7_ORPHAN_FILE,
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
+  NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING,
   type Ns5OracleSources,
 } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
@@ -202,7 +203,7 @@ function withInscricaoEventoParticipant(
     'steps/finalize80/fixtures',
     'Participant.defs.ts',
   ));
-  if (opts?.crud === false) delete participant.maintenance;
+  if (opts?.crud === false) delete participant.writer;
   const access = clone(loadNs5Defs<Ns5AccessArtifact>(
     'steps/finalize80/fixtures',
     'inscricaoEvento-access.defs.ts',
@@ -616,7 +617,7 @@ void test('I8 fails the same matricularAluno journey when affects is empty', () 
   assert.match(i8[0].message, /Aluno/);
   assert.match(i8[0].message, /alunoCancelaPropriaMatricula/);
   assert.match(i8[0].message, /act entity or affects/);
-  assert.match(i8[0].message, /maintenance: 'crud'/);
+  assert.match(i8[0].message, /writer: 'crud'/);
   assert.match(i8[0].message, /self-registration/);
 });
 
@@ -705,7 +706,7 @@ void test('I8 passes live agendaClinica Profissional (crud + recepcionistaGerirP
     'steps/finalize80/fixtures',
     'agendaClinica-access.defs.ts',
   );
-  assert.equal(profissional.maintenance, 'crud');
+  assert.equal(profissional.writer, 'crud');
   assert.equal(profissional.party, 'person');
   const crudGrant = access.grants.find(item => item.grantId === 'recepcionistaGerirProfissionais');
   assert.equal(crudGrant?.actorRef, 'recepcionista');
@@ -737,7 +738,7 @@ void test('I8 passes live inscricaoEvento Participant (crud + organizador grant)
     'steps/finalize80/fixtures',
     'realizarInscricaoNoEvento.defs.ts',
   );
-  assert.equal(participant.maintenance, 'crud');
+  assert.equal(participant.writer, 'crud');
   assert.equal(participant.party, 'person');
   const covering = access.grants.find(item => item.grantId === 'organizadorAcompanhaInscricoes');
   assert.ok(covering?.entityRefs.includes('Participant'));
@@ -772,7 +773,7 @@ void test('I8 fails inscricaoEvento without crud and without public affects on P
   assert.match(i8[0].message, /Participant/);
   assert.match(i8[0].message, /publicoGerenciaPropriaInscricao/);
   assert.match(i8[0].message, /act entity or affects/);
-  assert.match(i8[0].message, /maintenance: 'crud'/);
+  assert.match(i8[0].message, /writer: 'crud'/);
   assert.match(i8[0].message, /self-registration/);
 });
 
@@ -820,7 +821,7 @@ void test('I10 fails Plano without a writer; crud plus Aluno act passes; crud wi
 
   const withCrud = clone(sources);
   const crudPlano = withCrud.entities.find(entity => entity.entityId === 'Plano')!;
-  crudPlano.maintenance = 'crud';
+  crudPlano.writer = 'crud';
   crudPlano.fields = plano.fields;
   const internal = withCrud.access.actors.find(actor => actor.kind === 'internal')!;
   withCrud.access.grants.push({
@@ -927,6 +928,65 @@ void test('I2 checks a mechanical transitionRef the same way as an act', () => {
   assert.equal(report.warnings.some(issue => issue.code === NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED && /autoClose/.test(issue.message)), false);
 });
 
+void test('I11 warns when inbound event is not published by the sibling; I12 checks outbound.on', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  sources.siblings = [{
+    moduleName: 'controleEstoque',
+    roles: [],
+    entities: [{ entityId: 'Product', kind: 'mdm', mdmSubtype: 'Product' }],
+    events: [],
+  }];
+  sources.integration = {
+    ...sources.integration,
+    inbound: [{
+      id: 'stockMoved',
+      kind: 'event',
+      from: 'controleEstoque',
+      event: 'stockMoved',
+      writes: [sources.entities[0].entityId],
+      effect: 'create',
+      description: 'Stock movement arrives.',
+      entityRefs: [],
+    }],
+    outbound: [{
+      id: 'tabClosed',
+      kind: 'event',
+      to: 'any',
+      event: 'tabClosed',
+      on: 'Ghost.create',
+      description: 'Unknown entity.',
+      entityRefs: [],
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.ok(report.warnings.some(issue => issue.code === NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING));
+  assert.ok(report.errors.some(issue => issue.checkId === 'I12' && /Ghost/.test(issue.message)));
+});
+
+void test('I10 accepts writer inbound covered by inbound.writes', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const entity = sources.entities.find(item => item.entityId === 'Comanda')!;
+  entity.writer = 'inbound';
+  sources.integration = {
+    ...sources.integration,
+    inbound: [{
+      id: 'openedElsewhere',
+      kind: 'event',
+      from: 'moduloOrigem',
+      writes: ['Comanda'],
+      effect: 'create',
+      description: 'Opened elsewhere.',
+      entityRefs: [],
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.equal(
+    report.errors.filter(issue => issue.checkId === 'I10' && /Comanda/.test(issue.message)).length,
+    0,
+    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+});
+
 void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
   const sources = loadSources('comandaRestaurante.json');
   const block = buildSolutionRegistryModuleBlock({
@@ -940,6 +1000,8 @@ void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
     ['Location <- comandaRestaurante5.Mesa', 'Product <- comandaRestaurante5.ItemCardapio'],
   );
   assert.deepEqual(block.actors.map(actor => actor.actorId), ['garcom', 'caixa']);
+  assert.ok((block.entities || []).some(entity => entity.entityId === 'Comanda'));
+  assert.deepEqual(block.events, []);
 });
 
 void test('ensureConfigListsModule writes moduleId without inventing navigation', () => {

@@ -7,7 +7,8 @@ export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-12-ns5-workflows-v2' as const;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
-export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-10-ns5-integration-v1' as const;
+export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-12-ns5-integration-v2' as const;
+export const NS5_INTEGRATION_REQUEST_SCHEMA_VERSION = '2026-09-12-ns5-integration-request-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
 
 export const NS5_STEP_IDS = [
@@ -239,13 +240,15 @@ export interface Ns5OntologyEntityArtifact {
   /** appendOnly entities have no lifecycle; E-like backends skip update/delete. */
   mutability?: 'appendOnly';
   /**
-   * How this entity is written. Absent = an `act` writes it (`entity` or `affects`).
+   * How this entity is written. Omitted = `journey` (an `act` writes it as `entity` or `affects`).
    * `crud` = reference catalog nobody creates in a journey (no lifecycle); master
    * frontend emits a data grid, master backend emits CRUD usecases.
-   * ontology30 normalize drops crud when an act already writes it.
-   * ontology30 / access60 / finalize80 I10.
+   * `inbound` = created/updated by an integration inbound item; integration70 requires
+   * a matching `inbound.writes` row. ontology30 normalize drops `crud`/`inbound` when
+   * an act already writes the entity. ontology30 / access60 / finalize80 I10 I8.
+   * Replaces `maintenance?: 'crud'` (ns5_31).
    */
-  maintenance?: 'crud';
+  writer?: 'journey' | 'crud' | 'inbound';
 }
 
 export interface Ns5OntologyRelationship {
@@ -417,17 +420,33 @@ export interface Ns5AccessArtifact {
 }
 
 export interface Ns5IntegrationItem {
-  /** Index identity. */
+  /** Index identity. Unique across inbound and outbound. */
   id: string;
-  /** Gate vs registry / plugin catalogue. */
+  /** Gate vs registry / plugin catalogue / platform events. */
   kind: 'moduleEndpoint' | 'event' | 'external';
-  /** For inbound: source module or system. */
+  /** Inbound source: sibling module, `organization` (platform catalog), or external system. */
   from?: string;
-  /** For outbound: destination module or system. */
+  /** Outbound destination: sibling module, `any`, or external system. */
   to?: string;
-  /** Planner / UI. */
+  /** Event id this row receives (inbound) or publishes (outbound). Defaults to `id`. */
+  event?: string;
+  /**
+   * Inbound: entities of this module the arrival creates/updates.
+   * Counts as a writer (ontology30 WITHOUT_WRITER, access60, I10) and as `trigger.event`.
+   */
+  writes?: string[];
+  /** Inbound: what the arrival does to `writes`. Required on inbound. */
+  effect?: 'create' | 'update' | 'transition';
+  /** Inbound, required iff `effect === 'transition'`. */
+  transitionRef?: string;
+  /**
+   * Outbound: when this module publishes. `Entity.transitionId` or `Entity.create`.
+   * Payload is the entity record at that moment (not declared in l4). I12 checks it exists.
+   */
+  on?: string;
+  /** Planner / UI. Cites `inbound.id` when the rule maps a sibling payload. */
   description: string;
-  /** Must be entityIds. */
+  /** Outbound (and inbound leftover): entity ids this row touches. */
   entityRefs: string[];
 }
 
@@ -436,8 +455,21 @@ export interface Ns5IntegrationPlugin {
   pluginId: string;
   /** Planner / UI. */
   description: string;
-  /** Must be entityIds. */
+  /** `journeyId.stepId` or `processId.taskId` that uses the plugin. I12. */
+  usedBy: string[];
+}
+
+/** Queued request that a sibling (or a predicted module) publish an event. */
+export interface Ns5IntegrationRequestArtifact {
+  schemaVersion: typeof NS5_INTEGRATION_REQUEST_SCHEMA_VERSION;
+  requestedBy: string;
+  eventId: string;
+  on?: string;
   entityRefs: string[];
+  description: string;
+  status: 'requested';
+  /** Organization inbox: the predicted module that should publish. */
+  to?: string;
 }
 
 export interface Ns5IntegrationArtifact {

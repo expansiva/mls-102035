@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/integration70/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   type Ns5IntegrationArtifact,
@@ -11,6 +12,10 @@ import {
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const ITEM_KINDS = new Set(['moduleEndpoint', 'event', 'external']);
+const EFFECTS = new Set(['create', 'update', 'transition']);
+const OUTBOUND_ON = /^([A-Z][A-Za-z0-9]*)\.(create|[a-z][A-Za-z0-9]*)$/;
+const USED_BY = /^([a-z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/;
+const INBOUND_EVENT_REF = /^([a-z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/;
 
 /**
  * Closed platform plugin catalog. E6 recommendations of kind plugin are free-form ids; NS5
@@ -25,6 +30,7 @@ export const NS5_PLUGIN_CATALOG = [
 export const NS5_PLUGIN_IDS: readonly string[] = NS5_PLUGIN_CATALOG.map(item => item.pluginId);
 
 export type Ns5IntegrationItemKind = 'moduleEndpoint' | 'event' | 'external';
+export type Ns5IntegrationEffect = 'create' | 'update' | 'transition';
 
 export interface Ns5IntegrationNormalization {
   inbound: Ns5IntegrationItem[];
@@ -39,13 +45,36 @@ export interface Ns5IntegrationActorView {
 
 export interface Ns5IntegrationEntityView {
   entityId: string;
+  writer?: 'journey' | 'crud' | 'inbound';
+  transitions?: ReadonlyArray<{ transitionId: string }>;
+}
+
+export interface Ns5IntegrationJourneyView {
+  journeyId: string;
+  stepIds: string[];
+}
+
+export interface Ns5IntegrationProcessView {
+  processId: string;
+  taskIds: string[];
 }
 
 export interface Ns5IntegrationSignal {
-  kind: 'systemActor' | 'pluginTerm';
+  kind: 'systemActor' | 'pluginTerm' | 'siblingPresent' | 'siblingTerm';
   actorId?: string;
   pluginId?: string;
   term?: string;
+  moduleName?: string;
+}
+
+export interface Ns5InboundPendingRequest {
+  targetModule: string;
+  requestedBy: string;
+  eventId: string;
+  on?: string;
+  entityRefs: string[];
+  description: string;
+  to?: string;
 }
 
 export function buildNs5IntegrationTool(
@@ -54,7 +83,7 @@ export function buildNs5IntegrationTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Integration',
-    'Submit what enters and leaves the module: inbound/outbound module endpoints, events and externals, plus platform plugins. Empty lists are valid only when no structural signal exists.',
+    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, and platform plugins used by a journey step or process task. Empty lists are valid only when no structural signal exists.',
     schema,
   );
 }
@@ -62,8 +91,8 @@ export function buildNs5IntegrationTool(
 export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNormalization {
   const root = record(value);
   return {
-    inbound: list(root.inbound).map(item => normalizeItem(item)).filter(item => item.id || item.description),
-    outbound: list(root.outbound).map(item => normalizeItem(item)).filter(item => item.id || item.description),
+    inbound: list(root.inbound).map(item => normalizeInbound(item)).filter(item => item.id || item.description),
+    outbound: list(root.outbound).map(item => normalizeOutbound(item)).filter(item => item.id || item.description),
     plugins: list(root.plugins).map(normalizePlugin).filter(plugin => plugin.pluginId || plugin.description),
   };
 }
@@ -86,11 +115,12 @@ export function buildNs5IntegrationArtifact(
 export function collectNs5IntegrationSignals(
   actors: readonly Ns5IntegrationActorView[],
   sourcePrompt: string,
+  siblings: readonly { moduleName: string }[] = [],
 ): Ns5IntegrationSignal[] {
   const signals: Ns5IntegrationSignal[] = [];
   const seen = new Set<string>();
   const add = (signal: Ns5IntegrationSignal) => {
-    const key = [signal.kind, signal.actorId || '', signal.pluginId || '', signal.term || ''].join('|');
+    const key = [signal.kind, signal.actorId || '', signal.pluginId || '', signal.term || '', signal.moduleName || ''].join('|');
     if (seen.has(key)) return;
     seen.add(key);
     signals.push(signal);
@@ -109,6 +139,13 @@ export function collectNs5IntegrationSignals(
     }
   }
 
+  if (siblings.length) add({ kind: 'siblingPresent' });
+  for (const sibling of siblings) {
+    if (!sibling.moduleName) continue;
+    if (!promptMentionsTerm(sourcePrompt, sibling.moduleName)) continue;
+    add({ kind: 'siblingTerm', moduleName: sibling.moduleName, term: sibling.moduleName });
+  }
+
   return signals;
 }
 
@@ -123,16 +160,111 @@ export function promptMentionsTerm(sourcePrompt: string, term: string): boolean 
   return new RegExp(`(?:^|[^A-Za-z0-9])${escaped}(?:$|[^A-Za-z0-9])`, 'i').test(sourcePrompt || '');
 }
 
-function normalizeItem(value: unknown): Ns5IntegrationItem {
+export function parseNs5OutboundOn(on: string): { entityId: string; transitionId: string } | null {
+  const match = OUTBOUND_ON.exec((on || '').trim());
+  if (!match) return null;
+  return { entityId: match[1], transitionId: match[2] };
+}
+
+export function parseNs5UsedBy(ref: string): { ownerId: string; memberId: string } | null {
+  const match = USED_BY.exec((ref || '').trim());
+  if (!match) return null;
+  return { ownerId: match[1], memberId: match[2] };
+}
+
+export function parseNs5InboundEventRef(event: string): { moduleName: string; eventId: string } | null {
+  const match = INBOUND_EVENT_REF.exec((event || '').trim());
+  if (!match) return null;
+  return { moduleName: match[1], eventId: match[2] };
+}
+
+export function inboundEventId(item: Ns5IntegrationItem): string {
+  return item.event || item.id;
+}
+
+export function collectNs5InboundPending(
+  inbound: readonly Ns5IntegrationItem[],
+  requestedBy: string,
+  siblings: readonly Ns5SiblingModule[],
+): Ns5InboundPendingRequest[] {
+  const siblingByName = new Map(siblings.map(item => [item.moduleName, item]));
+  const pending: Ns5InboundPendingRequest[] = [];
+  const seen = new Set<string>();
+  for (const item of inbound) {
+    if (item.kind === 'external') continue;
+    const from = item.from || '';
+    if (!from || from === 'organization') continue;
+    const eventId = inboundEventId(item);
+    if (!eventId) continue;
+    const key = `${from}|${eventId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const suggestion = item.transitionRef
+      || (item.writes?.[0] && item.effect ? `${item.writes[0]}.${item.effect}` : undefined);
+    const entityRefs = unique([...(item.writes || []), ...item.entityRefs]);
+    const sibling = siblingByName.get(from);
+    if (sibling) {
+      if (sibling.events.some(event => event.eventId === eventId)) continue;
+      pending.push({
+        targetModule: from,
+        requestedBy,
+        eventId,
+        ...(suggestion ? { on: suggestion } : {}),
+        entityRefs,
+        description: item.description,
+      });
+      continue;
+    }
+    pending.push({
+      targetModule: 'organization',
+      requestedBy,
+      eventId,
+      ...(suggestion ? { on: suggestion } : {}),
+      entityRefs,
+      description: item.description,
+      to: from,
+    });
+  }
+  return pending;
+}
+
+function normalizeInbound(value: unknown): Ns5IntegrationItem {
   const source = record(value);
   const kind = text(source.kind);
   const from = memberId(text(source.from), '');
+  const event = memberId(text(source.event), '');
+  const effect = text(source.effect);
+  const writes = unique(strings(source.writes).map(item => entityId(item)).filter(Boolean));
+  const entityRefs = unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean));
+  const resolvedWrites = writes.length ? writes : entityRefs;
+  const transitionRef = memberId(text(source.transitionRef), '');
+  return {
+    id: memberId(text(source.id) || text(source.itemId), ''),
+    kind: ITEM_KINDS.has(kind) ? kind as Ns5IntegrationItemKind : 'event',
+    ...(from ? { from } : {}),
+    ...(event ? { event } : {}),
+    writes: resolvedWrites,
+    effect: EFFECTS.has(effect) ? effect as Ns5IntegrationEffect : 'create',
+    ...(transitionRef ? { transitionRef } : {}),
+    description: text(source.description),
+    entityRefs: [],
+  };
+}
+
+function normalizeOutbound(value: unknown): Ns5IntegrationItem {
+  const source = record(value);
+  const kind = text(source.kind);
   const to = memberId(text(source.to), '');
+  const from = memberId(text(source.from), '');
+  const event = memberId(text(source.event) || text(source.id) || text(source.itemId), '');
+  const on = text(source.on);
   return {
     id: memberId(text(source.id) || text(source.itemId), ''),
     kind: ITEM_KINDS.has(kind) ? kind as Ns5IntegrationItemKind : 'event',
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
+    ...(event ? { event } : {}),
+    ...(OUTBOUND_ON.test(on) ? { on } : {}),
     description: text(source.description),
     entityRefs: unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean)),
   };
@@ -140,10 +272,11 @@ function normalizeItem(value: unknown): Ns5IntegrationItem {
 
 function normalizePlugin(value: unknown): Ns5IntegrationPlugin {
   const source = record(value);
+  const usedBy = unique(strings(source.usedBy).filter(item => USED_BY.test(item)));
   return {
     pluginId: memberId(text(source.pluginId) || text(source.id), ''),
     description: text(source.description),
-    entityRefs: unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean)),
+    usedBy,
   };
 }
 

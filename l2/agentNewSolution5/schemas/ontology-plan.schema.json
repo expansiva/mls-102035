@@ -45,7 +45,7 @@
     "planEntity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entityId", "title", "description", "kind", "party", "displayField", "storage"],
+      "required": ["entityId", "title", "description", "kind", "party", "displayField", "writer", "storage"],
       "properties": {
         "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "title": { "type": "string", "minLength": 1 },
@@ -62,7 +62,7 @@
         },
         "displayField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "mutability": { "type": "string", "enum": ["appendOnly"] },
-        "maintenance": { "type": "string", "enum": ["crud"] },
+        "writer": { "type": "string", "enum": ["journey", "crud", "inbound"] },
         "storage": { "$ref": "#/$defs/storage" }
       }
     },

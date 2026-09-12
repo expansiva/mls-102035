@@ -36,11 +36,26 @@ export interface Ns4SolutionRegistryGeneralField {
   since: string;
 }
 
+/** Entities this module owns. Siblings read this list instead of opening ontology files. */
+export interface Ns4SolutionRegistryEntity {
+  entityId: string;
+  kind: string;
+  mdmSubtype?: string;
+}
+
+/** Outbound events this module publishes. `on` is `Entity.transitionId` or `Entity.create`. */
+export interface Ns4SolutionRegistryEvent {
+  eventId: string;
+  on: string;
+}
+
 export interface Ns4SolutionRegistryModule {
   moduleName: string;
   actors: Ns4SolutionRegistryActor[];
   roles: Ns4SolutionRegistryRole[];
   generalFields: Ns4SolutionRegistryGeneralField[];
+  entities?: Ns4SolutionRegistryEntity[];
+  events?: Ns4SolutionRegistryEvent[];
   updatedAt: string;
 }
 

@@ -16,6 +16,7 @@ import {
   NS5_PLUGIN_IDS,
   buildNs5IntegrationArtifact,
   buildNs5IntegrationTool,
+  collectNs5InboundPending,
   collectNs5IntegrationSignals,
   normalizeNs5IntegrationPayload,
   promptMentionsTerm,
@@ -80,14 +81,18 @@ function gateOf(
     entities: Ns5IntegrationEntityView[];
     registryModuleNames: string[];
     sourcePrompt: string;
+    journeySteps: Array<{ journeyId: string; stepIds: string[] }>;
   }> = {},
 ) {
   const { inbound, outbound, plugins } = drafts(payload);
+  const registryModuleNames = extras.registryModuleNames || CE11_REGISTRY;
   return validateNs5Integration(inbound, outbound, plugins, {
     actors: extras.actors || CE11_ACTORS,
     entities: extras.entities || CE11_ENTITIES,
-    registryModuleNames: extras.registryModuleNames || CE11_REGISTRY,
+    registryModuleNames,
+    siblings: registryModuleNames.map(name => ({ moduleName: name, roles: [], entities: [], events: [] })),
     sourcePrompt: extras.sourcePrompt || CE11_PROMPT,
+    journeySteps: extras.journeySteps || [{ journeyId: 'pagarComPlugin', stepIds: ['pagarTitulo'] }],
   });
 }
 
@@ -132,7 +137,9 @@ void test('derived ce11 fixture keeps inbound events and stripe plugin, no card 
   assert.equal(fixture.plugins.length, 1);
   assert.equal(fixture.plugins[0].pluginId, 'stripe');
   assert.ok(fixture.inbound.every(item => item.kind === 'event'));
-  assert.ok(fixture.inbound.every(item => item.entityRefs.includes('ReceivableTitle')));
+  assert.ok(fixture.inbound.every(item => (item.writes || []).includes('ReceivableTitle')));
+  assert.ok(fixture.inbound.every(item => item.effect === 'create'));
+  assert.deepEqual(fixture.plugins[0].usedBy, ['pagarComPlugin.pagarTitulo']);
   const source = JSON.stringify(fixture);
   assert.doesNotMatch(source, /CardToken|Cartao|sourceRefs|workspace|landing/);
   const gate = gateOf(fixture);
@@ -185,7 +192,7 @@ void test('unknown pluginId fails the catalog gate', () => {
   const gate = gateOf({
     inbound: [],
     outbound: [],
-    plugins: [{ pluginId: 'paypal', description: 'Pay elsewhere.', entityRefs: ['ReceivableTitle'] }],
+    plugins: [{ pluginId: 'paypal', description: 'Pay elsewhere.', usedBy: ['pagarComPlugin.pagarTitulo'] }],
   });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_PLUGIN_UNKNOWN'));
@@ -197,8 +204,9 @@ void test('unknown entityRef fails', () => {
       id: 'closedTab',
       kind: 'event',
       from: 'comandaRestaurante',
+      writes: ['Ghost'],
+      effect: 'create',
       description: 'Closed tab.',
-      entityRefs: ['Ghost'],
     }],
     outbound: [],
     plugins: [],
@@ -209,14 +217,14 @@ void test('unknown entityRef fails', () => {
 
 void test('inbound without from and outbound without to fail', () => {
   const inbound = gateOf({
-    inbound: [{ id: 'in', kind: 'event', description: 'Missing from.', entityRefs: ['ReceivableTitle'] }],
+    inbound: [{ id: 'in', kind: 'event', writes: ['ReceivableTitle'], effect: 'create', description: 'Missing from.' }],
     outbound: [],
     plugins: [],
   });
   assert.ok(inbound.issues.some(issue => issue.code === 'NS5_INTEGRATION_FROM'));
   const outbound = gateOf({
     inbound: [],
-    outbound: [{ id: 'out', kind: 'event', description: 'Missing to.', entityRefs: ['ReceivableTitle'] }],
+    outbound: [{ id: 'out', kind: 'event', event: 'out', on: 'ReceivableTitle.create', description: 'Missing to.', entityRefs: ['ReceivableTitle'] }],
     plugins: [],
   });
   assert.ok(outbound.issues.some(issue => issue.code === 'NS5_INTEGRATION_TO'));
@@ -255,20 +263,23 @@ void test('moduleEndpoint from a registry sibling is clean; unknown module is a 
   assert.match(warning.message, /unknownModule/);
 });
 
-void test('event from a name not in the registry does not warn', () => {
+void test('event from a name not in the registry is unknownModule warning', () => {
   const gate = gateOf({
     inbound: [{
       id: 'comandaFechada',
       kind: 'event',
       from: 'moduloInexistente',
+      writes: ['ReceivableTitle'],
+      effect: 'create',
       description: 'Event from a future sibling.',
-      entityRefs: ['ReceivableTitle'],
     }],
     outbound: [],
     plugins: [],
   });
   assert.equal(gate.ok, true);
-  assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_UNKNOWN_MODULE'), false);
+  const warning = gate.issues.find(issue => issue.code === 'NS5_INTEGRATION_UNKNOWN_MODULE');
+  assert.ok(warning);
+  assert.equal(warning.severity, 'warning');
 });
 
 void test('normalize maps id to item id and drops empty peers', () => {
@@ -289,13 +300,15 @@ void test('normalize maps id to item id and drops empty peers', () => {
   });
   assert.equal(inbound[0].id, 'comandaFechada');
   assert.equal('to' in inbound[0], false);
-  assert.deepEqual(inbound[0].entityRefs, ['ReceivableTitle']);
+  assert.deepEqual(inbound[0].writes, ['ReceivableTitle']);
+  assert.equal(inbound[0].effect, 'create');
   assert.equal(plugins[0].pluginId, 'stripe');
+  assert.deepEqual(plugins[0].usedBy, []);
 });
 
 void test('buildNs5IntegrationArtifact keeps schemaVersion and empty lists', () => {
   const artifact = buildNs5IntegrationArtifact('comandaRestaurante5', [], [], []);
-  assert.equal(artifact.schemaVersion, '2026-09-10-ns5-integration-v1');
+  assert.equal(artifact.schemaVersion, '2026-09-12-ns5-integration-v2');
   assert.equal(artifact.moduleName, 'comandaRestaurante5');
   assert.deepEqual(artifact.inbound, []);
   assert.deepEqual(artifact.outbound, []);
@@ -355,22 +368,108 @@ void test('human prompt carries source request, catalog, registry and signals', 
       { actorId: 'caixa', kind: 'internal', title: 'Cashier', description: 'Receives titles.' },
       { actorId: 'moduloOrigem', kind: 'system', title: 'Origin', description: 'Other modules post charges.' },
     ],
-    entityIds: ['ReceivableTitle', 'Payment'],
-    registryModuleNames: CE11_REGISTRY,
+    entities: [{ entityId: 'ReceivableTitle', writer: 'inbound' }, { entityId: 'Payment' }],
+    siblings: CE11_REGISTRY.map(name => ({ moduleName: name, roles: [], entities: [], events: [] })),
+    inboundWriters: ['ReceivableTitle'],
+    platformEventIds: ['mdmCreated'],
   });
   assert.match(human, /Source request/);
   assert.match(human, /moduloOrigem \(system\)/);
   assert.match(human, /comandaRestaurante/);
   assert.match(human, /stripe/);
+  assert.match(human, /writer=inbound/);
   assert.match(human, /"kind": "systemActor"/);
   assert.match(human, /"kind": "pluginTerm"/);
+  assert.match(human, /"kind": "siblingPresent"/);
 });
 
 void test('integration70 prompt has no domain examples and keeps MDM out of integration', () => {
   const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
   assert.match(prompt, /submitNs5Integration/);
   assert.match(prompt, /unknownModule/);
-  assert.match(prompt, /placeholders — use only ids that exist in the module/);
+  assert.match(prompt, /writer=inbound/);
   assert.match(prompt, /Shared master data/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|stripe|financeiro|pagador/i);
+});
+
+void test('siblings in the registry are an integration signal', () => {
+  const signals = collectNs5IntegrationSignals(COMANDA_ACTORS, COMANDA_PROMPT, [{ moduleName: 'controleEstoque' }]);
+  assert.ok(signals.some(signal => signal.kind === 'siblingPresent'));
+  const empty = validateNs5Integration([], [], [], {
+    actors: COMANDA_ACTORS,
+    entities: [{ entityId: 'Comanda' }],
+    registryModuleNames: ['controleEstoque'],
+    siblings: [{ moduleName: 'controleEstoque', roles: [], entities: [], events: [] }],
+    sourcePrompt: COMANDA_PROMPT,
+  });
+  assert.equal(empty.ok, false);
+  assert.ok(empty.issues.some(issue => issue.code === 'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM'));
+});
+
+void test('writer inbound without inbound.writes fails', () => {
+  const gate = gateOf({ inbound: [], outbound: [], plugins: [] }, {
+    entities: [{ entityId: 'ReceivableTitle', writer: 'inbound' }, { entityId: 'Payment' }],
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_INBOUND_WRITER'));
+});
+
+void test('outbound.on Entity.create passes; unknown transition fails', () => {
+  const ok = gateOf({
+    inbound: [],
+    outbound: [{
+      id: 'titleCreated',
+      kind: 'event',
+      to: 'any',
+      event: 'titleCreated',
+      on: 'ReceivableTitle.create',
+      entityRefs: ['ReceivableTitle'],
+      description: 'A new title is published.',
+    }],
+    plugins: [],
+  });
+  assert.equal(ok.ok, true, ok.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const bad = gateOf({
+    inbound: [],
+    outbound: [{
+      id: 'titleCreated',
+      kind: 'event',
+      to: 'any',
+      event: 'titleCreated',
+      on: 'ReceivableTitle.ghost',
+      entityRefs: ['ReceivableTitle'],
+      description: 'Unknown transition.',
+    }],
+    plugins: [],
+  }, {
+    entities: [{ entityId: 'ReceivableTitle', transitions: [{ transitionId: 'open' }] }],
+  });
+  assert.equal(bad.ok, false);
+  assert.ok(bad.issues.some(issue => issue.code === 'NS5_INTEGRATION_ON'));
+});
+
+void test('plugins.usedBy must name a journey step', () => {
+  const gate = gateOf({
+    inbound: [],
+    outbound: [],
+    plugins: [{ pluginId: 'stripe', description: 'Cards.', usedBy: ['ghost.step'] }],
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_USED_BY'));
+});
+
+void test('collectNs5InboundPending queues sibling and organization inboxes', () => {
+  const pending = collectNs5InboundPending(
+    [
+      { id: 'comandaFechada', kind: 'event', from: 'comandaRestaurante', writes: ['ReceivableTitle'], effect: 'create', description: 'Closed tab.', entityRefs: [] },
+      { id: 'futureClosed', kind: 'event', from: 'agendaClinica', writes: ['ReceivableTitle'], effect: 'create', description: 'Future.', entityRefs: [] },
+    ],
+    'financeiro',
+    [{ moduleName: 'comandaRestaurante', roles: [], entities: [], events: [] }],
+  );
+  assert.equal(pending.length, 2);
+  assert.equal(pending[0].targetModule, 'comandaRestaurante');
+  assert.equal(pending[0].requestedBy, 'financeiro');
+  assert.equal(pending[1].targetModule, 'organization');
+  assert.equal(pending[1].to, 'agendaClinica');
 });

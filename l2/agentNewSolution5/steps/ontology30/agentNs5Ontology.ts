@@ -4,6 +4,7 @@ import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { formatNs4Level1CatalogPrompt } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
+import { formatNs5Siblings, readNs5Siblings } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   NS5_AGENT_NAME,
   createNs5RetryStep,
@@ -92,6 +93,7 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
   actors: Ns5ModuleActor[];
   journeys: Ns5JourneyArtifact[];
   level1Catalog: string;
+  siblingsText?: string;
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
@@ -108,6 +110,7 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
     '## Journeys (business)',
     formatJourneys(input.journeys),
     '',
+    input.siblingsText || '',
     input.level1Catalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
@@ -254,13 +257,14 @@ async function buildPlanPrompt(
   args: string,
   parsed: OntologyArgs,
 ): Promise<mls.msg.AgentIntentPromptReady> {
-  const [moduleArtifact, journeys, mdm, prompt, schema, previous] = await Promise.all([
+  const [moduleArtifact, journeys, mdm, prompt, schema, previous, siblings] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
     readNs5MdmSkill(),
     readAgentText('steps/ontology30', 'prompt', '.md'),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-plan.schema', '.json'),
     readJson(draftFile(parsed.moduleName, 'ontology30-plan')),
+    readNs5Siblings(parsed.moduleName),
   ]);
   const sourcePrompt = await readSourcePrompt(context, parsed.moduleName, moduleArtifact);
   const tool = buildNs5OntologyPlanTool(schema, createStrictArtifactTool);
@@ -270,6 +274,7 @@ async function buildPlanPrompt(
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
     level1Catalog: formatNs4Level1CatalogPrompt(level1Catalog()),
+    siblingsText: formatNs5Siblings(siblings),
     gateFeedback: parsed.gateFeedback,
     previousDraft: previous,
   });
@@ -367,6 +372,7 @@ async function handlePlanResult(
     moduleName: parsed.moduleName,
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
+    siblings: await readNs5Siblings(parsed.moduleName),
   });
   if (!gate.ok) {
     const feedback = formatNs5OntologyGate(gate.issues);
@@ -416,6 +422,7 @@ async function handleEntityResult(
     moduleName: parsed.moduleName,
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
+    siblings: await readNs5Siblings(parsed.moduleName),
   });
   if (!gate.ok) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} gate failed; finalizer will repair it. | ${formatNs5OntologyGate(gate.issues)}`)];
@@ -452,6 +459,7 @@ async function handleBindingsResult(
     moduleName: parsed.moduleName,
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
+    siblings: await readNs5Siblings(parsed.moduleName),
   });
   if (!gate.ok) {
     const feedback = formatNs5OntologyGate(gate.issues);
@@ -499,6 +507,7 @@ async function finalizeOntology(
       moduleName: parsed.moduleName,
       actors,
       journeys,
+      siblings: await readNs5Siblings(parsed.moduleName),
     }).ok) {
       invalid.push(entity.entityId);
     } else {
@@ -524,6 +533,7 @@ async function finalizeOntology(
       actors,
       journeys,
       requireRelationshipRealization: false,
+      siblings: await readNs5Siblings(parsed.moduleName),
     });
     if (!gate.ok) throw new Error(formatNs5OntologyGate(gate.issues));
     const artifactPaths = await persistArtifacts(parsed.moduleName, plan, details, emptyBindings, pipeline, gate.uncitedEntities);

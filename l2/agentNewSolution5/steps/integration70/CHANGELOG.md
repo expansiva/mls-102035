@@ -1,5 +1,14 @@
 # integration70
 
+## 2026-09-12
+
+- Form `-integration-v2` (ns5_31): inbound `{ id, kind, from, event?, writes[], effect, transitionRef? }`;
+  outbound `{ id, kind, to, event, on, entityRefs[] }`; plugins `{ pluginId, usedBy[], description }`.
+  `inbound.writes` is a writer. `outbound.on` is `Entity.transitionId` or `Entity.create`.
+  Signals also fire when siblings exist in the registry. `unknownModule` is a warning for
+  event/moduleEndpoint peers not in the registry. Gate: inbound writer coverage, outbound.on,
+  plugins.usedBy, platform events (`from: organization`).
+
 ## 2026-09-11
 
 - Actors come from `readNs5Actors` (pipeline), not `module.defs.ts`.

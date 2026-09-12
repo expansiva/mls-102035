@@ -12,6 +12,7 @@ import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/
 import { validateNs4SolutionRegistry } from '/_102035_/l2/agentNewSolution/helpers/registryGate.js';
 import {
   collectExactModuleFiles,
+  collectTobeIntegrationFilesCiting,
   displayPath,
   isProtectedModuleFile,
   normalizeModuleName,
@@ -152,9 +153,18 @@ export async function removeModule(moduleName: string, opts?: RemoveModuleOpts):
   const name = normalizeModuleName(raw);
 
   const files = collectExactModuleFiles(name);
+  const tobeFiles = collectTobeIntegrationFilesCiting(name);
+  const allFiles = [...files];
+  const seenKeys = new Set(files.map(file => mls.stor.getKeyToFile(file)));
+  for (const file of tobeFiles) {
+    const key = mls.stor.getKeyToFile(file);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    allFiles.push(file);
+  }
   const deleted: string[] = [];
   const skipped: string[] = [];
-  for (const file of files) {
+  for (const file of allFiles) {
     if (isProtectedModuleFile(file)) skipped.push(displayPath(file));
     else deleted.push(displayPath(file));
   }
@@ -192,7 +202,7 @@ export async function removeModule(moduleName: string, opts?: RemoveModuleOpts):
 
   if (deleted.length) {
     const { deleteFile } = await import('/_102027_/l2/libStor.js');
-    for (const file of files) {
+    for (const file of allFiles) {
       if (isProtectedModuleFile(file)) continue;
       await deleteFile(file);
     }

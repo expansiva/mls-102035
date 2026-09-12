@@ -41,6 +41,7 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5AccessArtifact: { file: TYPES, name: 'Ns5AccessArtifact' },
   Ns5IntegrationItem: { file: TYPES, name: 'Ns5IntegrationItem' },
   Ns5IntegrationPlugin: { file: TYPES, name: 'Ns5IntegrationPlugin' },
+  Ns5IntegrationRequestArtifact: { file: TYPES, name: 'Ns5IntegrationRequestArtifact' },
   Ns5IntegrationArtifact: { file: TYPES, name: 'Ns5IntegrationArtifact' },
 };
 
@@ -113,7 +114,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     transitions: { reader: 'steps/ontology30/gate.ts, finalize80', since: '2026-09-10' },
     storage: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     mutability: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
-    maintenance: { reader: 'steps/ontology30/gate.ts, steps/access60/gate.ts, finalize80 I10 I8', since: '2026-09-11' },
+    writer: { reader: 'steps/ontology30/gate.ts, steps/access60/gate.ts, finalize80 I10 I8, integration70 inbound.writes', since: '2026-09-12' },
   },
   Ns5OntologyField: {
     fieldId: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
@@ -231,22 +232,37 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
   Ns5IntegrationItem: {
     id: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
     kind: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
-    from: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
-    to: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
-    description: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    from: { reader: 'steps/integration70/gate.ts, finalize80 I11 I12', since: '2026-09-10' },
+    to: { reader: 'steps/integration70/gate.ts, finalize80 I12', since: '2026-09-10' },
+    event: { reader: 'steps/integration70/gate.ts, finalize80 I11, workflows50 trigger.event', since: '2026-09-12' },
+    writes: { reader: 'steps/integration70/gate.ts, ontology30 WITHOUT_WRITER, access60, finalize80 I10', since: '2026-09-12' },
+    effect: { reader: 'steps/integration70/gate.ts, master backend handler', since: '2026-09-12' },
+    transitionRef: { reader: 'steps/integration70/gate.ts, master backend handler', since: '2026-09-12' },
+    on: { reader: 'steps/integration70/gate.ts, finalize80 I12, registry events', since: '2026-09-12' },
+    description: { reader: 'steps/integration70/gate.ts, master backend (payload mapping rule)', since: '2026-09-10' },
     entityRefs: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
   },
   Ns5IntegrationPlugin: {
     pluginId: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
-    entityRefs: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    usedBy: { reader: 'steps/integration70/gate.ts, finalize80 I12', since: '2026-09-12' },
+  },
+  Ns5IntegrationRequestArtifact: {
+    schemaVersion: { reader: 'finalize80 persist tobe/integration', since: '2026-09-12' },
+    requestedBy: { reader: 'finalize80 I11, sibling /rebuild all', since: '2026-09-12' },
+    eventId: { reader: 'finalize80 I11, sibling integration70', since: '2026-09-12' },
+    on: { reader: 'finalize80 I11 suggestion', since: '2026-09-12' },
+    entityRefs: { reader: 'finalize80 I11', since: '2026-09-12' },
+    description: { reader: 'finalize80 I11, sibling prompt', since: '2026-09-12' },
+    status: { reader: 'finalize80 I11, Fase 3/4 consumer', since: '2026-09-12' },
+    to: { reader: 'finalize80 I11 organization inbox', since: '2026-09-12' },
   },
   Ns5IntegrationArtifact: {
     schemaVersion: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
-    inbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend', since: '2026-09-10' },
-    outbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend', since: '2026-09-10' },
-    plugins: { reader: 'steps/integration70/gate.ts, sidecar / basic backend', since: '2026-09-10' },
+    inbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, finalize80 I11', since: '2026-09-10' },
+    outbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, registry events, finalize80 I12', since: '2026-09-10' },
+    plugins: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, finalize80 I12', since: '2026-09-10' },
   },
 };
 

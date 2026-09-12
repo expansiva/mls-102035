@@ -186,7 +186,7 @@ export function validateNs5Access(
   });
 
   context.entities.forEach((entity, index) => {
-    if (entity.maintenance !== 'crud' || !entity.entityId) return;
+    if (entity.writer !== 'crud' || !entity.entityId) return;
     const covered = grants.some(grant => {
       if (!grant.entityRefs.includes(entity.entityId)) return false;
       return actorById.get(grant.actorRef)?.kind === 'internal';

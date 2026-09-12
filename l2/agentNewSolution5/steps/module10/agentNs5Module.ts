@@ -3,6 +3,7 @@
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { formatNs4E1OrganizationContext } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
+import { formatNs5Siblings, ns5SiblingsFromRegistry } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   NS5_AGENT_NAME,
   createEmptyPipeline,
@@ -94,7 +95,10 @@ export async function beforeNs5ModulePromptStep(
     const humanPrompt = buildNs5ModuleHumanPrompt({
       sourcePrompt,
       fixedModuleName,
-      organizationContext: formatNs4E1OrganizationContext(registry),
+      organizationContext: [
+        formatNs4E1OrganizationContext(registry),
+        formatNs5Siblings(ns5SiblingsFromRegistry(registry, moduleName)),
+      ].filter(Boolean).join('\n\n'),
       gateFeedback: parsed.gateFeedback,
       previousDraft: previous,
     });

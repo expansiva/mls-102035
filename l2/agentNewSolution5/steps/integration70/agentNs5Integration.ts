@@ -12,9 +12,12 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { readNs5Siblings, formatNs5Siblings, ns5PlatformEventIds } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   draftFile,
   integrationFile,
+  journeyFile,
+  journeyIndexFile,
   moduleFile,
   ontologyEntityFile,
   ontologyIndexFile,
@@ -23,7 +26,7 @@ import {
   readDefsJson,
   readJson,
   readPipeline,
-  readSolutionRegistry,
+  workflowsFile,
   writeDefs,
   writeJson,
   writePipeline,
@@ -32,11 +35,15 @@ import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/so
 import type {
   Ns5IntegrationItem,
   Ns5IntegrationPlugin,
+  Ns5JourneyArtifact,
+  Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
   Ns5PipelineState,
+  Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   NS5_PLUGIN_CATALOG,
   buildNs5IntegrationArtifact,
@@ -65,12 +72,23 @@ export function buildNs5IntegrationHumanPrompt(input: {
   sourcePrompt: string;
   userLanguage: string;
   actors: ReadonlyArray<{ actorId: string; kind: string; title: string; description: string }>;
-  entityIds: string[];
-  registryModuleNames: string[];
+  entities: ReadonlyArray<{ entityId: string; writer?: 'journey' | 'crud' | 'inbound'; transitions?: ReadonlyArray<{ transitionId: string }> }>;
+  siblings: readonly Ns5SiblingModule[];
+  inboundWriters: string[];
+  platformEventIds: string[];
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
-  const signals = collectNs5IntegrationSignals(input.actors, input.sourcePrompt);
+  const signals = collectNs5IntegrationSignals(input.actors, input.sourcePrompt, input.siblings);
+  const entityLines = input.entities.length
+    ? input.entities.map(entity => {
+      const writer = entity.writer && entity.writer !== 'journey' ? ` writer=${entity.writer}` : '';
+      const transitions = entity.transitions?.length
+        ? ` transitions=${entity.transitions.map(item => item.transitionId).join(',')}`
+        : '';
+      return `- ${entity.entityId}${writer}${transitions}`;
+    }).join('\n')
+    : '(none)';
   return [
     '## Source request',
     input.sourcePrompt,
@@ -81,13 +99,21 @@ export function buildNs5IntegrationHumanPrompt(input: {
     '## Actors',
     formatActors(input.actors),
     '',
-    '## Ontology entity ids',
-    input.entityIds.length ? input.entityIds.map(id => `- ${id}`).join('\n') : '(none)',
+    '## Ontology entities (writer inbound must appear in inbound.writes)',
+    entityLines,
     '',
-    '## Sibling modules (solution registry)',
-    input.registryModuleNames.length
-      ? input.registryModuleNames.map(name => `- ${name}`).join('\n')
-      : '(none)',
+    formatNs5Siblings(input.siblings) || '## Sibling modules already in this organization\n(none)',
+    '',
+    '## Available sibling events (outbound already published)',
+    input.siblings.some(item => item.events.length)
+      ? input.siblings.flatMap(item => item.events.map(event => `- ${item.moduleName}.${event.eventId} on ${event.on}`)).join('\n')
+      : '(none — inbound of a sibling event the sibling does not publish is queued as a request)',
+    '',
+    '## Platform events (inbound.from = organization)',
+    input.platformEventIds.length ? input.platformEventIds.map(id => `- ${id}`).join('\n') : '(none)',
+    '',
+    '## Entities declared writer inbound (must have inbound.writes)',
+    input.inboundWriters.length ? input.inboundWriters.map(id => `- ${id}`).join('\n') : '(none)',
     '',
     '## Platform plugin catalog',
     NS5_PLUGIN_CATALOG.map(item => `- ${item.pluginId} (terms: ${item.terms.join(', ')})`).join('\n'),
@@ -115,7 +141,8 @@ export async function beforeNs5IntegrationPromptStep(
     const moduleArtifact = await readModule(moduleName);
     const actors = await readNs5Actors(moduleName);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
-    const signals = collectNs5IntegrationSignals(actors, sourcePrompt);
+    const siblings = await readNs5Siblings(moduleName);
+    const signals = collectNs5IntegrationSignals(actors, sourcePrompt, siblings);
     if (!signals.length) {
       const pipeline = await requirePipeline(moduleName);
       const artifactPath = await persistArtifacts(moduleName, [], [], [], pipeline, true);
@@ -124,9 +151,8 @@ export async function beforeNs5IntegrationPromptStep(
         updateStatus(context, parentStep, step, hookSequential, 'completed', `integration70 approved with noIntegrationSignal: ${artifactPath}`),
       ];
     }
-    const [entities, registryModuleNames, prompt, schema, previous] = await Promise.all([
-      readEntityIds(moduleName),
-      readRegistryModuleNames(moduleName),
+    const [entities, prompt, schema, previous] = await Promise.all([
+      readEntities(moduleName),
       readAgentText('steps/integration70', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'integration.schema', '.json'),
       moduleName ? readJson(draftFile(moduleName, 'integration70')) : Promise.resolve(null),
@@ -136,8 +162,14 @@ export async function beforeNs5IntegrationPromptStep(
       sourcePrompt,
       userLanguage: moduleArtifact.userLanguage,
       actors,
-      entityIds: entities,
-      registryModuleNames,
+      entities: entities.map(entity => ({
+        entityId: entity.entityId,
+        ...(entity.writer ? { writer: entity.writer } : {}),
+        transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
+      })),
+      siblings,
+      inboundWriters: entities.filter(entity => entity.writer === 'inbound').map(entity => entity.entityId),
+      platformEventIds: ns5PlatformEventIds(),
       gateFeedback: parsed.gateFeedback,
       previousDraft: previous,
     });
@@ -178,10 +210,11 @@ export async function afterNs5IntegrationPromptStep(
 
     const { inbound, outbound, plugins } = normalizeNs5IntegrationPayload(payload);
     const moduleArtifact = await readModule(moduleName);
-    const [entities, registryModuleNames, actors] = await Promise.all([
+    const [entities, actors, siblings, coverage] = await Promise.all([
       readEntities(moduleName),
-      readRegistryModuleNames(moduleName),
       readNs5Actors(moduleName),
+      readNs5Siblings(moduleName),
+      readCoverage(moduleName),
     ]);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     let pipeline = await requirePipeline(moduleName);
@@ -193,9 +226,17 @@ export async function afterNs5IntegrationPromptStep(
     const gate = validateNs5Integration(inbound, outbound, plugins, {
       moduleName,
       actors,
-      entities,
-      registryModuleNames,
+      entities: entities.map(entity => ({
+        entityId: entity.entityId,
+        ...(entity.writer ? { writer: entity.writer } : {}),
+        transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
+      })),
+      registryModuleNames: siblings.map(item => item.moduleName),
+      siblings,
       sourcePrompt,
+      journeySteps: coverage.journeySteps,
+      processTasks: coverage.processTasks,
+      platformEventIds: ns5PlatformEventIds(),
     });
     if (!gate.ok) {
       const feedback = formatNs5IntegrationGate(gate.issues);
@@ -275,15 +316,26 @@ async function readEntities(moduleName: string): Promise<Ns5OntologyEntityArtifa
   return entities;
 }
 
-async function readEntityIds(moduleName: string): Promise<string[]> {
-  const entities = await readEntities(moduleName);
-  return entities.map(entity => entity.entityId).filter(Boolean);
-}
-
-async function readRegistryModuleNames(currentModule: string): Promise<string[]> {
-  const registry = await readSolutionRegistry();
-  if (!registry) return [];
-  return registry.modules.map(item => item.moduleName).filter(name => name && name !== currentModule);
+async function readCoverage(moduleName: string): Promise<{
+  journeySteps: Array<{ journeyId: string; stepIds: string[] }>;
+  processTasks: Array<{ processId: string; taskIds: string[] }>;
+}> {
+  const journeyIndex = await readDefsJson<Ns5JourneyIndexArtifact>(journeyIndexFile(moduleName));
+  const journeySteps: Array<{ journeyId: string; stepIds: string[] }> = [];
+  for (const entry of journeyIndex?.journeys || []) {
+    const journey = await readDefsJson<Ns5JourneyArtifact>(journeyFile(moduleName, entry.journeyId));
+    if (!journey) continue;
+    journeySteps.push({
+      journeyId: journey.journeyId,
+      stepIds: journey.business.steps.map(step => step.stepId).filter(Boolean),
+    });
+  }
+  const workflows = await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
+  const processTasks = (workflows?.processes || []).map(process => ({
+    processId: process.processId,
+    taskIds: process.tasks.map(task => task.taskId).filter(Boolean),
+  }));
+  return { journeySteps, processTasks };
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {

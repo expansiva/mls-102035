@@ -13,10 +13,15 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { ns5PlatformEventIds, readNs5Siblings } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import {
+  collectNs5InboundPending,
+} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
 import {
   accessFile,
   finalizeReportFile,
   integrationFile,
+  integrationRequestFile,
   journeyFile,
   journeyIndexFile,
   listModuleDefsShortNames,
@@ -30,6 +35,7 @@ import {
   readSolutionRegistry,
   rulesFile,
   workflowsFile,
+  writeDefs,
   writeJson,
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
@@ -57,6 +63,7 @@ import {
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
+  Ns5IntegrationRequestArtifact,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
@@ -66,6 +73,7 @@ import type {
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import { NS5_INTEGRATION_REQUEST_SCHEMA_VERSION } from '/_102035_/l2/solution/types.js';
 import {
   ensureConfigListsModule,
   formatNs5Oracle,
@@ -115,6 +123,7 @@ export async function beforeNs5FinalizePromptStep(
 
     const artifactPaths = [reportPath];
     artifactPaths.push(await persistRegistry(moduleName, sources));
+    artifactPaths.push(...await persistInboundRequests(moduleName, sources));
     const publishIssues = await persistL5(moduleName, sources.module.userLanguage);
     artifactPaths.push(...publishIssues.paths);
     pipeline = await requirePipeline(moduleName);
@@ -216,6 +225,8 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     journeyDiskFiles: listModuleDefsShortNames(moduleName, 'journeys'),
     ontologyDiskFiles: listModuleDefsShortNames(moduleName, 'ontology'),
     liftedAggregateEntities: pipeline?.steps.ontology30?.liftedAggregateEntities || [],
+    siblings: await readNs5Siblings(moduleName),
+    platformEventIds: ns5PlatformEventIds(),
   };
 }
 
@@ -233,6 +244,10 @@ async function persistRegistry(moduleName: string, sources: Ns5OracleSources): P
     moduleName,
     actors: sources.access.actors,
     entities: sources.entities,
+    events: sources.integration.outbound
+      .filter(item => item.kind === 'event')
+      .map(item => ({ eventId: item.event || item.id, on: item.on || '' }))
+      .filter(item => item.eventId && item.on),
     updatedAt: new Date().toISOString(),
   }));
   const gate = validateSolutionRegistry(next, subtypes);
@@ -240,6 +255,35 @@ async function persistRegistry(moduleName: string, sources: Ns5OracleSources): P
     throw new Error(`Solution registry write rejected: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('; ')}`);
   }
   return writeSolutionRegistry(next);
+}
+
+async function persistInboundRequests(moduleName: string, sources: Ns5OracleSources): Promise<string[]> {
+  const pending = collectNs5InboundPending(
+    sources.integration.inbound,
+    moduleName,
+    sources.siblings || [],
+  );
+  const paths: string[] = [];
+  for (const request of pending) {
+    const artifact: Ns5IntegrationRequestArtifact = {
+      schemaVersion: NS5_INTEGRATION_REQUEST_SCHEMA_VERSION,
+      requestedBy: request.requestedBy,
+      eventId: request.eventId,
+      ...(request.on ? { on: request.on } : {}),
+      entityRefs: request.entityRefs,
+      description: request.description,
+      status: 'requested',
+      ...(request.to ? { to: request.to } : {}),
+    };
+    const file = integrationRequestFile(request.targetModule, request.requestedBy, request.eventId);
+    paths.push(await writeDefs(
+      file,
+      `${request.requestedBy}${request.eventId}Request`,
+      artifact,
+      'Ns5IntegrationRequestArtifact',
+    ));
+  }
+  return paths;
 }
 
 async function persistL5(

@@ -332,6 +332,31 @@ void test('missing module is skipped with no throw and no writes', async () => {
   }
 });
 
+void test('removeModule deletes sibling tobe/integration files that cite the removed module', async () => {
+  const files = twoModuleFiles();
+  const tobe = fileOf(
+    { project: PROJECT, level: 4, folder: 'vendaExterna/tobe/integration', shortName: 'venda--stockMoved', extension: '.defs.ts' },
+    'TOBE',
+  );
+  const orgTobe = fileOf(
+    { project: PROJECT, level: 4, folder: 'organization/tobe/integration', shortName: 'venda--predicted', extension: '.defs.ts' },
+    'ORG',
+  );
+  files[keyOf(tobe)] = tobe;
+  files[keyOf(orgTobe)] = orgTobe;
+  const harness = await loadRemove(files);
+  try {
+    const result = await harness.removeModule('venda');
+    assert.ok(result.deleted.includes(displayOf(tobe)));
+    assert.ok(result.deleted.includes(displayOf(orgTobe)));
+    assert.equal(files[keyOf(tobe)], undefined);
+    assert.equal(files[keyOf(orgTobe)], undefined);
+    assert.ok(files[keyOf(EXTERNA_L4)]);
+  } finally {
+    harness.restore();
+  }
+});
+
 void test('venda does not collect vendaExterna files', async () => {
   const files = twoModuleFiles();
   const harness = await loadRemove(files);

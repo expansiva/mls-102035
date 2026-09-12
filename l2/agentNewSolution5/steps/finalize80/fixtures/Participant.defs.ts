@@ -21,7 +21,7 @@ export const inscricaoEventoEntityParticipant = {
     "idField": "id",
     "mdmType": "inscricaoEvento.Participant"
   },
-  "maintenance": "crud"
+  "writer": "crud"
 } as const satisfies Ns5OntologyEntityArtifact;
 
 export type InscricaoEventoEntityParticipantType = typeof inscricaoEventoEntityParticipant;

@@ -2,6 +2,11 @@
 
 ## 2026-09-12
 
+- I10/I8: `writer: 'crud' | 'inbound'` replaces `maintenance: 'crud'`. I11 (warning)
+  `NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING` queues
+  `l4/<sibling|/organization>/tobe/integration/<requestedBy>--<eventId>.defs.ts`.
+  I12 (error): `outbound.on` exists; `plugins.usedBy` exists; platform events are in the catalog.
+  Registry module block stores `entities` and outbound `events`.
 - I6: a journey `handoff` is covered by a human `journeyRef` (not a screen `stepRef`).
   A `by: system`/`time` transition that is neither `effect: transition` of a
   `mechanical`/`llm` stage nor `trigger.event` warns

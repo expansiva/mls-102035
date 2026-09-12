@@ -10,7 +10,7 @@
       "party": "person",
       "mdmSubtype": "Person",
       "displayField": "name",
-      "maintenance": "crud",
+      "writer": "crud",
       "storage": {
         "target": "mdm",
         "scope": "organization",
@@ -26,7 +26,7 @@
       "party": "none",
       "displayField": "periodo",
       "mutability": "appendOnly",
-      "maintenance": "crud",
+      "writer": "crud",
       "storage": {
         "target": "moduleDatabase",
         "scope": "module",
@@ -41,7 +41,7 @@
       "kind": "core",
       "party": "none",
       "displayField": "dataInicio",
-      "maintenance": "crud",
+      "writer": "crud",
       "storage": {
         "target": "moduleDatabase",
         "scope": "module",
@@ -57,7 +57,7 @@
       "party": "none",
       "displayField": "competencia",
       "mutability": "appendOnly",
-      "maintenance": "crud",
+      "writer": "crud",
       "storage": {
         "target": "moduleDatabase",
         "scope": "module",
@@ -73,7 +73,7 @@
       "party": "none",
       "displayField": "dataPagamento",
       "mutability": "appendOnly",
-      "maintenance": "crud",
+      "writer": "crud",
       "storage": {
         "target": "moduleDatabase",
         "scope": "module",
@@ -89,7 +89,7 @@
       "party": "none",
       "displayField": "competencia",
       "mutability": "appendOnly",
-      "maintenance": "crud",
+      "writer": "crud",
       "storage": {
         "target": "moduleDatabase",
         "scope": "module",

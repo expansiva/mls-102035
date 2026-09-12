@@ -10,43 +10,52 @@ Call the tool `submitNs5Integration` once. Do not write Markdown around the tool
 
 ## What an integration is
 
-A module talks to another module through an endpoint or URL, publishes or receives an event, talks
-to an external system through a sidecar, or uses a platform plugin. Shared master data (a person,
-company or product already in the organization catalog) is not an integration.
+A module talks to another module by publishing or receiving an event, calling a module endpoint,
+talking to an external system, or using a platform plugin. Shared master data (a person, company or
+product already in the organization catalog) is not an integration.
 
 Empty `inbound`, `outbound` and `plugins` arrays are valid only when the human prompt lists no
-structural signal (no `kind: system` actor and no platform-plugin term). This call does not run in
-that case.
+structural signal (no `kind: system` actor, no platform-plugin term, and no sibling module). This
+call does not run in that case.
 
-## Items
+The payload of an event is not declared here. `outbound.on` is the entity record at that transition
+or create. The receiving module maps that record in the inbound `description` (cite `inbound.id`).
 
-Each inbound or outbound row is `{ id, kind, from?, to?, description, entityRefs[] }`. `id` is
-lowerCamel. `entityRefs` are UpperCamel entity ids from the ontology listed in the human prompt.
+## Inbound
 
-- `kind: moduleEndpoint` — another module calls this one (inbound `from`) or this module calls
-  another (outbound `to`). `from` / `to` is the sibling module's lowerCamel folder name. Prefer a
-  name listed under sibling modules. A name that is not in the registry is allowed; the gate marks
-  it `unknownModule`.
-- `kind: event` — a named event this module receives (`from`) or publishes (`to`).
-- `kind: external` — a system outside the organization. `from` / `to` is that system's lowerCamel
-  id, not a URL.
+Each inbound row is `{ id, kind, from, event?, writes[], effect, transitionRef?, description }`.
+`id` is lowerCamel. `writes` are UpperCamel entity ids of **this** module that the arrival
+creates or updates. `effect` is `create`, `update` or `transition` (required). `transitionRef` only
+with `effect: transition`.
 
-Inbound items require `from`. Outbound items require `to`. Do not invent an endpoint, event or
-external that the request does not name.
+- `kind: event` — a named event this module receives. `from` is a sibling folder, `organization`
+  (platform catalog events listed in the human prompt), or a predicted sibling not yet in the
+  registry (allowed; the gate marks `unknownModule`). `event` defaults to `id`.
+- `kind: moduleEndpoint` — another module calls this one. `from` is that module.
+- `kind: external` — a system outside the organization. `from` is that system's lowerCamel id.
+
+An entity listed in the human prompt as `writer=inbound` **must** appear in some `inbound.writes`.
+Do not invent an event the request does not name.
+
+## Outbound
+
+Each outbound row is `{ id, kind, to, event, on, entityRefs[], description }`. `on` is
+`Entity.transitionId` or `Entity.create` of **this** module — the gate checks it exists. `to` is a
+sibling folder, `any`, or an external system. `event` is the published event id.
+
+When siblings exist, publish the transitions other modules may need. Do not duplicate a sibling's
+entity; point at it with inbound/outbound.
 
 ## Plugins
 
 A plugin is a platform adapter, not a new module. `pluginId` must be one of the platform plugin ids
-listed in the human prompt. Do not invent a plugin. Do not emit an entity for card numbers, tokens
-or other plugin-owned data.
-
-Counter-example (placeholders — use only ids that exist in the module): a `pluginId` that is not in
-the catalog is invalid. A valid inbound event is
-`{ "id": "<id>", "kind": "event", "from": "<moduleName>", "description": "<description>", "entityRefs": ["<Entity>"] }`.
+listed in the human prompt. `usedBy` is `journeyId.stepId` or `processId.taskId` that uses the
+plugin. Do not invent a plugin. Do not emit an entity for card numbers, tokens or other plugin-owned
+data.
 
 ## Language
 
 Write every human-facing value (`description`) in the module `userLanguage`. Ids stay lowerCamel.
 Entity ids stay UpperCamel.
 
-`schemaVersion` is `2026-09-10-ns5-integration-v1`.
+`schemaVersion` is `2026-09-12-ns5-integration-v2`.

@@ -42,7 +42,7 @@ nothing about identity is stored in a module table.
 
 Registering a person who will sign in is a write by an internal actor — an `act` on that person entity,
 or an `act` that attaches her (`affects`) such as an enrollment or an order opening (or a public self-registration
-entry), or she is reference data kept by an internal actor (`maintenance: 'crud'` with that actor's grant), or she
+entry), or she is reference data kept by an internal actor (`writer: 'crud'` with that actor's grant), or she
 registers herself (an `act` of her own external actor that writes her). The platform does the rest: looks the e-mail up in the login index
 and the document in the record, attaches the role when it is the same person, refuses when the
 e-mail belongs to another record, and issues the invitation. A journey never has an 'invite' or

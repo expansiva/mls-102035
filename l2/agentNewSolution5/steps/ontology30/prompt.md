@@ -20,7 +20,7 @@ for what the platform already stores; do not copy those names as entities of thi
   `entityId`.
 - Entity ids are PascalCase nouns. Relationship ids are lowerCamel.
 - Freeze `entityId`, `kind`, `party`, `mdmSubtype` (when `kind` is `mdm`), `displayField`,
-  `mutability` when append-only, `maintenance` when `crud`, `storage` and every relationship **without** `realization`.
+  `mutability` when append-only, `writer` (`journey` | `crud` | `inbound`), `storage` and every relationship **without** `realization`.
 - `displayField` is the field a person reads to recognise the record: a `fieldId` of this entity, or
   of the level-1 subtype when `kind` is `mdm`. Never guess it from a name suffix.
 - Do not emit `kind: projection`, `derivation`, `role`, `sourceRefs`, `useRules` or
@@ -51,8 +51,10 @@ in `details`. An aggregate that does not belong to one entity goes in `moduleDet
 `mutability: appendOnly` only when the record is a fact that is never corrected. An append-only
 fact has no lifecycle. MDM is never append-only.
 
-A reference catalog nobody creates in a journey (a price list, a category) is `maintenance: 'crud'`;
-an entity written by an `act` — as its `entity` or in `affects` — is not.
+A reference catalog nobody creates in a journey (a price list, a category) is `writer: 'crud'`;
+an entity written by an `act` — as its `entity` or in `affects` — is `writer: 'journey'`; an entity
+created by an event from another module or system is `writer: 'inbound'` (integration70 will require
+`inbound.writes`). Do not model an entity a sibling already owns; reference it by inbound/outbound.
 
 If the journeys show more than one `act` step on this entity (beyond the one that first creates
 it), or a `decide` step on it, omit `mutability` here — the entity is not append-only. The entity

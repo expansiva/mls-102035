@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/finalize80/contracts.ts" enhancement="_blank"/>
 
+import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
@@ -14,7 +15,7 @@ import type {
 
 export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-report-v1' as const;
 
-export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10'] as const;
+export const NS5_ORACLE_CHECK_IDS = ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12'] as const;
 export type Ns5OracleCheckId = typeof NS5_ORACLE_CHECK_IDS[number];
 export const NS5_FINALIZE_I7_ORPHAN_FILE = 'NS5_FINALIZE_I7_ORPHAN_FILE' as const;
 export const NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION = 'NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION' as const;
@@ -24,13 +25,16 @@ export const NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION =
   'NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION' as const;
 export const NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED =
   'NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED' as const;
+export const NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING =
+  'NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING' as const;
 export type Ns5OracleIssueCode =
-  | `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7' | 'I8'>}`
+  | `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7' | 'I8' | 'I11'>}`
   | typeof NS5_FINALIZE_I7_ORPHAN_FILE
   | typeof NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION
   | typeof NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF
   | typeof NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION
-  | typeof NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED;
+  | typeof NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED
+  | typeof NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING;
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;
@@ -52,6 +56,10 @@ export interface Ns5OracleSources {
    * when that map still has keys.
    */
   liftedAggregateEntities?: string[];
+  /** Sibling modules from the organization registry. I11/I12. */
+  siblings?: Ns5SiblingModule[];
+  /** Platform catalog event ids. `inbound.from: organization`. */
+  platformEventIds?: string[];
 }
 
 export interface Ns5OracleIssue {
@@ -88,7 +96,8 @@ export interface Ns5FinalizeReport {
 export function oracleCode(checkId: Ns5OracleCheckId): Ns5OracleIssue['code'] {
   if (checkId === 'I7') return NS5_FINALIZE_I7_ORPHAN_FILE;
   if (checkId === 'I8') return NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION;
-  return `NS5_FINALIZE_${checkId}` as `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7' | 'I8'>}`;
+  if (checkId === 'I11') return NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING;
+  return `NS5_FINALIZE_${checkId}` as `NS5_FINALIZE_${Exclude<Ns5OracleCheckId, 'I7' | 'I8' | 'I11'>}`;
 }
 
 export function buildNs5FinalizeReport(

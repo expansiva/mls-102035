@@ -7,6 +7,7 @@ import {
   resolvableFieldIds,
   resolvableFieldOf,
 } from '/_102035_/l2/solution/lib.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import type {
   Ns5JourneyArtifact,
   Ns5ModuleActor,
@@ -35,6 +36,7 @@ import {
   ns5AsFieldSource,
   ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
+  ns5EntityWriter,
   ns5LifecycleHasBranchingOrigin,
   type Ns5LifecycleSignal,
   type Ns5OntologyAssembly,
@@ -83,6 +85,8 @@ export interface Ns5OntologyGateContext {
   requireJourneyCitation?: boolean;
   /** Entity ids ontology30 lifted into module.details; citation check skips them. */
   liftedAggregateEntityIds?: readonly string[];
+  /** Sibling modules from the organization registry. SIBLING_ENTITY is a warning. */
+  siblings?: readonly Ns5SiblingModule[];
 }
 
 export function validateNs5OntologyPlan(
@@ -203,6 +207,7 @@ export function validateNs5OntologyAssembly(
         error(issues, 'NS5_ONTOLOGY_ENTITY_DUPLICATE', `Duplicate entityId ${entity.entityId}.`, `entities[${entityIndex}].entityId`);
       }
       entityIds.add(entity.entityId);
+      warnSiblingEntity(entity, context.siblings || [], `entities[${entityIndex}]`, issues);
     }
   });
 
@@ -454,17 +459,19 @@ function validateEntity(
     error(issues, 'NS5_ONTOLOGY_MUTABILITY', "mutability 'appendOnly' contradicts kind mdm.", `${path}.mutability`);
   }
 
-  if (entity.maintenance && entity.maintenance !== 'crud') {
-    error(issues, 'NS5_ONTOLOGY_MAINTENANCE', "maintenance is omitted (journey) or 'crud'.", `${path}.maintenance`);
+  const writer = ns5EntityWriter(entity);
+  if (entity.writer && entity.writer !== 'journey' && entity.writer !== 'crud' && entity.writer !== 'inbound') {
+    error(issues, 'NS5_ONTOLOGY_WRITER', "writer is omitted (journey), 'crud' or 'inbound'.", `${path}.writer`);
   }
-  const crud = entity.maintenance === 'crud';
+  const crud = writer === 'crud';
+  const inbound = writer === 'inbound';
   const hasWriter = ns5EntityHasActOrAffects(journeys, entity.entityId);
-  if (!planOverview && !crud && !hasWriter && ns5EntityHasWrittenFields(entity)) {
+  if (!planOverview && !crud && !inbound && !hasWriter && ns5EntityHasWrittenFields(entity)) {
     error(
       issues,
       'NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER',
-      `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare maintenance: 'crud' (a reference catalog with no lifecycle).`,
-      `${path}.maintenance`,
+      `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare writer: 'crud' (a reference catalog with no lifecycle), or writer: 'inbound' (created by an integration event).`,
+      `${path}.writer`,
     );
   }
 
@@ -992,6 +999,31 @@ function displayFieldExists(entity: Ns5OntologyEntityArtifact): boolean {
     return level1FieldIds(entity.mdmSubtype).has(entity.displayField);
   }
   return false;
+}
+
+function warnSiblingEntity(
+  entity: Ns5OntologyEntityArtifact,
+  siblings: readonly Ns5SiblingModule[],
+  path: string,
+  issues: Ns5OntologyGateIssue[],
+): void {
+  for (const sibling of siblings) {
+    for (const owned of sibling.entities) {
+      if (owned.entityId !== entity.entityId) continue;
+      const sameMdm = !!entity.mdmSubtype && entity.mdmSubtype === owned.mdmSubtype;
+      const bothCoreEvent = (entity.kind === 'core' || entity.kind === 'event')
+        && (owned.kind === 'core' || owned.kind === 'event');
+      if (!sameMdm && !bothCoreEvent) continue;
+      warning(
+        issues,
+        'NS5_ONTOLOGY_SIBLING_ENTITY',
+        `Entity ${entity.entityId} matches ${sibling.moduleName}.${owned.entityId}`
+          + (sameMdm ? ` (mdmSubtype ${entity.mdmSubtype})` : ` (${entity.kind})`)
+          + '; reference it by inbound/outbound rather than duplicating it.',
+        `${path}.entityId`,
+      );
+    }
+  }
 }
 
 function error(issues: Ns5OntologyGateIssue[], code: string, message: string, path?: string): void {

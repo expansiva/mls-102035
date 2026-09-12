@@ -8,7 +8,7 @@
   `act`). One `journeyDecisions[]` row per journey. Time/event phrases are extracted
   in code (`todo|cada|quando|automaticamente|a cada|mensal|diario`, accents folded) and injected as
   data. Normalize drops duplicate `kind`+`journeyRef|entityRef`+`effect` in the same
-  process. `trigger.event` is `Entity.transitionId` until inbound (ns5_31).
+  process. `trigger.event` is `Entity.transitionId` or `module.eventId` of an inbound event (ns5_31).
 
 ## 2026-09-11
 

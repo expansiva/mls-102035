@@ -23,7 +23,7 @@ carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + 
 
 - Ids are unique lowerCamel. Every grant has a title and a description.
 - Every actor has at least one grant. Every journey actor is covered.
-- A `maintenance: 'crud'` entity is in `entityRefs` of ≥1 grant of an `internal`
+- A `writer: 'crud'` entity is in `entityRefs` of ≥1 grant of an `internal`
   actor (`NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT`).
 - An `external` actor only receives `own` grants.
 - `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields` as a proper restriction

@@ -2,6 +2,10 @@
 
 ## 2026-09-12
 
+- `writer: 'journey' | 'crud' | 'inbound'` replaces `maintenance?: 'crud'` (required in the tool
+  schema; omitted on the artifact means journey). `inbound` is a writer without an `act`.
+  Siblings from the registry are injected as data; same `entityId`+`mdmSubtype` or core/event
+  `entityId` as a sibling warns `NS5_ONTOLOGY_SIBLING_ENTITY`.
 - Journey `transitionRef` citations (`effect: 'transition'`) are required on the entity
   (`NS5_ONTOLOGY_TRANSITION_REF_MISSING`); normalize adds a missing actor to `by`
   (`addTransitionBy`). Source-SCC helpers live on contracts

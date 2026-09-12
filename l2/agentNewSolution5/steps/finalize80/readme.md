@@ -11,9 +11,9 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 
 ## Output
 
-- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I10, `errors` and `warnings`
-- organization `l4/organization/registry.defs.ts` — module block with actors and
-  `mdmSubtype <- <mod>.<Entity>` roles
+- `l4/<mod>/pipeline/finalize-report.json` — checks I1-I12, `errors` and `warnings`
+- organization `l4/organization/registry.defs.ts` — module block with actors,
+  `mdmSubtype <- <mod>.<Entity>` roles, `entities`, outbound `events`
 - `l5/config.json` / `l5/project.json` — workspaceDependencies, projects, platform block
   defaults, module listed, `appEnv`/`projectType`/`modules[]` only when absent
 - `l4/<mod>/pipeline/pipeline.json` — `status: complete`, `finalize80: approved`
@@ -30,9 +30,11 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 | I5 | every mdm entity has `mdmSubtype`; every non-mdm entity on an `own` grant reaches a `party: person` (`anchorPath`) | error |
 | I6 | a `handoff` without a covering human `journeyRef`, or a foreign-by / cross-actor decide with `processes: []`; a `by: system`/`time` transition that is not a mechanical/llm `effect: transition` or `trigger.event` (`NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED`) | warning |
 | I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |
-| I8 | every `own`/`related` grant whose `anchorEntity` is `party: person` is registered: internal-actor write (`act` entity or `affects`), or `maintenance: 'crud'` with an internal-actor grant, or an `act` of her own external actor (self-registration). No public `entry.mode` exists | error (`NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`) |
+| I8 | every `own`/`related` grant whose `anchorEntity` is `party: person` is registered: internal-actor write (`act` entity or `affects`), or `writer: 'crud'` with an internal-actor grant, or an `act` of her own external actor (self-registration). No public `entry.mode` exists | error (`NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`) |
 | I9 | every `uniqueKeys` fieldId exists on the entity | error (`NS5_FINALIZE_I9`) |
-| I10 | written entity is an `act` `entity` or `affects`, or `maintenance: 'crud'`; crud has an internal-actor grant. Same predicates as ontology30 / access60. Conflicting crud is dropped by ontology30 normalize | error (`NS5_FINALIZE_I10`) |
+| I10 | written entity is an `act` `entity` or `affects`, or `writer: 'crud'` / `'inbound'`; crud has an internal-actor grant; inbound appears in `inbound.writes`. Same predicates as ontology30 / access60 | error (`NS5_FINALIZE_I10`) |
+| I11 | inbound event from a sibling (or predicted module) that does not publish it; queues `l4/<target>/tobe/integration/<requestedBy>--<eventId>.defs.ts` | warning (`NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING`) |
+| I12 | `outbound.on` is `Entity.transitionId` or `Entity.create` of this module; `plugins.usedBy` is an existing journey.step or process.task; `from: organization` events are in the platform catalog | error (`NS5_FINALIZE_I12`) |
 
 Errors fail the run with the report. Warnings only continue.
 
@@ -47,7 +49,7 @@ fails a `decide` without a branching origin if that shape reaches here; an `upda
   possible missing `transitionRef` uses `NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF`;
   I6 unowned system/time transition uses `NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED`;
   I8 uses `NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`; I9 uses `NS5_FINALIZE_I9`;
-  I10 uses `NS5_FINALIZE_I10`.
+  I10 uses `NS5_FINALIZE_I10`; I11 uses `NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING`; I12 uses `NS5_FINALIZE_I12`.
 - An LLM reply on this step fails (`finalize80 is deterministic`).
 - Status updates use `cleaner: input_output`.
 - Converted ce02 / ce05 fixtures: comandaRestaurante5 and ordenServicio5 pass I1-I10

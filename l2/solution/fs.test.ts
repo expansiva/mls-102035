@@ -145,6 +145,7 @@ void test('collectExactModuleFiles unions index and host disk across levels, nev
       '4:teste5/module.defs.ts',
     ]);
     assert.equal(fs.isProtectedModuleFile({ level: 4, folder: 'organization', shortName: 'registry' }), true);
+    assert.equal(fs.isProtectedModuleFile({ level: 4, folder: 'organization/tobe/integration', shortName: 'financeiro--comandaFechada' }), false);
     assert.equal(fs.isProtectedModuleFile({ level: 2, folder: '', shortName: 'designSystem' }), true);
   } finally {
     g.mls = prev;

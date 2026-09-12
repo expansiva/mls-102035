@@ -53,12 +53,23 @@ export function buildNs4SolutionRegistryModuleBlock(input: {
     mdmSubtype?: string;
     storage?: { target?: string; mdmType?: string };
   }>;
+  events?: Array<{ eventId: string; on: string }>;
   generalFields?: Ns4SolutionRegistryModule['generalFields'];
   updatedAt: string;
 }): Ns4SolutionRegistryModule {
   const roles: Ns4SolutionRegistryRole[] = [];
   const seen = new Set<string>();
+  const listed: Ns4SolutionRegistryModule['entities'] = [];
+  const listedIds = new Set<string>();
   for (const entity of input.entities) {
+    if (entity.entityId && !listedIds.has(entity.entityId)) {
+      listedIds.add(entity.entityId);
+      listed!.push({
+        entityId: entity.entityId,
+        kind: entity.kind || 'core',
+        ...(entity.mdmSubtype ? { mdmSubtype: entity.mdmSubtype } : {}),
+      });
+    }
     const isMdm = entity.kind === 'mdm' || entity.storage?.target === 'mdm';
     if (!isMdm) continue;
     const mdmSubtype = inferNs4RegistryMdmSubtype(entity);
@@ -68,11 +79,20 @@ export function buildNs4SolutionRegistryModuleBlock(input: {
     seen.add(role);
     roles.push({ mdmSubtype, role, namespace: input.moduleName });
   }
+  const events: Ns4SolutionRegistryModule['events'] = [];
+  const seenEvents = new Set<string>();
+  for (const event of input.events || []) {
+    if (!event.eventId || seenEvents.has(event.eventId)) continue;
+    seenEvents.add(event.eventId);
+    events.push({ eventId: event.eventId, on: event.on });
+  }
   return {
     moduleName: input.moduleName,
     actors: input.actors.map(actor => ({ actorId: actor.actorId, kind: actor.kind })),
     roles,
     generalFields: input.generalFields ? input.generalFields.slice() : [],
+    entities: listed,
+    events,
     updatedAt: input.updatedAt,
   };
 }

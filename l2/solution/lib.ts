@@ -37,6 +37,8 @@ export type {
   MdmPlatformCatalogArtifact as PlatformCatalogArtifact,
   Ns4SolutionRegistryActor as SolutionRegistryActor,
   Ns4SolutionRegistryRole as SolutionRegistryRole,
+  Ns4SolutionRegistryEntity as SolutionRegistryEntity,
+  Ns4SolutionRegistryEvent as SolutionRegistryEvent,
   Ns4SolutionRegistryModule as SolutionRegistryModule,
   Ns4SolutionRegistryArtifact as SolutionRegistryArtifact,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';

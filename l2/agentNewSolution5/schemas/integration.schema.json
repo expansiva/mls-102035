@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/integration/2026-09-10-ns5-integration-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/integration/2026-09-12-ns5-integration-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
@@ -10,15 +10,15 @@
     "plugins"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-integration-v1" },
+    "schemaVersion": { "type": "string", "const": "2026-09-12-ns5-integration-v2" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "inbound": {
       "type": "array",
-      "items": { "$ref": "#/$defs/item" }
+      "items": { "$ref": "#/$defs/inboundItem" }
     },
     "outbound": {
       "type": "array",
-      "items": { "$ref": "#/$defs/item" }
+      "items": { "$ref": "#/$defs/outboundItem" }
     },
     "plugins": {
       "type": "array",
@@ -26,32 +26,51 @@
     }
   },
   "$defs": {
-    "item": {
+    "inboundItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "description", "entityRefs"],
+      "required": ["id", "kind", "from", "writes", "effect", "description"],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "kind": { "type": "string", "enum": ["moduleEndpoint", "event", "external"] },
+        "kind": { "type": "string", "enum": ["event", "moduleEndpoint", "external"] },
         "from": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "event": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "writes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        },
+        "effect": { "type": "string", "enum": ["create", "update", "transition"] },
+        "transitionRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "outboundItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "to", "event", "on", "entityRefs", "description"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "kind": { "type": "string", "enum": ["event", "moduleEndpoint", "external"] },
         "to": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "description": { "type": "string", "minLength": 1 },
+        "event": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "on": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(create|[a-z][A-Za-z0-9]*)$" },
         "entityRefs": {
           "type": "array",
           "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
-        }
+        },
+        "description": { "type": "string", "minLength": 1 }
       }
     },
     "plugin": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pluginId", "description", "entityRefs"],
+      "required": ["pluginId", "usedBy", "description"],
       "properties": {
         "pluginId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "description": { "type": "string", "minLength": 1 },
-        "entityRefs": {
+        "usedBy": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+          "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*$" }
         }
       }
     }

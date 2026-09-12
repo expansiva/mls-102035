@@ -68,7 +68,7 @@ function realOrdenContext() {
       fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
       ...(entity.details ? { details: entity.details } : {}),
       storage: { idField: entity.storage.idField },
-      ...(entity.maintenance === 'crud' ? { maintenance: 'crud' as const } : {}),
+      ...(entity.writer && entity.writer !== 'journey' ? { writer: entity.writer } : {}),
     })),
     relationships: index.relationships.map(rel => ({
       relationshipId: rel.relationshipId,
@@ -200,7 +200,7 @@ void test('real ordenServicio5 access draft keeps cliente own with structured di
 
 void test('crud entity without an internal grant is NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT', () => {
   const plano = entity('Plano', 'none', ['id', 'valor'], { idField: 'id' });
-  plano.maintenance = 'crud';
+  plano.writer = 'crud';
   const aluno = entity('Aluno', 'person', [], { idField: 'id' });
   const payload = {
     grants: [
@@ -575,7 +575,7 @@ void test('access60 prompt has no domain examples and keeps structured disclosur
   assert.match(prompt, /submitNs5Access/);
   assert.match(prompt, /deniedFields/);
   assert.match(prompt, /anchorEntity/);
-  assert.match(prompt, /maintenance: 'crud'/);
+  assert.match(prompt, /writer: 'crud'/);
   assert.match(prompt, /internal/);
   assert.match(prompt, /placeholders — use only ids that exist in the module/);
   assert.match(prompt, /proper/);

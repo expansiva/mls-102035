@@ -42,5 +42,5 @@
   },
   "lifecycleStates": [],
   "transitions": [],
-  "maintenance": "crud"
+  "writer": "crud"
 }
