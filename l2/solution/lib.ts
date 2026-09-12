@@ -97,3 +97,10 @@ export {
   readProjectTypeFromProjectJson,
 } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
 export type { PublishableIssue, PublishableProjectType } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
+
+export {
+  removeModule,
+  stripModuleFromJson,
+  stripModuleFromRegistry,
+} from '/_102035_/l2/solution/removeModule.js';
+export type { RemoveModuleOpts, RemoveModuleResult } from '/_102035_/l2/solution/removeModule.js';

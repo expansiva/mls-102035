@@ -2,6 +2,9 @@
 
 ## 2026-09-11
 
+- `/rebuild all` removes the whole module via `solution/removeModule` (l4/l1/l2/l5 trees,
+  `l5/config.json`, `l5/project.json` including nested `routeKeys`, organization registry).
+  Pipeline records `rebuildAll: { deleted, edited, at }`. `deleteModuleL4` is gone.
 - MDM level-1 ontology (subtypes + `platform.defs.ts`) is emitted by 102034; ontology30
   reads it and warns `NS5_ONTOLOGY_PLATFORM_SERVICE_CANDIDATE` (ns5_14).
 - Three subtractions (ns5_13): rules are `{ruleId, description}` (title/appliesTo gone;

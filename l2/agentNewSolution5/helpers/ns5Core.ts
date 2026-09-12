@@ -1,17 +1,18 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/helpers/ns5Core.ts" enhancement="_blank"/>
 
 import {
-  deleteModuleL4,
   listModuleFolders,
   normalizeModuleName,
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
+import { removeModule } from '/_102035_/l2/solution/removeModule.js';
 import {
   NS5_PIPELINE_SCHEMA_VERSION,
   NS5_STEP_IDS,
   type Ns5Invocation,
   type Ns5PipelineState,
   type Ns5PipelineStepState,
+  type Ns5RebuildAllReport,
   type Ns5StepId,
 } from '/_102035_/l2/solution/types.js';
 
@@ -157,13 +158,13 @@ export async function startNs5Pipeline(
   invocation: Ns5Invocation,
   rebuildAll: boolean,
 ): Promise<Ns5PipelineState> {
-  let deleted = 0;
+  let rebuildReport: Ns5RebuildAllReport | undefined;
   if (rebuildAll) {
-    const keys = await deleteModuleL4(moduleName);
-    deleted = keys.length;
+    const result = await removeModule(moduleName);
+    rebuildReport = { deleted: result.deleted, edited: result.edited, at: new Date().toISOString() };
   }
-  const pipeline = createEmptyPipeline(moduleName, sourcePrompt, invocation);
-  if (rebuildAll) pipeline.rebuildAll = { deleted, at: pipeline.updatedAt };
+  const pipeline = createEmptyPipeline(moduleName, sourcePrompt, invocation, rebuildReport?.at);
+  if (rebuildReport) pipeline.rebuildAll = rebuildReport;
   await writePipeline(pipeline);
   return pipeline;
 }

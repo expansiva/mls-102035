@@ -61,9 +61,11 @@ void test('planned tree is eight sequential steps with module10 first', () => {
   assert.deepEqual(steps.find(step => step.planning?.planId === 'rules40')?.planning?.dependsOn, [...NS5_STEP_DEPENDS_ON.rules40]);
 });
 
-void test('startNs5Pipeline stamps rebuildAll { deleted, at } after deleteModuleL4', () => {
+void test('startNs5Pipeline stamps rebuildAll { deleted, edited, at } after removeModule', () => {
   const source = readFileSync(fileURLToPath(new URL('./ns5Core.ts', import.meta.url)), 'utf8');
-  assert.match(source, /if \(rebuildAll\) pipeline\.rebuildAll = \{ deleted, at: pipeline\.updatedAt \}/);
+  assert.match(source, /removeModule\(moduleName\)/);
+  assert.match(source, /pipeline\.rebuildAll = rebuildReport/);
+  assert.match(source, /deleted: result\.deleted, edited: result\.edited/);
 });
 
 void test('empty pipeline starts inProgress with empty steps', () => {

@@ -94,13 +94,21 @@ void test('ns5DefsOrphans drops index plus the ids and keeps the rest', async ()
   assert.deepEqual(fs.ns5DefsOrphans(['index', 'Comanda'], ['Comanda']), []);
 });
 
-void test('deleteModuleL4 unlinks memory files and host-listed disk files', async () => {
+void test('collectExactModuleFiles unions index and host disk across levels, never prefix', async () => {
   const g = globalThis as unknown as { mls?: unknown };
   const prev = g.mls;
-  const deleted: string[] = [];
   const files: Record<string, { project: number; level: number; folder: string; shortName: string; extension: string; status: string }> = {
     '102047_4_teste5/module.defs.ts': {
       project: 102047, level: 4, folder: 'teste5', shortName: 'module', extension: '.defs.ts', status: 'deleted',
+    },
+    '102047_1_teste5/router.ts': {
+      project: 102047, level: 1, folder: 'teste5', shortName: 'router', extension: '.ts', status: 'changed',
+    },
+    '102047_4_teste5Extra/module.defs.ts': {
+      project: 102047, level: 4, folder: 'teste5Extra', shortName: 'module', extension: '.defs.ts', status: 'changed',
+    },
+    '102047_4_organization/registry.defs.ts': {
+      project: 102047, level: 4, folder: 'organization', shortName: 'registry', extension: '.defs.ts', status: 'changed',
     },
   };
   try {
@@ -112,24 +120,32 @@ void test('deleteModuleL4 unlinks memory files and host-listed disk files', asyn
         getKeyToFile: (info: { project: number; level: number; folder: string; shortName: string; extension: string }) =>
           `${info.project}_${info.level}_${info.folder}/${info.shortName}${info.extension}`,
         localStor: {
-          deleteFile: (file: { shortName: string; folder: string; extension: string }) => {
-            deleted.push(`${file.folder}/${file.shortName}${file.extension}`);
-          },
           listFolder: (project: number, level: number, folder: string) => {
-            if (project !== 102047 || level !== 4 || folder !== 'teste5') return [];
-            return [
-              { project, level, folder: 'teste5/journeys', shortName: 'orphan', extension: '.defs.ts' },
-              { project, level, folder: 'teste5', shortName: 'module', extension: '.defs.ts' },
-            ];
+            if (project !== 102047 || folder !== 'teste5') return [];
+            if (level === 4) {
+              return [
+                { project, level, folder: 'teste5/journeys', shortName: 'orphan', extension: '.defs.ts' },
+                { project, level, folder: 'teste5', shortName: 'module', extension: '.defs.ts' },
+              ];
+            }
+            if (level === 2) {
+              return [{ project, level, folder: 'teste5/web', shortName: 'page', extension: '.ts' }];
+            }
+            return [];
           },
         },
       },
     };
     const fs = await loadFs();
-    const keys = await fs.deleteModuleL4('teste5');
-    assert.ok(deleted.includes('teste5/module.defs.ts'));
-    assert.ok(deleted.includes('teste5/journeys/orphan.defs.ts'));
-    assert.equal(keys.length, 2);
+    const collected = fs.collectExactModuleFiles('teste5').map(file => `${file.level}:${file.folder}/${file.shortName}${file.extension}`).sort();
+    assert.deepEqual(collected, [
+      '1:teste5/router.ts',
+      '2:teste5/web/page.ts',
+      '4:teste5/journeys/orphan.defs.ts',
+      '4:teste5/module.defs.ts',
+    ]);
+    assert.equal(fs.isProtectedModuleFile({ level: 4, folder: 'organization', shortName: 'registry' }), true);
+    assert.equal(fs.isProtectedModuleFile({ level: 2, folder: '', shortName: 'designSystem' }), true);
   } finally {
     g.mls = prev;
   }

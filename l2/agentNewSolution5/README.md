@@ -22,7 +22,10 @@ modules; `replayRealRuns.test.ts` replays `normalize → gate → writeDefs` aga
 - `/module` fixes the folder name. Without it, `module10` proposes a lowerCamel name.
 - `/fast` skips reserved clarification anchors (they have no screen) and auto-approves each
   implemented step.
-- `/rebuild all` unlinks only `l4/<module>/**` of that module and recreates the pipeline.
+- `/rebuild all` calls `solution/removeModule`: unlinks exact `l4/l1/l2/l5/<module>/**`, strips the
+  module from `l5/config.json`, `l5/project.json` and the organization registry, then recreates the
+  pipeline. Neighbouring modules, `l4/organization` (except the registry block), `l2/designSystem.ts`
+  and `l2/project.ts` stay.
 - An existing module without `/rebuild all` is refused.
 
 ## L4 table

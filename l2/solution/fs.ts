@@ -146,6 +146,16 @@ export function isExactModuleFolder(folder: string, moduleName: string): boolean
   return !!first && normalizeModuleName(first) === normalized;
 }
 
+export const MODULE_TREE_LEVELS = [1, 2, 4, 5] as const;
+
+export function isProtectedModuleFile(file: { level?: number; folder?: string; shortName?: string }): boolean {
+  const first = String(file.folder || '').split('/').filter(Boolean)[0] || '';
+  if (Number(file.level) === 4 && first === 'organization') return true;
+  if (Number(file.level) === 2 && !first && (file.shortName === 'designSystem' || file.shortName === 'project')) return true;
+  if (Number(file.level) === 5 && !first && (file.shortName === 'config' || file.shortName === 'project')) return true;
+  return false;
+}
+
 export function listModuleL4Keys(
   files: Record<string, { project?: number; level?: number; folder?: string; status?: string } | undefined>,
   project: number,
@@ -159,6 +169,43 @@ export function listModuleL4Keys(
     keys.push(key);
   }
   return keys;
+}
+
+/** Index ∪ host disk of exact `l<level>/<mod>/**`. Never prefix; never protected paths. */
+export function collectExactModuleFiles(
+  moduleName: string,
+  levels: readonly number[] = MODULE_TREE_LEVELS,
+): mls.stor.IFileInfo[] {
+  const project = currentProject();
+  const folder = moduleFolder(moduleName);
+  const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
+  const levelSet = new Set(levels);
+  const keys = new Set<string>();
+  for (const [key, file] of Object.entries(files)) {
+    if (!file || file.project !== project || !file.folder) continue;
+    if (!levelSet.has(Number(file.level))) continue;
+    if (!isExactModuleFolder(file.folder, moduleName)) continue;
+    if (isProtectedModuleFile(file)) continue;
+    keys.add(key);
+  }
+  const listFolder = hostListFolder();
+  if (listFolder) {
+    for (const level of levels) {
+      for (const info of listFolder(project, level, folder)) {
+        if (isProtectedModuleFile(info)) continue;
+        if (!isExactModuleFolder(String(info.folder || ''), moduleName)) continue;
+        const key = mls.stor.getKeyToFile(info);
+        keys.add(key);
+        if (!files[key]) files[key] = diskFileInfo(info);
+      }
+    }
+  }
+  const collected: mls.stor.IFileInfo[] = [];
+  for (const key of keys) {
+    const file = files[key];
+    if (file) collected.push(file);
+  }
+  return collected;
 }
 
 export type Ns5DefsKind = 'journeys' | 'ontology';
@@ -230,36 +277,6 @@ export async function reconcileModuleDefs(
     removed.push(shortName);
   }
   return removed;
-}
-
-export async function deleteModuleL4(moduleName: string): Promise<string[]> {
-  const project = currentProject();
-  const folder = moduleFolder(moduleName);
-  const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
-  const keys = new Set<string>();
-  for (const [key, file] of Object.entries(files)) {
-    if (!file || file.project !== project || !file.folder) continue;
-    if (file.level !== 4) continue;
-    if (!isExactModuleFolder(file.folder, moduleName)) continue;
-    keys.add(key);
-  }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(project, 4, folder)) {
-      const key = mls.stor.getKeyToFile(info);
-      keys.add(key);
-      if (!files[key]) files[key] = diskFileInfo(info);
-    }
-  }
-  const { deleteFile } = await import('/_102027_/l2/libStor.js');
-  const deleted: string[] = [];
-  for (const key of keys) {
-    const file = files[key];
-    if (!file) continue;
-    await deleteFile(file);
-    deleted.push(key);
-  }
-  return deleted;
 }
 
 export async function readJson<T>(fileInfo: Ns5FileInfo): Promise<T | null> {

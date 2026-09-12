@@ -428,13 +428,15 @@ export interface Ns5Invocation {
   fast: boolean;
   /** /module value when given; module10 proposes lowerCamel otherwise. */
   module: string;
-  /** /rebuild all of that module's l4 tree. */
+  /** /rebuild all of that module (l1/l2/l4/l5 trees plus l5 json / registry). */
   rebuildAll: boolean;
 }
 
 export interface Ns5RebuildAllReport {
-  /** How many l4/<module> files were unlinked. */
-  deleted: number;
+  /** Display paths unlinked under l1/l2/l4/l5/<module>/. */
+  deleted: string[];
+  /** Display paths rewritten (l5 jsons and the organization registry). */
+  edited: string[];
   at: string;
 }
 
