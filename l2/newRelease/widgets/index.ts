@@ -3,7 +3,7 @@
 import { html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-import { NS5_STEP_IDS, type Ns5PipelineStatus, type Ns5StepId } from '/_102035_/l2/solution/types.js';
+import type { Ns5PipelineStatus, Ns5StepId } from '/_102035_/l2/solution/types.js';
 import {
   failedStepOf,
   listNs5Modules,
@@ -23,6 +23,18 @@ import '/_102035_/l2/newRelease/widgets/general.js';
 type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration';
 
 const TABS: NewReleaseTab[] = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration'];
+// Keep the human reader browser-only. solution/types also re-exports L1 server
+// contracts, which are intentionally absent from the web build.
+const NS5_STEP_IDS: Ns5StepId[] = [
+  'module10',
+  'journeys20',
+  'ontology30',
+  'rules40',
+  'workflows50',
+  'access60',
+  'integration70',
+  'finalize80',
+];
 
 interface ModuleSummary {
   name: string;
