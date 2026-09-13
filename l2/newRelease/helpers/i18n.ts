@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/newReleaseI18n.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/newRelease/helpers/i18n.ts" enhancement="_blank" />
 
 export type NewReleaseMessages = Record<string, string>;
 export type NewReleaseTranslate = (key: string, values?: Record<string, string | number>) => string;

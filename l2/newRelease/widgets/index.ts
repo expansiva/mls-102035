@@ -1,48 +1,29 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
 
-import { html, nothing } from 'lit';
+import { html, nothing, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-import type { Ns5PipelineStatus, Ns5StepId } from '/_102035_/l2/solution/types.js';
+import {
+  NEW_RELEASE_CONTEXT_EVENT,
+  type NewReleaseContext,
+  type NewReleaseVersion,
+} from '/_102035_/l2/newRelease/helpers/context.js';
 import {
   failedStepOf,
-  listNs5Modules,
-  listReadableProjects,
   readNs5Module,
   type NewReleaseModuleData,
-  type NewReleaseVersion,
-} from '/_102035_/l2/newRelease/l4Reader.js';
+} from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import {
   createNewReleaseTranslator,
   loadNewReleaseMessages,
   observeNewReleaseLanguage,
   type NewReleaseTranslate,
-} from '/_102035_/l2/newRelease/newReleaseI18n.js';
+} from '/_102035_/l2/newRelease/helpers/i18n.js';
 import '/_102035_/l2/newRelease/widgets/general.js';
 
 type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration';
 
 const TABS: NewReleaseTab[] = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration'];
-// Keep the human reader browser-only. solution/types also re-exports L1 server
-// contracts, which are intentionally absent from the web build.
-const NS5_STEP_IDS: Ns5StepId[] = [
-  'module10',
-  'journeys20',
-  'ontology30',
-  'rules40',
-  'workflows50',
-  'access60',
-  'integration70',
-  'finalize80',
-];
-
-interface ModuleSummary {
-  name: string;
-  title: string;
-  status: Ns5PipelineStatus | 'unknown';
-  failedStep: Ns5StepId | null;
-  tobeChanges: number;
-}
 
 @customElement('new-release--widgets--index-102035')
 export class NewReleaseIndex102035 extends StateLitElement {
@@ -51,8 +32,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @property({ type: String }) version: NewReleaseVersion = 'asis';
   @property({ attribute: false }) data: NewReleaseModuleData | null = null;
 
-  @state() private projects: number[] = [];
-  @state() private modules: ModuleSummary[] = [];
   @state() private activeTab: NewReleaseTab = 'general';
   @state() private loading = true;
 
@@ -67,18 +46,20 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.project = this.project || Number(mls.actualProject || 0);
     this.languageObserver = observeNewReleaseLanguage(() => this.loadLanguage());
     this.addEventListener('nr-navigate', this.onNavigate as EventListener);
-    this.initialize();
+    window.addEventListener(NEW_RELEASE_CONTEXT_EVENT, this.onContextChange as EventListener);
+    void this.initialize();
   }
 
   disconnectedCallback() {
     this.languageObserver?.disconnect();
     this.removeEventListener('nr-navigate', this.onNavigate as EventListener);
+    window.removeEventListener(NEW_RELEASE_CONTEXT_EVENT, this.onContextChange as EventListener);
     super.disconnectedCallback();
   }
 
   private async initialize() {
     await this.loadLanguage();
-    await this.loadProject();
+    await this.loadModule();
   }
 
   private async loadLanguage() {
@@ -86,35 +67,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestUpdate();
   }
 
-  private async loadProject() {
+  private async loadModule() {
     const token = ++this.loadToken;
-    this.loading = true;
-    this.projects = listReadableProjects();
-    if (!this.project || !this.projects.includes(this.project)) this.project = this.projects[0] ?? this.project;
-
-    const names = this.project ? listNs5Modules(this.project) : [];
-    const summaries = await Promise.all(names.map(async name => {
-      const value = await readNs5Module(this.project, name, 'asis');
-      return {
-        name,
-        title: value.module?.title || name,
-        status: value.pipeline?.status || 'unknown',
-        failedStep: failedStepOf(value.pipeline),
-        tobeChanges: value.tobeChanges,
-      } satisfies ModuleSummary;
-    }));
-    if (token !== this.loadToken) return;
-
-    this.modules = summaries;
-    if (!this.moduleName || !summaries.some(module => module.name === this.moduleName)) {
-      const actualModule = String((mls as unknown as { actualModule?: string }).actualModule || '');
-      this.moduleName = summaries.some(module => module.name === actualModule) ? actualModule : summaries[0]?.name ?? '';
-    }
-    await this.loadModule(token);
-  }
-
-  private async loadModule(parentToken?: number) {
-    const token = parentToken ?? ++this.loadToken;
     if (!this.project || !this.moduleName) {
       this.data = null;
       this.loading = false;
@@ -127,116 +81,46 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.loading = false;
   }
 
+  private onContextChange = (event: Event) => {
+    const context = (event as CustomEvent<NewReleaseContext>).detail;
+    if (!context?.project || !context.moduleName) return;
+    const projectChanged = context.project !== this.project;
+    this.project = context.project;
+    this.moduleName = context.moduleName;
+    this.version = context.version;
+    if (projectChanged) void this.loadLanguage();
+    void this.loadModule();
+  };
+
   private onNavigate = (event: Event) => {
     const tab = (event as CustomEvent<{ tab?: NewReleaseTab }>).detail?.tab;
     if (tab && TABS.includes(tab)) this.activeTab = tab;
   };
 
-  private async onProjectChange(event: Event) {
-    this.project = Number((event.target as HTMLSelectElement).value);
-    this.moduleName = '';
-    this.version = 'asis';
-    await this.loadLanguage();
-    await this.loadProject();
-  }
-
-  private async onModuleChange(event: Event) {
-    this.moduleName = (event.target as HTMLSelectElement).value;
-    this.version = 'asis';
-    await this.loadModule();
-  }
-
-  private async onVersionChange(event: Event) {
-    this.version = (event.target as HTMLSelectElement).value as NewReleaseVersion;
-    await this.loadModule();
-  }
-
-  private currentSummary(): ModuleSummary | undefined {
-    return this.modules.find(module => module.name === this.moduleName);
-  }
-
-  private statusLabel(summary?: ModuleSummary): string {
-    if (!summary) return this.t('status.unknown');
-    if (summary.status === 'failed') {
-      const step = summary.failedStep ? this.t(`step.${summary.failedStep}`) : this.t('step.pending');
+  private statusLabel(): string {
+    const status = this.data?.pipeline?.status;
+    if (!status) return this.t('status.unknown');
+    if (status === 'failed') {
+      const failedStep = failedStepOf(this.data?.pipeline ?? null);
+      const step = failedStep ? this.t(`step.${failedStep}`) : this.t('step.pending');
       return this.t('status.failed', { step });
     }
-    return this.t(`status.${summary.status}`);
+    return this.t(`status.${status}`);
   }
 
-  private renderSelectors() {
-    const summary = this.currentSummary();
-    return html`
-      <div class="nr-index__selectors">
-        <label>
-          <span>${this.t('selector.project')}</span>
-          <select .value=${String(this.project)} @change=${this.onProjectChange}>
-            ${this.projects.map(project => html`<option value=${project}>${project}</option>`)}
-          </select>
-        </label>
-        <label class="nr-index__module-select">
-          <span>${this.t('selector.module')}</span>
-          <select .value=${this.moduleName} @change=${this.onModuleChange}>
-            ${this.modules.map(module => html`<option value=${module.name}>${module.title}</option>`)}
-          </select>
-        </label>
-        <label>
-          <span>${this.t('selector.version')}</span>
-          <select .value=${this.version} @change=${this.onVersionChange}>
-            <option value="asis">${this.t('version.asis')}</option>
-            <option value="tobe" ?disabled=${!summary?.tobeChanges}>${this.t('version.tobe')}</option>
-            <option value="history" disabled title=${this.t('a11y.disabledVersion')}>${this.t('version.history')}</option>
-          </select>
-        </label>
-      </div>
+  private tabIcon(tab: NewReleaseTab) {
+    const common = (content: unknown) => svg`
+      <svg viewBox="0 0 24 24" aria-hidden="true">${content}</svg>
     `;
-  }
-
-  private renderProgress() {
-    return html`
-      <section class="nr-index__progress" aria-label=${this.t('a11y.progress')}>
-        <div class="nr-index__section-title">${this.t('summary.pipeline')}</div>
-        <ol>
-          ${NS5_STEP_IDS.map((step, index) => {
-            const status = this.data?.pipeline?.steps[step]?.status ?? 'pending';
-            return html`
-              <li class="nr-step nr-step--${status}">
-                <span class="nr-step__marker">${index + 1}</span>
-                <span class="nr-step__copy">
-                  <strong>${this.t(`step.${step}`)}</strong>
-                  <small>${this.t(`step.${status}`)}</small>
-                </span>
-              </li>
-            `;
-          })}
-        </ol>
-      </section>
-    `;
-  }
-
-  private renderSummary() {
-    const report = this.data?.finalizeReport;
-    const errors = report?.errors?.length ?? 0;
-    const warnings = report?.warnings?.length ?? 0;
-    const cost = this.data?.run?.cost?.total;
-    const changes = this.data?.tobeChanges ?? 0;
-    return html`
-      <section class="nr-index__summary">
-        <article class="nr-summary-card nr-summary-card--oracle">
-          <span>${this.t('summary.oracle')}</span>
-          <strong>${report?.finalStatus === 'passed' ? this.t('summary.oraclePassed') : this.t('summary.oraclePending')}</strong>
-          <div><small>${this.t('summary.errors', { count: errors })}</small><small>${this.t('summary.warnings', { count: warnings })}</small></div>
-        </article>
-        <article class="nr-summary-card">
-          <span>${this.t('summary.cost')}</span>
-          <strong>${typeof cost === 'number' ? this.t('summary.costValue', { value: cost.toFixed(2) }) : this.t('summary.costEmpty')}</strong>
-        </article>
-        <article class="nr-summary-card">
-          <span>${this.t('summary.changes')}</span>
-          <strong>${changes ? this.t('summary.changesValue', { count: changes }) : this.t('summary.changesEmpty')}</strong>
-        </article>
-      </section>
-    `;
+    switch (tab) {
+      case 'general': return common(svg`<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>`);
+      case 'journeys': return common(svg`<circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M8.5 16c4.5 0 2.5-8 7-8"/>`);
+      case 'ontology': return common(svg`<circle cx="12" cy="5" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M10.7 7.7 7.4 15M13.3 7.7l3.3 7.3M9 18h6"/>`);
+      case 'access': return common(svg`<path d="M12 3 20 6v5c0 5-3.2 8.5-8 10-4.8-1.5-8-5-8-10V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>`);
+      case 'rules': return common(svg`<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>`);
+      case 'workflows': return common(svg`<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.5 8l3.5 7.5M16.5 8 13 15.5"/>`);
+      case 'integration': return common(svg`<path d="M9 8 6.5 5.5a3.5 3.5 0 0 0-5 5L5 14a3.5 3.5 0 0 0 5 0l1-1M15 16l2.5 2.5a3.5 3.5 0 0 0 5-5L19 10a3.5 3.5 0 0 0-5 0l-1 1M8 12h8"/>`);
+    }
   }
 
   private renderTabs() {
@@ -248,7 +132,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
             class=${this.activeTab === tab ? 'is-active' : ''}
             aria-selected=${this.activeTab === tab ? 'true' : 'false'}
             @click=${() => { this.activeTab = tab; }}
-          >${this.t(`tab.${tab}`)}</button>
+          ><span class="nr-tab__icon">${this.tabIcon(tab)}</span><span>${this.t(`tab.${tab}`)}</span></button>
         `)}
       </nav>
     `;
@@ -297,8 +181,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   render() {
-    const summary = this.currentSummary();
-    const title = this.data?.module?.title || summary?.title || this.moduleName;
+    const title = this.data?.module?.title || this.moduleName;
+    const status = this.data?.pipeline?.status || 'unknown';
     return html`
       <main class="nr-index">
         <header class="nr-index__hero">
@@ -307,13 +191,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
             <h1>${title || this.t('app.title')}</h1>
             <p>${this.t('app.subtitle')}</p>
           </div>
-          ${summary ? html`
-            <span class="nr-index__status nr-index__status--${summary.status}" aria-label=${this.t('a11y.status')}>
-              <i aria-hidden="true"></i>${this.statusLabel(summary)}
+          ${this.data?.module ? html`
+            <span class="nr-index__status nr-index__status--${status}" aria-label=${this.t('a11y.status')}>
+              <i aria-hidden="true"></i>${this.statusLabel()}
             </span>
           ` : nothing}
-          ${this.renderSelectors()}
         </header>
+
+        ${this.renderTabs()}
 
         ${this.loading ? this.renderLoading() : !this.data?.module ? this.renderEmpty() : html`
           ${this.data.errors.length ? html`
@@ -322,9 +207,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
               ${this.data.errors.map(error => html`<p>${this.t('state.errorPath', { path: error.path, message: error.message })}</p>`)}
             </section>
           ` : nothing}
-          ${this.renderProgress()}
-          ${this.renderSummary()}
-          ${this.renderTabs()}
           <section class="nr-index__content">${this.renderTabContent()}</section>
         `}
 

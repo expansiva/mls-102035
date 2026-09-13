@@ -9,4 +9,6 @@ test('behavior service opens the module index through the right-side detail cont
   assert.match(source, /PluginDetails/);
   assert.match(source, /new-release--widgets--index-102035/);
   assert.match(source, /shortName:\s*'l2\/newRelease\/widgets\/index'/);
+  assert.match(source, /announceNewReleaseContext/);
+  assert.match(source, /listEligibleProjects/);
 });

@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/l4Reader.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/newRelease/helpers/l4Reader.ts" enhancement="_blank" />
 
 import {
   finalizeReportFileForProject,
@@ -9,9 +9,15 @@ import {
   readPipelineForProject,
   type Ns5FileInfo,
 } from '/_102035_/l2/solution/fs.js';
-import type { Ns5ModuleArtifact, Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
+import type {
+  Ns5ModuleArtifact,
+  Ns5PipelineState,
+  Ns5PipelineStatus,
+  Ns5StepId,
+} from '/_102035_/l2/solution/types.js';
+import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 
-export type NewReleaseVersion = 'asis' | 'tobe';
+export type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 
 export interface Ns5OracleCheckSummary {
   checkId: string;
@@ -59,7 +65,17 @@ type FileRecord = Record<string, {
   shortName?: string;
   extension?: string;
   status?: string;
+  getContent?: () => Promise<unknown>;
 } | undefined>;
+
+export interface NewReleaseModuleSummary {
+  name: string;
+  title: string;
+  status: Ns5PipelineStatus | 'unknown';
+  failedStep: Ns5StepId | null;
+  tobeChanges: number;
+  module: Ns5ModuleArtifact | null;
+}
 
 function liveFiles(files: FileRecord): NonNullable<FileRecord[string]>[] {
   return Object.values(files).filter((file): file is NonNullable<FileRecord[string]> => !!file && file.status !== 'deleted');
@@ -91,6 +107,43 @@ export function listReadableProjects(): number[] {
 
 export function listNs5Modules(project: number): string[] {
   return listNs5ModulesFromFiles(mls.stor.files as FileRecord, project);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function runtimeConfigHasModules(value: unknown, project: number): boolean {
+  if (!isRecord(value) || !isRecord(value.projects)) return false;
+  const projectConfig = value.projects[String(project)];
+  return isRecord(projectConfig) && Array.isArray(projectConfig.modules) && projectConfig.modules.length > 0;
+}
+
+async function readRuntimeConfig(project: number): Promise<unknown | null> {
+  const file = liveFiles(mls.stor.files as FileRecord).find(candidate =>
+    candidate.project === project
+    && candidate.level === 5
+    && !candidate.folder
+    && candidate.shortName === 'config'
+    && candidate.extension === '.json',
+  );
+  if (!file?.getContent) return null;
+  try {
+    const content = await file.getContent();
+    if (typeof content !== 'string' || !content.trim()) return null;
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/** Projects with an L4 module and a materialized runtime config containing modules. */
+export async function listEligibleProjects(): Promise<number[]> {
+  const candidates = listReadableProjects();
+  const accepted = await Promise.all(candidates.map(async project =>
+    runtimeConfigHasModules(await readRuntimeConfig(project), project) ? project : null,
+  ));
+  return accepted.filter((project): project is number => project !== null);
 }
 
 function filePath(file: Ns5FileInfo): string {
@@ -171,6 +224,21 @@ export async function readNs5Module(
   ]);
 
   return { module, pipeline, finalizeReport, run, tobeChanges, errors };
+}
+
+export async function listNs5ModuleSummaries(project: number): Promise<NewReleaseModuleSummary[]> {
+  const summaries = await Promise.all(listNs5Modules(project).map(async name => {
+    const value = await readNs5Module(project, name, 'asis');
+    return {
+      name,
+      title: value.module?.title || name,
+      status: value.pipeline?.status || 'unknown',
+      failedStep: failedStepOf(value.pipeline),
+      tobeChanges: value.tobeChanges,
+      module: value.module,
+    } satisfies NewReleaseModuleSummary;
+  }));
+  return summaries.sort((a, b) => a.title.localeCompare(b.title));
 }
 
 export function failedStepOf(pipeline: Ns5PipelineState | null): Ns5StepId | null {

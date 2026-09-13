@@ -2,7 +2,12 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { failedStepOf, listNs5ModulesFromFiles, listReadableProjectsFromFiles } from './l4Reader.js';
+import {
+  failedStepOf,
+  listNs5ModulesFromFiles,
+  listReadableProjectsFromFiles,
+  runtimeConfigHasModules,
+} from './helpers/l4Reader.js';
 import type { Ns5PipelineState } from '../solution/types.js';
 
 const files = {
@@ -28,4 +33,16 @@ test('failed step comes from the pipeline, not from module ordering', () => {
   } as Ns5PipelineState;
   assert.equal(failedStepOf(pipeline), 'ontology30');
   assert.equal(failedStepOf(null), null);
+});
+
+test('project eligibility requires its own module list in l5/config.json', () => {
+  const config = {
+    projects: {
+      '102047': { type: 'client', modules: [{ moduleId: 'agendaClinica' }] },
+      '102048': { type: 'client', modules: [] },
+    },
+  };
+  assert.equal(runtimeConfigHasModules(config, 102047), true);
+  assert.equal(runtimeConfigHasModules(config, 102048), false);
+  assert.equal(runtimeConfigHasModules({}, 102047), false);
 });

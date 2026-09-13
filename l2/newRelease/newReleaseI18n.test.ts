@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { createNewReleaseTranslator, newReleaseI18nCandidates } from './newReleaseI18n.js';
+import { createNewReleaseTranslator, newReleaseI18nCandidates } from './helpers/i18n.js';
 
 test('i18n prioritizes client, master, base language, then master-US', () => {
   assert.deepEqual(newReleaseI18nCandidates(102047, 'pt-BR'), [
