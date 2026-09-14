@@ -295,8 +295,8 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     const invocation = this.data?.pipeline?.invocation;
     const rebuild = this.data?.pipeline?.rebuildAll;
     return html`
-      <details class="nr-general__prompt">
-        <summary><span class="nr-general__prompt-mark" aria-hidden="true"></span><strong>${this.t('general.promptTitle')}</strong><small>${this.t('general.expand')}</small></summary>
+      <section class="nr-general__prompt">
+        <h3>${this.t('general.promptTitle')}</h3>
         <blockquote>${module.sourcePrompt || this.t('general.promptEmpty')}</blockquote>
         <div class="nr-general__invocation">
           <span><small>${this.t('general.invocationModule')}</small><strong>${invocation?.module || module.moduleName}</strong></span>
@@ -304,7 +304,7 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
           <span><small>${this.t('general.invocationRebuild')}</small><strong>${invocation?.rebuildAll ? this.t('general.yes') : this.t('general.no')}</strong></span>
         </div>
         ${rebuild ? html`<div class="nr-general__rebuild"><strong>${this.t('general.rebuildTitle')}</strong><span>${this.t('general.rebuildSummary', { deleted: rebuild.deleted.length, edited: rebuild.edited.length, date: this.formatDate(rebuild.at) })}</span></div>` : nothing}
-      </details>
+      </section>
     `;
   }
 
@@ -387,23 +387,29 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     const actors = this.data?.pipeline?.steps.module10?.actors?.length ?? 0;
     const issues = this.data?.validation.issues.filter(issue => issue.artifact === 'module.defs.ts' || issue.artifact === 'module') ?? this.issues;
     return html`
-      <section class="nr-general" aria-labelledby="nr-general-title">
-        ${this.renderProgress()}
-        ${this.renderSummary()}
+      <section class="nr-general" aria-label=${this.t('general.title', { module: module.title || module.moduleName })}>
         <div class="nr-general__foundation">
-          <div class="nr-general__intro">
-            <div><span class="nr-general__eyebrow">${this.t('general.eyebrow')}</span><h2 id="nr-general-title">${this.t('general.title', { module: module.title || module.moduleName })}</h2><p>${this.t('general.description')}</p></div>
-            <span class="nr-general__schema">${this.t('general.schema', { version: module.schemaVersion ?? '—' })}</span>
-          </div>
-          ${this.renderIdentity(module)}
           ${this.renderLanguagePanel(module)}
           <div class="nr-general__metrics">${this.metric('general.actors', actors)}${this.metric('general.journeys', counts.journeys)}${this.metric('general.entities', counts.entities)}${this.metric('general.rules', counts.rules)}</div>
           ${issues.length ? html`<section class="nr-general__issues" aria-live="polite"><strong>${this.t('general.validationTitle')}</strong>${issues.map(issue => html`<p><code>${issue.path}</code> ${issue.message}</p>`)}</section>` : nothing}
-          ${this.renderDetails(module)}
-          ${this.renderPrompt(module)}
-          ${this.renderCostChart()}
-          ${this.renderAdjustments()}
-          ${this.renderOracle()}
+          <details class="nr-general__group">
+            <summary><div><strong>${this.t('general.advancedTitle')}</strong><small>${this.t('general.advancedDescription')}</small></div><span aria-hidden="true">⌄</span></summary>
+            <div class="nr-general__group-content">
+              ${this.renderIdentity(module)}
+              ${this.renderDetails(module)}
+              ${this.renderPrompt(module)}
+            </div>
+          </details>
+          <details class="nr-general__group">
+            <summary><div><strong>${this.t('general.processTitle')}</strong><small>${this.t('general.processDescription')}</small></div><span aria-hidden="true">⌄</span></summary>
+            <div class="nr-general__group-content nr-general__group-content--process">
+              ${this.renderProgress()}
+              ${this.renderSummary()}
+              ${this.renderCostChart()}
+              ${this.renderAdjustments()}
+              ${this.renderOracle()}
+            </div>
+          </details>
           ${this.renderEditActions()}
         </div>
       </section>

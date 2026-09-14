@@ -28,110 +28,13 @@ new-release--widgets--index-102035 {
     outline-offset: .12rem;
   }
 
-  .nr-index__hero {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 1rem 2rem;
-    padding: 1rem 1.35rem;
-    overflow: hidden;
-    border-bottom: 1px solid var(--border-subtle, #e4e9f0);
-    background:
-      radial-gradient(circle at 92% -40%, color-mix(in srgb, var(--chart-series-1, #1273d4) 20%, transparent) 0, transparent 48%),
-      var(--surface-bg, #fff);
-  }
-
-  .nr-index__hero::before {
-    content: '';
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: .28rem;
-    background: linear-gradient(180deg, var(--chart-series-1, #1273d4), var(--chart-series-3, #7c3aed));
-  }
-
-  .nr-index__hero-copy { min-width: 0; }
-
-  .nr-index__eyebrow {
-    display: block;
-    margin-bottom: .35rem;
-    color: var(--link-text, #0f62b8);
-    font-size: .63rem;
-    font-weight: 800;
-    letter-spacing: .115em;
-    text-transform: uppercase;
-  }
-
-  h1 {
-    margin: 0;
-    overflow: hidden;
-    color: var(--text-strong, #111827);
-    font-size: clamp(1.45rem, 2.6vw, 2rem);
-    font-weight: 780;
-    letter-spacing: -.04em;
-    line-height: 1.05;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .nr-index__hero-copy p {
-    max-width: 48rem;
-    margin: .45rem 0 0;
-    color: var(--text-muted, #5d6b7e);
-    font-size: .78rem;
-    line-height: 1.45;
-  }
-
-  .nr-index__status {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    align-self: center;
-    gap: .48rem;
-    padding: .45rem .68rem;
-    border: 1px solid var(--border-subtle, #e4e9f0);
-    border-radius: 999px;
-    background: var(--status-neutral-bg, #e9edf2);
-    color: var(--status-neutral-text, #46535f);
-    font-size: .69rem;
-    font-weight: 750;
-    white-space: nowrap;
-  }
-
-  .nr-index__status i {
-    width: .44rem;
-    height: .44rem;
-    border-radius: 50%;
-    background: currentColor;
-    box-shadow: 0 0 0 .2rem color-mix(in srgb, currentColor 14%, transparent);
-  }
-
-  .nr-index__status--complete {
-    border-color: color-mix(in srgb, var(--status-success-text, #25640e) 22%, transparent);
-    background: var(--status-success-bg, #e2f5db);
-    color: var(--status-success-text, #25640e);
-  }
-
-  .nr-index__status--failed {
-    border-color: color-mix(in srgb, var(--status-error-text, #ab2328) 22%, transparent);
-    background: var(--status-error-bg, #fde8e9);
-    color: var(--status-error-text, #ab2328);
-  }
-
-  .nr-index__status--inProgress,
-  .nr-index__status--awaitingStep {
-    border-color: color-mix(in srgb, var(--status-warning-text, #775700) 22%, transparent);
-    background: var(--status-warning-bg, #fcf2d7);
-    color: var(--status-warning-text, #775700);
-  }
-
   .nr-index__tabs {
     position: sticky;
     z-index: 3;
     top: 0;
     display: flex;
     gap: .18rem;
-    padding: 0 1.15rem;
+    padding: .55rem 1.15rem 0;
     overflow-x: auto;
     border-bottom: 1px solid var(--border-subtle, #e4e9f0);
     background: color-mix(in srgb, var(--surface-bg, #fff) 96%, transparent);
@@ -358,14 +261,13 @@ new-release--widgets--index-102035 {
   .nr-index__footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 1rem;
     padding: .85rem 1.2rem;
     border-top: 1px solid var(--border-subtle, #e4e9f0);
     background: var(--surface-bg, #fff);
   }
 
-  .nr-index__footer p { margin: 0; color: var(--text-muted, #5d6b7e); font-size: .69rem; }
   .nr-index__footer div { display: flex; align-items: center; gap: .5rem; }
   .nr-index__footer span {
     padding: .28rem .5rem;
@@ -400,14 +302,12 @@ new-release--widgets--index-102035 {
   @keyframes nr-shimmer { to { background-position: -240% 0; } }
 
   @media (max-width: 780px) {
-    .nr-index__hero { grid-template-columns: 1fr; padding: 1rem; }
-    .nr-index__status { justify-self: start; }
     .nr-index__tabs { padding-inline: .65rem; }
     .nr-index__tobe { align-items: flex-start; flex-direction: column; padding-inline: .9rem; }
     .nr-index__stale { grid-template-columns: 1fr; margin-inline: .85rem; }
     .nr-index__diff { margin-inline: .85rem; }
     .nr-index__diff-lines article { grid-template-columns: 1fr; }
-    .nr-index__footer { align-items: flex-start; flex-direction: column; padding: .85rem; }
+    .nr-index__footer { padding: .85rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {

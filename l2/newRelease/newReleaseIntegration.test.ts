@@ -74,3 +74,35 @@ test('save feedback is immediate and stale tobe warnings remain outside individu
   assert.match(index, /this\.renderTabs\(\)[\s\S]*this\.renderTobeStatus\(\)[\s\S]*this\.renderTabContent\(\)/);
   assert.match(index, /aria-live="polite"/);
 });
+
+test('fine-tuned layout keeps context left and prioritizes editable module settings', () => {
+  const service = readFileSync(new URL('../../../mls-102020/l2/aura/services/serviceBehavior.ts', import.meta.url), 'utf8');
+  const serviceStyles = readFileSync(new URL('../../../mls-102020/l2/aura/services/serviceBehavior.less', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
+  const general = readFileSync(new URL('./widgets/general.ts', import.meta.url), 'utf8');
+
+  assert.match(service, /moduleMapDescription/);
+  assert.doesNotMatch(service, /module\.sourcePrompt/);
+  assert.doesNotMatch(service, /nr-service__languages/);
+  assert.match(serviceStyles, /gap:\s*22px/);
+  assert.match(serviceStyles, /nr-service__knobs::before/);
+  assert.match(serviceStyles, /nr-service__knob\.is-selected > button::after/);
+
+  assert.doesNotMatch(index, /nr-index__hero/);
+  assert.match(index, /editableVersion\s*=\s*this\.version\s*===\s*'asis'\s*\|\|\s*this\.version\s*===\s*'tobe'/);
+  assert.match(index, /editableVersion\s*\?\s*html`[\s\S]*nr-index__footer/);
+
+  const languagePosition = general.indexOf('${this.renderLanguagePanel(module)}');
+  const metricsPosition = general.indexOf('class="nr-general__metrics"');
+  const advancedPosition = general.indexOf('general.advancedTitle');
+  const processPosition = general.indexOf('general.processTitle');
+  assert.ok(languagePosition < metricsPosition && metricsPosition < advancedPosition && advancedPosition < processPosition);
+  assert.match(general, /<details class="nr-general__group">/);
+  assert.doesNotMatch(general, /<details class="nr-general__group"\s+open/);
+});
+
+test('presentation environment badge is hidden while Studio is active', () => {
+  const shell = readFileSync(new URL('../../../mls-102033/l2/shared/shell.ts', import.meta.url), 'utf8');
+  assert.match(shell, /getElementById\('collab-env-badge'\)/);
+  assert.match(shell, /environmentBadge\.hidden\s*=\s*this\.studioModeOn/);
+});

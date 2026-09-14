@@ -9,7 +9,6 @@ import {
   type NewReleaseVersion,
 } from '/_102035_/l2/newRelease/helpers/context.js';
 import {
-  failedStepOf,
   readNs5Module,
   type NewReleaseModuleData,
 } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
@@ -181,17 +180,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
       }
     });
   };
-
-  private statusLabel(): string {
-    const status = this.data?.pipeline?.status;
-    if (!status) return this.t('status.unknown');
-    if (status === 'failed') {
-      const failedStep = failedStepOf(this.data?.pipeline ?? null);
-      const step = failedStep ? this.t(`step.${failedStep}`) : this.t('step.pending');
-      return this.t('status.failed', { step });
-    }
-    return this.t(`status.${status}`);
-  }
 
   private tabIcon(tab: NewReleaseTab) {
     const common = (content: unknown) => svg`
@@ -429,23 +417,9 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   render() {
-    const title = this.data?.module?.title || this.moduleName;
-    const status = this.data?.pipeline?.status || 'unknown';
+    const editableVersion = this.version === 'asis' || this.version === 'tobe';
     return html`
       <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
-        <header class="nr-index__hero">
-          <div class="nr-index__hero-copy">
-            <span class="nr-index__eyebrow">${this.t('app.eyebrow')}</span>
-            <h1>${title || this.t('app.title')}</h1>
-            <p>${this.t('app.subtitle')}</p>
-          </div>
-          ${this.data?.module ? html`
-            <span class="nr-index__status nr-index__status--${status}" aria-label=${this.t('a11y.status')}>
-              <i aria-hidden="true"></i>${this.statusLabel()}
-            </span>
-          ` : nothing}
-        </header>
-
         ${this.renderTabs()}
 
         ${this.renderTobeStatus()}
@@ -468,15 +442,16 @@ export class NewReleaseIndex102035 extends StateLitElement {
           ${this.renderDiffs()}
         `}
 
-        <footer class="nr-index__footer">
-          <p>${this.t('footer.hint')}</p>
-          <div>
-            ${this.tabTobePaths().length ? html`<button class="nr-index__discard" type="button" ?disabled=${this.changing} @click=${() => void this.discardPaths(this.tabTobePaths())}>${this.t('tobe.discardTab')}</button>` : nothing}
-            <span>${this.t('action.inDevelopment')}</span>
-            <button type="button" disabled>${this.t('action.apply')}</button>
-            <button type="button" disabled>${this.t('action.execute')}</button>
-          </div>
-        </footer>
+        ${editableVersion ? html`
+          <footer class="nr-index__footer">
+            <div>
+              ${this.tabTobePaths().length ? html`<button class="nr-index__discard" type="button" ?disabled=${this.changing} @click=${() => void this.discardPaths(this.tabTobePaths())}>${this.t('tobe.discardTab')}</button>` : nothing}
+              <span>${this.t('action.inDevelopment')}</span>
+              <button type="button" disabled>${this.t('action.apply')}</button>
+              <button type="button" disabled>${this.t('action.execute')}</button>
+            </div>
+          </footer>
+        ` : nothing}
       </main>
     `;
   }

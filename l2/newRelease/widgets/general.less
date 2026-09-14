@@ -144,6 +144,48 @@ new-release--widgets--general-102035 {
     padding: 1.3rem 1.25rem 1.5rem;
   }
 
+  .nr-general__group {
+    overflow: hidden;
+    border: 1px solid var(--border-subtle, #e4e9f0);
+    border-radius: .9rem;
+    background: var(--surface-bg, #fff);
+  }
+
+  .nr-general__group > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .85rem 1rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .nr-general__group > summary::-webkit-details-marker { display: none; }
+  .nr-general__group > summary > div { display: grid; gap: .16rem; }
+  .nr-general__group > summary strong { color: var(--text-strong, #111827); font-size: .76rem; }
+  .nr-general__group > summary small { color: var(--text-muted, #5d6b7e); font-size: .66rem; line-height: 1.4; }
+  .nr-general__group > summary > span { color: var(--link-text, #0f62b8); font-size: 1rem; transition: transform .16s ease; }
+  .nr-general__group[open] > summary > span { transform: rotate(180deg); }
+
+  .nr-general__group-content {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-subtle, #e4e9f0);
+    background: color-mix(in srgb, var(--surface-alt-bg, #f5f7fa) 58%, transparent);
+  }
+
+  .nr-general__group-content--process .nr-general__progress {
+    border: 1px solid var(--border-subtle, #e4e9f0);
+    border-radius: .85rem;
+  }
+
+  .nr-general__group-content--process .nr-general__summary {
+    padding: 0;
+    border-bottom: 0;
+  }
+
   .nr-general__intro {
     display: flex;
     align-items: flex-start;
@@ -437,13 +479,8 @@ new-release--widgets--general-102035 {
   .nr-general__empty-section { padding: .8rem; border: 1px dashed var(--border-default, #cfd8e3); border-radius: .65rem; color: var(--text-muted, #5d6b7e); font-size: .7rem; text-align: center; }
 
   .nr-general__prompt { background: var(--surface-alt-bg, #f5f7fa); }
-  .nr-general__prompt summary { display: grid; grid-template-columns: .3rem minmax(0, 1fr) auto; align-items: center; gap: .8rem; cursor: pointer; list-style: none; }
-  .nr-general__prompt summary::-webkit-details-marker { display: none; }
-  .nr-general__prompt summary strong { color: var(--text-strong, #111827); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
-  .nr-general__prompt summary small { color: var(--link-text, #0f62b8); font-size: .64rem; }
-
   .nr-general__issues {
-    margin: 0 1.25rem 1rem;
+    margin: 0;
     padding: .78rem .9rem;
     border: 1px solid color-mix(in srgb, var(--status-error-text, #ab2328) 24%, transparent);
     border-radius: .72rem;
@@ -453,12 +490,6 @@ new-release--widgets--general-102035 {
   }
   .nr-general__issues p { margin: .3rem 0 0; line-height: 1.45; }
   .nr-general__issues code { margin-right: .35rem; font-size: .64rem; }
-
-  .nr-general__prompt-mark {
-    min-height: 1.8rem;
-    border-radius: 999px;
-    background: linear-gradient(180deg, var(--chart-series-1, #1273d4), var(--chart-series-3, #7c3aed));
-  }
 
   .nr-general__prompt h3 {
     margin: 0 0 .45rem;
@@ -545,5 +576,6 @@ new-release--widgets--general-102035 {
 
   @media (prefers-reduced-motion: reduce) {
     .nr-step--running .nr-step__marker { animation: none; }
+    .nr-general__group > summary > span { transition: none; }
   }
 }
