@@ -13,6 +13,9 @@ export const locacaoEquipamentosEntityAtendente = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome completo", "type": "string", "required": true, "description": "Nome completo do atendente." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

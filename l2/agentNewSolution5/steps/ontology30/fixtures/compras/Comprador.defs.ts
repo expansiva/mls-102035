@@ -13,6 +13,10 @@ export const comprasEntityComprador = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome completo", "type": "string", "required": true, "description": "Nome completo do comprador." },
+    { "fieldId": "contacts", "title": "Contatos", "type": "json", "required": true, "description": "Contatos do comprador (telefone, e-mail)." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

@@ -13,6 +13,14 @@ export const manutencaoFrotaEntityOficina = {
   "mdmSubtype": "Company",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome", "type": "string", "required": true, "description": "Nome da oficina." },
+    { "fieldId": "legalName", "title": "Razão social", "type": "string", "required": true, "description": "Razão social da oficina." },
+    { "fieldId": "docType", "title": "Tipo de documento", "type": "string", "required": true, "enum": [{ "value": "CNPJ", "title": "CNPJ" }], "description": "Tipo de documento de identificação da oficina." },
+    { "fieldId": "docId", "title": "CNPJ", "type": "string", "required": true, "description": "Número do CNPJ da oficina." },
+    { "fieldId": "contacts", "title": "Contatos", "type": "json", "required": true, "description": "Contatos da oficina (telefone, e-mail)." },
+    { "fieldId": "addresses", "title": "Endereços", "type": "json", "required": true, "description": "Endereços da oficina." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

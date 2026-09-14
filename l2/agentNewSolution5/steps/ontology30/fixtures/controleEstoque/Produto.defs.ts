@@ -24,6 +24,12 @@ export const controleEstoqueEntityProduto = {
       "description": "Quantidade mínima de unidades que deve permanecer disponível para o produto."
     }
   ],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome", "type": "string", "required": true, "description": "Nome do produto." },
+    { "fieldId": "sku", "title": "SKU", "type": "string", "required": true, "description": "Código SKU usado para identificar o produto no controle de estoque." },
+    { "fieldId": "unitOfMeasure", "title": "Unidade de medida", "type": "string", "required": true, "description": "Unidade de medida das quantidades do produto (ex.: unidade, kg, caixa)." },
+    { "fieldId": "isInventoried", "title": "Controlado em estoque", "type": "boolean", "required": true, "description": "Indica se o produto deve ter estoque controlado por movimentações." }
+  ],
   "details": {
     "saldoAtual": {
       "type": "integer",

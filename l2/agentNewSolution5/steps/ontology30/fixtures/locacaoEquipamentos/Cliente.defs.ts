@@ -13,6 +13,13 @@ export const locacaoEquipamentosEntityCliente = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome completo", "type": "string", "required": true, "description": "Nome completo do cliente." },
+    { "fieldId": "docType", "title": "Tipo de documento", "type": "string", "required": true, "enum": [{ "value": "CPF", "title": "CPF" }], "description": "Tipo de documento de identificação do cliente." },
+    { "fieldId": "docId", "title": "CPF", "type": "string", "required": true, "description": "Número do CPF do cliente." },
+    { "fieldId": "contacts", "title": "Contatos", "type": "json", "required": true, "description": "Contatos do cliente (telefone, e-mail)." },
+    { "fieldId": "addresses", "title": "Endereços", "type": "json", "required": true, "description": "Endereços do cliente." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

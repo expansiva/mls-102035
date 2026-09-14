@@ -13,6 +13,14 @@ export const comprasEntityFornecedor = {
   "mdmSubtype": "Company",
   "displayField": "legalName",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "legalName", "title": "Razão social", "type": "string", "required": true, "description": "Razão social do fornecedor." },
+    { "fieldId": "tradeName", "title": "Nome fantasia", "type": "string", "required": false, "description": "Nome fantasia do fornecedor." },
+    { "fieldId": "docType", "title": "Tipo de documento", "type": "string", "required": true, "enum": [{ "value": "CNPJ", "title": "CNPJ" }], "description": "Tipo de documento de identificação do fornecedor." },
+    { "fieldId": "docId", "title": "CNPJ", "type": "string", "required": true, "description": "Número do CNPJ do fornecedor." },
+    { "fieldId": "contacts", "title": "Contatos", "type": "json", "required": true, "description": "Contatos do fornecedor (telefone, e-mail)." },
+    { "fieldId": "addresses", "title": "Endereços", "type": "json", "required": true, "description": "Endereços do fornecedor." }
+  ],
   "details": {
     "totalCompradoNoMes": {
       "type": "money",

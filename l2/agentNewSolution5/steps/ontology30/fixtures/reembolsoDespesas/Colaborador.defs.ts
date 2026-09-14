@@ -13,6 +13,10 @@ export const reembolsoDespesasEntityColaborador = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome completo", "type": "string", "required": true, "description": "Nome completo do colaborador." },
+    { "fieldId": "contacts", "title": "Contatos", "type": "json", "required": true, "description": "Contatos do colaborador (telefone, e-mail)." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

@@ -13,6 +13,9 @@ export const comandaRestauranteEntityMesa = {
   "mdmSubtype": "AssetEquipment",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome", "type": "string", "required": true, "description": "Nome ou número identificador da mesa." }
+  ],
   "details": {
     "estaDisponivel": {
       "type": "boolean",
