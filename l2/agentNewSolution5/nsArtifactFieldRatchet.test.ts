@@ -108,6 +108,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     mdmSubtype: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     displayField: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },
     fields: { reader: 'steps/ontology30/gate.ts; panel lift only when no field besides idField (ns5_34)', since: '2026-09-10' },
+    fieldsBase: { reader: 'newRelease ontology screen (f2_04b); ontology30 gate + access60 after ns5_35', since: '2026-09-14' },
     uniqueKeys: { reader: 'steps/ontology30/gate.ts, finalize80 I9, DDL/upsert lote', since: '2026-09-11' },
     details: { reader: 'typed JSON column, screens, finalize80 I4 details.<name>; panel = writer none and only idField (ns5_34)', since: '2026-09-10' },
     lifecycleStates: { reader: 'steps/ontology30/gate.ts', since: '2026-09-10' },

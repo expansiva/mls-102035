@@ -15,7 +15,7 @@ test('behavior service opens the module index through the right-side detail cont
   assert.match(source, /_versionValue\s*=\s*this\._module\?\.tobeChanges\s*\?\s*2\s*:\s*1/);
 });
 
-test('new release index exposes the shared edit seam and ontology without implementing a journey editor', () => {
+test('new release index exposes the shared edit seam and completed functional tabs', () => {
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
   const contract = readFileSync(new URL('./editContract.ts', import.meta.url), 'utf8');
 
@@ -24,7 +24,9 @@ test('new release index exposes the shared edit seam and ontology without implem
   assert.match(index, /discardTobe/);
   assert.match(index, /tabForArtifactPath/);
   assert.match(index, /new-release--widgets--ontology-102035/);
+  assert.match(index, /new-release--widgets--journeys-102035/);
+  assert.match(index, /new-release--widgets--access-102035/);
   assert.match(contract, /interface NewReleaseEditableTab/);
   assert.match(contract, /'journeys'/);
-  assert.doesNotMatch(index, /new-release--widgets--journeys/);
+  assert.match(contract, /'access'/);
 });
