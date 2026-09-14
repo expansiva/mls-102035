@@ -16,12 +16,20 @@ import type {
   Ns5StepId,
 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import {
+  readNs5Overlay,
+  type NewReleaseOverlaySources,
+  type NewReleaseOverlayValidation,
+  type NewReleaseTobeDiff,
+  type Ns5TobeArtifactPath,
+  type Ns5TobeManifest,
+} from '/_102035_/l2/newRelease/tobe.js';
 
 export type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 
 export interface Ns5OracleCheckSummary {
   checkId: string;
-  status: 'passed' | 'failed';
+  status: 'passed' | 'failed' | 'warned';
   errorCount: number;
   warningCount: number;
 }
@@ -55,6 +63,11 @@ export interface NewReleaseModuleData {
   finalizeReport: Ns5FinalizeReportView | null;
   run: Ns5RunView | null;
   tobeChanges: number;
+  artifacts: NewReleaseOverlaySources;
+  manifest: Ns5TobeManifest | null;
+  stalePaths: Ns5TobeArtifactPath[];
+  diffs: NewReleaseTobeDiff[];
+  validation: NewReleaseOverlayValidation;
   errors: NewReleaseReadError[];
 }
 
@@ -201,41 +214,62 @@ async function readTobeChanges(project: number, moduleName: string, errors: NewR
   return Array.isArray(manifest?.changes) ? manifest.changes.length : 0;
 }
 
-/**
- * Read the human-facing NS5 overview for an explicit project. The `version`
- * parameter is part of the stable widget contract; the tobe overlay lands in f2_02.
- */
+/** Read a complete NS5 module, substituting each prepared artifact independently in `tobe` mode. */
 export async function readNs5Module(
   project: number,
   moduleName: string,
-  _version: NewReleaseVersion = 'asis',
+  version: NewReleaseVersion = 'asis',
 ): Promise<NewReleaseModuleData> {
   const errors: NewReleaseReadError[] = [];
-  const moduleInfo = moduleFileForProject(project, moduleName);
   const pipelineInfo = pipelineJsonFileForProject(project, moduleName, 'pipeline');
   const reportInfo = finalizeReportFileForProject(project, moduleName);
 
-  const [module, pipeline, finalizeReport, run, tobeChanges] = await Promise.all([
-    optionalRead(moduleInfo, () => readDefsJson<Ns5ModuleArtifact>(moduleInfo), errors),
+  const [pipeline, persistedReport, run] = await Promise.all([
     optionalRead(pipelineInfo, () => readPipelineForProject(project, moduleName), errors),
     optionalRead(reportInfo, () => readJson<Ns5FinalizeReportView>(reportInfo), errors),
     readLatestRun(project, moduleName, errors),
-    readTobeChanges(project, moduleName, errors),
   ]);
+  const overlay = await readNs5Overlay(project, moduleName, version, {
+    pipeline,
+    registryModuleNames: listNs5Modules(project),
+  });
+  errors.push(...overlay.errors);
+  const finalizeReport = version === 'tobe' && overlay.validation.oracle
+    ? overlay.validation.oracle
+    : persistedReport;
 
-  return { module, pipeline, finalizeReport, run, tobeChanges, errors };
+  return {
+    module: overlay.sources.module.value,
+    pipeline,
+    finalizeReport,
+    run,
+    tobeChanges: overlay.manifest?.changes.length ?? 0,
+    artifacts: overlay.sources,
+    manifest: overlay.manifest,
+    stalePaths: overlay.stalePaths,
+    diffs: overlay.diffs,
+    validation: overlay.validation,
+    errors,
+  };
 }
 
 export async function listNs5ModuleSummaries(project: number): Promise<NewReleaseModuleSummary[]> {
   const summaries = await Promise.all(listNs5Modules(project).map(async name => {
-    const value = await readNs5Module(project, name, 'asis');
+    const errors: NewReleaseReadError[] = [];
+    const moduleInfo = moduleFileForProject(project, name);
+    const pipelineInfo = pipelineJsonFileForProject(project, name, 'pipeline');
+    const [module, pipeline, tobeChanges] = await Promise.all([
+      optionalRead(moduleInfo, () => readDefsJson<Ns5ModuleArtifact>(moduleInfo), errors),
+      optionalRead(pipelineInfo, () => readPipelineForProject(project, name), errors),
+      readTobeChanges(project, name, errors),
+    ]);
     return {
       name,
-      title: value.module?.title || name,
-      status: value.pipeline?.status || 'unknown',
-      failedStep: failedStepOf(value.pipeline),
-      tobeChanges: value.tobeChanges,
-      module: value.module,
+      title: module?.title || name,
+      status: pipeline?.status || 'unknown',
+      failedStep: failedStepOf(pipeline),
+      tobeChanges,
+      module,
     } satisfies NewReleaseModuleSummary;
   }));
   return summaries.sort((a, b) => a.title.localeCompare(b.title));

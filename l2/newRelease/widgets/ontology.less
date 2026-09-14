@@ -1,0 +1,242 @@
+/// <mls fileReference="_102035_/l2/newRelease/widgets/ontology.less" enhancement="enhancementStyle"/>
+
+new-release--widgets--ontology-102035 {
+  display: block;
+
+  * { box-sizing: border-box; }
+  h2, h3, h4, p, dl, dd { margin: 0; }
+  button, input, select, textarea { font: inherit; }
+  button { cursor: pointer; }
+  code { font-family: var(--font-family-mono, ui-monospace, monospace); }
+
+  .nr-ontology { display: grid; min-width: 0; color: var(--text-default, #2f3a48); }
+
+  .nr-ontology__hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.2rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border-subtle, #e4e9f0);
+    background: var(--surface-bg, #fff);
+  }
+
+  .nr-ontology__hero > div:first-child > span,
+  .nr-ontology__section > header h3,
+  .nr-ontology__summary > span,
+  .nr-ontology__graph-layout > aside > span {
+    color: var(--text-muted, #5d6b7e);
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  .nr-ontology__hero > div:first-child > span { color: var(--link-text, #0f62b8); }
+  .nr-ontology__hero h2 { margin-top: .3rem; color: var(--text-strong, #111827); font-size: 1.45rem; letter-spacing: -.025em; }
+  .nr-ontology__hero p { max-width: 48rem; margin-top: .4rem; color: var(--text-muted, #5d6b7e); font-size: .82rem; line-height: 1.55; }
+  .nr-ontology__actions { display: flex; align-items: center; gap: .65rem; }
+  .nr-ontology__actions > span { padding: .36rem .62rem; border-radius: 999px; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); font-size: .68rem; font-weight: 750; }
+
+  .nr-ontology__toggle { display: flex; padding: .18rem; border: 1px solid var(--border-default, #cfd8e3); border-radius: .65rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__toggle button { min-height: 1.9rem; padding: .34rem .65rem; border: 0; border-radius: .45rem; background: transparent; color: var(--text-muted, #5d6b7e); font-size: .7rem; font-weight: 750; }
+  .nr-ontology__toggle button.is-active { background: var(--surface-bg, #fff); color: var(--text-strong, #111827); box-shadow: 0 .08rem .28rem color-mix(in srgb, var(--text-strong, #111827) 13%, transparent); }
+
+  .nr-button { min-height: 2.25rem; padding: .42rem .75rem; border-radius: .58rem; font-size: .72rem; font-weight: 750; }
+  .nr-button--secondary { border: 1px solid var(--border-default, #cfd8e3); background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); }
+
+  .nr-ontology__summary { display: flex; gap: 1px; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: var(--border-subtle, #e4e9f0); }
+  .nr-ontology__summary > span { display: flex; flex: 1; align-items: baseline; gap: .42rem; padding: .62rem 1rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__summary strong { color: var(--text-strong, #111827); font-size: 1rem; letter-spacing: -.03em; }
+
+  .nr-ontology__workbench { display: grid; grid-template-columns: minmax(12.5rem, 15rem) minmax(0, 1fr); min-height: 40rem; }
+  .nr-ontology__workbench > aside { display: grid; align-content: start; gap: .38rem; padding: .85rem; border-right: 1px solid var(--border-subtle, #e4e9f0); background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__workbench > aside button { display: grid; min-width: 0; gap: .22rem; padding: .65rem .7rem; border: 1px solid transparent; border-radius: .68rem; background: transparent; color: var(--text-default, #2f3a48); text-align: left; }
+  .nr-ontology__workbench > aside button:hover { background: var(--surface-bg, #fff); }
+  .nr-ontology__workbench > aside button.is-active { border-color: var(--selected-border, #1273d4); background: var(--selected-bg, #e3f1ff); box-shadow: inset .19rem 0 var(--selected-border, #1273d4); }
+  .nr-ontology__workbench > aside strong { overflow: hidden; color: var(--text-strong, #111827); font-size: .77rem; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-ontology__workbench > aside code { color: var(--text-muted, #5d6b7e); font-size: .61rem; }
+  .nr-ontology__workbench > aside button > span { display: flex; flex-wrap: wrap; gap: .22rem; margin-top: .18rem; }
+  .nr-ontology__workbench > aside i { padding: .13rem .3rem; border-radius: .28rem; background: color-mix(in srgb, var(--selected-border, #1273d4) 10%, var(--surface-bg, #fff)); color: var(--text-muted, #5d6b7e); font-size: .54rem; font-style: normal; }
+  .nr-ontology__workbench > main { display: grid; align-content: start; min-width: 0; gap: .9rem; padding: 1rem 1.1rem 1.35rem; background: var(--page-bg, #f8fafc); }
+
+  .nr-ontology__identity,
+  .nr-ontology__section,
+  .nr-ontology__issues {
+    min-width: 0;
+    padding: .95rem 1rem;
+    border: 1px solid var(--border-subtle, #e4e9f0);
+    border-radius: .85rem;
+    background: var(--surface-bg, #fff);
+  }
+
+  .nr-ontology__identity { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .75rem 1rem; }
+  .nr-ontology__identity > div:first-child > span { display: block; margin-bottom: .25rem; color: var(--link-text, #0f62b8); font-size: .63rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .nr-ontology__identity h2 { color: var(--text-strong, #111827); font-size: 1.3rem; }
+  .nr-ontology__identity code { color: var(--text-muted, #5d6b7e); font-size: .67rem; }
+  .nr-ontology__identity > p { grid-column: 1 / -1; color: var(--text-muted, #5d6b7e); font-size: .8rem; line-height: 1.55; }
+  .nr-ontology__badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .28rem; }
+  .nr-ontology__badges span, .nr-chip { padding: .22rem .42rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .38rem; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-muted, #5d6b7e); font-size: .6rem; font-weight: 700; }
+  .nr-chip.is-required { border-color: color-mix(in srgb, var(--status-info-text, #0b5497) 30%, transparent); background: var(--status-info-bg, #e1effd); color: var(--status-info-text, #0b5497); }
+  .nr-chip.is-unique { border-color: color-mix(in srgb, var(--status-success-text, #25640e) 30%, transparent); background: var(--status-success-bg, #e2f5db); color: var(--status-success-text, #25640e); }
+  .nr-ontology__identity dl { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; padding-top: .7rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-ontology__identity dl div { min-width: 0; }
+  .nr-ontology__identity dt { margin-bottom: .17rem; color: var(--text-muted, #5d6b7e); font-size: .6rem; font-weight: 700; text-transform: uppercase; }
+  .nr-ontology__identity dd { overflow: hidden; color: var(--text-strong, #111827); font-size: .72rem; text-overflow: ellipsis; }
+  .nr-ontology__description-edit { grid-column: 1 / -1; }
+
+  .nr-ontology__section > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; }
+  .nr-ontology__section > header h3 { color: var(--text-strong, #111827); }
+  .nr-ontology__section > header p { max-width: 48rem; margin-top: .22rem; color: var(--text-muted, #5d6b7e); font-size: .7rem; line-height: 1.45; }
+  .nr-ontology__section > header > span { flex: none; padding: .2rem .42rem; border-radius: 999px; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-muted, #5d6b7e); font-size: .6rem; }
+
+  .nr-ontology input,
+  .nr-ontology select,
+  .nr-ontology textarea {
+    width: 100%;
+    min-height: 2rem;
+    padding: .36rem .5rem;
+    border: 1px solid var(--border-default, #cfd8e3);
+    border-radius: .48rem;
+    outline: none;
+    background: var(--input-bg, var(--surface-bg, #fff));
+    color: var(--input-text, var(--text-default, #2f3a48));
+    font-size: .7rem;
+  }
+  .nr-ontology textarea { min-height: 3.7rem; resize: vertical; line-height: 1.45; }
+  .nr-ontology select[multiple] { min-height: 5rem; }
+  .nr-ontology input:focus, .nr-ontology select:focus, .nr-ontology textarea:focus, .nr-ontology button:focus-visible { border-color: var(--focus-ring, #1273d4); box-shadow: 0 0 0 .18rem color-mix(in srgb, var(--focus-ring, #1273d4) 18%, transparent); outline: none; }
+  .nr-ontology input.is-invalid { border-color: var(--status-error-text, #ab2328); }
+  .nr-ontology label > span { display: block; margin-bottom: .2rem; color: var(--text-muted, #5d6b7e); font-size: .61rem; font-weight: 700; }
+
+  .nr-ontology__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .62rem; }
+  .nr-field { display: grid; align-content: start; min-width: 0; gap: .45rem; padding: .72rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .68rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-field > header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .nr-field > header > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .22rem; }
+  .nr-field > header code { color: var(--link-text, #0f62b8); font-size: .68rem; font-weight: 700; }
+  .nr-field h4 { color: var(--text-strong, #111827); font-size: .8rem; }
+  .nr-field > p { color: var(--text-muted, #5d6b7e); font-size: .7rem; line-height: 1.45; }
+  .nr-field__edit-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(7rem, .65fr); gap: .5rem; }
+  .nr-field__description { grid-column: 1 / -1; }
+  .nr-check { display: flex; align-items: center; gap: .38rem; }
+  .nr-check input { flex: none; width: 1rem; min-height: 1rem; accent-color: var(--selected-border, #1273d4); }
+  .nr-check span { margin: 0; }
+  .nr-ontology__constraints { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .35rem; padding-top: .4rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-field__constraints-view { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .nr-field__constraints-view div { display: flex; gap: .22rem; padding: .18rem .35rem; border-radius: .3rem; background: var(--surface-bg, #fff); font-size: .61rem; }
+  .nr-field__constraints-view dt { color: var(--text-muted, #5d6b7e); }
+  .nr-field__constraints-view dd { color: var(--text-strong, #111827); font-weight: 700; }
+  .nr-field__enum { display: grid; gap: .32rem; padding-top: .4rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-field__enum > strong { color: var(--text-muted, #5d6b7e); font-size: .62rem; }
+  .nr-field__enum > div { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr) auto; gap: .3rem; }
+  .nr-field__enum button, .nr-ontology__key-list button, .nr-lifecycle__rail button { width: 2rem; border: 1px solid var(--border-default, #cfd8e3); border-radius: .42rem; background: var(--surface-bg, #fff); color: var(--status-error-text, #ab2328); }
+  .nr-text-button { justify-self: start; padding: .28rem 0; border: 0; background: transparent; color: var(--link-text, #0f62b8); font-size: .65rem; font-weight: 750; }
+  .nr-field__enum-view { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .nr-field__enum-view span { display: grid; gap: .06rem; padding: .3rem .42rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .4rem; background: var(--surface-bg, #fff); }
+  .nr-field__enum-view strong { color: var(--text-strong, #111827); font-size: .62rem; }
+  .nr-field__enum-view code { color: var(--text-muted, #5d6b7e); font-size: .55rem; }
+
+  .nr-ontology__level1 { border-left: .25rem solid var(--chart-series-4, #7b61a8); }
+  .nr-ontology__level1-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
+  .nr-ontology__level1-fields > span { display: grid; gap: .15rem; min-width: 0; padding: .5rem .55rem; border-radius: .52rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__level1-fields code { overflow: hidden; color: var(--text-strong, #111827); font-size: .65rem; text-overflow: ellipsis; }
+  .nr-ontology__level1-fields small, .nr-ontology__level1-fields i { color: var(--text-muted, #5d6b7e); font-size: .55rem; font-style: normal; }
+
+  .nr-ontology__two-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+  .nr-ontology__key-list { display: flex; flex-wrap: wrap; gap: .38rem; }
+  .nr-ontology__key-list > span { display: flex; align-items: center; gap: .22rem; padding: .25rem .3rem .25rem .42rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .45rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__key-list code + code::before { content: '+'; margin-right: .22rem; color: var(--text-muted, #5d6b7e); }
+  .nr-ontology__key-list code { color: var(--text-strong, #111827); font-size: .61rem; }
+  .nr-ontology__key-list button { width: 1.5rem; min-height: 1.5rem; }
+  .nr-ontology__detail-list { display: grid; gap: .38rem; }
+  .nr-ontology__detail-list article { display: grid; grid-template-columns: minmax(6rem, .45fr) minmax(5rem, .35fr) minmax(0, 1.2fr) auto; align-items: start; gap: .35rem; padding: .46rem; border-radius: .52rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__detail-list article > code { padding-top: .38rem; color: var(--link-text, #0f62b8); font-size: .65rem; }
+  .nr-ontology__detail-list article > span { padding-top: .38rem; color: var(--text-muted, #5d6b7e); font-size: .62rem; }
+  .nr-ontology__detail-list article > p { grid-column: span 2; padding-top: .3rem; color: var(--text-muted, #5d6b7e); font-size: .68rem; line-height: 1.4; }
+  .nr-ontology__detail-list button, .nr-transition__grid > button { min-height: 2rem; padding: .3rem .48rem; border: 1px solid color-mix(in srgb, var(--status-error-text, #ab2328) 35%, transparent); border-radius: .45rem; background: transparent; color: var(--status-error-text, #ab2328); font-size: .62rem; }
+  .nr-ontology__empty-inline { color: var(--text-muted, #5d6b7e); font-size: .68rem; font-style: italic; }
+  .nr-ontology__adder { display: flex; align-items: stretch; gap: .4rem; margin-top: .62rem; padding-top: .62rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-ontology__adder input, .nr-ontology__adder select { max-width: 14rem; }
+  .nr-ontology__adder select[multiple] { min-width: 14rem; }
+  .nr-ontology__adder button { align-self: flex-start; min-height: 2rem; padding: .34rem .58rem; border: 1px solid var(--selected-border, #1273d4); border-radius: .48rem; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); font-size: .65rem; font-weight: 750; }
+
+  .nr-lifecycle__rail { display: flex; align-items: stretch; gap: .72rem; overflow-x: auto; padding: .3rem .1rem .7rem; }
+  .nr-lifecycle__rail > span { position: relative; display: grid; flex: 0 0 8.7rem; align-content: center; gap: .14rem; min-height: 3.8rem; padding: .45rem .55rem; border: 1px solid var(--selected-border, #1273d4); border-radius: .58rem; background: var(--selected-bg, #e3f1ff); }
+  .nr-lifecycle__rail > span:not(:last-child)::after { content: '→'; position: absolute; right: -.58rem; top: 1.2rem; color: var(--text-muted, #5d6b7e); }
+  .nr-lifecycle__rail strong { color: var(--selected-text, #0d5296); font-size: .68rem; }
+  .nr-lifecycle__rail small { color: var(--text-muted, #5d6b7e); font-size: .56rem; }
+  .nr-lifecycle__rail select { margin-top: .18rem; }
+  .nr-lifecycle__rail button { position: absolute; top: .18rem; right: .18rem; width: 1.25rem; min-height: 1.25rem; border: 0; background: transparent; }
+  .nr-lifecycle__transitions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .48rem; margin-top: .6rem; }
+  .nr-lifecycle__transitions > article { display: grid; gap: .36rem; padding: .62rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .6rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-lifecycle__transitions article > header { display: flex; justify-content: space-between; gap: .5rem; }
+  .nr-lifecycle__transitions article > header code { color: var(--link-text, #0f62b8); font-size: .64rem; font-weight: 700; }
+  .nr-lifecycle__transitions article > header span { color: var(--text-muted, #5d6b7e); font-size: .6rem; }
+  .nr-lifecycle__transitions article > p { color: var(--text-muted, #5d6b7e); font-size: .68rem; line-height: 1.45; }
+  .nr-lifecycle__transitions article > footer { display: flex; flex-wrap: wrap; gap: .45rem; color: var(--text-muted, #5d6b7e); font-size: .58rem; }
+  .nr-lifecycle__transitions article > footer code { margin-left: .22rem; }
+  .nr-transition__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .38rem; }
+  .nr-transition__description { grid-column: 1 / -1; }
+  .nr-transition__grid > button { justify-self: start; }
+
+  .nr-ontology__relationships { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .48rem; }
+  .nr-ontology__relationships > article { display: grid; gap: .3rem; min-width: 0; padding: .62rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .6rem; background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__relationships article > header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .nr-ontology__relationships article > header strong { display: flex; min-width: 0; align-items: center; gap: .3rem; color: var(--text-strong, #111827); font-size: .68rem; }
+  .nr-ontology__relationships article > header i { color: var(--link-text, #0f62b8); font-style: normal; }
+  .nr-ontology__relationships article > header span, .nr-ontology__relationships article > span { padding: .16rem .32rem; border-radius: .3rem; background: var(--surface-bg, #fff); color: var(--text-muted, #5d6b7e); font-size: .58rem; }
+  .nr-ontology__relationships article > span.is-required { color: var(--status-info-text, #0b5497); }
+  .nr-ontology__relationships article > code { color: var(--text-muted, #5d6b7e); font-size: .56rem; }
+  .nr-ontology__relationships article > p { color: var(--text-muted, #5d6b7e); font-size: .68rem; line-height: 1.45; }
+  .nr-relationship__edit { display: grid; grid-template-columns: minmax(7rem, .5fr) minmax(7rem, .5fr); gap: .4rem; }
+  .nr-relationship__edit > label:last-child { grid-column: 1 / -1; }
+
+  .nr-ontology__issues { border-left: .25rem solid var(--status-warning-text, #7a5000); background: var(--status-warning-bg, #fff1cc); }
+  .nr-ontology__issues > strong { color: var(--status-warning-text, #7a5000); font-size: .72rem; }
+  .nr-ontology__issues p { display: flex; gap: .4rem; margin-top: .35rem; color: var(--text-default, #2f3a48); font-size: .68rem; line-height: 1.4; }
+  .nr-ontology__issues p > span { flex: none; font-weight: 800; }
+  .nr-ontology__issues p.error > span { color: var(--status-error-text, #ab2328); }
+
+  .nr-ontology__graph-layout { display: grid; grid-template-columns: minmax(0, 1fr) 15.5rem; min-height: 42rem; background: var(--page-bg, #f8fafc); }
+  .nr-ontology__graph { min-width: 0; min-height: 42rem; background: var(--surface-bg, #fff); }
+  .nr-ontology__graph-layout > aside { display: grid; align-content: start; gap: .45rem; padding: 1rem; border-left: 1px solid var(--border-subtle, #e4e9f0); background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-ontology__graph-layout > aside h2 { color: var(--text-strong, #111827); font-size: 1rem; }
+  .nr-ontology__graph-layout > aside code { color: var(--link-text, #0f62b8); font-size: .64rem; }
+  .nr-ontology__graph-layout > aside p { color: var(--text-muted, #5d6b7e); font-size: .7rem; line-height: 1.5; }
+  .nr-ontology__graph-layout > aside dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3rem; margin-top: .35rem; }
+  .nr-ontology__graph-layout > aside dl div { padding: .45rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .48rem; background: var(--surface-bg, #fff); text-align: center; }
+  .nr-ontology__graph-layout > aside dt { color: var(--text-muted, #5d6b7e); font-size: .52rem; }
+  .nr-ontology__graph-layout > aside dd { margin-top: .16rem; color: var(--text-strong, #111827); font-size: .88rem; font-weight: 750; }
+  .nr-ontology__graph-layout > aside button { margin-top: .35rem; padding: .42rem .62rem; border: 1px solid var(--selected-border, #1273d4); border-radius: .5rem; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); font-size: .68rem; font-weight: 750; }
+
+  .nr-ontology__edit-footer { position: sticky; z-index: 4; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 1rem; border-top: 1px solid var(--border-default, #cfd8e3); background: color-mix(in srgb, var(--surface-bg, #fff) 94%, transparent); box-shadow: 0 -.45rem 1.3rem color-mix(in srgb, var(--text-strong, #111827) 8%, transparent); backdrop-filter: blur(.5rem); }
+  .nr-ontology__edit-footer > span { color: var(--text-muted, #5d6b7e); font-size: .67rem; }
+  .nr-ontology__edit-footer > div { display: flex; gap: .45rem; }
+  .nr-ontology__edit-footer button { min-height: 2.1rem; padding: .38rem .68rem; border: 1px solid var(--border-default, #cfd8e3); border-radius: .5rem; background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); font-size: .68rem; font-weight: 750; }
+  .nr-ontology__edit-footer button.is-primary { border-color: var(--button-primary-bg, #126ac2); background: var(--button-primary-bg, #126ac2); color: var(--button-primary-text, #fff); }
+  .nr-ontology__edit-footer button:disabled { cursor: not-allowed; opacity: .45; }
+
+  .nr-ontology__empty { display: grid; place-items: center; gap: .4rem; min-height: 22rem; padding: 2rem; text-align: center; }
+  .nr-ontology__empty h2 { color: var(--text-strong, #111827); font-size: 1.1rem; }
+  .nr-ontology__empty p { color: var(--text-muted, #5d6b7e); font-size: .75rem; }
+
+  @media (max-width: 960px) {
+    .nr-ontology__fields, .nr-ontology__two-columns, .nr-lifecycle__transitions, .nr-ontology__relationships { grid-template-columns: 1fr; }
+    .nr-ontology__identity dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .nr-ontology__level1-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 760px) {
+    .nr-ontology__hero, .nr-ontology__workbench, .nr-ontology__graph-layout { grid-template-columns: 1fr; }
+    .nr-ontology__hero { display: grid; }
+    .nr-ontology__actions { flex-wrap: wrap; }
+    .nr-ontology__workbench { display: grid; }
+    .nr-ontology__workbench > aside { grid-template-columns: repeat(2, minmax(0, 1fr)); border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
+    .nr-ontology__graph-layout > aside { border-top: 1px solid var(--border-subtle, #e4e9f0); border-left: 0; }
+    .nr-ontology__graph, .nr-ontology__graph-layout { min-height: 32rem; }
+    .nr-ontology__summary { overflow-x: auto; }
+    .nr-ontology__summary > span { min-width: 8rem; }
+    .nr-field__edit-grid, .nr-transition__grid, .nr-relationship__edit { grid-template-columns: 1fr; }
+    .nr-field__description, .nr-transition__description, .nr-relationship__edit > label:last-child { grid-column: auto; }
+  }
+}

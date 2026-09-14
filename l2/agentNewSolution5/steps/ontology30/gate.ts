@@ -1,12 +1,14 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/ontology30/gate.ts" enhancement="_blank"/>
 
 import {
-  entityIdField,
-  level1FieldIds,
-  level1IsSubtype,
-  resolvableFieldIds,
-  resolvableFieldOf,
-} from '/_102035_/l2/solution/lib.js';
+  ns4EntityIdField as entityIdField,
+  ns4ResolvableFieldIds as resolvableFieldIds,
+  ns4ResolvableFieldOf as resolvableFieldOf,
+} from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
+import {
+  ns4Level1FieldIds as level1FieldIds,
+  ns4Level1IsSubtype as level1IsSubtype,
+} from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import type {
   Ns5JourneyArtifact,
