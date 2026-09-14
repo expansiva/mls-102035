@@ -208,6 +208,8 @@ export interface Ns5OntologyEntityArtifact {
   displayField: string;
   /** Namespace-only on mdm; identity lives in storage.idField. */
   fields: Ns5OntologyField[];
+  /** kind mdm only: level-1 fields this role uses (selection, tightened domain); stores nothing in the module. Readers: f2_04b screen, access60 (ns5_35), masters. */
+  fieldsBase?: Ns5OntologyField[];
   /** Composite uniqueness; fieldIds of this entity, never idField. finalize80 I9. */
   uniqueKeys?: string[][];
   /** Calculated values; typed JSON column; rules may cite details.<name>. */
