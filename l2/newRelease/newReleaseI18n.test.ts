@@ -26,10 +26,19 @@ test('translator falls through bundles, interpolates and exposes a missing key',
 });
 
 test('every widget keeps visible copy in external message bundles', () => {
-  const widgetSources = ['widgets/index.ts', 'widgets/general.ts', 'widgets/ontology.ts']
+  const widgetSources = [
+    'widgets/index.ts',
+    'widgets/general.ts',
+    'widgets/journeys.ts',
+    'widgets/ontology.ts',
+    'widgets/access.ts',
+    'widgets/rules.ts',
+    'widgets/workflows.ts',
+    'widgets/integration.ts',
+  ]
     .map(path => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/^\/\/\/.*$/gm, ''));
   for (const source of widgetSources) {
-    assert.doesNotMatch(source, /(?<!=)>[ \t]*[A-Za-zÀ-ÿ][^<${}\n]*</u);
+    assert.doesNotMatch(source, /(?<!=)>[ \t]*\p{L}[^<${}\n]*</u);
   }
   const pt = JSON.parse(readFileSync(new URL('i18n/pt-BR.json', import.meta.url), 'utf8'));
   const en = JSON.parse(readFileSync(new URL('i18n/en-US.json', import.meta.url), 'utf8'));

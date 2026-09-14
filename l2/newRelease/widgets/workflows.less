@@ -1,0 +1,141 @@
+/// <mls fileReference="_102035_/l2/newRelease/widgets/workflows.less" enhancement="enhancementStyle" />
+
+new-release--widgets--workflows-102035 {
+  display: block;
+
+  * { box-sizing: border-box; }
+  h2, h3, h4, p, dl, dd { margin: 0; }
+  button, input, select, textarea { font: inherit; }
+  button { cursor: pointer; }
+  code { font-family: var(--font-family-mono, ui-monospace, monospace); }
+  input, select, textarea { width: 100%; border: 1px solid var(--border-default, #cfd8e3); border-radius: .55rem; background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); }
+  input, select { min-height: 2.25rem; padding: .42rem .58rem; }
+  textarea { min-height: 4.8rem; padding: .55rem .62rem; resize: vertical; line-height: 1.45; }
+  select[multiple] { min-height: 6.5rem; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { border-color: var(--focus-border, #1273d4); outline: 2px solid color-mix(in srgb, var(--focus-border, #1273d4) 22%, transparent); outline-offset: 1px; }
+
+  .nr-workflows { display: grid; min-width: 0; color: var(--text-default, #2f3a48); }
+  .nr-workflows__hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; padding: 1.2rem 1.25rem 1rem; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: radial-gradient(circle at 80% -50%, color-mix(in srgb, var(--chart-series-3, #8250df) 20%, transparent), transparent 44%), linear-gradient(135deg, var(--surface-bg, #fff), color-mix(in srgb, var(--selected-bg, #e3f1ff) 42%, var(--surface-bg, #fff))); }
+  .nr-workflows__hero > div > span, .nr-workflows__catalog > header > span, .nr-workflows__detail > header span, .nr-workflows__trigger span, .nr-workflows__flow > header span, .nr-workflows__decisions > header span { color: var(--link-text, #0f62b8); font-size: .62rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .nr-workflows__hero h2 { margin-top: .28rem; color: var(--text-strong, #111827); font-size: 1.5rem; letter-spacing: -.03em; }
+  .nr-workflows__hero p { max-width: 48rem; margin-top: .42rem; color: var(--text-muted, #5d6b7e); font-size: .82rem; line-height: 1.55; }
+  .nr-workflows__hero small { display: inline-flex; margin-top: .55rem; padding: .22rem .42rem; border-radius: 999px; background: var(--status-success-bg, #e2f5db); color: var(--status-success-text, #25640e); font-size: .56rem; font-weight: 750; }
+  .nr-workflows__hero small.schema-v1 { background: var(--status-warning-bg, #fff1c2); color: var(--status-warning-text, #7a4b00); }
+  .nr-workflows__hero dl { display: flex; overflow: hidden; border: 1px solid color-mix(in srgb, var(--chart-series-3, #8250df) 25%, var(--border-subtle, #e4e9f0)); border-radius: .82rem; background: var(--surface-bg, #fff); }
+  .nr-workflows__hero dl div { display: grid; min-width: 5rem; place-items: center; padding: .55rem .75rem; }
+  .nr-workflows__hero dl div + div { border-left: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-workflows__hero dt { color: var(--text-muted, #5d6b7e); font-size: .54rem; font-weight: 750; text-transform: uppercase; }
+  .nr-workflows__hero dd { order: -1; color: var(--text-strong, #111827); font-size: 1.2rem; font-weight: 800; }
+
+  .nr-workflows__workspace { display: grid; grid-template-columns: minmax(15rem, .72fr) minmax(0, 2.28fr); gap: 1rem; align-items: start; padding: 1rem 1.25rem; }
+  .nr-workflows__catalog, .nr-workflows__detail, .nr-workflows__empty-detail { overflow: hidden; min-width: 0; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .85rem; background: var(--surface-bg, #fff); }
+  .nr-workflows__catalog > header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .62rem .68rem; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-workflows__catalog > header button, .nr-workflows__empty-detail button { border: 0; border-radius: .48rem; padding: .36rem .52rem; background: var(--action-primary-bg, #126fc2); color: var(--action-primary-text, #fff); font-size: .61rem; font-weight: 750; }
+  .nr-workflows__catalog > button { display: grid; width: 100%; grid-template-columns: 1.8rem minmax(0, 1fr) auto; gap: .5rem; align-items: center; padding: .68rem; border: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: transparent; color: var(--text-default, #2f3a48); text-align: left; }
+  .nr-workflows__catalog > button:hover { background: color-mix(in srgb, var(--selected-bg, #e3f1ff) 45%, transparent); }
+  .nr-workflows__catalog > button.is-active { border-left: .2rem solid var(--chart-series-3, #8250df); background: var(--selected-bg, #e3f1ff); }
+  .nr-workflows__catalog button > i { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: .52rem; background: color-mix(in srgb, var(--chart-series-3, #8250df) 14%, var(--surface-bg, #fff)); color: var(--chart-series-3, #8250df); }
+  .nr-workflows__catalog svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+  .nr-workflows__catalog button > span { display: grid; min-width: 0; gap: .15rem; }
+  .nr-workflows__catalog button strong { overflow: hidden; color: var(--text-strong, #111827); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-workflows__catalog button small { overflow: hidden; color: var(--text-muted, #5d6b7e); font-size: .57rem; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-workflows__catalog button b { display: grid; min-width: 1.45rem; height: 1.45rem; place-items: center; border-radius: 999px; background: var(--surface-alt-bg, #f5f7fa); font-size: .57rem; }
+  .nr-workflows__catalog > p { padding: 1.2rem .75rem; color: var(--text-muted, #5d6b7e); font-size: .68rem; text-align: center; }
+
+  .nr-workflows__detail { display: grid; gap: .8rem; padding: .9rem; }
+  .nr-workflows__detail > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .nr-workflows__detail > header h3 { margin-top: .22rem; color: var(--text-strong, #111827); font-size: 1.05rem; }
+  .nr-workflows__detail > header code { display: block; margin-top: .2rem; color: var(--text-muted, #5d6b7e); font-size: .56rem; }
+  .nr-button, .nr-danger { min-height: 2.1rem; flex: 0 0 auto; padding: .4rem .68rem; border: 1px solid var(--border-default, #cfd8e3); border-radius: .55rem; background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); font-size: .66rem; font-weight: 750; }
+  .nr-danger { border-color: color-mix(in srgb, var(--status-error-text, #ab2328) 38%, var(--border-default, #cfd8e3)); color: var(--status-error-text, #ab2328); }
+  .nr-workflows__title-input { min-width: min(30rem, 48vw); color: var(--text-strong, #111827); font-size: 1rem; font-weight: 750; }
+  .nr-workflows__process-description { color: var(--text-muted, #5d6b7e); font-size: .75rem; line-height: 1.55; }
+  .nr-workflows__description { display: grid; gap: .28rem; }
+  .nr-workflows__description > span, .nr-workflows__task-form label > span, .nr-workflows__trigger label > span { color: var(--text-muted, #5d6b7e); font-size: .58rem; font-weight: 750; }
+  .nr-workflows__trigger { display: grid; grid-template-columns: 2.35rem minmax(0, 1fr); gap: .65rem; align-items: center; padding: .68rem; border: 1px solid color-mix(in srgb, var(--chart-series-3, #8250df) 27%, var(--border-subtle, #e4e9f0)); border-radius: .7rem; background: linear-gradient(135deg, color-mix(in srgb, var(--chart-series-3, #8250df) 10%, var(--surface-bg, #fff)), var(--surface-bg, #fff)); }
+  .nr-workflows__trigger > i { width: 2.35rem; height: 2.35rem; border-radius: .65rem; background: var(--chart-series-3, #8250df); box-shadow: inset 0 0 0 .65rem color-mix(in srgb, var(--surface-bg, #fff) 78%, transparent); }
+  .nr-workflows__trigger > div { display: grid; gap: .12rem; }
+  .nr-workflows__trigger strong { color: var(--text-strong, #111827); font-size: .72rem; }
+  .nr-workflows__trigger code { color: var(--text-muted, #5d6b7e); font-size: .59rem; }
+  .nr-workflows__trigger.is-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+  .nr-workflows__trigger.is-edit > div, .nr-workflows__trigger.is-edit > label { display: grid; gap: .28rem; }
+
+  .nr-workflows__flow { overflow: hidden; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .75rem; }
+  .nr-workflows__flow > header, .nr-workflows__decisions > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding: .62rem .72rem; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: var(--surface-alt-bg, #f5f7fa); }
+  .nr-workflows__flow > header p, .nr-workflows__decisions > header p { margin-top: .18rem; color: var(--text-muted, #5d6b7e); font-size: .6rem; }
+  .nr-workflows__flow > header > strong, .nr-workflows__decisions > header > strong { color: var(--text-muted, #5d6b7e); font-size: .6rem; }
+  .nr-workflows__flow > div { display: flex; gap: .65rem; overflow-x: auto; align-items: stretch; padding: .78rem; }
+  .nr-workflows__task { position: relative; display: grid; min-width: 13.5rem; max-width: 17rem; flex: 1 0 13.5rem; gap: .5rem; padding: .7rem; border: 1px solid var(--border-subtle, #e4e9f0); border-top: .2rem solid var(--chart-series-1, #1273d4); border-radius: .68rem; background: var(--surface-bg, #fff); box-shadow: 0 .2rem .75rem color-mix(in srgb, var(--text-strong, #111827) 6%, transparent); }
+  .nr-workflows__task.kind-mechanical, .nr-workflows__task.kind-system { border-top-color: var(--chart-series-2, #0c8f77); }
+  .nr-workflows__task.kind-llm { border-top-color: var(--chart-series-3, #8250df); }
+  .nr-workflows__task.kind-wait { border-top-color: var(--chart-series-4, #d17a00); }
+  .nr-workflows__task:not(:last-child)::after { position: absolute; top: 50%; right: -.58rem; width: .52rem; border-top: 1px solid var(--border-default, #cfd8e3); content: ''; }
+  .nr-workflows__task > header { display: grid; grid-template-columns: 1.9rem minmax(0, 1fr) auto; gap: .45rem; align-items: center; }
+  .nr-workflows__task > header i { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: .52rem; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); }
+  .nr-workflows__task > header svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+  .nr-workflows__task > header > div { display: grid; min-width: 0; gap: .06rem; }
+  .nr-workflows__task > header span { color: var(--link-text, #0f62b8); font-size: .5rem; font-weight: 800; text-transform: uppercase; }
+  .nr-workflows__task > header code { overflow: hidden; color: var(--text-strong, #111827); font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-workflows__task > header b { padding: .18rem .32rem; border-radius: 999px; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-muted, #5d6b7e); font-size: .49rem; }
+  .nr-workflows__task > header button { width: 1.55rem; height: 1.55rem; border: 0; border-radius: .4rem; background: var(--status-error-bg, #fde8e9); color: var(--status-error-text, #ab2328); }
+  .nr-workflows__task h4 { color: var(--text-strong, #111827); font-size: .7rem; overflow-wrap: anywhere; }
+  .nr-workflows__task > p { color: var(--text-muted, #5d6b7e); font-size: .62rem; line-height: 1.45; }
+  .nr-workflows__task-meta { display: flex; flex-wrap: wrap; gap: .28rem; }
+  .nr-workflows__task-meta span, .nr-workflows__task-meta code { padding: .18rem .3rem; border-radius: .35rem; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-muted, #5d6b7e); font-size: .51rem; }
+  .nr-workflows__task > footer { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; padding-top: .45rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-workflows__task > footer span { color: var(--text-muted, #5d6b7e); font-size: .5rem; font-weight: 750; text-transform: uppercase; }
+  .nr-workflows__task > footer code, .nr-workflows__task > footer strong { padding: .16rem .28rem; border-radius: .32rem; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); font-size: .49rem; }
+  .nr-workflows__task-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+  .nr-workflows__task-form label { display: grid; gap: .22rem; }
+  .nr-workflows__task-form .is-wide { grid-column: 1 / -1; }
+  .nr-workflows__task-form textarea { min-height: 4.2rem; }
+  .nr-workflows__add-task { min-width: 10rem; min-height: 7rem; align-self: center; border: 1px dashed var(--selected-border, #1273d4); border-radius: .68rem; background: color-mix(in srgb, var(--selected-bg, #e3f1ff) 35%, transparent); color: var(--selected-text, #0d5296); font-size: .68rem; font-weight: 750; }
+
+  .nr-workflows__decisions { margin: 0 1.25rem 1.25rem; overflow: hidden; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .8rem; }
+  .nr-workflows__decisions > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; padding: .65rem; }
+  .nr-workflows__decisions article { display: grid; grid-template-columns: .55rem minmax(0, 1fr) auto; gap: .45rem; align-items: center; padding: .5rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .58rem; background: var(--surface-bg, #fff); }
+  .nr-workflows__decisions article > i { width: .5rem; height: .5rem; border-radius: 999px; background: var(--text-muted, #5d6b7e); }
+  .nr-workflows__decisions article.is-in > i { background: var(--status-success-text, #25640e); }
+  .nr-workflows__decisions article > div { display: grid; min-width: 0; gap: .08rem; }
+  .nr-workflows__decisions article strong { overflow: hidden; color: var(--text-strong, #111827); font-size: .61rem; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-workflows__decisions article code { color: var(--text-muted, #5d6b7e); font-size: .49rem; }
+  .nr-workflows__decisions article > span { padding: .18rem .32rem; border-radius: 999px; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-muted, #5d6b7e); font-size: .49rem; }
+  .nr-workflows__decisions article.is-in > span { background: var(--status-success-bg, #e2f5db); color: var(--status-success-text, #25640e); }
+
+  .nr-workflows__issues { display: grid; gap: .38rem; padding: .65rem .72rem; border: 1px solid color-mix(in srgb, var(--status-warning-text, #7a4b00) 28%, var(--border-subtle, #e4e9f0)); border-radius: .65rem; background: var(--status-warning-bg, #fff1c2); }
+  .nr-workflows__check { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .65rem; align-items: center; padding: .58rem .68rem; border: 1px solid color-mix(in srgb, var(--status-success-text, #25640e) 24%, var(--border-subtle, #e4e9f0)); border-radius: .65rem; background: color-mix(in srgb, var(--status-success-bg, #e2f5db) 58%, var(--surface-bg, #fff)); }
+  .nr-workflows__check > div { display: grid; gap: .08rem; }
+  .nr-workflows__check span { color: var(--status-success-text, #25640e); font-size: .5rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .nr-workflows__check strong { color: var(--text-strong, #111827); font-size: .63rem; }
+  .nr-workflows__check p, .nr-workflows__check small { color: var(--status-success-text, #25640e); font-size: .56rem; }
+  .nr-workflows__check.is-warned { border-color: color-mix(in srgb, var(--status-warning-text, #7a4b00) 26%, var(--border-subtle, #e4e9f0)); background: var(--status-warning-bg, #fff1c2); }
+  .nr-workflows__check.is-failed { border-color: color-mix(in srgb, var(--status-error-text, #ab2328) 26%, var(--border-subtle, #e4e9f0)); background: var(--status-error-bg, #fde8e9); }
+  .nr-workflows__issues > strong, .nr-workflows__issues > p { font-size: .64rem; }
+  .nr-workflows__issues > div { display: grid; grid-template-columns: auto 1fr; gap: .42rem; }
+  .nr-workflows__issues code { font-size: .52rem; font-weight: 700; }
+  .nr-workflows__issues p { font-size: .61rem; }
+  .nr-workflows__issues .is-error { color: var(--status-error-text, #ab2328); }
+  .nr-workflows__empty, .nr-workflows__unknown, .nr-workflows__empty-detail { display: grid; min-height: 18rem; place-items: center; align-content: center; gap: .42rem; padding: 2rem; text-align: center; }
+  .nr-workflows__empty h2, .nr-workflows__unknown h2, .nr-workflows__empty-detail h3 { color: var(--text-strong, #111827); font-size: 1rem; }
+  .nr-workflows__empty p, .nr-workflows__unknown p, .nr-workflows__empty-detail p { max-width: 32rem; color: var(--text-muted, #5d6b7e); font-size: .68rem; }
+  .nr-workflows__unknown pre { width: 100%; max-height: 24rem; overflow: auto; padding: .75rem; border-radius: .65rem; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-default, #2f3a48); font-size: .58rem; text-align: left; }
+  .nr-workflows__edit-footer { position: sticky; z-index: 5; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .72rem 1.25rem; border-top: 1px solid var(--border-default, #cfd8e3); background: color-mix(in srgb, var(--surface-bg, #fff) 94%, transparent); box-shadow: 0 -.5rem 1.4rem color-mix(in srgb, var(--text-strong, #111827) 8%, transparent); backdrop-filter: blur(10px); }
+  .nr-workflows__edit-footer > span { color: var(--text-muted, #5d6b7e); font-size: .68rem; }
+  .nr-workflows__edit-footer > div { display: flex; gap: .5rem; }
+  .nr-workflows__edit-footer button { min-height: 2.15rem; padding: .42rem .72rem; border: 1px solid var(--border-default, #cfd8e3); border-radius: .55rem; background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); font-size: .68rem; font-weight: 750; }
+  .nr-workflows__edit-footer button.is-primary { border-color: var(--action-primary-bg, #126fc2); background: var(--action-primary-bg, #126fc2); color: var(--action-primary-text, #fff); }
+  .nr-workflows__edit-footer button:disabled { cursor: not-allowed; opacity: .48; }
+
+  @media (max-width: 1120px) {
+    .nr-workflows__workspace { grid-template-columns: 1fr; }
+    .nr-workflows__decisions > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .nr-workflows__hero, .nr-workflows__detail > header, .nr-workflows__edit-footer { align-items: stretch; flex-direction: column; }
+    .nr-workflows__hero dl { align-self: flex-start; }
+    .nr-workflows__decisions > div, .nr-workflows__trigger.is-edit, .nr-workflows__task-form { grid-template-columns: 1fr; }
+    .nr-workflows__task-form .is-wide { grid-column: auto; }
+    .nr-workflows__title-input { min-width: 0; }
+    .nr-workflows__edit-footer > div { justify-content: flex-end; }
+  }
+}
