@@ -15,13 +15,14 @@ new-release--widgets--integration-102035 {
   input:focus, select:focus, textarea:focus, button:focus-visible, summary:focus-visible { border-color: var(--focus-border, #1273d4); outline: 2px solid color-mix(in srgb, var(--focus-border, #1273d4) 22%, transparent); outline-offset: 1px; }
 
   .nr-integration { display: grid; min-width: 0; color: var(--text-default, #2f3a48); }
-  .nr-integration__hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; padding: 1.2rem 1.25rem 1rem; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: radial-gradient(circle at 82% -45%, color-mix(in srgb, var(--chart-series-5, #168aad) 22%, transparent), transparent 42%), linear-gradient(135deg, var(--surface-bg, #fff), color-mix(in srgb, var(--selected-bg, #e3f1ff) 40%, var(--surface-bg, #fff))); }
+  .nr-integration__hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1.5rem; padding: 1.2rem 1.25rem 1rem; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: radial-gradient(circle at 82% -45%, color-mix(in srgb, var(--chart-series-5, #168aad) 22%, transparent), transparent 42%), linear-gradient(135deg, var(--surface-bg, #fff), color-mix(in srgb, var(--selected-bg, #e3f1ff) 40%, var(--surface-bg, #fff))); }
+  .nr-integration__hero > div { min-width: 16rem; flex: 1 1 22rem; }
   .nr-integration__hero > div > span, .nr-integration__lane > header span, .nr-integration__plugins > header span, .nr-integration__requests > header span, .nr-integration__item > header span, .nr-integration__plugin > header span { color: var(--link-text, #0f62b8); font-size: .62rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
   .nr-integration__hero h2 { margin-top: .28rem; color: var(--text-strong, #111827); font-size: 1.5rem; letter-spacing: -.03em; }
   .nr-integration__hero p { max-width: 48rem; margin-top: .42rem; color: var(--text-muted, #5d6b7e); font-size: .82rem; line-height: 1.55; }
   .nr-integration__hero small { display: inline-flex; margin-top: .55rem; padding: .22rem .42rem; border-radius: 999px; background: var(--status-success-bg, #e2f5db); color: var(--status-success-text, #25640e); font-size: .56rem; font-weight: 750; }
   .nr-integration__hero small.schema-v1 { background: var(--status-warning-bg, #fff1c2); color: var(--status-warning-text, #7a4b00); }
-  .nr-integration__hero dl { display: flex; overflow: hidden; border: 1px solid color-mix(in srgb, var(--chart-series-5, #168aad) 26%, var(--border-subtle, #e4e9f0)); border-radius: .82rem; background: var(--surface-bg, #fff); }
+  .nr-integration__hero dl { display: flex; max-width: 100%; flex: 0 1 auto; overflow: hidden; border: 1px solid color-mix(in srgb, var(--chart-series-5, #168aad) 26%, var(--border-subtle, #e4e9f0)); border-radius: .82rem; background: var(--surface-bg, #fff); }
   .nr-integration__hero dl div { display: grid; min-width: 5rem; place-items: center; padding: .55rem .75rem; }
   .nr-integration__hero dl div + div { border-left: 1px solid var(--border-subtle, #e4e9f0); }
   .nr-integration__hero dt { color: var(--text-muted, #5d6b7e); font-size: .54rem; font-weight: 750; text-transform: uppercase; }
