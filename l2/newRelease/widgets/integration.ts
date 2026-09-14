@@ -3,10 +3,8 @@
 import { html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-import { NS5_PLUGIN_IDS } from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
-  NS5_INTEGRATION_REQUEST_SCHEMA_VERSION,
   type Ns5IntegrationArtifact,
   type Ns5IntegrationItem,
   type Ns5IntegrationPlugin,
@@ -35,6 +33,11 @@ import {
 
 interface IntegrationIssueView { severity: 'error' | 'warning'; code: string; message: string; }
 type IntegrationLane = 'inbound' | 'outbound';
+
+// Keep the Studio widget independent from the generator/runtime graph: solution/types.js
+// re-exports level-1 values that are intentionally unavailable in the browser.
+const NS5_INTEGRATION_REQUEST_SCHEMA_VERSION = '2026-09-12-ns5-integration-request-v1';
+const NS5_PLUGIN_IDS: readonly string[] = ['stripe', 'cardPayment'];
 
 @customElement('new-release--widgets--integration-102035')
 export class NewReleaseIntegration102035 extends StateLitElement implements NewReleaseEditableTab<Ns5IntegrationArtifact | null> {
