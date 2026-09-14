@@ -13,6 +13,12 @@ export const ordenServicioEntityCliente = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nombre completo", "type": "string", "required": true, "description": "Nombre completo del cliente." },
+    { "fieldId": "docType", "title": "Tipo de documento", "type": "string", "required": true, "enum": [{ "value": "NationalId", "title": "Documento de identidad" }], "description": "Tipo de documento de identificación del cliente." },
+    { "fieldId": "docId", "title": "Documento de identidad", "type": "string", "required": true, "description": "Número del documento de identidad del cliente." },
+    { "fieldId": "contacts", "title": "Contactos", "type": "json", "required": true, "description": "Contactos del cliente (teléfono, correo electrónico)." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

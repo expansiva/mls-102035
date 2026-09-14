@@ -57,6 +57,12 @@ export const locacaoEquipamentosEntityEquipamento = {
       "description": "Situação operacional atual do equipamento para fins de locação."
     }
   ],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome", "type": "string", "required": true, "description": "Nome do equipamento." },
+    { "fieldId": "serialNumber", "title": "Número de série", "type": "string", "required": false, "description": "Número de série do equipamento." },
+    { "fieldId": "brand", "title": "Marca", "type": "string", "required": false, "description": "Marca do equipamento." },
+    { "fieldId": "model", "title": "Modelo", "type": "string", "required": false, "description": "Modelo do equipamento." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

@@ -13,6 +13,12 @@ export const ordenServicioEntityAparato = {
   "mdmSubtype": "AssetEquipment",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nombre", "type": "string", "required": true, "description": "Nombre del aparato." },
+    { "fieldId": "serialNumber", "title": "Número de serie", "type": "string", "required": false, "description": "Número de serie del aparato." },
+    { "fieldId": "brand", "title": "Marca", "type": "string", "required": false, "description": "Marca del aparato." },
+    { "fieldId": "model", "title": "Modelo", "type": "string", "required": false, "description": "Modelo del aparato." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

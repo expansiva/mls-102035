@@ -31,6 +31,21 @@ export const manutencaoFrotaEntityVeiculo = {
       "description": "Referência ao motorista atualmente atribuído para conduzir o veículo."
     }
   ],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome", "type": "string", "required": true, "description": "Nome ou apelido do veículo." },
+    { "fieldId": "plate", "title": "Placa", "type": "string", "required": true, "description": "Placa do veículo." },
+    { "fieldId": "brand", "title": "Marca", "type": "string", "required": false, "description": "Marca do veículo." },
+    { "fieldId": "model", "title": "Modelo", "type": "string", "required": false, "description": "Modelo do veículo." },
+    { "fieldId": "year", "title": "Ano", "type": "number", "required": false, "description": "Ano de fabricação do veículo." },
+    { "fieldId": "fuelType", "title": "Tipo de combustível", "type": "string", "required": false, "enum": [
+      { "value": "Gasoline", "title": "Gasolina" },
+      { "value": "Diesel", "title": "Diesel" },
+      { "value": "Electric", "title": "Elétrico" },
+      { "value": "Hybrid", "title": "Híbrido" },
+      { "value": "Flex", "title": "Flex" },
+      { "value": "Other", "title": "Outro" }
+    ], "description": "Tipo de combustível utilizado pelo veículo." }
+  ],
   "details": {
     "preventiveMaintenanceOverdue": {
       "type": "boolean",

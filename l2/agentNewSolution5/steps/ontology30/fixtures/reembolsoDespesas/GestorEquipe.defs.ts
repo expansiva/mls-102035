@@ -13,6 +13,9 @@ export const reembolsoDespesasEntityGestorEquipe = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome completo", "type": "string", "required": true, "description": "Nome completo do gestor da equipe." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

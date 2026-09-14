@@ -13,6 +13,13 @@ export const agendaClinicaEntityPaciente = {
   "mdmSubtype": "Person",
   "displayField": "name",
   "fields": [],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome completo", "type": "string", "required": true, "description": "Nome completo do paciente." },
+    { "fieldId": "docType", "title": "Tipo de documento", "type": "string", "required": true, "enum": [{ "value": "CPF", "title": "CPF" }], "description": "Tipo de documento de identificação do paciente." },
+    { "fieldId": "docId", "title": "CPF", "type": "string", "required": true, "description": "Número do CPF do paciente." },
+    { "fieldId": "birthDate", "title": "Data de nascimento", "type": "date", "required": true, "description": "Data de nascimento do paciente." },
+    { "fieldId": "contacts", "title": "Contatos", "type": "json", "required": true, "description": "Contatos do paciente (telefone, e-mail) para comunicação sobre consultas." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

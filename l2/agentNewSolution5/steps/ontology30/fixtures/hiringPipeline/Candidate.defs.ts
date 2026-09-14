@@ -34,6 +34,11 @@ export const hiringPipelineEntityCandidate = {
       "description": "Source through which the candidate was identified."
     }
   ],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Full Name", "type": "string", "required": true, "description": "Full name of the candidate." },
+    { "fieldId": "contacts", "title": "Contacts", "type": "json", "required": true, "description": "Candidate's contacts (phone, e-mail)." },
+    { "fieldId": "occupation", "title": "Current Occupation", "type": "string", "required": false, "description": "Candidate's current or most recent occupation." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

@@ -21,6 +21,11 @@ export const comandaRestauranteEntityItemCardapio = {
       "description": "Preço de venda atual do item no cardápio."
     }
   ],
+  "fieldsBase": [
+    { "fieldId": "name", "title": "Nome", "type": "string", "required": true, "description": "Nome do item do cardápio." },
+    { "fieldId": "category", "title": "Categoria", "type": "string", "required": true, "description": "Categoria do item no cardápio (ex.: entrada, prato principal, bebida)." },
+    { "fieldId": "unitOfMeasure", "title": "Unidade de medida", "type": "string", "required": true, "description": "Unidade de medida do item (ex.: unidade, porção, ml)." }
+  ],
   "lifecycleStates": [],
   "transitions": [],
   "storage": {

@@ -26,6 +26,7 @@ test('new release index exposes the shared edit seam and completed functional ta
   assert.match(index, /new-release--widgets--ontology-102035/);
   assert.match(index, /new-release--widgets--journeys-102035/);
   assert.match(index, /new-release--widgets--access-102035/);
+  assert.match(index, /new-release--widgets--rules-102035/);
   assert.match(contract, /interface NewReleaseEditableTab/);
   assert.match(contract, /'journeys'/);
   assert.match(contract, /'access'/);

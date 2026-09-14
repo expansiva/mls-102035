@@ -35,6 +35,7 @@ import '/_102035_/l2/newRelease/widgets/general.js';
 import '/_102035_/l2/newRelease/widgets/access.js';
 import '/_102035_/l2/newRelease/widgets/journeys.js';
 import '/_102035_/l2/newRelease/widgets/ontology.js';
+import '/_102035_/l2/newRelease/widgets/rules.js';
 
 type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration';
 
@@ -337,6 +338,17 @@ export class NewReleaseIndex102035 extends StateLitElement {
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--access-102035>
+      `;
+    }
+    if (this.activeTab === 'rules') {
+      return html`
+        <new-release--widgets--rules-102035
+          .project=${this.project}
+          .moduleName=${this.moduleName}
+          .version=${this.version}
+          .data=${this.data}
+          .t=${this.t}
+        ></new-release--widgets--rules-102035>
       `;
     }
     return html`
