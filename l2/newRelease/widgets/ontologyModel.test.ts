@@ -5,6 +5,8 @@ import test from 'node:test';
 import type { Ns5OntologyEntityArtifact, Ns5OntologyIndexArtifact } from '../../solution/types.js';
 import {
   buildOntologyGraph,
+  ontologyFieldCounts,
+  ontologyResolvableFields,
   removeOntologyState,
   sanitizeOntologyConstraints,
   updateOntologyField,
@@ -42,11 +44,27 @@ const index: Ns5OntologyIndexArtifact = {
 };
 
 test('ontology graph derives one node per entity and one cardinality-labelled link', () => {
-  const graph = buildOntologyGraph(index, [entity('Order', 'core'), entity('Supplier', 'mdm')], ['#1', '#2']);
+  const supplier = {
+    ...entity('Supplier', 'mdm'),
+    displayField: 'name',
+    fieldsBase: [{ fieldId: 'name', title: 'Name', type: 'string', required: true, description: 'Name' }],
+  } satisfies Ns5OntologyEntityArtifact;
+  const graph = buildOntologyGraph(index, [entity('Order', 'core'), supplier], ['#1', '#2']);
   assert.deepEqual(graph.nodes.map(node => node.id), ['Order', 'Supplier']);
   assert.equal(graph.nodes[1].category, 1);
   assert.deepEqual(graph.links.map(link => [link.source, link.target, link.value]), [['Order', 'Supplier', 'N:1']]);
   assert.equal(graph.categories[1].name, 'mdm');
+  assert.deepEqual(graph.nodes[1].baseFields, ['name']);
+  assert.equal(graph.nodes[1].displayField, 'name');
+});
+
+test('field helpers keep namespace and master-data fields separate while resolving both', () => {
+  const supplier = {
+    ...entity('Supplier', 'mdm'),
+    fieldsBase: [{ fieldId: 'name', title: 'Name', type: 'string', required: true, description: 'Name' }],
+  } satisfies Ns5OntologyEntityArtifact;
+  assert.deepEqual(ontologyFieldCounts(supplier), { namespace: 1, base: 1, total: 2 });
+  assert.deepEqual(ontologyResolvableFields(supplier).map(field => field.fieldId), ['id', 'name']);
 });
 
 test('editing one entity and one relationship preserves unrelated artifacts', () => {

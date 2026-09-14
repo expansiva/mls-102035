@@ -125,14 +125,28 @@ export function accessFieldRefs(
   const result: string[] = [];
   for (const entity of entities) {
     if (!grant.entityRefs.includes(entity.entityId)) continue;
-    const own = entity.fields.map(field => `${entity.entityId}.${field.fieldId}`);
+    const own = [...entity.fields, ...(entity.fieldsBase || [])]
+      .map(field => `${entity.entityId}.${field.fieldId}`);
     const details = Object.keys(entity.details || {}).map(name => `${entity.entityId}.details.${name}`);
-    const id = entity.fields.some(field => field.fieldId === entity.storage.idField)
+    const id = [...entity.fields, ...(entity.fieldsBase || [])].some(field => field.fieldId === entity.storage.idField)
       ? []
       : [`${entity.entityId}.${entity.storage.idField}`];
     result.push(...id, ...own, ...details);
   }
   return [...new Set(result)];
+}
+
+export function accessFieldLabel(
+  ref: string,
+  entities: readonly Ns5OntologyEntityArtifact[],
+): string {
+  const [entityId, member, detailName] = ref.split('.');
+  const entity = entities.find(item => item.entityId === entityId);
+  if (!entity) return ref;
+  if (member === 'details' && detailName) return entity.details?.[detailName]?.description || detailName;
+  if (member === entity.storage.idField) return member;
+  return [...entity.fields, ...(entity.fieldsBase || [])]
+    .find(field => field.fieldId === member)?.title || member || ref;
 }
 
 function upperFirst(value: string): string {

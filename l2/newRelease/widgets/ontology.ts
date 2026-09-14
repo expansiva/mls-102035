@@ -4,9 +4,7 @@ import { html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import { chart, type EChartsCoreOption } from '/_102033_/l2/shared/chartRuntimeLocal.js';
-import { readDefsJson } from '/_102035_/l2/solution/fs.js';
 import type {
-  Ns4Level1EntityArtifact,
   Ns5OntologyDetail,
   Ns5OntologyEntityArtifact,
   Ns5OntologyField,
@@ -26,10 +24,13 @@ import {
   ONTOLOGY_DETAIL_NAME,
   ONTOLOGY_ENUM_VALUE,
   ONTOLOGY_FIELD_TYPES,
+  type OntologyGraphNode,
   buildOntologyGraph,
   ontologyCardinality,
   ontologyEntityIssues,
   ontologyEntityPath,
+  ontologyFieldCounts,
+  ontologyResolvableFields,
   removeOntologyState,
   updateOntologyField,
   updateOntologyRelationship,
@@ -55,7 +56,6 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   @state() private issues: NewReleaseValidationIssue[] = [];
   @state() private gateIssues: Array<{ severity: 'error' | 'warning'; message: string }> = [];
   @state() private editMessage = '';
-  @state() private level1: Ns4Level1EntityArtifact | null = null;
   @state() private newUniqueFields: string[] = [];
   @state() private newDetailName = '';
   @state() private newDetailType: Ns5OntologyDetail['type'] = 'string';
@@ -65,7 +65,6 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   private entityDirty = false;
   private indexDirty = false;
-  private level1Token = 0;
   private graphCacheSignature = '';
   private graphCache?: EChartsCoreOption;
 
@@ -77,9 +76,6 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       if (!entities.some(entity => entity.entityId === this.selectedEntityId)) {
         this.selectedEntityId = entities[0]?.entityId || '';
       }
-    }
-    if (changed.has('data') || changed.has('selectedEntityId') || changed.has('entityDraft')) {
-      void this.loadLevel1Entity();
     }
   }
 
@@ -235,27 +231,6 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       });
     }
     this.cancelEdit();
-  }
-
-  private async loadLevel1Entity() {
-    const token = ++this.level1Token;
-    const entity = this.currentEntity();
-    if (entity?.kind !== 'mdm' || !entity.mdmSubtype) {
-      this.level1 = null;
-      return;
-    }
-    try {
-      const value = await readDefsJson<Ns4Level1EntityArtifact>({
-        project: 102034,
-        level: 4,
-        folder: 'organization/ontology',
-        shortName: entity.mdmSubtype,
-        extension: '.defs.ts',
-      });
-      if (token === this.level1Token) this.level1 = value;
-    } catch {
-      if (token === this.level1Token) this.level1 = null;
-    }
   }
 
   private setField(fieldId: string, patch: Partial<Ns5OntologyField>) {
@@ -425,7 +400,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   private renderFields(entity: Ns5OntologyEntityArtifact) {
     return html`
       <section class="nr-ontology__section">
-        <header><div><h3>${this.t('ontology.fields')}</h3><p>${this.t('ontology.fieldsDescription')}</p></div><span>${this.t('ontology.count', { count: entity.fields.length })}</span></header>
+        <header><div><h3>${this.t('ontology.namespaceFields')}</h3><p>${this.t('ontology.fieldsDescription')}</p></div><span>${this.t('ontology.count', { count: entity.fields.length })}</span></header>
         <div class="nr-ontology__fields">
           ${entity.fields.map(field => html`
             <article class="nr-field">
@@ -458,13 +433,21 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     `;
   }
 
-  private renderLevel1(entity: Ns5OntologyEntityArtifact) {
+  private renderBaseFields(entity: Ns5OntologyEntityArtifact) {
     if (entity.kind !== 'mdm') return nothing;
-    const fields = this.level1 ? [...this.level1.identification, ...this.level1.baseFields] : [];
+    const fields = entity.fieldsBase || [];
     return html`
-      <section class="nr-ontology__section nr-ontology__level1">
-        <header><div><h3>${this.t('ontology.level1Title')}</h3><p>${this.t('ontology.level1Description', { subtype: entity.mdmSubtype || '' })}</p></div><span>${this.t('ontology.count', { count: fields.length })}</span></header>
-        ${fields.length ? html`<div class="nr-ontology__level1-fields">${fields.map(field => html`<span><code>${field.fieldId}</code><small>${field.type}</small><i>${field.required ? this.t('ontology.required') : this.t('ontology.optional')}</i></span>`)}</div>` : html`<p class="nr-ontology__empty-inline">${this.t('ontology.level1Unavailable')}</p>`}
+      <section class="nr-ontology__section nr-ontology__base-fields">
+        <header><div><h3>${this.t('ontology.baseFields')}</h3><p>${this.t('ontology.baseFieldsDescription', { subtype: entity.mdmSubtype || '' })}</p></div><span>${this.t('ontology.count', { count: fields.length })}</span></header>
+        ${this.mode === 'edit' ? html`<p class="nr-ontology__readonly-note">${this.t('ontology.baseFieldsReadOnly')}</p>` : nothing}
+        ${fields.length ? html`<div class="nr-ontology__fields">${fields.map(field => html`
+          <article class="nr-field is-platform">
+            <header><code>${field.fieldId}</code><div><span class="nr-chip is-platform">${this.t('ontology.baseFieldOrigin')}</span><span class="nr-chip">${field.type}</span><span class=${field.required ? 'nr-chip is-required' : 'nr-chip'}>${field.required ? this.t('ontology.required') : this.t('ontology.optional')}</span></div></header>
+            <h4>${field.title}</h4><p>${field.description}</p>
+            ${field.constraints && Object.keys(field.constraints).length ? html`<dl class="nr-field__constraints-view">${Object.entries(field.constraints).map(([key, value]) => html`<div><dt>${this.t(`ontology.constraint.${key}`)}</dt><dd>${value}</dd></div>`)}</dl>` : nothing}
+            ${field.enum?.length ? html`<div class="nr-field__enum-view">${field.enum.map(option => html`<span><strong>${option.title}</strong><code>${option.value}</code></span>`)}</div>` : nothing}
+          </article>
+        `)}</div>` : html`<p class="nr-ontology__empty-inline">${this.t('ontology.baseFieldsEmptyLegacy')}</p>`}
       </section>
     `;
   }
@@ -540,6 +523,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   }
 
   private renderText(entity: Ns5OntologyEntityArtifact) {
+    const counts = ontologyFieldCounts(entity);
     return html`
       <div class="nr-ontology__workbench">
         <aside>${this.currentEntities().map(item => html`<button type="button" class=${item.entityId === entity.entityId ? 'is-active' : ''} @click=${() => this.selectEntity(item.entityId)}><strong>${item.title}</strong><code>${item.entityId}</code><span><i>${this.t(`ontology.kind.${item.kind}`)}</i><i>${this.t(`ontology.party.${item.party}`)}</i>${item.mdmSubtype ? html`<i>${item.mdmSubtype}</i>` : nothing}${item.writer ? html`<i>${this.t(`ontology.writer.${item.writer}`)}</i>` : nothing}</span></button>`)}</aside>
@@ -548,11 +532,12 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
             <div><span>${this.t('ontology.entity')}</span>${this.mode === 'edit' ? html`<input .value=${entity.title} @input=${(event: Event) => this.updateEntity({ ...entity, title: (event.currentTarget as HTMLInputElement).value })}>` : html`<h2>${entity.title}</h2>`}<code>${entity.entityId}</code></div>
             <div class="nr-ontology__badges"><span>${this.t(`ontology.kind.${entity.kind}`)}</span><span>${this.t(`ontology.party.${entity.party}`)}</span>${entity.mdmSubtype ? html`<span>${entity.mdmSubtype}</span>` : nothing}<span>${entity.writer ? this.t(`ontology.writer.${entity.writer}`) : entity.mutability ? entity.mutability : this.t('ontology.writer.journey')}</span></div>
             ${this.mode === 'edit' ? html`<label class="nr-ontology__description-edit"><span>${this.t('ontology.description')}</span><textarea .value=${entity.description} @input=${(event: Event) => this.updateEntity({ ...entity, description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>` : html`<p>${entity.description}</p>`}
-            <dl><div><dt>${this.t('ontology.storage')}</dt><dd>${entity.storage.target} · ${entity.storage.scope}</dd></div><div><dt>${this.t('ontology.idField')}</dt><dd><code>${entity.storage.idField}</code></dd></div><div><dt>${this.t('ontology.displayField')}</dt><dd>${this.mode === 'edit' ? html`<select .value=${entity.displayField} @change=${(event: Event) => this.updateEntity({ ...entity, displayField: (event.currentTarget as HTMLSelectElement).value })}>${entity.fields.map(field => html`<option value=${field.fieldId} ?selected=${entity.displayField === field.fieldId}>${field.title}</option>`)}</select>` : html`<code>${entity.displayField}</code>`}</dd></div><div><dt>${this.t('ontology.writer')}</dt><dd>${this.mode === 'edit' ? html`<select .value=${entity.writer || 'journey'} @change=${(event: Event) => { const writer = (event.currentTarget as HTMLSelectElement).value as 'journey' | 'crud' | 'inbound'; const next: Ns5OntologyEntityArtifact = { ...entity, writer }; if (writer === 'journey') delete next.writer; this.updateEntity(next); }}><option value="journey" ?selected=${!entity.writer || entity.writer === 'journey'}>${this.t('ontology.writer.journey')}</option><option value="crud" ?selected=${entity.writer === 'crud'}>${this.t('ontology.writer.crud')}</option><option value="inbound" ?selected=${entity.writer === 'inbound'}>${this.t('ontology.writer.inbound')}</option></select>` : this.t(`ontology.writer.${entity.writer || 'journey'}`)}</dd></div></dl>
+            <dl><div><dt>${this.t('ontology.storage')}</dt><dd>${entity.storage.target} · ${entity.storage.scope}</dd></div><div><dt>${this.t('ontology.idField')}</dt><dd><code>${entity.storage.idField}</code></dd></div><div><dt>${this.t('ontology.displayField')}</dt><dd>${this.mode === 'edit' ? html`<select .value=${entity.displayField} @change=${(event: Event) => this.updateEntity({ ...entity, displayField: (event.currentTarget as HTMLSelectElement).value })}>${ontologyResolvableFields(entity).map(field => html`<option value=${field.fieldId} ?selected=${entity.displayField === field.fieldId}>${field.title}</option>`)}</select>` : html`<code>${entity.displayField}</code>`}</dd></div><div><dt>${this.t('ontology.writer')}</dt><dd>${this.mode === 'edit' ? html`<select .value=${entity.writer || 'journey'} @change=${(event: Event) => { const writer = (event.currentTarget as HTMLSelectElement).value as 'journey' | 'crud' | 'inbound'; const next: Ns5OntologyEntityArtifact = { ...entity, writer }; if (writer === 'journey') delete next.writer; this.updateEntity(next); }}><option value="journey" ?selected=${!entity.writer || entity.writer === 'journey'}>${this.t('ontology.writer.journey')}</option><option value="crud" ?selected=${entity.writer === 'crud'}>${this.t('ontology.writer.crud')}</option><option value="inbound" ?selected=${entity.writer === 'inbound'}>${this.t('ontology.writer.inbound')}</option></select>` : this.t(`ontology.writer.${entity.writer || 'journey'}`)}</dd></div></dl>
+            <p class="nr-ontology__field-breakdown">${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}</p>
           </section>
           ${this.renderIssues(entity)}
           ${this.renderFields(entity)}
-          ${this.renderLevel1(entity)}
+          ${this.renderBaseFields(entity)}
           ${this.renderUniqueAndDetails(entity)}
           ${this.renderLifecycle(entity)}
           ${this.renderRelationships(entity)}
@@ -572,6 +557,15 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     const signature = JSON.stringify({ index, entities, colors, text, muted, surface, language: this.t('ontology.title') });
     if (signature === this.graphCacheSignature && this.graphCache) return this.graphCache;
     const graph = buildOntologyGraph(index, entities, colors);
+    const nodeLabel = (node: OntologyGraphNode) => {
+      const fields = node.namespaceFields.map(field =>
+        `{${field === node.displayField ? 'fieldDisplay' : 'field'}|${field}}`,
+      );
+      const base = node.baseFields.map(field =>
+        `{${field === node.displayField ? 'platformDisplay' : 'platform'}|${field}}`,
+      );
+      return [`{title|${node.title}}`, `{id|${node.id}}`, ...fields, ...base].join('\n');
+    };
     this.graphCacheSignature = signature;
     this.graphCache = {
       animationDurationUpdate: 450,
@@ -596,13 +590,24 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
         layout: 'force',
         roam: true,
         draggable: true,
-        data: graph.nodes.map(node => ({ ...node, category: node.category, label: { formatter: `{title|${node.title}}\n{id|${node.id}}` } })),
+        data: graph.nodes.map(node => ({ ...node, category: node.category, label: { formatter: nodeLabel(node) } })),
         links: graph.links.map(link => ({ ...link, label: { formatter: link.value } })),
         categories: graph.categories.map(category => ({ ...category, name: this.t(`ontology.kind.${category.name}`) })),
         force: { repulsion: 310, edgeLength: [105, 180], gravity: .08 },
         edgeSymbol: ['none', 'arrow'],
         edgeSymbolSize: 9,
-        label: { show: true, color: text, rich: { title: { fontSize: 12, fontWeight: 700, lineHeight: 18 }, id: { fontSize: 10, color: muted, lineHeight: 14 } } },
+        label: {
+          show: true,
+          color: text,
+          rich: {
+            title: { fontSize: 12, fontWeight: 700, lineHeight: 18 },
+            id: { fontSize: 10, color: muted, lineHeight: 14 },
+            field: { fontSize: 9, color: muted, lineHeight: 14, padding: [0, 3] },
+            platform: { fontSize: 9, color: colors[3] || muted, lineHeight: 14, padding: [0, 3], backgroundColor: surface, borderRadius: 2 },
+            fieldDisplay: { fontSize: 9, fontWeight: 700, color: text, lineHeight: 15, padding: [1, 4], borderColor: colors[0] || text, borderWidth: 1, borderRadius: 3 },
+            platformDisplay: { fontSize: 9, fontWeight: 700, color: colors[3] || text, lineHeight: 15, padding: [1, 4], backgroundColor: surface, borderColor: colors[3] || text, borderWidth: 1, borderRadius: 3 },
+          },
+        },
         edgeLabel: { show: true, color: muted, fontSize: 10, backgroundColor: surface, padding: [2, 4], borderRadius: 3 },
         lineStyle: { curveness: .12 },
         emphasis: { focus: 'adjacency', lineStyle: { width: 3 } },
@@ -613,17 +618,22 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   private renderGraph(entity: Ns5OntologyEntityArtifact) {
     const related = (this.currentIndex()?.relationships || []).filter(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId).length;
-    return html`<div class="nr-ontology__graph-layout"><div class="nr-ontology__graph" ${chart(this.graphOption(), { click: (params: unknown) => { const node = params as { dataType?: string; data?: { id?: string } }; if (node.dataType === 'node' && node.data?.id) this.selectEntity(node.data.id); } })}></div><aside><span>${this.t('ontology.selected')}</span><h2>${entity.title}</h2><code>${entity.entityId}</code><p>${entity.description}</p><dl><div><dt>${this.t('ontology.fields')}</dt><dd>${entity.fields.length}</dd></div><div><dt>${this.t('ontology.relationships')}</dt><dd>${related}</dd></div><div><dt>${this.t('ontology.lifecycle')}</dt><dd>${entity.lifecycleStates.length}</dd></div></dl><button type="button" @click=${() => { this.view = 'text'; }}>${this.t('ontology.openDetails')}</button></aside></div>`;
+    const counts = ontologyFieldCounts(entity);
+    return html`<div class="nr-ontology__graph-layout"><div class="nr-ontology__graph" ${chart(this.graphOption(), { click: (params: unknown) => { const node = params as { dataType?: string; data?: { id?: string } }; if (node.dataType === 'node' && node.data?.id) this.selectEntity(node.data.id); } })}></div><aside><span>${this.t('ontology.selected')}</span><h2>${entity.title}</h2><code>${entity.entityId}</code><p>${entity.description}</p><dl><div title=${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}><dt>${this.t('ontology.fields')}</dt><dd>${counts.total}</dd></div><div><dt>${this.t('ontology.relationships')}</dt><dd>${related}</dd></div><div><dt>${this.t('ontology.lifecycle')}</dt><dd>${entity.lifecycleStates.length}</dd></div></dl><p class="nr-ontology__graph-legend"><span></span>${this.t('ontology.baseFieldOrigin')} · <strong>${this.t('ontology.displayField')}</strong></p><button type="button" @click=${() => { this.view = 'text'; }}>${this.t('ontology.openDetails')}</button></aside></div>`;
   }
 
   render() {
     const entity = this.currentEntity();
     const index = this.currentIndex();
     if (!entity || !index) return html`<section class="nr-ontology__empty"><h2>${this.t('ontology.emptyTitle')}</h2><p>${this.t('ontology.emptyBody')}</p></section>`;
+    const counts = this.currentEntities().reduce((result, item) => {
+      const current = ontologyFieldCounts(item);
+      return { namespace: result.namespace + current.namespace, base: result.base + current.base, total: result.total + current.total };
+    }, { namespace: 0, base: 0, total: 0 });
     return html`
       <section class="nr-ontology">
         <header class="nr-ontology__hero"><div><span>${this.t('ontology.eyebrow')}</span><h2>${this.t('ontology.title')}</h2><p>${index.businessDomain}</p></div><div class="nr-ontology__actions"><div class="nr-ontology__toggle" role="group" aria-label=${this.t('ontology.view')}><button type="button" class=${this.view === 'text' ? 'is-active' : ''} @click=${() => { this.view = 'text'; }}>${this.t('ontology.view.text')}</button><button type="button" class=${this.view === 'graph' ? 'is-active' : ''} @click=${() => { this.view = 'graph'; }}>${this.t('ontology.view.graph')}</button></div>${this.mode === 'view' ? html`<button class="nr-button nr-button--secondary" type="button" @click=${() => { this.view = 'text'; this.beginEdit(); }}>${this.t('ontology.edit')}</button>` : html`<span>${this.t('ontology.editing')}</span>`}</div></header>
-        <div class="nr-ontology__summary"><span><strong>${this.currentEntities().length}</strong>${this.t('ontology.entities')}</span><span><strong>${index.relationships.length}</strong>${this.t('ontology.relationships')}</span><span><strong>${this.currentEntities().reduce((total, item) => total + item.fields.length, 0)}</strong>${this.t('ontology.fields')}</span></div>
+        <div class="nr-ontology__summary"><span><strong>${this.currentEntities().length}</strong>${this.t('ontology.entities')}</span><span><strong>${index.relationships.length}</strong>${this.t('ontology.relationships')}</span><span title=${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}><strong>${counts.total}</strong>${this.t('ontology.fields')}</span></div>
         ${this.view === 'graph' ? this.renderGraph(entity) : this.renderText(entity)}
         ${this.mode === 'edit' ? html`<footer class="nr-ontology__edit-footer"><span>${this.dirty ? this.t('ontology.unsaved') : this.t('ontology.noChanges')}</span><div><button type="button" @click=${this.cancelEdit}>${this.t('ontology.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('ontology.save')}</button></div></footer>` : nothing}
       </section>

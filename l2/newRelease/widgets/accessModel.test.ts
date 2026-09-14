@@ -6,6 +6,7 @@ import type { Ns5AccessArtifact, Ns5OntologyEntityArtifact, Ns5OntologyIndexArti
 import {
   accessAnchorPath,
   accessFieldRefs,
+  accessFieldLabel,
   bestAccessGrant,
   newAccessGrant,
   reachablePersonAnchors,
@@ -69,8 +70,14 @@ test('person anchors require a path through required relationships', () => {
 });
 
 test('field choices and new grants are constrained to the selected entity', () => {
-  const fields = accessFieldRefs(access.grants[0], [entity('Order', 'none'), entity('Customer', 'person')]);
-  assert.deepEqual(fields, ['Order.id', 'Order.name', 'Order.secret', 'Order.details.score']);
+  const order = {
+    ...entity('Order', 'none'),
+    fieldsBase: [{ fieldId: 'docId', title: 'Document', type: 'string', required: true, description: 'Document.' }],
+  } satisfies Ns5OntologyEntityArtifact;
+  const fields = accessFieldRefs(access.grants[0], [order, entity('Customer', 'person')]);
+  assert.deepEqual(fields, ['Order.id', 'Order.name', 'Order.secret', 'Order.docId', 'Order.details.score']);
+  assert.equal(accessFieldLabel('Order.docId', [order]), 'Document');
+  assert.equal(accessFieldLabel('Order.name', [order]), 'Name');
   const grant = newAccessGrant(access, access.actors[0], 'Customer', {
     title: 'New access', description: 'Review this grant.', scopeDescription: 'Organization data.', disclosureDescription: 'Full record.',
   });

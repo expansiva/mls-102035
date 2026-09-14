@@ -24,6 +24,9 @@ export interface OntologyGraphNode {
   symbolSize: number;
   value: string;
   itemStyle: { color: string };
+  namespaceFields: string[];
+  baseFields: string[];
+  displayField: string;
 }
 
 export interface OntologyGraphLink {
@@ -42,6 +45,24 @@ export interface OntologyGraphData {
 
 const KINDS: Ns5OntologyEntityArtifact['kind'][] = ['core', 'event', 'supporting', 'mdm', 'valueObject'];
 
+export interface OntologyFieldCounts {
+  namespace: number;
+  base: number;
+  total: number;
+}
+
+export function ontologyFieldCounts(entity: Pick<Ns5OntologyEntityArtifact, 'fields' | 'fieldsBase'>): OntologyFieldCounts {
+  const namespace = entity.fields.length;
+  const base = entity.fieldsBase?.length || 0;
+  return { namespace, base, total: namespace + base };
+}
+
+export function ontologyResolvableFields(
+  entity: Pick<Ns5OntologyEntityArtifact, 'fields' | 'fieldsBase'>,
+): Ns5OntologyField[] {
+  return [...entity.fields, ...(entity.fieldsBase || [])];
+}
+
 export function ontologyCardinality(type: string): string {
   return ({ oneToOne: '1:1', oneToMany: '1:N', manyToOne: 'N:1', manyToMany: 'N:N' } as Record<string, string>)[type] || type;
 }
@@ -59,14 +80,18 @@ export function buildOntologyGraph(
   const categoryOf = (kind: Ns5OntologyEntityArtifact['kind']) => Math.max(0, usedKinds.indexOf(kind));
   const nodes = entities.map(entity => {
     const category = categoryOf(entity.kind);
+    const fieldCounts = ontologyFieldCounts(entity);
     return {
       id: entity.entityId,
       name: entity.entityId,
       title: entity.title,
       category,
-      symbolSize: Math.min(64, 34 + entity.fields.length * 2 + Object.keys(entity.details || {}).length),
+      symbolSize: Math.min(78, 34 + fieldCounts.total * 2 + Object.keys(entity.details || {}).length),
       value: entity.description,
       itemStyle: { color: categories[category]?.itemStyle.color || colors[0] || 'currentColor' },
+      namespaceFields: entity.fields.map(field => field.fieldId),
+      baseFields: (entity.fieldsBase || []).map(field => field.fieldId),
+      displayField: entity.displayField,
     };
   });
   const persistenceStyle = (mode: string): OntologyGraphLink['lineStyle']['type'] => {
