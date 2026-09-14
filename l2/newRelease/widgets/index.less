@@ -9,12 +9,23 @@ new-release--widgets--index-102035 {
   * { box-sizing: border-box; }
 
   .nr-index {
+    --nr-space-1: .25rem;
+    --nr-space-2: .5rem;
+    --nr-space-3: .75rem;
+    --nr-space-4: 1rem;
     min-height: 100%;
     overflow: hidden;
     border: 1px solid var(--border-subtle, #e4e9f0);
     border-radius: 1.15rem;
     background: var(--page-bg, #eef1f5);
     box-shadow: 0 1.25rem 3rem rgba(15, 23, 42, .08);
+    font-family: var(--font-family-sans, Inter, system-ui, sans-serif);
+    line-height: 1.45;
+  }
+
+  .nr-index :where(button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: .15rem solid var(--focus-ring, #1273d4);
+    outline-offset: .12rem;
   }
 
   .nr-index__hero {
@@ -175,7 +186,7 @@ new-release--widgets--index-102035 {
   }
 
   .nr-index__tabs button:hover { color: var(--text-strong, #111827); }
-  .nr-index__tabs button:focus-visible { border-radius: .45rem; box-shadow: inset 0 0 0 .14rem var(--focus-ring, #7ab8f5); }
+  .nr-index__tabs button:focus-visible { border-radius: .45rem; outline-offset: -.18rem; }
   .nr-index__tabs button.is-active { color: var(--selected-text, #0d5296); }
   .nr-index__tabs button.is-active::after { background: var(--selected-border, #1273d4); }
   .nr-index__tabs button.is-active .nr-tab__icon svg { fill: color-mix(in srgb, currentColor 28%, transparent); }
@@ -246,6 +257,7 @@ new-release--widgets--index-102035 {
   .nr-index__discard:focus-visible { outline: .15rem solid var(--focus-ring, #7ab8f5); outline-offset: .12rem; }
 
   .nr-index__content { min-height: 17rem; }
+  .nr-index__content:focus-visible { outline-offset: -.2rem; }
 
   .nr-index__placeholder,
   .nr-index__empty {
@@ -399,6 +411,13 @@ new-release--widgets--index-102035 {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .nr-index__loading div { animation: none; }
+    .nr-index *,
+    .nr-index *::before,
+    .nr-index *::after {
+      scroll-behavior: auto !important;
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
   }
 }

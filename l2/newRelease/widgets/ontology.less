@@ -211,6 +211,17 @@ new-release--widgets--ontology-102035 {
   .nr-ontology__graph-legend { display: flex; align-items: center; gap: .3rem; padding-top: .45rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
   .nr-ontology__graph-legend > span { width: .65rem; height: .65rem; border-radius: .18rem; background: var(--chart-series-4, #7b61a8); }
   .nr-ontology__graph-legend strong { color: var(--text-strong, #111827); }
+  .nr-ontology__graph-alternative { border-top: 1px solid var(--border-subtle, #e4e9f0); background: var(--surface-bg, #fff); }
+  .nr-ontology__graph-alternative > summary { padding: .75rem 1rem; color: var(--link-text, #0f62b8); cursor: pointer; font-size: .7rem; font-weight: 750; }
+  .nr-ontology__graph-alternative > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 0 1rem 1rem; }
+  .nr-ontology__graph-alternative h3 { margin: 0 0 .45rem; color: var(--text-strong, #111827); font-size: .72rem; }
+  .nr-ontology__graph-alternative ul { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+  .nr-ontology__graph-alternative li { display: flex; align-items: center; gap: .4rem; min-width: 0; color: var(--text-default, #2f3a48); font-size: .65rem; }
+  .nr-ontology__graph-alternative li > button { display: grid; width: 100%; gap: .12rem; padding: .4rem .5rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .45rem; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-default, #2f3a48); text-align: left; }
+  .nr-ontology__graph-alternative li > button code,
+  .nr-ontology__graph-alternative li > code { color: var(--text-muted, #5d6b7e); font-size: .56rem; }
+  .nr-ontology__graph-alternative li > span { flex: none; color: var(--link-text, #0f62b8); font-weight: 750; }
+  .nr-ontology__graph-alternative li > strong { min-width: 0; overflow-wrap: anywhere; }
 
   .nr-ontology__edit-footer { position: sticky; z-index: 4; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 1rem; border-top: 1px solid var(--border-default, #cfd8e3); background: color-mix(in srgb, var(--surface-bg, #fff) 94%, transparent); box-shadow: 0 -.45rem 1.3rem color-mix(in srgb, var(--text-strong, #111827) 8%, transparent); backdrop-filter: blur(.5rem); }
   .nr-ontology__edit-footer > span { color: var(--text-muted, #5d6b7e); font-size: .67rem; }
@@ -240,5 +251,6 @@ new-release--widgets--ontology-102035 {
     .nr-ontology__summary > span { min-width: 8rem; }
     .nr-field__edit-grid, .nr-transition__grid, .nr-relationship__edit { grid-template-columns: 1fr; }
     .nr-field__description, .nr-transition__description, .nr-relationship__edit > label:last-child { grid-column: auto; }
+    .nr-ontology__graph-alternative > div { grid-template-columns: 1fr; }
   }
 }

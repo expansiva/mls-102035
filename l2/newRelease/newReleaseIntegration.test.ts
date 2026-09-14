@@ -44,3 +44,33 @@ test('workflow and integration editors preserve the artifact value in every sele
     assert.deepEqual(options.filter(option => !option.includes('?selected=')), [], `${file} has an option without explicit selected state`);
   }
 });
+
+test('module navigation and complex views expose equivalent keyboard and text paths', () => {
+  const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
+  const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
+  const access = readFileSync(new URL('./widgets/access.ts', import.meta.url), 'utf8');
+  const journeys = readFileSync(new URL('./widgets/journeys.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./widgets/index.less', import.meta.url), 'utf8');
+
+  assert.match(index, /role="tablist"/);
+  assert.match(index, /role="tab"/);
+  assert.match(index, /role="tabpanel"/);
+  assert.match(index, /ArrowRight/);
+  assert.match(index, /ArrowLeft/);
+  assert.match(index, /aria-controls/);
+  assert.match(ontology, /ontology\.graphAlternative/);
+  assert.match(ontology, /role="img"/);
+  assert.match(access, /access\.matrixCell/);
+  assert.match(journeys, /journeys\.moveUp/);
+  assert.match(journeys, /journeys\.moveDown/);
+  assert.match(styles, /prefers-reduced-motion:\s*reduce/);
+  assert.match(styles, /:focus-visible/);
+});
+
+test('save feedback is immediate and stale tobe warnings remain outside individual tabs', () => {
+  const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
+  assert.ok(index.indexOf('this.changing = true') < index.indexOf('this.mutationQueue = this.mutationQueue.then'));
+  assert.match(index, /nr-index__stale/);
+  assert.match(index, /this\.renderTabs\(\)[\s\S]*this\.renderTobeStatus\(\)[\s\S]*this\.renderTabContent\(\)/);
+  assert.match(index, /aria-live="polite"/);
+});

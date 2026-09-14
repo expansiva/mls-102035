@@ -89,3 +89,19 @@ test('type changes remove incompatible constraints and state removal drops dangl
   assert.deepEqual(changed.lifecycleStates.map(item => item.state), ['open']);
   assert.equal(changed.transitions.length, 0);
 });
+
+test('seven entities and ten relationships build well below the 300 ms interaction budget', () => {
+  const entities = Array.from({ length: 7 }, (_, position) => entity(`Entity${position + 1}`, position % 2 ? 'supporting' : 'core'));
+  const relationships = Array.from({ length: 10 }, (_, position) => ({
+    ...index.relationships[0],
+    relationshipId: `relationship${position + 1}`,
+    fromEntity: entities[position % entities.length].entityId,
+    toEntity: entities[(position + 1) % entities.length].entityId,
+  }));
+  const started = performance.now();
+  const graph = buildOntologyGraph({ ...index, entities: entities.map(item => item.entityId), relationships }, entities, ['#1', '#2']);
+  const elapsed = performance.now() - started;
+  assert.equal(graph.nodes.length, 7);
+  assert.equal(graph.links.length, 10);
+  assert.ok(elapsed < 300, `graph model took ${elapsed.toFixed(2)} ms`);
+});

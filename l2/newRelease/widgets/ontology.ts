@@ -554,7 +554,8 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     const surface = style.getPropertyValue('--surface-bg').trim() || '#fff';
     const index = this.currentIndex();
     const entities = this.currentEntities();
-    const signature = JSON.stringify({ index, entities, colors, text, muted, surface, language: this.t('ontology.title') });
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
+    const signature = JSON.stringify({ index, entities, colors, text, muted, surface, reduceMotion, language: this.t('ontology.title') });
     if (signature === this.graphCacheSignature && this.graphCache) return this.graphCache;
     const graph = buildOntologyGraph(index, entities, colors);
     const nodeLabel = (node: OntologyGraphNode) => {
@@ -568,7 +569,8 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     };
     this.graphCacheSignature = signature;
     this.graphCache = {
-      animationDurationUpdate: 450,
+      animation: !reduceMotion,
+      animationDurationUpdate: reduceMotion ? 0 : 450,
       aria: { enabled: true, decal: { show: true }, description: this.t('ontology.graphAria') },
       color: colors,
       tooltip: {
@@ -617,9 +619,11 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   }
 
   private renderGraph(entity: Ns5OntologyEntityArtifact) {
-    const related = (this.currentIndex()?.relationships || []).filter(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId).length;
+    const relationships = this.currentIndex()?.relationships || [];
+    const related = relationships.filter(item => item.fromEntity === entity.entityId || item.toEntity === entity.entityId).length;
     const counts = ontologyFieldCounts(entity);
-    return html`<div class="nr-ontology__graph-layout"><div class="nr-ontology__graph" ${chart(this.graphOption(), { click: (params: unknown) => { const node = params as { dataType?: string; data?: { id?: string } }; if (node.dataType === 'node' && node.data?.id) this.selectEntity(node.data.id); } })}></div><aside><span>${this.t('ontology.selected')}</span><h2>${entity.title}</h2><code>${entity.entityId}</code><p>${entity.description}</p><dl><div title=${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}><dt>${this.t('ontology.fields')}</dt><dd>${counts.total}</dd></div><div><dt>${this.t('ontology.relationships')}</dt><dd>${related}</dd></div><div><dt>${this.t('ontology.lifecycle')}</dt><dd>${entity.lifecycleStates.length}</dd></div></dl><p class="nr-ontology__graph-legend"><span></span>${this.t('ontology.baseFieldOrigin')} · <strong>${this.t('ontology.displayField')}</strong></p><button type="button" @click=${() => { this.view = 'text'; }}>${this.t('ontology.openDetails')}</button></aside></div>`;
+    const titleOf = (entityId: string) => this.currentEntities().find(item => item.entityId === entityId)?.title || entityId;
+    return html`<section class="nr-ontology__graph-view"><div class="nr-ontology__graph-layout"><div class="nr-ontology__graph" role="img" aria-label=${this.t('ontology.graphAria')} ${chart(this.graphOption(), { click: (params: unknown) => { const node = params as { dataType?: string; data?: { id?: string } }; if (node.dataType === 'node' && node.data?.id) this.selectEntity(node.data.id); } })}></div><aside><span>${this.t('ontology.selected')}</span><h2>${entity.title}</h2><code>${entity.entityId}</code><p>${entity.description}</p><dl><div title=${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}><dt>${this.t('ontology.fields')}</dt><dd>${counts.total}</dd></div><div><dt>${this.t('ontology.relationships')}</dt><dd>${related}</dd></div><div><dt>${this.t('ontology.lifecycle')}</dt><dd>${entity.lifecycleStates.length}</dd></div></dl><p class="nr-ontology__graph-legend"><span></span>${this.t('ontology.baseFieldOrigin')} · <strong>${this.t('ontology.displayField')}</strong></p><button type="button" @click=${() => { this.view = 'text'; }}>${this.t('ontology.openDetails')}</button></aside></div><details class="nr-ontology__graph-alternative"><summary>${this.t('ontology.graphAlternative')}</summary><div><section><h3>${this.t('ontology.entities')}</h3><ul>${this.currentEntities().map(item => html`<li><button type="button" @click=${() => this.selectEntity(item.entityId)}><strong>${item.title}</strong><code>${item.entityId}</code></button></li>`)}</ul></section><section><h3>${this.t('ontology.relationships')}</h3>${relationships.length ? html`<ul>${relationships.map(item => html`<li><strong>${titleOf(item.fromEntity)}</strong><span>${ontologyCardinality(item.type)}</span><strong>${titleOf(item.toEntity)}</strong><code>${item.relationshipId}</code></li>`)}</ul>` : html`<p>${this.t('ontology.relationshipsEmpty')}</p>`}</section></div></details></section>`;
   }
 
   render() {

@@ -129,6 +129,25 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (tab && TABS.includes(tab)) this.activeTab = tab;
   };
 
+  private async activateTab(tab: NewReleaseTab, focus = false) {
+    this.activeTab = tab;
+    if (!focus) return;
+    await this.updateComplete;
+    this.querySelector<HTMLButtonElement>(`#nr-tab-${tab}`)?.focus();
+  }
+
+  private onTabKeydown = (event: KeyboardEvent) => {
+    const current = TABS.indexOf(this.activeTab);
+    let next = current;
+    if (event.key === 'ArrowRight') next = (current + 1) % TABS.length;
+    else if (event.key === 'ArrowLeft') next = (current + TABS.length - 1) % TABS.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = TABS.length - 1;
+    else return;
+    event.preventDefault();
+    void this.activateTab(TABS[next], true);
+  };
+
   private onTobeUpdated = (event: Event) => {
     const detail = (event as CustomEvent<{ project?: number; moduleName?: string }>).detail;
     if (detail?.project !== this.project || detail?.moduleName !== this.moduleName) return;
@@ -191,13 +210,17 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private renderTabs() {
     return html`
-      <nav class="nr-index__tabs" aria-label=${this.t('a11y.tabs')}>
+      <nav class="nr-index__tabs" role="tablist" aria-label=${this.t('a11y.tabs')} @keydown=${this.onTabKeydown}>
         ${TABS.map(tab => html`
           <button
+            id=${`nr-tab-${tab}`}
             type="button"
+            role="tab"
             class=${this.activeTab === tab ? 'is-active' : ''}
             aria-selected=${this.activeTab === tab ? 'true' : 'false'}
-            @click=${() => { this.activeTab = tab; }}
+            aria-controls=${`nr-panel-${tab}`}
+            tabindex=${this.activeTab === tab ? '0' : '-1'}
+            @click=${() => void this.activateTab(tab)}
           ><span class="nr-tab__icon">${this.tabIcon(tab)}</span><span>${this.t(`tab.${tab}`)}</span>${this.tabHasTobe(tab) ? html`<i class="nr-tab__source" title=${this.t('tobe.tabSource')}></i>` : nothing}</button>
         `)}
       </nav>
@@ -246,7 +269,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const errors = this.validationIssues().filter(issue => issue.severity === 'error').length;
     const warnings = this.validationIssues().filter(issue => issue.severity === 'warning').length;
     return html`
-      <section class="nr-index__tobe" aria-label=${this.t('tobe.statusLabel')}>
+      <section class="nr-index__tobe" aria-label=${this.t('tobe.statusLabel')} aria-live="polite">
         <div class="nr-index__tobe-main">
           <strong>${this.t('status.tobe', { count: manifest.changes.length })}</strong>
           <span>${this.t('tobe.byline', {
@@ -409,7 +432,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const title = this.data?.module?.title || this.moduleName;
     const status = this.data?.pipeline?.status || 'unknown';
     return html`
-      <main class="nr-index">
+      <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
         <header class="nr-index__hero">
           <div class="nr-index__hero-copy">
             <span class="nr-index__eyebrow">${this.t('app.eyebrow')}</span>
@@ -435,7 +458,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
               ${this.data.errors.map(error => html`<p>${this.t('state.errorPath', { path: error.path, message: error.message })}</p>`)}
             </section>
           ` : nothing}
-          <section class="nr-index__content">${this.renderTabContent()}</section>
+          <section
+            id=${`nr-panel-${this.activeTab}`}
+            class="nr-index__content"
+            role="tabpanel"
+            aria-labelledby=${`nr-tab-${this.activeTab}`}
+            tabindex="0"
+          >${this.renderTabContent()}</section>
           ${this.renderDiffs()}
         `}
 

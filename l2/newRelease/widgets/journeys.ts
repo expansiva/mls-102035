@@ -220,6 +220,13 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     if (this.journeyDraft) this.updateJourney(moveJourneyStep(this.journeyDraft, stepId, targetStepId));
   }
 
+  private moveStepBy(stepId: string, offset: -1 | 1) {
+    if (!this.journeyDraft) return;
+    const position = this.journeyDraft.business.steps.findIndex(step => step.stepId === stepId);
+    const target = this.journeyDraft.business.steps[position + offset];
+    if (target) this.moveStep(stepId, target.stepId);
+  }
+
   private addEvidence() {
     if (!this.journeyDraft) return;
     const evidence = [...this.journeyDraft.business.outcome.evidence, this.t('journeys.newEvidence')];
@@ -324,7 +331,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
   }
 
   private renderTimeline(journey: Ns5JourneyArtifact) {
-    return html`<ol class="nr-journeys__timeline">${journey.business.steps.map((step, position) => html`<li draggable=${this.mode === 'edit' ? 'true' : 'false'} @dragstart=${() => { this.draggedStepId = step.stepId; }} @dragover=${(event: DragEvent) => event.preventDefault()} @drop=${() => this.moveStep(this.draggedStepId, step.stepId)}><div class="nr-step__rail"><span>${this.icon(step.kind)}</span><i></i></div><article><header><div><small>${String(position + 1).padStart(2, '0')} · ${this.t(`journeys.kind.${step.kind}`)}</small><h3>${step.title}</h3></div>${this.mode === 'edit' ? html`<button type="button" title=${this.t('journeys.removeStep')} @click=${() => this.removeStep(step.stepId)}>×</button>` : nothing}</header>${this.mode === 'edit' ? this.renderStepEdit(step) : html`<p>${step.description}</p>`}<div class="nr-step__meta"><button type="button" @click=${() => this.openEntity(step.entity)}>${this.entityTitle(step.entity)}</button>${step.effect ? html`<span class="is-effect">${this.t(`journeys.effect.${step.effect}`)}${step.transitionRef ? ` → ${step.transitionRef}` : ''}</span>` : nothing}${(step.affects || []).map(entity => html`<span>${this.t('journeys.affectsOne')} ${this.entityTitle(entity)}</span>`)}${step.handoffTo ? html`<span class="is-handoff">${this.t('journeys.handoff')} ${this.actorTitle(step.handoffTo)}</span>` : nothing}</div>${step.kind === 'decide' ? this.renderTransitions(step, journey) : nothing}</article></li>`)}</ol>`;
+    return html`<ol class="nr-journeys__timeline" aria-label=${this.t('journeys.path')}>${journey.business.steps.map((step, position) => html`<li draggable=${this.mode === 'edit' ? 'true' : 'false'} @dragstart=${() => { this.draggedStepId = step.stepId; }} @dragover=${(event: DragEvent) => event.preventDefault()} @drop=${() => this.moveStep(this.draggedStepId, step.stepId)}><div class="nr-step__rail"><span>${this.icon(step.kind)}</span><i></i></div><article><header><div><small>${String(position + 1).padStart(2, '0')} · ${this.t(`journeys.kind.${step.kind}`)}</small><h3>${step.title}</h3></div>${this.mode === 'edit' ? html`<div class="nr-step__actions"><button type="button" ?disabled=${position === 0} title=${this.t('journeys.moveUp')} aria-label=${this.t('journeys.moveUp')} @click=${() => this.moveStepBy(step.stepId, -1)}>↑</button><button type="button" ?disabled=${position === journey.business.steps.length - 1} title=${this.t('journeys.moveDown')} aria-label=${this.t('journeys.moveDown')} @click=${() => this.moveStepBy(step.stepId, 1)}>↓</button><button class="is-remove" type="button" title=${this.t('journeys.removeStep')} aria-label=${this.t('journeys.removeStep')} @click=${() => this.removeStep(step.stepId)}>×</button></div>` : nothing}</header>${this.mode === 'edit' ? this.renderStepEdit(step) : html`<p>${step.description}</p>`}<div class="nr-step__meta"><button type="button" @click=${() => this.openEntity(step.entity)}>${this.entityTitle(step.entity)}</button>${step.effect ? html`<span class="is-effect">${this.t(`journeys.effect.${step.effect}`)}${step.transitionRef ? ` → ${step.transitionRef}` : ''}</span>` : nothing}${(step.affects || []).map(entity => html`<span>${this.t('journeys.affectsOne')} ${this.entityTitle(entity)}</span>`)}${step.handoffTo ? html`<span class="is-handoff">${this.t('journeys.handoff')} ${this.actorTitle(step.handoffTo)}</span>` : nothing}</div>${step.kind === 'decide' ? this.renderTransitions(step, journey) : nothing}</article></li>`)}</ol>`;
   }
 
   private renderIssues(journey: Ns5JourneyArtifact) {
