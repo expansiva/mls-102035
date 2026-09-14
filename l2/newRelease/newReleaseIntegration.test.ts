@@ -35,3 +35,12 @@ test('new release index exposes the shared edit seam and completed functional ta
   assert.match(contract, /'workflows'/);
   assert.match(contract, /'integration'/);
 });
+
+test('workflow and integration editors preserve the artifact value in every select option', () => {
+  for (const file of ['./widgets/workflows.ts', './widgets/integration.ts']) {
+    const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+    const options = [...source.matchAll(/<option\b[^>]*>/g)].map(match => match[0]);
+    assert.ok(options.length > 0, `${file} must render select options`);
+    assert.deepEqual(options.filter(option => !option.includes('?selected=')), [], `${file} has an option without explicit selected state`);
+  }
+});
