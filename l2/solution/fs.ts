@@ -3,7 +3,7 @@
 import { createStorFile } from '/_102027_/l2/libStor.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
 import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
-import type { Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyAnyEntity, Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
 
 export type Ns5FileInfo = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
 
@@ -398,6 +398,15 @@ export async function readDefsJson<T>(fileInfo: Ns5FileInfo): Promise<T | null> 
   } catch {
     return null;
   }
+}
+
+/**
+ * An ontology entity file in whichever form it is written (ns5_39 T4). Both forms are one JSON literal,
+ * so the reading is the same; only the type of what comes back changes, and `schemaVersion` is the
+ * discriminator — v3 (`agendaClinica`) carries `record`, v2 (the other eleven modules) carries `fields`.
+ */
+export async function readOntologyEntityAny(fileInfo: Ns5FileInfo): Promise<Ns5OntologyAnyEntity | null> {
+  return readDefsJson<Ns5OntologyAnyEntity>(fileInfo);
 }
 
 export async function readSolutionRegistry(): Promise<Ns4SolutionRegistryArtifact | null> {

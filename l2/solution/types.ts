@@ -1,5 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/types.ts" enhancement="_blank"/>
 
+import type { MdmDefField, MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
+
 /** Schema ids for NS5 source artifacts. Bumped when a field is added or removed. */
 export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
@@ -291,6 +293,185 @@ export interface Ns5OntologyIndexArtifact {
   /** ontology30: platform-service candidates (attachments/comments). Omitted when none. */
   systemDecisions?: Ns5SystemDecision[];
 }
+
+// ===========================================================================
+// Ontology v3 (ns5_39). ADDITIVE: `Ns5OntologyEntityArtifact` above stays the
+// v2 form the eleven other modules and `ontology30` still use. v3 is the form
+// written by hand for `agendaClinica` — a module ontology written ON TOP of the
+// platform ontology (`/_102034_/l4/ontology/mdm.defs.ts`) instead of beside it:
+// a `role` is a papel over an MDM subtype, an `entity` is a table of the module.
+//
+// The field grammar is the platform's `MdmDefField`, reused rather than
+// redeclared, so there is ONE field form on both sides. Three widenings, each
+// because the module legitimately says something the platform cannot:
+//   `to`     platform: `readonly MdmSubtypeName[]`; a module points at its own
+//            entities too (`Consulta.defs.ts:33` — `to: ["Paciente"]`).
+//   `values` platform: `readonly string[]`; a module labels its domain in the
+//            user language (`Paciente.defs.ts:122-131` — `{value, title}`).
+//   `fields` recurses into the widened field, not the platform one.
+// `of` is NOT widened: it stays `MdmValueTypeName`, which is what makes the
+// compiler check every reusable type a module cites.
+// ===========================================================================
+
+export const NS5_ONTOLOGY_SCHEMA_VERSION_V3 = '2026-09-15-ns5-ontology-v3' as const;
+
+/** Closed-domain value of a v3 field: the bare code, or the code plus its label. */
+export type Ns5OntologyValueV3 = string | { value: string; title?: string; description?: string };
+
+/** One field of a v3 record. The platform grammar, widened where a module needs it (see above). */
+export interface Ns5OntologyFieldV3 extends Omit<MdmDefField, 'to' | 'values' | 'fields' | 'groups'> {
+  /** MDM subtypes AND entity ids of this module. */
+  to?: readonly string[];
+  values?: readonly Ns5OntologyValueV3[];
+  fields?: Ns5OntologyFieldsV3;
+  /**
+   * Only on a branch of `details`: who writes it. `platform` = the MDM record,
+   * `organization` = the promoted layer, `module` = `details.<moduleName>`.
+   */
+  owner?: 'platform' | 'organization' | 'module';
+  /** Only on a branch: the key set is not closed here (declared elsewhere). */
+  open?: true;
+}
+
+export type Ns5OntologyFieldsV3 = Readonly<Record<string, Ns5OntologyFieldV3>>;
+
+/** One named link of an entity. `relationshipId` is the row of the module index that carries it. */
+export interface Ns5OntologyRelationshipV3 {
+  /** Must exist in `index.defs.ts`; that index is the source, this is the reading copy. */
+  relationshipId: string;
+  /** Entity id of this module, or an MDM subtype. */
+  to: string;
+  /**
+   * `mode: 'fk'` — the column that holds it; `mode: 'throughTable'` — the table walked;
+   * absent mode — the MDM relationship type of `mdm.relationships[].type`.
+   */
+  via: string;
+  mode?: 'fk' | 'throughTable';
+  /** Which end of the catalog link this entity sits on, when it is not the `from`. */
+  direction?: 'from' | 'to';
+  /** Role of `mdm_relationship.role`, single or many. */
+  role?: string;
+  roles?: readonly string[];
+  cardinality: '1:1' | '1:N' | 'N:1' | 'N:N';
+  /** `true`, or the condition in the user language ("quando menor de 18 anos"). */
+  required?: boolean | string;
+  /** Walked, never stored. */
+  derived?: true;
+  /** Only on `throughTable`: the walk, as written. */
+  path?: string;
+  /** Planner / screen. */
+  title: string;
+  description?: string;
+  /** Narrows the far end, field → accepted values. */
+  target?: Readonly<Record<string, readonly string[]>>;
+}
+
+interface Ns5OntologyEntityV3Base<Cap extends string, Rule extends string> {
+  /** Gate: the v3 form. */
+  schemaVersion: typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+  moduleName: string;
+  /** File name, relationship endpoints, grant entityRefs. */
+  entityId: string;
+  title: string;
+  description: string;
+  /** Path a screen shows to recognise the record: `details.identification.name`, `scheduledAt`. */
+  displayField: string;
+  /** `{ id, version, details }` on a role; plus the indexed columns on an entity. */
+  record: { fields: Ns5OntologyFieldsV3 };
+  /** Composite uniqueness, by field id. */
+  uniqueKeys?: readonly (readonly string[])[];
+  lifecycleStates?: readonly { state: string; reachedBy: 'actor' | 'command' | 'time' }[];
+  transitions?: readonly {
+    transitionId: string;
+    from: readonly string[];
+    to: string;
+    by: readonly string[] | 'system' | 'time';
+    description: string;
+    ruleRefs?: readonly string[];
+  }[];
+  relationships: Readonly<Record<string, Ns5OntologyRelationshipV3>>;
+  /**
+   * id → one sentence. A platform id of `mdm.capabilities`, or `<moduleName>.<id>`.
+   * Optional per key because an entity picks from the catalog; that `Cap` is an upper bound and not a
+   * requirement. Assigning a `const` here therefore does NOT reject an invented id (no excess-property
+   * check off a fresh literal) — a reader that wants that proof asserts `Exclude<keyof …, Cap>` is
+   * `never`, as `resolveMdmEntity.test.ts` does.
+   */
+  capabilities: { readonly [K in Cap]?: string };
+  /** Ids of `mdm.rules` ∪ `ruleId` of the module `rules.defs.ts`. */
+  rules: readonly Rule[];
+  /** How the entity is written, when it is not a journey. */
+  writer?: 'journey' | 'crud' | 'inbound';
+}
+
+/** A papel of this module over an MDM record. Stores nothing but `details.<moduleName>`. */
+export interface Ns5OntologyRoleV3<Cap extends string = string, Rule extends string = string>
+  extends Ns5OntologyEntityV3Base<Cap, Rule> {
+  kind: 'role';
+  /** The MDM subtype the papel sits on; must be a key of `mdm.subtypes`. */
+  subtype: MdmSubtypeName;
+  /** `<moduleName>.<entityId>`; what `attachRole` writes into `identification.tags`. */
+  roleTag: string;
+  /** The platform ontology this papel copies from. */
+  source: string;
+}
+
+/** A table of the module. */
+export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends string = string>
+  extends Ns5OntologyEntityV3Base<Cap, Rule> {
+  kind: 'entity';
+  class: 'core' | 'event' | 'supporting';
+  storage: { target: 'moduleDatabase'; table: string };
+}
+
+export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =
+  | Ns5OntologyRoleV3<Cap, Rule>
+  | Ns5OntologyTableV3<Cap, Rule>;
+
+/** One row of the v3 index: the canonical list of entities. */
+export interface Ns5OntologyIndexEntityV3 {
+  entityId: string;
+  kind: 'role' | 'entity';
+  /** On `role` only. */
+  subtype?: MdmSubtypeName;
+  /** On `entity` only. */
+  class?: 'core' | 'event' | 'supporting';
+}
+
+/** One row of the v3 index: the canonical list of links. The entities repeat these for reading. */
+export interface Ns5OntologyIndexRelationshipV3 {
+  relationshipId: string;
+  from: string;
+  to: string;
+  type: 'oneToOne' | 'oneToMany' | 'manyToOne' | 'manyToMany';
+  required: boolean;
+  mode: 'fk' | 'mdmRelationship' | 'throughTable';
+  /** `mode: 'fk'`: the column, as `Entity.field`. */
+  field?: string;
+  /** `mode: 'mdmRelationship'`: a `type` of `mdm.relationships`. */
+  catalogType?: string;
+  /** `mode: 'throughTable'`: the entity walked. */
+  through?: string;
+  roles?: readonly string[];
+  path?: string;
+  derived?: true;
+  description: string;
+}
+
+export interface Ns5OntologyIndexV3 {
+  schemaVersion: typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+  moduleName: string;
+  businessDomain: string;
+  /** Path of the platform ontology this module is written on top of. */
+  platformOntology: string;
+  /** The branch of `details` only this module writes. */
+  moduleNamespace: { key: string; description: string };
+  entities: readonly Ns5OntologyIndexEntityV3[];
+  relationships: readonly Ns5OntologyIndexRelationshipV3[];
+}
+
+/** What a reader gets from an ontology entity file, whichever form it is in. Discriminate on `schemaVersion`. */
+export type Ns5OntologyAnyEntity = Ns5OntologyEntityArtifact | Ns5OntologyEntityV3;
 
 export interface Ns5Rule {
   /** Cited by transitions.ruleRefs and later screens/endpoints. */
