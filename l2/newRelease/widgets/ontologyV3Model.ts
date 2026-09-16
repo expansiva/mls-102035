@@ -4,7 +4,7 @@ import type {
   Ns5OntologyEntityV3,
   Ns5OntologyIndexV3,
 } from '/_102035_/l2/solution/types.js';
-import { NS5_ONTOLOGY_SCHEMA_VERSION_V3 } from '/_102035_/l2/solution/types.js';
+import { NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
 import type { Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type {
   OntologyNode,
@@ -14,13 +14,13 @@ import type {
 export function isOntologyV3Index(value: unknown): value is Ns5OntologyIndexV3 {
   return !!value
     && typeof value === 'object'
-    && (value as { schemaVersion?: string }).schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+    && (value as { schemaVersion?: string }).schemaVersion === NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION;
 }
 
 export function isOntologyV3Entity(value: unknown): value is Ns5OntologyEntityV3 {
   return !!value
     && typeof value === 'object'
-    && (value as { schemaVersion?: string }).schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+    && (value as { schemaVersion?: string }).schemaVersion === NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION;
 }
 
 export function ontologyPlatformFile(path: string): Ns5FileInfo {
