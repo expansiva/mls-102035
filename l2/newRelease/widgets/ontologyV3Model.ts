@@ -5,10 +5,11 @@ import type {
   Ns5OntologyIndexV3,
 } from '/_102035_/l2/solution/types.js';
 import { NS5_ONTOLOGY_SCHEMA_VERSION_V3 } from '/_102035_/l2/solution/types.js';
+import type { Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type {
   OntologyNode,
   OntologyTreeView,
-} from '/_102034_/l1/mdm/defs/resolveMdmEntity.js';
+} from '/_102034_/l2/mdm/resolveMdmEntity.js';
 
 export function isOntologyV3Index(value: unknown): value is Ns5OntologyIndexV3 {
   return !!value
@@ -20,6 +21,18 @@ export function isOntologyV3Entity(value: unknown): value is Ns5OntologyEntityV3
   return !!value
     && typeof value === 'object'
     && (value as { schemaVersion?: string }).schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+}
+
+export function ontologyPlatformFile(path: string): Ns5FileInfo {
+  const match = /^\/_([0-9]+)_\/l([1-4])\/(.+)\/([^/]+)\.defs\.ts$/u.exec(path);
+  if (!match) throw new Error(`Invalid platform ontology path: ${path}`);
+  return {
+    project: Number(match[1]),
+    level: Number(match[2]) as mls.Level,
+    folder: match[3],
+    shortName: match[4],
+    extension: '.defs.ts',
+  };
 }
 
 export function ontologyNodeLeafCount(nodes: readonly OntologyNode[]): number {

@@ -22,7 +22,7 @@ import {
   type OntologyRelationshipView,
   type OntologyRuleView,
   type OntologyTreeView,
-} from '/_102034_/l1/mdm/defs/resolveMdmEntity.js';
+} from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
@@ -32,6 +32,7 @@ import {
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/newRelease/tobe.js';
+import { readDefsJson } from '/_102035_/l2/solution/fs.js';
 import {
   ONTOLOGY_DETAIL_NAME,
   ONTOLOGY_ENUM_VALUE,
@@ -52,6 +53,7 @@ import {
   isOntologyV3Entity,
   isOntologyV3Index,
   ontologyNodeLeafCount,
+  ontologyPlatformFile,
   ontologyV3FieldCount,
 } from '/_102035_/l2/newRelease/widgets/ontologyV3Model.js';
 
@@ -144,9 +146,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     this.v3Loading = true;
     this.v3Error = '';
     try {
-      const platformPath = index.platformOntology.replace(/\.ts$/u, '.js');
-      const platformModule = await import(platformPath) as { mdm?: MdmOntology; default?: MdmOntology };
-      const mdm = platformModule.mdm || platformModule.default;
+      const mdm = await readDefsJson<MdmOntology>(ontologyPlatformFile(index.platformOntology));
       if (!mdm) throw new Error(this.t('ontology.v3.platformMissing'));
       const views = this.v3Entities().map(entity => resolveModuleEntity(entity, index, mdm, rules));
       if (token !== this.v3LoadToken) return;

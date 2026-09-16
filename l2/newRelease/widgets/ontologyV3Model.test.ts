@@ -3,11 +3,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Ns5OntologyIndexV3 } from '../../solution/types.js';
-import type { OntologyNode, OntologyTreeView } from '../../../../mls-102034/l1/mdm/defs/resolveMdmEntity.js';
+import type { OntologyNode, OntologyTreeView } from '../../../../mls-102034/l2/mdm/resolveMdmEntity.js';
 import {
   buildOntologyV3Graph,
   isOntologyV3Index,
   ontologyNodeLeafCount,
+  ontologyPlatformFile,
   ontologyV3FieldCount,
 } from './ontologyV3Model.js';
 
@@ -35,6 +36,10 @@ test('v3 discriminator is exact and leaf counts recurse through record branches'
   assert.equal(isOntologyV3Index({ ...index, schemaVersion: 'v2' }), false);
   assert.equal(ontologyNodeLeafCount(view.details), 3);
   assert.equal(ontologyV3FieldCount(view), 5);
+  assert.deepEqual(ontologyPlatformFile('/_102034_/l4/ontology/mdm.defs.ts'), {
+    project: 102034, level: 4, folder: 'ontology', shortName: 'mdm', extension: '.defs.ts',
+  });
+  assert.throws(() => ontologyPlatformFile('/hard-coded/mdm.defs.ts'), /Invalid platform ontology path/u);
 });
 
 test('v3 graph keeps module nodes, creates platform ghosts, and styles persistence modes', () => {
