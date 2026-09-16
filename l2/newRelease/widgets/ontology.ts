@@ -737,6 +737,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   }
 
   private renderV3Node(node: OntologyNode, depth = 0): unknown {
+    const innerFieldCount = node.children ? ontologyNodeLeafCount(node.children) : 0;
     const body = html`
       ${node.description ? html`<p>${node.description}</p>` : nothing}
       ${node.conflict ? html`<p class="nr-v3__warning" role="alert">${this.t('ontology.v3.conflict')}</p>` : nothing}
@@ -745,8 +746,8 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       ${node.children && !node.children.length ? html`<p class="nr-v3__empty-branch">${node.description || this.t('ontology.v3.emptyBranch')}</p>` : nothing}
     `;
     if (node.children) return html`
-      <details class="nr-v3__tree-node is-branch" ?open=${depth === 0}>
-        <summary><span><strong>${node.title}</strong><code>${node.id}</code></span><span class="nr-v3__chips">${this.renderV3NodeChips(node)}</span></summary>
+      <details class="nr-v3__tree-node is-branch">
+        <summary><span><strong>${node.title}</strong><code>${node.id}</code><small class="nr-v3__branch-count">${this.t('ontology.v3.innerFields', { count: innerFieldCount })}</small></span><span class="nr-v3__chips">${this.renderV3NodeChips(node)}</span></summary>
         <div class="nr-v3__node-body">${body}</div>
       </details>
     `;
@@ -759,9 +760,9 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   }
 
   private renderV3Relationships(relationships: OntologyRelationshipView[]) {
-    return html`<section class="nr-ontology__section nr-v3__section">
-      <header><div><h3>${this.t('ontology.relationships')}</h3><p>${this.t('ontology.v3.relationshipsDescription')}</p></div><span>${this.t('ontology.count', { count: relationships.length })}</span></header>
-      <div class="nr-v3__relationships">${relationships.map(relationship => html`
+    return html`<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">
+      <summary class="nr-v3__section-summary"><div><div><h3>${this.t('ontology.relationships')}</h3><p>${this.t('ontology.v3.relationshipsDescription')}</p></div><span>${this.t('ontology.count', { count: relationships.length })}</span></div></summary>
+      <div class="nr-v3__section-body"><div class="nr-v3__relationships">${relationships.map(relationship => html`
         <article class=${relationship.conflict ? 'has-conflict' : ''}>
           <header><div><strong>${relationship.title}</strong><code>${relationship.relationshipId || relationship.name}</code></div><span>${relationship.cardinality || '—'}</span></header>
           ${relationship.description ? html`<p>${relationship.description}</p>` : nothing}
@@ -770,28 +771,28 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
           ${relationship.path ? html`<p class="nr-v3__path"><code>${relationship.path}</code></p>` : nothing}
           ${relationship.conflict ? html`<p class="nr-v3__warning" role="alert">${relationship.conflict}</p>` : nothing}
         </article>
-      `)}</div>
-    </section>`;
+      `)}</div></div>
+    </details>`;
   }
 
   private renderV3Capabilities(capabilities: OntologyCapabilityView[]) {
     const group = (origin: 'platform' | 'module') => capabilities.filter(item => item.origin === origin);
-    return html`<section class="nr-ontology__section nr-v3__section">
-      <header><div><h3>${this.t('ontology.v3.capabilities')}</h3><p>${this.t('ontology.v3.capabilitiesDescription')}</p></div><span>${this.t('ontology.count', { count: capabilities.length })}</span></header>
-      <div class="nr-v3__split">${(['platform', 'module'] as const).map(origin => html`<section><h4>${this.t(`ontology.v3.group.${origin}`)}</h4><div class="nr-v3__catalog">${group(origin).map(capability => html`
+    return html`<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">
+      <summary class="nr-v3__section-summary"><div><div><h3>${this.t('ontology.v3.capabilities')}</h3><p>${this.t('ontology.v3.capabilitiesDescription')}</p></div><span>${this.t('ontology.count', { count: capabilities.length })}</span></div></summary>
+      <div class="nr-v3__section-body"><div class="nr-v3__split">${(['platform', 'module'] as const).map(origin => html`<section><h4>${this.t(`ontology.v3.group.${origin}`)}</h4><div class="nr-v3__catalog">${group(origin).map(capability => html`
         <article class=${capability.unresolved ? 'is-unresolved' : ''}><header><code>${capability.id}</code>${capability.platform ? html`<span class="nr-chip is-${capability.platform}">${this.t(`ontology.v3.status.${capability.platform}`)}</span>` : nothing}</header>
           <p>${capability.moduleSentence || capability.sentence || this.t('ontology.v3.unresolved')}</p>
           ${capability.moduleSentence ? html`<small>${capability.sentence}</small>` : nothing}
-        </article>`)}${!group(origin).length ? html`<p class="nr-ontology__empty-inline">${this.t('ontology.v3.none')}</p>` : nothing}</div></section>`)}</div>
-    </section>`;
+        </article>`)}${!group(origin).length ? html`<p class="nr-ontology__empty-inline">${this.t('ontology.v3.none')}</p>` : nothing}</div></section>`)}</div></div>
+    </details>`;
   }
 
   private renderV3Rules(rules: OntologyRuleView[]) {
     const group = (origin: 'platform' | 'module') => rules.filter(item => item.origin === origin);
-    return html`<section class="nr-ontology__section nr-v3__section">
-      <header><div><h3>${this.t('ontology.rules')}</h3><p>${this.t('ontology.v3.rulesDescription')}</p></div><span>${this.t('ontology.count', { count: rules.length })}</span></header>
-      <div class="nr-v3__split">${(['platform', 'module'] as const).map(origin => html`<section><h4>${this.t(`ontology.v3.group.${origin}`)}</h4><div class="nr-v3__catalog">${group(origin).map(rule => html`<article class=${rule.unresolved ? 'is-unresolved' : ''}><header><code>${rule.id}</code>${rule.platform ? html`<span class="nr-chip is-${rule.platform}">${this.t(`ontology.v3.status.${rule.platform}`)}</span>` : nothing}</header><p>${rule.text || this.t('ontology.v3.unresolved')}</p></article>`)}${!group(origin).length ? html`<p class="nr-ontology__empty-inline">${this.t('ontology.v3.none')}</p>` : nothing}</div></section>`)}</div>
-    </section>`;
+    return html`<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">
+      <summary class="nr-v3__section-summary"><div><div><h3>${this.t('ontology.rules')}</h3><p>${this.t('ontology.v3.rulesDescription')}</p></div><span>${this.t('ontology.count', { count: rules.length })}</span></div></summary>
+      <div class="nr-v3__section-body"><div class="nr-v3__split">${(['platform', 'module'] as const).map(origin => html`<section><h4>${this.t(`ontology.v3.group.${origin}`)}</h4><div class="nr-v3__catalog">${group(origin).map(rule => html`<article class=${rule.unresolved ? 'is-unresolved' : ''}><header><code>${rule.id}</code>${rule.platform ? html`<span class="nr-chip is-${rule.platform}">${this.t(`ontology.v3.status.${rule.platform}`)}</span>` : nothing}</header><p>${rule.text || this.t('ontology.v3.unresolved')}</p></article>`)}${!group(origin).length ? html`<p class="nr-ontology__empty-inline">${this.t('ontology.v3.none')}</p>` : nothing}</div></section>`)}</div></div>
+    </details>`;
   }
 
   private renderV3Lifecycle(entity: Ns5OntologyEntityV3 | undefined) {

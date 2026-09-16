@@ -610,6 +610,7 @@
   "ontology.v3.treeDescription": "Open branches to inspect each field's structure, origin, and constraints.",
   "ontology.v3.branches": "Branches",
   "ontology.v3.leafCount": "{{count}} leaf fields",
+  "ontology.v3.innerFields": "{{count}} inner fields",
   "ontology.v3.leafCountHelp": "Number of terminal fields inside details.",
   "ontology.v3.fieldCountHelp": "Record columns plus leaf fields inside details.",
   "ontology.v3.emptyBranch": "This branch is declared but does not contain fields yet.",

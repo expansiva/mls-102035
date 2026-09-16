@@ -610,6 +610,7 @@
   "ontology.v3.treeDescription": "Abra os ramos para ver a estrutura, a origem e as restrições de cada campo.",
   "ontology.v3.branches": "Ramos",
   "ontology.v3.leafCount": "{{count}} campos-folha",
+  "ontology.v3.innerFields": "{{count}} campos internos",
   "ontology.v3.leafCountHelp": "Quantidade de campos terminais dentro de details.",
   "ontology.v3.fieldCountHelp": "Colunas do registro mais campos-folha dentro de details.",
   "ontology.v3.emptyBranch": "Este ramo está declarado, mas ainda não contém campos.",

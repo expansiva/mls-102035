@@ -101,6 +101,20 @@ test('fine-tuned layout keeps context left and prioritizes editable module setti
   assert.doesNotMatch(general, /<details class="nr-general__group"\s+open/);
 });
 
+test('v3 ontology dense sections and object fields are collapsed details with visible counts', () => {
+  const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./widgets/ontology.less', import.meta.url), 'utf8');
+
+  assert.equal((ontology.match(/<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">/g) || []).length, 3);
+  assert.doesNotMatch(ontology, /nr-v3__collapsible-section"\s+open/);
+  assert.match(ontology, /<details class="nr-v3__tree-node is-branch">/);
+  assert.doesNotMatch(ontology, /nr-v3__tree-node is-branch"\s+\?open=/);
+  assert.match(ontology, /ontologyNodeLeafCount\(node\.children\)/);
+  assert.match(ontology, /ontology\.v3\.innerFields/);
+  assert.match(styles, /nr-v3__section-summary::before/);
+  assert.match(styles, /nr-v3__tree-node\[open\][^\n]*rotate\(90deg\)/);
+});
+
 test('presentation environment badge is hidden while Studio is active', () => {
   const shell = readFileSync(new URL('../../../mls-102033/l2/shared/shell.ts', import.meta.url), 'utf8');
   assert.match(shell, /getElementById\('collab-env-badge'\)/);
