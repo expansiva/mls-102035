@@ -234,7 +234,8 @@ new-release--widgets--ontology-102035 {
   .nr-ontology__empty h2 { color: var(--text-strong, #111827); font-size: 1.1rem; }
   .nr-ontology__empty p { color: var(--text-muted, #5d6b7e); font-size: .75rem; }
 
-  .nr-v3__edit-note { max-width: 12rem; color: var(--text-muted, #5d6b7e); font-size: .61rem; line-height: 1.35; text-align: right; }
+  .nr-v3 .nr-ontology__actions { display: grid; grid-template-columns: auto auto; justify-items: end; }
+  .nr-v3__edit-note { grid-column: 1 / -1; max-width: none; color: var(--text-muted, #5d6b7e); font-size: .61rem; line-height: 1.35; text-align: right; }
   .nr-v3 .nr-button:disabled { cursor: not-allowed; opacity: .48; }
   .nr-v3__workbench > main { gap: 1rem; }
   .nr-v3__workbench > aside button.is-platform { border-style: dashed; }
