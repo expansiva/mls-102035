@@ -105,7 +105,7 @@ test('v3 ontology dense sections and object fields are collapsed details with vi
   const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('./widgets/ontology.less', import.meta.url), 'utf8');
 
-  assert.equal((ontology.match(/<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">/g) || []).length, 3);
+  assert.equal((ontology.match(/<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">/g) || []).length, 4);
   assert.doesNotMatch(ontology, /nr-v3__collapsible-section"\s+open/);
   assert.match(ontology, /<details class="nr-v3__tree-node is-branch">/);
   assert.doesNotMatch(ontology, /nr-v3__tree-node is-branch"\s+\?open=/);
@@ -113,6 +113,13 @@ test('v3 ontology dense sections and object fields are collapsed details with vi
   assert.match(ontology, /ontology\.v3\.innerFields/);
   assert.match(styles, /nr-v3__section-summary::before/);
   assert.match(styles, /nr-v3__tree-node\[open\][^\n]*rotate\(90deg\)/);
+  assert.match(ontology, /class="nr-v3__entity-accordion"/);
+  assert.match(ontology, /<details class=\$\{className\} \?open=\$\{isOpen\}>/);
+  assert.match(ontology, /event\.preventDefault\(\); this\.selectV3Entity\(entity\.entityId\)/);
+  assert.doesNotMatch(ontology, /<aside>\$\{this\.v3Views\.map/);
+  assert.match(styles, /grid-template-rows:\s*0fr/);
+  assert.match(styles, /nr-v3__entity-panel\[open\][^\n]*grid-template-rows:\s*1fr/);
+  assert.match(styles, /prefers-reduced-motion:\s*reduce/);
 });
 
 test('presentation environment badge is hidden while Studio is active', () => {

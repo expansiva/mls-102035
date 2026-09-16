@@ -640,6 +640,7 @@
   "ontology.v3.none": "Nenhum item neste grupo.",
   "ontology.v3.lifecycleAndKeys": "Unicidade e ciclo de vida",
   "ontology.v3.lifecycleDescription": "Restrições compostas, estados e transições mantidos pelo módulo.",
+  "ontology.v3.lifecycleCount": "{{states}} estados · {{transitions}} transições",
   "ontology.v3.graphAria": "Grafo da ontologia v3 com entidades do módulo, registros da plataforma e formas de vínculo.",
   "ontology.v3.platformGhost": "registro da plataforma",
   "ontology.v3.platformRecord": "registro completo da plataforma"

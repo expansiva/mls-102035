@@ -94,6 +94,10 @@ Who may see a record is decided by the access matrix, and enforced by the backen
 A journey step that reads "my orders" or "my students" is therefore a `dataScope`, never a filter field
 the user types.
 
+WHICH fields they see is `disclosure`, and on a master record it addresses the tree of the document
+(`<Entity>.details.identification.name`, `<Entity>.details.person`), never the identity alone: an actor
+granted only `<Entity>.id` sees a uuid and no name.
+
 ## Computed values
 
 Values derived from other data (a total, a balance, a due situation) are not fields and not entities:

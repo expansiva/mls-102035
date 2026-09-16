@@ -237,8 +237,24 @@ new-release--widgets--ontology-102035 {
   .nr-v3 .nr-ontology__actions { display: grid; grid-template-columns: auto auto; justify-items: end; }
   .nr-v3__edit-note { grid-column: 1 / -1; max-width: none; color: var(--text-muted, #5d6b7e); font-size: .61rem; line-height: 1.35; text-align: right; }
   .nr-v3 .nr-button:disabled { cursor: not-allowed; opacity: .48; }
-  .nr-v3__workbench > main { gap: 1rem; }
-  .nr-v3__workbench > aside button.is-platform { border-style: dashed; }
+  .nr-v3__entity-accordion { display: grid; gap: .7rem; padding: 1rem 1.1rem 1.35rem; background: var(--page-bg, #f8fafc); }
+  .nr-v3__entity-panel { overflow: hidden; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .9rem; background: var(--surface-bg, #fff); box-shadow: 0 .18rem .65rem color-mix(in srgb, var(--text-strong, #111827) 5%, transparent); transition: border-color .2s ease, box-shadow .2s ease; }
+  .nr-v3__entity-panel.is-platform { border-style: dashed; }
+  .nr-v3__entity-panel[open] { border-color: color-mix(in srgb, var(--selected-border, #1273d4) 62%, var(--border-subtle, #e4e9f0)); box-shadow: 0 .45rem 1.35rem color-mix(in srgb, var(--selected-border, #1273d4) 13%, transparent); }
+  .nr-v3__entity-panel > summary { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 1rem .85rem 2.65rem; cursor: pointer; list-style: none; background: var(--surface-bg, #fff); transition: background .2s ease; }
+  .nr-v3__entity-panel > summary::-webkit-details-marker { display: none; }
+  .nr-v3__entity-panel > summary::before { position: absolute; top: .78rem; left: 1rem; content: '▸'; color: var(--link-text, #0f62b8); font-size: 1.22rem; font-weight: 900; line-height: 1; transition: transform .24s ease; }
+  .nr-v3__entity-panel[open] > summary { background: color-mix(in srgb, var(--selected-bg, #e3f1ff) 68%, var(--surface-bg, #fff)); }
+  .nr-v3__entity-panel[open] > summary::before { transform: rotate(90deg); }
+  .nr-v3__entity-panel > summary > span:first-of-type { display: grid; gap: .08rem; min-width: 0; }
+  .nr-v3__entity-panel > summary strong { color: var(--text-strong, #111827); font-size: .84rem; }
+  .nr-v3__entity-panel > summary code { color: var(--text-muted, #5d6b7e); font-size: .61rem; }
+  .nr-v3__entity-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
+  .nr-v3__entity-meta i { padding: .2rem .42rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: 999px; background: var(--surface-alt-bg, #f5f7fa); color: var(--text-muted, #5d6b7e); font-size: .58rem; font-style: normal; font-weight: 700; }
+  .nr-v3__entity-reveal { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .3s ease, opacity .22s ease; }
+  .nr-v3__entity-reveal > div { min-height: 0; overflow: hidden; }
+  .nr-v3__entity-panel[open] > .nr-v3__entity-reveal { grid-template-rows: 1fr; opacity: 1; }
+  .nr-v3__entity-content { display: grid; gap: 1rem; padding: 1rem; border-top: 1px solid var(--border-subtle, #e4e9f0); background: var(--page-bg, #f8fafc); }
   .nr-v3__identity dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .nr-v3__section { overflow: hidden; }
   details.nr-v3__collapsible-section { padding: 0; }
@@ -334,6 +350,8 @@ new-release--widgets--ontology-102035 {
     .nr-v3__edit-note { max-width: none; text-align: left; }
     .nr-ontology__workbench { display: grid; }
     .nr-ontology__workbench > aside { grid-template-columns: repeat(2, minmax(0, 1fr)); border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
+    .nr-v3__entity-panel > summary { align-items: flex-start; }
+    .nr-v3__entity-meta { max-width: 55%; }
     .nr-ontology__graph-layout > aside { border-top: 1px solid var(--border-subtle, #e4e9f0); border-left: 0; }
     .nr-ontology__graph, .nr-ontology__graph-layout { min-height: 32rem; }
     .nr-ontology__summary { overflow-x: auto; }
@@ -341,5 +359,9 @@ new-release--widgets--ontology-102035 {
     .nr-field__edit-grid, .nr-transition__grid, .nr-relationship__edit { grid-template-columns: 1fr; }
     .nr-field__description, .nr-transition__description, .nr-relationship__edit > label:last-child { grid-column: auto; }
     .nr-ontology__graph-alternative > div { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nr-v3__entity-panel, .nr-v3__entity-panel > summary, .nr-v3__entity-panel > summary::before, .nr-v3__entity-reveal { transition: none; }
   }
 }

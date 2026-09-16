@@ -801,12 +801,14 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     const transitions = entity.transitions || [];
     const uniqueKeys = entity.uniqueKeys || [];
     if (!states.length && !transitions.length && !uniqueKeys.length) return nothing;
-    return html`<section class="nr-ontology__section nr-v3__section">
-      <header><div><h3>${this.t('ontology.v3.lifecycleAndKeys')}</h3><p>${this.t('ontology.v3.lifecycleDescription')}</p></div></header>
-      ${uniqueKeys.length ? html`<div class="nr-v3__unique"><strong>${this.t('ontology.uniqueKeys')}</strong>${uniqueKeys.map(key => html`<span>${key.map(field => html`<code>${field}</code>`)}</span>`)}</div>` : nothing}
-      ${states.length ? html`<div class="nr-lifecycle__rail">${states.map(state => html`<span><strong>${state.state}</strong><small>${this.t(`ontology.reachedBy.${state.reachedBy}`)}</small></span>`)}</div>` : nothing}
-      ${transitions.length ? html`<div class="nr-lifecycle__transitions">${transitions.map(transition => html`<article><header><code>${transition.transitionId}</code><span>${transition.from.join(', ')} → ${transition.to}</span></header><p>${transition.description}</p><footer><span>${this.t('ontology.by')}: <strong>${Array.isArray(transition.by) ? transition.by.join(', ') : transition.by}</strong></span>${transition.ruleRefs?.length ? html`<span>${this.t('ontology.ruleRefs')}: ${transition.ruleRefs.map(rule => html`<code>${rule}</code>`)}</span>` : nothing}</footer></article>`)}</div>` : nothing}
-    </section>`;
+    return html`<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">
+      <summary class="nr-v3__section-summary"><div><div><h3>${this.t('ontology.v3.lifecycleAndKeys')}</h3><p>${this.t('ontology.v3.lifecycleDescription')}</p></div><span>${this.t('ontology.v3.lifecycleCount', { states: states.length, transitions: transitions.length })}</span></div></summary>
+      <div class="nr-v3__section-body">
+        ${uniqueKeys.length ? html`<div class="nr-v3__unique"><strong>${this.t('ontology.uniqueKeys')}</strong>${uniqueKeys.map(key => html`<span>${key.map(field => html`<code>${field}</code>`)}</span>`)}</div>` : nothing}
+        ${states.length ? html`<div class="nr-lifecycle__rail">${states.map(state => html`<span><strong>${state.state}</strong><small>${this.t(`ontology.reachedBy.${state.reachedBy}`)}</small></span>`)}</div>` : nothing}
+        ${transitions.length ? html`<div class="nr-lifecycle__transitions">${transitions.map(transition => html`<article><header><code>${transition.transitionId}</code><span>${transition.from.join(', ')} → ${transition.to}</span></header><p>${transition.description}</p><footer><span>${this.t('ontology.by')}: <strong>${Array.isArray(transition.by) ? transition.by.join(', ') : transition.by}</strong></span>${transition.ruleRefs?.length ? html`<span>${this.t('ontology.ruleRefs')}: ${transition.ruleRefs.map(rule => html`<code>${rule}</code>`)}</span>` : nothing}</footer></article>`)}</div>` : nothing}
+      </div>
+    </details>`;
   }
 
   private v3GraphOption(index: Ns5OntologyIndexV3) {
@@ -844,20 +846,34 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     return html`<section class="nr-ontology__graph-view"><div class="nr-ontology__graph-layout"><div class="nr-ontology__graph" role="img" aria-label=${this.t('ontology.v3.graphAria')} ${chart(this.v3GraphOption(index), { click: (params: unknown) => { const node = params as { dataType?: string; data?: { id?: string } }; if (node.dataType === 'node' && node.data?.id) this.selectV3Entity(node.data.id); } })}></div><aside><span>${this.t('ontology.selected')}</span><h2>${selected.title}</h2><code>${selected.entityId}</code><p>${selected.description}</p><dl><div><dt>${this.t('ontology.fields')}</dt><dd>${ontologyV3FieldCount(selected)}</dd></div><div><dt>${this.t('ontology.relationships')}</dt><dd>${selected.relationships.length}</dd></div><div><dt>${this.t('ontology.v3.branches')}</dt><dd>${selected.details.length}</dd></div></dl><button type="button" @click=${() => { this.view = 'text'; }}>${this.t('ontology.openDetails')}</button></aside></div><details class="nr-ontology__graph-alternative"><summary>${this.t('ontology.graphAlternative')}</summary><div><section><h3>${this.t('ontology.entities')}</h3><ul>${graph.nodes.map(node => html`<li><button type="button" @click=${() => this.selectV3Entity(node.id)}><strong>${node.title}</strong><code>${node.ghost ? this.t('ontology.v3.platformGhost') : node.id}</code></button></li>`)}</ul></section><section><h3>${this.t('ontology.relationships')}</h3><ul>${index.relationships.map(link => html`<li><strong>${link.from}</strong><span>${link.mode}</span><strong>${link.to}</strong><code>${link.catalogType || link.through || link.field || link.relationshipId}</code></li>`)}</ul></section></div></details></section>`;
   }
 
-  private renderV3Text(index: Ns5OntologyIndexV3, selected: OntologyTreeView) {
-    const raw = this.v3Entities().find(entity => entity.entityId === selected.entityId);
-    return html`<div class="nr-ontology__workbench nr-v3__workbench">
-      <aside>${this.v3Views.map(item => html`<button type="button" class=${item.entityId === selected.entityId ? 'is-active' : ''} @click=${() => this.selectV3Entity(item.entityId)}><strong>${item.title}</strong><code>${item.entityId}</code><span><i>${this.t(`ontology.kind.${item.kind}`)}</i>${item.subtype ? html`<i>${item.subtype}</i>` : nothing}</span></button>`)}${selected.kind === 'platform' ? html`<button type="button" class="is-active is-platform"><strong>${selected.title}</strong><code>${this.t('ontology.v3.platformRecord')}</code></button>` : nothing}</aside>
-      <main>
-        <section class="nr-ontology__identity nr-v3__identity"><div><span>${this.t('ontology.entity')}</span><h2>${selected.title}</h2><code>${selected.entityId}</code></div><div class="nr-ontology__badges"><span>${this.t(`ontology.kind.${selected.kind}`)}</span>${selected.subtype ? html`<span>${selected.subtype}</span>` : nothing}<span>${this.t('ontology.v3.readOnly')}</span></div><p>${selected.description}</p><dl><div><dt>${this.t('ontology.displayField')}</dt><dd><code>${selected.displayField}</code></dd></div><div><dt>${this.t('ontology.v3.namespace')}</dt><dd><code>${index.moduleNamespace.key}</code></dd></div><div><dt>${this.t('ontology.v3.schema')}</dt><dd><code>${this.t('ontology.v3.contractName')}</code></dd></div></dl></section>
-        <section class="nr-ontology__section nr-v3__section"><header><div><h3>${this.t('ontology.v3.record')}</h3><p>${this.t('ontology.v3.recordDescription')}</p></div><span>${this.t('ontology.count', { count: selected.columns.length + 1 })}</span></header><div class="nr-v3__record">${selected.columns.map(column => html`<article><header><strong>${column.title || column.id}</strong><code>${column.id}</code></header><div class="nr-v3__chips">${this.renderV3NodeChips(column)}</div>${column.description ? html`<p>${column.description}</p>` : nothing}</article>`)}<article class="is-details"><header><strong>${this.t('ontology.v3.details')}</strong><code>${this.t('ontology.v3.details')}</code></header><div class="nr-v3__chips"><span class="nr-chip">${this.t('ontology.v3.object')}</span><span class="nr-chip is-required">${this.t('ontology.required')}</span></div><p>${this.t('ontology.v3.detailsSummary', { count: selected.details.length })}</p></article></div></section>
-        <section class="nr-ontology__section nr-v3__section"><header><div><h3>${this.t('ontology.v3.details')}</h3><p>${this.t('ontology.v3.treeDescription')}</p></div><span title=${this.t('ontology.v3.leafCountHelp')} >${this.t('ontology.v3.leafCount', { count: ontologyNodeLeafCount(selected.details) })}</span></header><div class="nr-v3__tree">${selected.details.map(node => this.renderV3Node(node))}</div></section>
-        ${this.renderV3Relationships(selected.relationships)}
-        ${this.renderV3Capabilities(selected.capabilities)}
-        ${this.renderV3Rules(selected.rules)}
-        ${this.renderV3Lifecycle(raw)}
-      </main>
+  private renderV3EntityContent(index: Ns5OntologyIndexV3, entity: OntologyTreeView) {
+    const raw = this.v3Entities().find(item => item.entityId === entity.entityId);
+    return html`<div class="nr-v3__entity-content">
+      <section class="nr-ontology__identity nr-v3__identity"><div><span>${this.t('ontology.entity')}</span><h2>${entity.title}</h2><code>${entity.entityId}</code></div><div class="nr-ontology__badges"><span>${this.t(`ontology.kind.${entity.kind}`)}</span>${entity.subtype ? html`<span>${entity.subtype}</span>` : nothing}<span>${this.t('ontology.v3.readOnly')}</span></div><p>${entity.description}</p><dl><div><dt>${this.t('ontology.displayField')}</dt><dd><code>${entity.displayField}</code></dd></div><div><dt>${this.t('ontology.v3.namespace')}</dt><dd><code>${index.moduleNamespace.key}</code></dd></div><div><dt>${this.t('ontology.v3.schema')}</dt><dd><code>${this.t('ontology.v3.contractName')}</code></dd></div></dl></section>
+      <section class="nr-ontology__section nr-v3__section"><header><div><h3>${this.t('ontology.v3.record')}</h3><p>${this.t('ontology.v3.recordDescription')}</p></div><span>${this.t('ontology.count', { count: entity.columns.length + 1 })}</span></header><div class="nr-v3__record">${entity.columns.map(column => html`<article><header><strong>${column.title || column.id}</strong><code>${column.id}</code></header><div class="nr-v3__chips">${this.renderV3NodeChips(column)}</div>${column.description ? html`<p>${column.description}</p>` : nothing}</article>`)}<article class="is-details"><header><strong>${this.t('ontology.v3.details')}</strong><code>${this.t('ontology.v3.details')}</code></header><div class="nr-v3__chips"><span class="nr-chip">${this.t('ontology.v3.object')}</span><span class="nr-chip is-required">${this.t('ontology.required')}</span></div><p>${this.t('ontology.v3.detailsSummary', { count: entity.details.length })}</p></article></div></section>
+      <section class="nr-ontology__section nr-v3__section"><header><div><h3>${this.t('ontology.v3.details')}</h3><p>${this.t('ontology.v3.treeDescription')}</p></div><span title=${this.t('ontology.v3.leafCountHelp')} >${this.t('ontology.v3.leafCount', { count: ontologyNodeLeafCount(entity.details) })}</span></header><div class="nr-v3__tree">${entity.details.map(node => this.renderV3Node(node))}</div></section>
+      ${this.renderV3Relationships(entity.relationships)}
+      ${this.renderV3Capabilities(entity.capabilities)}
+      ${this.renderV3Rules(entity.rules)}
+      ${this.renderV3Lifecycle(raw)}
     </div>`;
+  }
+
+  private renderV3EntityPanel(index: Ns5OntologyIndexV3, entity: OntologyTreeView, selected: OntologyTreeView) {
+    const isOpen = entity.entityId === selected.entityId;
+    const className = entity.kind === 'platform' ? 'nr-v3__entity-panel is-platform' : 'nr-v3__entity-panel';
+    return html`<details class=${className} ?open=${isOpen}>
+      <summary @click=${(event: MouseEvent) => { event.preventDefault(); this.selectV3Entity(entity.entityId); }}>
+        <span><strong>${entity.title}</strong><code>${entity.entityId}</code></span>
+        <span class="nr-v3__entity-meta"><i>${this.t(`ontology.kind.${entity.kind}`)}</i>${entity.subtype ? html`<i>${entity.subtype}</i>` : nothing}<i>${ontologyV3FieldCount(entity)} ${this.t('ontology.fields')}</i></span>
+      </summary>
+      <div class="nr-v3__entity-reveal"><div>${this.renderV3EntityContent(index, entity)}</div></div>
+    </details>`;
+  }
+
+  private renderV3Text(index: Ns5OntologyIndexV3, selected: OntologyTreeView) {
+    const entities = selected.kind === 'platform' ? [...this.v3Views, selected] : this.v3Views;
+    return html`<div class="nr-v3__entity-accordion">${entities.map(entity => this.renderV3EntityPanel(index, entity, selected))}</div>`;
   }
 
   private renderV3(index: Ns5OntologyIndexV3) {

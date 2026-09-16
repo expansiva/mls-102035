@@ -640,6 +640,7 @@
   "ontology.v3.none": "No item in this group.",
   "ontology.v3.lifecycleAndKeys": "Uniqueness and lifecycle",
   "ontology.v3.lifecycleDescription": "Composite constraints, states, and transitions maintained by the module.",
+  "ontology.v3.lifecycleCount": "{{states}} states · {{transitions}} transitions",
   "ontology.v3.graphAria": "V3 ontology graph with module entities, platform records, and relationship modes.",
   "ontology.v3.platformGhost": "platform record",
   "ontology.v3.platformRecord": "full platform record"

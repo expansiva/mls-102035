@@ -1,5 +1,19 @@
 # access60
 
+## 2026-09-15 (ns5_40)
+
+- Disclosure addresses the PATH of a record, not only `<Entity>.<fieldId>`: the entity root
+  (`Consulta`), a column, a branch (`Paciente.details.person`) and a leaf
+  (`Paciente.details.person.birthDate`) are all valid references. `resolvableFieldPaths`
+  (`solution/ontologyPaths.ts`) enumerates them for both ontology forms; a v3 entity view carries them
+  in `Ns5AccessEntityView.paths`, which replaces `fields`/`details` as the resolvable set.
+- `NS5_ACCESS_DISCLOSURE_IDS_ONLY` (warning): a `fieldsOnly` grant that names an entity only by its
+  identity while that entity resolves more than its identity. Measured 0 hits over the thirteen v2
+  access fixtures (40 grants); the entity that resolves nothing but its id is exempt on purpose.
+- `NS5_ACCESS_DISCLOSURE_PATH_UNKNOWN` (error): a reference that is no path of a v3 record.
+  A v2 entity keeps answering `NS5_ACCESS_FIELD_UNKNOWN`.
+- `derived` does not exclude a path from a disclosure: it is a write-side mark, and a disclosure reads.
+
 ## 2026-09-12
 
 - CRUD grant uses `ns5ResolveEntityWriter` (`kind === 'crud'`), same resolution as ontology30 / I10.

@@ -12,6 +12,8 @@ import {
   isLimitedDisclosureMode,
   isPersonScopeMode,
   ns5AccessFieldRefExists,
+  ns5AccessIdentityRef,
+  ns5AccessResolvableFieldRefs,
   splitAccessFieldRef,
   NS5_ACCESS_DISCLOSURE_MODES,
   NS5_ACCESS_SCOPE_MODES,
@@ -190,6 +192,7 @@ export function validateNs5Access(
           `${base}.disclosure`,
         );
       }
+      checkDisclosureIdsOnly(issues, grant, allowed, entityById, base);
     }
     checkFieldList(issues, allowed, entityById, `${base}.disclosure.allowedFields`);
     checkFieldList(issues, denied, entityById, `${base}.disclosure.deniedFields`);
@@ -281,14 +284,59 @@ function checkFieldList(
   refs.forEach((ref, position) => {
     const path = `${base}[${position}]`;
     if (!isAccessFieldRef(ref)) {
-      error(issues, 'NS5_ACCESS_FIELD_FORMAT', 'Fields must be Entity.field or Entity.details.name.', path);
+      error(issues, 'NS5_ACCESS_FIELD_FORMAT', 'Fields must be Entity, Entity.field or a path of the record.', path);
       return;
     }
     const parsed = splitAccessFieldRef(ref);
     const entity = parsed ? entityById.get(parsed.entityId) : undefined;
-    if (!entity || !parsed || !ns5AccessFieldRefExists(ref, entity)) {
-      error(issues, 'NS5_ACCESS_FIELD_UNKNOWN', `Unknown field ref ${ref}.`, path);
+    if (entity && parsed && ns5AccessFieldRefExists(ref, entity)) return;
+    // ns5_40 T2: an entity whose data is the MDM record answers with paths, so say so — the repair is
+    // "use a path of the tree", not "this field id does not exist".
+    if (entity?.paths) {
+      error(
+        issues,
+        'NS5_ACCESS_DISCLOSURE_PATH_UNKNOWN',
+        `${ref} is no path of the ${entity.entityId} record.`,
+        path,
+      );
+      return;
     }
+    error(issues, 'NS5_ACCESS_FIELD_UNKNOWN', `Unknown field ref ${ref}.`, path);
+  });
+}
+
+/**
+ * ns5_40 T2, the measured symptom. A `fieldsOnly` grant that names an entity ONLY by its identity while
+ * that entity resolves more than its identity has disclosed nothing usable: read literally, the actor
+ * sees a uuid and no name. That is what the six ab_01 plans detected and ignored.
+ *
+ * The guard is "resolves more than its identity" on purpose, and not "is an MDM role": on a v2 module a
+ * namespace-only mdm entity resolves nothing BUT its identity, so listing the id was the only thing the
+ * model could say and there is nothing to warn about. Measured over the thirteen access fixtures:
+ * without that guard 8 grant/entity pairs in 5 v2 modules trip; with it, 0.
+ */
+function checkDisclosureIdsOnly(
+  issues: Ns5AccessGateIssue[],
+  grant: Ns5AccessGrant,
+  allowed: readonly string[],
+  entityById: Map<string, Ns5AccessEntityView>,
+  base: string,
+): void {
+  if (!allowed.length) return;
+  grant.entityRefs.forEach((entityId, position) => {
+    const entity = entityById.get(entityId);
+    if (!entity) return;
+    const identity = ns5AccessIdentityRef(entity);
+    if (!identity) return;
+    const named = allowed.filter(ref => ref === entityId || ref.startsWith(`${entityId}.`));
+    if (!named.length || !named.every(ref => ref === identity)) return;
+    if (!ns5AccessResolvableFieldRefs(entity).some(ref => ref !== identity)) return;
+    warning(
+      issues,
+      'NS5_ACCESS_DISCLOSURE_IDS_ONLY',
+      `${grant.grantId} discloses ${entityId} only as ${identity}; name the paths the actor reads (${entityId}.<path>) or use fullRecord.`,
+      `${base}.entityRefs[${position}]`,
+    );
   });
 }
 
