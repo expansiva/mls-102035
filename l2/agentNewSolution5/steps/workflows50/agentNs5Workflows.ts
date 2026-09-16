@@ -30,13 +30,18 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
+import {
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  type Ns5OntologyAnyIndex,
+  type Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5JourneyArtifact,
   Ns5JourneyDecision,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
-  Ns5OntologyIndexArtifact,
+  Ns5OntologyAnyEntity,
   Ns5PipelineState,
   Ns5SystemDecision,
   Ns5WorkflowProcess,
@@ -71,7 +76,7 @@ export function buildNs5WorkflowsHumanPrompt(input: {
   userLanguage: string;
   actorIds: string[];
   journeys: Ns5JourneyArtifact[];
-  entities: Ns5OntologyEntityArtifact[];
+  entities: Ns5OntologyEntityViewItem[];
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
@@ -318,16 +323,16 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
-async function readEntities(moduleName: string): Promise<Ns5OntologyEntityArtifact[]> {
-  const index = await readDefsJson<Ns5OntologyIndexArtifact>(ontologyIndexFile(moduleName));
+async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {
+  const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
   if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
-  const entities: Ns5OntologyEntityArtifact[] = [];
-  for (const entityId of index.entities) {
-    const artifact = await readDefsJson<Ns5OntologyEntityArtifact>(ontologyEntityFile(moduleName, entityId));
+  const entities: Ns5OntologyAnyEntity[] = [];
+  for (const entityId of ns5OntologyEntityIds(index)) {
+    const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
-  return entities;
+  return ns5OntologyEntityViews(entities);
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
@@ -410,7 +415,7 @@ function formatWriteActs(journeys: Ns5JourneyArtifact[]): string {
   return lines.length ? lines.join('\n') : '(none)';
 }
 
-function formatTransitions(entities: Ns5OntologyEntityArtifact[]): string {
+function formatTransitions(entities: Ns5OntologyEntityViewItem[]): string {
   const blocks = entities.map(entity => {
     if (!entity.transitions.length) return '';
     const lines = entity.transitions.map(transition => {

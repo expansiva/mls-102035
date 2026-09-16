@@ -58,6 +58,7 @@ import {
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
 import { validateNs5Workflows } from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
 import { renderDefsSource, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
+import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5JourneyArtifact,
   Ns5ModuleArtifact,
@@ -88,14 +89,16 @@ function render(
   return renderDefsSource(defsFile(folder, shortName), exportName, value, typeName);
 }
 
-function accessView(entities: Ns5OntologyEntityArtifact[]) {
-  return entities.map(entity => ({
-    entityId: entity.entityId,
-    party: entity.party,
-    fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
-    ...(entity.details ? { details: entity.details } : {}),
-    storage: { idField: entity.storage.idField },
-    ...(entity.writer && entity.writer !== 'journey' ? { writer: entity.writer } : {}),
+/** ns5_43 T7: the shared view answers for both forms, so the replay does not assume v2. */
+function accessView(entities: Ns5OntologyAnyEntity[]) {
+  return ns5OntologyEntityViews(entities).map(view => ({
+    entityId: view.entityId,
+    party: view.party,
+    fields: view.fields.map(field => ({ fieldId: field.fieldId })),
+    ...(view.details ? { details: view.details } : {}),
+    storage: { idField: view.idField },
+    ...(view.writer && view.writer !== 'journey' ? { writer: view.writer } : {}),
+    ...(view.paths ? { paths: view.paths } : {}),
   }));
 }
 
@@ -262,9 +265,9 @@ for (const moduleName of ns5ReplayModules()) {
       moduleName,
       actorIds: loadNs5Actors(moduleName).map(actor => actor.actorId),
       journeys: workflowJourneyView(journeys),
-      entities: entities.map(entity => ({
-        entityId: entity.entityId,
-        transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
+      entities: ns5OntologyEntityViews(entities).map(view => ({
+        entityId: view.entityId,
+        transitions: view.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
       })),
       journeyDecisions,
     });
@@ -286,12 +289,7 @@ for (const moduleName of ns5ReplayModules()) {
       moduleName,
       actors,
       entities: accessView(entities),
-      relationships: index.relationships.map(rel => ({
-        relationshipId: rel.relationshipId,
-        fromEntity: rel.fromEntity,
-        toEntity: rel.toEntity,
-        required: rel.required,
-      })),
+      relationships: ns5OntologyEdges(index),
       journeys: journeys.map(journey => ({
         journeyId: journey.journeyId,
         business: { actorRef: journey.business.actorRef },

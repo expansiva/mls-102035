@@ -16,7 +16,10 @@ the document. It is not a generated client module. A client project only stores
 
 ## Who edits this folder
 
-The platform, on a platform release. The engine emits
-`mls-102034/l4/organization/ontology/*.defs.ts` (`l1/mdm/scripts/emitLevel1Defs.ts`). This folder
-no longer holds a copy. Never edit those defs by hand — a drift test in 102034 fails if they
-diverge from the engine.
+The platform, on a platform release. Since ns5_43 there is ONE file: `mls-102034/l4/ontology/mdm.defs.ts`,
+written by hand and proved by `mls-102034/l1/mdm/defs/mdmOntology.test.ts`. The fifteen emitted
+`mls-102034/l4/organization/ontology/*.defs.ts` and their emitter are gone; the behavioural half of the
+catalog (layers, visibility, identity, services, invariants) sits beside it in
+`mls-102034/l4/ontology/platform.defs.ts`. `l2/agentNewSolution/helpers/level1Catalog.ts` derives from
+those two what the NS4 readers see, and `level1Catalog.test.ts` freezes the prompt it produces. This
+folder holds no copy.

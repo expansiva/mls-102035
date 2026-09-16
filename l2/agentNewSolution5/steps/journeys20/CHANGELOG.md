@@ -1,5 +1,11 @@
 # journeys20
 
+## 2026-09-16
+
+- ns5_43 T1: an `affects` entry is an entity id OR a path into an embedded child of one
+  (`PedidoCompra.details.itens`). The root is normalised to PascalCase, the path segments
+  are kept verbatim. `NS5_JOURNEY_STEP_AFFECTS_ID` and `journey.schema.json` accept the path.
+
 ## 2026-09-12
 
 - An `act` declares `effect`: `create` | `update` | `transition` (required; not derived).

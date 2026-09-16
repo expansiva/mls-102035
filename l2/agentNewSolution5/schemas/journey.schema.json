@@ -72,7 +72,7 @@
         "entity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "affects": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(?:\\.[A-Za-z][A-Za-z0-9]*)*$" }
         },
         "effect": { "type": "string", "enum": ["create", "update", "transition"] },
         "transitionRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },

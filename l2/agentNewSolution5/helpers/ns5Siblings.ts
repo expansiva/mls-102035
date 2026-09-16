@@ -1,5 +1,9 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/helpers/ns5Siblings.ts" enhancement="_blank"/>
 
+import {
+  ns4RegistryRoleSubtype,
+  ns4RegistryRoleTag,
+} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 import type {
   Ns4SolutionRegistryArtifact,
   Ns4SolutionRegistryEntity,
@@ -59,7 +63,7 @@ export function formatNs5Siblings(siblings: readonly Ns5SiblingModule[]): string
       ? sibling.events.map(event => `${event.eventId} on ${event.on}`).join(', ')
       : '(none)';
     const roles = sibling.roles.length
-      ? sibling.roles.map(role => `${role.role} ← ${role.mdmSubtype}`).join(', ')
+      ? sibling.roles.map(role => `${ns4RegistryRoleTag(role)} ← ${ns4RegistryRoleSubtype(role)}`).join(', ')
       : '(none)';
     lines.push(`- ${sibling.moduleName}: roles ${roles}; entities ${entities}; events ${events}`);
   }

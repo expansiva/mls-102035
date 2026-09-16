@@ -60,6 +60,14 @@ import {
   writeL5Project,
   writeSolutionRegistry,
 } from '/_102035_/l2/solution/lib.js';
+import {
+  isNs5OntologyV3Entity,
+  ns5OntologyEdges,
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  type Ns5OntologyAnyIndex,
+  type Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
@@ -67,8 +75,7 @@ import type {
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
-  Ns5OntologyIndexArtifact,
+  Ns5OntologyAnyEntity,
   Ns5PipelineState,
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
@@ -199,10 +206,10 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     if (!artifact) throw new Error(`journeys/${entry.journeyId}.defs.ts is missing for ${moduleName}.`);
     journeys.push(artifact);
   }
-  const ontologyIndex = await readRequired<Ns5OntologyIndexArtifact>(ontologyIndexFile(moduleName), 'ontology index');
-  const entities: Ns5OntologyEntityArtifact[] = [];
-  for (const entityId of ontologyIndex.entities) {
-    const artifact = await readDefsJson<Ns5OntologyEntityArtifact>(ontologyEntityFile(moduleName, entityId));
+  const ontologyIndex = await readRequired<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName), 'ontology index');
+  const entities: Ns5OntologyAnyEntity[] = [];
+  for (const entityId of ns5OntologyEntityIds(ontologyIndex)) {
+    const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
@@ -216,7 +223,7 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     module: moduleArtifact,
     journeys,
     journeyIndex,
-    entities,
+    entities: ns5OntologyEntityViews(entities),
     ontologyIndex,
     rules,
     workflows,
@@ -228,6 +235,13 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     siblings: await readNs5Siblings(moduleName),
     platformEventIds: ns5PlatformEventIds(),
   };
+}
+
+/** `roleTag` as the v3 ontology wrote it, or the v2 `storage.mdmType`. */
+function registryRoleTag(entity: Ns5OntologyEntityViewItem): string {
+  const source = entity.source;
+  if (isNs5OntologyV3Entity(source)) return source.kind === 'role' ? source.roleTag : '';
+  return source.storage?.mdmType || '';
 }
 
 async function persistRegistry(moduleName: string, sources: Ns5OracleSources): Promise<string> {
@@ -243,7 +257,16 @@ async function persistRegistry(moduleName: string, sources: Ns5OracleSources): P
   const next = upsertSolutionRegistryModule(current, buildSolutionRegistryModuleBlock({
     moduleName,
     actors: sources.access.actors,
-    entities: sources.entities,
+    // ns5_43 T4: the registry states what each entity is, in the words of the form it was written in.
+    entities: sources.entities.map(entity => ({
+      entityId: entity.entityId,
+      kind: entity.kind,
+      ...(entity.writerKind !== entity.kind ? { class: entity.writerKind } : {}),
+      party: entity.party,
+      ...(entity.mdmSubtype ? { mdmSubtype: entity.mdmSubtype } : {}),
+      ...(registryRoleTag(entity) ? { roleTag: registryRoleTag(entity) } : {}),
+      ...(entity.writerKind === 'mdm' ? { storage: { target: 'mdm' } } : {}),
+    })),
     events: sources.integration.outbound
       .filter(item => item.kind === 'event')
       .map(item => ({ eventId: item.event || item.id, on: item.on || '' }))

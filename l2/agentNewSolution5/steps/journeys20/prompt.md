@@ -17,7 +17,7 @@ A journey is what a person does to reach an outcome. It is not a screen and not 
 
 - `kind` is exactly one of `locate`, `inspect`, `act`, `decide`, `handoff`.
 - `entity` is the business object in UpperCamel. Later steps will declare it; here it is a name.
-- When an `act` also changes another business object, list that object in `affects`. Do not repeat the step `entity`. Do not encode the second object only in the description.
+- When an `act` also changes another business object, list that object in `affects`. Do not repeat the step `entity`. Do not encode the second object only in the description. When what changes is a child embedded in another object rather than an object of its own, name the path to it (`<Entity>.<path>.<to>.<child>`); the first segment is always an entity.
 - Every `act` declares its `effect`: `create` (a new record), `transition` (a state change — name the `transitionRef`, a lowerCamel id the ontology will declare with this actor in `by`) or `update` (edits fields; no state change). `transitionRef` only with `effect: 'transition'`.
 - `decide` exists only when the request names a human choice between alternative outcomes (approve or reject, accept or decline, select one of). Confirming a form, validating captured data or applying a system rule is `act`, not `decide`. A module with no decide step is valid.
 - `handoff` when the next step belongs to another actor: set `handoffTo` to that actor's id. Omit `handoffTo` on every other `kind`. The field names the receiving actor of a handoff; it is not "who performs this step" (`actorRef` already does that). A `locate`, `inspect`, `act` or `decide` step that includes `handoffTo` — even set to the journey's own actor — is invalid.

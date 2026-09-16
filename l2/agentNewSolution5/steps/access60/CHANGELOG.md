@@ -1,5 +1,12 @@
 # access60
 
+## 2026-09-16
+
+- ns5_43 T3: the generator now feeds the gate what ns5_40 designed — a v3 entity arrives
+  with `paths` (every node of `record.fields`), so `NS5_ACCESS_DISCLOSURE_PATH_UNKNOWN` and
+  `NS5_ACCESS_DISCLOSURE_IDS_ONLY` apply to what `ontology30` produces and not only to
+  hand-written fixtures. The prompt lists the paths instead of a flat field list.
+
 ## 2026-09-15 (ns5_40)
 
 - Disclosure addresses the PATH of a record, not only `<Entity>.<fieldId>`: the entity root

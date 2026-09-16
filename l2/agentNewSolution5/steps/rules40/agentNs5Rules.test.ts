@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import {
   loadNs5FixtureJson,
   NS5_REAL_MODULES,
@@ -176,11 +177,72 @@ void test('human prompt carries source request, journeys, ontology and cited rul
     sourcePrompt: 'modulo comanda, portugues. perfis: garcom e caixa.',
     userLanguage: 'pt',
     journeys: [journey],
-    entities: [comanda],
+    entities: ns5OntologyEntityViews([comanda]),
   });
   assert.match(human, /Source request/);
   assert.match(human, /fecharComanda \(caixa\)/);
   assert.match(human, /fecharComandaAposQuitacao/);
+});
+
+void test('the prompt carries the rule ids ontology30 recorded, cited or not by a transition (ns5_43 T2)', () => {
+  const comanda = {
+    schemaVersion: '2026-09-11-ns5-ontology-v2',
+    moduleName: 'comandaRestaurante5',
+    entityId: 'Comanda',
+    title: 'Order',
+    description: 'Open table order.',
+    kind: 'core',
+    party: 'none',
+    displayField: 'status',
+    fields: [
+      { fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Open or closed.' },
+    ],
+    lifecycleStates: [
+      { state: 'open', reachedBy: 'actor' },
+      { state: 'closed', reachedBy: 'actor' },
+    ],
+    transitions: [{
+      transitionId: 'fecharComanda',
+      from: ['open'],
+      to: 'closed',
+      by: ['caixa'],
+      description: 'Cashier closes the order.',
+      ruleRefs: ['fecharComandaAposQuitacao'],
+    }],
+    storage: { target: 'moduleDatabase', scope: 'module', idField: 'comandaId' },
+  } as Ns5OntologyEntityArtifact;
+  const journey = {
+    schemaVersion: '2026-09-10-ns5-journey-v1',
+    journeyId: 'fecharComanda',
+    business: {
+      actorRef: 'caixa',
+      title: 'Close the order',
+      goal: 'Take payment and free the table.',
+      entry: { mode: 'contextOrLookup' },
+      steps: [{ stepId: 'close', kind: 'act', entity: 'Comanda', title: 'Close', description: 'The order is closed.' }],
+      outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+    },
+    businessHash: 'sha256:0',
+  } as Ns5JourneyArtifact;
+  const without = buildNs5RulesHumanPrompt({
+    sourcePrompt: 'modulo comanda.',
+    userLanguage: 'pt',
+    journeys: [journey],
+    entities: ns5OntologyEntityViews([comanda]),
+  });
+  assert.doesNotMatch(without, /rule-person-privacy-consent-required-br-eu/);
+
+  const withCited = buildNs5RulesHumanPrompt({
+    sourcePrompt: 'modulo comanda.',
+    userLanguage: 'pt',
+    journeys: [journey],
+    entities: ns5OntologyEntityViews([comanda]),
+    citedRules: ['rule-person-privacy-consent-required-br-eu', 'fecharComandaAposQuitacao'],
+  });
+  assert.match(withCited, /## rules the ontology cited; keep these ids/);
+  assert.match(withCited, /- rule-person-privacy-consent-required-br-eu/);
+  // A transition ruleRef and an ontology30 citation are the same list, without duplicates.
+  assert.equal(withCited.match(/- fecharComandaAposQuitacao/g)?.length, 1);
 });
 
 void test('rules40 prompt has no domain examples and no appliesTo/title', () => {

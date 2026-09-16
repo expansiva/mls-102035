@@ -1,5 +1,11 @@
 # rules40
 
+## 2026-09-16
+
+- ns5_43 T2: the prompt carries `pipeline.ontology30.citedRules[]` under "rules the
+  ontology cited; keep these ids", merged with the `ruleRefs` of the transitions.
+  A v3 entity prints its record as paths; finalize80 I4 still confirms the ids resolve.
+
 ## 2026-09-11
 
 - Catalog is `{ruleId, description}` only. `title` and `appliesTo` removed (they had

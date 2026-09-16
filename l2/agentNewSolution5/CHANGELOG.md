@@ -1,5 +1,25 @@
 # agentNewSolution5
 
+## 2026-09-16
+
+- ns5_43: the steps after `ontology30` read the module ontology through
+  `solution/ontologyView.ts` — one normalized reading of both forms. The v3 index
+  (`entities[{ entityId, … }]`, `relationships[{ from, to, mode }]`) and the v3 entity
+  (`record.fields` instead of `fields`) no longer break `rules40`, `workflows50`,
+  `access60`, `integration70` and `finalize80` at the same eight lines.
+- T1 `affects` may name a path into an embedded child (`PedidoCompra.details.itens`):
+  the root is normalised, the path is kept, and finalize80 I1 resolves it against
+  `record.fields` / `details`. `on: Entity.transition` is unchanged.
+- T2 `rules40` receives `pipeline.ontology30.citedRules[]` as data ("rules the ontology
+  cited; keep these ids"). T3 the disclosure paths of ns5_40 now reach the generator.
+- T4 `registry.defs.ts` names a papel `{ subtype, roleTag, namespace }` and an entity row
+  carries `class`; `level1SchemaVersion` is `mdm.defs.ts`'s own `schemaVersion`. Registries
+  written before this are read through `ns4RegistryRoleSubtype` / `ns4RegistryRoleTag` and
+  rewritten on the next finalize80.
+- T5 I9 measures `uniqueKeys` against stored columns; I8/I10 read a v3 `role` as the papel
+  over an MDM record. No new check: the eleven v2 modules replay unchanged.
+- T7 the fixtures of the eleven stay v2; `replayRealRuns` reads both forms.
+
 ## 2026-09-12
 
 - Replay fixtures of the 11 complete modules of the final leva (ns5_33 T6).

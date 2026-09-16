@@ -1,6 +1,11 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.ts" enhancement="_blank"/>
 
 import assert from 'node:assert/strict';
+import {
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  type Ns5OntologyAnyIndex,
+} from '/_102035_/l2/solution/ontologyView.js';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -126,15 +131,20 @@ export function loadNs5JourneyIndex(moduleName: string): Ns5JourneyIndexArtifact
   return loadNs5Defs<Ns5JourneyIndexArtifact>('steps/journeys20/fixtures', moduleName, 'index.defs.ts');
 }
 
-export function loadNs5Entities(moduleName: string): Ns5OntologyEntityArtifact[] {
+/**
+ * ns5_43 T7. The eleven recorded modules stay v2 until ns5_44 regenerates them, so the replay must read
+ * BOTH forms rather than assume one: the entity ids come from `ns5OntologyEntityIds`, which answers for
+ * a v2 `string[]` and for a v3 `[{ entityId, … }]` alike.
+ */
+export function loadNs5Entities(moduleName: string): Ns5OntologyAnyEntity[] {
   const index = loadNs5OntologyIndex(moduleName);
-  return index.entities.map(entityId =>
-    loadNs5Defs<Ns5OntologyEntityArtifact>('steps/ontology30/fixtures', moduleName, `${entityId}.defs.ts`),
+  return ns5OntologyEntityIds(index).map(entityId =>
+    loadNs5Defs<Ns5OntologyAnyEntity>('steps/ontology30/fixtures', moduleName, `${entityId}.defs.ts`),
   );
 }
 
-export function loadNs5OntologyIndex(moduleName: string): Ns5OntologyIndexArtifact {
-  return loadNs5Defs<Ns5OntologyIndexArtifact>('steps/ontology30/fixtures', moduleName, 'index.defs.ts');
+export function loadNs5OntologyIndex(moduleName: string): Ns5OntologyAnyIndex {
+  return loadNs5Defs<Ns5OntologyAnyIndex>('steps/ontology30/fixtures', moduleName, 'index.defs.ts');
 }
 
 export function loadNs5Rules(moduleName: string): Ns5RulesArtifact {
@@ -165,7 +175,7 @@ export function loadNs5OracleSources(moduleName: string): Ns5OracleSources {
       return journey;
     }),
     journeyIndex,
-    entities: loadNs5Entities(moduleName),
+    entities: ns5OntologyEntityViews(loadNs5Entities(moduleName)),
     ontologyIndex: loadNs5OntologyIndex(moduleName),
     rules: loadNs5Rules(moduleName),
     workflows: loadNs5Workflows(moduleName),

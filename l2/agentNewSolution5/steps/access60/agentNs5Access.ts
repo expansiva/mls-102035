@@ -31,15 +31,23 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
+import {
+  isNs5OntologyV3Entity,
+  ns5OntologyEdges,
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  ns5OntologyV3FieldLines,
+  type Ns5OntologyAnyIndex,
+  type Ns5OntologyEdgeView,
+  type Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5AccessGrant,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleActor,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
-  Ns5OntologyIndexArtifact,
-  Ns5OntologyRelationship,
+  Ns5OntologyAnyEntity,
   Ns5PipelineState,
 } from '/_102035_/l2/solution/types.js';
 import {
@@ -70,8 +78,8 @@ export function buildNs5AccessHumanPrompt(input: {
   userLanguage: string;
   actors: ReadonlyArray<{ actorId: string; kind: string; title: string; description: string }>;
   journeys: Ns5JourneyArtifact[];
-  entities: Ns5OntologyEntityArtifact[];
-  relationships: Ns5OntologyRelationship[];
+  entities: Ns5OntologyEntityViewItem[];
+  relationships: Ns5OntologyEdgeView[];
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
@@ -279,18 +287,18 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
 }
 
 async function readOntology(moduleName: string): Promise<{
-  entities: Ns5OntologyEntityArtifact[];
-  relationships: Ns5OntologyRelationship[];
+  entities: Ns5OntologyEntityViewItem[];
+  relationships: Ns5OntologyEdgeView[];
 }> {
-  const index = await readDefsJson<Ns5OntologyIndexArtifact>(ontologyIndexFile(moduleName));
+  const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
   if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
-  const entities: Ns5OntologyEntityArtifact[] = [];
-  for (const entityId of index.entities) {
-    const artifact = await readDefsJson<Ns5OntologyEntityArtifact>(ontologyEntityFile(moduleName, entityId));
+  const entities: Ns5OntologyAnyEntity[] = [];
+  for (const entityId of ns5OntologyEntityIds(index)) {
+    const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
-  return { entities, relationships: index.relationships || [] };
+  return { entities: ns5OntologyEntityViews(entities), relationships: ns5OntologyEdges(index) };
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
@@ -363,9 +371,20 @@ function formatJourneys(journeys: Ns5JourneyArtifact[]): string {
   ].join('\n')).join('\n\n');
 }
 
-function formatOntology(entities: Ns5OntologyEntityArtifact[]): string {
-  if (!entities.length) return '(none)';
-  return entities.map(entity => {
+function formatOntology(views: Ns5OntologyEntityViewItem[]): string {
+  if (!views.length) return '(none)';
+  return views.map(view => {
+    const entity = view.source;
+    // ns5_43 T3: a v3 entity resolves a tree, so the prompt names the paths a grant may disclose.
+    if (isNs5OntologyV3Entity(entity)) {
+      const lines = ns5OntologyV3FieldLines(entity).map(line => `- ${view.entityId}.${line.slice(2)}`);
+      return [
+        `### ${view.entityId} (${view.kind}, party=${view.party}${view.writer && view.writer !== 'journey' ? `, writer=${view.writer}` : ''})`,
+        view.description,
+        'Fields:',
+        ...(lines.length ? lines : ['- (none)']),
+      ].join('\n');
+    }
     const fields = entity.fields.map(field =>
       `- ${entity.entityId}.${field.fieldId} (${field.type}${field.required ? ', required' : ''}): ${field.description}`,
     );
@@ -385,7 +404,7 @@ function formatOntology(entities: Ns5OntologyEntityArtifact[]): string {
   }).join('\n\n');
 }
 
-function formatRelationships(relationships: Ns5OntologyRelationship[]): string {
+function formatRelationships(relationships: Ns5OntologyEdgeView[]): string {
   const required = relationships.filter(item => item.required);
   if (!required.length) return '(none)';
   return required.map(item =>

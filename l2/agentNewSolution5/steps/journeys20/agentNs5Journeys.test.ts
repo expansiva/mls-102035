@@ -172,6 +172,43 @@ void test('gate rejects affects that repeat the step entity', () => {
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_JOURNEY_STEP_AFFECTS_ENTITY'));
 });
 
+void test('affects may name an embedded child; the root is normalised and the path is kept (ns5_43 T1)', () => {
+  const journeys = drafts({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close the order',
+        goal: 'Take payment.',
+        entry: { mode: 'coldStart' },
+        steps: [actStep({ affects: ['pedido compra.details.itens', 'Mesa'] })],
+        outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+      },
+    })],
+  });
+  assert.deepEqual(journeys[0].business.steps[0].affects, ['PedidoCompra.details.itens', 'Mesa']);
+  const gate = validateNs5Journeys(journeys, { actors: ACTORS });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('affects still rejects a display label, path or not (ns5_43 T1)', () => {
+  const journeys = drafts({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close the order',
+        goal: 'Take payment.',
+        entry: { mode: 'coldStart' },
+        steps: [actStep({ affects: ['Mesa'] })],
+        outcome: { statement: 'Closed.', evidence: ['Closed.'] },
+      },
+    })],
+  });
+  journeys[0].business.steps[0].affects = ['Mesa.itens do pedido'];
+  const gate = validateNs5Journeys(journeys, { actors: ACTORS });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_JOURNEY_STEP_AFFECTS_ID'));
+});
+
 void test('gate rejects an unknown actorRef', () => {
   const journeys = drafts({
     journeys: [validJourney({

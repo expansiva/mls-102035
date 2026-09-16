@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5AccessArtifact,
   Ns5JourneyArtifact,
@@ -144,7 +145,7 @@ void test('Participante attaches via publico create on Inscricao; I8 passes', ()
   sources.access.grants.push(own);
   for (const entity of assembled.entities) {
     if (sources.entities.some(item => item.entityId === entity.entityId)) continue;
-    sources.entities.push(entity);
+    sources.entities.push(...ns5OntologyEntityViews([entity]));
     sources.ontologyIndex.entities.push(entity.entityId);
   }
   sources.ontologyIndex.relationships.push(...assembled.index.relationships);

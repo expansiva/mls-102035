@@ -7,11 +7,13 @@ import type {
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
-  Ns5OntologyIndexArtifact,
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import type {
+  Ns5OntologyAnyIndex,
+  Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 
 export const NS5_FINALIZE_REPORT_SCHEMA_VERSION = '2026-09-10-ns5-finalize-report-v1' as const;
 
@@ -40,8 +42,9 @@ export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;
   journeys: Ns5JourneyArtifact[];
   journeyIndex: Ns5JourneyIndexArtifact;
-  entities: Ns5OntologyEntityArtifact[];
-  ontologyIndex: Ns5OntologyIndexArtifact;
+  /** ns5_43: the normalized reading of the ontology, whichever form the module was written in. */
+  entities: Ns5OntologyEntityViewItem[];
+  ontologyIndex: Ns5OntologyAnyIndex;
   rules: Ns5RulesArtifact;
   workflows: Ns5WorkflowsArtifact;
   access: Ns5AccessArtifact;

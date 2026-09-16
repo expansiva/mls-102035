@@ -1,15 +1,18 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution/helpers/organizationRegistry.ts" enhancement="_blank"/>
 
+import mdm from '/_102034_/l4/ontology/mdm.defs.js';
 import {
-  NS4_LEVEL1_SCHEMA_VERSION,
   NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
   type Ns4SolutionRegistryArtifact,
   type Ns4SolutionRegistryModule,
   type Ns4SolutionRegistryRole,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
+/** ns5_43 T4: the level-1 the registry is written against IS `mdm.defs.ts`, so it states its version. */
+export const NS4_REGISTRY_LEVEL1_SCHEMA_VERSION: string = mdm.schemaVersion;
+
 export function emptyNs4SolutionRegistry(
-  level1SchemaVersion: string = NS4_LEVEL1_SCHEMA_VERSION,
+  level1SchemaVersion: string = NS4_REGISTRY_LEVEL1_SCHEMA_VERSION,
 ): Ns4SolutionRegistryArtifact {
   return {
     schemaVersion: NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
@@ -49,8 +52,12 @@ export function buildNs4SolutionRegistryModuleBlock(input: {
   entities: Array<{
     entityId: string;
     kind?: string;
+    /** v3 table: `core | event | supporting`. */
+    class?: string;
     party?: string;
     mdmSubtype?: string;
+    /** v3 role: `<moduleName>.<entityId>`, as the ontology wrote it. */
+    roleTag?: string;
     storage?: { target?: string; mdmType?: string };
   }>;
   events?: Array<{ eventId: string; on: string }>;
@@ -68,16 +75,17 @@ export function buildNs4SolutionRegistryModuleBlock(input: {
         entityId: entity.entityId,
         kind: entity.kind || 'core',
         ...(entity.mdmSubtype ? { mdmSubtype: entity.mdmSubtype } : {}),
+        ...(entity.class ? { class: entity.class } : {}),
       });
     }
-    const isMdm = entity.kind === 'mdm' || entity.storage?.target === 'mdm';
+    const isMdm = entity.kind === 'mdm' || entity.kind === 'role' || entity.storage?.target === 'mdm';
     if (!isMdm) continue;
-    const mdmSubtype = inferNs4RegistryMdmSubtype(entity);
-    if (!mdmSubtype) continue;
-    const role = entity.storage?.mdmType || `${input.moduleName}.${entity.entityId}`;
-    if (seen.has(role)) continue;
-    seen.add(role);
-    roles.push({ mdmSubtype, role, namespace: input.moduleName });
+    const subtype = inferNs4RegistryMdmSubtype(entity);
+    if (!subtype) continue;
+    const roleTag = entity.roleTag || entity.storage?.mdmType || `${input.moduleName}.${entity.entityId}`;
+    if (seen.has(roleTag)) continue;
+    seen.add(roleTag);
+    roles.push({ subtype, roleTag, namespace: input.moduleName });
   }
   const events: Ns4SolutionRegistryModule['events'] = [];
   const seenEvents = new Set<string>();

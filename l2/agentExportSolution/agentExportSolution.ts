@@ -2,7 +2,9 @@
 
 import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { readAgentProvenance } from '/_102035_/l2/agentNewSolution/helpers/ns4BuildStamp.js';
-import { NS4_LEVEL1_SCHEMA_VERSION } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+import {
+  ns4RegistryRoleSubtype,
+  ns4RegistryRoleTag, NS4_LEVEL1_SCHEMA_VERSION } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 import {
   listNs4ModuleFolders,
   ns4FileExists,
@@ -134,7 +136,12 @@ async function buildPackedSolution(modules: string[], catalogDescription: string
     const block = registry?.modules.find(item => item.moduleName === moduleName);
     if (block) {
       actors.push(...block.actors.map(actor => ({ moduleName, actorId: actor.actorId, kind: actor.kind })));
-      roles.push(...block.roles);
+      // ns5_43 T4 renamed the registry keys; the export bundle keeps its own contract.
+      roles.push(...block.roles.map(role => ({
+        mdmSubtype: ns4RegistryRoleSubtype(role),
+        role: ns4RegistryRoleTag(role),
+        namespace: role.namespace,
+      })));
     }
   }
   const provenance = await readAgentProvenance().catch(() => ({ buildRef: '' }));

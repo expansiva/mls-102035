@@ -2,6 +2,8 @@
 
 import {
   NS4_SOLUTION_REGISTRY_SCHEMA_VERSION,
+  ns4RegistryRoleSubtype,
+  ns4RegistryRoleTag,
   type Ns4SolutionRegistryArtifact,
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
@@ -50,14 +52,18 @@ export function validateNs4SolutionRegistry(
     const roles = new Set<string>();
     block.roles.forEach((role, roleIndex) => {
       const rolePath = `${path}.roles[${roleIndex}]`;
-      if (!role.mdmSubtype || !subtypes.has(role.mdmSubtype)) {
-        add('NS4_REGISTRY_UNKNOWN_SUBTYPE', `${rolePath}.mdmSubtype`, `mdmSubtype must be a level-1 subtype.`);
+      // ns5_43 T4: `subtype`/`roleTag` are the names; a registry written before it says
+      // `mdmSubtype`/`role` and is accepted as written until the next finalize80 rewrites it.
+      const subtype = ns4RegistryRoleSubtype(role);
+      const roleTag = ns4RegistryRoleTag(role);
+      if (!subtype || !subtypes.has(subtype)) {
+        add('NS4_REGISTRY_UNKNOWN_SUBTYPE', `${rolePath}.subtype`, `subtype must be a level-1 subtype.`);
       }
-      if (!role.role) add('NS4_REGISTRY_ROLE', `${rolePath}.role`, 'role is required.');
-      if (role.role && roles.has(role.role)) {
-        add('NS4_REGISTRY_DUPLICATE_ROLE', `${rolePath}.role`, `Duplicate role ${role.role}.`);
+      if (!roleTag) add('NS4_REGISTRY_ROLE', `${rolePath}.roleTag`, 'roleTag is required.');
+      if (roleTag && roles.has(roleTag)) {
+        add('NS4_REGISTRY_DUPLICATE_ROLE', `${rolePath}.roleTag`, `Duplicate roleTag ${roleTag}.`);
       }
-      if (role.role) roles.add(role.role);
+      if (roleTag) roles.add(roleTag);
       if (!role.namespace) add('NS4_REGISTRY_NAMESPACE', `${rolePath}.namespace`, 'namespace is required.');
     });
     const fieldIds = new Set<string>();
