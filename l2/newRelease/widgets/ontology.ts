@@ -146,7 +146,9 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     this.v3Loading = true;
     this.v3Error = '';
     try {
-      const mdm = await readDefsJson<MdmOntology>(ontologyPlatformFile(index.platformOntology));
+      const platformFile = ontologyPlatformFile(index.platformOntology);
+      await mls.stor.server.loadProjectInfoIfNeeded(platformFile.project);
+      const mdm = await readDefsJson<MdmOntology>(platformFile);
       if (!mdm) throw new Error(this.t('ontology.v3.platformMissing'));
       const views = this.v3Entities().map(entity => resolveModuleEntity(entity, index, mdm, rules));
       if (token !== this.v3LoadToken) return;
