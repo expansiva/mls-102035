@@ -2,7 +2,9 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
-import { formatNs4Level1CatalogPrompt } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
+import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
+import { resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
+import type { MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
 import { formatNs5Siblings, readNs5Siblings } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
@@ -11,7 +13,11 @@ import {
   markNs5Step,
   ns5OntologyEntitySelector,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
+import {
+  composeNs5SystemPrompt,
+  readNs5MdmSkill,
+  readNs5OntologyTableSkill,
+} from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
 import {
   NS5_STEP_HOOKS,
   drainWaitingSiblings,
@@ -35,9 +41,7 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import {
-  bindingPromptEntity,
   createStrictArtifactTool,
-  level1Catalog,
   unwrapArtifactPayload,
 } from '/_102035_/l2/solution/lib.js';
 import type {
@@ -45,35 +49,37 @@ import type {
   Ns5JourneyIndexArtifact,
   Ns5ModuleActor,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
+  Ns5OntologyEntityV3,
   Ns5PipelineState,
 } from '/_102035_/l2/solution/types.js';
 import {
-  NS5_ONTOLOGY_MAX_PARALLEL,
   applyNs5ModuleDetails,
-  assembleNs5Ontology,
-  ns5AsFieldSource,
-  buildNs5OntologyBindingsTool,
-  buildNs5OntologyEntityTool,
-  buildNs5OntologyPlanTool,
   collectNs5CitedTransitions,
   collectNs5PersonalScopeActors,
   formatNs5PersonalScopeActors,
-  liftNs5AggregateOnlyEntities,
-  normalizeNs5OntologyBindings,
-  normalizeNs5OntologyEntity,
-  normalizeNs5OntologyPlan,
-  type Ns5OntologyBindingsDraft,
-  type Ns5OntologyEntityDraft,
-  type Ns5OntologyPlanDraft,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
-  applyNs5PlatformServiceCandidateDecisions,
-  formatNs5OntologyGate,
-  validateNs5OntologyBindings,
-  validateNs5OntologyEntity,
-  validateNs5OntologyPlan,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+  NS5_ONTOLOGY_V3_MAX_PARALLEL,
+  assembleNs5OntologyIndexV3,
+  buildNs5OntologyEntityV3Tool,
+  buildNs5OntologyPlanV3Tool,
+  collectNs5CitedCapabilitiesV3,
+  collectNs5CitedEntitiesV3,
+  collectNs5CitedRulesV3,
+  formatNs5PlatformCatalog,
+  formatNs5PlatformStartingPoint,
+  liftNs5AggregateOnlyEntitiesV3,
+  normalizeNs5OntologyEntityV3,
+  normalizeNs5OntologyPlanV3,
+  type Ns5OntologyV3Normalization,
+  type Ns5OntologyV3PlanDraft,
+} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+import {
+  formatNs5OntologyV3Gate,
+  validateNs5OntologyAssemblyV3,
+  validateNs5OntologyEntityV3,
+  validateNs5OntologyPlanV3,
+} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gateV3.js';
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;
@@ -82,7 +88,7 @@ const MAX_ENTITY_REPAIR_ROUNDS = 2;
 interface OntologyArgs {
   planId: string;
   moduleName: string;
-  stage: 'plan' | 'finalize' | 'bindRelationships';
+  stage: 'plan' | 'finalize';
   repairAttempt: number;
   transportAttempt: number;
   entityRepairRound: number;
@@ -94,7 +100,7 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
   userLanguage: string;
   actors: Ns5ModuleActor[];
   journeys: Ns5JourneyArtifact[];
-  level1Catalog: string;
+  platformCatalog: string;
   siblingsText?: string;
   gateFeedback?: string;
   previousDraft?: unknown;
@@ -103,7 +109,7 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
     '## Source request',
     input.sourcePrompt,
     '',
-    `## userLanguage`,
+    '## userLanguage',
     input.userLanguage,
     '',
     '## Actors',
@@ -115,7 +121,7 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
     formatNs5PersonalScopeActors(collectNs5PersonalScopeActors(input.actors, input.journeys)),
     '',
     input.siblingsText || '',
-    input.level1Catalog,
+    input.platformCatalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
   ].filter(Boolean).join('\n');
@@ -126,19 +132,21 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
   userLanguage: string;
   actors: Ns5ModuleActor[];
   journeys: Ns5JourneyArtifact[];
-  plan: Ns5OntologyPlanDraft;
+  plan: Ns5OntologyV3PlanDraft;
   entityId: string;
-  level1Catalog: string;
+  /** Roles only: the platform record, projected one line per field. */
+  startingPoint?: string;
+  platformCatalog: string;
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
   const entity = input.plan.entities.find(item => item.entityId === input.entityId);
-  const touching = input.plan.relationships.filter(item => item.fromEntity === input.entityId || item.toEntity === input.entityId);
+  const touching = input.plan.relationships.filter(item => item.from === input.entityId || item.to === input.entityId);
   return [
     '## Source request',
     input.sourcePrompt,
     '',
-    `## userLanguage`,
+    '## userLanguage',
     input.userLanguage,
     '',
     '## Actors',
@@ -153,30 +161,14 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
     '## Frozen entity',
     JSON.stringify(entity, null, 2),
     '',
-    '## Touching relationships',
+    '## Links this entity reads (relationshipId is frozen)',
     JSON.stringify(touching, null, 2),
     '',
-    '## All valid entity ids and storage targets',
-    JSON.stringify(input.plan.entities.map(item => ({ entityId: item.entityId, kind: item.kind, storage: item.storage.target }))),
+    '## All entity ids of this module',
+    JSON.stringify(input.plan.entities.map(item => ({ entityId: item.entityId, kind: item.kind, subtype: item.subtype, class: item.class }))),
     '',
-    input.level1Catalog,
-    input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
-    input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
-  ].filter(Boolean).join('\n');
-}
-
-export function buildNs5OntologyBindingsHumanPrompt(input: {
-  plan: Ns5OntologyPlanDraft;
-  entities: Ns5OntologyEntityArtifact[];
-  gateFeedback?: string;
-  previousDraft?: unknown;
-}): string {
-  return [
-    '## Frozen relationships',
-    JSON.stringify(input.plan.relationships, null, 2),
-    '',
-    '## Entities with resolvable fields (mdm identity is included even when fields is empty)',
-    JSON.stringify(input.entities.map(entity => bindingPromptEntity(ns5AsFieldSource(entity)!)), null, 2),
+    input.startingPoint || '',
+    input.startingPoint ? '' : input.platformCatalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
   ].filter(Boolean).join('\n');
@@ -199,9 +191,6 @@ export async function beforeNs5OntologyPromptStep(
     if (entityId) return [await buildEntityPrompt(context, parentStep, hookSequential, args || String(step.prompt || ''), parsed, entityId)];
     if (parsed.stage === 'finalize') {
       return await finalizeOntology(context, parentStep, step, hookSequential, parsed);
-    }
-    if (parsed.stage === 'bindRelationships') {
-      return [await buildBindingsPrompt(context, parentStep, hookSequential, args || String(step.prompt || ''), parsed)];
     }
     return [await buildPlanPrompt(context, parentStep, hookSequential, args || String(step.prompt || ''), parsed)];
   } catch (error) {
@@ -234,9 +223,6 @@ export async function afterNs5OntologyPromptStep(
     if (entityId) {
       return await handleEntityResult(context, mutationParent, step, hookSequential, parsed, entityId);
     }
-    if (parsed.stage === 'bindRelationships') {
-      return await handleBindingsResult(context, mutationParent, step, hookSequential, parsed);
-    }
     if (parsed.stage === 'finalize') {
       throw new Error('ontology30 finalize is deterministic and must not call a model.');
     }
@@ -254,6 +240,12 @@ export async function afterNs5OntologyPromptStep(
   }
 }
 
+/** The system prompt of every ontology30 pass: the MDM skill, then the table skill, then the step. */
+async function ontologySystemPrompt(stepPrompt: string): Promise<string> {
+  const [mdmSkill, tableSkill] = await Promise.all([readNs5MdmSkill(), readNs5OntologyTableSkill()]);
+  return composeNs5SystemPrompt([mdmSkill, tableSkill], stepPrompt);
+}
+
 async function buildPlanPrompt(
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
@@ -261,28 +253,27 @@ async function buildPlanPrompt(
   args: string,
   parsed: OntologyArgs,
 ): Promise<mls.msg.AgentIntentPromptReady> {
-  const [moduleArtifact, journeys, mdm, prompt, schema, previous, siblings] = await Promise.all([
+  const [moduleArtifact, journeys, prompt, schema, previous, siblings] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
-    readNs5MdmSkill(),
     readAgentText('steps/ontology30', 'prompt', '.md'),
-    readAgentJson<Record<string, unknown>>('schemas', 'ontology-plan.schema', '.json'),
+    readAgentJson<Record<string, unknown>>('schemas', 'ontology-plan-v3.schema', '.json'),
     readJson(draftFile(parsed.moduleName, 'ontology30-plan')),
     readNs5Siblings(parsed.moduleName),
   ]);
   const sourcePrompt = await readSourcePrompt(context, parsed.moduleName, moduleArtifact);
-  const tool = buildNs5OntologyPlanTool(schema, createStrictArtifactTool);
+  const tool = buildNs5OntologyPlanV3Tool(schema, createStrictArtifactTool);
   const humanPrompt = buildNs5OntologyPlanHumanPrompt({
     sourcePrompt,
     userLanguage: moduleArtifact.userLanguage,
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
-    level1Catalog: formatNs4Level1CatalogPrompt(level1Catalog()),
+    platformCatalog: formatNs5PlatformCatalog(mdm),
     siblingsText: formatNs5Siblings(siblings),
     gateFeedback: parsed.gateFeedback,
     previousDraft: previous,
   });
-  return promptReady(context, parentStep, hookSequential, args, composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool);
+  return promptReady(context, parentStep, hookSequential, args, await ontologySystemPrompt(prompt), humanPrompt, tool);
 }
 
 async function buildEntityPrompt(
@@ -294,19 +285,19 @@ async function buildEntityPrompt(
   entityId: string,
 ): Promise<mls.msg.AgentIntentPromptReady> {
   const plan = await readPlanDraft(parsed.moduleName);
-  if (!plan.entities.some(entity => entity.entityId === entityId)) {
+  const frozen = plan.entities.find(entity => entity.entityId === entityId);
+  if (!frozen) {
     throw new Error(`Entity ${entityId} is not present in the ontology30 overview.`);
   }
-  const [moduleArtifact, journeys, mdm, prompt, schema, previous] = await Promise.all([
+  const [moduleArtifact, journeys, prompt, schema, previous] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
-    readNs5MdmSkill(),
     readAgentText('steps/ontology30', 'promptEntity', '.md'),
-    readAgentJson<Record<string, unknown>>('schemas', 'ontology-entity.schema', '.json'),
+    readAgentJson<Record<string, unknown>>('schemas', 'ontology-entity-v3.schema', '.json'),
     readJson(entityDraftFile(parsed.moduleName, entityId)),
   ]);
   const sourcePrompt = await readSourcePrompt(context, parsed.moduleName, moduleArtifact);
-  const tool = buildNs5OntologyEntityTool(schema, createStrictArtifactTool);
+  const tool = buildNs5OntologyEntityV3Tool(schema, createStrictArtifactTool);
   const humanPrompt = buildNs5OntologyEntityHumanPrompt({
     sourcePrompt,
     userLanguage: moduleArtifact.userLanguage,
@@ -314,36 +305,20 @@ async function buildEntityPrompt(
     journeys,
     plan,
     entityId,
-    level1Catalog: formatNs4Level1CatalogPrompt(level1Catalog()),
-    previousDraft: previous,
-  });
-  return promptReady(context, parentStep, hookSequential, args, composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool);
-}
-
-async function buildBindingsPrompt(
-  context: mls.msg.ExecutionContext,
-  parentStep: mls.msg.AIAgentStep,
-  hookSequential: number,
-  args: string,
-  parsed: OntologyArgs,
-): Promise<mls.msg.AgentIntentPromptReady> {
-  const plan = await readPlanDraft(parsed.moduleName);
-  const details = await readAllEntityDrafts(plan);
-  const assembled = assembleNs5Ontology(plan, details);
-  const [mdm, prompt, schema, previous] = await Promise.all([
-    readNs5MdmSkill(),
-    readAgentText('steps/ontology30', 'promptRelationships', '.md'),
-    readAgentJson<Record<string, unknown>>('schemas', 'ontology-bindings.schema', '.json'),
-    readJson(draftFile(parsed.moduleName, 'ontology30-bindings')),
-  ]);
-  const tool = buildNs5OntologyBindingsTool(schema, createStrictArtifactTool);
-  const humanPrompt = buildNs5OntologyBindingsHumanPrompt({
-    plan,
-    entities: assembled.entities,
+    startingPoint: startingPointFor(frozen, parsed.moduleName),
+    platformCatalog: formatNs5PlatformCatalog(mdm),
     gateFeedback: parsed.gateFeedback,
     previousDraft: previous,
   });
-  return promptReady(context, parentStep, hookSequential, args, composeNs5SystemPrompt(mdm, prompt), humanPrompt, tool);
+  return promptReady(context, parentStep, hookSequential, args, await ontologySystemPrompt(prompt), humanPrompt, tool);
+}
+
+/** A role starts from the platform record of its subtype; a table starts from nothing. */
+function startingPointFor(entity: Ns5OntologyV3PlanDraft['entities'][number], moduleName: string): string | undefined {
+  if (entity.kind !== 'role' || !entity.subtype) return undefined;
+  if (!(entity.subtype in mdm.subtypes)) return undefined;
+  const view = resolvePlatformEntity(mdm, entity.subtype as MdmSubtypeName, moduleName);
+  return formatNs5PlatformStartingPoint(view, entity.subtype);
 }
 
 async function handlePlanResult(
@@ -367,19 +342,14 @@ async function handlePlanResult(
   }
   await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
-  const plan = normalizeNs5OntologyPlan(payload, parsed.moduleName, journeys);
+  const plan = normalizeNs5OntologyPlanV3(payload, parsed.moduleName);
   plan.moduleName = parsed.moduleName;
   let pipeline = await requirePipeline(parsed.moduleName);
   pipeline = await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString() });
   await writeJson(draftFile(parsed.moduleName, 'ontology30-plan'), plan);
-  const gate = validateNs5OntologyPlan(plan, {
-    moduleName: parsed.moduleName,
-    actors: await readNs5Actors(parsed.moduleName),
-    journeys,
-    siblings: await readNs5Siblings(parsed.moduleName),
-  });
+  const gate = validateNs5OntologyPlanV3(plan, { moduleName: parsed.moduleName, mdm, journeys });
   if (!gate.ok) {
-    const feedback = formatNs5OntologyGate(gate.issues);
+    const feedback = formatNs5OntologyV3Gate(gate.issues);
     if (parsed.repairAttempt < MAX_REPAIRS) {
       return [
         addStep(context, mutationParent, createNs5RetryStep('ontology30', parsed.moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
@@ -397,7 +367,7 @@ async function handlePlanResult(
   return [
     parallel,
     addStep(context, mutationParent, createFinalizeStep(parsed.moduleName, 0, [String(parallel.step.planning?.planId || '')])),
-    updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 overview ready; detailing ${plan.entities.length} entities with maxParallel=${NS5_ONTOLOGY_MAX_PARALLEL}.`),
+    updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 overview ready; detailing ${plan.entities.length} entities with maxParallel=${NS5_ONTOLOGY_V3_MAX_PARALLEL}.`),
   ];
 }
 
@@ -414,73 +384,40 @@ async function handleEntityResult(
   if (!isRecord(payload)) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} returned no usable payload; finalizer will repair it.`)];
   }
-  await readModule(parsed.moduleName);
+  const moduleArtifact = await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
-  const frozen = plan.entities.find(item => item.entityId === entityId);
-  const detail = normalizeNs5OntologyEntity(payload, entityId, journeys, {
-    idField: frozen?.storage.idField,
-    kind: frozen?.kind,
-  });
-  await writeJson(entityDraftFile(parsed.moduleName, entityId), detail);
-  const gate = validateNs5OntologyEntity(plan, detail, {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const entity = normalizeNs5OntologyEntityV3(payload, entityId, {
     moduleName: parsed.moduleName,
-    actors: await readNs5Actors(parsed.moduleName),
+    mdm,
+    plan,
+  }, normalizations);
+  if (!entity) {
+    return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} is not in the plan; finalizer will repair it.`)];
+  }
+  await writeJson(entityDraftFile(parsed.moduleName, entityId), { entity, normalizations });
+  const gate = validateNs5OntologyEntityV3(entity, plan, {
+    moduleName: parsed.moduleName,
+    mdm,
     journeys,
-    siblings: await readNs5Siblings(parsed.moduleName),
+    evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
+    actors: (await readNs5Actors(parsed.moduleName)).map(actor => actor.actorId),
   });
   if (!gate.ok) {
-    return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} gate failed; finalizer will repair it. | ${formatNs5OntologyGate(gate.issues)}`)];
+    return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} gate failed; finalizer will repair it. | ${formatNs5OntologyV3Gate(gate.issues)}`)];
   }
   return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} detail saved.`)];
 }
 
-async function handleBindingsResult(
+/** Where a module field has to have a trace: the request plus the journey prose. */
+async function evidenceText(
   context: mls.msg.ExecutionContext,
-  mutationParent: mls.msg.AIAgentStep,
-  step: mls.msg.AIAgentStep,
-  hookSequential: number,
-  parsed: OntologyArgs,
-): Promise<mls.msg.AgentIntent[]> {
-  const payload = unwrapArtifactPayload(step.interaction?.payload?.[0]);
-  if (!isRecord(payload)) {
-    const failure = readPromptFailure(step, 'ontology30 returned no usable relationship bindings.');
-    if (parsed.transportAttempt < MAX_TRANSPORT_RETRIES) {
-      return [
-        addStep(context, mutationParent, createBindingsStep(parsed.moduleName, parsed.repairAttempt, parsed.transportAttempt + 1, parsed.gateFeedback)),
-        updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 bindings transport retry ${parsed.transportAttempt + 1} scheduled: ${failure}`),
-      ];
-    }
-    throw new Error(failure);
-  }
-  const rawPlan = await readPlanDraft(parsed.moduleName);
-  const rawDetails = await readAllEntityDrafts(rawPlan);
-  await readModule(parsed.moduleName);
-  const journeys = await readJourneys(parsed.moduleName);
-  const { plan, details } = await applyAggregateLift(parsed.moduleName, rawPlan, rawDetails, journeys);
-  const bindings = normalizeNs5OntologyBindings(payload);
-  await writeJson(draftFile(parsed.moduleName, 'ontology30-bindings'), bindings);
-  const gate = validateNs5OntologyBindings(plan, details, bindings, {
-    moduleName: parsed.moduleName,
-    actors: await readNs5Actors(parsed.moduleName),
-    journeys,
-    siblings: await readNs5Siblings(parsed.moduleName),
-  });
-  if (!gate.ok) {
-    const feedback = formatNs5OntologyGate(gate.issues);
-    if (parsed.repairAttempt < MAX_REPAIRS) {
-      return [
-        addStep(context, mutationParent, createBindingsStep(parsed.moduleName, parsed.repairAttempt + 1, 0, feedback)),
-        updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 bindings gate scheduled repair ${parsed.repairAttempt + 1}.`),
-      ];
-    }
-    throw new Error(feedback);
-  }
-  const pipeline = await requirePipeline(parsed.moduleName);
-  const artifactPaths = await persistArtifacts(parsed.moduleName, plan, details, bindings, pipeline, gate.uncitedEntities);
-  return [
-    doneAnchor(context, mutationParent, parsed.moduleName, artifactPaths),
-    updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 approved: ${artifactPaths.join(', ')}`),
-  ];
+  moduleName: string,
+  moduleArtifact: Ns5ModuleArtifact,
+  journeys: Ns5JourneyArtifact[],
+): Promise<string> {
+  const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
+  return [sourcePrompt, formatJourneys(journeys)].join('\n');
 }
 
 async function finalizeOntology(
@@ -491,32 +428,33 @@ async function finalizeOntology(
   parsed: OntologyArgs,
 ): Promise<mls.msg.AgentIntent[]> {
   const mutationParent = findMutableParent(context, parentStep);
-  const rawPlan = await readPlanDraft(parsed.moduleName);
-  const collected: Ns5OntologyEntityDraft[] = [];
-  await readModule(parsed.moduleName);
+  const plan = await readPlanDraft(parsed.moduleName);
+  const moduleArtifact = await readModule(parsed.moduleName);
   const [journeys, actors] = await Promise.all([
     readJourneys(parsed.moduleName),
     readNs5Actors(parsed.moduleName),
   ]);
-  for (const entity of rawPlan.entities) {
-    const detail = await readJson<Ns5OntologyEntityDraft>(entityDraftFile(parsed.moduleName, entity.entityId));
-    if (detail) collected.push(detail);
-  }
-  const { plan, details: liftedDetails } = await applyAggregateLift(parsed.moduleName, rawPlan, collected, journeys);
+  const gateContext = {
+    moduleName: parsed.moduleName,
+    mdm,
+    journeys,
+    evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
+    actors: actors.map(actor => actor.actorId),
+  };
   const invalid: string[] = [];
-  const details: Ns5OntologyEntityDraft[] = [];
-  for (const entity of plan.entities) {
-    const detail = liftedDetails.find(item => item.entityId === entity.entityId);
-    if (!detail || !validateNs5OntologyEntity(plan, detail, {
-      moduleName: parsed.moduleName,
-      actors,
-      journeys,
-      siblings: await readNs5Siblings(parsed.moduleName),
-    }).ok) {
-      invalid.push(entity.entityId);
-    } else {
-      details.push(detail);
+  const entities: Ns5OntologyEntityV3[] = [];
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  for (const planned of plan.entities) {
+    const saved = await readJson<{ entity?: Ns5OntologyEntityV3; normalizations?: Ns5OntologyV3Normalization[] }>(
+      entityDraftFile(parsed.moduleName, planned.entityId),
+    );
+    const entity = saved?.entity;
+    if (!entity || !validateNs5OntologyEntityV3(entity, plan, gateContext).ok) {
+      invalid.push(planned.entityId);
+      continue;
     }
+    entities.push(entity);
+    normalizations.push(...(saved?.normalizations || []));
   }
   if (invalid.length && parsed.entityRepairRound < MAX_ENTITY_REPAIR_ROUNDS) {
     const parallel = parallelEntityStep(context, step, NS5_AGENT_NAME, plan, parsed.entityRepairRound + 1, invalid);
@@ -529,92 +467,79 @@ async function finalizeOntology(
   if (invalid.length) {
     throw new Error(`ontology30 entities remain invalid after repair: ${invalid.join(', ')}.`);
   }
-  if (!plan.relationships.length) {
-    const pipeline = await requirePipeline(parsed.moduleName);
-    const emptyBindings: Ns5OntologyBindingsDraft = { bindings: [] };
-    const gate = validateNs5OntologyBindings(plan, details, emptyBindings, {
-      moduleName: parsed.moduleName,
-      actors,
-      journeys,
-      requireRelationshipRealization: false,
-      siblings: await readNs5Siblings(parsed.moduleName),
-    });
-    if (!gate.ok) throw new Error(formatNs5OntologyGate(gate.issues));
-    const artifactPaths = await persistArtifacts(parsed.moduleName, plan, details, emptyBindings, pipeline, gate.uncitedEntities);
-    return [
-      doneAnchor(context, mutationParent, parsed.moduleName, artifactPaths),
-      updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 approved: ${artifactPaths.join(', ')}`),
-    ];
+  // A panel is not a table: an entity nobody writes, with no lifecycle and no link, is lifted into
+  // `module.details` and leaves the ontology (ns5_42 T6, the v3 form of the v2 aggregate lift).
+  const lift = liftNs5AggregateOnlyEntitiesV3(plan, entities, journeys);
+  const index = assembleNs5OntologyIndexV3(lift.plan, moduleNamespaceDescription(parsed.moduleName));
+  const assembly = validateNs5OntologyAssemblyV3(index, lift.entities, gateContext);
+  if (!assembly.ok) throw new Error(formatNs5OntologyV3Gate(assembly.issues));
+  if (lift.liftedEntityIds.length) {
+    await writeJson(draftFile(parsed.moduleName, 'ontology30-plan'), lift.plan);
+    await writeDefs(
+      moduleFile(parsed.moduleName),
+      `${parsed.moduleName}Module`,
+      applyNs5ModuleDetails(moduleArtifact, lift.moduleDetails),
+      'Ns5ModuleArtifact',
+    );
   }
+  const pipeline = await requirePipeline(parsed.moduleName);
+  const artifactPaths = await persistArtifacts(
+    parsed.moduleName,
+    lift.plan,
+    index,
+    lift.entities,
+    [...normalizations, ...lift.normalizations],
+    pipeline,
+    journeys,
+    lift.liftedEntityIds,
+  );
   return [
-    addStep(context, mutationParent, createBindingsStep(parsed.moduleName, 0, 0, '')),
-    updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 entities ready; binding ${plan.relationships.length} relationships.`),
+    doneAnchor(context, mutationParent, parsed.moduleName, artifactPaths),
+    updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 approved: ${artifactPaths.join(', ')}`),
   ];
 }
 
-async function applyAggregateLift(
-  moduleName: string,
-  plan: Ns5OntologyPlanDraft,
-  details: Ns5OntologyEntityDraft[],
-  journeys: Ns5JourneyArtifact[],
-): Promise<{ plan: Ns5OntologyPlanDraft; details: Ns5OntologyEntityDraft[] }> {
-  const lift = liftNs5AggregateOnlyEntities(plan, details, journeys);
-  if (lift.issues.length) throw new Error(formatNs5OntologyGate(lift.issues));
-  if (lift.liftedEntityIds.length) {
-    await writeJson(draftFile(moduleName, 'ontology30-plan'), lift.plan);
-  }
-  return { plan: lift.plan, details: lift.details };
+function moduleNamespaceDescription(moduleName: string): string {
+  return `Branch details.${moduleName} of the master records this module has a role on; only this module writes it.`;
 }
 
 async function persistArtifacts(
   moduleName: string,
-  plan: Ns5OntologyPlanDraft,
-  details: Ns5OntologyEntityDraft[],
-  bindings: Ns5OntologyBindingsDraft,
+  plan: Ns5OntologyV3PlanDraft,
+  index: ReturnType<typeof assembleNs5OntologyIndexV3>,
+  entities: Ns5OntologyEntityV3[],
+  entityNormalizations: Ns5OntologyV3Normalization[],
   pipeline: Ns5PipelineState,
-  uncitedEntities: string[],
+  journeys: Ns5JourneyArtifact[],
+  liftedAggregateEntities: string[] = [],
 ): Promise<string[]> {
-  const assembled = assembleNs5Ontology(plan, details, bindings);
-  const index = applyNs5PlatformServiceCandidateDecisions(assembled.index, assembled.entities);
   const artifactPaths: string[] = [];
-  for (const entity of assembled.entities) {
+  for (const entity of entities) {
     artifactPaths.push(
       await writeDefs(
         ontologyEntityFile(moduleName, entity.entityId),
         `${moduleName}Entity${entity.entityId}`,
         entity,
-        'Ns5OntologyEntityArtifact',
+        'Ns5OntologyEntityV3',
       ),
     );
   }
   artifactPaths.push(
-    await writeDefs(ontologyIndexFile(moduleName), `${moduleName}OntologyIndex`, index, 'Ns5OntologyIndexArtifact'),
+    await writeDefs(ontologyIndexFile(moduleName), `${moduleName}OntologyIndex`, index, 'Ns5OntologyIndexV3'),
   );
-  const removedOrphans = await reconcileModuleDefs(
-    moduleName,
-    'ontology',
-    assembled.entities.map(entity => entity.entityId),
-  );
-  if (plan.moduleDetails && Object.keys(plan.moduleDetails).length) {
-    const moduleArtifact = await readModule(moduleName);
-    const nextModule = applyNs5ModuleDetails(moduleArtifact, plan.moduleDetails);
-    artifactPaths.push(
-      await writeDefs(moduleFile(moduleName), `${moduleName}Module`, nextModule, 'Ns5ModuleArtifact'),
-    );
-  }
-  const liftedAggregateEntities = plan.liftedAggregateEntities || [];
-  const normalizations = plan.normalizations || [];
-  const liftedFields = normalizations
-    .filter(item => item.kind === 'liftedFields')
-    .map(item => ({ entityId: item.entityId, detail: item.detail }));
+  const removedOrphans = await reconcileModuleDefs(moduleName, 'ontology', entities.map(entity => entity.entityId));
+  const normalizations = [...(plan.normalizations || []), ...entityNormalizations];
+  const citedRules = collectNs5CitedRulesV3(entities);
+  const citedCapabilities = collectNs5CitedCapabilitiesV3(entities);
+  const cited = collectNs5CitedEntitiesV3(journeys);
+  const uncitedEntities = entities.map(entity => entity.entityId).filter(entityId => !cited.has(entityId));
   await writeJson(draftFile(moduleName, 'ontology30'), {
     plan,
-    entities: assembled.entities,
-    relationships: assembled.index.relationships,
+    entities,
+    relationships: index.relationships,
     removedOrphans,
     liftedAggregateEntities,
     ...(normalizations.length ? { normalizations } : {}),
-    ...(liftedFields.length ? { liftedFields } : {}),
   });
   await writeStepState(pipeline, {
     status: 'approved',
@@ -623,7 +548,8 @@ async function persistArtifacts(
     uncitedEntities,
     liftedAggregateEntities,
     ...(normalizations.length ? { normalizations } : {}),
-    ...(liftedFields.length ? { liftedFields } : {}),
+    ...(citedRules.length ? { citedRules } : {}),
+    ...(citedCapabilities.length ? { citedCapabilities } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPaths;
@@ -633,7 +559,7 @@ function parallelEntityStep(
   context: mls.msg.ExecutionContext,
   hostStep: mls.msg.AIAgentStep,
   agentName: string,
-  plan: Ns5OntologyPlanDraft,
+  plan: Ns5OntologyV3PlanDraft,
   repairRound: number,
   entityIds = plan.entities.map(entity => entity.entityId),
 ): mls.msg.AgentIntentAddStep {
@@ -652,7 +578,7 @@ function parallelEntityStep(
       interaction: {
         input: [{ type: 'system', content: '<!-- modelType: reasoning -->' }],
         cost: 0,
-        trace: [`queued ${entityIds.length} ontology30 entities with maxParallel=${NS5_ONTOLOGY_MAX_PARALLEL}`],
+        trace: [`queued ${entityIds.length} ontology30 entities with maxParallel=${NS5_ONTOLOGY_V3_MAX_PARALLEL}`],
         payload: null,
       },
       stepTitle: 'Detailing {{completed}}/{{total}} ontology entities, failed {{failed}}',
@@ -664,7 +590,7 @@ function parallelEntityStep(
       rags: [],
       planning: { planId, dependsOn: [], executionMode: 'parallel_dynamic', executionHost: 'client' },
     } as mls.msg.AIAgentStep,
-    executionMode: { type: 'parallel', args: entityIds.map(entityId => `entity:${entityId}`), maxParallel: NS5_ONTOLOGY_MAX_PARALLEL },
+    executionMode: { type: 'parallel', args: entityIds.map(entityId => `entity:${entityId}`), maxParallel: NS5_ONTOLOGY_V3_MAX_PARALLEL },
   };
 }
 
@@ -688,38 +614,6 @@ function createFinalizeStep(moduleName: string, entityRepairRound: number, depen
   };
 }
 
-function createBindingsStep(
-  moduleName: string,
-  repairAttempt: number,
-  transportAttempt: number,
-  gateFeedback: string,
-): mls.msg.AIAgentStep {
-  const suffix = repairAttempt ? ` · R${repairAttempt}` : '';
-  return {
-    type: 'agent',
-    stepId: 0,
-    interaction: null,
-    stepTitle: `Bind ontology relationships${suffix}`,
-    status: 'waiting_human_input',
-    nextSteps: [],
-    agentName: NS5_AGENT_NAME,
-    prompt: JSON.stringify({
-      planId: 'ontology30',
-      moduleName,
-      stage: 'bindRelationships',
-      repairAttempt,
-      transportAttempt,
-      ...(gateFeedback ? { gateFeedback } : {}),
-    }),
-    rags: [],
-    planning: {
-      planId: repairAttempt ? `ontology30-bindings-repair-${repairAttempt}` : 'ontology30-bindings',
-      dependsOn: [],
-      executionMode: 'sequential',
-      executionHost: 'client',
-    },
-  };
-}
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
   if (!moduleName) throw new Error('ontology30 needs a moduleName.');
@@ -743,16 +637,10 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
-async function readPlanDraft(moduleName: string): Promise<Ns5OntologyPlanDraft> {
-  const plan = await readJson<Ns5OntologyPlanDraft>(draftFile(moduleName, 'ontology30-plan'));
+async function readPlanDraft(moduleName: string): Promise<Ns5OntologyV3PlanDraft> {
+  const plan = await readJson<Ns5OntologyV3PlanDraft>(draftFile(moduleName, 'ontology30-plan'));
   if (!plan?.entities?.length) throw new Error(`ontology30 plan draft is missing for ${moduleName}.`);
   return plan;
-}
-
-async function readAllEntityDrafts(plan: Ns5OntologyPlanDraft): Promise<Ns5OntologyEntityDraft[]> {
-  const details = await Promise.all(plan.entities.map(entity => readJson<Ns5OntologyEntityDraft>(entityDraftFile(plan.moduleName, entity.entityId))));
-  if (details.some(detail => !detail)) throw new Error('ontology30 relationship binding cannot start before every entity detail exists.');
-  return details as Ns5OntologyEntityDraft[];
 }
 
 function entityDraftFile(moduleName: string, entityId: string) {
@@ -805,7 +693,7 @@ function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): Ontolog
   return {
     planId: text(root.planId) || 'ontology30',
     moduleName: text(root.moduleName) || memoryString(context, 'moduleName'),
-    stage: stage === 'finalize' || stage === 'bindRelationships' ? stage : 'plan',
+    stage: stage === 'finalize' ? stage : 'plan',
     repairAttempt: integer(root.repairAttempt),
     transportAttempt: integer(root.transportAttempt),
     entityRepairRound: integer(root.entityRepairRound),

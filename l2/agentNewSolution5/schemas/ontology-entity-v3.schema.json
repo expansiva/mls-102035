@@ -1,0 +1,119 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-entity/2026-09-15-ns5-ontology-v3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entityId", "record", "relationships", "capabilities", "rules"],
+  "properties": {
+    "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+      }
+    },
+    "uniqueKeys": { "type": "array", "items": { "$ref": "#/$defs/uniqueKey" } },
+    "lifecycleStates": { "type": "array", "items": { "$ref": "#/$defs/lifecycleState" } },
+    "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
+    "relationships": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+    "capabilities": { "type": "array", "items": { "$ref": "#/$defs/capability" } },
+    "rules": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "required"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string", "text", "integer", "number", "money", "boolean", "date", "timestamp", "uuid",
+            "enum", "object", "record"
+          ]
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "required": { "type": "boolean" },
+        "collection": { "type": "boolean" },
+        "indexed": { "type": "boolean" },
+        "unique": { "type": "boolean" },
+        "of": { "type": "string", "enum": ["Address", "GeoPoint", "PrivacyConsent", "ContactSummary"] },
+        "to": { "type": "array", "items": { "type": "string" } },
+        "values": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        "pattern": { "type": "string" },
+        "maxLength": { "type": "integer" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+      }
+    },
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "title"],
+      "properties": {
+        "value": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+        "title": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "uniqueKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "lifecycleState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reachedBy"],
+      "properties": {
+        "state": { "type": "string" },
+        "reachedBy": { "type": "string", "enum": ["actor", "command", "time"] }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transitionId", "from", "to", "by", "description"],
+      "properties": {
+        "transitionId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "from": { "type": "array", "items": { "type": "string" } },
+        "to": { "type": "string" },
+        "by": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "ruleRefs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "relationshipId", "to", "cardinality", "title"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "relationshipId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "to": { "type": "string" },
+        "cardinality": { "type": "string", "enum": ["1:1", "1:N", "N:1", "N:N"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "requiredWhen": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sentence"],
+      "properties": {
+        "id": { "type": "string" },
+        "sentence": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,9 +1,28 @@
 # ontology30 — the things of the business and what may happen to them
 
 Plan + fan-out, like NS4 E4: one overview call (`submitNs5OntologyPlan`), one call per entity
-(`submitNs5Entity`), then relationship bindings (`submitNs5RelationshipBindings`). Writes
-`l4/<mod>/ontology/<Entity>.defs.ts` and `ontology/index.defs.ts`. Clarification is reserved and
-has no screen; `/fast` auto-approves.
+(`submitNs5Entity`), then a deterministic finalize. Writes `l4/<mod>/ontology/<Entity>.defs.ts` and
+`ontology/index.defs.ts`. Clarification is reserved and has no screen; `/fast` auto-approves.
+
+## v3 (ns5_42) — what the step generates today
+
+The step generates the **v3** ontology: a module ontology written ON TOP of the platform ontology
+(`/_102034_/l4/ontology/mdm.defs.ts`). An entity is either a `role` — a papel over an MDM subtype,
+copied from the platform record and only tightened, plus the branch `details.<moduleName>` — or an
+`entity`, a table of the module whose columns exist only where there is an index and whose
+everything else lives in one `details` document. `submitNs5RelationshipBindings` is gone: the
+realization is derived from the `mode` of the plan.
+
+The generation lives in `contractsV3.ts` + `gateV3.ts` + `schemas/ontology-{plan,entity}-v3.schema.json`.
+`contracts.ts` and `gate.ts` next door are the **v2** normalize and gate, untouched: the eleven other
+modules are recorded in v2 and `replayRealRuns.test.ts` replays them byte for byte through those exact
+functions. They stay v2 until ns5_44 regenerates them (ns5_43 T7). The v3 form is proved against the
+four hand-written `agendaClinica` files in `fixtures/agendaClinica-v3/` by `agentNs5OntologyV3.test.ts`.
+
+The tool schemas ask for **arrays** of `{ id, … }` where the artifact keeps a string-keyed map
+(`record.fields`, `capabilities`, `relationships`): a strict tool schema must declare
+`additionalProperties: false` on every object, so an open key set is not expressible. `normalize`
+turns the arrays into the maps and still reads a map, so a hand-written file goes through unchanged.
 
 ## Input
 

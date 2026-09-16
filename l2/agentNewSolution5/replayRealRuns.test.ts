@@ -175,6 +175,13 @@ for (const moduleName of ns5ReplayModules()) {
     );
   });
 
+  /**
+   * DELIBERATELY v2 (ns5_42 / ns5_43 T7). `ontology30` now GENERATES v3, but the eleven recorded
+   * modules were produced by the v2 normalize and gate, which `contracts.ts` / `gate.ts` keep
+   * unchanged next to `contractsV3.ts` / `gateV3.ts`. They stay v2 until ns5_44 regenerates them;
+   * the v3 form is proved against the four hand-written `agendaClinica` files in
+   * `steps/ontology30/fixtures/agendaClinica-v3/` by `agentNs5OntologyV3.test.ts`.
+   */
   void test(`${moduleName} ontology30 drafts replay to ontology/*.defs.ts`, () => {
     const planDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-plan-draft.json`);
     const bindingsDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-bindings-draft.json`);
@@ -335,3 +342,21 @@ for (const moduleName of ns5ReplayModules()) {
     assert.equal(recorded.errors.length, 0);
   });
 }
+
+/**
+ * ns5_42 T6: the replay set and the v3 form fixture are two different things and must stay apart.
+ * `fixtures/<mod>/` is what the v2 generator produced and is replayed byte for byte;
+ * `fixtures/agendaClinica-v3/` is the hand-written form the v3 generator has to reach. The same
+ * module name lives in both, so this guards the day someone overwrites one with the other.
+ */
+void test('the v2 replay pack and the v3 form fixture of agendaClinica are distinct', () => {
+  const v2 = parseNs4ClassicDefsSource<{ schemaVersion: string }>(
+    loadNs5FixtureText('steps/ontology30/fixtures', 'agendaClinica', 'Paciente.defs.ts'),
+  );
+  const v3 = parseNs4ClassicDefsSource<{ schemaVersion: string; kind: string }>(
+    loadNs5FixtureText('steps/ontology30/fixtures', 'agendaClinica-v3', 'Paciente.defs.ts'),
+  );
+  assert.equal(v2.schemaVersion, '2026-09-11-ns5-ontology-v2');
+  assert.equal(v3.schemaVersion, '2026-09-15-ns5-ontology-v3');
+  assert.equal(v3.kind, 'role');
+});

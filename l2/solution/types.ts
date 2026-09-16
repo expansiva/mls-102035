@@ -366,7 +366,8 @@ export interface Ns5OntologyRelationshipV3 {
   target?: Readonly<Record<string, readonly string[]>>;
 }
 
-interface Ns5OntologyEntityV3Base<Cap extends string, Rule extends string> {
+/** What a `role` and a table share. Exported so `nsArtifactFieldRatchet.test.ts` can reach its keys. */
+export interface Ns5OntologyEntityV3Base<Cap extends string = string, Rule extends string = string> {
   /** Gate: the v3 form. */
   schemaVersion: typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3;
   moduleName: string;
@@ -714,6 +715,13 @@ export interface Ns5PipelineStepState {
    * (`normalizations[].kind === 'liftedFields'`).
    */
   liftedFields?: Ns5PipelineLiftedField[];
+  /**
+   * ontology30 v3: rule ids the entities cited, platform and module together. `rules40` receives the
+   * module ones as data and has to produce them (ns5_42 T7 records it; ns5_43 T2 wires the reading).
+   */
+  citedRules?: string[];
+  /** ontology30 v3: capability ids the entities cited, catalog and module together. */
+  citedCapabilities?: string[];
   /** module10: actors born by the step. Later steps read them via `readNs5Actors`. */
   actors?: Ns5ModuleActor[];
   /** journeys20: actorIds dropped as inferred-external without an exclusive step. */

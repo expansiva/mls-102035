@@ -102,6 +102,18 @@ export type { PublishableIssue, PublishableProjectType } from '/_102035_/l2/agen
 
 export { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
 
+/**
+ * The project that owns the platform (level-1) ontology, and the path of the file itself.
+ * ONE place, so `source` on a v3 role, `platformOntology` on the v3 index and any reader that
+ * has to open the platform file all say the same string (ns5_42 T5).
+ */
+export const LEVEL1_PROJECT = 102034 as const;
+
+/** `source` of a v3 role and `platformOntology` of a v3 index. */
+export function platformOntologyPath(): string {
+  return `/_${LEVEL1_PROJECT}_/l4/ontology/mdm.defs.ts`;
+}
+
 export {
   removeModule,
   stripModuleFromJson,

@@ -54,13 +54,25 @@ e-mail belongs to another record, and issues the invitation. A journey never has
 
 ## Roles
 
-`kind: mdm` in the ontology means "a role of this module over a level-1 subtype". Declare:
-- `mdmSubtype` from the level-1 catalog (`Person`, `Company`, `Product`, `Service`, `Location`, `AssetEquipment`…);
-- `fields[]` with **namespace fields only** — the identity field (`storage.idField`) is the MDM id and stays
-  **outside** `fields[]`; `displayField` is a level-1 field (`name`) or a namespace field;
-- no `lifecycleStates`, no `transitions`: a master record has no business state; its activity is the
-  MDM status (active / inactive), and what happens to it is recorded by the module's own entities;
-- `storage.target: 'mdm'`, `scope: 'organization'`, `mdmType: '<moduleId>.<EntityId>'`.
+`kind: role` in the ontology means "a role of this module over a level-1 subtype". One rule per line:
+
+- `subtype` is one of the platform subtypes (`Person`, `Company`, `Product`, `Service`, `Location`,
+  `AssetEquipment`…); `roleTag`, `source` and `storage` are derived, never written.
+- The record is the platform record: start from the `## Starting point` the prompt gives you, keep the
+  fields the role uses, drop the rest, and keep every branch — `identification`, `base`, the subtype
+  branch, `general` and the branch named after this module.
+- Only tighten: `required` false to true, `values` a subset, a stricter `pattern` or `maxLength`. Never
+  loosen, never rename, never change a type, never make a derived field writable.
+- Never add a field to a platform branch. What the module knows and nobody else needs goes in
+  `details.<moduleId>`, and only that.
+- The namespace never carries identity, document, contact, login, a copy of a platform field, or a field
+  that fakes a platform service (photo, receipt, attachment, link to a file, phone). Empty is a correct
+  namespace, and its description is written for you.
+- `displayField` is a path of the record (`details.identification.name`).
+- No `lifecycleStates`, no `transitions`: a master record has no business state; its activity is the MDM
+  status (active / inactive), and what happens to it is recorded by the module's own entities.
+- `capabilities` are chosen by id from the platform catalog, each with the sentence of this module, plus
+  the module's own with the prefix `<moduleId>.`; `rules` are ids only.
 
 Creating a role is **create-or-attach**: the engine looks the record up by document (or contact), creates
 it only when absent, then attaches the role tag and writes the namespace. A role is never deleted; it is

@@ -1,5 +1,28 @@
 # ontology30
 
+## 2026-09-16 (ns5_42)
+
+- The step GENERATES v3. `contractsV3.ts` (plan, entity, index, platform projections, aggregate lift),
+  `gateV3.ts` (plan / entity / assembly), `schemas/ontology-plan-v3.schema.json`,
+  `schemas/ontology-entity-v3.schema.json`. `prompt.md` and `promptEntity.md` rewritten;
+  `promptRelationships.md` deleted with the bindings pass.
+- `skills/ontologyTable.md` is injected next to `skills/mdm.md` in both passes, and both were brought
+  onto the v3 grammar (`origin`/`layer` are gone; `indexed`, `derived`, `owner` are what exists).
+- New checks: `NS5_ONTOLOGY_COLUMN_WITHOUT_INDEX`, `NS5_ONTOLOGY_COLUMN_IS_OBJECT`,
+  `NS5_ONTOLOGY_UNIQUE_KEY_NOT_COLUMN`, `NS5_ONTOLOGY_RECORD_TARGET_UNKNOWN`,
+  `NS5_ONTOLOGY_PLATFORM_FIELD_UNKNOWN`, `NS5_ONTOLOGY_PLATFORM_FIELD_LOOSENED`,
+  `NS5_ONTOLOGY_NAMESPACE_CONFLICT`, `NS5_ONTOLOGY_NAMESPACE_IMITATES_SERVICE`,
+  `NS5_ONTOLOGY_NAMESPACE_WITHOUT_TRACE` (warning), `NS5_ONTOLOGY_NAMESPACE_EMPTY_TEXT` (warning),
+  `NS5_ONTOLOGY_CATALOG_*`, `NS5_ONTOLOGY_COMPOSITION_*`, `NS5_ONTOLOGY_CARDINALITY_INCOHERENT`.
+  None of them can fire on a v2 artifact: `validateNs5OntologyEntityV3` returns green on any
+  `schemaVersion` that is not v3, and the eleven recorded modules are measured in the v3 test.
+- `pipeline.json` `ontology30` gains `citedRules[]` and `citedCapabilities[]` next to `normalizations[]`.
+- `version` is a column with no index on purpose (the engine's counter); the index rule skips it.
+- A module dropping `required` on a platform field is NOT an error: the platform marks a field
+  required when the engine always writes the key, which is not the same as forcing a person to fill
+  it, and the hand-written gabarito omits it on four `base` fields. normalize restores the platform
+  flag, so generated output never diverges.
+
 ## 2026-09-12
 
 - Writer resolution `ns5ResolveEntityWriter`: child of a written parent (`parent`) and MDM attached by a create act (`attach`) count as writers; recorded as `writerDerived`. WITHOUT_WRITER only when `kind === 'none'`. Panel requires no field besides `idField`.
