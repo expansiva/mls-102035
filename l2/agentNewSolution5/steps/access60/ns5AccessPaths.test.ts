@@ -24,9 +24,9 @@ import {
   type Ns5AccessRelationshipView,
 } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
 import { validateNs5Access } from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
-import { agendaClinicaEntityConsulta } from '/_102047_/l4/agendaClinica/ontology/Consulta.defs.js';
-import { agendaClinicaEntityPaciente } from '/_102047_/l4/agendaClinica/ontology/Paciente.defs.js';
-import { agendaClinicaEntityProfissional } from '/_102047_/l4/agendaClinica/ontology/Profissional.defs.js';
+import { agendaClinicaEntityConsulta } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
+import { agendaClinicaEntityPaciente } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Paciente.defs.js';
+import { agendaClinicaEntityProfissional } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Profissional.defs.js';
 
 // ---------------------------------------------------------------------------
 // T1 — what `resolvableFieldPaths` enumerates
