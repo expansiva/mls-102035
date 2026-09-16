@@ -12,7 +12,12 @@ import {
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
-const FIELD_REF = /^[A-Z][A-Za-z0-9]*\.(?:details\.)?[a-z][A-Za-z0-9]*$/;
+/**
+ * A disclosure reference: the entity root (`Consulta`) or any path under it — one segment on a v2 module
+ * (`Consulta.status`, `Comanda.details.total`), any depth on a v3 record (`Paciente.details.person.birthDate`).
+ * ns5_40 T2 widened this; v2 refs match exactly as before.
+ */
+const FIELD_REF = /^[A-Z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)*$/;
 
 export const NS5_ACCESS_MAX_ANCHOR_HOPS = 6 as const;
 
@@ -45,6 +50,13 @@ export interface Ns5AccessEntityView {
   details?: Record<string, unknown>;
   storage?: { idField: string };
   writer?: 'journey' | 'crud' | 'inbound';
+  /**
+   * ns5_40 T2. Every reference this entity resolves, as `resolvableFieldPaths` enumerates it — the
+   * entity root and the whole tree of the record. Present only on a v3 entity, whose data is the MDM
+   * record and not a flat `fields` list; when it is present it REPLACES `fields`/`details` as the
+   * resolvable set. A v2 view never carries it, which is why nothing changes for the eleven v2 modules.
+   */
+  paths?: readonly string[];
 }
 
 export interface Ns5AccessRelationshipView {
@@ -250,12 +262,15 @@ export function anchorPath(
 export function ns5AccessFieldRefExists(ref: string, entity: Ns5AccessEntityView): boolean {
   const parsed = splitAccessFieldRef(ref);
   if (!parsed || parsed.entityId !== entity.entityId) return false;
+  // v3: the enumerated tree is the whole truth, branches and leaves alike.
+  if (entity.paths) return entity.paths.includes(ref);
   if (parsed.detailsName) return Boolean(entity.details && parsed.detailsName in entity.details);
   if (resolvableFieldIds(entity).has(parsed.fieldId)) return true;
   return Boolean(entity.details && parsed.fieldId in entity.details);
 }
 
 export function ns5AccessResolvableFieldRefs(entity: Ns5AccessEntityView): string[] {
+  if (entity.paths) return [...entity.paths];
   const refs: string[] = [];
   const seen = new Set<string>();
   const add = (ref: string) => {
@@ -273,12 +288,30 @@ export function ns5AccessResolvableFieldRefs(entity: Ns5AccessEntityView): strin
   return refs;
 }
 
-export function splitAccessFieldRef(ref: string): { entityId: string; fieldId: string; detailsName: string } | null {
-  const details = /^([A-Z][A-Za-z0-9]*)\.details\.([a-z][A-Za-z0-9]*)$/.exec(ref);
-  if (details) return { entityId: details[1], fieldId: details[2], detailsName: details[2] };
-  const field = /^([A-Z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/.exec(ref);
-  if (field) return { entityId: field[1], fieldId: field[2], detailsName: '' };
-  return null;
+/** The identity reference of a view: `<Entity>.<idField>`. Empty when the view declares no storage. */
+export function ns5AccessIdentityRef(entity: Ns5AccessEntityView): string {
+  return entity.storage?.idField ? `${entity.entityId}.${entity.storage.idField}` : '';
+}
+
+/**
+ * `Entity`, `Entity.field`, `Entity.details.name`, `Entity.details.branch.leaf` — split at the first dot.
+ * `fieldId` and `detailsName` keep exactly the v2 meaning: a deeper path leaves `detailsName` empty and
+ * puts the whole path in `fieldId`, which no v2 `fields` list can contain, so a v2 view still says no.
+ */
+export function splitAccessFieldRef(
+  ref: string,
+): { entityId: string; fieldId: string; detailsName: string; path: string } | null {
+  if (!isAccessFieldRef(ref)) return null;
+  const dot = ref.indexOf('.');
+  const entityId = dot < 0 ? ref : ref.slice(0, dot);
+  const path = dot < 0 ? '' : ref.slice(dot + 1);
+  const details = /^details\.([a-z][A-Za-z0-9]*)$/.exec(path);
+  return {
+    entityId,
+    path,
+    fieldId: details ? details[1] : path,
+    detailsName: details ? details[1] : '',
+  };
 }
 
 export function isAccessFieldRef(ref: string): boolean {

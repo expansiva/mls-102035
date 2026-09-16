@@ -36,11 +36,19 @@ An `external` actor only receives grants whose `dataScope.mode` is `own`.
 
 ### disclosure
 
-Name fields, not concepts. A field is `<Entity>.<field>` or `<Entity>.details.<name>` and must exist
-in the ontology given in the human prompt.
+Name fields, not concepts. A reference is a **path of the record**, and every path listed in the human
+prompt for that entity is valid: `<Entity>` (the whole record), `<Entity>.<column>`,
+`<Entity>.details.<branch>`, `<Entity>.details.<branch>.<field>`. A branch stands for everything under
+it, so name the branch when the actor reads all of it. Never invent a path.
+
+An entity that is a role over a master record already discloses what the platform makes visible —
+its identification, its base data, the fields of its subtype, the branch of this module. A disclosure
+only **restricts** that. Listing an entity by its identity alone (`<Entity>.id`) discloses nothing the
+actor can read: a person's name is `<Entity>.details.identification.name`, not the id. If the actor
+reads the whole record, use `fullRecord`; if the actor reads part of it, name the paths of that part.
 
 - `fullRecord` — the whole record. Omit field lists. Use this when `allowedFields` would list every
-  resolvable field of the grant entities and `deniedFields` would be empty.
+  resolvable path of the grant entities and `deniedFields` would be empty.
 - `fieldsOnly` or `summaryOnly` — list `allowedFields` and/or `deniedFields` as a **proper**
   restriction (non-empty and not the complete resolvable set).
 - `aggregateOnly` — totals or counts, not row fields.
@@ -51,6 +59,10 @@ Frontend hiding is not a security boundary. The backend applies `dataScope` and 
 
 Do not add landing intent, realization, source references, journey step lists, `useRules`,
 `allowedInformation`, `deniedInformation`, hops or implementation advice.
+
+Counter-example (placeholders — use only ids that exist in the module): a grant that covers a role
+entity and lists only `["<RoleEntity>.<idField>"]` in `allowedFields` is invalid — it hides every
+readable path of that record. Write the paths the actor reads, or `fullRecord` with `deniedFields`.
 
 Counter-example (placeholders — use only ids that exist in the module): an external grant with
 `dataScope.mode` other than `own` is invalid. A valid own grant is
