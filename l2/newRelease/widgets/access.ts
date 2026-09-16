@@ -92,11 +92,12 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   private entities(): Ns5OntologyEntityArtifact[] {
     return this.data?.artifacts.entities.map(item => item.value)
-      .filter((item): item is Ns5OntologyEntityArtifact => !!item) || [];
+      .filter((item): item is Ns5OntologyEntityArtifact => item?.schemaVersion === '2026-09-11-ns5-ontology-v2') || [];
   }
 
   private index(): Ns5OntologyIndexArtifact | null {
-    return this.data?.artifacts.ontologyIndex.value || null;
+    const value = this.data?.artifacts.ontologyIndex.value;
+    return value?.schemaVersion === '2026-09-11-ns5-ontology-v2' ? value : null;
   }
 
   private journeys() {

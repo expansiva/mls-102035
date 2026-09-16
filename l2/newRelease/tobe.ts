@@ -17,12 +17,15 @@ import type {
   Ns5JourneyIndexArtifact,
   Ns5ModuleActor,
   Ns5ModuleArtifact,
+  Ns5OntologyAnyEntity,
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
+  Ns5OntologyIndexV3,
   Ns5PipelineState,
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import { NS5_ONTOLOGY_SCHEMA_VERSION_V3 } from '/_102035_/l2/solution/types.js';
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
 import { NEW_RELEASE_TOBE_UPDATED_EVENT } from '/_102035_/l2/newRelease/helpers/context.js';
 
@@ -82,13 +85,28 @@ export interface NewReleaseOverlaySources {
   module: NewReleaseArtifact<Ns5ModuleArtifact>;
   journeyIndex: NewReleaseArtifact<Ns5JourneyIndexArtifact>;
   journeys: NewReleaseArtifact<Ns5JourneyArtifact>[];
-  ontologyIndex: NewReleaseArtifact<Ns5OntologyIndexArtifact>;
-  entities: NewReleaseArtifact<Ns5OntologyEntityArtifact>[];
+  ontologyIndex: NewReleaseArtifact<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>;
+  entities: NewReleaseArtifact<Ns5OntologyAnyEntity>[];
   rules: NewReleaseArtifact<Ns5RulesArtifact>;
   workflows: NewReleaseArtifact<Ns5WorkflowsArtifact>;
   access: NewReleaseArtifact<Ns5AccessArtifact>;
   integration: NewReleaseArtifact<Ns5IntegrationArtifact>;
   all: NewReleaseArtifact<unknown>[];
+}
+
+export function isNs5OntologyV3(
+  value: Ns5OntologyIndexArtifact | Ns5OntologyIndexV3 | null | undefined,
+): value is Ns5OntologyIndexV3 {
+  return value?.schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+}
+
+export function ns5OntologyEntityIds(
+  value: Ns5OntologyIndexArtifact | Ns5OntologyIndexV3 | null | undefined,
+): string[] {
+  if (!value) return [];
+  return isNs5OntologyV3(value)
+    ? value.entities.map(entity => entity.entityId)
+    : [...value.entities];
 }
 
 export interface NewReleaseValidationIssue {
@@ -402,7 +420,10 @@ export async function validateNs5Overlay(
   const journeyIndex = sources.journeyIndex.value;
   const journeys = sources.journeys.map(item => item.value).filter((value): value is Ns5JourneyArtifact => !!value);
   const ontologyIndex = sources.ontologyIndex.value;
-  const entities = sources.entities.map(item => item.value).filter((value): value is Ns5OntologyEntityArtifact => !!value);
+  const ontologyV3 = isNs5OntologyV3(ontologyIndex);
+  const entities = ontologyV3
+    ? []
+    : sources.entities.map(item => item.value).filter((value): value is Ns5OntologyEntityArtifact => !!value);
   const rules = sources.rules.value;
   const workflows = sources.workflows.value;
   const access = sources.access.value;
@@ -420,7 +441,7 @@ export async function validateNs5Overlay(
         { actors: access?.actors || context?.pipeline?.steps.module10?.actors || [], moduleName: module.moduleName },
       ).issues);
     }
-    if (module && ontologyIndex && entities.length) {
+    if (module && ontologyIndex && !ontologyV3 && entities.length) {
       pushGate(issues, 'ontology/index.defs.ts', ontologyGate.validateNs5OntologyAssembly(
         { index: ontologyIndex, entities },
         {
@@ -432,21 +453,21 @@ export async function validateNs5Overlay(
       ).issues);
     }
     if (rules) pushGate(issues, 'rules.defs.ts', rulesGate.validateNs5Rules(rules.rules, { moduleName: module?.moduleName }).issues);
-    if (workflows) pushGate(issues, 'workflows.defs.ts', workflowsGate.validateNs5Workflows(workflows.processes, {
+    if (workflows && !ontologyV3) pushGate(issues, 'workflows.defs.ts', workflowsGate.validateNs5Workflows(workflows.processes, {
       moduleName: module?.moduleName,
       actorIds: (access?.actors || []).map(actor => actor.actorId),
       journeys,
       entities,
       journeyDecisions: workflows.journeyDecisions,
     }).issues);
-    if (access && ontologyIndex) pushGate(issues, 'access.defs.ts', accessGate.validateNs5Access(access.grants, {
+    if (access && ontologyIndex && !ontologyV3) pushGate(issues, 'access.defs.ts', accessGate.validateNs5Access(access.grants, {
       moduleName: module?.moduleName,
       actors: access.actors,
       entities,
       relationships: ontologyIndex.relationships,
       journeys,
     }).issues);
-    if (integration && module) pushGate(issues, 'integration.defs.ts', integrationGate.validateNs5Integration(
+    if (integration && module && !ontologyV3) pushGate(issues, 'integration.defs.ts', integrationGate.validateNs5Integration(
       integration.inbound,
       integration.outbound,
       integration.plugins,
@@ -461,7 +482,7 @@ export async function validateNs5Overlay(
       },
     ).issues);
 
-    if (module && journeyIndex && ontologyIndex && rules && workflows && access && integration
+    if (!ontologyV3 && module && journeyIndex && ontologyIndex && rules && workflows && access && integration
       && journeys.length === sources.journeys.length && entities.length === sources.entities.length) {
       const oracleSources: Ns5OracleSources = {
         module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration,
@@ -527,9 +548,10 @@ export async function readNs5Overlay(
   const journeyIndex = await readArtifact<Ns5JourneyIndexArtifact>(project, moduleName, 'journeys/index.defs.ts', version, errors);
   const journeyIds = journeyIndex.value?.journeys.map(item => item.journeyId) || idsFromFiles(project, moduleName, 'journeys');
   const journeys = await Promise.all(journeyIds.map(id => readArtifact<Ns5JourneyArtifact>(project, moduleName, `journeys/${id}.defs.ts`, version, errors)));
-  const ontologyIndex = await readArtifact<Ns5OntologyIndexArtifact>(project, moduleName, 'ontology/index.defs.ts', version, errors);
-  const entityIds = ontologyIndex.value?.entities || idsFromFiles(project, moduleName, 'ontology');
-  const entities = await Promise.all(entityIds.map(id => readArtifact<Ns5OntologyEntityArtifact>(project, moduleName, `ontology/${id}.defs.ts`, version, errors)));
+  const ontologyIndex = await readArtifact<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>(project, moduleName, 'ontology/index.defs.ts', version, errors);
+  const entityIds = ns5OntologyEntityIds(ontologyIndex.value);
+  const resolvedEntityIds = entityIds.length ? entityIds : idsFromFiles(project, moduleName, 'ontology');
+  const entities = await Promise.all(resolvedEntityIds.map(id => readArtifact<Ns5OntologyAnyEntity>(project, moduleName, `ontology/${id}.defs.ts`, version, errors)));
   const [rules, workflows, access, integration] = await Promise.all([
     readArtifact<Ns5RulesArtifact>(project, moduleName, 'rules.defs.ts', version, errors),
     readArtifact<Ns5WorkflowsArtifact>(project, moduleName, 'workflows.defs.ts', version, errors),

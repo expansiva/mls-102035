@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadNs5OracleSources } from '../agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import {
+  isNs5OntologyV3,
   NS5_TOBE_MANIFEST_SCHEMA_VERSION,
+  ns5OntologyEntityIds,
   normalizeTobeArtifactPath,
   discardTobe,
   readNs5Overlay,
@@ -17,6 +19,19 @@ import {
   type NewReleaseOverlaySources,
 } from './tobe.js';
 import { tabForArtifactPath } from './editContract.js';
+
+test('v3 ontology index resolves descriptor rows to entity file ids without changing v2 ids', () => {
+  const v3 = {
+    schemaVersion: '2026-09-15-ns5-ontology-v3', moduleName: 'agendaClinica', businessDomain: 'Agenda',
+    platformOntology: '/_102034_/l4/ontology/mdm.defs.ts', moduleNamespace: { key: 'agendaClinica', description: 'Módulo' },
+    entities: [{ entityId: 'Paciente', kind: 'role', subtype: 'Person' }, { entityId: 'Consulta', kind: 'entity', class: 'core' }], relationships: [],
+  } as const;
+  assert.equal(isNs5OntologyV3(v3), true);
+  assert.deepEqual(ns5OntologyEntityIds(v3), ['Paciente', 'Consulta']);
+  assert.deepEqual(ns5OntologyEntityIds({
+    schemaVersion: '2026-09-11-ns5-ontology-v2', moduleName: 'legacy', businessDomain: 'Legacy', entities: ['A'], relationships: [],
+  }), ['A']);
+});
 
 test('manifest preserves first base hash and records each confirmed change', () => {
   const first = recordTobeSave(null, 'module.defs.ts', '$.title', 'sha256:first', 'user@example.com', '2026-09-13T00:00:00.000Z');
