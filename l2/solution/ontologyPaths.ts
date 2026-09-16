@@ -65,12 +65,6 @@ export function resolvableFieldPaths(entity: Ns5OntologyAnyEntity): string[] {
   return refs;
 }
 
-/** The identity reference of a v3 record is always `<Entity>.id`; on v2 it is `storage.idField`. */
-export function entityIdentityPath(entity: Ns5OntologyAnyEntity): string {
-  if (entity.schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3) return `${entity.entityId}.id`;
-  return entity.storage?.idField ? `${entity.entityId}.${entity.storage.idField}` : '';
-}
-
 function walkFields(
   fields: Ns5OntologyFieldsV3 | undefined,
   parent: string,

@@ -96,6 +96,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   private v3GraphCache?: EChartsCoreOption;
   private v3PlatformOntology: MdmOntology | null = null;
   private v3LoadToken = 0;
+  private v3ScrollToken = 0;
 
   createRenderRoot() { return this; }
 
@@ -183,6 +184,20 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       index.moduleNamespace.key,
     );
     this.selectedEntityId = entityId;
+  }
+
+  private async selectV3EntityAndScroll(entityId: string, summary: HTMLElement) {
+    const token = ++this.v3ScrollToken;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.selectV3Entity(entityId);
+    await this.updateComplete;
+    if (!reduceMotion) await new Promise(resolve => window.setTimeout(resolve, 800));
+    if (token !== this.v3ScrollToken || !summary.isConnected) return;
+    summary.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+      inline: 'nearest',
+    });
   }
 
   private currentIndex(): Ns5OntologyIndexArtifact | null {
@@ -863,7 +878,10 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     const isOpen = entity.entityId === selected.entityId;
     const className = entity.kind === 'platform' ? 'nr-v3__entity-panel is-platform' : 'nr-v3__entity-panel';
     return html`<details class=${className} ?open=${isOpen}>
-      <summary @click=${(event: MouseEvent) => { event.preventDefault(); this.selectV3Entity(entity.entityId); }}>
+      <summary @click=${(event: MouseEvent) => {
+        event.preventDefault();
+        void this.selectV3EntityAndScroll(entity.entityId, event.currentTarget as HTMLElement);
+      }}>
         <span><strong>${entity.title}</strong><code>${entity.entityId}</code></span>
         <span class="nr-v3__entity-meta"><i>${this.t(`ontology.kind.${entity.kind}`)}</i>${entity.subtype ? html`<i>${entity.subtype}</i>` : nothing}<i>${ontologyV3FieldCount(entity)} ${this.t('ontology.fields')}</i></span>
       </summary>

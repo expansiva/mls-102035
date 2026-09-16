@@ -278,8 +278,46 @@ void test('the ids-only warning fires on no grant of the thirteen v2 access fixt
       offenders.push(`${moduleName}: ${issue.message}`);
     }
   }
-  assert.equal(grantsSeen, 40, 'the fixtures changed; re-measure before trusting the zero below');
+  // A floor, not an equality: `agendaClinica` is one of these fixtures and a later leva regenerates it.
+  // The zero is proved by the loop; this only says the loop really read the fixtures. Measured 40 on
+  // 15/09/2026, of which 8 limited-disclosure grants.
+  assert.ok(grantsSeen >= 40, `only ${grantsSeen} grants read; the fixtures shrank`);
   assert.deepEqual(offenders, [], offenders.join('\n'));
+});
+
+void test('on a v2 view the entity root and a deep path still do not resolve', () => {
+  const comanda: Ns5AccessEntityView = {
+    entityId: 'Comanda',
+    party: 'none',
+    fields: [{ fieldId: 'status' }],
+    details: { total: { type: 'money', description: 'Soma.' } },
+    storage: { idField: 'comandaId' },
+  };
+  const grant = (ref: string): Ns5AccessGrant => ({
+    grantId: 'caixa',
+    actorRef: 'caixa',
+    title: 'Caixa',
+    description: 'Fecha a comanda.',
+    entityRefs: ['Comanda'],
+    dataScope: { mode: 'organization', description: 'Tudo.' },
+    disclosure: { mode: 'fieldsOnly', description: 'Parcial.', deniedFields: [ref] },
+  });
+  const check = (ref: string) => validateNs5Access([grant(ref)], {
+    actors: [{ actorId: 'caixa', kind: 'internal', origin: 'named', title: 'Caixa', description: 'Caixa.' }],
+    entities: [comanda],
+    relationships: [],
+    journeys: [{ journeyId: 'fecharComanda', business: { actorRef: 'caixa' } }],
+  }).issues.filter(issue => issue.severity === 'error' && issue.path === 'grants[0].disclosure.deniedFields[0]');
+
+  // Widening the reference grammar for v3 must not make either of these RESOLVE on a v2 entity.
+  for (const ref of ['Comanda', 'Comanda.details.total.moeda', 'Comanda.fantasma']) {
+    assert.equal(check(ref).length, 1, `${ref} must not resolve on a v2 entity`);
+    assert.equal(check(ref)[0].code, 'NS5_ACCESS_FIELD_UNKNOWN', ref);
+  }
+  // …while the two v2 forms keep resolving.
+  for (const ref of ['Comanda.status', 'Comanda.comandaId', 'Comanda.details.total']) {
+    assert.deepEqual(check(ref), [], ref);
+  }
 });
 
 void test('a v2 mdm entity that resolves only its identity is exempt, and one that resolves more is not', () => {

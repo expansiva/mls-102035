@@ -115,10 +115,15 @@ test('v3 ontology dense sections and object fields are collapsed details with vi
   assert.match(styles, /nr-v3__tree-node\[open\][^\n]*rotate\(90deg\)/);
   assert.match(ontology, /class="nr-v3__entity-accordion"/);
   assert.match(ontology, /<details class=\$\{className\} \?open=\$\{isOpen\}>/);
-  assert.match(ontology, /event\.preventDefault\(\); this\.selectV3Entity\(entity\.entityId\)/);
+  assert.match(ontology, /selectV3EntityAndScroll\(entity\.entityId, event\.currentTarget as HTMLElement\)/);
+  assert.match(ontology, /window\.setTimeout\(resolve, 800\)/);
+  assert.match(ontology, /summary\.scrollIntoView\(\{/);
+  assert.match(ontology, /token !== this\.v3ScrollToken/);
   assert.doesNotMatch(ontology, /<aside>\$\{this\.v3Views\.map/);
   assert.match(styles, /grid-template-rows:\s*0fr/);
   assert.match(styles, /nr-v3__entity-panel\[open\][^\n]*grid-template-rows:\s*1fr/);
+  assert.match(styles, /grid-template-rows \.8s cubic-bezier/);
+  assert.match(styles, /scroll-margin-top:\s*1rem/);
   assert.match(styles, /prefers-reduced-motion:\s*reduce/);
 });
 

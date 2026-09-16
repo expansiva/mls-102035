@@ -100,10 +100,7 @@ export {
 } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
 export type { PublishableIssue, PublishableProjectType } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
 
-export {
-  entityIdentityPath,
-  resolvableFieldPaths,
-} from '/_102035_/l2/solution/ontologyPaths.js';
+export { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
 
 export {
   removeModule,
