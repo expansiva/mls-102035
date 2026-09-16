@@ -242,7 +242,7 @@ new-release--widgets--ontology-102035 {
   .nr-v3__identity dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .nr-v3__section { overflow: hidden; }
   details.nr-v3__collapsible-section { padding: 0; }
-  .nr-v3__section-summary { position: relative; padding: .95rem 1rem .95rem 2.15rem; cursor: pointer; list-style: none; }
+  .nr-v3__section-summary { position: relative; padding: .95rem 1rem .95rem 2.45rem; cursor: pointer; list-style: none; }
   .nr-v3__section-summary::-webkit-details-marker { display: none; }
   .nr-v3__section-summary > div { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   .nr-v3__section-summary h3 { color: var(--text-strong, #111827); font-size: .78rem; }
@@ -270,10 +270,10 @@ new-release--widgets--ontology-102035 {
   .nr-v3__tree { display: grid; gap: .48rem; }
   .nr-v3__tree-node { border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .66rem; background: var(--surface-alt-bg, #f5f7fa); }
   .nr-v3__tree-node > summary, .nr-v3__tree-node > header { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; padding: .62rem .7rem; }
-  .nr-v3__tree-node > summary { position: relative; padding-left: 1.9rem; cursor: pointer; list-style: none; }
+  .nr-v3__tree-node > summary { position: relative; padding-left: 2.2rem; cursor: pointer; list-style: none; }
   .nr-v3__tree-node > summary::-webkit-details-marker { display: none; }
-  .nr-v3__tree-node > summary::before, .nr-v3__section-summary::before { position: absolute; top: .72rem; left: .68rem; content: '▸'; color: var(--link-text, #0f62b8); font-size: .82rem; line-height: 1; transition: transform .16s ease; }
-  .nr-v3__section-summary::before { top: 1.05rem; left: 1rem; }
+  .nr-v3__tree-node > summary::before, .nr-v3__section-summary::before { position: absolute; top: .57rem; left: .7rem; content: '▸'; color: var(--link-text, #0f62b8); font-size: 1.15rem; font-weight: 900; line-height: 1; transition: transform .16s ease; }
+  .nr-v3__section-summary::before { top: .87rem; left: 1rem; }
   .nr-v3__tree-node[open] > summary::before, .nr-v3__collapsible-section[open] > .nr-v3__section-summary::before { transform: rotate(90deg); }
   .nr-v3__tree-node > summary > span:first-child, .nr-v3__tree-node > header > span:first-child { display: grid; gap: .1rem; min-width: 7rem; }
   .nr-v3__tree-node strong { color: var(--text-strong, #111827); font-size: .7rem; }
