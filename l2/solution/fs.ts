@@ -32,7 +32,12 @@ function moduleFolder(moduleName: string): string {
 }
 
 export function moduleFile(moduleName: string): Ns5FileInfo {
-  return { project: currentProject(), level: 4, folder: moduleFolder(moduleName), shortName: 'module', extension: '.defs.ts' };
+  return moduleFileForProject(currentProject(), moduleName);
+}
+
+/** Read-only callers such as the Studio module browser must not depend on mls.actualProject. */
+export function moduleFileForProject(project: number, moduleName: string): Ns5FileInfo {
+  return { project, level: 4, folder: moduleFolder(moduleName), shortName: 'module', extension: '.defs.ts' };
 }
 
 export function journeyFile(moduleName: string, journeyId: string): Ns5FileInfo {
@@ -114,15 +119,27 @@ export function collectTobeIntegrationFilesCiting(moduleName: string): mls.stor.
 }
 
 export function pipelineFile(moduleName: string): Ns5FileInfo {
-  return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: 'pipeline', extension: '.json' };
+  return pipelineFileForProject(currentProject(), moduleName);
+}
+
+export function pipelineFileForProject(project: number, moduleName: string): Ns5FileInfo {
+  return { project, level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: 'pipeline', extension: '.json' };
 }
 
 export function pipelineJsonFile(moduleName: string, shortName: string): Ns5FileInfo {
-  return { project: currentProject(), level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName, extension: '.json' };
+  return pipelineJsonFileForProject(currentProject(), moduleName, shortName);
+}
+
+export function pipelineJsonFileForProject(project: number, moduleName: string, shortName: string): Ns5FileInfo {
+  return { project, level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName, extension: '.json' };
 }
 
 export function finalizeReportFile(moduleName: string): Ns5FileInfo {
   return pipelineJsonFile(moduleName, 'finalize-report');
+}
+
+export function finalizeReportFileForProject(project: number, moduleName: string): Ns5FileInfo {
+  return pipelineJsonFileForProject(project, moduleName, 'finalize-report');
 }
 
 export function listPipelineJsonShortNames(moduleName: string): string[] {
@@ -370,6 +387,10 @@ export function renderDefsSource(
 
 export async function readPipeline(moduleName: string): Promise<Ns5PipelineState | null> {
   return readJson<Ns5PipelineState>(pipelineFile(moduleName));
+}
+
+export async function readPipelineForProject(project: number, moduleName: string): Promise<Ns5PipelineState | null> {
+  return readJson<Ns5PipelineState>(pipelineFileForProject(project, moduleName));
 }
 
 export async function writePipeline(state: Ns5PipelineState): Promise<string> {
