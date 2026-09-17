@@ -57,6 +57,28 @@ void test('module10, journeys20, ontology30 and access60 prepend the mdm skill i
     assert.match(source, /readNs5MdmSkill/, `${rel} must load the mdm skill`);
     assert.match(source, /composeNs5SystemPrompt/, `${rel} must prepend the mdm skill`);
   }
+  // ontology30 (ns5_42) injects TWO skills, mdm.md then ontologyTable.md, in its two model passes.
   const ontology = readFileSync(path.join(AGENT_ROOT, 'steps/ontology30/agentNs5Ontology.ts'), 'utf8');
-  assert.equal((ontology.match(/composeNs5SystemPrompt\(mdm, prompt\)/g) || []).length, 3);
+  assert.match(ontology, /readNs5OntologyTableSkill/);
+  assert.match(ontology, /composeNs5SystemPrompt\(\[mdmSkill, tableSkill\], stepPrompt\)/);
+  assert.equal((ontology.match(/await ontologySystemPrompt\(prompt\)/g) || []).length, 2);
+});
+
+void test('composeNs5SystemPrompt keeps two skills in order and drops their html comments', () => {
+  const composed = composeNs5SystemPrompt(
+    ['<!-- header -->\n# First skill\nbody', '<!-- header -->\n# Second skill\nbody'],
+    '<!-- modelType: reasoning -->\nYou are ontology30.',
+  );
+  assert.equal(composed.startsWith('# First skill'), true);
+  assert.ok(composed.indexOf('# First skill') < composed.indexOf('# Second skill'));
+  assert.match(composed, /You are ontology30/);
+  assert.doesNotMatch(composed, /<!-- header -->/);
+});
+
+void test('the injected ontology table skill teaches the v3 grammar, not origin/layer', () => {
+  const skill = readFileSync(path.join(AGENT_ROOT, 'skills', 'ontologyTable.md'), 'utf8');
+  assert.match(skill, /`indexed: true` says so and a column without it is refused/);
+  assert.match(skill, /Starting point/);
+  assert.doesNotMatch(skill, /origin: nivel1/);
+  assert.doesNotMatch(skill, /layer: column/);
 });

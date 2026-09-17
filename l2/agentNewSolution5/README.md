@@ -37,7 +37,7 @@ modules of the final leva (`NS5_LEVA_MODULES` minus `financeiro`, which failed o
 | module | `l4/<mod>/module.defs.ts` | module-v2 |
 | journeys | `l4/<mod>/journeys/<journeyId>.defs.ts` + `journeys/index.defs.ts` | journey-v1 (`effect`) |
 | ontology | `l4/<mod>/ontology/<Entity>.defs.ts` + `ontology/index.defs.ts` | ontology-v2 (`writer`, `uniqueKeys`, typed `details`) |
-| rules | `l4/<mod>/rules.defs.ts` | rules-v1 |
+| rules | `l4/<mod>/rules.defs.ts` | rules-v2 (`rules` is a map `ruleId` -> sentence; rules-v1 arrays still read) |
 | workflows | `l4/<mod>/workflows.defs.ts` | workflows-v2 |
 | access | `l4/<mod>/access.defs.ts` | access-v3 |
 | integration | `l4/<mod>/integration.defs.ts` | integration-v2 |

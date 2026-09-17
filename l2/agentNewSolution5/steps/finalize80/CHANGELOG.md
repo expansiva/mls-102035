@@ -1,5 +1,12 @@
 # finalize80
 
+## 2026-09-16
+
+- ns5_43 T5: I1 resolves an `affects`/`entity` path against `record.fields` / `details`;
+  I9 measures `uniqueKeys` against the stored columns (v3: the top-level fields, not the
+  document); I8 and I10 read a v3 `role` as the papel over an MDM record that v2 called
+  `kind: 'mdm'`; I13 unchanged. No new check — the eleven v2 modules replay unchanged.
+
 ## 2026-09-12
 
 - I8/I10 use `ns5ResolveEntityWriter`: derived `parent`/`attach` count (attach by the public create act is self-registration).

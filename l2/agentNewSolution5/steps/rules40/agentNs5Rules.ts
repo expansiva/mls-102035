@@ -29,19 +29,26 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
+import {
+  isNs5OntologyV3Entity,
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  ns5OntologyV3FieldLines,
+  type Ns5OntologyAnyIndex,
+  type Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
-  Ns5OntologyIndexArtifact,
+  Ns5OntologyAnyEntity,
   Ns5PipelineState,
-  Ns5Rule,
 } from '/_102035_/l2/solution/types.js';
 import {
-  buildNs5RulesArtifact,
+  buildNs5RulesArtifactV2,
   buildNs5RulesTool,
   normalizeNs5RulesPayload,
+  ns5RulesToolPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
   formatNs5RulesGate,
@@ -63,13 +70,20 @@ export function buildNs5RulesHumanPrompt(input: {
   sourcePrompt: string;
   userLanguage: string;
   journeys: Ns5JourneyArtifact[];
-  entities: Ns5OntologyEntityArtifact[];
+  entities: Ns5OntologyEntityViewItem[];
+  /**
+   * ns5_43 T2. `pipeline.ontology30.citedRules[]` — every rule id the ontology cited, the platform ones
+   * of `mdm.rules` included. Same nature as the `ruleRefs` of a transition: data, not instruction. The
+   * step must keep these ids; finalize80 I4 checks each of them resolves.
+   */
+  citedRules?: readonly string[];
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
-  const citedRuleIds = [...new Set(
-    input.entities.flatMap(entity => entity.transitions.flatMap(transition => transition.ruleRefs || [])),
-  )].filter(Boolean);
+  const citedRuleIds = [...new Set([
+    ...input.entities.flatMap(entity => entity.transitions.flatMap(transition => transition.ruleRefs || [])),
+    ...(input.citedRules || []),
+  ])].filter(Boolean);
   return [
     '## Source request',
     input.sourcePrompt,
@@ -83,10 +97,11 @@ export function buildNs5RulesHumanPrompt(input: {
     '## Ontology (entities, fields, transitions)',
     formatOntology(input.entities),
     citedRuleIds.length
-      ? `## ruleIds already cited by transitions\n${citedRuleIds.map(id => `- ${id}`).join('\n')}`
+      ? `## rules the ontology cited; keep these ids\n${citedRuleIds.map(id => `- ${id}`).join('\n')}`
       : '',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
-    input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
+    // Shown in the TOOL's shape, not the artifact's: the model is about to submit this back (ns5_45).
+    input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(ns5RulesToolPayload(input.previousDraft), null, 2)}` : '',
   ].filter(Boolean).join('\n');
 }
 
@@ -105,6 +120,8 @@ export async function beforeNs5RulesPromptStep(
     moduleName = parsed.moduleName;
     const moduleArtifact = await readModule(moduleName);
     const [journeys, entities] = await Promise.all([readJourneys(moduleName), readEntities(moduleName)]);
+    // ns5_43 T2: ontology30 records every rule id its entities cited, the platform ones included.
+    const citedRules = (await readPipeline(moduleName))?.steps.ontology30?.citedRules || [];
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     const [prompt, schema, previous] = await Promise.all([
       readAgentText('steps/rules40', 'prompt', '.md'),
@@ -117,6 +134,7 @@ export async function beforeNs5RulesPromptStep(
       userLanguage: moduleArtifact.userLanguage,
       journeys,
       entities,
+      citedRules,
       gateFeedback: parsed.gateFeedback,
       previousDraft: previous,
     });
@@ -155,14 +173,14 @@ export async function afterNs5RulesPromptStep(
       throw new Error(failure);
     }
 
-    const { rules } = normalizeNs5RulesPayload(payload);
+    const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(payload);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
     const draftPath = await writeJson(draftFile(moduleName, 'rules40'), { rules });
-    const gate = validateNs5Rules(rules, { moduleName });
+    const gate = validateNs5Rules(rules, { moduleName, duplicateRuleIds });
     if (!gate.ok) {
       const feedback = formatNs5RulesGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -197,11 +215,11 @@ export async function afterNs5RulesPromptStep(
 
 async function persistArtifacts(
   moduleName: string,
-  rules: Ns5Rule[],
+  rules: Record<string, string>,
   pipeline: Ns5PipelineState,
 ): Promise<string> {
-  const artifact = buildNs5RulesArtifact(moduleName, rules);
-  const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifact');
+  const artifact = buildNs5RulesArtifactV2(moduleName, rules);
+  const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifactV2');
   await writeJson(draftFile(moduleName, 'rules40'), artifact);
   await writeStepState(pipeline, {
     status: 'approved',
@@ -234,16 +252,16 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
-async function readEntities(moduleName: string): Promise<Ns5OntologyEntityArtifact[]> {
-  const index = await readDefsJson<Ns5OntologyIndexArtifact>(ontologyIndexFile(moduleName));
+async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {
+  const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
   if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
-  const entities: Ns5OntologyEntityArtifact[] = [];
-  for (const entityId of index.entities) {
-    const artifact = await readDefsJson<Ns5OntologyEntityArtifact>(ontologyEntityFile(moduleName, entityId));
+  const entities: Ns5OntologyAnyEntity[] = [];
+  for (const entityId of ns5OntologyEntityIds(index)) {
+    const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
-  return entities;
+  return ns5OntologyEntityViews(entities);
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
@@ -311,9 +329,25 @@ function formatJourneys(journeys: Ns5JourneyArtifact[]): string {
   ].join('\n')).join('\n\n');
 }
 
-function formatOntology(entities: Ns5OntologyEntityArtifact[]): string {
-  if (!entities.length) return '(none)';
-  return entities.map(entity => {
+function formatOntology(views: Ns5OntologyEntityViewItem[]): string {
+  if (!views.length) return '(none)';
+  return views.map(view => {
+    const entity = view.source;
+    const transitions = view.transitions.map(transition => {
+      const by = Array.isArray(transition.by) ? transition.by.join(',') : transition.by;
+      return `- ${view.entityId}.${transition.transitionId} ${transition.from.join('|')} -> ${transition.to} by=${by}: ${transition.description}`;
+    });
+    // ns5_43 T2: a v3 entity has no flat `fields` — its data is the platform record, printed as paths.
+    if (isNs5OntologyV3Entity(entity)) {
+      const lines = ns5OntologyV3FieldLines(entity);
+      return [
+        `### ${view.entityId} (${view.kind})`,
+        view.description,
+        'Fields:',
+        ...(lines.length ? lines : ['- (none)']),
+        ...(transitions.length ? ['Transitions:', ...transitions] : ['Transitions:', '- (none)']),
+      ].join('\n');
+    }
     const fields = entity.fields.map(field =>
       `- ${entity.entityId}.${field.fieldId} (${field.type}${field.required ? ', required' : ''}): ${field.description}`,
     );
@@ -323,10 +357,6 @@ function formatOntology(entities: Ns5OntologyEntityArtifact[]): string {
     const details = entity.details
       ? Object.entries(entity.details).map(([name, description]) => `- ${entity.entityId}.details.${name}: ${description}`)
       : [];
-    const transitions = entity.transitions.map(transition => {
-      const by = Array.isArray(transition.by) ? transition.by.join(',') : transition.by;
-      return `- ${entity.entityId}.${transition.transitionId} ${transition.from.join('|')} -> ${transition.to} by=${by}: ${transition.description}`;
-    });
     return [
       `### ${entity.entityId} (${entity.kind})`,
       entity.description,

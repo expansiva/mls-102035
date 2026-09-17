@@ -1,7 +1,5 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/rules40/gate.ts" enhancement="_blank"/>
 
-import type { Ns5Rule } from '/_102035_/l2/solution/types.js';
-
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 
 export interface Ns5RulesGateIssue {
@@ -18,28 +16,34 @@ export interface Ns5RulesGateResult {
 
 export interface Ns5RulesGateContext {
   moduleName?: string;
+  /**
+   * The ids `normalizeNs5RulesPayload` saw twice. The map it returns cannot hold a duplicate, so the
+   * evidence only reaches the gate through here. ABSENT MEANS "NO EVIDENCE", NOT "NO DUPLICATES": a
+   * catalog read straight off `rules.defs.ts` never passed through the normalize and has none to give.
+   */
+  duplicateRuleIds?: readonly string[];
 }
 
+/** The catalog in the artifact form: `ruleId` to the one business sentence. */
 export function validateNs5Rules(
-  rules: Ns5Rule[],
-  _context: Ns5RulesGateContext = {},
+  rules: Readonly<Record<string, string>>,
+  context: Ns5RulesGateContext = {},
 ): Ns5RulesGateResult {
   const issues: Ns5RulesGateIssue[] = [];
-  const ruleIds = new Set<string>();
 
-  rules.forEach((rule, index) => {
-    const base = `rules[${index}]`;
-    if (!MEMBER_ID.test(rule.ruleId)) {
+  for (const [ruleId, description] of Object.entries(rules)) {
+    const base = `rules.${ruleId}`;
+    if (!MEMBER_ID.test(ruleId)) {
       error(issues, 'NS5_RULES_ID', 'ruleId must be lowerCamel.', `${base}.ruleId`);
     }
-    if (rule.ruleId && ruleIds.has(rule.ruleId)) {
-      error(issues, 'NS5_RULES_ID_DUPLICATE', `Duplicate ruleId ${rule.ruleId}.`, `${base}.ruleId`);
-    }
-    if (rule.ruleId) ruleIds.add(rule.ruleId);
-    if (!rule.description.trim()) {
+    if (!description.trim()) {
       error(issues, 'NS5_RULES_DESCRIPTION', 'Business description is required.', `${base}.description`);
     }
-  });
+  }
+
+  for (const ruleId of context.duplicateRuleIds || []) {
+    error(issues, 'NS5_RULES_ID_DUPLICATE', `Duplicate ruleId ${ruleId}.`, `rules.${ruleId}.ruleId`);
+  }
 
   return { ok: !issues.some(issue => issue.severity === 'error'), issues };
 }

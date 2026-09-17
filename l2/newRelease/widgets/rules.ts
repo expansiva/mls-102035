@@ -3,6 +3,7 @@
 import { html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import type {
   Ns5JourneyArtifact,
   Ns5OntologyEntityArtifact,
@@ -172,7 +173,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
     if (!this.rulesDraft || !this.dirty) return;
     try {
       const gate = await import('/_102035_/l2/agentNewSolution5/steps/rules40/gate.js');
-      const result = gate.validateNs5Rules(this.rulesDraft.rules, { moduleName: this.moduleName });
+      const result = gate.validateNs5Rules(ns5RuleRecord(this.rulesDraft), { moduleName: this.moduleName });
       this.gateIssues = result.issues.map(issue => ({ severity: issue.severity, code: issue.code, message: issue.message }));
       if (!result.ok) {
         this.editMessage = this.t('rules.gateBlocked');

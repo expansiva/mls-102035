@@ -30,6 +30,9 @@ import {
 } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
 import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
+import agendaClinicaConsulta from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
+import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';
 import { ns5DefsOrphans } from '/_102035_/l2/solution/fs.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -99,7 +102,7 @@ function withAcademiaEnrollment(
   journey.business.actorRef = actor.actorId;
   const locate = journey.business.steps.find(step => step.stepId === 'localizarOuCadastrarAluno');
   if (locate) locate.kind = personStep;
-  sources.entities.push(aluno, plano, matricula);
+  sources.entities.push(...ns5OntologyEntityViews([aluno, plano, matricula]));
   sources.ontologyIndex.entities.push('Aluno', 'Plano', 'Matricula');
   sources.journeys.push(journey);
   sources.journeyIndex.journeys.push({
@@ -156,7 +159,7 @@ function withRealMatricularAluno(
   journey.business.actorRef = actor.actorId;
   const registrar = journey.business.steps.find(step => step.stepId === 'registrarMatricula');
   if (registrar && affects !== undefined) registrar.affects = affects;
-  sources.entities.push(aluno, plano, matricula);
+  sources.entities.push(...ns5OntologyEntityViews([aluno, plano, matricula]));
   sources.ontologyIndex.entities.push('Aluno', 'Plano', 'Matricula');
   sources.journeys.push(journey);
   sources.journeyIndex.journeys.push({
@@ -185,7 +188,7 @@ function withAgendaClinicaProfissional(sources: Ns5OracleSources): Ns5OracleSour
   const internal = sources.access.actors.find(item => item.kind === 'internal')!;
   const own = access.grants.find(item => item.grantId === 'profissionalConsultarEatenderPropriasConsultas')!;
   const crudGrant = access.grants.find(item => item.grantId === 'recepcionistaGerirProfissionais')!;
-  sources.entities.push(profissional);
+  sources.entities.push(...ns5OntologyEntityViews([profissional]));
   sources.ontologyIndex.entities.push('Profissional');
   sources.access.grants.push(
     { ...own, actorRef: internal.actorId },
@@ -236,7 +239,7 @@ function withInscricaoEventoParticipant(
         { fieldId: 'participanteId', title: 'Participant', type: 'uuid', required: true, description: 'Person.' },
       ],
     };
-    sources.entities.push(inscricao);
+    sources.entities.push(...ns5OntologyEntityViews([inscricao]));
     sources.ontologyIndex.entities.push('Inscricao');
     sources.ontologyIndex.relationships.push({
       relationshipId: 'inscricaoParticipante',
@@ -255,7 +258,7 @@ function withInscricaoEventoParticipant(
     });
   }
   sources.access.actors.push(publico);
-  sources.entities.push(participant);
+  sources.entities.push(...ns5OntologyEntityViews([participant]));
   sources.ontologyIndex.entities.push('Participant');
   sources.journeys.push(journey);
   sources.journeyIndex.journeys.push({
@@ -484,7 +487,7 @@ function i2OnlySources(
       })),
       systemDecisions: [],
     },
-    entities,
+    entities: ns5OntologyEntityViews(entities),
     ontologyIndex: {
       schemaVersion: '2026-09-11-ns5-ontology-v2',
       moduleName,
@@ -1044,6 +1047,58 @@ void test('I10 accepts writer inbound covered by inbound.writes', () => {
   );
 });
 
+void test('I1 resolves an affects path into an embedded child and fails an unknown one (ns5_43 T1/T5)', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  const fieldId = comanda.fields[0].fieldId;
+  const act = sources.journeys
+    .flatMap(journey => journey.business.steps)
+    .find(step => step.kind === 'act' && step.entity !== 'Comanda')!;
+
+  act.affects = [`Comanda.${fieldId}`];
+  const good = runNs5Oracle(sources);
+  assert.equal(
+    good.errors.filter(issue => issue.checkId === 'I1' && /Comanda/.test(issue.message)).length,
+    0,
+    good.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
+  act.affects = ['Comanda.naoExisteEsteCampo'];
+  const bad = runNs5Oracle(sources);
+  assert.ok(
+    bad.errors.some(issue => issue.checkId === 'I1' && /Unknown field Comanda\.naoExisteEsteCampo/.test(issue.message)),
+    bad.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
+  act.affects = ['NaoExiste.campo'];
+  const unknownRoot = runNs5Oracle(sources);
+  assert.ok(unknownRoot.errors.some(issue => issue.checkId === 'I1' && /Unknown entity NaoExiste/.test(issue.message)));
+});
+
+void test('I9 measures uniqueKeys against the stored columns of a v3 table, not the document (ns5_43 T5)', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const consulta = JSON.parse(JSON.stringify(agendaClinicaConsulta)) as Ns5OntologyEntityV3 & {
+    uniqueKeys?: string[][];
+  };
+  consulta.uniqueKeys = [['profissionalId', 'scheduledAt']];
+  sources.entities.push(...ns5OntologyEntityViews([consulta]));
+  const ok = runNs5Oracle(sources);
+  assert.equal(
+    ok.errors.filter(issue => issue.checkId === 'I9' && /Consulta/.test(issue.path)).length,
+    0,
+    ok.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
+  const drifted = clone(sources);
+  const view = drifted.entities.find(entity => entity.entityId === 'Consulta')!;
+  view.uniqueKeys = [['details.attendanceNote']];
+  const bad = runNs5Oracle(drifted);
+  assert.ok(
+    bad.errors.some(issue => issue.checkId === 'I9' && /Unknown field details\.attendanceNote/.test(issue.message)),
+    bad.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+});
+
 void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
   const sources = loadSources('comandaRestaurante.json');
   const block = buildSolutionRegistryModuleBlock({
@@ -1053,7 +1108,7 @@ void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
     updatedAt: '2026-09-10T00:00:00.000Z',
   });
   assert.deepEqual(
-    block.roles.map(role => `${role.mdmSubtype} <- ${role.role}`).sort(),
+    block.roles.map(role => `${role.subtype} <- ${role.roleTag}`).sort(),
     ['Location <- comandaRestaurante5.Mesa', 'Product <- comandaRestaurante5.ItemCardapio'],
   );
   assert.deepEqual(block.actors.map(actor => actor.actorId), ['garcom', 'caixa']);
@@ -1150,7 +1205,7 @@ void test('createAgent graph includes the finalize80 hook', () => {
 
 void test('fixture entities stay typed as ontology artifacts when cloned', () => {
   const sources = loadSources('comandaRestaurante.json');
-  const entity: Ns5OntologyEntityArtifact = sources.entities[0];
+  const entity = sources.entities[0];
   const journey: Ns5JourneyArtifact = sources.journeys[0];
   assert.equal(entity.kind, 'mdm');
   assert.equal(journey.business.steps[1].kind, 'act');

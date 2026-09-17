@@ -7,6 +7,7 @@ export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
 export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const;
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
+export const NS5_RULES_SCHEMA_VERSION_V2 = '2026-09-16-ns5-rules-v2' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-12-ns5-workflows-v2' as const;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-12-ns5-integration-v2' as const;
@@ -366,7 +367,8 @@ export interface Ns5OntologyRelationshipV3 {
   target?: Readonly<Record<string, readonly string[]>>;
 }
 
-interface Ns5OntologyEntityV3Base<Cap extends string, Rule extends string> {
+/** What a `role` and a table share. Exported so `nsArtifactFieldRatchet.test.ts` can reach its keys. */
+export interface Ns5OntologyEntityV3Base<Cap extends string = string, Rule extends string = string> {
   /** Gate: the v3 form. */
   schemaVersion: typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3;
   moduleName: string;
@@ -421,7 +423,12 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
   extends Ns5OntologyEntityV3Base<Cap, Rule> {
   kind: 'entity';
   class: 'core' | 'event' | 'supporting';
-  storage: { target: 'moduleDatabase'; table: string };
+  /**
+   * `kind` is the family's storage (ns5_46): `relational` is one Postgres table of the module,
+   * `timeSeries` a series chunked by time. Optional because the hand-written v3 form predates it and a
+   * table without it is read as `relational`.
+   */
+  storage: { target: 'moduleDatabase'; table: string; kind?: 'relational' | 'timeSeries' };
 }
 
 export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =
@@ -488,6 +495,29 @@ export interface Ns5RulesArtifact {
   /** Catalog of {ruleId, description}; I4 checks cited ruleRefs exist. */
   rules: Ns5Rule[];
 }
+
+/**
+ * The same catalog as a MAP, aligned with `mls-102034/l4/ontology/mdm.defs.ts`, whose `rules` and
+ * `capabilities` are both `Record<id, sentence>` — one id, one sentence, no place to put a second.
+ * `rules40` emits this form; the v1 array above stays valid and is still what the recorded runs hold.
+ * Read either form through `solution/rulesView.ts`, never by branching on the field.
+ *
+ * The TOOL still asks for `[{ ruleId, description }]`: a strict tool schema must declare
+ * `additionalProperties: false` on every object, so an open key set is not expressible
+ * (`steps/ontology30/contractsV3.ts:175` says the same of `record.fields` and `capabilities`).
+ * Array to map is the normalize's job.
+ */
+export interface Ns5RulesArtifactV2 {
+  /** Discriminates the two forms. */
+  schemaVersion: typeof NS5_RULES_SCHEMA_VERSION_V2;
+  /** Folder. */
+  moduleName: string;
+  /** `ruleId` to the one business sentence; I4 checks cited ruleRefs exist. */
+  rules: Readonly<Record<string, string>>;
+}
+
+/** What a reader gets from `rules.defs.ts`, whichever form it is in. Discriminate on `schemaVersion`. */
+export type Ns5RulesAny = Ns5RulesArtifact | Ns5RulesArtifactV2;
 
 export interface Ns5WorkflowTrigger {
   /** Gate: scheduled needs schedule, event needs event, manual needs actorRef. */
@@ -714,6 +744,13 @@ export interface Ns5PipelineStepState {
    * (`normalizations[].kind === 'liftedFields'`).
    */
   liftedFields?: Ns5PipelineLiftedField[];
+  /**
+   * ontology30 v3: rule ids the entities cited, platform and module together. `rules40` receives the
+   * module ones as data and has to produce them (ns5_42 T7 records it; ns5_43 T2 wires the reading).
+   */
+  citedRules?: string[];
+  /** ontology30 v3: capability ids the entities cited, catalog and module together. */
+  citedCapabilities?: string[];
   /** module10: actors born by the step. Later steps read them via `readNs5Actors`. */
   actors?: Ns5ModuleActor[];
   /** journeys20: actorIds dropped as inferred-external without an exclusive step. */

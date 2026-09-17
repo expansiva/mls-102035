@@ -23,10 +23,28 @@ export interface Ns4SolutionRegistryActor {
   kind: string;
 }
 
+/**
+ * A papel of a module over a level-1 subtype. ns5_43 T4 names the three parts the way the v3 ontology
+ * names them (`Ns5OntologyRoleV3`): `subtype` is the MDM subtype, `roleTag` is what `attachRole` writes
+ * into `identification.tags`. Registries written before ns5_43 carry `mdmSubtype`/`role` instead; they
+ * are read through `ns4RegistryRoleSubtype` / `ns4RegistryRoleTag` and rewritten on the next finalize80.
+ */
 export interface Ns4SolutionRegistryRole {
-  mdmSubtype: string;
-  role: string;
+  subtype: string;
+  roleTag: string;
   namespace: string;
+  /** Legacy spelling of `subtype`, written before ns5_43. Never written again. */
+  mdmSubtype?: string;
+  /** Legacy spelling of `roleTag`, written before ns5_43. Never written again. */
+  role?: string;
+}
+
+export function ns4RegistryRoleSubtype(role: Ns4SolutionRegistryRole): string {
+  return role.subtype || role.mdmSubtype || '';
+}
+
+export function ns4RegistryRoleTag(role: Ns4SolutionRegistryRole): string {
+  return role.roleTag || role.role || '';
 }
 
 export interface Ns4SolutionRegistryGeneralField {
@@ -39,8 +57,11 @@ export interface Ns4SolutionRegistryGeneralField {
 /** Entities this module owns. Siblings read this list instead of opening ontology files. */
 export interface Ns4SolutionRegistryEntity {
   entityId: string;
+  /** v2 `kind`, or the v3 `role` / `entity`. */
   kind: string;
   mdmSubtype?: string;
+  /** v3 table only: `core | event | supporting`, which v2 carried in `kind` (ns5_43 T4). */
+  class?: string;
 }
 
 /** Outbound events this module publishes. `on` is `Entity.transitionId` or `Entity.create`. */

@@ -6,6 +6,8 @@ import type { Ns5ModuleActor, Ns5SystemDecision } from '/_102035_/l2/solution/ty
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
+/** ns5_43 T1: an entity, or a path into an embedded child of it (`PedidoCompra.details.itens`). */
+const ENTITY_REF = /^[A-Z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)*$/;
 const STEP_KINDS = new Set(['locate', 'inspect', 'act', 'decide', 'handoff']);
 const ENTRY_MODES = new Set(['coldStart', 'contextOrLookup', 'fromNotification']);
 
@@ -162,8 +164,8 @@ export function validateNs5Journeys(
           const affectPath = `${path}.affects[${affectPosition}]`;
           if (!affect) {
             error(issues, 'NS5_JOURNEY_STEP_AFFECTS', 'affects entries cannot be empty.', affectPath);
-          } else if (!ENTITY_ID.test(affect)) {
-            error(issues, 'NS5_JOURNEY_STEP_AFFECTS_ID', 'affects must be a stable PascalCase identifier, not a display label.', affectPath);
+          } else if (!ENTITY_REF.test(affect)) {
+            error(issues, 'NS5_JOURNEY_STEP_AFFECTS_ID', 'affects must be a stable PascalCase identifier, or a path into an embedded child of one, not a display label.', affectPath);
           } else if (affect === step.entity) {
             error(issues, 'NS5_JOURNEY_STEP_AFFECTS_ENTITY', 'affects must not repeat the step entity.', affectPath);
           } else if (seen.has(affect)) {

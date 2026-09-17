@@ -1,5 +1,10 @@
 # workflows50
 
+## 2026-09-16
+
+- ns5_43 T1: a `crossActorDecide` signal is indexed by the ROOT of an `affects` reference,
+  so an act on an embedded child counts for the entity that owns it. Reads both ontology forms.
+
 ## 2026-09-12
 
 - G13 form (`-workflows-v2`): process `trigger` (`scheduled` | `event` | `manual`);

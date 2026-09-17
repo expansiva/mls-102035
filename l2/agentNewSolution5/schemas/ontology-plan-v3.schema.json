@@ -1,0 +1,65 @@
+{
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-plan/2026-09-15-ns5-ontology-v3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["businessDomain", "entities", "relationships"],
+  "properties": {
+    "businessDomain": { "type": "string" },
+    "entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } },
+    "relationships": { "type": "array", "items": { "$ref": "#/$defs/relationship" } }
+  },
+  "$defs": {
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityId", "kind", "family", "storageKind", "title", "description", "displayField", "writer"],
+      "properties": {
+        "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "kind": { "type": "string", "enum": ["role", "entity"] },
+        "family": {
+          "type": "string",
+          "enum": ["mdm", "tdm", "ddm"],
+          "description": "The nature of the data. 'mdm': a master record of the organization, shared between modules — always the family of a role. 'tdm': the movement, the event, the operation of this module — the family of almost every table. 'ddm': what is recalculated from the others (a metric, a summary, a series) and has no writer, no lifecycle and no unique key."
+        },
+        "storageKind": {
+          "type": "string",
+          "enum": ["platform", "relational", "timeSeries"],
+          "description": "Where the rows live. 'platform' on every role, because the rows are the platform's. 'relational' on a table of the module, which is the usual answer. 'timeSeries' only when the rows are a series chunked by time, read by period and never updated."
+        },
+        "subtype": { "$ref": "#/$defs/subtype" },
+        "class": { "type": "string", "enum": ["core", "event", "supporting"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "displayField": { "type": "string" },
+        "writer": { "type": "string", "enum": ["journey", "crud", "inbound"] }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationshipId", "from", "to", "type", "required", "mode", "description"],
+      "properties": {
+        "relationshipId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "type": { "type": "string", "enum": ["oneToOne", "oneToMany", "manyToOne", "manyToMany"] },
+        "required": { "type": "boolean" },
+        "mode": { "type": "string", "enum": ["fk", "mdmRelationship", "throughTable", "composition"] },
+        "catalogType": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "through": { "type": "string" },
+        "field": { "type": "string" },
+        "path": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "subtype": {
+      "type": "string",
+      "enum": [
+        "Person", "Company", "ContactChannel", "Animal", "Product", "Service", "Location",
+        "BankAccount", "Document", "AssetGeneric", "AssetVehicle", "AssetProperty", "AssetEquipment"
+      ]
+    }
+  }
+}

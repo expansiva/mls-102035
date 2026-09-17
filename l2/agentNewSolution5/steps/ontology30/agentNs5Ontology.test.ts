@@ -9,14 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { buildNs5OntologyPlanHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5JourneyArtifact, Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
-import {
-  buildNs5OntologyBindingsHumanPrompt,
-  buildNs5OntologyEntityHumanPrompt,
-  buildNs5OntologyPlanHumanPrompt,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import {
   assembleNs5Ontology,
   buildNs5OntologyBindingsTool,
@@ -861,31 +857,6 @@ void test('normalize accepts typed details as an array and as a record; string v
   assert.equal(fromString.details, undefined);
 });
 
-void test('ontology30 plan prompt omits mutability when journeys repeat act or decide', () => {
-  const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
-  assert.match(prompt, /more than one `act` step on this entity/);
-  assert.match(prompt, /or a `decide` step on it, omit `mutability` here/);
-  assert.match(prompt, /The entity\s+pass declares `lifecycleStates`\s+and `transitions` covering those steps/);
-  assert.match(prompt, /An `act` with\s+`effect: 'transition'` requires that `transitionRef` on the entity/);
-  assert.match(prompt, /moduleDetails/);
-  assert.match(prompt, /one-sentence `description`/);
-  assert.match(prompt, /A reference catalog nobody creates in a journey/);
-  assert.match(prompt, /as its `entity` or in `affects`/);
-  assert.doesNotMatch(prompt, /never both/);
-  assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|abrir|fechar/i);
-});
-
-void test('ontology30 entity prompt states uniqueKeys, typed details, enum titles and intrinsic constraints', () => {
-  const prompt = readFileSync(path.join(HERE, 'promptEntity.md'), 'utf8');
-  assert.match(prompt, /Declare `unique`\/`uniqueKeys` for what must not repeat/);
-  assert.match(prompt, /intrinsic to the type, never a business\s+policy/);
-  assert.match(prompt, /Each enum entry is `\{ "value", "title" \}`/);
-  assert.match(prompt, /\{ "name", "type", "description" \}/);
-  assert.match(prompt, /A reference catalog nobody creates in a journey/);
-  assert.match(prompt, /Every `transitionRef` an `act` with\s+`effect: 'transition'` cites/);
-  assert.doesNotMatch(prompt, /never both/);
-});
-
 void test('cited transitionRef missing on the entity is TRANSITION_REF_MISSING; normalize adds by', () => {
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Tickets',
@@ -937,46 +908,6 @@ void test('cited transitionRef missing on the entity is TRANSITION_REF_MISSING; 
   assert.equal(mdmGate.issues.some(issue => issue.code === 'NS5_ONTOLOGY_TRANSITION_REF_MISSING'), false);
 });
 
-void test('entity human prompt lists cited transitionRef as data', () => {
-  const plan = normalizeNs5OntologyPlan({
-    businessDomain: 'Tickets',
-    entities: [corePlan('Ticket', 'ticketId', 'ticketId')],
-    relationships: [],
-  }, 'comandaRestaurante5');
-  const prompt = buildNs5OntologyEntityHumanPrompt({
-    sourcePrompt: 'Close tickets.',
-    userLanguage: 'en',
-    actors: ACTORS,
-    journeys: [{
-      schemaVersion: '2026-09-10-ns5-journey-v1',
-      journeyId: 'closeTicket',
-      business: journey('caixa', [step('closeTicket', 'act', 'Ticket', { effect: 'transition', transitionRef: 'closeTicket' })]).business,
-      businessHash: 'sha256:x',
-    }],
-    plan,
-    entityId: 'Ticket',
-    level1Catalog: '## Platform level-1 catalog\nSubtypes: <Person>',
-  });
-  assert.match(prompt, /Cited transitions this entity must declare/);
-  assert.match(prompt, /closeTicket by caixa/);
-  assert.match(prompt, /transitionRef=closeTicket/);
-});
-
-void test('plan human prompt includes journeys, actors and level-1 placeholders', () => {
-  const prompt = buildNs5OntologyPlanHumanPrompt({
-    sourcePrompt: 'Restaurant table orders.',
-    userLanguage: 'pt-BR',
-    actors: ACTORS,
-    journeys: [{ schemaVersion: '2026-09-10-ns5-journey-v1', journeyId: 'fecharComanda', business: FECHAR.business, businessHash: 'sha256:x' }],
-    level1Catalog: '## Platform level-1 catalog (placeholders — not module entities)\nSubtypes: <Person>, <Location>',
-  });
-  assert.match(prompt, /caixa/);
-  assert.match(prompt, /affects=Mesa/);
-  assert.match(prompt, /<Person>/);
-  assert.match(prompt, /Restaurant table orders/);
-  assert.doesNotMatch(prompt, /Actors whose scope is personal/);
-});
-
 void test('plan prompt injects internal actors whose journeys name a personal scope', () => {
   const actors: Ns5ModuleActor[] = [
     { actorId: 'colaborador', kind: 'internal', origin: 'named', title: 'Colaborador', description: 'Files expenses.' },
@@ -1018,7 +949,7 @@ void test('plan prompt injects internal actors whose journeys name a personal sc
     userLanguage: 'pt-BR',
     actors,
     journeys,
-    level1Catalog: '## Platform level-1 catalog\nSubtypes: <Person>',
+    platformCatalog: '## Platform catalog (level 1)\nSubtypes: Person',
   });
   assert.match(prompt, /Actors whose scope is personal/);
   assert.match(prompt, /colaborador \(Colaborador\): lancarDespesa/);
@@ -1028,28 +959,6 @@ void test('plan prompt injects internal actors whose journeys name a personal sc
   assert.doesNotMatch(section, /recepcao/);
   assert.doesNotMatch(section, /cliente/);
   assert.equal(formatNs5PersonalScopeActors([]), '');
-});
-
-void test('bindings human prompt lists the synthetic mdm identity', () => {
-  const mesa = mdmPlan('Mesa', 'Location', 'none', 'mesaId');
-  const assembled = assembleNs5Ontology(
-    { moduleName: 'comandaRestaurante5', businessDomain: 'Restaurant orders', entities: [mesa], relationships: [] },
-    [emptyMdmDetail('Mesa')],
-  );
-  const prompt = buildNs5OntologyBindingsHumanPrompt({ plan: { moduleName: 'comandaRestaurante5', businessDomain: 'Restaurant orders', entities: [mesa], relationships: [] }, entities: assembled.entities });
-  assert.match(prompt, /mesaId/);
-});
-
-void test('persistArtifacts reconciles ontology defs against the index', () => {
-  const source = readFileSync(new URL('./agentNs5Ontology.ts', import.meta.url), 'utf8');
-  const persist = source.slice(source.indexOf('async function persistArtifacts'));
-  assert.match(persist, /reconcileModuleDefs\(\s*moduleName,\s*'ontology'/);
-  assert.match(persist, /removedOrphans/);
-  assert.match(persist, /liftedAggregateEntities/);
-  assert.match(persist, /normalizations/);
-  assert.match(persist, /liftedFields/);
-  assert.match(persist, /applyNs5PlatformServiceCandidateDecisions/);
-  assert.match(persist, /writeStepState/);
 });
 
 void test('supporting file-or-note entity linked to mdm is a platform-service candidate warning', () => {

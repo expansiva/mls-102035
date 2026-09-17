@@ -26,11 +26,11 @@ import type {
   Ns5OntologyIndexV3,
 } from '/_102035_/l2/solution/types.js';
 import { NS5_ONTOLOGY_SCHEMA_VERSION_V3 } from '/_102035_/l2/solution/types.js';
-import { agendaClinicaRules } from '/_102047_/l4/agendaClinica/rules.defs.js';
-import { agendaClinicaEntityConsulta } from '/_102047_/l4/agendaClinica/ontology/Consulta.defs.js';
-import { agendaClinicaEntityPaciente } from '/_102047_/l4/agendaClinica/ontology/Paciente.defs.js';
-import { agendaClinicaEntityProfissional } from '/_102047_/l4/agendaClinica/ontology/Profissional.defs.js';
-import { agendaClinicaOntologyIndex } from '/_102047_/l4/agendaClinica/ontology/index.defs.js';
+import { agendaClinicaRules } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/rules.defs.js';
+import { agendaClinicaEntityConsulta } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
+import { agendaClinicaEntityPaciente } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Paciente.defs.js';
+import { agendaClinicaEntityProfissional } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Profissional.defs.js';
+import { agendaClinicaOntologyIndex } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/index.defs.js';
 
 const MODULE_NAME = 'agendaClinica';
 

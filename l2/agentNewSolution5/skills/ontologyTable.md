@@ -10,16 +10,17 @@ of the module (`moduleDatabase`) and for a master-data record of the platform (`
 ## 1. Shape: primary fields + `details`
 
 ```
-fields: {
-  id:       { type: uuid,    origin: derived, layer: column }        // identity; never in details
-  version:  { type: integer, origin: derived, layer: column }        // bumped by the engine on every write (optimistic concurrency)
-  <indexed>:{ …,             layer: column }                         // ONLY fields that need an index: filter, sort, uniqueness, search
-  details:  { type: object,  layer: document, fields: { … } }        // everything else, as a tree (JSONB)
-}
+record.fields: [
+  { id: 'id',      type: 'uuid',    required, derived, indexed }   // identity; never in details -- written for you
+  { id: 'version', type: 'integer', required, derived }            // bumped by the engine on every write -- written for you
+  { id: <column>,  …,                         indexed: true }     // ONLY what needs an index: filter, sort, uniqueness, search
+  { id: 'details', type: 'object', required, fields: [ … ] }     // everything else, as a tree (JSONB)
+]
 ```
 
-**Rule:** a field is a `column` only when it needs an index. If nobody filters, sorts or deduplicates by it, it goes inside `details`.
-`status` of a lifecycle is a column (it is filtered). Free text, amounts that are only displayed, nested objects and lists go in `details`.
+**Rule:** a field is a column only when it needs an index; `indexed: true` says so and a column without it is refused.
+If nobody filters, sorts or deduplicates by it, it goes inside `details`. `status` of a lifecycle is a column (it is filtered).
+Free text, amounts that are only displayed, nested objects and lists go in `details`.
 
 ## 2. `details` is a tree — depth is free
 
@@ -36,10 +37,11 @@ Each field has `title`, `description`, `required`, and one of:
 
 Constraints of the type live on the field. Business policy ("max 12 installments") is a rule, cited by id. A value that varies per record is a field.
 
-## 3. Origin — who writes each field
+## 3. Who writes each field
 
-`origin: nivel1 | modulo | derived`. `derived` = the engine writes it (id, version, status of the master record, tags, `relationshipRefs`,
-sequence numbers); the tool schema and the screens never ask for it. Mark it; never omit it.
+The engine writes `id`, `version`, the status of a master record, `tags`, `relationshipRefs` and the derived contact list; a form never
+offers them and you never declare them. On a platform branch the whole structure -- type, `derived`, `indexed`, `unique`, `collection`,
+`of` -- is the platform's and is filled in for you: you say which fields you keep, how you tighten them, and what they mean here.
 
 ## 4. A master-data record (MDM) — copy from the platform, then customize
 
@@ -48,26 +50,28 @@ declares a **role** over the platform subtype (`kind: role`, `subtype: Person`, 
 the platform stores and returns it:
 
 ```
-fields: {
-  id, version,                                     // derived
-  details: {
-    // identification — index columns of the platform (copied, tightened): name, docType, docId, countryCode, status, tags
+record.fields: [
+  { id: 'id' }, { id: 'version' },                 // written for you
+  { id: 'details', type: 'object', fields: [
+    // identification — index columns of the platform (kept, tightened): name, docType, docId, countryCode, status, tags
     // base — platform document: aliases, addresses (of Address), contacts (derived list of ContactChannel refs), relationshipRefs (derived)
-    // subtype — platform document: birthDate, gender, privacyConsent (of PrivacyConsent) …
-    general:      { type: object, origin: nivel1 }   // fields promoted by the organization; schema in the solution registry
-    <moduleId>:   { type: object, origin: modulo, fields: { … } }   // THE MODULE NAMESPACE — Record<moduleId, object>
-  }
-}
+    // <subtype> — platform document: birthDate, gender, privacyConsent (of PrivacyConsent) …
+    { id: 'general', type: 'object' },             // promoted by the organization; you read it, you do not declare it
+    { id: '<moduleId>', type: 'object', fields: [ … ] },  // THE MODULE NAMESPACE — one key, only this module writes it
+  ] },
+]
 ```
 
-- **Copy and customize.** Start from the platform definition of the subtype (`/_102034_/l4/ontology/<Subtype>.defs.ts` — today still
-  `l4/organization/ontology/`), keep the fields this role uses, drop the rest, and **tighten** only: `required` false→true, `enum` subset,
-  stricter `pattern`. Never loosen, never rename, never invent a field in a platform layer. The import of the subtype type at the top of the
-  file lets the compiler check every id you kept.
+- **Copy and customize.** Start from the `## Starting point` the prompt hands you — the platform record of the subtype, read from
+  `/_102034_/l4/ontology/mdm.defs.ts` — keep the fields this role uses, drop the rest, and **tighten** only: `required` false→true,
+  `values` subset, stricter `pattern`. Never loosen, never rename, never invent a field in a platform layer. Keep the five branches even
+  when one of them ends up empty.
 - **The namespace `details.<moduleId>`** is the only place the module writes something of its own about the record. It is a
   `Record<moduleId, object>` inside the same document: each module has one key, only that module changes it, other modules see the key name
   and never the content (`MDM_FOREIGN_NAMESPACE`). It is a tree like any `details`. **Never** put identity, document, contact, login or a copy
-  of a platform field there.
+  of a platform field there, and never a field that fakes a platform service (a photo, a receipt, an attachment, a link to a file, a phone).
+  It carries what the request or the journeys asked for about the record, and nothing else; when nothing was asked for it stays **empty**,
+  which is the right answer and not a gap to fill.
 - **`general`** holds fields the organization promoted because two modules needed them. You read it; you do not declare it here.
 - **Contacts are records, not fields.** A phone, WhatsApp or e-mail is a `ContactChannel` linked by `HasContact`; the person's document carries
   only the derived reference list. Declare the link in `relationships`, and the capability `vincular.contato` — never a `phone` field.
@@ -87,11 +91,21 @@ fields: {
 
 ## 6. Capabilities — what can be done with this record
 
-`capabilities: Record<id, sentence>` — one line per action, readable by a person and by the model, in four parts:
-**what it does · how (key, index, route) · who uses it · platform: ready | partial | missing**.
-Choose from the platform catalog (locate by name / by document / by contact, create-or-attach, capture as prospect, edit, inactivate, merge,
-link/unlink, list links, attach a document, comment, tag, next sequence number, status history, audit, invite to login) and add the module's own
-(`listar.consultas`). The platform status comes from the catalog; do not guess it. A capability the module needs and the platform lacks is
+`capabilities` — one line per action, readable by a person and by the model, in three parts:
+**what it does · how (key, index, route) · who uses it**. The platform status comes from the catalog and is not repeated.
+
+Choose the ids from the catalog of the entity's **family**, which the starting point of the prompt carries whole, and add the module's own with
+the prefix `<moduleName>.`:
+
+- `mdm` (a role over a master record): locate by name / by document / by contact, create-or-attach, capture as prospect, edit, inactivate, merge,
+  link/unlink, list links, attach a document, comment, tag, next sequence number, status history, audit, invite to login;
+- `tdm` (a table of this module): read by id, locate by column, locate by text, count, list by foreign key, create, update, delete, transition,
+  unique key, transaction, read the master record a column points at — plus what the platform lends a table: next sequence number, attach a
+  document, comment, tag, status history, audit;
+- `ddm` (a summary): aggregate by window, store as a time series, read a window, refresh, rebuild, resample, retain.
+
+An id of another family is refused: a table does not "locate by document", and a master record does not "create". The platform status comes from
+the catalog; do not guess it. A capability the module needs and the platform lacks is
 declared with `platform: missing` — never replaced by a field that fakes it (no `photoUrl: json` when attachments exist).
 
 ## 7. Rules and triggers
@@ -102,7 +116,7 @@ platform catalog (unique document, LGPD consent, foreign namespace). Module rule
 
 ## 8. What you write vs what is derived
 
-You write: kind, subtype, title, description, the `details` tree (which platform fields you keep and how you tighten them; your namespace),
-relationships with roles, the capabilities you offer and to whom, module rules and triggers.
-Derived (never write): `id`, `version`, `type`/`layer` of platform fields, `tags`, `relationshipRefs`, `contacts`, compact keys, realization of
-relationships, platform status of capabilities, `roleTag`, `storage`.
+You write: the `details` tree (which platform fields you keep and how you tighten them; your namespace), the columns of a table and its
+`details`, the links you read with their cardinality, the capabilities you offer and to whom, and the rule ids you obey.
+Derived (never write): `id`, `version`, the structure and flags of platform fields, `tags`, `relationshipRefs`, `contacts`, compact keys,
+`via`/`path` of a link, platform status of capabilities, `roleTag`, `source`, `storage`.

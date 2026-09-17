@@ -165,8 +165,24 @@ function actEffect(value: unknown): Ns5JourneyActEffect | undefined {
   return value === 'create' || value === 'update' || value === 'transition' ? value : undefined;
 }
 
+/**
+ * ns5_43 T1. An `affects` entry is an entity id, or a path into an embedded child of one
+ * (`PedidoCompra.details.itens`). Only the ROOT is an entity id and gets the PascalCase treatment; the
+ * path segments are field ids written as they are, so normalising them would rename real fields.
+ */
 function uniquePascalIds(value: unknown): string[] {
-  return strings(value).map(normalizeEntityId).filter(Boolean);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of strings(value)) {
+    const dot = raw.indexOf('.');
+    const root = normalizeEntityId(dot < 0 ? raw : raw.slice(0, dot));
+    if (!root) continue;
+    const ref = dot < 0 ? root : `${root}.${raw.slice(dot + 1).trim()}`;
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    out.push(ref);
+  }
+  return out;
 }
 
 /** Lexical PascalCase id. Does not translate or substitute a domain noun. */

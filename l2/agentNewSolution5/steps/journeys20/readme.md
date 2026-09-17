@@ -19,7 +19,9 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
 - `actorRef` is an actor from `module.defs.ts`. Ids are unique lowerCamel.
 - A journey of only `locate`/`inspect` is valid (consultation). `act`/`decide` only
   when the request names a change or a human choice.
-- `affects` is only on `act`, does not repeat `entity`, has no duplicates.
+- `affects` is only on `act`, does not repeat `entity`, has no duplicates. An entry is an
+  entity id, or a path into an embedded child of one (`PedidoCompra.details.itens`, ns5_43 T1):
+  the root is normalised to PascalCase, the path segments are kept as written.
 - An `act` declares `effect`: `create` (new record), `transition` (names `transitionRef`)
   or `update` (edits fields). Missing `effect` is `NS5_JOURNEY_ACT_EFFECT_REQUIRED`.
   `transitionRef` without `effect: 'transition'` is dropped (`normalizations[]`);

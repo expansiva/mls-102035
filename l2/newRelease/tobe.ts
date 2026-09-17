@@ -25,6 +25,8 @@ import type {
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
+import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
 import { NEW_RELEASE_TOBE_UPDATED_EVENT } from '/_102035_/l2/newRelease/helpers/context.js';
@@ -452,7 +454,7 @@ export async function validateNs5Overlay(
         },
       ).issues);
     }
-    if (rules) pushGate(issues, 'rules.defs.ts', rulesGate.validateNs5Rules(rules.rules, { moduleName: module?.moduleName }).issues);
+    if (rules) pushGate(issues, 'rules.defs.ts', rulesGate.validateNs5Rules(ns5RuleRecord(rules), { moduleName: module?.moduleName }).issues);
     if (workflows && !ontologyV3) pushGate(issues, 'workflows.defs.ts', workflowsGate.validateNs5Workflows(workflows.processes, {
       moduleName: module?.moduleName,
       actorIds: (access?.actors || []).map(actor => actor.actorId),
@@ -485,7 +487,10 @@ export async function validateNs5Overlay(
     if (!ontologyV3 && module && journeyIndex && ontologyIndex && rules && workflows && access && integration
       && journeys.length === sources.journeys.length && entities.length === sources.entities.length) {
       const oracleSources: Ns5OracleSources = {
-        module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration,
+        module, journeyIndex, journeys, ontologyIndex,
+        // ns5_43: the oracle reads the normalized view of the ontology, not the raw v2 artifacts.
+        entities: ns5OntologyEntityViews(entities),
+        rules, workflows, access, integration,
         journeyDiskFiles: ['index', ...sources.journeys.map(item => pathParts(item.path).shortName)],
         ontologyDiskFiles: ['index', ...sources.entities.map(item => pathParts(item.path).shortName)],
         liftedAggregateEntities: context?.pipeline?.steps.ontology30?.liftedAggregateEntities,

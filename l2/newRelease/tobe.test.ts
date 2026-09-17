@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadNs5OracleSources } from '../agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Entities, loadNs5OracleSources } from '../agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import {
   isNs5OntologyV3,
   NS5_TOBE_MANIFEST_SCHEMA_VERSION,
@@ -70,7 +70,7 @@ function realOverlay(): NewReleaseOverlaySources {
   const journeyIndex = artifact('journeys/index.defs.ts', source.journeyIndex);
   const journeys = source.journeys.map(value => artifact(`journeys/${value.journeyId}.defs.ts` as const, value));
   const ontologyIndex = artifact('ontology/index.defs.ts', source.ontologyIndex);
-  const entities = source.entities.map(value => artifact(`ontology/${value.entityId}.defs.ts` as const, value));
+  const entities = loadNs5Entities('ordenServicio5').map(value => artifact(`ontology/${value.entityId}.defs.ts` as const, value));
   const rules = artifact('rules.defs.ts', source.rules);
   const workflows = artifact('workflows.defs.ts', source.workflows);
   const access = artifact('access.defs.ts', source.access);
@@ -117,7 +117,7 @@ function installStorFixture(project: number, moduleName: string) {
   add('journeys/index.defs.ts', source.journeyIndex);
   source.journeys.forEach(value => add(`journeys/${value.journeyId}.defs.ts`, value));
   add('ontology/index.defs.ts', source.ontologyIndex);
-  source.entities.forEach(value => add(`ontology/${value.entityId}.defs.ts`, value));
+  loadNs5Entities(moduleName).forEach(value => add(`ontology/${value.entityId}.defs.ts`, value));
   add('rules.defs.ts', source.rules);
   add('workflows.defs.ts', source.workflows);
   add('access.defs.ts', source.access);

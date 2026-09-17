@@ -402,10 +402,13 @@ void test('human prompt carries source request, catalog, registry and signals', 
       { actorId: 'moduloOrigem', kind: 'system', title: 'Origin', description: 'Other modules post charges.' },
     ],
     entities: [{ entityId: 'ReceivableTitle', writer: 'inbound' }, { entityId: 'Payment' }],
+    usedByRefs: ['registrarRecebimento.localizarTitulo', 'registrarRecebimento.registrarPagamento'],
     siblings: CE11_REGISTRY.map(name => ({ moduleName: name, roles: [], entities: [], events: [] })),
     inboundWriters: ['ReceivableTitle'],
     platformEventIds: ['mdmCreated'],
   });
+  // ns5_46 follow-up: the refs `usedBy` may name are listed, instead of promised and never built.
+  assert.match(human, /registrarRecebimento\.registrarPagamento/);
   assert.match(human, /Source request/);
   assert.match(human, /moduloOrigem \(system\)/);
   assert.match(human, /comandaRestaurante/);

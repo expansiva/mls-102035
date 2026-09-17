@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/workflows50/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
+import { splitNs5EntityRef } from '/_102035_/l2/solution/ontologyView.js';
 import {
   NS5_WORKFLOWS_SCHEMA_VERSION,
   type Ns5JourneyDecision,
@@ -186,7 +187,11 @@ export function collectNs5ProcessSignals(
     const actor = journey.business.actorRef;
     if (!actor) continue;
     for (const step of journey.business.steps) {
-      const entitiesTouched = [step.entity, ...(step.affects || [])].filter(Boolean);
+      // ns5_43 T1: `affects` may name an embedded child (`PedidoCompra.details.itens`); the actor
+      // touches the entity that owns it, so the signal is indexed by the root.
+      const entitiesTouched = [step.entity, ...(step.affects || [])]
+        .filter(Boolean)
+        .map(ref => splitNs5EntityRef(ref).root);
       for (const entityId of entitiesTouched) {
         const actors = actorsByEntity.get(entityId) || new Set<string>();
         actors.add(actor);

@@ -1,5 +1,10 @@
 # integration70
 
+## 2026-09-16
+
+- ns5_43 T4: reads the ontology through `solution/ontologyView.ts`, so a v3 index does not
+  break the entity/writer list. The registry it feeds names a papel `{ subtype, roleTag }`.
+
 ## 2026-09-12
 
 - Inbound `transitionRef` with `effect ≠ transition` is dropped (`dropTransitionRef`); `effect: transition` without `transitionRef` stays `NS5_INTEGRATION_TRANSITION_REF`; unknown id stays `NS5_INTEGRATION_TRANSITION_UNKNOWN`.

@@ -32,14 +32,19 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
+import {
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  type Ns5OntologyAnyIndex,
+  type Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5IntegrationItem,
   Ns5IntegrationPlugin,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
-  Ns5OntologyEntityArtifact,
-  Ns5OntologyIndexArtifact,
+  Ns5OntologyAnyEntity,
   Ns5PipelineState,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
@@ -68,11 +73,31 @@ interface IntegrationArgs {
   gateFeedback: string;
 }
 
+/**
+ * Every ref `usedBy` may name. The gate refuses anything else (`NS5_INTEGRATION_USED_BY`), and the prompt
+ * used to promise this list without anyone building it — so the model invented plausible names.
+ */
+async function readUsedByRefs(moduleName: string): Promise<string[]> {
+  const refs: string[] = [];
+  const index = await readDefsJson<Ns5JourneyIndexArtifact>(journeyIndexFile(moduleName));
+  for (const entry of index?.journeys || []) {
+    const journey = await readDefsJson<Ns5JourneyArtifact>(journeyFile(moduleName, entry.journeyId));
+    for (const step of journey?.business.steps || []) refs.push(`${entry.journeyId}.${step.stepId}`);
+  }
+  const workflows = await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
+  for (const process of workflows?.processes || []) {
+    for (const task of process.tasks || []) refs.push(`${process.processId}.${task.taskId}`);
+  }
+  return refs;
+}
+
 export function buildNs5IntegrationHumanPrompt(input: {
   sourcePrompt: string;
   userLanguage: string;
   actors: ReadonlyArray<{ actorId: string; kind: string; title: string; description: string }>;
   entities: ReadonlyArray<{ entityId: string; writer?: 'journey' | 'crud' | 'inbound'; transitions?: ReadonlyArray<{ transitionId: string }> }>;
+  /** Every `journeyId.stepId` and `processId.taskId` that exists. `usedBy` may name nothing else. */
+  usedByRefs: readonly string[];
   siblings: readonly Ns5SiblingModule[];
   inboundWriters: string[];
   platformEventIds: string[];
@@ -101,6 +126,9 @@ export function buildNs5IntegrationHumanPrompt(input: {
     '',
     '## Ontology entities (writer inbound must appear in inbound.writes)',
     entityLines,
+    '',
+    '## usedBy — the only refs that exist (journeyId.stepId and processId.taskId)',
+    input.usedByRefs.length ? input.usedByRefs.map(ref => `- ${ref}`).join('\n') : '(none)',
     '',
     formatNs5Siblings(input.siblings) || '## Sibling modules already in this organization\n(none)',
     '',
@@ -151,8 +179,9 @@ export async function beforeNs5IntegrationPromptStep(
         updateStatus(context, parentStep, step, hookSequential, 'completed', `integration70 approved with noIntegrationSignal: ${artifactPath}`),
       ];
     }
-    const [entities, prompt, schema, previous] = await Promise.all([
+    const [entities, usedByRefs, prompt, schema, previous] = await Promise.all([
       readEntities(moduleName),
+      readUsedByRefs(moduleName),
       readAgentText('steps/integration70', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'integration.schema', '.json'),
       moduleName ? readJson(draftFile(moduleName, 'integration70')) : Promise.resolve(null),
@@ -168,6 +197,7 @@ export async function beforeNs5IntegrationPromptStep(
         transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
       })),
       siblings,
+      usedByRefs,
       inboundWriters: entities.filter(entity => entity.writer === 'inbound').map(entity => entity.entityId),
       platformEventIds: ns5PlatformEventIds(),
       gateFeedback: parsed.gateFeedback,
@@ -314,16 +344,16 @@ async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
   return artifact;
 }
 
-async function readEntities(moduleName: string): Promise<Ns5OntologyEntityArtifact[]> {
-  const index = await readDefsJson<Ns5OntologyIndexArtifact>(ontologyIndexFile(moduleName));
+async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {
+  const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
   if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
-  const entities: Ns5OntologyEntityArtifact[] = [];
-  for (const entityId of index.entities) {
-    const artifact = await readDefsJson<Ns5OntologyEntityArtifact>(ontologyEntityFile(moduleName, entityId));
+  const entities: Ns5OntologyAnyEntity[] = [];
+  for (const entityId of ns5OntologyEntityIds(index)) {
+    const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
-  return entities;
+  return ns5OntologyEntityViews(entities);
 }
 
 async function readCoverage(moduleName: string): Promise<{

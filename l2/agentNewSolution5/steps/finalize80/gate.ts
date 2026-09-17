@@ -22,6 +22,7 @@ import {
   ns5ResolveEntityWriter,
   ns5SourceSccStates,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+import { ns5RuleEntries, ns5RuleIds } from '/_102035_/l2/solution/rulesView.js';
 import {
   ns5FieldRefExists,
   splitFieldRef,
@@ -38,7 +39,13 @@ import {
   collectNs5ProcessSignals,
   parseNs5TriggerEvent,
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
-import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+import {
+  isNs5OntologyV3Entity,
+  ns5OntologyEdges,
+  ns5OntologyEntityIds,
+  splitNs5EntityRef,
+  type Ns5OntologyEntityViewItem,
+} from '/_102035_/l2/solution/ontologyView.js';
 import {
   buildNs5FinalizeReport,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
@@ -86,7 +93,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
     actors: sources.access.actors.length,
     journeys: sources.journeys.length,
     entities: sources.entities.length,
-    rules: sources.rules.rules.length,
+    rules: ns5RuleEntries(sources.rules).length,
     processes: sources.workflows.processes.length,
     grants: sources.access.grants.length,
   });
@@ -119,8 +126,17 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
         error('I1', `${path}.entity`, `Unknown entity ${step.entity}.`);
       }
       for (const extra of step.affects || []) {
-        if (extra && !entityIds.has(extra) && !isLiftedModuleDetailRef(extra, sources)) {
-          error('I1', `${path}.affects`, `Unknown entity ${extra}.`);
+        // ns5_43 T1/T5: `affects` is an entity, or a path into an embedded child of one. The root has to
+        // be an entity of this module; the path has to resolve on it — on a v3 entity that means a node
+        // of `record.fields`, on a v2 one a `fieldId` or a `details.<name>`.
+        if (!extra) continue;
+        const { root, path: childPath } = splitNs5EntityRef(extra);
+        if (!entityIds.has(root) && !isLiftedModuleDetailRef(root, sources)) {
+          error('I1', `${path}.affects`, `Unknown entity ${root}.`);
+          continue;
+        }
+        if (childPath && entityIds.has(root) && !fieldExists(extra, entityById)) {
+          error('I1', `${path}.affects`, `Unknown field ${extra}.`);
         }
       }
       if (step.handoffTo && !actorIds.has(step.handoffTo)) {
@@ -347,7 +363,7 @@ function checkI3(sources: Ns5OracleSources, error: IssueFn): void {
 }
 
 function checkI4(sources: Ns5OracleSources, error: IssueFn): void {
-  const ruleIds = new Set(sources.rules.rules.map(rule => rule.ruleId).filter(Boolean));
+  const ruleIds = ns5RuleIds(sources.rules);
   for (const entity of sources.entities) {
     entity.transitions.forEach((transition, index) => {
       (transition.ruleRefs || []).forEach((ruleRef, refIndex) => {
@@ -365,7 +381,7 @@ function checkI4(sources: Ns5OracleSources, error: IssueFn): void {
 
 function checkI5(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
-  const relationships = sources.ontologyIndex.relationships.map(item => ({
+  const relationships = ns5OntologyEdges(sources.ontologyIndex).map(item => ({
     relationshipId: item.relationshipId,
     fromEntity: item.fromEntity,
     toEntity: item.toEntity,
@@ -465,7 +481,7 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
 
 function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
   reportOrphans('journeys', sources.journeyDiskFiles, sources.journeyIndex.journeys.map(entry => entry.journeyId), error);
-  reportOrphans('ontology', sources.ontologyDiskFiles, sources.ontologyIndex.entities, error);
+  reportOrphans('ontology', sources.ontologyDiskFiles, ns5OntologyEntityIds(sources.ontologyIndex), error);
 }
 
 /**
@@ -482,10 +498,10 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   const writerPlan = {
-    entities: sources.entities,
-    relationships: sources.ontologyIndex.relationships,
+    entities: sources.entities.map(writerView),
+    relationships: ns5OntologyEdges(sources.ontologyIndex),
   };
-  const internalJourneys = sources.journeys.filter(journey =>
+  const internalJourneys = rootedJourneys(sources.journeys).filter(journey =>
     actorById.get(journey.business.actorRef)?.kind === 'internal');
   sources.access.grants.forEach((grant, index) => {
     const mode = grant.dataScope.mode;
@@ -502,10 +518,10 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     if (crudByInternal) return;
     const grantActor = actorById.get(grant.actorRef);
     if (grantActor?.kind === 'external') {
-      const ownJourneys = sources.journeys.filter(journey => journey.business.actorRef === grant.actorRef);
+      const ownJourneys = rootedJourneys(sources.journeys).filter(journey => journey.business.actorRef === grant.actorRef);
       if (ns5EntityHasActOrAffects(ownJourneys, personId)) return;
     }
-    const resolved = ns5ResolveEntityWriter(entity, writerPlan, sources.journeys);
+    const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
     if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
     error(
       'I8',
@@ -518,7 +534,9 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
 
 function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
   for (const entity of sources.entities) {
-    const fieldIds = new Set(entity.fields.map(field => field.fieldId).filter(Boolean));
+    // ns5_43 T5: uniqueness is over STORED COLUMNS. On v2 those are `fields[]` plus the identity; on a
+    // v3 table they are the top-level fields other than `details`. A path into the document is not one.
+    const fieldIds = new Set(entity.columnIds.filter(Boolean));
     (entity.uniqueKeys || []).forEach((key, keyIndex) => {
       key.forEach((fieldId, fieldIndex) => {
         if (!fieldId) return;
@@ -544,15 +562,15 @@ function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   const inboundWrites = new Set(sources.integration.inbound.flatMap(item => item.writes || []));
   const writerPlan = {
-    entities: sources.entities,
-    relationships: sources.ontologyIndex.relationships,
+    entities: sources.entities.map(writerView),
+    relationships: ns5OntologyEdges(sources.ontologyIndex),
   };
   for (const entity of sources.entities) {
     const path = `ontology.${entity.entityId}`;
-    const resolved = ns5ResolveEntityWriter(entity, writerPlan, sources.journeys);
+    const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
     const crud = resolved.kind === 'crud';
     const inbound = resolved.kind === 'inbound';
-    if (resolved.kind === 'none' && ns5EntityHasWrittenFields(entity)) {
+    if (resolved.kind === 'none' && ns5EntityHasWrittenFields(writtenFieldsView(entity))) {
       error(
         'I10',
         `${path}.writer`,
@@ -683,11 +701,11 @@ function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | unde
 
 type IssueFn = (checkId: Ns5OracleCheckId, path: string, message: string, code?: Ns5OracleIssue['code']) => void;
 
-function entityHasLifecycle(entity: Ns5OntologyEntityArtifact | undefined): boolean {
+function entityHasLifecycle(entity: Ns5OntologyEntityViewItem | undefined): boolean {
   return Boolean(entity && (entity.lifecycleStates.length || entity.transitions.length));
 }
 
-function reachableFromBirths(entity: Ns5OntologyEntityArtifact): Set<string> | null {
+function reachableFromBirths(entity: Ns5OntologyEntityViewItem): Set<string> | null {
   const time = new Set(entity.lifecycleStates.filter(entry => entry.reachedBy === 'time').map(entry => entry.state));
   const roots = ns5SourceSccStates(entity.transitions).filter(state => !time.has(state));
   if (roots.length) return ns5ReachableStates(roots, entity.transitions);
@@ -698,12 +716,12 @@ function reachableFromBirths(entity: Ns5OntologyEntityArtifact): Set<string> | n
   return fallback.length ? new Set(fallback) : null;
 }
 
-function actorMatches(by: Ns5OntologyEntityArtifact['transitions'][number]['by'], actor: string): boolean {
+function actorMatches(by: Ns5OntologyEntityViewItem['transitions'][number]['by'], actor: string): boolean {
   return Boolean(actor && Array.isArray(by) && by.includes(actor));
 }
 
 function taskTransitionByAllows(
-  by: Ns5OntologyEntityArtifact['transitions'][number]['by'],
+  by: Ns5OntologyEntityViewItem['transitions'][number]['by'],
   actorRef?: string,
 ): boolean {
   if (by === 'system' || by === 'time') return true;
@@ -718,8 +736,56 @@ function fromIntersects(from: readonly string[], reachable: Set<string> | null):
 
 
 
-function entityMap(sources: Ns5OracleSources): Map<string, Ns5OntologyEntityArtifact> {
+function entityMap(sources: Ns5OracleSources): Map<string, Ns5OntologyEntityViewItem> {
   return new Map(sources.entities.map(entity => [entity.entityId, entity]));
+}
+
+/**
+ * ns5_43 T5. `ns5ResolveEntityWriter` and `ns5EntityHasWrittenFields` live in ontology30 and are closed
+ * (ns5_42), so the view is said in the vocabulary they branch on: a v3 `role` IS `kind: 'mdm'`, and the
+ * fields a module writes are `writtenFieldIds` (the `details.<moduleName>` branch on a role).
+ */
+/**
+ * ns5_43 T1. `ns5EntityHasActOrAffects` and `ns5ResolveEntityWriter` live in ontology30 (closed, ns5_42)
+ * and compare `affects` entries to entity ids. An act that writes an embedded child
+ * (`PedidoCompra.details.itens`) writes the entity that owns it, so the journeys handed to those helpers
+ * carry the ROOT of each reference.
+ */
+function rootedJourneys(journeys: Ns5OracleSources['journeys']): Ns5OracleSources['journeys'] {
+  if (!journeys.some(journey => journey.business.steps.some(step => (step.affects || []).some(ref => ref.includes('.'))))) {
+    return journeys;
+  }
+  return journeys.map(journey => ({
+    ...journey,
+    business: {
+      ...journey.business,
+      steps: journey.business.steps.map(step => (
+        step.affects?.length
+          ? { ...step, affects: [...new Set(step.affects.map(ref => splitNs5EntityRef(ref).root))] }
+          : step
+      )),
+    },
+  }));
+}
+
+function writerView(entity: Ns5OntologyEntityViewItem): { entityId: string; kind: string; writer?: 'journey' | 'crud' | 'inbound' } {
+  return { entityId: entity.entityId, kind: entity.writerKind, ...(entity.writer ? { writer: entity.writer } : {}) };
+}
+
+function writtenFieldsView(entity: Ns5OntologyEntityViewItem): {
+  kind: string;
+  fields: ReadonlyArray<{ fieldId: string }>;
+  storage?: { idField?: string };
+} {
+  // v2 keeps reading `fields` live: it is the same list the check has always read, and nothing is
+  // derived behind the caller's back. v3 has no flat list, so `writtenFieldIds` answers instead.
+  return {
+    kind: entity.writerKind,
+    fields: isNs5OntologyV3Entity(entity.source)
+      ? entity.writtenFieldIds.map(fieldId => ({ fieldId }))
+      : entity.fields,
+    storage: { idField: entity.idField },
+  };
 }
 
 /**
@@ -735,22 +801,30 @@ function isLiftedModuleDetailRef(id: string, sources: Ns5OracleSources): boolean
   return !!details && Object.keys(details).length > 0;
 }
 
-function fieldExists(ref: string, entityById: Map<string, Ns5OntologyEntityArtifact>): boolean {
+/**
+ * ns5_43 T5. A reference is `<Entity>` or `<Entity>.<path>`. On a v3 entity the resolvable set is the
+ * whole tree of `record.fields` (`fieldRefs`, the same one a disclosure addresses); on a v2 entity it is
+ * the flat `fields` plus `details.<name>`, answered by the rules40 reader as before.
+ */
+function fieldExists(ref: string, entityById: Map<string, Ns5OntologyEntityViewItem>): boolean {
+  const { root } = splitNs5EntityRef(ref);
+  const entity = entityById.get(root);
+  if (!entity) return false;
+  if (isNs5OntologyV3Entity(entity.source)) return entity.fieldRefs.includes(ref.trim());
   const parsed = splitFieldRef(ref);
   if (!parsed) return false;
-  const entity = entityById.get(parsed.entityId);
-  if (!entity) return false;
   return ns5FieldRefExists(ref, asRulesEntity(entity));
 }
 
-function asRulesEntity(entity: Ns5OntologyEntityArtifact): Ns5RulesEntityView {
+function asRulesEntity(entity: Ns5OntologyEntityViewItem): Ns5RulesEntityView {
+  const source = entity.source;
   return {
     entityId: entity.entityId,
     fields: entity.fields,
-    details: entity.details
-      ? Object.fromEntries(Object.entries(entity.details).map(([name, detail]) => [name, detail.description]))
+    details: !isNs5OntologyV3Entity(source) && source.details
+      ? Object.fromEntries(Object.entries(source.details).map(([name, detail]) => [name, detail.description]))
       : undefined,
-    storage: entity.storage,
+    ...(entity.storage ? { storage: entity.storage } : {}),
     transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
   };
 }

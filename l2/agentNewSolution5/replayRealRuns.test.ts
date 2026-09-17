@@ -47,8 +47,10 @@ import {
   normalizeNs5OntologyPlan,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import { validateNs5OntologyBindings } from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+import { ns5RuleEntries } from '/_102035_/l2/solution/rulesView.js';
 import {
   buildNs5RulesArtifact,
+  buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
@@ -58,6 +60,7 @@ import {
 } from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
 import { validateNs5Workflows } from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
 import { renderDefsSource, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
+import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5JourneyArtifact,
   Ns5ModuleArtifact,
@@ -88,14 +91,16 @@ function render(
   return renderDefsSource(defsFile(folder, shortName), exportName, value, typeName);
 }
 
-function accessView(entities: Ns5OntologyEntityArtifact[]) {
-  return entities.map(entity => ({
-    entityId: entity.entityId,
-    party: entity.party,
-    fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
-    ...(entity.details ? { details: entity.details } : {}),
-    storage: { idField: entity.storage.idField },
-    ...(entity.writer && entity.writer !== 'journey' ? { writer: entity.writer } : {}),
+/** ns5_43 T7: the shared view answers for both forms, so the replay does not assume v2. */
+function accessView(entities: Ns5OntologyAnyEntity[]) {
+  return ns5OntologyEntityViews(entities).map(view => ({
+    entityId: view.entityId,
+    party: view.party,
+    fields: view.fields.map(field => ({ fieldId: field.fieldId })),
+    ...(view.details ? { details: view.details } : {}),
+    storage: { idField: view.idField },
+    ...(view.writer && view.writer !== 'journey' ? { writer: view.writer } : {}),
+    ...(view.paths ? { paths: view.paths } : {}),
   }));
 }
 
@@ -175,6 +180,13 @@ for (const moduleName of ns5ReplayModules()) {
     );
   });
 
+  /**
+   * DELIBERATELY v2 (ns5_42 / ns5_43 T7). `ontology30` now GENERATES v3, but the eleven recorded
+   * modules were produced by the v2 normalize and gate, which `contracts.ts` / `gate.ts` keep
+   * unchanged next to `contractsV3.ts` / `gateV3.ts`. They stay v2 until ns5_44 regenerates them;
+   * the v3 form is proved against the four hand-written `agendaClinica` files in
+   * `steps/ontology30/fixtures/agendaClinica-v3/` by `agentNs5OntologyV3.test.ts`.
+   */
   void test(`${moduleName} ontology30 drafts replay to ontology/*.defs.ts`, () => {
     const planDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-plan-draft.json`);
     const bindingsDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-bindings-draft.json`);
@@ -228,12 +240,18 @@ for (const moduleName of ns5ReplayModules()) {
     );
   });
 
+  /**
+   * ns5_45: the normalize now produces the MAP and the step emits `rules-v2`; these thirteen catalogs
+   * were RECORDED in the v1 array form, so the replay renders them in the form they were recorded in.
+   * `ruleId` is never integer-like, so map insertion order is the draft order and the byte-compare below
+   * still proves the whole round trip array -> map -> array.
+   */
   void test(`${moduleName} rules40 draft replays to rules.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/rules40/fixtures', `${moduleName}-draft.json`);
-    const { rules } = normalizeNs5RulesPayload(draft);
-    const gate = validateNs5Rules(rules, { moduleName });
+    const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(draft);
+    const gate = validateNs5Rules(rules, { moduleName, duplicateRuleIds });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const artifact = buildNs5RulesArtifact(moduleName, rules);
+    const artifact = buildNs5RulesArtifact(moduleName, ns5RuleEntries(buildNs5RulesArtifactV2(moduleName, rules)));
     const rendered = render(moduleName, 'rules', `${moduleName}Rules`, artifact, 'Ns5RulesArtifact');
     assertDefsMatch(rendered, loadNs5FixtureText('steps/rules40/fixtures', `${moduleName}-rules.defs.ts`), 'rules');
   });
@@ -255,9 +273,9 @@ for (const moduleName of ns5ReplayModules()) {
       moduleName,
       actorIds: loadNs5Actors(moduleName).map(actor => actor.actorId),
       journeys: workflowJourneyView(journeys),
-      entities: entities.map(entity => ({
-        entityId: entity.entityId,
-        transitions: entity.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
+      entities: ns5OntologyEntityViews(entities).map(view => ({
+        entityId: view.entityId,
+        transitions: view.transitions.map(transition => ({ transitionId: transition.transitionId, by: transition.by })),
       })),
       journeyDecisions,
     });
@@ -279,12 +297,7 @@ for (const moduleName of ns5ReplayModules()) {
       moduleName,
       actors,
       entities: accessView(entities),
-      relationships: index.relationships.map(rel => ({
-        relationshipId: rel.relationshipId,
-        fromEntity: rel.fromEntity,
-        toEntity: rel.toEntity,
-        required: rel.required,
-      })),
+      relationships: ns5OntologyEdges(index),
       journeys: journeys.map(journey => ({
         journeyId: journey.journeyId,
         business: { actorRef: journey.business.actorRef },
@@ -335,3 +348,21 @@ for (const moduleName of ns5ReplayModules()) {
     assert.equal(recorded.errors.length, 0);
   });
 }
+
+/**
+ * ns5_42 T6: the replay set and the v3 form fixture are two different things and must stay apart.
+ * `fixtures/<mod>/` is what the v2 generator produced and is replayed byte for byte;
+ * `fixtures/agendaClinica-v3/` is the hand-written form the v3 generator has to reach. The same
+ * module name lives in both, so this guards the day someone overwrites one with the other.
+ */
+void test('the v2 replay pack and the v3 form fixture of agendaClinica are distinct', () => {
+  const v2 = parseNs4ClassicDefsSource<{ schemaVersion: string }>(
+    loadNs5FixtureText('steps/ontology30/fixtures', 'agendaClinica', 'Paciente.defs.ts'),
+  );
+  const v3 = parseNs4ClassicDefsSource<{ schemaVersion: string; kind: string }>(
+    loadNs5FixtureText('steps/ontology30/fixtures', 'agendaClinica-v3', 'Paciente.defs.ts'),
+  );
+  assert.equal(v2.schemaVersion, '2026-09-11-ns5-ontology-v2');
+  assert.equal(v3.schemaVersion, '2026-09-15-ns5-ontology-v3');
+  assert.equal(v3.kind, 'role');
+});

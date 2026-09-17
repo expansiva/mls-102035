@@ -28,8 +28,17 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5OntologyFieldConstraints: { file: TYPES, name: 'Ns5OntologyFieldConstraints' },
   Ns5OntologyRelationship: { file: TYPES, name: 'Ns5OntologyRelationship' },
   Ns5OntologyIndexArtifact: { file: TYPES, name: 'Ns5OntologyIndexArtifact' },
+  Ns5OntologyEntityV3Base: { file: TYPES, name: 'Ns5OntologyEntityV3Base' },
+  Ns5OntologyRoleV3: { file: TYPES, name: 'Ns5OntologyRoleV3' },
+  Ns5OntologyTableV3: { file: TYPES, name: 'Ns5OntologyTableV3' },
+  Ns5OntologyFieldV3: { file: TYPES, name: 'Ns5OntologyFieldV3' },
+  Ns5OntologyRelationshipV3: { file: TYPES, name: 'Ns5OntologyRelationshipV3' },
+  Ns5OntologyIndexEntityV3: { file: TYPES, name: 'Ns5OntologyIndexEntityV3' },
+  Ns5OntologyIndexRelationshipV3: { file: TYPES, name: 'Ns5OntologyIndexRelationshipV3' },
+  Ns5OntologyIndexV3: { file: TYPES, name: 'Ns5OntologyIndexV3' },
   Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
   Ns5RulesArtifact: { file: TYPES, name: 'Ns5RulesArtifact' },
+  Ns5RulesArtifactV2: { file: TYPES, name: 'Ns5RulesArtifactV2' },
   Ns5WorkflowTrigger: { file: TYPES, name: 'Ns5WorkflowTrigger' },
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
   Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
@@ -159,14 +168,99 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     relationships: { reader: 'steps/ontology30/gate.ts, access60 anchorPath', since: '2026-09-10' },
     systemDecisions: { reader: 'steps/ontology30/gate.ts applyNs5PlatformServiceCandidateDecisions', since: '2026-09-11' },
   },
+  Ns5OntologyEntityV3Base: {
+    schemaVersion: { reader: 'steps/ontology30/gateV3.ts, solution/ontologyPaths.ts, solution/fs.ts readOntologyEntityAny', since: '2026-09-16' },
+    moduleName: { reader: 'steps/ontology30/gateV3.ts, 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    entityId: { reader: 'steps/ontology30/gateV3.ts, file name, relationship endpoints', since: '2026-09-16' },
+    title: { reader: 'planner / ontology screen (f2_04c)', since: '2026-09-16' },
+    description: { reader: 'planner / ontology screen (f2_04c)', since: '2026-09-16' },
+    displayField: { reader: 'steps/ontology30/gateV3.ts, ontology screen, basic frontend', since: '2026-09-16' },
+    record: { reader: 'steps/ontology30/gateV3.ts (column index, uniqueKeys), solution/ontologyPaths.ts, 102034 resolveMdmEntity.ts, DDL', since: '2026-09-16' },
+    uniqueKeys: { reader: 'steps/ontology30/gateV3.ts, finalize80 I9, DDL/upsert', since: '2026-09-16' },
+    lifecycleStates: { reader: 'steps/ontology30/gateV3.ts assembly, finalize80', since: '2026-09-16' },
+    transitions: { reader: 'steps/ontology30/gateV3.ts assembly, finalize80 I2, backend', since: '2026-09-16' },
+    relationships: { reader: 'steps/ontology30/gateV3.ts (cardinality vs index), 102034 resolveMdmEntity.ts, ontology screen', since: '2026-09-16' },
+    capabilities: { reader: 'steps/ontology30/gateV3.ts, pipeline citedCapabilities, 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    rules: { reader: 'steps/ontology30/gateV3.ts, pipeline citedRules (rules40 must produce them)', since: '2026-09-16' },
+    writer: { reader: 'access60, finalize80 I10, master backend', since: '2026-09-16' },
+  },
+  Ns5OntologyRoleV3: {
+    kind: { reader: 'steps/ontology30/gateV3.ts, 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    subtype: { reader: 'steps/ontology30/gateV3.ts, 102034 resolveMdmEntity.ts, registry', since: '2026-09-16' },
+    roleTag: { reader: 'attachRole (identification.tags), registry', since: '2026-09-16' },
+    source: { reader: 'ontology screen (platform file link), solution/lib.ts platformOntologyPath', since: '2026-09-16' },
+  },
+  Ns5OntologyTableV3: {
+    kind: { reader: 'steps/ontology30/gateV3.ts, 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    class: { reader: 'steps/ontology30/gateV3.ts, registry', since: '2026-09-16' },
+    storage: { reader: 'basic backend DDL, registry', since: '2026-09-16' },
+  },
+  Ns5OntologyFieldV3: {
+    to: { reader: 'steps/ontology30/gateV3.ts (record target), backend foreign key', since: '2026-09-16' },
+    values: { reader: 'steps/ontology30/gateV3.ts (tightening), frontend select/badge', since: '2026-09-16' },
+    fields: { reader: 'solution/ontologyPaths.ts, 102034 resolveMdmEntity.ts, DDL of the document', since: '2026-09-16' },
+    owner: { reader: '102034 resolveMdmEntity.ts (platform / organization / module), ontology screen', since: '2026-09-16' },
+    open: { reader: '102034 resolveMdmEntity.ts, ontology screen', since: '2026-09-16' },
+  },
+  Ns5OntologyRelationshipV3: {
+    relationshipId: { reader: 'steps/ontology30/gateV3.ts, index cross-check', since: '2026-09-16' },
+    to: { reader: 'steps/ontology30/gateV3.ts, ontology screen', since: '2026-09-16' },
+    via: { reader: '102034 resolveMdmEntity.ts, backend join', since: '2026-09-16' },
+    mode: { reader: 'steps/ontology30/gateV3.ts, backend join', since: '2026-09-16' },
+    direction: { reader: '102034 resolveMdmEntity.ts (which end)', since: '2026-09-16' },
+    role: { reader: 'mdm_relationship.role', since: '2026-09-16' },
+    roles: { reader: 'steps/ontology30/gateV3.ts (catalog roles), mdm_relationship.role', since: '2026-09-16' },
+    cardinality: { reader: 'steps/ontology30/gateV3.ts, frontend', since: '2026-09-16' },
+    required: { reader: 'access60 own-anchor walk, frontend', since: '2026-09-16' },
+    derived: { reader: 'backend: walked, never stored', since: '2026-09-16' },
+    path: { reader: 'backend walk of a throughTable link', since: '2026-09-16' },
+    title: { reader: 'planner / ontology screen', since: '2026-09-16' },
+    description: { reader: 'planner / ontology screen', since: '2026-09-16' },
+    target: { reader: 'backend: narrows the far end', since: '2026-09-16' },
+  },
+  Ns5OntologyIndexEntityV3: {
+    entityId: { reader: 'steps/ontology30/gateV3.ts assembly, finalize80 coverage', since: '2026-09-16' },
+    kind: { reader: 'registry, ontology screen', since: '2026-09-16' },
+    subtype: { reader: 'registry roles[], 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    class: { reader: 'registry entities[]', since: '2026-09-16' },
+  },
+  Ns5OntologyIndexRelationshipV3: {
+    relationshipId: { reader: 'steps/ontology30/gateV3.ts, access60 anchorPath', since: '2026-09-16' },
+    from: { reader: 'steps/ontology30/gateV3.ts, access60', since: '2026-09-16' },
+    to: { reader: 'steps/ontology30/gateV3.ts, access60', since: '2026-09-16' },
+    type: { reader: 'steps/ontology30/gateV3.ts (cardinality), access60', since: '2026-09-16' },
+    required: { reader: 'access60 own-anchor walk follows required edges', since: '2026-09-16' },
+    mode: { reader: 'steps/ontology30/gateV3.ts, backend join', since: '2026-09-16' },
+    field: { reader: 'backend foreign key', since: '2026-09-16' },
+    catalogType: { reader: 'steps/ontology30/gateV3.ts, mdm link()', since: '2026-09-16' },
+    through: { reader: 'backend walk', since: '2026-09-16' },
+    roles: { reader: 'steps/ontology30/gateV3.ts, mdm_relationship.role', since: '2026-09-16' },
+    path: { reader: 'backend walk', since: '2026-09-16' },
+    derived: { reader: 'backend: walked, never stored', since: '2026-09-16' },
+    description: { reader: 'ontology screen edge label', since: '2026-09-16' },
+  },
+  Ns5OntologyIndexV3: {
+    schemaVersion: { reader: 'steps/ontology30/gateV3.ts, newRelease ontologyV3Model.ts', since: '2026-09-16' },
+    moduleName: { reader: 'folder / registry', since: '2026-09-16' },
+    businessDomain: { reader: 'planner / UI', since: '2026-09-16' },
+    platformOntology: { reader: 'newRelease ontologyPlatformFile(), solution/lib.ts platformOntologyPath', since: '2026-09-16' },
+    moduleNamespace: { reader: '102034 resolveMdmEntity.ts (namespace key), engine MDM_FOREIGN_NAMESPACE', since: '2026-09-16' },
+    entities: { reader: 'steps/ontology30/gateV3.ts assembly, finalize80 coverage, registry', since: '2026-09-16' },
+    relationships: { reader: 'steps/ontology30/gateV3.ts, access60 anchorPath, backend', since: '2026-09-16' },
+  },
   Ns5Rule: {
-    ruleId: { reader: 'steps/rules40/gate.ts, finalize80 I4, transitions.ruleRefs', since: '2026-09-10' },
-    description: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    ruleId: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts, finalize80 I4, transitions.ruleRefs', since: '2026-09-10' },
+    description: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts', since: '2026-09-10' },
   },
   Ns5RulesArtifact: {
-    schemaVersion: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    schemaVersion: { reader: 'solution/rulesView.ts (form discriminator), steps/rules40/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
-    rules: { reader: 'steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
+    rules: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
+  },
+  Ns5RulesArtifactV2: {
+    schemaVersion: { reader: 'solution/rulesView.ts (form discriminator), 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    moduleName: { reader: 'folder / planner', since: '2026-09-16' },
+    rules: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts, finalize80 I4, 102034 resolveMdmEntity.ts (clarification screen)', since: '2026-09-16' },
   },
   Ns5WorkflowTrigger: {
     kind: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, harness, backend job', since: '2026-09-12' },
@@ -338,6 +432,10 @@ test('rules40 title and appliesTo were removed; I4 reads cited ruleRefs', () => 
   assert.equal('appliesTo' in KEYS.Ns5Rule, false);
   assert.match(KEYS.Ns5Rule.ruleId.reader, /finalize80 I4/);
   assert.match(KEYS.Ns5RulesArtifact.rules.reader, /finalize80/);
+  // ns5_45: the map form carries the same catalog and has the same readers.
+  assert.match(KEYS.Ns5RulesArtifactV2.rules.reader, /finalize80 I4/);
+  assert.match(KEYS.Ns5RulesArtifactV2.rules.reader, /rulesView/);
+  assert.equal('title' in KEYS.Ns5RulesArtifactV2, false);
 });
 
 test('module.details is registered with the ontology30 persist as reader', () => {
@@ -382,6 +480,16 @@ test('access.authorities and grant.authorityRef were removed; grant title is the
   assert.equal('authorityRef' in KEYS.Ns5AccessGrant, false);
   assert.equal(KEYS.Ns5AccessGrant.title.reader, 'tela da matriz');
   assert.equal(KEYS.Ns5AccessGrant.description.reader, 'tela da matriz');
+});
+
+test('ns5_42 v3 ontology keys have non-LLM readers', () => {
+  assert.match(KEYS.Ns5OntologyEntityV3Base.record.reader, /gateV3/);
+  assert.match(KEYS.Ns5OntologyEntityV3Base.relationships.reader, /gateV3/);
+  assert.match(KEYS.Ns5OntologyEntityV3Base.capabilities.reader, /citedCapabilities/);
+  assert.match(KEYS.Ns5OntologyEntityV3Base.rules.reader, /citedRules/);
+  assert.match(KEYS.Ns5OntologyRoleV3.source.reader, /platformOntologyPath/);
+  assert.match(KEYS.Ns5OntologyRoleV3.roleTag.reader, /attachRole/);
+  assert.match(KEYS.Ns5OntologyIndexV3.moduleNamespace.reader, /MDM_FOREIGN_NAMESPACE/);
 });
 
 test('module10 and journeys20 contracts are registered with non-LLM readers', () => {
