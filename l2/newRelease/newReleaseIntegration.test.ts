@@ -11,6 +11,12 @@ test('behavior service opens the module index through the right-side detail cont
   assert.match(source, /shortName:\s*'l2\/newRelease\/widgets\/index'/);
   assert.match(source, /announceNewReleaseContext/);
   assert.match(source, /listEligibleProjects/);
+  assert.match(source, /listReadableProjects/);
+  assert.match(source, /actualProject > 0 && !this\._eligibleProjects\.includes\(actualProject\)/);
+  assert.match(source, /this\._projectEligible \? html`/);
+  assert.match(source, /class="nr-service__compatibility" role="status"/);
+  assert.doesNotMatch(source, /this\._projects\.length === 0/);
+  assert.match(source, /if \(!hadContext && this\._context\(\)\) await this\._openModuleBlueprint\(\)/);
   assert.match(source, /NEW_RELEASE_TOBE_UPDATED_EVENT/);
   assert.match(source, /_versionValue\s*=\s*this\._module\?\.tobeChanges\s*\?\s*2\s*:\s*1/);
 });
