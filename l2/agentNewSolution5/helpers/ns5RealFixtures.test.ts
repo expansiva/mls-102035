@@ -12,6 +12,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
+import { NS5_RULES_SCHEMA_VERSION_V2 } from '/_102035_/l2/solution/types.js';
 import type { Ns5OracleSources } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
 import type {
   Ns5AccessArtifact,
@@ -22,6 +23,7 @@ import type {
   Ns5ModuleArtifact,
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
+  Ns5RulesAny,
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
@@ -147,8 +149,16 @@ export function loadNs5OntologyIndex(moduleName: string): Ns5OntologyAnyIndex {
   return loadNs5Defs<Ns5OntologyAnyIndex>('steps/ontology30/fixtures', moduleName, 'index.defs.ts');
 }
 
+/** The thirteen recorded catalogs are v1 arrays; `Ns5OracleSources.rules` takes either form (ns5_45). */
 export function loadNs5Rules(moduleName: string): Ns5RulesArtifact {
   return loadNs5Defs<Ns5RulesArtifact>('steps/rules40/fixtures', `${moduleName}-rules.defs.ts`);
+}
+
+/** The same catalog in the v2 map form, for a reader that must answer for both. */
+export function asNs5RulesV2(artifact: Ns5RulesArtifact): Ns5RulesAny {
+  const rules: Record<string, string> = {};
+  for (const rule of artifact.rules) rules[rule.ruleId] = rule.description;
+  return { schemaVersion: NS5_RULES_SCHEMA_VERSION_V2, moduleName: artifact.moduleName, rules };
 }
 
 export function loadNs5Workflows(moduleName: string): Ns5WorkflowsArtifact {

@@ -7,7 +7,7 @@ import type {
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
-  Ns5RulesArtifact,
+  Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import type {
@@ -45,7 +45,8 @@ export interface Ns5OracleSources {
   /** ns5_43: the normalized reading of the ontology, whichever form the module was written in. */
   entities: Ns5OntologyEntityViewItem[];
   ontologyIndex: Ns5OntologyAnyIndex;
-  rules: Ns5RulesArtifact;
+  /** ns5_45: the catalog in whichever form the module was written in; read it via `rulesView.ts`. */
+  rules: Ns5RulesAny;
   workflows: Ns5WorkflowsArtifact;
   access: Ns5AccessArtifact;
   integration: Ns5IntegrationArtifact;

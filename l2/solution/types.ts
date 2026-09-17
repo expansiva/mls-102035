@@ -7,6 +7,7 @@ export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
 export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const;
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
+export const NS5_RULES_SCHEMA_VERSION_V2 = '2026-09-16-ns5-rules-v2' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-12-ns5-workflows-v2' as const;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-12-ns5-integration-v2' as const;
@@ -489,6 +490,29 @@ export interface Ns5RulesArtifact {
   /** Catalog of {ruleId, description}; I4 checks cited ruleRefs exist. */
   rules: Ns5Rule[];
 }
+
+/**
+ * The same catalog as a MAP, aligned with `mls-102034/l4/ontology/mdm.defs.ts`, whose `rules` and
+ * `capabilities` are both `Record<id, sentence>` — one id, one sentence, no place to put a second.
+ * `rules40` emits this form; the v1 array above stays valid and is still what the recorded runs hold.
+ * Read either form through `solution/rulesView.ts`, never by branching on the field.
+ *
+ * The TOOL still asks for `[{ ruleId, description }]`: a strict tool schema must declare
+ * `additionalProperties: false` on every object, so an open key set is not expressible
+ * (`steps/ontology30/contractsV3.ts:175` says the same of `record.fields` and `capabilities`).
+ * Array to map is the normalize's job.
+ */
+export interface Ns5RulesArtifactV2 {
+  /** Discriminates the two forms. */
+  schemaVersion: typeof NS5_RULES_SCHEMA_VERSION_V2;
+  /** Folder. */
+  moduleName: string;
+  /** `ruleId` to the one business sentence; I4 checks cited ruleRefs exist. */
+  rules: Readonly<Record<string, string>>;
+}
+
+/** What a reader gets from `rules.defs.ts`, whichever form it is in. Discriminate on `schemaVersion`. */
+export type Ns5RulesAny = Ns5RulesArtifact | Ns5RulesArtifactV2;
 
 export interface Ns5WorkflowTrigger {
   /** Gate: scheduled needs schedule, event needs event, manual needs actorRef. */

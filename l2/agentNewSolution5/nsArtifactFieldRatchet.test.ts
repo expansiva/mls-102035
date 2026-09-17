@@ -38,6 +38,7 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5OntologyIndexV3: { file: TYPES, name: 'Ns5OntologyIndexV3' },
   Ns5Rule: { file: TYPES, name: 'Ns5Rule' },
   Ns5RulesArtifact: { file: TYPES, name: 'Ns5RulesArtifact' },
+  Ns5RulesArtifactV2: { file: TYPES, name: 'Ns5RulesArtifactV2' },
   Ns5WorkflowTrigger: { file: TYPES, name: 'Ns5WorkflowTrigger' },
   Ns5WorkflowTask: { file: TYPES, name: 'Ns5WorkflowTask' },
   Ns5WorkflowProcess: { file: TYPES, name: 'Ns5WorkflowProcess' },
@@ -248,13 +249,18 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     relationships: { reader: 'steps/ontology30/gateV3.ts, access60 anchorPath, backend', since: '2026-09-16' },
   },
   Ns5Rule: {
-    ruleId: { reader: 'steps/rules40/gate.ts, finalize80 I4, transitions.ruleRefs', since: '2026-09-10' },
-    description: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    ruleId: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts, finalize80 I4, transitions.ruleRefs', since: '2026-09-10' },
+    description: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts', since: '2026-09-10' },
   },
   Ns5RulesArtifact: {
-    schemaVersion: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
+    schemaVersion: { reader: 'solution/rulesView.ts (form discriminator), steps/rules40/gate.ts', since: '2026-09-10' },
     moduleName: { reader: 'steps/rules40/gate.ts', since: '2026-09-10' },
-    rules: { reader: 'steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
+    rules: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts, finalize80 I4', since: '2026-09-10' },
+  },
+  Ns5RulesArtifactV2: {
+    schemaVersion: { reader: 'solution/rulesView.ts (form discriminator), 102034 resolveMdmEntity.ts', since: '2026-09-16' },
+    moduleName: { reader: 'folder / planner', since: '2026-09-16' },
+    rules: { reader: 'solution/rulesView.ts, steps/rules40/gate.ts, finalize80 I4, 102034 resolveMdmEntity.ts (clarification screen)', since: '2026-09-16' },
   },
   Ns5WorkflowTrigger: {
     kind: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, harness, backend job', since: '2026-09-12' },
@@ -426,6 +432,10 @@ test('rules40 title and appliesTo were removed; I4 reads cited ruleRefs', () => 
   assert.equal('appliesTo' in KEYS.Ns5Rule, false);
   assert.match(KEYS.Ns5Rule.ruleId.reader, /finalize80 I4/);
   assert.match(KEYS.Ns5RulesArtifact.rules.reader, /finalize80/);
+  // ns5_45: the map form carries the same catalog and has the same readers.
+  assert.match(KEYS.Ns5RulesArtifactV2.rules.reader, /finalize80 I4/);
+  assert.match(KEYS.Ns5RulesArtifactV2.rules.reader, /rulesView/);
+  assert.equal('title' in KEYS.Ns5RulesArtifactV2, false);
 });
 
 test('module.details is registered with the ontology30 persist as reader', () => {

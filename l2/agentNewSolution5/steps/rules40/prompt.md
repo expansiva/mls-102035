@@ -10,7 +10,8 @@ Call the tool `submitNs5Rules` once with every rule. Do not write Markdown aroun
 
 ## What a rule is
 
-A rule is `{ "ruleId", "description" }`. `ruleId` is the stable lowerCamel id that transitions,
+Write `rules` as a LIST of `{ "ruleId", "description" }`; the artifact keeps it as one entry per
+`ruleId`. `ruleId` is the stable lowerCamel id that transitions,
 later screens and endpoints cite. `description` is one precise, technology-neutral business
 sentence. There is no title and no list of whom the rule applies to: who uses a rule cites it.
 
@@ -25,10 +26,9 @@ If a transition in the ontology already lists `ruleRefs`, those ids must appear 
 Do not add scope, source references, triggers, conditions, authorities, error codes, frontend
 messages, acceptance cases, implementation advice or technical fields.
 
-Do not duplicate a rule because several journeys or entities use it. One id, one description.
+Do not duplicate a rule because several journeys or entities use it. One id, one description. A
+second entry with an id already written is rejected: the catalog has one line per id.
 
 ## Language
 
 Write every `description` in the module `userLanguage`. Ids stay lowerCamel.
-
-`schemaVersion` is `2026-09-10-ns5-rules-v1`.

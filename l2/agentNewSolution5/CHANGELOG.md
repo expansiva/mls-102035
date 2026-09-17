@@ -1,5 +1,13 @@
 # agentNewSolution5
 
+## 2026-09-16 (ns5_45)
+
+- `rules40` writes `rules-v2`: `rules.defs.ts` keeps the catalog as a MAP of `ruleId` to the one
+  business sentence, the shape `mls-102034/l4/ontology/mdm.defs.ts` already uses. `rules-v1` (the
+  array) stays valid — nothing was migrated — and `solution/rulesView.ts` is the one reading for both
+  forms, used by finalize80 I4, by the newRelease screens and by the replay. The tool still asks for a
+  list, as `ontology30` does since ns5_42: a strict tool schema cannot declare an open key set.
+
 ## 2026-09-16
 
 - ns5_43: the steps after `ontology30` read the module ontology through

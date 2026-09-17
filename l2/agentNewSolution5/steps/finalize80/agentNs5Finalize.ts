@@ -77,7 +77,7 @@ import type {
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
   Ns5PipelineState,
-  Ns5RulesArtifact,
+  Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import { NS5_INTEGRATION_REQUEST_SCHEMA_VERSION } from '/_102035_/l2/solution/types.js';
@@ -214,7 +214,7 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     entities.push(artifact);
   }
   const [rules, workflows, access, integration] = await Promise.all([
-    readRequired<Ns5RulesArtifact>(rulesFile(moduleName), 'rules'),
+    readRequired<Ns5RulesAny>(rulesFile(moduleName), 'rules'),
     readRequired<Ns5WorkflowsArtifact>(workflowsFile(moduleName), 'workflows'),
     readRequired<Ns5AccessArtifact>(accessFile(moduleName), 'access'),
     readRequired<Ns5IntegrationArtifact>(integrationFile(moduleName), 'integration'),

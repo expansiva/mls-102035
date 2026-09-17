@@ -47,8 +47,10 @@ import {
   normalizeNs5OntologyPlan,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import { validateNs5OntologyBindings } from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+import { ns5RuleEntries } from '/_102035_/l2/solution/rulesView.js';
 import {
   buildNs5RulesArtifact,
+  buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
@@ -238,12 +240,18 @@ for (const moduleName of ns5ReplayModules()) {
     );
   });
 
+  /**
+   * ns5_45: the normalize now produces the MAP and the step emits `rules-v2`; these thirteen catalogs
+   * were RECORDED in the v1 array form, so the replay renders them in the form they were recorded in.
+   * `ruleId` is never integer-like, so map insertion order is the draft order and the byte-compare below
+   * still proves the whole round trip array -> map -> array.
+   */
   void test(`${moduleName} rules40 draft replays to rules.defs.ts`, () => {
     const draft = loadNs5FixtureJson<unknown>('steps/rules40/fixtures', `${moduleName}-draft.json`);
-    const { rules } = normalizeNs5RulesPayload(draft);
-    const gate = validateNs5Rules(rules, { moduleName });
+    const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(draft);
+    const gate = validateNs5Rules(rules, { moduleName, duplicateRuleIds });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const artifact = buildNs5RulesArtifact(moduleName, rules);
+    const artifact = buildNs5RulesArtifact(moduleName, ns5RuleEntries(buildNs5RulesArtifactV2(moduleName, rules)));
     const rendered = render(moduleName, 'rules', `${moduleName}Rules`, artifact, 'Ns5RulesArtifact');
     assertDefsMatch(rendered, loadNs5FixtureText('steps/rules40/fixtures', `${moduleName}-rules.defs.ts`), 'rules');
   });

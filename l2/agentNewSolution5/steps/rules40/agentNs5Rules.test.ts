@@ -17,7 +17,7 @@ import {
 import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
 import { buildNs5RulesHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import {
-  buildNs5RulesArtifact,
+  buildNs5RulesArtifactV2,
   buildNs5RulesTool,
   normalizeNs5RulesPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
@@ -42,7 +42,13 @@ function validRule(overrides: Partial<Ns5Rule> = {}): Record<string, unknown> {
   };
 }
 
-function drafts(payload: unknown): Ns5Rule[] {
+/** normalize + gate together: the duplicate evidence only exists on the way through (ns5_45). */
+function gateOf(payload: unknown, moduleName?: string) {
+  const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(payload);
+  return { rules, duplicateRuleIds, gate: validateNs5Rules(rules, { moduleName, duplicateRuleIds }) };
+}
+
+function drafts(payload: unknown): Record<string, string> {
   return normalizeNs5RulesPayload(payload).rules;
 }
 
@@ -55,10 +61,11 @@ void test('rules40 tool schema is provider-clean', () => {
 void test('real rules40 drafts of both runs pass the gate', () => {
   for (const moduleName of NS5_REAL_MODULES) {
     const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', `${moduleName}-draft.json`);
-    const rules = drafts(draft);
-    const gate = validateNs5Rules(rules, { moduleName });
+    const { rules, gate } = gateOf(draft, moduleName);
     assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
-    assert.equal(rules.every(rule => !('title' in rule) && !('appliesTo' in rule)), true, moduleName);
+    // The map form keeps the sentence and nothing else: title/appliesTo have no place to live.
+    assert.equal(Object.values(rules).every(text => typeof text === 'string' && text.length > 0), true, moduleName);
+    assert.equal(Object.keys(rules).length, draft.rules.length, moduleName);
   }
   const comanda = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', 'comandaRestaurante5-draft.json');
   assert.equal(comanda.rules.length, 8);
@@ -69,34 +76,48 @@ void test('real rules40 drafts of both runs pass the gate', () => {
 });
 
 void test('normalize + gate accept a valid payload of id and description only', () => {
-  const rules = drafts({ schemaVersion: '2026-09-10-ns5-rules-v1', rules: [validRule()] });
-  const gate = validateNs5Rules(rules);
+  const { rules, gate } = gateOf({ rules: [validRule()] });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-  assert.equal(rules[0].ruleId, 'discountWithinTotal');
-  assert.ok(!('title' in rules[0]));
-  assert.ok(!('appliesTo' in rules[0]));
+  assert.deepEqual(Object.keys(rules), ['discountWithinTotal']);
+  assert.equal(rules.discountWithinTotal, 'The optional discount cannot exceed the total of active items.');
+});
+
+void test('a payload already in the map form is read unchanged (repair hands the draft back)', () => {
+  const { rules, gate } = gateOf({
+    schemaVersion: '2026-09-16-ns5-rules-v2',
+    rules: { discountWithinTotal: 'The optional discount cannot exceed the total of active items.' },
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.deepEqual(Object.keys(rules), ['discountWithinTotal']);
 });
 
 void test('empty catalog is valid', () => {
-  const rules = drafts({ rules: [] });
-  const gate = validateNs5Rules(rules);
+  const { gate } = gateOf({ rules: [] });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
 void test('gate rejects duplicate lowerCamel rule ids', () => {
-  const rules = drafts({
+  const { rules, duplicateRuleIds, gate } = gateOf({
     rules: [validRule(), validRule({ description: 'Same id again.' })],
   });
-  const gate = validateNs5Rules(rules);
+  // The map cannot hold the duplicate: the evidence is the side channel, and the gate still fails.
+  assert.deepEqual(Object.keys(rules), ['discountWithinTotal']);
+  assert.deepEqual(duplicateRuleIds, ['discountWithinTotal']);
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_RULES_ID_DUPLICATE'));
 });
 
+void test('a catalog read off disk has no duplicate evidence and is not accused of one', () => {
+  const gate = validateNs5Rules({ discountWithinTotal: 'The discount cannot exceed the total.' });
+  assert.equal(gate.ok, true);
+  assert.equal(gate.issues.length, 0);
+});
+
 void test('gate rejects empty description and non-lowerCamel id', () => {
-  const empty = validateNs5Rules(drafts({ rules: [validRule({ description: '' })] }));
+  const empty = gateOf({ rules: [validRule({ description: '' })] }).gate;
   assert.equal(empty.ok, false);
   assert.ok(empty.issues.some(issue => issue.code === 'NS5_RULES_DESCRIPTION'));
-  const badId = validateNs5Rules([{ ruleId: 'NotCamel', description: 'A constraint.' }]);
+  const badId = validateNs5Rules({ NotCamel: 'A constraint.' });
   assert.equal(badId.ok, false);
   assert.ok(badId.issues.some(issue => issue.code === 'NS5_RULES_ID'));
   assert.match(formatNs5RulesGate(badId.issues), /NS5_RULES_ID/);
@@ -111,17 +132,15 @@ void test('normalize maps id to ruleId and drops title/appliesTo', () => {
       appliesTo: { entityRefs: ['Comanda'], fieldRefs: [], transitionRefs: [], journeyRefs: [] },
     }],
   });
-  assert.equal(rules[0].ruleId, 'discountWithinTotal');
-  assert.equal(rules[0].description, 'The discount cannot exceed the total.');
-  assert.deepEqual(Object.keys(rules[0]).sort(), ['description', 'ruleId']);
+  assert.deepEqual(rules, { discountWithinTotal: 'The discount cannot exceed the total.' });
 });
 
-void test('buildNs5RulesArtifact keeps schemaVersion and rule order', () => {
-  const rules = drafts({ rules: [validRule()] });
-  const artifact = buildNs5RulesArtifact('comandaRestaurante5', rules);
-  assert.equal(artifact.schemaVersion, '2026-09-10-ns5-rules-v1');
+void test('buildNs5RulesArtifactV2 keeps schemaVersion and rule order', () => {
+  const rules = drafts({ rules: [validRule({ ruleId: 'aFirst' }), validRule()] });
+  const artifact = buildNs5RulesArtifactV2('comandaRestaurante5', rules);
+  assert.equal(artifact.schemaVersion, '2026-09-16-ns5-rules-v2');
   assert.equal(artifact.moduleName, 'comandaRestaurante5');
-  assert.equal(artifact.rules[0].ruleId, 'discountWithinTotal');
+  assert.deepEqual(Object.keys(artifact.rules), ['aFirst', 'discountWithinTotal']);
 });
 
 void test('ownerStepId maps rules40 repair planIds', () => {
@@ -243,6 +262,27 @@ void test('the prompt carries the rule ids ontology30 recorded, cited or not by 
   assert.match(withCited, /- rule-person-privacy-consent-required-br-eu/);
   // A transition ruleRef and an ontology30 citation are the same list, without duplicates.
   assert.equal(withCited.match(/- fecharComandaAposQuitacao/g)?.length, 1);
+});
+
+void test('the repair prompt shows the saved draft in the shape the tool takes back (ns5_45)', () => {
+  // What rules40 leaves on disk is the ARTIFACT: a map, with a schemaVersion the strict tool schema
+  // does not accept. The model is asked to submit the draft back, so it is shown as a list.
+  const saved = buildNs5RulesArtifactV2('comandaRestaurante5', drafts({ rules: [validRule()] }));
+  const human = buildNs5RulesHumanPrompt({
+    sourcePrompt: 'modulo comanda.',
+    userLanguage: 'pt',
+    journeys: [],
+    entities: [],
+    gateFeedback: 'NS5_RULES_DESCRIPTION rules.x.description: Business description is required.',
+    previousDraft: saved,
+  });
+  const block = human.slice(human.indexOf('## Current draft'));
+  const shown = JSON.parse(block.slice(block.indexOf('{'))) as { rules: unknown };
+  assert.ok(Array.isArray(shown.rules), 'the draft is shown as a list, like the tool asks for');
+  assert.deepEqual(shown, { rules: [validRule()] });
+  assert.doesNotMatch(block, /schemaVersion/);
+  // And what is shown normalizes straight back to what was saved.
+  assert.deepEqual(normalizeNs5RulesPayload(shown).rules, saved.rules);
 });
 
 void test('rules40 prompt has no domain examples and no appliesTo/title', () => {

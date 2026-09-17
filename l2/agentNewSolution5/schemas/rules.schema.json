@@ -1,14 +1,12 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/rules/2026-09-10-ns5-rules-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/rules/2026-09-16-ns5-rules-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schemaVersion",
     "rules"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-rules-v1" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "rules": {
       "type": "array",

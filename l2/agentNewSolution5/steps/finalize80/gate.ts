@@ -22,6 +22,7 @@ import {
   ns5ResolveEntityWriter,
   ns5SourceSccStates,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+import { ns5RuleEntries, ns5RuleIds } from '/_102035_/l2/solution/rulesView.js';
 import {
   ns5FieldRefExists,
   splitFieldRef,
@@ -92,7 +93,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
     actors: sources.access.actors.length,
     journeys: sources.journeys.length,
     entities: sources.entities.length,
-    rules: sources.rules.rules.length,
+    rules: ns5RuleEntries(sources.rules).length,
     processes: sources.workflows.processes.length,
     grants: sources.access.grants.length,
   });
@@ -362,7 +363,7 @@ function checkI3(sources: Ns5OracleSources, error: IssueFn): void {
 }
 
 function checkI4(sources: Ns5OracleSources, error: IssueFn): void {
-  const ruleIds = new Set(sources.rules.rules.map(rule => rule.ruleId).filter(Boolean));
+  const ruleIds = ns5RuleIds(sources.rules);
   for (const entity of sources.entities) {
     entity.transitions.forEach((transition, index) => {
       (transition.ruleRefs || []).forEach((ruleRef, refIndex) => {

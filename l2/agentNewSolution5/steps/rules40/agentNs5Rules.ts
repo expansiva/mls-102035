@@ -43,12 +43,12 @@ import type {
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
   Ns5PipelineState,
-  Ns5Rule,
 } from '/_102035_/l2/solution/types.js';
 import {
-  buildNs5RulesArtifact,
+  buildNs5RulesArtifactV2,
   buildNs5RulesTool,
   normalizeNs5RulesPayload,
+  ns5RulesToolPayload,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
   formatNs5RulesGate,
@@ -100,7 +100,8 @@ export function buildNs5RulesHumanPrompt(input: {
       ? `## rules the ontology cited; keep these ids\n${citedRuleIds.map(id => `- ${id}`).join('\n')}`
       : '',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
-    input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
+    // Shown in the TOOL's shape, not the artifact's: the model is about to submit this back (ns5_45).
+    input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(ns5RulesToolPayload(input.previousDraft), null, 2)}` : '',
   ].filter(Boolean).join('\n');
 }
 
@@ -172,14 +173,14 @@ export async function afterNs5RulesPromptStep(
       throw new Error(failure);
     }
 
-    const { rules } = normalizeNs5RulesPayload(payload);
+    const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(payload);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
     const draftPath = await writeJson(draftFile(moduleName, 'rules40'), { rules });
-    const gate = validateNs5Rules(rules, { moduleName });
+    const gate = validateNs5Rules(rules, { moduleName, duplicateRuleIds });
     if (!gate.ok) {
       const feedback = formatNs5RulesGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -214,11 +215,11 @@ export async function afterNs5RulesPromptStep(
 
 async function persistArtifacts(
   moduleName: string,
-  rules: Ns5Rule[],
+  rules: Record<string, string>,
   pipeline: Ns5PipelineState,
 ): Promise<string> {
-  const artifact = buildNs5RulesArtifact(moduleName, rules);
-  const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifact');
+  const artifact = buildNs5RulesArtifactV2(moduleName, rules);
+  const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifactV2');
   await writeJson(draftFile(moduleName, 'rules40'), artifact);
   await writeStepState(pipeline, {
     status: 'approved',
