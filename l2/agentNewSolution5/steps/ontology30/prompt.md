@@ -22,6 +22,21 @@ Two kinds, and only two.
 - **`entity`** — a table of this module: the transactional record that only exists because this module
   exists (an appointment, an order, a movement). `class` is `core`, `event` or `supporting`.
 
+## The family of the data, and where its rows live
+
+`family` says what the data IS, and it is a decision of the whole plan, not of one entity: it is the
+catalog the next pass copies from, and the catalog its capabilities are checked against.
+
+- `mdm` — the master record of the organization, shared between modules. Always, and only, a `role`.
+- `tdm` — the movement, the event, the operation of this module. The family of almost every table.
+- `ddm` — what is **recalculated** from the others: a metric, a summary, an aggregate, a series. Nobody
+  writes it, it has no lifecycle and no unique key. Declare one only when the request asks for a number
+  over a period — a total that follows from one record is a derived field of that record, not an entity.
+
+`storageKind` says where the rows live: `platform` on every role, because the rows are the platform's;
+`relational` on a table of this module, which is the usual answer; `timeSeries` only when the rows are a
+series chunked by time, read by period and never updated.
+
 Every journey `steps[].entity` and every `affects` entry must match an `entityId` exactly. Entity ids
 are PascalCase nouns; never a page, a form, a menu or a journey action. A total, a count or a current
 position is not an entity — the entity pass puts it inside `details`.
@@ -30,7 +45,8 @@ position is not an entity — the entity pass puts it inside `details`.
 role over a person or a company, a column of the table otherwise. Never guessed from a name suffix.
 
 `writer` says how the record is written: `journey` when an `act` writes it, `crud` for a reference
-catalog nobody creates in a journey, `inbound` when another system creates it.
+catalog nobody creates in a journey, `inbound` when another system creates it. On a `ddm` entity, where
+nobody writes anything, `writer` is `journey` — the neutral value; `crud` and `inbound` are refused.
 
 ## Relationships
 

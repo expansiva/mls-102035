@@ -2,7 +2,9 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
+import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
+import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import type { MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
@@ -66,11 +68,13 @@ import {
   collectNs5CitedCapabilitiesV3,
   collectNs5CitedEntitiesV3,
   collectNs5CitedRulesV3,
+  formatNs5FamilyStartingPoint,
   formatNs5PlatformCatalog,
   formatNs5PlatformStartingPoint,
   liftNs5AggregateOnlyEntitiesV3,
   normalizeNs5OntologyEntityV3,
   normalizeNs5OntologyPlanV3,
+  ns5FamilyOfV3,
   type Ns5OntologyV3Normalization,
   type Ns5OntologyV3PlanDraft,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
@@ -134,7 +138,7 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
   journeys: Ns5JourneyArtifact[];
   plan: Ns5OntologyV3PlanDraft;
   entityId: string;
-  /** Roles only: the platform record, projected one line per field. */
+  /** The catalog of the entity's family: the platform record on a role, `tdm`/`ddm` on a table. */
   startingPoint?: string;
   platformCatalog: string;
   gateFeedback?: string;
@@ -165,10 +169,13 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
     JSON.stringify(touching, null, 2),
     '',
     '## All entity ids of this module',
-    JSON.stringify(input.plan.entities.map(item => ({ entityId: item.entityId, kind: item.kind, subtype: item.subtype, class: item.class }))),
+    JSON.stringify(input.plan.entities.map(item => ({ entityId: item.entityId, kind: item.kind, family: item.family, subtype: item.subtype, class: item.class }))),
     '',
     input.startingPoint || '',
-    input.startingPoint ? '' : input.platformCatalog,
+    // A role's starting point IS the platform record, so the catalog would repeat it. A table now has a
+    // starting point of its own and still needs the catalog: the value types it may reuse (`of`) and the
+    // subtypes its foreign keys point at live there.
+    entity?.kind === 'role' && input.startingPoint ? '' : input.platformCatalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
   ].filter(Boolean).join('\n');
@@ -313,12 +320,20 @@ async function buildEntityPrompt(
   return promptReady(context, parentStep, hookSequential, args, await ontologySystemPrompt(prompt), humanPrompt, tool);
 }
 
-/** A role starts from the platform record of its subtype; a table starts from nothing. */
+/**
+ * Every entity starts from the catalog of its family (ns5_46): a role from the platform record of its
+ * subtype, a table from `tdm.defs.ts` or `ddm.defs.ts`. Before this, a table started from nothing, and
+ * each call of the fan-out invented what a table may do.
+ */
 function startingPointFor(entity: Ns5OntologyV3PlanDraft['entities'][number], moduleName: string): string | undefined {
-  if (entity.kind !== 'role' || !entity.subtype) return undefined;
-  if (!(entity.subtype in mdm.subtypes)) return undefined;
-  const view = resolvePlatformEntity(mdm, entity.subtype as MdmSubtypeName, moduleName);
-  return formatNs5PlatformStartingPoint(view, entity.subtype);
+  const family = ns5FamilyOfV3(entity);
+  if (family === 'mdm') {
+    if (entity.kind !== 'role' || !entity.subtype) return undefined;
+    if (!(entity.subtype in mdm.subtypes)) return undefined;
+    const view = resolvePlatformEntity(mdm, entity.subtype as MdmSubtypeName, moduleName);
+    return formatNs5PlatformStartingPoint(view, entity.subtype);
+  }
+  return formatNs5FamilyStartingPoint(family === 'ddm' ? ddm : tdm, entity);
 }
 
 async function handlePlanResult(
@@ -347,7 +362,7 @@ async function handlePlanResult(
   let pipeline = await requirePipeline(parsed.moduleName);
   pipeline = await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString() });
   await writeJson(draftFile(parsed.moduleName, 'ontology30-plan'), plan);
-  const gate = validateNs5OntologyPlanV3(plan, { moduleName: parsed.moduleName, mdm, journeys });
+  const gate = validateNs5OntologyPlanV3(plan, { moduleName: parsed.moduleName, mdm, tdm, ddm, journeys });
   if (!gate.ok) {
     const feedback = formatNs5OntologyV3Gate(gate.issues);
     if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -399,6 +414,8 @@ async function handleEntityResult(
   const gate = validateNs5OntologyEntityV3(entity, plan, {
     moduleName: parsed.moduleName,
     mdm,
+    tdm,
+    ddm,
     journeys,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: (await readNs5Actors(parsed.moduleName)).map(actor => actor.actorId),
@@ -437,6 +454,8 @@ async function finalizeOntology(
   const gateContext = {
     moduleName: parsed.moduleName,
     mdm,
+    tdm,
+    ddm,
     journeys,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: actors.map(actor => actor.actorId),

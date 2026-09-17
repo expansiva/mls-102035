@@ -39,6 +39,13 @@ flags of every platform field you keep.
 
 ## When the entity is a table (`kind: entity`)
 
+The human prompt gives you `## Starting point (the <family> catalog …)`: the record of a table of that
+family, the lines it is written by, and the capabilities it may offer with the status of each one on the
+platform. **Read it whole before writing.** Its capability ids are the only ones you may use besides your
+own, prefixed with the module name — a number a person quotes comes from `sequence.next`, an attachment
+from `attach.document`, a note from `comment`. Never invent an id for something the catalog already has,
+and never declare an id of another family.
+
 A field is a **column** only when something filters, sorts, deduplicates or searches by it. Everything
 else goes inside `details`, as a tree, however deep the business needs.
 

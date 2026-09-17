@@ -423,7 +423,12 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
   extends Ns5OntologyEntityV3Base<Cap, Rule> {
   kind: 'entity';
   class: 'core' | 'event' | 'supporting';
-  storage: { target: 'moduleDatabase'; table: string };
+  /**
+   * `kind` is the family's storage (ns5_46): `relational` is one Postgres table of the module,
+   * `timeSeries` a series chunked by time. Optional because the hand-written v3 form predates it and a
+   * table without it is read as `relational`.
+   */
+  storage: { target: 'moduleDatabase'; table: string; kind?: 'relational' | 'timeSeries' };
 }
 
 export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =

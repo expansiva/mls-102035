@@ -13,10 +13,20 @@
     "entity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entityId", "kind", "title", "description", "displayField", "writer"],
+      "required": ["entityId", "kind", "family", "storageKind", "title", "description", "displayField", "writer"],
       "properties": {
         "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "kind": { "type": "string", "enum": ["role", "entity"] },
+        "family": {
+          "type": "string",
+          "enum": ["mdm", "tdm", "ddm"],
+          "description": "The nature of the data. 'mdm': a master record of the organization, shared between modules — always the family of a role. 'tdm': the movement, the event, the operation of this module — the family of almost every table. 'ddm': what is recalculated from the others (a metric, a summary, a series) and has no writer, no lifecycle and no unique key."
+        },
+        "storageKind": {
+          "type": "string",
+          "enum": ["platform", "relational", "timeSeries"],
+          "description": "Where the rows live. 'platform' on every role, because the rows are the platform's. 'relational' on a table of the module, which is the usual answer. 'timeSeries' only when the rows are a series chunked by time, read by period and never updated."
+        },
         "subtype": { "$ref": "#/$defs/subtype" },
         "class": { "type": "string", "enum": ["core", "event", "supporting"] },
         "title": { "type": "string" },

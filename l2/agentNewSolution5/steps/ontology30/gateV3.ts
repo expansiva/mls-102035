@@ -9,7 +9,12 @@
  * PURE: no `node:*`, no `mls.stor`, no I/O.
  */
 
-import type { MdmDefFields, MdmOntology, MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
+import type {
+  DataFamilyOntology,
+  MdmDefFields,
+  MdmOntology,
+  MdmSubtypeName,
+} from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION_V3,
   type Ns5OntologyEntityV3,
@@ -25,7 +30,9 @@ import {
   NS5_ONTOLOGY_V3_RELATIONSHIP_TYPES,
   collectNs5CitedEntitiesV3,
   ns5ColumnIdsV3,
+  ns5FamilyOfV3,
   ns5ResolvableFieldIdsV3,
+  type Ns5OntologyV3Family,
   type Ns5OntologyV3PlanDraft,
   type Ns5OntologyV3PlanRelationship,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
@@ -48,6 +55,10 @@ export interface Ns5OntologyV3GateResult {
 export interface Ns5OntologyV3GateContext {
   moduleName: string;
   mdm: MdmOntology;
+  /** The catalog of a transactional table — the capabilities a `tdm` entity may name (ns5_46). */
+  tdm: DataFamilyOntology;
+  /** The catalog of a derived table. */
+  ddm: DataFamilyOntology;
   /** Journeys, for the cited-entity check and for the namespace evidence. */
   journeys?: ReadonlyArray<{ business: { steps: ReadonlyArray<{ entity: string; affects?: string[] }> } }>;
   /** Source prompt plus journey prose: where a module field has to have a trace. */
@@ -95,6 +106,37 @@ export function validateNs5OntologyPlanV3(
     }
     if (!entity.displayField) {
       issues.push({ severity: 'error', code: 'NS5_ONTOLOGY_DISPLAY_FIELD_MISSING', message: `${entity.entityId} has no displayField.`, path });
+    }
+    /*
+     * The family and the kind say the same thing from two sides, and only one pair is coherent: a papel
+     * over a master record is `mdm`, and a table of the module is `tdm` or `ddm` — the module cannot
+     * declare a master record of its own, and a role cannot be a movement. `ns5FamilyOfV3` derives the
+     * family from the kind only when the draft has none, so what the model DID write still reaches here.
+     */
+    const family = ns5FamilyOfV3(entity);
+    if (entity.kind === 'role' && family !== 'mdm') {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_FAMILY_INCOHERENT',
+        message: `${entity.entityId} is a role over a master record, so its family is 'mdm', not '${family}'.`,
+        path: `${path}.family`,
+      });
+    }
+    if (entity.kind !== 'role' && family === 'mdm') {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_FAMILY_INCOHERENT',
+        message: `${entity.entityId} is a table of this module; 'mdm' is the family of the master record, which only a role carries. Use 'tdm' for a movement or 'ddm' for something recalculated.`,
+        path: `${path}.family`,
+      });
+    }
+    if (family === 'ddm' && entity.writer) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_DDM_HAS_WRITER',
+        message: `${entity.entityId} is derived data: nobody writes it, so it declares no writer ('${entity.writer}').`,
+        path: `${path}.writer`,
+      });
     }
     if (entity.kind === 'role') {
       if (!entity.subtype || !subtypes.has(entity.subtype)) {
@@ -304,24 +346,49 @@ export function validateNs5OntologyEntityV3(
       path: `${path}.displayField`,
     });
   }
-  issues.push(...checkCapabilities(entity, context, path));
+  const family = familyOf(entity, plan);
+  issues.push(...checkCapabilities(entity, family, context, path));
   issues.push(...checkRules(entity, context, path));
   issues.push(...checkEntityRelationships(entity, plan, path));
   if (entity.kind === 'role') {
     issues.push(...checkRoleRecord(entity, context, path));
   } else {
     issues.push(...checkTableRecord(entity, plan, path));
+    if (family === 'ddm') issues.push(...checkDerivedTable(entity, path));
   }
   return ok(issues);
 }
 
+/** The family of an entity is a decision of the PLAN; the fan-out never re-decides it. */
+function familyOf(entity: Ns5OntologyEntityV3, plan: Ns5OntologyV3PlanDraft): Ns5OntologyV3Family {
+  const frozen = plan.entities.find(item => item.entityId === entity.entityId);
+  return ns5FamilyOfV3(frozen ?? { kind: entity.kind });
+}
+
+function catalogIdsOf(family: Ns5OntologyV3Family, context: Ns5OntologyV3GateContext): string[] {
+  if (family === 'mdm') return Object.keys(context.mdm.capabilities);
+  return Object.keys((family === 'ddm' ? context.ddm : context.tdm).capabilities);
+}
+
+/**
+ * A capability id is either one of the catalog OF THIS ENTITY'S FAMILY, or one of this module, prefixed.
+ *
+ * Before ns5_46 only the `mdm` catalog was ever consulted, and only for ids with no dot-prefix, so
+ * `<module>.anything` on a TABLE passed unchecked and the fan-out invented one capability per journey.
+ * The other half of the same hole was `next.sequenceNumber` on `ordenServicio`: the model knew it needed
+ * a sequence, had no catalog to pick from, and guessed a name — which is why an unknown id now carries
+ * the nearest id of the catalog it should have come from.
+ */
 function checkCapabilities(
   entity: Ns5OntologyEntityV3,
+  family: Ns5OntologyV3Family,
   context: Ns5OntologyV3GateContext,
   path: string,
 ): Ns5OntologyV3Issue[] {
   const issues: Ns5OntologyV3Issue[] = [];
   const prefix = `${entity.moduleName}.`;
+  const catalog = catalogIdsOf(family, context);
+  const known = new Set(catalog);
   for (const [id, sentence] of Object.entries(entity.capabilities)) {
     const where = `${path}.capabilities.${id}`;
     if (!sentence || !String(sentence).trim()) {
@@ -339,14 +406,75 @@ function checkCapabilities(
       }
       continue;
     }
-    if (!(id in context.mdm.capabilities)) {
+    if (!known.has(id)) {
+      const nearest = nearestCapabilityId(id, catalog);
       issues.push({
         severity: 'error',
         code: 'NS5_ONTOLOGY_CAPABILITY_UNKNOWN',
-        message: `'${id}' is in no catalog: a platform id must exist in mdm.capabilities, a module id must start with ${prefix}.`,
+        message: `'${id}' is in no catalog: this entity is ${family}, so a catalog id must exist in the ${family} catalog and a capability of this module must start with ${prefix}.`
+          + (nearest ? ` Did you mean '${nearest}'?` : ''),
         path: where,
       });
     }
+  }
+  return issues;
+}
+
+/**
+ * The nearest id of a catalog, by the WORDS both carry. Edit distance is the wrong measure here: the
+ * case that has to work is `next.sequenceNumber` against `sequence.next` — the same two words in the
+ * other order, which Levenshtein scores as far apart while a short unrelated id scores as near. Split on
+ * the dots and on camelCase, fold the plural, and compare the sets; a single word in common is not
+ * enough (half the catalog would "mean" `read.byId`), two words or one exact word are.
+ */
+export function nearestCapabilityId(id: string, catalog: readonly string[]): string | undefined {
+  const mine = capabilityWords(id);
+  if (!mine.size) return undefined;
+  let best: { id: string; score: number } | undefined;
+  for (const candidate of catalog) {
+    const theirs = capabilityWords(candidate);
+    let shared = 0;
+    for (const word of theirs) if (mine.has(word)) shared += 1;
+    if (!shared) continue;
+    const score = (2 * shared) / (mine.size + theirs.size);
+    const decisive = shared >= 2 || (shared === 1 && mine.size === theirs.size && theirs.size === 1);
+    if (!decisive) continue;
+    if (!best || score > best.score) best = { id: candidate, score };
+  }
+  return best?.id;
+}
+
+function capabilityWords(id: string): Set<string> {
+  const words = id
+    .split(/[.\-_]/u)
+    .flatMap(part => part.split(/(?=[A-Z])/u))
+    .map(word => word.toLowerCase().replace(/s$/u, ''))
+    .filter(word => word.length >= 2);
+  return new Set(words);
+}
+
+/**
+ * A `ddm` entity is a summary: nobody writes it, so it has no state to move through and no key of its
+ * own. `normalizeTableRecord` already marks every field derived, which is why `derived` is not checked
+ * here — a check that can never fire is no check.
+ */
+function checkDerivedTable(entity: Ns5OntologyEntityV3, path: string): Ns5OntologyV3Issue[] {
+  const issues: Ns5OntologyV3Issue[] = [];
+  if (entity.lifecycleStates?.length || entity.transitions?.length) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_DDM_HAS_STATE',
+      message: `${entity.entityId} is derived data: it is recalculated, never moved from one state to the next. A record with a lifecycle is 'tdm'.`,
+      path: `${path}.lifecycleStates`,
+    });
+  }
+  if (entity.uniqueKeys?.length) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_DDM_UNIQUE_KEY',
+      message: `${entity.entityId} is derived data: the window and the group keys already identify a row, and the recalculation rewrites it, so there is no unique key to enforce.`,
+      path: `${path}.uniqueKeys`,
+    });
   }
   return issues;
 }

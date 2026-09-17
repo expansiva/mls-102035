@@ -15,7 +15,9 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
+import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
+import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolveModuleEntity, resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
@@ -32,6 +34,7 @@ import {
   collectNs5CitedCapabilitiesV3,
   collectNs5CitedRulesV3,
   collectNs5ModuleRuleIdsV3,
+  formatNs5FamilyStartingPoint,
   formatNs5PlatformCatalog,
   formatNs5PlatformStartingPoint,
   liftNs5AggregateOnlyEntitiesV3,
@@ -43,6 +46,7 @@ import {
   type Ns5OntologyV3PlanDraft,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
 import {
+  nearestCapabilityId,
   validateNs5OntologyAssemblyV3,
   validateNs5OntologyEntityV3,
   validateNs5OntologyPlanV3,
@@ -94,7 +98,7 @@ function formPlan(): Ns5OntologyV3PlanDraft {
   }, 'agendaClinica');
 }
 
-const gateContext = { moduleName: 'agendaClinica', mdm };
+const gateContext = { moduleName: 'agendaClinica', mdm, tdm, ddm };
 
 function codes(issues: readonly Ns5OntologyV3Issue[]): string[] {
   return issues.map(issue => issue.code);
@@ -201,7 +205,7 @@ void test('normalize derives roleTag, source and storage, and never asks for the
   }, 'agendaClinica');
   assert.equal(plan.entities[0].roleTag, 'agendaClinica.Paciente');
   assert.equal(plan.entities[0].source, '/_102034_/l4/ontology/mdm.defs.ts');
-  assert.deepEqual(plan.entities[1].storage, { target: 'moduleDatabase', table: 'agendaClinica_consulta' });
+  assert.deepEqual(plan.entities[1].storage, { target: 'moduleDatabase', table: 'agendaClinica_consulta', kind: 'relational' });
   // `field` is derived when the model omits it.
   assert.equal(plan.relationships[0].field, 'Consulta.pacienteId');
   assert.ok(plan.normalizations?.some(item => item.kind === 'derivedFromPlatform'));
@@ -244,7 +248,7 @@ void test('composition refuses a child that is also an entity or is referenced b
       { relationshipId: 'itemProduto', from: 'Item', to: 'Pedido', type: 'manyToOne', required: true, mode: 'fk', description: 'x' },
     ],
   }, 'orders');
-  const issues = codes(validateNs5OntologyPlanV3(plan, { moduleName: 'orders', mdm }).issues);
+  const issues = codes(validateNs5OntologyPlanV3(plan, { moduleName: 'orders', mdm, tdm, ddm }).issues);
   assert.ok(issues.includes('NS5_ONTOLOGY_COMPOSITION_IS_ENTITY'));
   assert.ok(issues.includes('NS5_ONTOLOGY_COMPOSITION_REFERENCED'));
   // A composition row never reaches the index: there is nothing to walk.
@@ -463,7 +467,7 @@ void test('normalize indexes a foreign key and writes id and version of a table'
   assert.equal(built.record.fields.id.type, 'uuid');
   assert.equal(built.record.fields.version.derived, true);
   assert.equal(built.record.fields.pacienteId.indexed, true, 'a foreign key is indexed by derivation');
-  assert.deepEqual(built.storage, { target: 'moduleDatabase', table: 'agendaClinica_consulta' });
+  assert.deepEqual(built.storage, { target: 'moduleDatabase', table: 'agendaClinica_consulta', kind: 'relational' });
   assert.ok(normalizations.some(item => item.detail.includes('foreign key')));
 });
 
@@ -647,4 +651,180 @@ void test('the namespace trace is silent on the gabarito and folds accents on bo
   assert.ok(
     codes(validateNs5OntologyEntityV3(onlyMedico, plan, { ...gateContext, evidenceText: 'a clinica agenda consultas.' }).issues).includes('NS5_ONTOLOGY_NAMESPACE_WITHOUT_TRACE'),
   );
+});
+
+// --- ns5_46: the family, its catalog and the starting point of a table ------
+
+/** A plan with one role, one movement and one summary. The drafts carry no `family`: it is derived. */
+function familyPlan(): Ns5OntologyV3PlanDraft {
+  return normalizeNs5OntologyPlanV3({
+    businessDomain: 'Clinic',
+    entities: [
+      { entityId: 'Paciente', kind: 'role', subtype: 'Person', title: 'Paciente', description: 'x', displayField: 'details.identification.name', writer: 'journey' },
+      { entityId: 'Consulta', kind: 'entity', class: 'core', title: 'Consulta', description: 'x', displayField: 'scheduledAt', writer: 'journey' },
+      { entityId: 'ConsultasPorDia', kind: 'entity', class: 'supporting', family: 'ddm', storageKind: 'timeSeries', title: 'Consultas por dia', description: 'x', displayField: 'bucketStart', writer: 'journey' },
+    ],
+    relationships: [],
+  }, 'agendaClinica');
+}
+
+void test('ns5_46: the family is derived from the kind when the draft has none, and kept when it is written', () => {
+  const plan = familyPlan();
+  assert.equal(plan.entities[0].family, 'mdm', 'a role with no family is mdm');
+  assert.equal(plan.entities[1].family, 'tdm', 'a table with no family is tdm');
+  assert.equal(plan.entities[2].family, 'ddm', 'a family the model wrote is kept');
+  assert.equal(plan.entities[2].storage?.kind, 'timeSeries');
+  assert.equal(plan.entities[1].storage?.kind, 'relational', 'a table that says nothing is relational');
+  assert.equal(plan.entities[0].storage, undefined, 'a role has no storage of its own');
+  // T6: the thirteen recorded modules and the hand-written form carry no family, and are unchanged.
+  for (const entity of formPlan().entities) {
+    assert.equal(entity.family, entity.kind === 'role' ? 'mdm' : 'tdm', entity.entityId);
+  }
+  assert.deepEqual(validateNs5OntologyPlanV3(formPlan(), gateContext).issues.filter(issue => issue.severity === 'error'), []);
+});
+
+void test('ns5_46 probe: the plan gate refuses a family the kind contradicts, and a writer on derived data', () => {
+  const role = clone(familyPlan());
+  role.entities[0].family = 'tdm';
+  assert.ok(codes(validateNs5OntologyPlanV3(role, gateContext).issues).includes('NS5_ONTOLOGY_FAMILY_INCOHERENT'));
+
+  const table = clone(familyPlan());
+  table.entities[1].family = 'mdm';
+  assert.ok(codes(validateNs5OntologyPlanV3(table, gateContext).issues).includes('NS5_ONTOLOGY_FAMILY_INCOHERENT'));
+
+  const written = clone(familyPlan());
+  written.entities[2].writer = 'crud';
+  assert.ok(codes(validateNs5OntologyPlanV3(written, gateContext).issues).includes('NS5_ONTOLOGY_DDM_HAS_WRITER'));
+
+  // And none of the three fires on the plan as it is.
+  assert.deepEqual(validateNs5OntologyPlanV3(familyPlan(), gateContext).issues.filter(issue => issue.severity === 'error'), []);
+});
+
+void test('ns5_46 probe: a capability is checked against the catalog of the entity family', () => {
+  const plan = formPlan();
+  // The hole this closes: `<module>.<anything>` on a TABLE was never checked, and a platform id was
+  // only ever checked against `mdm.capabilities`, which is not the catalog of a table.
+  const table = clone(CONSULTA);
+  table.capabilities = {
+    'locate.byName': 'searching the master record, which a table cannot do',
+    'agendaClinica.agendar': 'the module capability, which stays legal',
+  } as never;
+  const issues = validateNs5OntologyEntityV3(table, plan, gateContext).issues
+    .filter(issue => issue.code === 'NS5_ONTOLOGY_CAPABILITY_UNKNOWN');
+  assert.deepEqual(issues.map(issue => issue.path), [`entities.Consulta.capabilities.locate.byName`]);
+  assert.match(issues[0].message, /this entity is tdm/u);
+
+  // The other direction: a capability of the table catalog is not a capability of a role.
+  const role = clone(PACIENTE);
+  role.capabilities = { create: 'writing a row, which a master record does not do' } as never;
+  assert.ok(
+    codes(validateNs5OntologyEntityV3(role, plan, gateContext).issues).includes('NS5_ONTOLOGY_CAPABILITY_UNKNOWN'),
+  );
+
+  // Restored, both are clean: the check fires on the perturbation and only there.
+  assert.deepEqual(validateNs5OntologyEntityV3(CONSULTA, plan, gateContext).issues, []);
+  assert.deepEqual(
+    codes(validateNs5OntologyEntityV3(PACIENTE, plan, gateContext).issues).filter(code => code.includes('CAPABILITY')),
+    [],
+  );
+
+  // And `statusHistory.read`, which the hand-written form declares on the table, IS in the tdm catalog
+  // — membership is what makes an id legal, not its readiness (it is measured `missing`).
+  assert.ok('statusHistory.read' in tdm.capabilities);
+  assert.equal(tdm.capabilities['statusHistory.read'].platform, 'missing');
+});
+
+void test('ns5_46 probe: an unknown capability names the nearest id of the catalog', () => {
+  // The run that died: `ordenServicio` wrote `next.sequenceNumber` because the only catalog it could
+  // see was the platform's. The same two words, in the other order, are `sequence.next`.
+  assert.equal(nearestCapabilityId('next.sequenceNumber', Object.keys(tdm.capabilities)), 'sequence.next');
+  assert.equal(nearestCapabilityId('document.attach', Object.keys(tdm.capabilities)), 'attach.document');
+  assert.equal(nearestCapabilityId('aggregateByWindow', Object.keys(ddm.capabilities)), 'aggregate.byWindow');
+  // One shared word out of many is not a suggestion: a wrong "did you mean" is worse than none.
+  assert.equal(nearestCapabilityId('locate.byVibe', Object.keys(ddm.capabilities)), undefined);
+
+  const plan = formPlan();
+  const table = clone(CONSULTA);
+  table.capabilities = { 'next.sequenceNumber': 'numbering the service order' } as never;
+  const issue = validateNs5OntologyEntityV3(table, plan, gateContext).issues
+    .find(item => item.code === 'NS5_ONTOLOGY_CAPABILITY_UNKNOWN');
+  assert.match(issue!.message, /Did you mean 'sequence\.next'\?/u);
+});
+
+void test('ns5_46 probe: a derived table has no state, no unique key, and every field derived', () => {
+  const plan = familyPlan();
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const built = normalizeNs5OntologyEntityV3({
+    entityId: 'ConsultasPorDia',
+    record: {
+      fields: [
+        { id: 'bucketStart', type: 'timestamp', required: true, indexed: true },
+        { id: 'consultaId', type: 'record', to: ['Consulta'], required: true },
+        { id: 'details', type: 'object', fields: [{ id: 'total', type: 'integer' }] },
+      ],
+    },
+    lifecycleStates: [{ state: 'aberta', reachedBy: 'time' }],
+    uniqueKeys: [{ fields: ['bucketStart'] }],
+    relationships: [],
+    capabilities: [{ id: 'aggregate.byWindow', sentence: 'consultas por dia e por profissional' }],
+    rules: [],
+  }, 'ConsultasPorDia', { moduleName: 'agendaClinica', mdm, plan }, normalizations)! as Ns5OntologyTableV3;
+
+  // Nobody writes a summary: the flag is written here instead of being asked for and then refused.
+  assert.equal(built.record.fields.bucketStart.derived, true);
+  assert.equal(built.record.fields.details!.fields!.total.derived, true, 'the document is derived too');
+  assert.ok(normalizations.some(item => item.detail.includes('(ddm)')));
+  assert.equal(built.storage.kind, 'timeSeries');
+
+  const issues = codes(validateNs5OntologyEntityV3(built, plan, gateContext).issues);
+  assert.ok(issues.includes('NS5_ONTOLOGY_DDM_HAS_STATE'));
+  assert.ok(issues.includes('NS5_ONTOLOGY_DDM_UNIQUE_KEY'));
+  assert.equal(issues.includes('NS5_ONTOLOGY_CAPABILITY_UNKNOWN'), false, 'the ddm catalog is the one consulted');
+
+  // Restored: without the lifecycle and the unique key, the same entity is clean.
+  const clean = clone(built);
+  delete clean.lifecycleStates;
+  delete clean.uniqueKeys;
+  assert.deepEqual(validateNs5OntologyEntityV3(clean, plan, gateContext).issues, []);
+
+  /*
+   * The catalog and the gate have to agree on where a measure lives. `COLUMN_WITHOUT_INDEX` applies to
+   * a ddm table like to any other, and nothing filters by a number, so a measure declared as a column
+   * is refused — which is why `ddm.defs.ts` declares `<measure>` INSIDE `details` and says so in a
+   * recommendation. Measured, because the first draft of that catalog said the opposite and would have
+   * burned a repair round on every summary ever generated.
+   */
+  const asColumn = clone(clean);
+  asColumn.record.fields.total = { type: 'integer', required: true, derived: true };
+  assert.ok(
+    codes(validateNs5OntologyEntityV3(asColumn, plan, gateContext).issues).includes('NS5_ONTOLOGY_COLUMN_WITHOUT_INDEX'),
+  );
+  assert.ok(
+    ddm.recommendations.some(line => line.includes('Every measure lives inside `details`')),
+    'the ddm catalog must not teach a measure as a column',
+  );
+  assert.equal(ddm.record.fields.details.fields?.['<measure>'] !== undefined, true);
+  assert.equal('<measure>' in ddm.record.fields, false);
+});
+
+void test('ns5_46: a table starts from the catalog of its family, in the projection a role already gets', () => {
+  const plan = familyPlan();
+  const table = plan.entities.find(entity => entity.entityId === 'Consulta')!;
+  const starting = formatNs5FamilyStartingPoint(tdm, table);
+  assert.match(starting, /## Starting point \(the tdm catalog/u);
+  assert.match(starting, /family tdm · storage relational · table agendaClinica_consulta/u);
+  // The capability that would have saved the ordenServicio run, with its measured status.
+  assert.match(starting, /sequence\.next · platform · .* · platform: partial/u);
+  assert.match(starting, /- id · uuid · required · derived\+indexed · /u);
+  assert.ok(starting.includes('### How a table of this family is written'));
+  // Evidence is for whoever reviews the catalog, never for the prompt.
+  assert.equal(starting.includes('moduleDataRuntime.ts:77'), false, 'the projection must not carry evidence');
+
+  const summary = plan.entities.find(entity => entity.entityId === 'ConsultasPorDia')!;
+  const derived = formatNs5FamilyStartingPoint(ddm, summary);
+  assert.match(derived, /## Starting point \(the ddm catalog/u);
+  assert.match(derived, /storage timeSeries/u);
+  assert.ok(derived.includes('aggregate.byWindow'));
+  assert.doesNotMatch(derived, /\n- (create|update|delete|transition) · /u, 'a derived table is never told how to write');
+  assert.match(derived, /\n- retain · table · /u);
 });

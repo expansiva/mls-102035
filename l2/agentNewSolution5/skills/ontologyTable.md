@@ -93,9 +93,19 @@ record.fields: [
 
 `capabilities` — one line per action, readable by a person and by the model, in three parts:
 **what it does · how (key, index, route) · who uses it**. The platform status comes from the catalog and is not repeated.
-Choose from the platform catalog (locate by name / by document / by contact, create-or-attach, capture as prospect, edit, inactivate, merge,
-link/unlink, list links, attach a document, comment, tag, next sequence number, status history, audit, invite to login) and add the module's own
-(`listar.consultas`). The platform status comes from the catalog; do not guess it. A capability the module needs and the platform lacks is
+
+Choose the ids from the catalog of the entity's **family**, which the starting point of the prompt carries whole, and add the module's own with
+the prefix `<moduleName>.`:
+
+- `mdm` (a role over a master record): locate by name / by document / by contact, create-or-attach, capture as prospect, edit, inactivate, merge,
+  link/unlink, list links, attach a document, comment, tag, next sequence number, status history, audit, invite to login;
+- `tdm` (a table of this module): read by id, locate by column, locate by text, count, list by foreign key, create, update, delete, transition,
+  unique key, transaction, read the master record a column points at — plus what the platform lends a table: next sequence number, attach a
+  document, comment, tag, status history, audit;
+- `ddm` (a summary): aggregate by window, store as a time series, read a window, refresh, rebuild, resample, retain.
+
+An id of another family is refused: a table does not "locate by document", and a master record does not "create". The platform status comes from
+the catalog; do not guess it. A capability the module needs and the platform lacks is
 declared with `platform: missing` — never replaced by a field that fakes it (no `photoUrl: json` when attachments exist).
 
 ## 7. Rules and triggers

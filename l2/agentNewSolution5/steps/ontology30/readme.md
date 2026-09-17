@@ -13,6 +13,12 @@ copied from the platform record and only tightened, plus the branch `details.<mo
 everything else lives in one `details` document. `submitNs5RelationshipBindings` is gone: the
 realization is derived from the `mode` of the plan.
 
+Since ns5_46 every entity also carries a **family**, declared by the plan: `mdm` (the master record, and
+always a role), `tdm` (the movement of this module) or `ddm` (what is recalculated and has no writer).
+The family is the catalog the fan-out starts from — `mdm.defs.ts`, `tdm.defs.ts` or `ddm.defs.ts` in
+`mls-102034/l4/ontology/` — and the catalog its capability ids are checked against. Before it, a table
+started from nothing and each call of the fan-out invented what a table may do.
+
 The generation lives in `contractsV3.ts` + `gateV3.ts` + `schemas/ontology-{plan,entity}-v3.schema.json`.
 `contracts.ts` and `gate.ts` next door are the **v2** normalize and gate, untouched: the eleven other
 modules are recorded in v2 and `replayRealRuns.test.ts` replays them byte for byte through those exact

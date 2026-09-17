@@ -15,6 +15,7 @@
  */
 
 import type {
+  DataFamilyOntology,
   MdmDefField,
   MdmDefFields,
   MdmOntology,
@@ -39,6 +40,19 @@ const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 export const NS5_ONTOLOGY_V3_MAX_PARALLEL = 20 as const;
 
 export const NS5_ONTOLOGY_V3_KINDS = ['role', 'entity'] as const;
+/**
+ * The family of the data, by nature (ns5_46): `mdm` is the master record of the organization, `tdm` the
+ * movement of this module, `ddm` what is recalculated and has no writer. It decides which catalog the
+ * fan-out starts from and which catalog the gate checks the capabilities against.
+ */
+export const NS5_ONTOLOGY_V3_FAMILIES = ['mdm', 'tdm', 'ddm'] as const;
+/**
+ * Where the rows live. `platform` is the neutral value of a role — the rows are the platform's, not a
+ * table of the module — and is why this is a required enum with three values and not an optional pair
+ * (an optional single-valued field arrives at a strict provider as "value or null" and is answered by a
+ * coin toss; measured in ns5_28).
+ */
+export const NS5_ONTOLOGY_V3_STORAGE_KINDS = ['platform', 'relational', 'timeSeries'] as const;
 export const NS5_ONTOLOGY_V3_CLASSES = ['core', 'event', 'supporting'] as const;
 export const NS5_ONTOLOGY_V3_RELATIONSHIP_TYPES = ['oneToOne', 'oneToMany', 'manyToOne', 'manyToMany'] as const;
 /** `composition` never reaches the index: the child is embedded in the parent document. */
@@ -54,7 +68,23 @@ export const NS5_ONTOLOGY_V3_FIELD_TYPES = [
 ] as const;
 
 export type Ns5OntologyV3Kind = typeof NS5_ONTOLOGY_V3_KINDS[number];
+export type Ns5OntologyV3Family = typeof NS5_ONTOLOGY_V3_FAMILIES[number];
+export type Ns5OntologyV3StorageKind = typeof NS5_ONTOLOGY_V3_STORAGE_KINDS[number];
 export type Ns5OntologyV3Mode = typeof NS5_ONTOLOGY_V3_MODES[number];
+
+/**
+ * The family of an entity, whatever the draft carries. The thirteen recorded modules and the
+ * hand-written v3 form were written before the family existed: where it is absent it is derived from
+ * the kind, so nothing recorded changes verdict (ns5_46 T6). A family the model DID write is kept as it
+ * is — the gate is what says a role has to be `mdm`, and a check that can never fire is no check.
+ */
+export function ns5FamilyOfV3(entity: { kind: string; family?: string }): Ns5OntologyV3Family {
+  const declared = entity.family;
+  if (declared && (NS5_ONTOLOGY_V3_FAMILIES as readonly string[]).includes(declared)) {
+    return declared as Ns5OntologyV3Family;
+  }
+  return entity.kind === 'role' ? 'mdm' : 'tdm';
+}
 
 /** The branch of `details` only this module writes; the platform declares it as `<moduleId>`. */
 export const NS5_PLATFORM_NAMESPACE_KEY = '<moduleId>' as const;
@@ -75,6 +105,11 @@ export const NS5_NAMESPACE_EMPTY_DESCRIPTION =
 export interface Ns5OntologyV3PlanEntity {
   entityId: string;
   kind: Ns5OntologyV3Kind;
+  /**
+   * The family of the data, declared by the plan because it is a decision of the whole: which catalog
+   * this entity copies from. Derived from `kind` when the draft does not carry it.
+   */
+  family: Ns5OntologyV3Family;
   /** `role` only; a key of `mdm.subtypes`. */
   subtype?: string;
   /** `entity` only. */
@@ -87,8 +122,11 @@ export interface Ns5OntologyV3PlanEntity {
   roleTag?: string;
   /** Derived: the platform ontology a role copies from. */
   source?: string;
-  /** Derived: `{ target: 'moduleDatabase', table: '<moduleName>_<entityid>' }` on a table. */
-  storage?: { target: 'moduleDatabase'; table: string };
+  /**
+   * On a table: `target` and `table` are derived, `kind` is what the plan declared (`relational` by
+   * default). A role has no storage of its own — the rows are the platform's.
+   */
+  storage?: { target: 'moduleDatabase'; table: string; kind: Exclude<Ns5OntologyV3StorageKind, 'platform'> };
 }
 
 export interface Ns5OntologyV3PlanRelationship {
@@ -222,9 +260,14 @@ function normalizePlanEntity(
   const raw = record(value);
   const entityId = text(raw.entityId);
   const kind = oneOf(raw.kind, NS5_ONTOLOGY_V3_KINDS, 'entity');
+  const family = ns5FamilyOfV3({ kind, family: text(raw.family) });
+  if (!text(raw.family)) {
+    normalizations.push({ kind: 'derivedFromPlatform', entityId, detail: `family ${family} (derived from kind ${kind})` });
+  }
   const base: Ns5OntologyV3PlanEntity = {
     entityId,
     kind,
+    family,
     title: text(raw.title) || entityId,
     description: text(raw.description),
     displayField: text(raw.displayField),
@@ -243,7 +286,13 @@ function normalizePlanEntity(
     return base;
   }
   base.class = oneOf(raw.class, NS5_ONTOLOGY_V3_CLASSES, 'core');
-  base.storage = { target: 'moduleDatabase', table: `${moduleName}_${entityId.toLowerCase()}` };
+  const storageKind = oneOf(raw.storageKind, NS5_ONTOLOGY_V3_STORAGE_KINDS, 'relational');
+  base.storage = {
+    target: 'moduleDatabase',
+    table: `${moduleName}_${entityId.toLowerCase()}`,
+    // `platform` is the neutral value of a role; on a table it means nothing was said.
+    kind: storageKind === 'platform' ? 'relational' : storageKind,
+  };
   normalizations.push({
     kind: 'derivedFromPlatform',
     entityId,
@@ -351,8 +400,8 @@ export function normalizeNs5OntologyEntityV3(
     ...common,
     kind: 'entity',
     class: frozen.class ?? 'core',
-    storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}` },
-    record: { fields: normalizeTableRecord(raw.record, entityId, normalizations) },
+    storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' },
+    record: { fields: normalizeTableRecord(raw.record, entityId, ns5FamilyOfV3(frozen), normalizations) },
     ...(uniqueKeys.length ? { uniqueKeys } : {}),
     ...(lifecycleStates.length ? { lifecycleStates } : {}),
     ...(transitions.length ? { transitions } : {}),
@@ -402,10 +451,14 @@ function normalizeCapabilities(value: unknown): Record<string, string> {
  * A table of the module: `id`, `version`, the indexed columns, and one `details` document with the rest.
  * `id` and `version` are derived here and never asked for; a `record` column is indexed by derivation
  * (a foreign key nobody can filter by is not a foreign key).
+ *
+ * On a `ddm` table every field is `derived` by definition — nobody writes a summary — so the flag is
+ * written here instead of being asked for and then refused (ns5_46 T2).
  */
 function normalizeTableRecord(
   value: unknown,
   entityId: string,
+  family: Ns5OntologyV3Family,
   normalizations: Ns5OntologyV3Normalization[],
 ): Ns5OntologyFieldsV3 {
   const written = keyed(record(value).fields);
@@ -429,7 +482,24 @@ function normalizeTableRecord(
     out[id] = field;
   }
   out.details = details ?? { type: 'object', required: true, fields: {} };
+  if (family === 'ddm') markDerived(out, entityId, 'record.fields', normalizations);
   return out;
+}
+
+/** Every field of a derived table, and every field inside its document, is written by the engine. */
+function markDerived(
+  fields: Record<string, Ns5OntologyFieldV3>,
+  entityId: string,
+  path: string,
+  normalizations: Ns5OntologyV3Normalization[],
+): void {
+  for (const [id, field] of Object.entries(fields)) {
+    if (field.derived !== true) {
+      field.derived = true;
+      normalizations.push({ kind: 'derivedFromPlatform', entityId, detail: `${path}.${id}.derived (ddm)` });
+    }
+    if (field.fields) markDerived(field.fields, entityId, `${path}.${id}.fields`, normalizations);
+  }
 }
 
 // --- the record of a role --------------------------------------------------
@@ -1023,6 +1093,57 @@ export function formatNs5PlatformStartingPoint(view: Ns5PlatformTreeView, subtyp
   return lines.join('\n');
 }
 
+/**
+ * The catalog of a family as the starting point of a TABLE — the same compact projection a role gets
+ * from the platform record, so the fan-out reads one form and not two (ns5_46 T4).
+ *
+ * `evidence` is NOT printed: it is where the status was measured, for whoever reviews the catalog, and
+ * it would cost the prompt a file and a line per capability with nothing to do with the module. The
+ * status itself is printed, because a model has to know what it may lean on.
+ */
+export function formatNs5FamilyStartingPoint(
+  catalog: DataFamilyOntology,
+  entity: Pick<Ns5OntologyV3PlanEntity, 'entityId' | 'storage'>,
+): string {
+  const lines: string[] = [`## Starting point (the ${catalog.family} catalog — ${catalog.title})`, ''];
+  lines.push(catalog.description, '');
+  if (entity.storage) {
+    lines.push(`This entity: family ${catalog.family} · storage ${entity.storage.kind} · table ${entity.storage.table}`, '');
+  }
+  lines.push(`### The record of a ${catalog.family} table`);
+  for (const [id, field] of Object.entries(catalog.record.fields)) {
+    lines.push(`- ${catalogFieldLine(id, field)}`);
+    // One level deep: the document of a derived table declares what goes inside it.
+    for (const [childId, child] of Object.entries(field.fields ?? {})) {
+      lines.push(`  - ${catalogFieldLine(childId, child)}`);
+    }
+  }
+  lines.push('', '### How a table of this family is written');
+  for (const line of catalog.recommendations) lines.push(`- ${line}`);
+  lines.push('', '### Capabilities of the catalog (pick by id; write your own sentence)');
+  for (const [id, capability] of Object.entries(catalog.capabilities)) {
+    lines.push(`- ${id} · ${capability.source} · ${capability.sentence} · platform: ${capability.platform}`);
+  }
+  lines.push('', '### Where the rows live');
+  for (const [id, sentence] of Object.entries(catalog.storage)) lines.push(`- ${id} · ${sentence}`);
+  lines.push('', '### What the engine does differently today');
+  for (const [id, sentence] of Object.entries(catalog.knownDivergences)) lines.push(`- ${id} · ${sentence}`);
+  return lines.join('\n');
+}
+
+function catalogFieldLine(id: string, field: MdmDefField): string {
+  const parts = [id, field.collection ? `${field.type}[]` : field.type];
+  parts.push(field.required ? 'required' : 'optional');
+  const marks: string[] = [];
+  if (field.derived) marks.push('derived');
+  if (field.indexed) marks.push('indexed');
+  if (field.unique) marks.push('unique');
+  if (marks.length) parts.push(marks.join('+'));
+  if (field.values?.length) parts.push(`values: ${field.values.join('|')}`);
+  if (field.description) parts.push(field.description);
+  return parts.join(' · ');
+}
+
 function fieldLine(node: Ns5PlatformNodeView): string {
   const parts = [node.path, node.collection ? `${node.type}[]` : node.type];
   parts.push(node.required ? 'required' : 'optional');
@@ -1047,8 +1168,9 @@ export function buildNs5OntologyPlanV3Tool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5OntologyPlan',
-    'Submit the frozen ontology overview: entities (role over an MDM subtype, or a table of the module) '
-    + 'and the relationships between them. Never roleTag, storage or source: those are derived.',
+    'Submit the frozen ontology overview: entities (role over an MDM subtype, or a table of the module), '
+    + 'each with its family and where its rows live, and the relationships between them. '
+    + 'Never roleTag, source, or the target and the name of the table: those are derived.',
     schema,
   );
 }
