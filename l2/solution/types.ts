@@ -874,6 +874,11 @@ export interface Ns5PipelineState {
   rebuildAll?: Ns5RebuildAllReport;
   /** Pool trace, appended by `tracePool`. Absent in pipelines written before the pool existed. */
   pool?: PoolTraceLine[];
+  /**
+   * What `agentPlannerL4` entry10 added to `l5/config.json` (reader: that step).
+   * Tokens like `workspaceDependencies:+102021`. Absent when nothing was missing.
+   */
+  l5Adjusted?: string[];
   updatedAt: string;
 }
 
