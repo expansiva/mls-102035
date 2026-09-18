@@ -768,6 +768,13 @@ export interface Ns5PipelineStepState {
   autoReason?: string;
   /** journeys20: count of decide steps in the module. Zero is valid. */
   decideStepCount?: number;
+  /**
+   * module10: actors the normalize removed because they are external systems, not people
+   * (`dropSystemActor<Actor>`). An external system the request names is a plugin or an inbound of
+   * integration70, never an actor. The clarification/maintenance screen of Fase 2 reads this to
+   * show what the step decided without asking.
+   */
+  systemDecisions?: Ns5SystemDecision[];
   /** ontology30: entityIds no journey cites. Supporting/valueObject may be legitimate. */
   uncitedEntities?: string[];
   /**

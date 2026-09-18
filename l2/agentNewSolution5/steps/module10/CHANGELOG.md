@@ -1,5 +1,19 @@
 # module10
 
+## 2026-09-18 (ns5_53)
+
+- An external system the request names (gateway, messaging, ERP) is **not an actor**: the prompt says
+  so, and `normalizeNs5ModuleArtifact` removes any `kind: system` actor the model still sends,
+  recording one `dropSystemActor<Actor>` in `systemDecisions` on the step draft and on
+  `pipeline.json` `module10.systemDecisions`. It is integration70 that models the system, as a
+  `plugin` (it acts inside a step) or an `inbound` (it starts an event); `integration70`'s
+  `pluginTerm` signal reads the prompt, not the actor list, so the plugin is still found.
+- `Ns5ModuleActor.kind` and the tool schema keep `system`, and `gate.ts` keeps accepting it: a v2 run
+  recorded before this decision still reads.
+- When the drop is what leaves the list without a person, the repair feedback carries
+  `NS5_MODULE_SYSTEM_ACTOR_NOTE` beside the gate codes, so the retry adds the missing internal actor
+  instead of sending the same external system again.
+
 ## 2026-09-18 (ns5_52b)
 
 - `requestKind` (`moduleRequest` | `notAModuleRequest`) is required by `submitNs5Module` and read by

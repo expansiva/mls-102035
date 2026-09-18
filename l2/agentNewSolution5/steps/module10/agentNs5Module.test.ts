@@ -13,8 +13,11 @@ import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolut
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { buildNs5ModuleHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
 import {
+  NS5_MODULE_SYSTEM_ACTOR_DROP_CHOICE,
+  NS5_MODULE_SYSTEM_ACTOR_KEEP_CHOICE,
   buildNs5ModuleTool,
   normalizeNs5ModuleArtifact,
+  ns5DropSystemActorDecisionId,
   ns5ModuleRequestKind,
 } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
 import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
@@ -231,6 +234,46 @@ void test('gate rejects a moduleName that does not match /module', () => {
   });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_MODULE_NAME_MISMATCH'));
+});
+
+/**
+ * ns5_53 T1 / P-1. The prompt tells the model not to list an external system. When it does anyway,
+ * the actor is removed here rather than three steps later: an actor that no journey performs and no
+ * grant covers is two finalize80 I3 errors, and the external system is already modelled by
+ * integration70 as a plugin or an inbound.
+ */
+void test('a kind: system actor is dropped and recorded in systemDecisions (ns5_53)', () => {
+  const { actors, systemDecisions } = normalizeNs5ModuleArtifact(validPayload({
+    actors: [
+      {
+        actorId: 'caixa',
+        kind: 'internal',
+        origin: 'named',
+        title: 'Cashier',
+        description: 'Receives the payments.',
+      },
+      {
+        actorId: 'stripe',
+        kind: 'system',
+        origin: 'named',
+        title: 'Stripe',
+        description: 'Processes the card payment.',
+      },
+    ],
+  }), { sourcePrompt: SOURCE });
+  assert.deepEqual(actors.map(actor => actor.actorId), ['caixa']);
+  assert.equal(systemDecisions.length, 1);
+  assert.equal(systemDecisions[0].decisionId, ns5DropSystemActorDecisionId('stripe'));
+  assert.equal(systemDecisions[0].decisionId, 'dropSystemActorStripe');
+  assert.equal(systemDecisions[0].chosen, NS5_MODULE_SYSTEM_ACTOR_DROP_CHOICE);
+  assert.deepEqual(systemDecisions[0].alternatives, [NS5_MODULE_SYSTEM_ACTOR_KEEP_CHOICE]);
+  assert.equal(systemDecisions[0].decidedBy, 'system');
+});
+
+void test('a payload with no system actor records no decision (ns5_53)', () => {
+  const { actors, systemDecisions } = normalizeNs5ModuleArtifact(validPayload(), { sourcePrompt: SOURCE });
+  assert.equal(actors.length, 2);
+  assert.equal(systemDecisions.length, 0);
 });
 
 void test('inferred external actor stays on the pipeline list, not the artifact', () => {

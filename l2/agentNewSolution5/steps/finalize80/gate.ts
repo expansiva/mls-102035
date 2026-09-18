@@ -498,7 +498,12 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  * predicate as `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT` / I10); (c) an `act` of
  * her own external actor writes her (self-registration); (d) derived `parent`
  * or `attach` — attach by an internal actor is cadastro, by an external actor
- * is self-registration. Journey `entry.mode` has no public value.
+ * is self-registration; (e) an inbound event writes her — `writer: 'inbound'`
+ * resolved, with the entity named by some `integration.inbound[].writes` (the
+ * same pair of predicates I10 applies to an inbound entity). The person arrives
+ * with the event that created her record, which is registration by another
+ * module or by an external system, not an unwritten login anchor.
+ * Journey `entry.mode` has no public value.
  */
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
@@ -529,10 +534,12 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     }
     const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
     if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
+    if (resolved.kind === 'inbound'
+      && sources.integration.inbound.some(item => (item.writes || []).includes(personId))) return;
     error(
       'I8',
       `access.grants[${index}]`,
-      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not writer: 'crud' with an internal-actor grant, and the grant's own external actor does not write it (self-registration).`,
+      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not writer: 'crud' with an internal-actor grant, the grant's own external actor does not write it (self-registration), and no inbound event writes it.`,
       NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
     );
   });

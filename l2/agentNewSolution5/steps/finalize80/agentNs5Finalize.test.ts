@@ -709,6 +709,59 @@ void test('I8 fails when only an external actor writes the login person', () => 
   assert.equal(i8.length, 1, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
 });
 
+/**
+ * ns5_53 T2 / P-2. The person who logs in may arrive with the event that created her record: the
+ * financeiro payer is born in another module and reaches this one through an inbound. That IS a
+ * registration, and it is the same pair of predicates I10 uses — resolved `inbound` plus an
+ * `inbound[].writes` naming the entity. An inbound whose `writes` does not name her registers
+ * nobody, so I8 keeps accusing (and I10 accuses the missing `writes` too).
+ */
+void test('I8 passes when an inbound event writes the login person (ns5_53)', () => {
+  const sources = withRealMatricularAluno(clone(loadSources('comandaRestaurante.json')), []);
+  const aluno = sources.entities.find(item => item.entityId === 'Aluno')!;
+  aluno.writer = 'inbound';
+  sources.integration = {
+    ...sources.integration,
+    inbound: [{
+      id: 'alunoCadastradoEmOutroModulo',
+      kind: 'event',
+      from: 'moduloOrigem',
+      writes: ['Aluno'],
+      effect: 'create',
+      description: 'The person arrives with the event that created her.',
+      entityRefs: [],
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 still fails when the inbound does not write the login person (ns5_53)', () => {
+  const sources = withRealMatricularAluno(clone(loadSources('comandaRestaurante.json')), []);
+  const aluno = sources.entities.find(item => item.entityId === 'Aluno')!;
+  aluno.writer = 'inbound';
+  sources.integration = {
+    ...sources.integration,
+    inbound: [{
+      id: 'outroEvento',
+      kind: 'event',
+      from: 'moduloOrigem',
+      writes: ['Matricula'],
+      effect: 'create',
+      description: 'An inbound that writes something else.',
+      entityRefs: [],
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  const i8 = i8Errors(report);
+  assert.equal(i8.length, 1, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+  assert.match(i8[0].message, /no inbound event writes it/);
+  // Control inside the test: the ONLY difference between accused and registered is whether `writes`
+  // names her. Without this the count of 1 above could come from any other unmet form.
+  sources.integration.inbound[0].writes = ['Aluno'];
+  assert.equal(i8Errors(runNs5Oracle(sources)).length, 0);
+});
+
 void test('I8 also applies to related scope and ignores organization even with a stray person anchor', () => {
   const related = withRealMatricularAluno(clone(loadSources('comandaRestaurante.json')), []);
   related.access.grants[related.access.grants.length - 1].dataScope.mode = 'related';

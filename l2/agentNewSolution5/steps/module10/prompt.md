@@ -24,7 +24,7 @@ An actor is someone who acts in the business. A demographic persona is not an ac
 - `origin` is `named` only when the request itself names the profile. Otherwise `inferred`.
 - `kind: internal` — a person of the organization who operates the module.
 - `kind: external` — only when the request gives that person their own action (a portal, an approval, consulting their own records). Narrating someone as the subject of a service does not create an external actor.
-- `kind: system` — only when the request names an external system that acts. Do not invent platform services.
+- An external system the request names (a payment gateway, a messaging service, an ERP) is **not an actor**: it acts inside a step or starts an event, and a later step records it as a plugin or an inbound. Do not list it. Do not invent platform services either.
 
 Keep an inferred external actor on the list when the request describes them acting; later steps drop them if they have no exclusive step. Do not invent extra internals.
 

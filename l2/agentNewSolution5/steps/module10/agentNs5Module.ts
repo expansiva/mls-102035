@@ -33,9 +33,16 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
-import type { Ns5Invocation, Ns5ModuleActor, Ns5ModuleArtifact, Ns5PipelineState } from '/_102035_/l2/solution/types.js';
+import type {
+  Ns5Invocation,
+  Ns5ModuleActor,
+  Ns5ModuleArtifact,
+  Ns5PipelineState,
+  Ns5SystemDecision,
+} from '/_102035_/l2/solution/types.js';
 import {
   NS5_MODULE_NOT_A_REQUEST,
+  NS5_MODULE_SYSTEM_ACTOR_NOTE,
   buildNs5ModuleTool,
   normalizeNs5ModuleArtifact,
   ns5ModuleRequestKind,
@@ -161,7 +168,7 @@ export async function afterNs5ModulePromptStep(
     }
 
     const fixedModuleName = invocation.module;
-    const { artifact, actors, i18nWarnings, normalizations } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
+    const { artifact, actors, i18nWarnings, normalizations, systemDecisions } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
     moduleName = artifact.moduleName;
     if (!moduleTokenOk(moduleName)) throw new Error('moduleName must be lowerCamel.');
     await assertModuleWritable(moduleName, invocation.rebuildAll);
@@ -175,10 +182,16 @@ export async function afterNs5ModulePromptStep(
       ...artifact,
       actors,
       ...(normalizations.length ? { normalizations } : {}),
+      ...(systemDecisions.length ? { systemDecisions } : {}),
     });
     const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName, actors });
     if (!gate.ok) {
-      const feedback = formatNs5ModuleGate(gate.issues);
+      // The drop of a `kind: system` actor can be what leaves the list without a person. Saying so
+      // is the difference between a repair that adds the missing internal actor and one that sends
+      // the same external system again.
+      const feedback = systemDecisions.length
+        ? `${formatNs5ModuleGate(gate.issues)}\n${NS5_MODULE_SYSTEM_ACTOR_NOTE}`
+        : formatNs5ModuleGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
         return [
           addStep(context, mutationParent, createNs5RetryStep('module10', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
@@ -194,7 +207,7 @@ export async function afterNs5ModulePromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation, normalizations);
+    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation, normalizations, systemDecisions);
     const warningNote = i18nWarnings.map(item => `\nwarning: ${item}`).join('');
     return [
       doneAnchor(context, mutationParent, moduleName, artifactPath),
@@ -216,6 +229,7 @@ async function persistArtifact(
   actors: Ns5ModuleActor[],
   invocation: Ns5Invocation,
   normalizations: { kind: string; detail: string }[],
+  systemDecisions: Ns5SystemDecision[],
 ): Promise<string> {
   await assertModuleWritable(moduleName, invocation.rebuildAll);
   const artifactPath = await writeDefs(moduleFile(moduleName), `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
@@ -226,6 +240,7 @@ async function persistArtifact(
     artifactPaths: [artifactPath],
     actors,
     ...(normalizations.length ? { normalizations } : {}),
+    ...(systemDecisions.length ? { systemDecisions } : {}),
     ...(invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;
