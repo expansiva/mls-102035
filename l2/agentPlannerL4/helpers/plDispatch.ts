@@ -61,6 +61,21 @@ export function plStatusMessage(
   };
 }
 
+export function addPlStep(
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIPayload,
+): mls.msg.AgentIntentAddStep {
+  return {
+    type: 'add-step',
+    messageId: context.message.orderAt,
+    threadId: context.message.threadId,
+    taskId: context.task?.PK || '',
+    parentStepId: parentStep.stepId,
+    step,
+  };
+}
+
 export function updateStatus(
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIPayload,

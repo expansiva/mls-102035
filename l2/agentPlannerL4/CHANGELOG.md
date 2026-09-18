@@ -1,5 +1,15 @@
 # agentPlannerL4
 
+## 2026-09-18 (p4_03)
+
+- `dispatch20` lists module artifacts (excluding `pipeline/`, `tobe/`, `pool/`), writes the two
+  equal pool messages (`to: l2` and `to: l1`), traces them as `delivered`, and invokes
+  `agentPlannerL2` by name. `agentPlannerL1` is invoked only when that agent is present in
+  `mls.stor.files`; otherwise the status says the requests stayed in the box.
+- `loop30` counts rounds from the L4 `pipeline.json` pool trace and `listPoolBox`. It never reads
+  `l2/<mod>/pipeline/` or `l1/`. At round 3 with a non-empty box it records `disputed` and does
+  not delete. No LLM.
+
 ## 2026-09-18 (p4_02)
 
 - Skeleton in the NS5 pattern: `createAgent`, `helpers/plCore.ts` (parse, `plEntryRefusal`, planned

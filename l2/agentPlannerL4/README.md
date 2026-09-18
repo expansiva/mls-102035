@@ -4,7 +4,8 @@ L4 planner. Lists the artifacts of an existing complete module and dispatches th
 planners through the module pool. No LLM. Does not read ontology to opine.
 
 `entry10` is implemented (parse, refusals, `l5/config.json` planner deps). `dispatch20`
-and `loop30` are declared and waiting.
+lists artifacts and writes `pool/l1` + `pool/l2`, then invokes planners by name. `loop30`
+counts rounds from the L4 trace and the boxes (max 3 per side; `disputed` does not delete).
 
 ## Invocation
 
