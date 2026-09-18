@@ -13,10 +13,9 @@ import {
   hostListFolder,
   moduleFile,
   normalizeModuleName,
+  pipelineFile,
   readJson,
-  readPipeline,
   writeJson,
-  writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import type { Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type { PoolBox, PoolMode, PoolOutcome, PoolTraceLine } from '/_102035_/l2/solution/types.js';
@@ -195,23 +194,45 @@ function normalizePoolTraceLine(value: unknown): PoolTraceLine {
   return { at, file, from, to, thread, round, mode: raw.mode as PoolMode, outcome: raw.outcome as PoolOutcome };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Same normalize and return (`traceId`) as `tracePool`, but writes the line on the
+ * `pipeline.json` that `fileInfo` points at — each owner traces on its own file.
+ */
+export async function tracePoolAt(fileInfo: Ns5FileInfo, line: unknown): Promise<string> {
+  const traceLine = normalizePoolTraceLine(line);
+  const state = await readJson<unknown>(fileInfo);
+  if (!isRecord(state)) {
+    refuse(`pipeline.json not found at ${displayPath(fileInfo)} — cannot trace`);
+  }
+  const pool = Array.isArray(state.pool) ? state.pool : [];
+  state.pool = [...pool, traceLine];
+  await writeJson(fileInfo, state);
+  return traceLine.file;
+}
+
 /**
  * Appends the line to `pipeline.json` and returns its id — the display path of the message,
  * which is unique per message and is what `deletePoolMessage` demands.
+ * Shortcut: traces on the l4 pipeline of `moduleName`.
  */
 export async function tracePool(moduleName: string, line: unknown): Promise<string> {
-  const traceLine = normalizePoolTraceLine(line);
-  const state = await readPipeline(moduleName);
-  if (!state) refuse(`pipeline.json not found for module '${normalizeModuleName(moduleName)}' — cannot trace`);
-  state.pool = [...(state.pool || []), traceLine];
-  await writePipeline(state);
-  return traceLine.file;
+  return tracePoolAt(pipelineFile(moduleName), line);
+}
+
+/** Reads the trace at the given `pipeline.json` (empty when the file has none). */
+export async function readPoolTraceAt(fileInfo: Ns5FileInfo): Promise<PoolTraceLine[]> {
+  const state = await readJson<unknown>(fileInfo);
+  if (!isRecord(state) || !Array.isArray(state.pool)) return [];
+  return state.pool.map(normalizePoolTraceLine);
 }
 
 /** Reads the trace of the module (empty when the pipeline has none). */
 export async function readPoolTrace(moduleName: string): Promise<PoolTraceLine[]> {
-  const state = await readPipeline(moduleName);
-  return state?.pool ? state.pool.map(normalizePoolTraceLine) : [];
+  return readPoolTraceAt(pipelineFile(moduleName));
 }
 
 /**

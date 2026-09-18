@@ -22,9 +22,9 @@ function keyOf(info: { project: number | string; level: number | string; folder:
   return `${info.project}_${info.level}_${info.folder}/${info.shortName}${info.extension}`;
 }
 
-function seed(host: Host, folder: string, shortName: string, content = ''): Stored {
+function seed(host: Host, folder: string, shortName: string, content = '', level = 4): Stored {
   const file: Stored = {
-    project: PROJECT, level: 4, folder, shortName, extension: '.json',
+    project: PROJECT, level, folder, shortName, extension: '.json',
     status: 'changed', versionRef: '1', content,
     getValueInfo: async () => ({ content: file.content }),
     getContent: async () => file.content,
@@ -173,4 +173,43 @@ void test('nextThread is module plus stamp and POOL_MAX_ROUND is three', async (
   assert.equal(pool.nextThread('mensalidades Academia', AT), 'mensalidadesAcademia-20260918103000');
   assert.equal(pool.POOL_MAX_ROUND, 3);
   assert.deepEqual([...pool.POOL_BOXES], ['l1', 'l2', 'l4']);
+});
+
+const TRACE_LINE = {
+  at: AT.toISOString(), file: 'l4/mensalidadesAcademia/pool/l2/a.json', from: 'l4', to: 'l2',
+  thread: 'mensalidadesAcademia-20260918103000', round: 1, mode: 'implement', outcome: 'processed',
+} as const;
+
+void test('tracePoolAt writes on the fileInfo pipeline and does not mix two files', async () => {
+  const host = installHost();
+  const pool = await loadPool();
+  const l4 = seed(host, 'mensalidadesAcademia/pipeline', 'pipeline', JSON.stringify({
+    schemaVersion: 'x', flowId: 'agentNewSolution5', moduleName: 'mensalidadesAcademia',
+    status: 'complete', steps: {}, sourcePrompt: '', invocation: { fast: false, module: 'mensalidadesAcademia', rebuildAll: false },
+    updatedAt: AT.toISOString(),
+  }));
+  const l2 = seed(host, 'mensalidadesAcademia/pipeline', 'pipeline', JSON.stringify({
+    schemaVersion: 'l2', moduleName: 'mensalidadesAcademia', updatedAt: AT.toISOString(),
+  }), 2);
+  const l4Info = { project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' };
+  const l2Info = { project: PROJECT, level: 2, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' };
+
+  const idL4 = await pool.tracePoolAt(l4Info, { ...TRACE_LINE, file: 'l4/mensalidadesAcademia/pool/l2/a.json' });
+  const idL2 = await pool.tracePoolAt(l2Info, {
+    ...TRACE_LINE, file: 'l2/mensalidadesAcademia/pipeline/note.json', outcome: 'delivered',
+  });
+  assert.equal(idL4, 'l4/mensalidadesAcademia/pool/l2/a.json');
+  assert.equal(idL2, 'l2/mensalidadesAcademia/pipeline/note.json');
+  assert.equal((JSON.parse(l4.content).pool as unknown[]).length, 1);
+  assert.equal((JSON.parse(l2.content).pool as unknown[]).length, 1);
+  assert.equal((await pool.readPoolTraceAt(l4Info))[0].outcome, 'processed');
+  assert.equal((await pool.readPoolTraceAt(l2Info))[0].outcome, 'delivered');
+  assert.equal((await pool.readPoolTrace('mensalidadesAcademia'))[0].outcome, 'processed');
+});
+
+void test('tracePoolAt refuses a missing pipeline.json with a named cause', async () => {
+  installHost();
+  const pool = await loadPool();
+  const missing = { project: PROJECT, level: 2, folder: 'semPipeline/pipeline', shortName: 'pipeline', extension: '.json' };
+  await assert.rejects(pool.tracePoolAt(missing, TRACE_LINE), /pipeline\.json not found/);
 });

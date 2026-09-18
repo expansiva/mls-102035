@@ -1,0 +1,64 @@
+{
+  "flowId": "agentPlannerL4",
+  "schemaVersion": "2026-09-18-pl-flow-v1",
+  "status": "entry10",
+  "description": "L4 planner: list the module artifacts and dispatch L2/L1 planners through the module pool. No LLM. Does not read ontology to opine.",
+  "canonicalReferences": [
+    "mls-base/skills/00_index.md",
+    "mls-base/skills/agentsBestPractices.md",
+    "mls-base/skills/agentPlannerL4.md",
+    "mls-base/mls-102035/l2/solution/pool.ts"
+  ],
+  "principles": [
+    "Sequence is declared in this file via dependsOn and done-anchors. Steps do not enqueue their successor by name.",
+    "Deterministic first: the L4 planner never calls an LLM. It lists artifacts; it does not read ontology to opine.",
+    "A step declared here and not implemented stops the run naming that step. dispatch20 and loop30 wait for the next lot.",
+    "Pipeline state of the module lives on disk at l4/{module}/pipeline/pipeline.json. The planner records l5Adjusted there; it does not own the NS5 status.",
+    "Each owner traces only on its own pipeline.json (L4 on l4, L2 on l2). One file, one writer.",
+    "workspaceDependencies of the current project's l5/config.json must list 102020 and 102021 so the platform finds the planners by name. Missing ids are appended at the end.",
+    "Pending pool messages block a new run. /estimate is not available yet. There is no /rebuild.",
+    "Deterministic user text is English. Internal messages stay English literals."
+  ],
+  "invocation": {
+    "run": "@@agentPlannerL4 <lowerCamel>",
+    "fast": "@@agentPlannerL4 <lowerCamel> /fast",
+    "moduleRule": "The module name is the first lowerCamel token. The module must already exist in l4/ with pipeline.status complete.",
+    "estimateRule": "/estimate is refused with 'not available yet'.",
+    "rebuildRule": "There is no /rebuild. This flow does not create or wipe a module."
+  },
+  "artifacts": {
+    "pipeline": "l4/{module}/pipeline/pipeline.json",
+    "l5config": "l5/config.json",
+    "poolL1": "l4/{module}/pool/l1/{stamp}_{thread}_{round}.json",
+    "poolL2": "l4/{module}/pool/l2/{stamp}_{thread}_{round}.json",
+    "poolL4": "l4/{module}/pool/l4/{stamp}_{thread}_{round}.json"
+  },
+  "steps": [
+    {
+      "id": "entry10",
+      "kind": "deterministic",
+      "dependsOn": [],
+      "doneAnchor": "entry10-done",
+      "artifact": "l5/config.json",
+      "goal": "Parse the invocation, refuse deterministically, append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline."
+    },
+    {
+      "id": "dispatch20",
+      "kind": "deterministic",
+      "dependsOn": ["entry10-done"],
+      "doneAnchor": "dispatch20-done",
+      "implementation": "waiting",
+      "artifact": "l4/{module}/pool/l2/{stamp}_{thread}_{round}.json",
+      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/) and write the two pool messages. Implemented in the next lot."
+    },
+    {
+      "id": "loop30",
+      "kind": "deterministic",
+      "dependsOn": ["dispatch20-done"],
+      "doneAnchor": "loop30-done",
+      "implementation": "waiting",
+      "artifact": "l4/{module}/pipeline/pipeline.json",
+      "goal": "Count rounds from the L4 pool trace and the boxes on disk. Implemented in the next lot."
+    }
+  ]
+}
