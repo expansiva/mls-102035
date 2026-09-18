@@ -19,6 +19,8 @@ import {
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 import '/_102035_/l2/agentPlannerL4/steps/entry10/agentPlEntry.js';
+import '/_102035_/l2/agentPlannerL4/steps/dispatch20/agentPlDispatch.js';
+import '/_102035_/l2/agentPlannerL4/steps/loop30/agentPlLoop.js';
 
 export function createAgent(): IAgentAsync {
   return {

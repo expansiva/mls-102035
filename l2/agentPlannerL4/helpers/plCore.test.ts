@@ -7,12 +7,23 @@ import {
   adjustL5PlannerDeps,
   applyL5PlannerDeps,
   buildPlPlannedSteps,
+  buildPlPoolMessage,
+  decidePlLoop,
+  listPlArtifacts,
   moduleTokenOk,
   parsePlInvocation,
+  plDispatchSubject,
   plEntryRefusal,
+  plannerAgentPresent,
+  PL_DISPATCH_BODY,
+  PL_L1_AGENT,
+  PL_L2_AGENT,
   PL_STEP_DEPENDS_ON,
   PL_STEP_IDS,
+  runPlDispatch,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import { displayPath } from '/_102035_/l2/solution/fs.js';
+import { listPoolBox, nextThread, readPoolMessage, readPoolTrace } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -37,6 +48,17 @@ function installHost(): Host {
     stor: {
       files: host.files,
       getKeyToFile: keyOf,
+      addOrUpdateFile: async (params: { project: number; level: number; folder: string; shortName: string; extension: string }) => {
+        const file: Stored = {
+          project: params.project, level: params.level, folder: params.folder,
+          shortName: params.shortName, extension: params.extension,
+          status: 'new', versionRef: '0', content: '',
+          getValueInfo: async () => ({ content: file.content }),
+          getContent: async () => file.content,
+        };
+        host.files[keyOf(file)] = file;
+        return file;
+      },
       localStor: {
         setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
         listFolder: () => [],
@@ -202,4 +224,137 @@ void test('applyL5PlannerDeps leaves a complete config byte-identical', async ()
   const adjusted = await applyL5PlannerDeps('mensalidadesAcademia');
   assert.deepEqual(adjusted, []);
   assert.equal(configFile.content, raw);
+});
+
+void test('listPlArtifacts excludes pipeline/, tobe/ and pool/', () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'access', extension: '.defs.ts' }, '');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/journeys', shortName: 'index', extension: '.defs.ts' }, '');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' }, '{}');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/tobe', shortName: 'draft', extension: '.json' }, '{}');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: 'msg', extension: '.json' }, '{}');
+  assert.deepEqual(listPlArtifacts('mensalidadesAcademia'), [
+    'access.defs.ts',
+    'journeys/index.defs.ts',
+    'module.defs.ts',
+  ]);
+});
+
+void test('the two pool messages are equal byte for byte except to', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/journeys', shortName: 'index', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const now = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
+  const artifacts = listPlArtifacts('mensalidadesAcademia');
+  const thread = nextThread('mensalidadesAcademia', now);
+  const expectedL2 = buildPlPoolMessage('mensalidadesAcademia', 'l2', thread, artifacts);
+  const expectedL1 = buildPlPoolMessage('mensalidadesAcademia', 'l1', thread, artifacts);
+  assert.equal(expectedL2.subject, plDispatchSubject('mensalidadesAcademia'));
+  assert.equal(expectedL2.subject, 'Changed artifacts of mensalidadesAcademia');
+  assert.equal(expectedL2.body, PL_DISPATCH_BODY);
+  assert.match(expectedL2.body, /evaluate and dispatch/i);
+  assert.deepEqual({ ...expectedL1, to: 'l2' }, expectedL2);
+
+  const run = await runPlDispatch('mensalidadesAcademia', now);
+  assert.deepEqual(run.artifacts, artifacts);
+  assert.equal(run.thread, thread);
+  assert.deepEqual(await readPoolMessage(run.l2File), expectedL2);
+  assert.deepEqual(await readPoolMessage(run.l1File), expectedL1);
+  const l2Key = keyOf(run.l2File);
+  const l1Key = keyOf(run.l1File);
+  assert.equal(host.files[l2Key]?.content, `${JSON.stringify(expectedL2, null, 2)}\n`);
+  assert.equal(host.files[l1Key]?.content, `${JSON.stringify(expectedL1, null, 2)}\n`);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
+});
+
+void test('plannerAgentPresent is the stor.files shortName lookup', () => {
+  const host = installHost();
+  assert.equal(plannerAgentPresent(PL_L2_AGENT), false);
+  assert.equal(plannerAgentPresent(PL_L1_AGENT), false);
+  seed(host, { level: 2, folder: 'agentPlannerL2', shortName: 'agentPlannerL2', extension: '.ts' }, '');
+  assert.equal(plannerAgentPresent(PL_L2_AGENT), true);
+  assert.equal(plannerAgentPresent(PL_L1_AGENT), false);
+});
+
+void test('decidePlLoop stops at round 3 without deleting and marks disputed', () => {
+  const file = {
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pool/l2',
+    shortName: '20260918103000_mensalidadesAcademia-20260918103000_3', extension: '.json',
+  };
+  const path = displayPath(file);
+  const message = buildPlPoolMessage('mensalidadesAcademia', 'l2', 'mensalidadesAcademia-20260918103000', ['module.defs.ts']);
+  message.round = 3;
+  const trace = [1, 2, 3].map(round => ({
+    at: '2026-09-18T10:30:00.000Z',
+    file: round === 3 ? path : `l4/mensalidadesAcademia/pool/l2/other_${round}.json`,
+    from: 'l4' as const, to: 'l2' as const,
+    thread: 'mensalidadesAcademia-20260918103000',
+    round, mode: 'implement' as const, outcome: 'delivered' as const,
+  }));
+  const decision = decidePlLoop({
+    thread: 'mensalidadesAcademia-20260918103000',
+    trace,
+    l2: [{ file, path, message }],
+    l1: [],
+    l2Available: true,
+    l1Available: false,
+  });
+  assert.equal(decision.stop, true);
+  assert.equal(decision.invoke.length, 0);
+  assert.equal(decision.disputed.length, 1);
+  assert.equal(decision.disputed[0].path, path);
+  assert.match(decision.status, /disputed/);
+  assert.match(decision.status, /not deleted/);
+});
+
+void test('L1 absent leaves the box pending with a readable status', () => {
+  const file = {
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pool/l1',
+    shortName: '20260918103000_mensalidadesAcademia-20260918103000_1', extension: '.json',
+  };
+  const path = displayPath(file);
+  const thread = 'mensalidadesAcademia-20260918103000';
+  const message = buildPlPoolMessage('mensalidadesAcademia', 'l1', thread, ['module.defs.ts']);
+  const decision = decidePlLoop({
+    thread,
+    trace: [{
+      at: '2026-09-18T10:30:00.000Z', file: path, from: 'l4', to: 'l1',
+      thread, round: 1, mode: 'implement', outcome: 'delivered',
+    }],
+    l1: [{ file, path, message }],
+    l2: [],
+    l2Available: true,
+    l1Available: false,
+  });
+  assert.equal(decision.stop, true);
+  assert.equal(decision.invoke.length, 0);
+  assert.match(decision.status, /l1 pending \(agentPlannerL1 not available\)/);
+  assert.match(decision.status, /Requests stayed in the box/);
+});
+
+void test('runPlDispatch traces both deliveries and does not invoke a missing L1', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  seed(host, { level: 2, folder: 'agentPlannerL2', shortName: 'agentPlannerL2', extension: '.ts' }, '');
+  const now = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
+  const run = await runPlDispatch('mensalidadesAcademia', now);
+  assert.equal(run.invokeL2, true);
+  assert.equal(run.invokeL1, false);
+  assert.match(run.status, /l1 pending \(agentPlannerL1 not available\)/);
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.equal(trace.length, 2);
+  assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
+  assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
 });

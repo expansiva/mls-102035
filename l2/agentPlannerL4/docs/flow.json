@@ -12,7 +12,7 @@
   "principles": [
     "Sequence is declared in this file via dependsOn and done-anchors. Steps do not enqueue their successor by name.",
     "Deterministic first: the L4 planner never calls an LLM. It lists artifacts; it does not read ontology to opine.",
-    "A step declared here and not implemented stops the run naming that step. dispatch20 and loop30 wait for the next lot.",
+    "A step declared here and not implemented stops the run naming that step.",
     "Pipeline state of the module lives on disk at l4/{module}/pipeline/pipeline.json. The planner records l5Adjusted there; it does not own the NS5 status.",
     "Each owner traces only on its own pipeline.json (L4 on l4, L2 on l2). One file, one writer.",
     "workspaceDependencies of the current project's l5/config.json must list 102020 and 102021 so the platform finds the planners by name. Missing ids are appended at the end.",
@@ -47,18 +47,16 @@
       "kind": "deterministic",
       "dependsOn": ["entry10-done"],
       "doneAnchor": "dispatch20-done",
-      "implementation": "waiting",
       "artifact": "l4/{module}/pool/l2/{stamp}_{thread}_{round}.json",
-      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/) and write the two pool messages. Implemented in the next lot."
+      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), write the two pool messages, invoke agentPlannerL2 by name and agentPlannerL1 when that agent exists."
     },
     {
       "id": "loop30",
       "kind": "deterministic",
       "dependsOn": ["dispatch20-done"],
       "doneAnchor": "loop30-done",
-      "implementation": "waiting",
       "artifact": "l4/{module}/pipeline/pipeline.json",
-      "goal": "Count rounds from the L4 pool trace and the boxes on disk. Implemented in the next lot."
+      "goal": "Count rounds from the L4 pool trace and the boxes on disk. Create the next planner step while round < 3. At 3 with a non-empty box, record disputed and do not delete."
     }
   ]
 }

@@ -1,8 +1,30 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/helpers/plCore.ts" enhancement="_blank"/>
 
-import { listModuleFolders, normalizeModuleName, readPipeline, writePipeline } from '/_102035_/l2/solution/fs.js';
+import {
+  diskFileInfo,
+  displayPath,
+  hostListFolder,
+  listModuleFolders,
+  moduleFile,
+  normalizeModuleName,
+  readPipeline,
+  writePipeline,
+  type Ns5FileInfo,
+} from '/_102035_/l2/solution/fs.js';
 import { readL5Config, writeL5Config } from '/_102035_/l2/solution/lib.js';
-import { poolHasPending } from '/_102035_/l2/solution/pool.js';
+import {
+  listPoolBox,
+  nextThread,
+  poolHasPending,
+  POOL_MAX_ROUND,
+  readPoolMessage,
+  readPoolTrace,
+  tracePool,
+  writePoolMessage,
+  type PoolBox,
+  type PoolMessage,
+  type PoolTraceLine,
+} from '/_102035_/l2/solution/pool.js';
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
 
 export const PL_FLOW_ID = 'agentPlannerL4' as const;
@@ -13,6 +35,11 @@ export const PL_STEP_IDS = ['entry10', 'dispatch20', 'loop30'] as const;
 export type PlStepId = (typeof PL_STEP_IDS)[number];
 
 export const PL_PLANNER_PROJECTS = ['102020', '102021'] as const;
+export const PL_L2_AGENT = 'agentPlannerL2' as const;
+export const PL_L1_AGENT = 'agentPlannerL1' as const;
+export const PL_EXCLUDED_TOP = ['pipeline', 'tobe', 'pool'] as const;
+export const PL_DISPATCH_BODY =
+  'Evaluate and dispatch. The recipient decides what to do with these artifacts.';
 
 export const PL_STEP_TITLES: Record<PlStepId, string> = {
   entry10: 'Entry',
@@ -186,4 +213,350 @@ export function createPlAgentStep(stepId: PlStepId, moduleName: string): mls.msg
 
 export function buildPlPlannedSteps(moduleName: string): mls.msg.AIAgentStep[] {
   return PL_STEP_IDS.map(stepId => createPlAgentStep(stepId, moduleName));
+}
+
+export function plDispatchSubject(moduleName: string): string {
+  return `Changed artifacts of ${moduleName}`;
+}
+
+/**
+ * Same lookup `getInstanceByName` uses (a `.ts` whose shortName is the agent), without
+ * importing the module. Missing file ⇒ not available. File present ⇒ create the step;
+ * a later host `Invalid agent` still surfaces if `createAgent` is absent.
+ */
+export function plannerAgentPresent(agentName: string): boolean {
+  if (!agentName.startsWith('agent')) return false;
+  for (const file of Object.values(mls.stor.files)) {
+    if (!file || file.status === 'deleted') continue;
+    if (file.extension !== '.ts') continue;
+    if (String(file.shortName || '') !== agentName) continue;
+    return true;
+  }
+  return false;
+}
+
+function topSegmentAfterModule(folder: string, moduleName: string): string {
+  const rest = folder === moduleName
+    ? ''
+    : folder.startsWith(`${moduleName}/`)
+      ? folder.slice(moduleName.length + 1)
+      : folder;
+  return rest.split('/').filter(Boolean)[0] || '';
+}
+
+function artifactRelPath(file: { folder?: string; shortName?: string; extension?: string }, moduleName: string): string {
+  const folder = String(file.folder || '');
+  const rest = folder === moduleName
+    ? ''
+    : folder.startsWith(`${moduleName}/`)
+      ? folder.slice(moduleName.length + 1)
+      : folder;
+  const name = `${file.shortName || ''}${file.extension || ''}`;
+  return rest ? `${rest}/${name}` : name;
+}
+
+/** Every file under `l4/<mod>/` except `pipeline/`, `tobe/`, `pool/`. Paths relative to the module. */
+export function listPlArtifacts(moduleName: string): string[] {
+  const module = normalizeModuleName(moduleName);
+  const project = moduleFile(module).project;
+  const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
+  const found = new Map<string, true>();
+
+  const consider = (file: { folder?: string; shortName?: string; extension?: string; status?: string }) => {
+    if (file.status === 'deleted' || !file.shortName) return;
+    const folder = String(file.folder || '');
+    const top = topSegmentAfterModule(folder, module);
+    if ((PL_EXCLUDED_TOP as readonly string[]).includes(top)) return;
+    const rel = artifactRelPath(file, module);
+    if (rel) found.set(rel, true);
+  };
+
+  for (const file of Object.values(files)) {
+    if (!file || file.project !== project || Number(file.level) !== 4) continue;
+    const folder = String(file.folder || '');
+    if (folder !== module && !folder.startsWith(`${module}/`)) continue;
+    consider(file);
+  }
+
+  const listFolder = hostListFolder();
+  if (listFolder) {
+    for (const info of listFolder(project, 4, module)) {
+      const key = mls.stor.getKeyToFile(info);
+      const indexed = files[key];
+      if (indexed?.status === 'deleted') continue;
+      if (!indexed) files[key] = diskFileInfo(info);
+      consider(indexed || info);
+    }
+  }
+
+  return [...found.keys()].sort();
+}
+
+export function buildPlPoolMessage(
+  moduleName: string,
+  to: 'l1' | 'l2',
+  thread: string,
+  artifacts: string[],
+): PoolMessage {
+  return {
+    from: 'l4',
+    to,
+    thread,
+    round: 1,
+    mode: 'implement',
+    subject: plDispatchSubject(moduleName),
+    artifacts: [...artifacts],
+    body: PL_DISPATCH_BODY,
+  };
+}
+
+export function invokePlanId(box: 'l1' | 'l2', thread: string, round: number): string {
+  return `pool-${box}-${thread}-${round}`;
+}
+
+export function createPlInvokeStep(args: {
+  agentName: string;
+  moduleName: string;
+  thread: string;
+  file: string;
+  planId: string;
+}): mls.msg.AIAgentStep {
+  return {
+    type: 'agent',
+    stepId: 0,
+    interaction: null,
+    stepTitle: args.agentName === PL_L1_AGENT ? 'Planner L1' : 'Planner L2',
+    status: 'waiting_human_input',
+    nextSteps: [],
+    agentName: args.agentName,
+    prompt: JSON.stringify({ moduleName: args.moduleName, thread: args.thread, file: args.file }),
+    rags: [],
+    planning: {
+      planId: args.planId,
+      dependsOn: [],
+      executionMode: 'sequential',
+      executionHost: 'client',
+    },
+  };
+}
+
+export function createPlLoopWaitStep(moduleName: string, dependsOn: string[], tick: number): mls.msg.AIAgentStep {
+  const planId = `loop30-wait-${tick}`;
+  return {
+    type: 'agent',
+    stepId: 0,
+    interaction: null,
+    stepTitle: PL_STEP_TITLES.loop30,
+    status: dependsOn.length ? 'waiting_dependency' : 'waiting_human_input',
+    nextSteps: [],
+    agentName: PL_AGENT_NAME,
+    prompt: JSON.stringify({ planId, moduleName }),
+    rags: [],
+    planning: {
+      planId,
+      dependsOn,
+      executionMode: 'sequential',
+      executionHost: 'client',
+    },
+  };
+}
+
+export function nextLoopWaitTick(planId: string): number {
+  const match = /^loop30-wait-(\d+)$/.exec(planId);
+  return match ? Number(match[1]) + 1 : 1;
+}
+
+export interface PlDispatchRun {
+  artifacts: string[];
+  thread: string;
+  l2File: Ns5FileInfo;
+  l1File: Ns5FileInfo;
+  l2Path: string;
+  l1Path: string;
+  invokeL2: boolean;
+  invokeL1: boolean;
+  status: string;
+}
+
+export async function runPlDispatch(moduleName: string, now: Date): Promise<PlDispatchRun> {
+  const artifacts = listPlArtifacts(moduleName);
+  const thread = nextThread(moduleName, now);
+  const at = now.toISOString();
+  const l2File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l2', thread, artifacts), now);
+  const l1File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l1', thread, artifacts), now);
+  const l2Path = displayPath(l2File);
+  const l1Path = displayPath(l1File);
+  const base = { at, thread, round: 1 as const, mode: 'implement' as const, from: 'l4' as const, outcome: 'delivered' as const };
+  await tracePool(moduleName, { ...base, file: l2Path, to: 'l2' });
+  await tracePool(moduleName, { ...base, file: l1Path, to: 'l1' });
+  const invokeL2 = plannerAgentPresent(PL_L2_AGENT);
+  const invokeL1 = plannerAgentPresent(PL_L1_AGENT);
+  return { artifacts, thread, l2File, l1File, l2Path, l1Path, invokeL2, invokeL1, status: formatMissingPlannerStatus(1, invokeL2, invokeL1) };
+}
+
+export function formatMissingPlannerStatus(round: number, l2Available: boolean, l1Available: boolean): string {
+  const missing: string[] = [];
+  if (!l2Available) missing.push('l2 pending (agentPlannerL2 not available)');
+  if (!l1Available) missing.push('l1 pending (agentPlannerL1 not available)');
+  if (!missing.length) return '';
+  return `round ${round}/${POOL_MAX_ROUND} · ${missing.join('; ')}. Requests stayed in the box.`;
+}
+
+export interface PlBoxMessage {
+  file: Ns5FileInfo;
+  path: string;
+  message: PoolMessage;
+}
+
+export async function loadPlBoxMessages(moduleName: string, box: PoolBox): Promise<PlBoxMessage[]> {
+  const out: PlBoxMessage[] = [];
+  for (const file of listPoolBox(moduleName, box)) {
+    out.push({ file, path: displayPath(file), message: await readPoolMessage(file) });
+  }
+  return out;
+}
+
+export function plDeliveredRounds(trace: PoolTraceLine[], thread: string, to: PoolBox): number {
+  return trace.filter(line => line.thread === thread && line.to === to && line.outcome === 'delivered').length;
+}
+
+export interface PlLoopInvoke {
+  box: 'l1' | 'l2';
+  agentName: string;
+  file: Ns5FileInfo;
+  path: string;
+  thread: string;
+  round: number;
+  from: PoolBox;
+  to: PoolBox;
+  mode: PoolMessage['mode'];
+}
+
+export interface PlLoopDecision {
+  invoke: PlLoopInvoke[];
+  disputed: PlLoopInvoke[];
+  stop: boolean;
+  status: string;
+  maxRound: number;
+}
+
+export function decidePlLoop(input: {
+  thread: string;
+  trace: PoolTraceLine[];
+  l1: PlBoxMessage[];
+  l2: PlBoxMessage[];
+  l1Available: boolean;
+  l2Available: boolean;
+}): PlLoopDecision {
+  const invoke: PlLoopInvoke[] = [];
+  const disputed: PlLoopInvoke[] = [];
+  const pendingUnavailable: string[] = [];
+  const traced = new Set(input.trace.map(line => line.file));
+  const alreadyDisputed = new Set(
+    input.trace.filter(line => line.outcome === 'disputed').map(line => line.file),
+  );
+
+  const handle = (
+    box: 'l1' | 'l2',
+    items: PlBoxMessage[],
+    available: boolean,
+    agentName: string,
+  ) => {
+    const rounds = plDeliveredRounds(input.trace, input.thread, box);
+    if (items.length && rounds >= POOL_MAX_ROUND) {
+      for (const item of items) {
+        if (alreadyDisputed.has(item.path)) continue;
+        disputed.push(toInvoke(box, agentName, item));
+      }
+      return;
+    }
+    const fresh = items.filter(item => !traced.has(item.path));
+    if (fresh.length && rounds < POOL_MAX_ROUND) {
+      if (!available) {
+        pendingUnavailable.push(box);
+        return;
+      }
+      invoke.push(toInvoke(box, agentName, fresh[0]));
+      return;
+    }
+    if (items.length && !available) pendingUnavailable.push(box);
+  };
+
+  handle('l2', input.l2, input.l2Available, PL_L2_AGENT);
+  handle('l1', input.l1, input.l1Available, PL_L1_AGENT);
+
+  const maxRound = Math.max(
+    1,
+    plDeliveredRounds(input.trace, input.thread, 'l2'),
+    plDeliveredRounds(input.trace, input.thread, 'l1'),
+    ...input.l1.map(item => item.message.round),
+    ...input.l2.map(item => item.message.round),
+  );
+  const stop = invoke.length === 0;
+  const status = stop
+    ? formatLoopStopStatus(maxRound, disputed.length > 0, pendingUnavailable, input.l1.length + input.l2.length)
+    : '';
+  return { invoke, disputed, stop, status, maxRound };
+}
+
+function toInvoke(box: 'l1' | 'l2', agentName: string, item: PlBoxMessage): PlLoopInvoke {
+  return {
+    box,
+    agentName,
+    file: item.file,
+    path: item.path,
+    thread: item.message.thread,
+    round: item.message.round,
+    from: item.message.from,
+    to: item.message.to,
+    mode: item.message.mode,
+  };
+}
+
+function formatLoopStopStatus(
+  maxRound: number,
+  disputed: boolean,
+  pendingUnavailable: string[],
+  pendingCount: number,
+): string {
+  if (disputed) {
+    return `round ${maxRound}/${POOL_MAX_ROUND} · disputed. Messages were not deleted.`;
+  }
+  const missing: string[] = [];
+  if (pendingUnavailable.includes('l2')) missing.push('l2 pending (agentPlannerL2 not available)');
+  if (pendingUnavailable.includes('l1')) missing.push('l1 pending (agentPlannerL1 not available)');
+  if (missing.length) {
+    return `round ${maxRound}/${POOL_MAX_ROUND} · ${missing.join('; ')}. Requests stayed in the box.`;
+  }
+  if (pendingCount === 0) return `round ${maxRound}/${POOL_MAX_ROUND} · pool empty.`;
+  return `round ${maxRound}/${POOL_MAX_ROUND} · pending.`;
+}
+
+export async function applyPlLoopDecision(moduleName: string, decision: PlLoopDecision, now: Date): Promise<void> {
+  const at = now.toISOString();
+  for (const item of decision.disputed) {
+    await tracePool(moduleName, {
+      at, file: item.path, from: item.from, to: item.to,
+      thread: item.thread, round: item.round, mode: item.mode, outcome: 'disputed',
+    });
+  }
+  for (const item of decision.invoke) {
+    await tracePool(moduleName, {
+      at, file: item.path, from: item.from, to: item.to,
+      thread: item.thread, round: item.round, mode: item.mode, outcome: 'delivered',
+    });
+  }
+}
+
+export async function gatherPlLoopDecision(moduleName: string): Promise<PlLoopDecision> {
+  const trace = await readPoolTrace(moduleName);
+  const thread = trace[0]?.thread || '';
+  return decidePlLoop({
+    thread,
+    trace,
+    l1: await loadPlBoxMessages(moduleName, 'l1'),
+    l2: await loadPlBoxMessages(moduleName, 'l2'),
+    l1Available: plannerAgentPresent(PL_L1_AGENT),
+    l2Available: plannerAgentPresent(PL_L2_AGENT),
+  });
 }

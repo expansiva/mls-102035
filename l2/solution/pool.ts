@@ -236,14 +236,14 @@ export async function readPoolTrace(moduleName: string): Promise<PoolTraceLine[]
 }
 
 /**
- * Last operation of whoever processes a message: only the owner deletes, and only after the
- * trace line is written — `traceId` is the id `tracePool` returned.
+ * Same check and delete as `deletePoolMessage`, but the trace is read from the `pipeline.json`
+ * that `fileInfo` points at — each owner traces (and therefore deletes) on its own file.
  */
-export async function deletePoolMessage(moduleName: string, file: Ns5FileInfo, traceId: string): Promise<string> {
+export async function deletePoolMessageAt(fileInfo: Ns5FileInfo, file: Ns5FileInfo, traceId: string): Promise<string> {
   const id = String(traceId || '').trim();
   const path = displayPath(file);
   if (!id) refuse(`refusing to delete ${path}: traceId is empty — trace the message in pipeline.json first`);
-  const trace = await readPoolTrace(moduleName);
+  const trace = await readPoolTraceAt(fileInfo);
   if (!trace.some(entry => entry.file === id)) {
     refuse(`refusing to delete ${path}: no trace line '${id}' in pipeline.json`);
   }
@@ -251,4 +251,13 @@ export async function deletePoolMessage(moduleName: string, file: Ns5FileInfo, t
   const { deleteFile } = await import('/_102027_/l2/libStor.js');
   await deleteFile(diskFileInfo(file));
   return path;
+}
+
+/**
+ * Last operation of whoever processes a message: only the owner deletes, and only after the
+ * trace line is written — `traceId` is the id `tracePool` returned. Shortcut: checks the l4
+ * pipeline of `moduleName`.
+ */
+export async function deletePoolMessage(moduleName: string, file: Ns5FileInfo, traceId: string): Promise<string> {
+  return deletePoolMessageAt(pipelineFile(moduleName), file, traceId);
 }

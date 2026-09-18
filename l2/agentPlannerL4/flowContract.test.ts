@@ -71,8 +71,8 @@ void test('flow has exactly three steps in declared order with declared dependen
     assert.ok(step.artifact, `${step.id} missing artifact`);
   }
 
-  assert.equal(flow.steps.find(step => step.id === 'dispatch20')?.implementation, 'waiting');
-  assert.equal(flow.steps.find(step => step.id === 'loop30')?.implementation, 'waiting');
+  assert.equal(flow.steps.find(step => step.id === 'dispatch20')?.implementation, undefined);
+  assert.equal(flow.steps.find(step => step.id === 'loop30')?.implementation, undefined);
   assert.equal(flow.steps.find(step => step.id === 'entry10')?.implementation, undefined);
 });
 

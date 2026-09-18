@@ -213,3 +213,30 @@ void test('tracePoolAt refuses a missing pipeline.json with a named cause', asyn
   const missing = { project: PROJECT, level: 2, folder: 'semPipeline/pipeline', shortName: 'pipeline', extension: '.json' };
   await assert.rejects(pool.tracePoolAt(missing, TRACE_LINE), /pipeline\.json not found/);
 });
+
+void test('deletePoolMessageAt checks the pointed pipeline, not the l4 one', async () => {
+  const host = installHost();
+  const pool = await loadPool();
+  const folder = 'mensalidadesAcademia/pool/l2';
+  const file = { project: PROJECT, level: 4, folder, shortName: '20260918103000_m-20260918103000_1', extension: '.json' };
+  seed(host, folder, file.shortName, `${JSON.stringify(MESSAGE, null, 2)}\n`);
+  seed(host, 'mensalidadesAcademia/pipeline', 'pipeline', JSON.stringify({
+    schemaVersion: 'x', flowId: 'agentNewSolution5', moduleName: 'mensalidadesAcademia',
+    status: 'complete', steps: {}, sourcePrompt: '', invocation: { fast: false, module: 'mensalidadesAcademia', rebuildAll: false },
+    updatedAt: AT.toISOString(),
+  }));
+  const l2 = seed(host, 'mensalidadesAcademia/pipeline', 'pipeline', JSON.stringify({
+    schemaVersion: 'l2', moduleName: 'mensalidadesAcademia', updatedAt: AT.toISOString(),
+  }), 2);
+  const l2Info = { project: PROJECT, level: 2, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' };
+  const path = 'l4/mensalidadesAcademia/pool/l2/20260918103000_m-20260918103000_1.json';
+
+  const traceId = await pool.tracePoolAt(l2Info, { ...TRACE_LINE, file: path });
+  assert.equal(traceId, path);
+  assert.equal((JSON.parse(l2.content).pool as unknown[]).length, 1);
+  assert.equal((await pool.readPoolTrace('mensalidadesAcademia')).length, 0);
+
+  await assert.rejects(pool.deletePoolMessage('mensalidadesAcademia', file, path), /no trace line/);
+  assert.equal(await pool.deletePoolMessageAt(l2Info, file, path), path);
+  assert.deepEqual(host.deleted, [`${folder}/${file.shortName}`]);
+});
