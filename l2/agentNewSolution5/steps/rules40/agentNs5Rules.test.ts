@@ -295,3 +295,52 @@ void test('rules40 prompt has no domain examples and no appliesTo/title', () => 
   assert.match(prompt, /Do not invent a rule that has no basis/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto/i);
 });
+
+// --- ns5_56: an id this step received CITED belongs to whoever cited it ------
+
+void test('ns5_56: a cited id returned with another case adopts the cited spelling', () => {
+  // Measured on `compras`: the ontology cited `pedidoDeveTerFornecedorEItens`, rules40 wrote
+  // `…Eitens`, and finalize80 I4 compares exact strings.
+  const { rules, normalizations, duplicateRuleIds } = normalizeNs5RulesPayload(
+    { rules: [{ ruleId: 'pedidoDeveTerFornecedorEitens', description: 'Um pedido tem fornecedor e itens.' }] },
+    ['pedidoDeveTerFornecedorEItens'],
+  );
+  assert.deepEqual(Object.keys(rules), ['pedidoDeveTerFornecedorEItens']);
+  assert.deepEqual(normalizations, [
+    { kind: 'citedIdSpellingAdopted', detail: 'pedidoDeveTerFornecedorEitens -> pedidoDeveTerFornecedorEItens' },
+  ]);
+  assert.deepEqual(duplicateRuleIds, []);
+});
+
+void test('ns5_56: an id that is genuinely different is left alone', () => {
+  const { rules, normalizations } = normalizeNs5RulesPayload(
+    { rules: [{ ruleId: 'pedidoDeveTerFornecedor', description: 'Um pedido tem fornecedor.' }] },
+    ['pedidoDeveTerFornecedorEItens'],
+  );
+  assert.deepEqual(Object.keys(rules), ['pedidoDeveTerFornecedor']);
+  assert.deepEqual(normalizations, []);
+});
+
+void test('ns5_56: adopting a spelling that collides is reported as a duplicate, not swallowed', () => {
+  const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(
+    {
+      rules: [
+        { ruleId: 'pedidoDeveTerFornecedorEItens', description: 'A.' },
+        { ruleId: 'pedidoDeveTerFornecedorEitens', description: 'B.' },
+      ],
+    },
+    ['pedidoDeveTerFornecedorEItens'],
+  );
+  assert.deepEqual(Object.keys(rules), ['pedidoDeveTerFornecedorEItens']);
+  assert.deepEqual(duplicateRuleIds, ['pedidoDeveTerFornecedorEItens']);
+  assert.equal(validateNs5Rules(rules, { duplicateRuleIds }).ok, false);
+});
+
+void test('ns5_56: a platform (kebab) cited id never lends its spelling', () => {
+  const { rules, normalizations } = normalizeNs5RulesPayload(
+    { rules: [{ ruleId: 'ruleDocumentShapeValidated', description: 'X.' }] },
+    ['rule-document-shape-validated'],
+  );
+  assert.deepEqual(Object.keys(rules), ['ruleDocumentShapeValidated']);
+  assert.deepEqual(normalizations, []);
+});

@@ -823,7 +823,11 @@ void test('ns5_49: the same citation is still checked when the ontology IS on ha
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'));
 });
 
-void test('ns5_49: a trigger.event may name a transition the ontology has not declared yet', () => {
+// ns5_56 narrowed the ns5_49 leniency for `trigger.event` ONLY: a stage may still cite an entity or a
+// transition the ontology has not declared, but what STARTS a process has to be something a journey
+// moves. `manutencaoFrota` invented `PlanoManutencao.preventivaVencida` — a condition over data — and
+// nothing caught it until finalize80 I1, with no repair round left.
+void test('ns5_56: with no ontology, trigger.event must name a transition a journey moves', () => {
   const processes = drafts({
     processes: [validProcess({
       processId: 'onArchive',
@@ -831,10 +835,40 @@ void test('ns5_49: a trigger.event may name a transition the ontology has not de
       tasks: [{ taskId: 'note', kind: 'wait', next: [], description: 'Waits a day.' }],
     })],
   }).processes;
-  const without = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: [], entities: [] });
-  assert.equal(without.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'), false);
+  const without = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: ORDEN_JOURNEYS, entities: [] });
+  const issue = without.issues.find(item => item.code === 'NS5_WORKFLOWS_TRIGGER_EVENT');
+  assert.ok(issue, formatNs5WorkflowsGate(without.issues));
+  assert.match(issue.message, /is not a transition any journey moves/);
+  assert.match(issue.message, /derived field/);
+  assert.match(issue.message, /alert stage/);
+  // Not the ontology lookup: there is no ontology here.
+  assert.equal(without.issues.some(item => item.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'), false);
   const withOntology = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: [], entities: ORDEN_ENTITIES });
-  assert.ok(withOntology.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'));
+  assert.ok(withOntology.issues.some(item => item.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'));
+});
+
+void test('ns5_56: a trigger.event inside the journey catalog passes with no ontology', () => {
+  const processes = drafts({
+    processes: [validProcess({
+      processId: 'onPublish',
+      trigger: { kind: 'event', event: 'ServiceOrder.publishBudget' },
+      tasks: [{ taskId: 'note', kind: 'wait', next: [], description: 'Waits a day.' }],
+    })],
+  }).processes;
+  const gate = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: ORDEN_JOURNEYS, entities: [] });
+  assert.equal(gate.issues.some(item => item.code === 'NS5_WORKFLOWS_TRIGGER_EVENT'), false, formatNs5WorkflowsGate(gate.issues));
+});
+
+void test('ns5_56: an inbound trigger.event is untouched', () => {
+  const processes = drafts({
+    processes: [validProcess({
+      processId: 'onInbound',
+      trigger: { kind: 'event', event: 'billing.invoicePaid' },
+      tasks: [{ taskId: 'note', kind: 'wait', next: [], description: 'Waits a day.' }],
+    })],
+  }).processes;
+  const gate = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: ORDEN_JOURNEYS, entities: [] });
+  assert.equal(gate.issues.some(item => item.code === 'NS5_WORKFLOWS_TRIGGER_EVENT'), false, formatNs5WorkflowsGate(gate.issues));
 });
 
 void test('ns5_49: a foreignBy signal alone no longer obliges a process', () => {

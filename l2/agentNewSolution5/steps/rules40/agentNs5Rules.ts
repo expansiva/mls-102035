@@ -42,6 +42,7 @@ import type {
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
+  Ns5PipelineNormalization,
   Ns5PipelineState,
 } from '/_102035_/l2/solution/types.js';
 import {
@@ -173,8 +174,13 @@ export async function afterNs5RulesPromptStep(
       throw new Error(failure);
     }
 
-    const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(payload);
+    // ns5_56: the ids ontology30 cited are read BEFORE the normalize — an id this step received
+    // cited is the citator's, so a payload that only changed its case adopts the cited spelling.
     let pipeline = await requirePipeline(moduleName);
+    const { rules, duplicateRuleIds, normalizations } = normalizeNs5RulesPayload(
+      payload,
+      pipeline.steps.ontology30?.citedRules || [],
+    );
     pipeline = await writeStepState(pipeline, {
       status: 'running',
       updatedAt: new Date().toISOString(),
@@ -198,7 +204,7 @@ export async function afterNs5RulesPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, rules, pipeline);
+    const artifactPath = await persistArtifacts(moduleName, rules, pipeline, normalizations);
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `rules40 approved: ${artifactPath}`),
@@ -217,6 +223,7 @@ async function persistArtifacts(
   moduleName: string,
   rules: Record<string, string>,
   pipeline: Ns5PipelineState,
+  normalizations: readonly Ns5PipelineNormalization[],
 ): Promise<string> {
   const artifact = buildNs5RulesArtifactV2(moduleName, rules);
   const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifactV2');
@@ -225,6 +232,7 @@ async function persistArtifacts(
     status: 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    ...(normalizations.length ? { normalizations: [...normalizations] } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;

@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/rules40/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
+import type { Ns5PipelineNormalization } from '/_102035_/l2/solution/types.js';
 import {
   NS5_RULES_SCHEMA_VERSION,
   NS5_RULES_SCHEMA_VERSION_V2,
@@ -14,6 +15,12 @@ const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 export interface Ns5RulesNormalization {
   /** The catalog in the artifact form: `ruleId` to the one sentence. */
   rules: Record<string, string>;
+  /**
+   * ns5_56: what the step adopted from the ids it was CITED. Today only
+   * `citedIdSpellingAdopted`, in the shape every other step records
+   * (`{ kind, detail }`): the caller copies it into `pipeline.rules40.normalizations`.
+   */
+  normalizations: Ns5PipelineNormalization[];
   /**
    * The ids the payload wrote twice. A MAP CANNOT HOLD A DUPLICATE — the second write silently wins —
    * so the collision is reported here and the gate reads it from the context. `keyed()` in
@@ -61,18 +68,38 @@ export function buildNs5RulesTool(
  * instead of the rule vanishing; two bad ids then collapse onto that one key, which only ever happens
  * on a payload the gate is about to reject anyway.
  */
-export function normalizeNs5RulesPayload(value: unknown): Ns5RulesNormalization {
+export function normalizeNs5RulesPayload(
+  value: unknown,
+  citedRuleIds: readonly string[] = [],
+): Ns5RulesNormalization {
   const root = record(value);
+  // ns5_56: an id this step RECEIVED cited belongs to whoever cited it. `compras` was cited
+  // `pedidoDeveTerFornecedorEItens` and the model wrote it back as `…Eitens`; finalize80 I4 compares
+  // exact strings, so one letter of case failed the module. Only case: a genuinely different id is a
+  // new rule (or an I4 error), not a typo to fix here. Platform ids are kebab and never match MEMBER_ID.
+  const citedByCase = new Map<string, string>();
+  for (const cited of citedRuleIds) {
+    if (!cited || !MEMBER_ID.test(cited)) continue;
+    const key = cited.toLowerCase();
+    if (!citedByCase.has(key)) citedByCase.set(key, cited);
+  }
   const rules: Record<string, string> = {};
   const duplicateRuleIds: string[] = [];
+  const normalizations: Ns5PipelineNormalization[] = [];
   for (const rule of rulePairs(root.rules)) {
     if (!rule.ruleId && !rule.description) continue;
-    if (rule.ruleId && Object.prototype.hasOwnProperty.call(rules, rule.ruleId)) {
-      if (!duplicateRuleIds.includes(rule.ruleId)) duplicateRuleIds.push(rule.ruleId);
+    let ruleId = rule.ruleId;
+    const cited = ruleId ? citedByCase.get(ruleId.toLowerCase()) : undefined;
+    if (cited && cited !== ruleId) {
+      normalizations.push({ kind: 'citedIdSpellingAdopted', detail: `${ruleId} -> ${cited}` });
+      ruleId = cited;
     }
-    rules[rule.ruleId] = rule.description;
+    if (ruleId && Object.prototype.hasOwnProperty.call(rules, ruleId)) {
+      if (!duplicateRuleIds.includes(ruleId)) duplicateRuleIds.push(ruleId);
+    }
+    rules[ruleId] = rule.description;
   }
-  return { rules, duplicateRuleIds };
+  return { rules, duplicateRuleIds, normalizations };
 }
 
 /**

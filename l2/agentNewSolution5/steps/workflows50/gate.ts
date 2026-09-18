@@ -9,6 +9,7 @@ import type {
 import { parseNs5InboundEventRef } from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
 import {
   collectNs5Handoffs,
+  collectNs5JourneyTransitionRefs,
   collectNs5ProcessSignals,
   parseNs5TriggerEvent,
   type Ns5WorkflowsEntityView,
@@ -57,6 +58,10 @@ export function validateNs5Workflows(
   // ns5_49: `[]` means "ontology30 has not run yet" (flow v2 order). The recorded v2 runs still pass
   // their entities, so the checks against the ontology keep running for them.
   const hasOntology = context.entities.length > 0;
+  // ns5_56: `Entity.transitionId` a journey step actually moves — the same catalog the human prompt
+  // hands the model (`collectNs5WorkflowsRefCatalog`). With no ontology this is what an event trigger
+  // is checked against, so a condition over data cannot be dressed up as an event.
+  const journeyTransitionRefs = new Set(collectNs5JourneyTransitionRefs(context.journeys));
   const processIds = new Set<string>();
   const coveredHandoffs = new Set<string>();
   const signals = collectNs5ProcessSignals(context.journeys, context.entities);
@@ -83,7 +88,7 @@ export function validateNs5Workflows(
     if (!process.description.trim()) {
       error(issues, 'NS5_WORKFLOWS_DESCRIPTION', 'Process description is required.', `${base}.description`);
     }
-    validateTrigger(process.trigger, `${base}.trigger`, { hasOntology, actorIds, entityById, issues });
+    validateTrigger(process.trigger, `${base}.trigger`, { hasOntology, actorIds, entityById, journeyTransitionRefs, issues });
     if (!process.tasks.length) {
       error(issues, 'NS5_WORKFLOWS_TASKS', 'A process lists at least one task.', `${base}.tasks`);
     }
@@ -151,6 +156,7 @@ function validateTrigger(
     hasOntology: boolean;
     actorIds: Set<string>;
     entityById: Map<string, Ns5WorkflowsEntityView>;
+    journeyTransitionRefs: Set<string>;
     issues: Ns5WorkflowsGateIssue[];
   },
 ): void {
@@ -188,9 +194,22 @@ function validateTrigger(
     );
     return;
   }
-  // ns5_49: with no ontology on hand the reference is a declaration, not a lookup; finalize80 I1/I2
-  // check it once both artifacts exist.
-  if (!ctx.hasOntology) return;
+  // ns5_56 (was ns5_49: a free declaration): with no ontology the reference is checked against the
+  // transitions the JOURNEYS move — the catalog the model received. `manutencaoFrota` invented
+  // `PlanoManutencao.preventivaVencida`, a condition over data, and only finalize80 I1 saw it, with no
+  // repair round left. With the ontology on hand the lookup below is the stricter one and stands.
+  if (!ctx.hasOntology) {
+    const ref = `${parsed.entityId}.${parsed.transitionId}`;
+    if (!ctx.journeyTransitionRefs.has(ref)) {
+      error(
+        issues,
+        'NS5_WORKFLOWS_TRIGGER_EVENT',
+        `${ref} is not a transition any journey moves. A condition read from the data is a derived field, not an event; what somebody must do about it on a schedule is a scheduled process with an alert stage.`,
+        `${path}.event`,
+      );
+    }
+    return;
+  }
   const entity = ctx.entityById.get(parsed.entityId);
   if (!entity) {
     error(issues, 'NS5_WORKFLOWS_ENTITY_UNKNOWN', `Unknown entity ${parsed.entityId}.`, `${path}.event`);

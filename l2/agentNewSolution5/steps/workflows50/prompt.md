@@ -24,8 +24,10 @@ is, in one sentence.
 Every process has a trigger:
 
 - `kind: scheduled` — `schedule` is prose from the request (a time phrase).
-- `kind: event` — `event` is `<Entity>.<transitionId>`; use one listed in the human prompt when it
-  fits, since the ontology does not exist yet and a new one is a declaration the ontology will honour.
+- `kind: event` — `event` is `<Entity>.<transitionId>` **from the list in the human prompt** (a
+  transition a journey step moves), or `module.eventId` of an inbound event. A condition the data
+  already tells (overdue, expired, below minimum) is not an event: it is a derived field of the row,
+  and what somebody does about it on a schedule is a `scheduled` process with an `alert` stage.
 - `kind: manual` — a person starts it; `actorRef` is required.
 
 ## Stages

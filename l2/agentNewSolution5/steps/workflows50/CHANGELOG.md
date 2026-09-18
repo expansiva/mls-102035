@@ -1,5 +1,16 @@
 # workflows50
 
+## 2026-09-18 (ns5_56)
+
+- `trigger.event` of the form `Entity.transitionId` is now checked against the transitions the
+  JOURNEYS move (`collectNs5JourneyTransitionRefs`) when the ontology is not on disk yet, instead of
+  being taken as a free declaration (ns5_49). The gate has a repair round and the catalog is what the
+  model received, so the citation is answerable here; finalize80 I1 only saw it when nothing could be
+  repaired. `module.eventId` (inbound) is untouched, and with the ontology on hand the lookup is the
+  same as before. `prompt.md` says an event is one from the list, and that a condition the data
+  already tells is a `derived` field plus a `scheduled` process with an `alert` stage — not an event.
+  Measured on `manutencaoFrota`: `PlanoManutencao.preventivaVencida`, a transition no journey moves.
+
 ## 2026-09-17 (ns5_49)
 
 - Runs on the journeys alone: `readEntities` returns `[]` when there is no ontology index instead of
