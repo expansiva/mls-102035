@@ -466,7 +466,13 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
   }
   for (const entity of sources.entities) {
     for (const transition of entity.transitions) {
-      if (transition.by !== 'system' && transition.by !== 'time') continue;
+      // ns5_49: "nobody in particular moves it" is `by: []` since ns5_47; the `'system'`/`'time'`
+      // strings survive only in v1/v2 artifacts. Testing for the strings alone left this warning
+      // unreachable on every v3 module.
+      const unowned = Array.isArray(transition.by)
+        ? transition.by.length === 0
+        : transition.by === 'system' || transition.by === 'time';
+      if (!unowned) continue;
       const key = `${entity.entityId}.${transition.transitionId}`;
       if (ownedTransitions.has(key)) continue;
       warning(
@@ -720,11 +726,18 @@ function actorMatches(by: Ns5OntologyEntityViewItem['transitions'][number]['by']
   return Boolean(actor && Array.isArray(by) && by.includes(actor));
 }
 
+/**
+ * ns5_49: a `mechanical`/`llm` stage may apply a transition that belongs to no person. Since ns5_47 the
+ * v3 normalize writes that as `by: []`, so the empty list is the permission — the `'system'`/`'time'`
+ * strings only ever reach here from a v1/v2 artifact. `actorMatches` stays strict: a journey `act` on
+ * a `by: []` transition is still an error, because a person does not fire a process transition.
+ */
 function taskTransitionByAllows(
   by: Ns5OntologyEntityViewItem['transitions'][number]['by'],
   actorRef?: string,
 ): boolean {
   if (by === 'system' || by === 'time') return true;
+  if (Array.isArray(by) && by.length === 0) return true;
   return Boolean(actorRef && Array.isArray(by) && by.includes(actorRef));
 }
 

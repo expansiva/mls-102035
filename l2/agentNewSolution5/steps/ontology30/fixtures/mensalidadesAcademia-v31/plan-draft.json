@@ -1,0 +1,161 @@
+{
+  "moduleName": "mensalidadesAcademia",
+  "businessDomain": "Gestão de mensalidades de academia",
+  "entities": [
+    {
+      "entityId": "Aluno",
+      "kind": "role",
+      "family": "mdm",
+      "title": "Aluno",
+      "description": "Pessoa matriculada na academia, identificada no cadastro mestre da organização.",
+      "displayField": "details.identification.name",
+      "subtype": "Person",
+      "roleTag": "mensalidadesAcademia.Aluno",
+      "source": "/_102034_/l4/ontology/mdm.defs.ts"
+    },
+    {
+      "entityId": "Plano",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Plano",
+      "description": "Configuração de plano de academia disponível para matrículas, com periodicidade, valor e dia de vencimento.",
+      "displayField": "periodicity",
+      "class": "supporting",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "mensalidadesAcademia_plano",
+        "kind": "relational"
+      }
+    },
+    {
+      "entityId": "Matricula",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Matrícula",
+      "description": "Vínculo de um aluno a um plano a partir de uma data, cuja situação define a elegibilidade para cobranças futuras.",
+      "displayField": "id",
+      "class": "core",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "mensalidadesAcademia_matricula",
+        "kind": "relational"
+      }
+    },
+    {
+      "entityId": "Mensalidade",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Mensalidade",
+      "description": "Cobrança gerada para a competência de uma matrícula ativa, com valor e vencimento definidos pelo plano.",
+      "displayField": "competence",
+      "class": "core",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "mensalidadesAcademia_mensalidade",
+        "kind": "relational"
+      }
+    },
+    {
+      "entityId": "Pagamento",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Pagamento",
+      "description": "Registro de um pagamento realizado para quitar total ou parcialmente uma mensalidade.",
+      "displayField": "paymentDate",
+      "class": "event",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "mensalidadesAcademia_pagamento",
+        "kind": "relational"
+      }
+    },
+    {
+      "entityId": "IndicadoresMensalidades",
+      "kind": "entity",
+      "family": "ddm",
+      "title": "Indicadores de mensalidades",
+      "description": "Resumo calculado por competência com totais financeiros e quantidades de alunos ativos, bloqueados e inadimplentes.",
+      "displayField": "competence",
+      "class": "supporting",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "mensalidadesAcademia_indicadoresmensalidades",
+        "kind": "relational"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "alunoMatriculas",
+      "from": "Aluno",
+      "to": "Matricula",
+      "type": "oneToMany",
+      "required": true,
+      "mode": "fk",
+      "description": "Um aluno pode ter matrículas, e cada matrícula pertence obrigatoriamente a um aluno.",
+      "field": "Matricula.alunoId"
+    },
+    {
+      "relationshipId": "planoMatriculas",
+      "from": "Plano",
+      "to": "Matricula",
+      "type": "oneToMany",
+      "required": true,
+      "mode": "fk",
+      "description": "Um plano pode ser usado em várias matrículas, e cada matrícula referencia obrigatoriamente um plano.",
+      "field": "Matricula.planoId"
+    },
+    {
+      "relationshipId": "matriculaMensalidades",
+      "from": "Matricula",
+      "to": "Mensalidade",
+      "type": "oneToMany",
+      "required": true,
+      "mode": "fk",
+      "description": "Uma matrícula pode gerar mensalidades por competência, e cada mensalidade pertence obrigatoriamente a uma matrícula.",
+      "field": "Mensalidade.matriculaId"
+    },
+    {
+      "relationshipId": "mensalidadePagamentos",
+      "from": "Mensalidade",
+      "to": "Pagamento",
+      "type": "oneToMany",
+      "required": true,
+      "mode": "fk",
+      "description": "Uma mensalidade pode receber pagamentos parciais ou integrais, e cada pagamento é registrado obrigatoriamente para uma mensalidade.",
+      "field": "Pagamento.mensalidadeId"
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Aluno",
+      "detail": "roleTag mensalidadesAcademia.Aluno; source /_102034_/l4/ontology/mdm.defs.ts"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Plano",
+      "detail": "storage.table mensalidadesAcademia_plano"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Matricula",
+      "detail": "storage.table mensalidadesAcademia_matricula"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Mensalidade",
+      "detail": "storage.table mensalidadesAcademia_mensalidade"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Pagamento",
+      "detail": "storage.table mensalidadesAcademia_pagamento"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "IndicadoresMensalidades",
+      "detail": "storage.table mensalidadesAcademia_indicadoresmensalidades"
+    }
+  ]
+}

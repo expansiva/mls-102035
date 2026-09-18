@@ -4,7 +4,7 @@ One LLM call with tool `submitNs5Workflows` **only when a structural signal or a
 time/event phrase exists**. Writes `l4/<mod>/workflows.defs.ts`. Clarification is
 reserved and has no screen; `/fast` auto-approves.
 
-v2 form (G13): a process has a trigger and business stages — not a copy of journey
+v3 form (ns5_48): a process has a trigger and business stages — not a copy of journey
 screen steps, and not the entity FSM (states and allowed transitions stay on the
 ontology).
 
@@ -12,23 +12,29 @@ ontology).
 
 - The original request (`sourcePrompt`)
 - Journeys (`business` entire, including `handoff` / `handoffTo` and `act.effect`)
-- Ontology transitions (`by` actors, `system`, `time`)
+- Ontology transitions (`by` actors) — **only for a module recorded under flow v1/v2**. Since ns5_49
+  this step runs BEFORE `ontology30`, so the list is normally empty and the entity and transition ids
+  a stage names are declarations `ontology30` will honour.
 - Time/event phrases extracted from `sourcePrompt` (heuristic in code, not in the prompt)
 - Module actors
 
 ## Output
 
-`Ns5WorkflowsArtifact` (`2026-09-12-ns5-workflows-v2`): `processes[]` of
+`Ns5WorkflowsArtifact` (`2026-09-17-ns5-workflows-v3`; the v2 recorded on disk stays readable):
+`processes[]` of
 `{ processId, title, description, trigger, tasks[] }` plus `journeyDecisions[]`
 (`{ journeyId, inProcess, processId? }`).
 
 Trigger is `{ kind: scheduled, schedule }` | `{ kind: event, event: Entity.transitionId }`
 | `{ kind: manual, actorRef }`.
 
-Each task is `{ taskId, kind: human|mechanical|llm|wait, …, next, description }`.
+Each task is `{ taskId, kind: human|mechanical|llm|wait|alert, …, next, description }`.
 `human` requires `actorRef` and `journeyRef`. `mechanical`/`llm` require `entityRef`
 and `effect` (`create` | `update` | `transition`); `transitionRef` iff `effect` is
-`transition`. `wait` is a pause (prose in `description`).
+`transition`. `wait` is a pause (prose in `description`). `alert` is a recurring duty of
+a person: `actorRef` plus the instruction in `description`, and neither `journeyRef` nor
+`entityRef`. A scheduled process whose stages are all `alert` or `human` IS the recurring
+obligation — the screen derives that, nobody writes it.
 
 Empty `processes` is valid when there is no signal and no time/event phrase; the
 step then writes that artifact **without** an LLM call, records `noProcessSignal`,

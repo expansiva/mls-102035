@@ -15,10 +15,34 @@ import {
   markNs5Step,
   moduleTokenOk,
   nextNs5RunNn,
+  ns5EntryRefusal,
   ns5OntologyEntitySelector,
   ownerStepId,
   parseNs5Invocation,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+
+// ns5_52b. The invocation gate: what it refuses never reaches a step, so it never writes in l4/.
+void test('ns5EntryRefusal lets a module request through', () => {
+  assert.equal(ns5EntryRefusal(parseNs5Invocation('controle de mensalidades de uma academia'), ''), '');
+  assert.equal(ns5EntryRefusal(parseNs5Invocation('nova versao /rebuild all teste5'), 'teste5'), '');
+});
+
+void test('ns5EntryRefusal refuses an empty request, with or without /rebuild all', () => {
+  const empty = ns5EntryRefusal(parseNs5Invocation(''), '');
+  assert.match(empty, /Provide the module description/);
+  // achado 3: the command line alone used to start a run that invented a module.
+  const rebuild = ns5EntryRefusal(parseNs5Invocation('/rebuild all mensalidadesAcademia'), 'mensalidadesAcademia');
+  assert.match(rebuild, /below the @@newSolution5 command line/);
+  assert.notEqual(rebuild, empty);
+});
+
+void test('ns5EntryRefusal keeps the module gates it already had', () => {
+  assert.match(ns5EntryRefusal(parseNs5Invocation('texto /rebuild all'), ''), /needs the module name/);
+  // `parseNs5Invocation` already lowerCamels the token, so this gate answers a caller that did not.
+  assert.match(ns5EntryRefusal({ fast: false, rebuildAll: false, module: 'Teste5', prompt: 'texto' }, ''), /lowerCamel/);
+  assert.match(ns5EntryRefusal(parseNs5Invocation('texto /module teste5'), 'teste5'), /already exists/);
+  assert.match(ns5EntryRefusal(parseNs5Invocation('texto /rebuild all teste5'), ''), /does not exist/);
+});
 
 void test('parseNs5Invocation strips flags and keeps the prompt', () => {
   const parsed = parseNs5Invocation('criar o modulo x /fast /module teste5');

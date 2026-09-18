@@ -4,7 +4,7 @@ import { html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import { languages } from '/_102027_/l2/collabLanguages.js';
-import type { Ns5ModuleArtifact, Ns5OntologyDetail, Ns5StepId } from '/_102035_/l2/solution/types.js';
+import { NS5_STEP_IDS, type Ns5ModuleArtifact, type Ns5OntologyDetail } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
@@ -23,11 +23,6 @@ import {
   removeGeneralDetail,
   setGeneralLanguages,
 } from '/_102035_/l2/newRelease/widgets/generalModel.js';
-
-const NS5_STEP_IDS: Ns5StepId[] = [
-  'module10', 'journeys20', 'ontology30', 'rules40',
-  'workflows50', 'access60', 'integration70', 'finalize80',
-];
 
 const ORACLE_CHECK_IDS = Array.from({ length: 13 }, (_, index) => `I${index + 1}`);
 const LANGUAGE_OPTIONS = [...languages]

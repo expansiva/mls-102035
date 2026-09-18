@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-plan/2026-09-15-ns5-ontology-v3",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-plan/2026-09-17-ns5-ontology-v3.1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,

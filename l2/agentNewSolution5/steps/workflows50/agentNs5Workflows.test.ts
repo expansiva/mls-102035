@@ -23,9 +23,11 @@ import type {
 import { buildNs5WorkflowsHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.js';
 import {
   buildNs5WorkflowsArtifact,
+  buildNs5WorkflowsArtifactV3,
   buildNs5WorkflowsTool,
   collectNs5ProcessSignals,
   collectNs5TimeEventPhrases,
+  collectNs5WorkflowsRefCatalog,
   normalizeNs5WorkflowsPayload,
   ns5WorkflowsNeedsLlm,
   type Ns5WorkflowsEntityView,
@@ -556,6 +558,106 @@ void test('trigger.event still rejects a malformed event id', () => {
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_TRIGGER_EVENT'));
 });
 
+/** ns5_48: the alert stage — a recurring duty of a person, no journey and no entity. */
+function alertProcess(tasks: unknown[]): Record<string, unknown> {
+  return {
+    processId: 'gerarMensalidades',
+    title: 'Monthly fees',
+    description: 'Every month the management issues the fees.',
+    trigger: { kind: 'scheduled', schedule: 'todo mes, dia 1' },
+    tasks,
+  };
+}
+
+const NO_HANDOFF_JOURNEYS = ORDEN_JOURNEYS.map(item => ({
+  ...item,
+  business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
+}));
+
+void test('gate accepts an alert stage under a scheduled trigger', () => {
+  const processes = drafts({
+    processes: [alertProcess([{
+      taskId: 'avisarGerencia',
+      kind: 'alert',
+      actorRef: 'recepcionista',
+      next: [],
+      description: 'Run abrirOrdenServicio for every active enrolment.',
+    }])],
+  }).processes;
+  assert.equal(processes[0].tasks[0].kind, 'alert');
+  const gate = gateOf(processes, NO_HANDOFF_JOURNEYS, ORDEN_ENTITIES);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('gate rejects an alert without actorRef and an alert with an unknown actor', () => {
+  const missing = drafts({
+    processes: [alertProcess([{ taskId: 'semAtor', kind: 'alert', next: [], description: 'No one owns it.' }])],
+  }).processes;
+  const missingGate = gateOf(missing, NO_HANDOFF_JOURNEYS, ORDEN_ENTITIES);
+  assert.equal(missingGate.ok, false);
+  assert.ok(missingGate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ALERT_ACTOR'));
+
+  const unknown = drafts({
+    processes: [alertProcess([{ taskId: 'fantasma', kind: 'alert', actorRef: 'ghost', next: [], description: 'Unknown actor.' }])],
+  }).processes;
+  const unknownGate = gateOf(unknown, NO_HANDOFF_JOURNEYS, ORDEN_ENTITIES);
+  assert.equal(unknownGate.ok, false);
+  assert.ok(unknownGate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ALERT_ACTOR'));
+});
+
+void test('gate rejects an alert that carries a journeyRef or an entityRef', () => {
+  const processes = drafts({
+    processes: [alertProcess([{
+      taskId: 'comJornada',
+      kind: 'alert',
+      actorRef: 'recepcionista',
+      journeyRef: 'abrirOrdenServicio',
+      next: [],
+      description: 'An alert is not a human stage.',
+    }])],
+  }).processes;
+  // normalize keeps the field so the gate can name the mistake instead of dropping it silently.
+  assert.equal(processes[0].tasks[0].journeyRef, 'abrirOrdenServicio');
+  const gate = gateOf(processes, NO_HANDOFF_JOURNEYS, ORDEN_ENTITIES);
+  assert.equal(gate.ok, false);
+  const kind = gate.issues.find(issue => issue.code === 'NS5_WORKFLOWS_KIND');
+  assert.ok(kind);
+  assert.match(kind.message, /alert carries no journey or entity/);
+});
+
+void test('a state the data already answers is no signal: no phrase, no LLM call', () => {
+  const phrases = collectNs5TimeEventPhrases('A mensalidade fica vencida depois do dia 10. O aluno bloqueado nao entra.');
+  assert.deepEqual(phrases, []);
+  assert.equal(ns5WorkflowsNeedsLlm([], phrases), false);
+  assert.equal(
+    ns5WorkflowsNeedsLlm([], collectNs5TimeEventPhrases('Todo mes a gerencia gera as mensalidades.')),
+    true,
+  );
+});
+
+void test('buildNs5WorkflowsArtifactV3 stamps v3 and v2 stays available for recorded runs', () => {
+  const normalized = drafts({ processes: [validProcess()] });
+  assert.equal(
+    buildNs5WorkflowsArtifactV3('mensalidadesAcademia', normalized.processes).schemaVersion,
+    '2026-09-17-ns5-workflows-v3',
+  );
+  assert.equal(
+    buildNs5WorkflowsArtifact('mensalidadesAcademia', normalized.processes).schemaVersion,
+    '2026-09-12-ns5-workflows-v2',
+  );
+});
+
+void test('workflows schema declares the alert branch with all five keys required', () => {
+  const schema = loadSchema() as { $defs: { task: { oneOf: Array<Record<string, any>> } } };
+  const branches = schema.$defs.task.oneOf;
+  assert.equal(branches.length, 4);
+  const alert = branches.find(branch => branch.properties?.kind?.const === 'alert');
+  assert.ok(alert);
+  assert.equal(alert.additionalProperties, false);
+  assert.deepEqual(alert.required, ['taskId', 'kind', 'actorRef', 'next', 'description']);
+  assert.deepEqual(Object.keys(alert.properties).sort(), ['actorRef', 'description', 'kind', 'next', 'taskId']);
+});
+
 void test('buildNs5WorkflowsArtifact keeps schemaVersion and process order', () => {
   const normalized = drafts({
     processes: [validProcess()],
@@ -674,4 +776,105 @@ void test('workflows50 prompt has no domain examples and keeps process vs FSM', 
   assert.match(prompt, /mechanical/);
   assert.doesNotMatch(prompt, /stepRef/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto|recepcionista/i);
+});
+
+// --- ns5_49: workflows50 runs before ontology30 -----------------------------
+// There is no ontology on disk when this step runs, so `entities` arrives empty. What a stage cites
+// is a declaration the ontology will honour; the checks against the ontology stand down, and the
+// catalog of valid ids comes from the journeys. The thirteen recorded v2 runs still pass entities,
+// and for them nothing changes.
+
+const NS5_49_FORWARD_PROCESS: Ns5WorkflowProcess[] = drafts({
+  processes: [validProcess({
+    processId: 'closeOrders',
+    trigger: { kind: 'scheduled', schedule: 'todo mes' },
+    tasks: [
+      {
+        taskId: 'archive',
+        kind: 'mechanical',
+        entityRef: 'ServiceOrderArchive',
+        effect: 'transition',
+        transitionRef: 'archiveServiceOrder',
+        next: [],
+        description: 'The system archives the order.',
+      },
+    ],
+  })],
+}).processes;
+
+void test('ns5_49: with no ontology, a stage may cite an entity and a transition that do not exist yet', () => {
+  const gate = validateNs5Workflows(NS5_49_FORWARD_PROCESS, {
+    actorIds: ORDEN_ACTORS,
+    journeys: [],
+    entities: [],
+  });
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'), false, formatNs5WorkflowsGate(gate.issues));
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_TRANSITION'), false, formatNs5WorkflowsGate(gate.issues));
+  assert.equal(gate.ok, true, formatNs5WorkflowsGate(gate.issues));
+});
+
+void test('ns5_49: the same citation is still checked when the ontology IS on hand (recorded v2 runs)', () => {
+  const gate = validateNs5Workflows(NS5_49_FORWARD_PROCESS, {
+    actorIds: ORDEN_ACTORS,
+    journeys: [],
+    entities: ORDEN_ENTITIES,
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'));
+});
+
+void test('ns5_49: a trigger.event may name a transition the ontology has not declared yet', () => {
+  const processes = drafts({
+    processes: [validProcess({
+      processId: 'onArchive',
+      trigger: { kind: 'event', event: 'ServiceOrderArchive.archiveServiceOrder' },
+      tasks: [{ taskId: 'note', kind: 'wait', next: [], description: 'Waits a day.' }],
+    })],
+  }).processes;
+  const without = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: [], entities: [] });
+  assert.equal(without.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'), false);
+  const withOntology = validateNs5Workflows(processes, { actorIds: ORDEN_ACTORS, journeys: [], entities: ORDEN_ENTITIES });
+  assert.ok(withOntology.issues.some(issue => issue.code === 'NS5_WORKFLOWS_ENTITY_UNKNOWN'));
+});
+
+void test('ns5_49: a foreignBy signal alone no longer obliges a process', () => {
+  const noHandoff = ORDEN_JOURNEYS.map(item => ({
+    ...item,
+    business: {
+      ...item.business,
+      steps: item.business.steps.filter(step => step.kind !== 'handoff' && step.kind !== 'decide'),
+    },
+  }));
+  const signals = collectNs5ProcessSignals(noHandoff, ORDEN_ENTITIES);
+  assert.ok(signals.some(signal => signal.kind === 'foreignBy'));
+  const gate = validateNs5Workflows([], { actorIds: ORDEN_ACTORS, journeys: noHandoff, entities: ORDEN_ENTITIES });
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_SIGNAL_WITHOUT_PROCESS'), false);
+});
+
+void test('ns5_49: a handoff and a cross-actor decide still oblige a process', () => {
+  const gate = validateNs5Workflows([], { actorIds: ORDEN_ACTORS, journeys: ORDEN_JOURNEYS, entities: [] });
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_WORKFLOWS_SIGNAL_WITHOUT_PROCESS'));
+});
+
+void test('ns5_49: the reference catalog comes from the journeys when there is no ontology', () => {
+  const catalog = collectNs5WorkflowsRefCatalog(ORDEN_JOURNEYS, ORDEN_ACTORS, []);
+  assert.deepEqual(catalog.entityIds, ['ServiceOrder']);
+  assert.deepEqual(catalog.transitionRefs.sort(), [
+    'ServiceOrder.completeServiceOrder',
+    'ServiceOrder.markServiceOrderReady',
+    'ServiceOrder.publishBudget',
+  ]);
+});
+
+void test('ns5_49: the human prompt no longer carries the entity lifecycle block', () => {
+  const prompt = buildNs5WorkflowsHumanPrompt({
+    sourcePrompt: 'todo mes a gerencia fecha as ordens.',
+    userLanguage: 'pt-BR',
+    actorIds: ORDEN_ACTORS,
+    journeys: ORDEN_JOURNEYS as never,
+    entities: [],
+  });
+  assert.equal(prompt.includes('## Entities with lifecycle'), false);
+  assert.match(prompt, /## Valid reference ids/);
+  assert.match(prompt, /ServiceOrder\.publishBudget/);
 });

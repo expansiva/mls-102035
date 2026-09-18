@@ -9,6 +9,7 @@ import {
   existingModuleName,
   isNs5StepId,
   moduleTokenOk,
+  ns5EntryRefusal,
   parseNs5Invocation,
   startNs5Pipeline,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
@@ -16,6 +17,7 @@ import {
   drainWaitingSiblings,
   hooksFor,
   markAwaitingStep,
+  ns5StatusMessage,
   planIdOf,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
@@ -48,31 +50,9 @@ async function beforePromptImplicit(
   userPrompt: string,
 ): Promise<mls.msg.AgentIntent[]> {
   const invocation = parseNs5Invocation(userPrompt || '');
-  if (!invocation.prompt && !invocation.rebuildAll) {
-    return statusTask(agent, context, 'Provide the module description after @@newSolution5.');
-  }
-  if (invocation.rebuildAll && !invocation.module) {
-    return statusTask(agent, context, 'Pass /rebuild all <lowerCamel>. /rebuild all needs the module name.');
-  }
-  if (invocation.module && !moduleTokenOk(invocation.module)) {
-    return statusTask(agent, context, 'Module name must be lowerCamel (example: stockControl).');
-  }
-
-  const existing = invocation.module ? existingModuleName(invocation.module) : '';
-  if (existing && !invocation.rebuildAll) {
-    return statusTask(
-      agent,
-      context,
-      `Module "${existing}" already exists. To regenerate, use "@@newSolution5 ${existing} /rebuild all". Nothing was changed.`,
-    );
-  }
-  if (invocation.rebuildAll && !existing) {
-    return statusTask(
-      agent,
-      context,
-      `Module "${invocation.module}" does not exist. /rebuild all refuses to create a module that is not there.`,
-    );
-  }
+  const existing = invocation.module && moduleTokenOk(invocation.module) ? existingModuleName(invocation.module) : '';
+  const refusal = ns5EntryRefusal(invocation, existing);
+  if (refusal) return statusTask(agent, context, refusal);
 
   const moduleName = existing || invocation.module;
   const flags: Ns5Invocation = { fast: invocation.fast, module: moduleName, rebuildAll: invocation.rebuildAll };
@@ -183,22 +163,7 @@ function addStepIntent(context: mls.msg.ExecutionContext, step: mls.msg.AIPayloa
 }
 
 function statusTask(agent: IAgentMeta, context: mls.msg.ExecutionContext, message: string): mls.msg.AgentIntent[] {
-  const addMessage: mls.msg.AgentIntentAddMessageAI = {
-    type: 'add-message-ai',
-    skipRootLLM: true,
-    request: {
-      action: 'addMessageAI',
-      agentName: agent.agentName,
-      inputAI: [
-        { type: 'system', content: `<!-- modelType: general -->\n${message}` },
-        { type: 'human', content: message },
-      ],
-      taskTitle: 'new Solution 5',
-      threadId: context.message.threadId,
-      userMessage: context.message.content,
-      longTermMemory: { taskName: 'newSolution5', flowName: NS5_AGENT_NAME, statusOnly: 'true' },
-    },
-  };
+  const addMessage = ns5StatusMessage(agent, context, message);
   const result: mls.msg.AIPayload = {
     type: 'result',
     stepId: 0,

@@ -57,11 +57,26 @@ else goes inside `details`, as a tree, however deep the business needs.
 - `uniqueKeys` names columns only.
 - `id` and `version` are written for you; do not declare them.
 
-Lifecycle only when the request names it. Each state is `{ state, reachedBy }` (`actor`, `command` or
-`time`); an entity with a lifecycle carries an indexed `status` column whose `values` cover the states.
-Transitions are `{ transitionId, from, to, by, description, ruleRefs? }`, `by` holding actor ids of the
-module, or the single value `system` or `time`. Every `transitionRef` an `act` cites on this entity is
-required, with that journey's actor in `by`. The human prompt lists the citations.
+A lifecycle is only for what **somebody moves**. Each state is `{ state, reachedBy }` (`actor` or
+`command`); an entity with a lifecycle carries an indexed `status` column whose `values` cover the
+states, and `status` holds only what an actor or a command writes. Transitions are
+`{ transitionId, from, to, by, description, ruleRefs? }`; `by` is a list of actor ids of the module, and
+is **empty** when the move belongs to a process and to no person. Every `transitionRef` an `act` cites
+on this entity is required, with that journey's actor in `by`. The human prompt lists the citations.
+The processes were written before this step: every `entityRef` and `transitionRef` a `mechanical` or
+`llm` stage cites on this entity is required too, and a transition only a stage cites has `by: []` —
+the process moves it, no person does. `## Process stages that touch this entity` lists them.
+
+**What nobody writes is `derived`, not a state.** A condition that follows from the data itself — an
+instalment past its date, a total paid that matches the amount due, a person blocked by what their
+records say, a table free because no open order points at it — is never a state, never a value of
+`status`, and never the `from` of a transition. It is one item of `derived`:
+`{ id, type, title, description, ruleRefs }`, computed when the row is read. `description` carries the
+whole of it, in prose, in the user language: the condition AND what it reads — "em aberto e com
+vencimento anterior a hoje", "soma dos pagamentos desta mensalidade", "duas ou mais mensalidades
+vencidas do aluno". Write it as a person would say it, naming the data in the words of the request; do
+not write a path, a column name or a formula. `ruleRefs` names the rules it obeys, and may be empty.
+A value recalculated over MANY rows by time window and group is not this: that is a `ddm` entity.
 
 ## Links, capabilities, rules
 

@@ -15,6 +15,7 @@ import {
 import {
   NS5_STEP_HOOKS,
   drainWaitingSiblings,
+  ns5StatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
@@ -33,7 +34,12 @@ import {
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import type { Ns5Invocation, Ns5ModuleActor, Ns5ModuleArtifact, Ns5PipelineState } from '/_102035_/l2/solution/types.js';
-import { buildNs5ModuleTool, normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
+import {
+  NS5_MODULE_NOT_A_REQUEST,
+  buildNs5ModuleTool,
+  normalizeNs5ModuleArtifact,
+  ns5ModuleRequestKind,
+} from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
 import { formatNs5ModuleGate, validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
 
 const MAX_REPAIRS = 2;
@@ -139,6 +145,21 @@ export async function afterNs5ModulePromptStep(
 
     const sourcePrompt = await readSourcePrompt(context, moduleName);
     const invocation = invocationOf(context, moduleName ? await readPipeline(moduleName) : null);
+
+    // ns5_52b: the intent gate. It runs before `normalizeNs5ModuleArtifact` and before the first
+    // write, so a request that is not a module request leaves no folder in l4/. The remaining steps
+    // are drained so the run ends answered, not `failed` eleven steps later.
+    // `/rebuild all` is exempt: `startNs5Pipeline` already deleted the module at the entry hook, so
+    // refusing here would leave the user with nothing instead of a rebuild. The empty rebuild of
+    // achado 3 never reaches this point — `ns5EntryRefusal` stops it before the deletion.
+    if (!invocation.rebuildAll && ns5ModuleRequestKind(payload) === 'notAModuleRequest') {
+      return [
+        ns5StatusMessage(agent, context, NS5_MODULE_NOT_A_REQUEST),
+        ...drainWaitingSiblings(context, step, hookSequential, 'stopped: the request does not describe a module.'),
+        updateStatus(context, mutationParent, step, hookSequential, 'completed', 'module10 refused: the request does not describe a module. Nothing was written.'),
+      ];
+    }
+
     const fixedModuleName = invocation.module;
     const { artifact, actors, i18nWarnings, normalizations } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
     moduleName = artifact.moduleName;

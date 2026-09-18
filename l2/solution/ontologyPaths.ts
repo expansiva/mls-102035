@@ -30,7 +30,7 @@
  */
 
 import {
-  NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+  isNs5OntologyEntityV3,
   type Ns5OntologyAnyEntity,
   type Ns5OntologyFieldsV3,
 } from '/_102035_/l2/solution/types.js';
@@ -55,7 +55,7 @@ export function resolvableFieldPaths(entity: Ns5OntologyAnyEntity): string[] {
   };
 
   add(entity.entityId);
-  if (entity.schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3) {
+  if (isNs5OntologyEntityV3(entity)) {
     walkFields(entity.record.fields, entity.entityId, add);
     return refs;
   }

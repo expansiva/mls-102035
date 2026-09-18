@@ -1,5 +1,16 @@
 # module10
 
+## 2026-09-18 (ns5_52b)
+
+- `requestKind` (`moduleRequest` | `notAModuleRequest`) is required by `submitNs5Module` and read by
+  `ns5ModuleRequestKind`. `notAModuleRequest` answers the user with `NS5_MODULE_NOT_A_REQUEST`,
+  drains the remaining steps and returns before `ensurePipeline`, so no folder is created in `l4/`.
+  The verdict is not persisted: `normalizeNs5ModuleArtifact` never copies it to the artifact, and a
+  payload without the field (every recorded run) still means `moduleRequest`.
+- The verdict does not apply to `/rebuild all`: the entry hook already deleted the module before the
+  step runs, so refusing there would leave nothing in its place. A `/rebuild all` with no request in
+  the body is refused earlier, by `ns5EntryRefusal`, before the deletion.
+
 ## 2026-09-12
 
 - `pt` → `pt-BR` on `userLanguage` / `productLanguages` / `defaultLanguage`. `en` stays

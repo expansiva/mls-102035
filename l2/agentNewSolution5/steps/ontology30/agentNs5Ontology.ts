@@ -38,6 +38,7 @@ import {
   readJson,
   readPipeline,
   reconcileModuleDefs,
+  workflowsFile,
   writeDefs,
   writeJson,
   writePipeline,
@@ -53,9 +54,11 @@ import type {
   Ns5ModuleArtifact,
   Ns5OntologyEntityV3,
   Ns5PipelineState,
+  Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import {
   applyNs5ModuleDetails,
+  collectNs5CitedProcessStages,
   collectNs5CitedTransitions,
   collectNs5PersonalScopeActors,
   formatNs5PersonalScopeActors,
@@ -104,6 +107,8 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
   userLanguage: string;
   actors: Ns5ModuleActor[];
   journeys: Ns5JourneyArtifact[];
+  /** ns5_49: workflows50 already ran; its stages name entities this plan must declare. */
+  workflows?: Ns5WorkflowsArtifact | null;
   platformCatalog: string;
   siblingsText?: string;
   gateFeedback?: string;
@@ -124,6 +129,9 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
     '',
     formatNs5PersonalScopeActors(collectNs5PersonalScopeActors(input.actors, input.journeys)),
     '',
+    '## Entities the process stages write',
+    formatProcessStages(input.workflows, ''),
+    '',
     input.siblingsText || '',
     input.platformCatalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
@@ -136,6 +144,8 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
   userLanguage: string;
   actors: Ns5ModuleActor[];
   journeys: Ns5JourneyArtifact[];
+  /** ns5_49: the second source of citations; a stage owns the transition it applies. */
+  workflows?: Ns5WorkflowsArtifact | null;
   plan: Ns5OntologyV3PlanDraft;
   entityId: string;
   /** The catalog of the entity's family: the platform record on a role, `tdm`/`ddm` on a table. */
@@ -159,8 +169,11 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
     '## Journeys that touch this entity',
     formatJourneys(input.journeys.filter(journey => journeyTouches(journey, input.entityId))),
     '',
+    '## Process stages that touch this entity',
+    formatProcessStages(input.workflows, input.entityId),
+    '',
     '## Cited transitions this entity must declare',
-    formatCitedTransitions(input.journeys, input.entityId),
+    formatCitedTransitions(input.journeys, input.workflows, input.entityId),
     '',
     '## Frozen entity',
     JSON.stringify(entity, null, 2),
@@ -260,9 +273,10 @@ async function buildPlanPrompt(
   args: string,
   parsed: OntologyArgs,
 ): Promise<mls.msg.AgentIntentPromptReady> {
-  const [moduleArtifact, journeys, prompt, schema, previous, siblings] = await Promise.all([
+  const [moduleArtifact, journeys, workflows, prompt, schema, previous, siblings] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
+    readWorkflows(parsed.moduleName),
     readAgentText('steps/ontology30', 'prompt', '.md'),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-plan-v3.schema', '.json'),
     readJson(draftFile(parsed.moduleName, 'ontology30-plan')),
@@ -275,6 +289,7 @@ async function buildPlanPrompt(
     userLanguage: moduleArtifact.userLanguage,
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
+    workflows,
     platformCatalog: formatNs5PlatformCatalog(mdm),
     siblingsText: formatNs5Siblings(siblings),
     gateFeedback: parsed.gateFeedback,
@@ -296,9 +311,10 @@ async function buildEntityPrompt(
   if (!frozen) {
     throw new Error(`Entity ${entityId} is not present in the ontology30 overview.`);
   }
-  const [moduleArtifact, journeys, prompt, schema, previous] = await Promise.all([
+  const [moduleArtifact, journeys, workflows, prompt, schema, previous] = await Promise.all([
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
+    readWorkflows(parsed.moduleName),
     readAgentText('steps/ontology30', 'promptEntity', '.md'),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-entity-v3.schema', '.json'),
     readJson(entityDraftFile(parsed.moduleName, entityId)),
@@ -310,6 +326,7 @@ async function buildEntityPrompt(
     userLanguage: moduleArtifact.userLanguage,
     actors: await readNs5Actors(parsed.moduleName),
     journeys,
+    workflows,
     plan,
     entityId,
     startingPoint: startingPointFor(frozen, parsed.moduleName),
@@ -357,12 +374,13 @@ async function handlePlanResult(
   }
   await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
+  const workflows = await readWorkflows(parsed.moduleName);
   const plan = normalizeNs5OntologyPlanV3(payload, parsed.moduleName);
   plan.moduleName = parsed.moduleName;
   let pipeline = await requirePipeline(parsed.moduleName);
   pipeline = await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString() });
   await writeJson(draftFile(parsed.moduleName, 'ontology30-plan'), plan);
-  const gate = validateNs5OntologyPlanV3(plan, { moduleName: parsed.moduleName, mdm, tdm, ddm, journeys });
+  const gate = validateNs5OntologyPlanV3(plan, { moduleName: parsed.moduleName, mdm, tdm, ddm, journeys, workflows });
   if (!gate.ok) {
     const feedback = formatNs5OntologyV3Gate(gate.issues);
     if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -401,11 +419,14 @@ async function handleEntityResult(
   }
   const moduleArtifact = await readModule(parsed.moduleName);
   const journeys = await readJourneys(parsed.moduleName);
+  const workflows = await readWorkflows(parsed.moduleName);
   const normalizations: Ns5OntologyV3Normalization[] = [];
   const entity = normalizeNs5OntologyEntityV3(payload, entityId, {
     moduleName: parsed.moduleName,
     mdm,
     plan,
+    journeys,
+    workflows,
   }, normalizations);
   if (!entity) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} is not in the plan; finalizer will repair it.`)];
@@ -417,6 +438,7 @@ async function handleEntityResult(
     tdm,
     ddm,
     journeys,
+    workflows,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: (await readNs5Actors(parsed.moduleName)).map(actor => actor.actorId),
   });
@@ -447,8 +469,9 @@ async function finalizeOntology(
   const mutationParent = findMutableParent(context, parentStep);
   const plan = await readPlanDraft(parsed.moduleName);
   const moduleArtifact = await readModule(parsed.moduleName);
-  const [journeys, actors] = await Promise.all([
+  const [journeys, workflows, actors] = await Promise.all([
     readJourneys(parsed.moduleName),
+    readWorkflows(parsed.moduleName),
     readNs5Actors(parsed.moduleName),
   ]);
   const gateContext = {
@@ -457,6 +480,7 @@ async function finalizeOntology(
     tdm,
     ddm,
     journeys,
+    workflows,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: actors.map(actor => actor.actorId),
   };
@@ -488,7 +512,7 @@ async function finalizeOntology(
   }
   // A panel is not a table: an entity nobody writes, with no lifecycle and no link, is lifted into
   // `module.details` and leaves the ontology (ns5_42 T6, the v3 form of the v2 aggregate lift).
-  const lift = liftNs5AggregateOnlyEntitiesV3(plan, entities, journeys);
+  const lift = liftNs5AggregateOnlyEntitiesV3(plan, entities, journeys, workflows);
   const index = assembleNs5OntologyIndexV3(lift.plan, moduleNamespaceDescription(parsed.moduleName));
   const assembly = validateNs5OntologyAssemblyV3(index, lift.entities, gateContext);
   if (!assembly.ok) throw new Error(formatNs5OntologyV3Gate(assembly.issues));
@@ -642,6 +666,11 @@ async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
   if (pipeline?.steps.journeys20?.status !== 'approved') {
     throw new Error(`journeys20 must be approved before ontology30 (${moduleName}).`);
   }
+  // ns5_49: the ontology honours the entities and transitions the process stages cite, so it waits
+  // for workflows50 too.
+  if (pipeline?.steps.workflows50?.status !== 'approved') {
+    throw new Error(`workflows50 must be approved before ontology30 (${moduleName}).`);
+  }
   return artifact;
 }
 
@@ -656,14 +685,28 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
+/**
+ * ns5_49: workflows50 runs before this step, so `workflows.defs.ts` is on disk. It is missing only on
+ * a module recorded under flow v1, and then there is simply nothing cited forward — `null`, not a throw.
+ */
+async function readWorkflows(moduleName: string): Promise<Ns5WorkflowsArtifact | null> {
+  return await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
+}
+
 async function readPlanDraft(moduleName: string): Promise<Ns5OntologyV3PlanDraft> {
   const plan = await readJson<Ns5OntologyV3PlanDraft>(draftFile(moduleName, 'ontology30-plan'));
   if (!plan?.entities?.length) throw new Error(`ontology30 plan draft is missing for ${moduleName}.`);
   return plan;
 }
 
+/**
+ * ns5_52b achado 4: the `entity-` segment keeps an entity called `Plan` off the plan draft
+ * (`ontology30-plan-draft.json`), which on a case-insensitive file system (APFS) overwrote it and
+ * failed the step with "ontology30 plan draft is missing". Lower-casing the id would make the
+ * collision certain on every OS instead.
+ */
 function entityDraftFile(moduleName: string, entityId: string) {
-  return draftFile(moduleName, `ontology30-${entityId}`);
+  return draftFile(moduleName, `ontology30-entity-${entityId}`);
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
@@ -741,10 +784,38 @@ function formatJourneys(journeys: Ns5JourneyArtifact[]): string {
   ].join('\n')).join('\n\n');
 }
 
-function formatCitedTransitions(journeys: Ns5JourneyArtifact[], entityId: string): string {
-  const cited = collectNs5CitedTransitions(journeys).filter(item => item.entityId === entityId);
-  if (!cited.length) return '(none)';
-  return cited.map(item => `- ${item.transitionId} by ${item.actorRef} (${item.stepId})`).join('\n');
+/**
+ * ns5_49: a transition may be cited by a journey act (a person applies it) or by a process stage
+ * (nobody does — the process owns it, and `by` is written as `[]`). Both are listed, tagged.
+ */
+function formatCitedTransitions(
+  journeys: Ns5JourneyArtifact[],
+  workflows: Ns5WorkflowsArtifact | null | undefined,
+  entityId: string,
+): string {
+  const lines = collectNs5CitedTransitions(journeys)
+    .filter(item => item.entityId === entityId)
+    .map(item => `- ${item.transitionId} by ${item.actorRef} (${item.stepId})`);
+  const byJourney = new Set(
+    collectNs5CitedTransitions(journeys).filter(item => item.entityId === entityId).map(item => item.transitionId),
+  );
+  for (const stage of collectNs5CitedProcessStages(workflows)) {
+    if (stage.entityId !== entityId || stage.effect !== 'transition' || !stage.transitionId) continue;
+    if (byJourney.has(stage.transitionId)) continue;
+    lines.push(`- ${stage.transitionId} by: (process) (${stage.processId}.${stage.taskId})`);
+  }
+  return lines.length ? lines.join('\n') : '(none)';
+}
+
+/** The `mechanical`/`llm` stages, all of them or only the ones writing `entityId`. */
+function formatProcessStages(workflows: Ns5WorkflowsArtifact | null | undefined, entityId: string): string {
+  const lines = collectNs5CitedProcessStages(workflows)
+    .filter(stage => !entityId || stage.entityId === entityId)
+    .map(stage => {
+      const transition = stage.effect === 'transition' && stage.transitionId ? ` transitionRef=${stage.transitionId}` : '';
+      return `- ${stage.processId}.${stage.taskId} ${stage.entityId} effect=${stage.effect}${transition}`;
+    });
+  return lines.length ? lines.join('\n') : '(none)';
 }
 
 function journeyTouches(journey: Ns5JourneyArtifact, entityId: string): boolean {

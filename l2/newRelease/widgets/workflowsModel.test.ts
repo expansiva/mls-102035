@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { comprasWorkflows } from '../../../../mls-102047/l4/compras/workflows.defs.js';
 import {
+  isEditableWorkflowSchema,
+  isRecurringDuty,
   nextMemberId,
   normalizeWorkflows,
   workflowNextLabels,
@@ -55,4 +57,35 @@ test('reads the real compras fixture with two v2 processes', () => {
   assert.equal(view.processes.length, 2);
   assert.equal(view.processes[0].trigger?.kind, 'manual');
   assert.ok(workflowTaskCount(view.processes) >= 5);
+});
+
+test('recognizes workflows v3 and derives the recurring duty from a scheduled alert process', () => {
+  const view = normalizeWorkflows({
+    schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'mensalidadesAcademia',
+    processes: [
+      { processId: 'gerarMensalidades', title: 'G', description: 'D', trigger: { kind: 'scheduled', schedule: 'todo mes, dia 1' }, tasks: [
+        { taskId: 'avisar', kind: 'alert', actorRef: 'gerencia', next: [], description: 'Roda gerarMensalidadesDoMes.' },
+      ] },
+      { processId: 'atender', title: 'A', description: 'D', trigger: { kind: 'manual', actorRef: 'gerencia' }, tasks: [
+        { taskId: 'agir', kind: 'mechanical', entityRef: 'Mensalidade', effect: 'create', next: [], description: 'Cria.' },
+      ] },
+    ],
+    journeyDecisions: [{ journeyId: 'gerarMensalidadesDoMes', inProcess: true, processId: 'gerarMensalidades' }],
+  });
+  assert.equal(view.schema, 'v3');
+  assert.equal(isEditableWorkflowSchema('v3'), true);
+  assert.equal(isEditableWorkflowSchema('v2'), true);
+  assert.equal(isEditableWorkflowSchema('v1'), false);
+  assert.equal(view.processes[0].tasks[0].kind, 'alert');
+  assert.equal(isRecurringDuty(view.processes[0]), true);
+  assert.equal(isRecurringDuty(view.processes[1]), false);
+});
+
+test('a scheduled process with no stage is not a recurring duty', () => {
+  const view = normalizeWorkflows({
+    schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',
+    processes: [{ processId: 'p', title: 'P', description: 'D', trigger: { kind: 'scheduled', schedule: 'mensal' }, tasks: [] }],
+    journeyDecisions: [],
+  });
+  assert.equal(isRecurringDuty(view.processes[0]), false);
 });

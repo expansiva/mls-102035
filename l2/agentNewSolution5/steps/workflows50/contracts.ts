@@ -4,6 +4,7 @@ import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import { splitNs5EntityRef } from '/_102035_/l2/solution/ontologyView.js';
 import {
   NS5_WORKFLOWS_SCHEMA_VERSION,
+  NS5_WORKFLOWS_SCHEMA_VERSION_V3,
   type Ns5JourneyDecision,
   type Ns5SystemDecision,
   type Ns5WorkflowProcess,
@@ -15,7 +16,7 @@ import {
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const EVENT_TRANSITION = /^([A-Z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/;
-const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait']);
+const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait', 'alert']);
 const EFFECTS = new Set(['create', 'update', 'transition']);
 /** Deterministic extract of time/event phrases from sourcePrompt. Not in the prompt. Accents are folded first. */
 const TIME_EVENT_MARKER = /\b(?:todo|cada|quando|automaticamente|a cada|mensal|diario)\b/;
@@ -69,7 +70,7 @@ export function buildNs5WorkflowsTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Workflows',
-    'Submit orchestrated processes: trigger plus human/mechanical/llm/wait stages, and one inProcess decision per journey. Not the entity lifecycle.',
+    'Submit orchestrated processes: trigger plus human/mechanical/llm/wait/alert stages, and one inProcess decision per journey. Not the entity lifecycle.',
     schema,
   );
 }
@@ -89,6 +90,7 @@ export function normalizeNs5WorkflowsPayload(
   };
 }
 
+/** v2. Kept for the thirteen recorded runs the replay renders in the form they were recorded in. */
 export function buildNs5WorkflowsArtifact(
   moduleName: string,
   processes: Ns5WorkflowProcess[],
@@ -97,6 +99,22 @@ export function buildNs5WorkflowsArtifact(
 ): Ns5WorkflowsArtifact {
   return {
     schemaVersion: NS5_WORKFLOWS_SCHEMA_VERSION,
+    moduleName,
+    processes,
+    journeyDecisions,
+    ...(systemDecisions.length ? { systemDecisions } : {}),
+  };
+}
+
+/** v3 (ns5_48). What the step writes from now on: the only form that may carry an `alert` stage. */
+export function buildNs5WorkflowsArtifactV3(
+  moduleName: string,
+  processes: Ns5WorkflowProcess[],
+  journeyDecisions: Ns5JourneyDecision[] = [],
+  systemDecisions: Ns5SystemDecision[] = [],
+): Ns5WorkflowsArtifact {
+  return {
+    schemaVersion: NS5_WORKFLOWS_SCHEMA_VERSION_V3,
     moduleName,
     processes,
     journeyDecisions,
@@ -231,6 +249,46 @@ export function collectNs5Handoffs(journeys: readonly Ns5WorkflowsJourneyView[])
   return out;
 }
 
+/**
+ * ns5_49: the entity ids a journey names. `step.entity` may point into an embedded child
+ * (`PedidoCompra.details.itens`); only the root is an entity id.
+ */
+export function collectNs5JourneyEntityIds(journeys: readonly Ns5WorkflowsJourneyView[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      for (const ref of [step.entity, ...(step.affects || [])]) {
+        if (!ref) continue;
+        const root = splitNs5EntityRef(ref).root;
+        if (!root || seen.has(root)) continue;
+        seen.add(root);
+        out.push(root);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * ns5_49: `Entity.transitionId` cited by a journey act. Before the reorder these came from the
+ * ontology; the ontology now runs after this step, so the journeys are the only source.
+ */
+export function collectNs5JourneyTransitionRefs(journeys: readonly Ns5WorkflowsJourneyView[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      if (step.kind !== 'act' || step.effect !== 'transition' || !step.transitionRef || !step.entity) continue;
+      const ref = `${splitNs5EntityRef(step.entity).root}.${step.transitionRef}`;
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      out.push(ref);
+    }
+  }
+  return out;
+}
+
 export function collectNs5WorkflowsRefCatalog(
   journeys: readonly Ns5WorkflowsJourneyView[],
   actorIds: readonly string[],
@@ -246,13 +304,16 @@ export function collectNs5WorkflowsRefCatalog(
   for (const journey of journeys) {
     if (journey.journeyId) journeyIds.push(journey.journeyId);
   }
-  const entityIds: string[] = [];
-  const transitionRefs: string[] = [];
+  // ns5_49: the journeys are the floor of the catalog. `entities` is empty in the flow v2 order and
+  // carries the recorded v2 runs, where the ontology already existed; both sources are unioned.
+  const entityIds: string[] = collectNs5JourneyEntityIds(journeys);
+  const transitionRefs: string[] = collectNs5JourneyTransitionRefs(journeys);
   for (const entity of entities) {
-    if (entity.entityId) entityIds.push(entity.entityId);
+    if (entity.entityId && !entityIds.includes(entity.entityId)) entityIds.push(entity.entityId);
     for (const transition of entity.transitions) {
       if (!transition.transitionId) continue;
-      transitionRefs.push(`${entity.entityId}.${transition.transitionId}`);
+      const ref = `${entity.entityId}.${transition.transitionId}`;
+      if (!transitionRefs.includes(ref)) transitionRefs.push(ref);
     }
   }
   return {
@@ -297,8 +358,11 @@ function normalizeTask(value: unknown): Ns5WorkflowTask {
   const task: Ns5WorkflowTask = {
     taskId: memberId(text(source.taskId) || text(source.id), ''),
     kind: resolved,
-    ...(resolved === 'human' && actorRef ? { actorRef } : {}),
-    ...(resolved === 'human' && journeyRef ? { journeyRef } : {}),
+    ...((resolved === 'human' || resolved === 'alert') && actorRef ? { actorRef } : {}),
+    // An alert carries no journeyRef/entityRef, but normalize KEEPS what the model wrote so the gate
+    // can name the mistake (NS5_WORKFLOWS_KIND) instead of silently dropping it.
+    ...((resolved === 'human' || resolved === 'alert') && journeyRef ? { journeyRef } : {}),
+    ...(resolved === 'alert' && entityRef ? { entityRef } : {}),
     ...((resolved === 'mechanical' || resolved === 'llm') && actorRef ? { actorRef } : {}),
     ...((resolved === 'mechanical' || resolved === 'llm') && entityRef ? { entityRef } : {}),
     ...((resolved === 'mechanical' || resolved === 'llm') && EFFECTS.has(effect)

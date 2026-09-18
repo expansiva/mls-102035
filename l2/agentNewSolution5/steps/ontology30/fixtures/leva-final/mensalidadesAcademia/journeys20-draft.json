@@ -1,0 +1,282 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cadastrarPlano",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Cadastrar plano de academia",
+        "goal": "Disponibilizar um plano mensal, trimestral ou anual com valor e dia de vencimento para matrículas.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "criarPlano",
+            "kind": "act",
+            "entity": "Plano",
+            "effect": "create",
+            "title": "x",
+            "description": "Cadastra o plano, informando sua periodicidade, valor e dia de vencimento."
+          }
+        ],
+        "outcome": {
+          "statement": "Um plano fica disponível para ser utilizado nas matrículas.",
+          "evidence": [
+            "O plano cadastrado apresenta periodicidade, valor e dia de vencimento."
+          ]
+        }
+      },
+      "businessHash": "sha256:e5081b8501e07397e8eca0a5808df50bbda6af9b4616cfbc4b238894e0cbff0d"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "matricularAluno",
+      "business": {
+        "actorRef": "recepcao",
+        "title": "Matricular aluno em um plano",
+        "goal": "Iniciar a matrícula de um aluno em um plano a partir de uma data definida.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarAluno",
+            "kind": "locate",
+            "entity": "Aluno",
+            "title": "x",
+            "description": "Localiza o aluno pelo cadastro existente para evitar duplicidade; caso ainda não exista, a matrícula poderá criar ou vincular seu registro mestre."
+          },
+          {
+            "stepId": "localizarPlano",
+            "kind": "locate",
+            "entity": "Plano",
+            "title": "x",
+            "description": "Localiza o plano escolhido pelo aluno."
+          },
+          {
+            "stepId": "inspecionarPlano",
+            "kind": "inspect",
+            "entity": "Plano",
+            "title": "x",
+            "description": "Confere a periodicidade, o valor e o dia de vencimento do plano selecionado."
+          },
+          {
+            "stepId": "criarMatricula",
+            "kind": "act",
+            "entity": "Matricula",
+            "effect": "create",
+            "title": "x",
+            "description": "Registra a matrícula do aluno no plano selecionado a partir da data informada; quando necessário, cria ou vincula o papel de aluno no registro mestre."
+          }
+        ],
+        "outcome": {
+          "statement": "O aluno fica matriculado em um plano ativo a partir da data definida.",
+          "evidence": [
+            "Existe uma matrícula vinculando o aluno ao plano com sua data de início.",
+            "A matrícula pode ser considerada na geração das mensalidades futuras."
+          ]
+        }
+      },
+      "businessHash": "sha256:3634402f33f19a08e3a6ca8f64c14b76d05710e97dc6f3b628f05a2d153771a2"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "gerarMensalidadesDoMes",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Gerar mensalidades do mês",
+        "goal": "Gerar uma mensalidade do mês para cada aluno com matrícula ativa.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMatriculasAtivas",
+            "kind": "locate",
+            "entity": "Matricula",
+            "title": "x",
+            "description": "Localiza as matrículas ativas que devem participar da geração mensal."
+          },
+          {
+            "stepId": "gerarMensalidades",
+            "kind": "act",
+            "entity": "Mensalidade",
+            "effect": "create",
+            "title": "x",
+            "description": "Gera uma mensalidade para cada aluno com matrícula ativa, usando o valor do plano e o vencimento correspondente ao mês."
+          }
+        ],
+        "outcome": {
+          "statement": "As mensalidades do período são criadas para os alunos ativos.",
+          "evidence": [
+            "Há uma mensalidade do mês para cada matrícula ativa elegível.",
+            "Cada mensalidade apresenta o valor do plano e sua data de vencimento."
+          ]
+        }
+      },
+      "businessHash": "sha256:f7436d83ba3ea10a09f41fb5407f1e3479092a390099bd71c51c902ba86dd593"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "registrarPagamentoMensalidade",
+      "business": {
+        "actorRef": "recepcao",
+        "title": "Registrar pagamento de mensalidade",
+        "goal": "Registrar o pagamento informado pelo aluno em sua mensalidade.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMensalidade",
+            "kind": "locate",
+            "entity": "Mensalidade",
+            "title": "x",
+            "description": "Localiza a mensalidade apresentada ou procura a mensalidade do aluno."
+          },
+          {
+            "stepId": "inspecionarMensalidade",
+            "kind": "inspect",
+            "entity": "Mensalidade",
+            "title": "x",
+            "description": "Confere o valor devido, o vencimento e a situação da mensalidade."
+          },
+          {
+            "stepId": "registrarPagamento",
+            "kind": "act",
+            "entity": "Pagamento",
+            "effect": "create",
+            "title": "x",
+            "description": "Registra a data, o valor e a forma do pagamento e atualiza a quitação da mensalidade correspondente."
+          }
+        ],
+        "outcome": {
+          "statement": "O pagamento fica registrado e a situação financeira da mensalidade é atualizada.",
+          "evidence": [
+            "Existe um pagamento com data, valor e forma de pagamento vinculados à mensalidade.",
+            "A mensalidade reflete o pagamento registrado."
+          ]
+        }
+      },
+      "businessHash": "sha256:38386e0c267db59c96207418e61167d06487a41d8cc97e12a5c6e086afc14370"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "acompanharIndicadoresAcademia",
+      "business": {
+        "actorRef": "gerencia",
+        "title": "Acompanhar indicadores da academia",
+        "goal": "Consultar os indicadores financeiros e a situação dos alunos no período.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarMensalidadesDoMes",
+            "kind": "locate",
+            "entity": "Mensalidade",
+            "title": "x",
+            "description": "Localiza as mensalidades do mês de referência para a consulta."
+          },
+          {
+            "stepId": "inspecionarIndicadoresFinanceiros",
+            "kind": "inspect",
+            "entity": "Mensalidade",
+            "title": "x",
+            "description": "Consulta os totais calculados a receber e recebidos no mês."
+          },
+          {
+            "stepId": "inspecionarSituacaoDosAlunos",
+            "kind": "inspect",
+            "entity": "Aluno",
+            "title": "x",
+            "description": "Consulta as quantidades calculadas de alunos ativos, bloqueados e inadimplentes."
+          }
+        ],
+        "outcome": {
+          "statement": "A gerência visualiza os indicadores financeiros e de situação dos alunos do período.",
+          "evidence": [
+            "São apresentados o total a receber e o total recebido no mês.",
+            "São apresentadas as quantidades de alunos ativos, bloqueados e inadimplentes."
+          ]
+        }
+      },
+      "businessHash": "sha256:bcf5b1a4e9fce82c0291c7472fcccd8bc4841dfdf14c6e3c72d94348d33b0b94"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cancelarPropriaMatricula",
+      "business": {
+        "actorRef": "aluno",
+        "title": "Cancelar própria matrícula",
+        "goal": "Encerrar a própria matrícula para impedir a geração de mensalidades futuras.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarPropriaMatricula",
+            "kind": "locate",
+            "entity": "Matricula",
+            "title": "x",
+            "description": "Localiza a matrícula ativa do próprio aluno."
+          },
+          {
+            "stepId": "inspecionarPropriaMatricula",
+            "kind": "inspect",
+            "entity": "Matricula",
+            "title": "x",
+            "description": "Confere o plano e a situação da própria matrícula antes do cancelamento."
+          },
+          {
+            "stepId": "cancelarMatricula",
+            "kind": "act",
+            "entity": "Matricula",
+            "effect": "transition",
+            "transitionRef": "cancelarMatricula",
+            "title": "x",
+            "description": "Cancela a própria matrícula, encerrando sua elegibilidade para novas gerações de mensalidade."
+          }
+        ],
+        "outcome": {
+          "statement": "A matrícula do aluno é cancelada e não gera novas mensalidades.",
+          "evidence": [
+            "A matrícula passa a constar como cancelada.",
+            "A matrícula cancelada deixa de participar das gerações futuras de mensalidades."
+          ]
+        }
+      },
+      "businessHash": "sha256:2e964d8e81a93d22cdde97fbf9ab68e6e63a501a16c265383a28d64afc13ba81"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": [],
+  "normalizations": [
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "cadastrarPlano",
+      "stepId": "criarPlano",
+      "detail": "transitionRef x dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "matricularAluno",
+      "stepId": "criarMatricula",
+      "detail": "transitionRef x dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "gerarMensalidadesDoMes",
+      "stepId": "gerarMensalidades",
+      "detail": "transitionRef x dropped; effect is create."
+    },
+    {
+      "kind": "dropTransitionRef",
+      "journeyId": "registrarPagamentoMensalidade",
+      "stepId": "registrarPagamento",
+      "detail": "transitionRef x dropped; effect is create."
+    }
+  ]
+}

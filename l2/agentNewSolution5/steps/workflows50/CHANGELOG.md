@@ -1,5 +1,30 @@
 # workflows50
 
+## 2026-09-17 (ns5_49)
+
+- Runs on the journeys alone: `readEntities` returns `[]` when there is no ontology index instead of
+  throwing, the `## Entities with lifecycle` block leaves the human prompt, and `## Valid reference
+  ids` is built from the journeys (`collectNs5JourneyEntityIds`, `collectNs5JourneyTransitionRefs`),
+  unioned with the ontology when one is passed -- which is the case for the thirteen recorded v2 runs.
+- The gate checks that need an ontology (`NS5_WORKFLOWS_ENTITY_UNKNOWN`, the `trigger.event`
+  transition lookup, `NS5_WORKFLOWS_TRANSITION` / `NS5_WORKFLOWS_TRANSITION_BY`) only run when
+  `context.entities` is non-empty. `replayRealRuns` passes entities and is unchanged.
+- `MUST_PROCESS` is `handoff | crossActorDecide`. `foreignBy` is read off the ontology, which does
+  not exist yet at this point, so it can no longer oblige a process here; finalize80 I6 still warns.
+- `prompt.md`: an `entityRef`/`transitionRef` on a `mechanical`/`llm` stage, and a `trigger.event`,
+  are declarations the ontology will honour.
+
+## 2026-09-17
+
+- ns5_48 (`-workflows-v3`): 4th stage `kind: 'alert'` — a recurring duty of a person
+  (`taskId, kind, actorRef, next, description`, all required, nothing optional). The schedule
+  stays on `trigger.schedule` and the instruction on `description`; an alert names no journey
+  and no entity (`NS5_WORKFLOWS_KIND` when it does, `NS5_WORKFLOWS_ALERT_ACTOR` when the actor
+  is missing or unknown). Prompt: a condition read from the data (overdue, blocked) is neither
+  an alert nor a process; write an alert only when the request names a recurrence or a date with
+  a human duty. `NS5_WORKFLOWS_SCHEMA_VERSION_V3` is emitted by the step; the thirteen recorded
+  runs stay v2 and replay through `buildNs5WorkflowsArtifact`, as ontology30 did for v2/v3.
+
 ## 2026-09-16
 
 - ns5_43 T1: a `crossActorDecide` signal is indexed by the ROOT of an `affects` reference,

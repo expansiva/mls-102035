@@ -120,3 +120,9 @@ You write: the `details` tree (which platform fields you keep and how you tighte
 `details`, the links you read with their cardinality, the capabilities you offer and to whom, and the rule ids you obey.
 Derived (never write): `id`, `version`, the structure and flags of platform fields, `tags`, `relationshipRefs`, `contacts`, compact keys,
 `via`/`path` of a link, platform status of capabilities, `roleTag`, `source`, `storage`.
+
+### What nobody writes
+
+A value that follows from the row itself, or from the rows linked to it, is declared once as a derived field and computed when the row is
+read — never stored, never a state of the lifecycle, never a value of `status`. One line per condition, in the user language: `vencida: em
+aberto e com vencimento anterior a hoje`. A value recalculated over many rows by time window and group is a `ddm` entity instead.

@@ -12,7 +12,11 @@ import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { buildNs5ModuleHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
-import { buildNs5ModuleTool, normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
+import {
+  buildNs5ModuleTool,
+  normalizeNs5ModuleArtifact,
+  ns5ModuleRequestKind,
+} from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
 import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +79,47 @@ void test('real module10 drafts of both runs pass the gate', () => {
     assert.equal('actors' in artifact, false, moduleName);
     assert.equal('scope' in artifact, false, moduleName);
   }
+});
+
+// ns5_52b: the intent gate. The three prompts of the run are answered by the model; what this file
+// proves is that the verdict is read, that it never lands on the artifact, and that the step refuses
+// before its first write.
+void test('module10 tool asks for requestKind', () => {
+  const schema = loadSchema();
+  const required = (schema.required as string[]) || [];
+  assert.ok(required.includes('requestKind'));
+  const properties = schema.properties as Record<string, { enum?: string[] }>;
+  assert.deepEqual(properties.requestKind?.enum, ['moduleRequest', 'notAModuleRequest']);
+});
+
+void test('ns5ModuleRequestKind reads the verdict and keeps older payloads working', () => {
+  assert.equal(ns5ModuleRequestKind(validPayload({ requestKind: 'notAModuleRequest' })), 'notAModuleRequest');
+  assert.equal(ns5ModuleRequestKind(validPayload({ requestKind: 'moduleRequest' })), 'moduleRequest');
+  // A draft recorded before this gate (every fixture) still runs.
+  assert.equal(ns5ModuleRequestKind(validPayload()), 'moduleRequest');
+  assert.equal(ns5ModuleRequestKind(undefined), 'moduleRequest');
+});
+
+void test('the verdict never reaches the artifact', () => {
+  const { artifact } = normalizeNs5ModuleArtifact(validPayload({ requestKind: 'moduleRequest' }), {
+    sourcePrompt: SOURCE,
+    fixedModuleName: 'comandaRestaurante5',
+  });
+  assert.equal('requestKind' in artifact, false);
+});
+
+void test('module10 refuses a non-module request before it writes anything', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
+  const body = after.slice(0, after.indexOf('\nexport async function', 1));
+  const gate = body.indexOf("ns5ModuleRequestKind(payload) === 'notAModuleRequest'");
+  assert.notEqual(gate, -1, 'the intent gate is gone');
+  for (const write of ['ensurePipeline(', 'writeJson(', 'writeDefs(', 'writePipeline(']) {
+    const at = body.indexOf(write);
+    if (at === -1) continue;
+    assert.ok(gate < at, `${write} runs before the intent gate`);
+  }
+  assert.ok(body.indexOf('NS5_MODULE_NOT_A_REQUEST') > gate, 'the user is not told why nothing was created');
 });
 
 void test('normalize rewrites pt to pt-BR and leaves en alone', () => {

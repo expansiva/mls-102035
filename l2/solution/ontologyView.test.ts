@@ -27,11 +27,29 @@ import {
   splitNs5EntityRef,
   type Ns5OntologyAnyIndex,
 } from '/_102035_/l2/solution/ontologyView.js';
-import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyEntityV3, Ns5OntologyFieldV3, Ns5OntologyFieldsV3 } from '/_102035_/l2/solution/types.js';
 
 const V3_INDEX = agendaClinicaIndexV3 as unknown as Ns5OntologyAnyIndex;
 const PACIENTE = agendaClinicaPaciente as unknown as Ns5OntologyEntityV3;
 const CONSULTA = agendaClinicaConsulta as unknown as Ns5OntologyEntityV3;
+
+/** A writable copy of a fixture: a test that adds a field must not change what the next test reads. */
+function clone(entity: Ns5OntologyEntityV3): Ns5OntologyEntityV3 {
+  return structuredClone(entity);
+}
+
+/** The field map of a cloned node, as something a test may write on. The fixture itself is never touched. */
+function writable(node: { fields?: Ns5OntologyFieldsV3 }): { fields: Record<string, Ns5OntologyFieldV3> } {
+  return node as { fields: Record<string, Ns5OntologyFieldV3> };
+}
+
+/** `ontology30 contractsV3 markDerived`, said again here: on a `ddm` every node of the record is derived. */
+function markDerivedDeep(fields: Record<string, Ns5OntologyFieldV3>): void {
+  for (const field of Object.values(fields)) {
+    field.derived = true;
+    if (field.fields) markDerivedDeep(writable(field).fields);
+  }
+}
 
 void test('the index answers with entity ids and edges in both forms', () => {
   assert.equal(isNs5OntologyV3Index(V3_INDEX), true);
@@ -61,6 +79,14 @@ void test('a v3 role is read as the papel over an MDM record that v2 called kind
   assert.deepEqual([...view.columnIds], ['id', 'version']);
   // The module namespace of `agendaClinica` on Paciente is declared and empty: the papel stores nothing.
   assert.deepEqual([...view.writtenFieldIds], []);
+
+  // ns5_54 T2(c): a derived leaf of the namespace is written by the engine, so it is not a written field.
+  const withDerived = clone(PACIENTE);
+  writable(withDerived.record.fields.details!.fields!.agendaClinica!).fields = {
+    lastVisitAt: { type: 'timestamp', derived: true, title: 'Última visita' },
+    preferredContact: { type: 'string', title: 'Contato preferido' },
+  };
+  assert.deepEqual([...ns5OntologyEntityView(withDerived).writtenFieldIds], ['preferredContact']);
   assert.deepEqual([...(view.paths ?? [])], resolvableFieldPaths(PACIENTE));
   assert.ok(view.paths!.includes('Paciente.details.identification.name'));
   assert.deepEqual([...view.fields], []);
@@ -77,6 +103,31 @@ void test('a v3 table keeps its columns, its class and what the module writes', 
   assert.ok(!view.writtenFieldIds.includes('version'));
   assert.ok(view.writtenFieldIds.includes('details.attendanceNote'));
   assert.ok(view.transitions.length > 0);
+
+  // ns5_54 T2(a): `id` is derived by the platform, and a derived column or `details` branch is written by
+  // the engine — none of the three is a field this module writes; what somebody types still is.
+  assert.ok(!view.writtenFieldIds.includes('id'));
+  const withDerived = clone(CONSULTA);
+  writable(withDerived.record).fields.occupancyRate = { type: 'number', derived: true, title: 'Ocupação' };
+  writable(withDerived.record.fields.details!).fields.averageDelay = { type: 'integer', derived: true, title: 'Atraso médio' };
+  const derivedView = ns5OntologyEntityView(withDerived);
+  assert.ok(!derivedView.writtenFieldIds.includes('occupancyRate'));
+  assert.ok(!derivedView.writtenFieldIds.includes('details.averageDelay'));
+  assert.ok(derivedView.writtenFieldIds.includes('details.attendanceNote'));
+});
+
+/**
+ * ns5_54 T2(b). A `ddm` is derived whole — `ontology30 contractsV3 markDerived` flags every field of the
+ * record and every field inside its document — so it writes nothing, and finalize80 I10 has no writer to
+ * ask for. `markDerivedDeep` here is that same rule, applied to a real table.
+ */
+void test('a v3 table whose record is derived whole (ddm) writes nothing', () => {
+  const painel = clone(CONSULTA);
+  markDerivedDeep(writable(painel.record).fields);
+  const view = ns5OntologyEntityView(painel);
+  assert.deepEqual([...view.writtenFieldIds], []);
+  // Nothing else about the entity moved: the columns are still the columns.
+  assert.deepEqual([...view.columnIds], [...ns5OntologyEntityView(CONSULTA).columnIds]);
 });
 
 void test('a v2 entity is read exactly as it is written, with no v3 marks', () => {

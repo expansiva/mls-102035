@@ -8,6 +8,15 @@ Do not design journeys, ontology, rules, workflows, access, screens, operations 
 
 Call the tool `submitNs5Module` once. Do not write Markdown around the tool arguments.
 
+## Request kind
+
+`requestKind` is the first thing you decide, and nothing is written to the project until it is `moduleRequest`.
+
+- `moduleRequest` — the source request asks for a business module: it describes work people do, what the organization records or controls, or a product to build. A short request is still a module request.
+- `notAModuleRequest` — anything else: a question to answer, a greeting, a test, a comment about the tool, text pasted by mistake, or a request with no business in it. Never turn such a text into a module.
+
+When it is `notAModuleRequest` the other fields are discarded, so do not invent a business: use `notAModuleRequest` as `moduleName`, copy the text into `sourcePrompt`, repeat it as `title`, and send a single actor with `actorId: user`, `kind: internal`, `origin: inferred` and the text as title and description.
+
 ## Actors
 
 An actor is someone who acts in the business. A demographic persona is not an actor.

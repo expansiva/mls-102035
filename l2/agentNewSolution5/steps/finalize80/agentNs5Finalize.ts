@@ -46,6 +46,7 @@ import {
   buildWorkspaceDependencies,
   collectProjectJsonIssues,
   collectPublishableConfigIssues,
+  REGISTRY_LEVEL1_SCHEMA_VERSION,
   emptySolutionRegistry,
   ensureProjectAppEnv,
   ensureProjectModule,
@@ -254,7 +255,13 @@ async function persistRegistry(moduleName: string, sources: Ns5OracleSources): P
       throw new Error(`Solution registry is invalid: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('; ')}`);
     }
   }
-  const next = upsertSolutionRegistryModule(current, buildSolutionRegistryModuleBlock({
+  // ns5_47 T0: the level-1 the registry is written against IS `mdm.defs.ts`, and a registry written by
+  // an older run carries whatever constant that run used (`ns4-level1-v1`). Stating it on every write is
+  // what makes the bench read the version actually in force instead of the one first recorded.
+  const rebased = current.level1SchemaVersion === REGISTRY_LEVEL1_SCHEMA_VERSION
+    ? current
+    : { ...current, level1SchemaVersion: REGISTRY_LEVEL1_SCHEMA_VERSION };
+  const next = upsertSolutionRegistryModule(rebased, buildSolutionRegistryModuleBlock({
     moduleName,
     actors: sources.access.actors,
     // ns5_43 T4: the registry states what each entity is, in the words of the form it was written in.

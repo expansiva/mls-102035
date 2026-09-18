@@ -14,13 +14,20 @@ Human-facing text is in the module `userLanguage`; every id stays in English.
 
 Two kinds, and only two.
 
-- **`role`** — the module's papel over a master record of the platform: a person, a company, a product,
-  a service, a place, an animal, an asset, a bank account, a document or a contact channel. It carries
-  `subtype`, one of the platform subtypes listed in the catalog below. The module stores nothing of its
-  own about it except its own namespace branch. A patient, a professional, a supplier, a student and a
-  customer are all roles over `Person` or `Company` — never tables.
+- **`role`** — the module's papel over a master record of the platform: a register the organization
+  keeps **outside this module and shares between modules** — a person, a company, a product, a service,
+  an animal, an asset, a bank account, a document or a contact channel. It carries `subtype`, one of the
+  platform subtypes listed in the catalog below. The module stores nothing of its own about it except
+  its own namespace branch. A patient, a professional, a supplier, a student and a customer are all
+  roles over `Person` or `Company` — never tables.
 - **`entity`** — a table of this module: the transactional record that only exists because this module
-  exists (an appointment, an order, a movement). `class` is `core`, `event` or `supporting`.
+  exists (an appointment, an order, a movement), **and also the object this module operates and whose
+  state this module moves** — a table in a restaurant, a room, a parking space, a piece of equipment on
+  a shop floor. Such an object is an `entity` of family `tdm` even when the platform has a subtype that
+  looks like it: what decides is who moves it. A place or an asset is a `role` only when the request
+  treats it as a shared register the organization maintains for every module. Whether the object is
+  free or busy is never a column somebody types: it is a `derived` field of its row, read from the
+  movements that point at it. `class` is `core`, `event` or `supporting`.
 
 ## The family of the data, and where its rows live
 
@@ -30,8 +37,9 @@ catalog the next pass copies from, and the catalog its capabilities are checked 
 - `mdm` — the master record of the organization, shared between modules. Always, and only, a `role`.
 - `tdm` — the movement, the event, the operation of this module. The family of almost every table.
 - `ddm` — what is **recalculated** from the others: a metric, a summary, an aggregate, a series. Nobody
-  writes it, it has no lifecycle and no unique key. Declare one only when the request asks for a number
-  over a period — a total that follows from one record is a derived field of that record, not an entity.
+  writes it, it has no lifecycle and no unique key. A panel, a dashboard, a summary or a report of totals
+  that the request names IS one `ddm` entity, with one field per number it shows. A total that follows
+  from one record is a derived field of that record, not an entity.
 
 `storageKind` says where the rows live: `platform` on every role, because the rows are the platform's;
 `relational` on a table of this module, which is the usual answer; `timeSeries` only when the rows are a

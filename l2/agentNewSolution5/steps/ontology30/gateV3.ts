@@ -16,13 +16,14 @@ import type {
   MdmSubtypeName,
 } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import {
-  NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+  isNs5OntologyV3Version,
   type Ns5OntologyEntityV3,
   type Ns5OntologyFieldV3,
   type Ns5OntologyFieldsV3,
   type Ns5OntologyIndexV3,
   type Ns5OntologyValueV3,
 } from '/_102035_/l2/solution/types.js';
+import { collectNs5CitedProcessStages } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
   NS5_NAMESPACE_EMPTY_DESCRIPTION,
   NS5_ONTOLOGY_V3_CLASSES,
@@ -61,6 +62,8 @@ export interface Ns5OntologyV3GateContext {
   ddm: DataFamilyOntology;
   /** Journeys, for the cited-entity check and for the namespace evidence. */
   journeys?: ReadonlyArray<{ business: { steps: ReadonlyArray<{ entity: string; affects?: string[] }> } }>;
+  /** ns5_49: workflows50 runs first; a mechanical/llm stage names an entity the plan must declare. */
+  workflows?: { processes: ReadonlyArray<{ processId?: string; tasks: ReadonlyArray<{ taskId?: string; kind: string; entityRef?: string; effect?: 'create' | 'update' | 'transition'; transitionRef?: string }> }> } | null;
   /** Source prompt plus journey prose: where a module field has to have a trace. */
   evidenceText?: string;
   /** Actor ids, for `transitions[].by`. */
@@ -223,6 +226,18 @@ export function validateNs5OntologyPlanV3(
       });
     }
   }
+  // ns5_49: the second writer. A process stage cites the entity forward; the plan has to declare it.
+  const stageSeen = new Set<string>();
+  for (const stage of collectNs5CitedProcessStages(context.workflows)) {
+    if (seen.has(stage.entityId) || stageSeen.has(stage.entityId)) continue;
+    stageSeen.add(stage.entityId);
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_JOURNEY_ENTITY',
+      message: `Process stage ${stage.processId}.${stage.taskId} writes '${stage.entityId}' and the ontology does not declare it.`,
+      path: `entities.${stage.entityId}`,
+    });
+  }
   return ok(issues);
 }
 
@@ -332,7 +347,7 @@ export function validateNs5OntologyEntityV3(
   context: Ns5OntologyV3GateContext,
 ): Ns5OntologyV3GateResult {
   const issues: Ns5OntologyV3Issue[] = [];
-  if (entity.schemaVersion !== NS5_ONTOLOGY_SCHEMA_VERSION_V3) {
+  if (!isNs5OntologyV3Version(entity.schemaVersion)) {
     // A v2 artifact never enters a v3 check: the eleven recorded modules are not this gate's business.
     return { ok: true, issues };
   }
@@ -928,16 +943,25 @@ export function validateNs5OntologyAssemblyV3(
           });
         }
       }
-      if (Array.isArray(transition.by) && context.actors?.length) {
-        for (const actor of transition.by) {
-          if (!context.actors.includes(actor)) {
-            issues.push({
-              severity: 'error',
-              code: 'NS5_ONTOLOGY_TRANSITION_ACTOR_UNKNOWN',
-              message: `'${actor}' is not an actor of this module.`,
-              path: `${where}.by`,
-            });
-          }
+      for (const actor of transition.by) {
+        // ns5_47: `time` used to be a way of saying "nobody moves it, the clock does". It is not a
+        // transition at all, and the message has to name the place that now holds it.
+        if (actor === 'time') {
+          issues.push({
+            severity: 'error',
+            code: 'NS5_ONTOLOGY_TRANSITION_ACTOR_UNKNOWN',
+            message: `'${transition.transitionId}' is moved by 'time', which is not an actor. A condition over time is not a state somebody reaches: declare it in derived[] (a field computed on read, with 'from' naming the dates it uses) and leave status for what an actor or a command writes.`,
+            path: `${where}.by`,
+          });
+          continue;
+        }
+        if (context.actors?.length && !context.actors.includes(actor)) {
+          issues.push({
+            severity: 'error',
+            code: 'NS5_ONTOLOGY_TRANSITION_ACTOR_UNKNOWN',
+            message: `'${actor}' is not an actor of this module.`,
+            path: `${where}.by`,
+          });
         }
       }
     }

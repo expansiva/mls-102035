@@ -47,7 +47,7 @@ import type {
   Ns5WorkflowProcess,
 } from '/_102035_/l2/solution/types.js';
 import {
-  buildNs5WorkflowsArtifact,
+  buildNs5WorkflowsArtifactV3,
   buildNs5WorkflowsTool,
   collectNs5ProcessSignals,
   collectNs5TimeEventPhrases,
@@ -99,9 +99,8 @@ export function buildNs5WorkflowsHumanPrompt(input: {
     '## Acts with effect create or transition',
     formatWriteActs(input.journeys),
     '',
-    '## Entities with lifecycle',
-    formatTransitions(input.entities),
-    '',
+    // ns5_49: no `## Entities with lifecycle` block — ontology30 runs AFTER this step. What a
+    // mechanical or llm stage cites here is a declaration the ontology will honour.
     '## Time and event phrases from the request',
     phrases.length ? phrases.map(phrase => `- ${phrase}`).join('\n') : '(none)',
     '',
@@ -281,7 +280,7 @@ async function persistArtifacts(
   pipeline: Ns5PipelineState,
   noProcessSignal: boolean,
 ): Promise<string> {
-  const artifact = buildNs5WorkflowsArtifact(moduleName, processes, journeyDecisions, systemDecisions);
+  const artifact = buildNs5WorkflowsArtifactV3(moduleName, processes, journeyDecisions, systemDecisions);
   const artifactPath = await writeDefs(workflowsFile(moduleName), `${moduleName}Workflows`, artifact, 'Ns5WorkflowsArtifact');
   await writeJson(draftFile(moduleName, 'workflows50'), artifact);
   await writeStepState(pipeline, {
@@ -306,8 +305,9 @@ async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
   const artifact = await readDefsJson<Ns5ModuleArtifact>(moduleFile(moduleName));
   if (!artifact) throw new Error(`module.defs.ts is missing for ${moduleName}; module10 must run first.`);
   const pipeline = await readPipeline(moduleName);
-  if (pipeline?.steps.ontology30?.status !== 'approved') {
-    throw new Error(`ontology30 must be approved before workflows50 (${moduleName}).`);
+  // ns5_49: workflows50 now runs on the journeys alone; the ontology comes after it.
+  if (pipeline?.steps.journeys20?.status !== 'approved') {
+    throw new Error(`journeys20 must be approved before workflows50 (${moduleName}).`);
   }
   return artifact;
 }
@@ -323,9 +323,14 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
+/**
+ * ns5_49: in the flow v2 order there is no ontology yet, so a missing index is the normal case and
+ * returns `[]` — not a throw. A module recorded under flow v1 still has one, and it is still read
+ * whole: an entity file named by the index and missing on disk stays an error.
+ */
 async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {
   const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
-  if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
+  if (!index) return [];
   const entities: Ns5OntologyAnyEntity[] = [];
   for (const entityId of ns5OntologyEntityIds(index)) {
     const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
@@ -415,18 +420,6 @@ function formatWriteActs(journeys: Ns5JourneyArtifact[]): string {
   return lines.length ? lines.join('\n') : '(none)';
 }
 
-function formatTransitions(entities: Ns5OntologyEntityViewItem[]): string {
-  const blocks = entities.map(entity => {
-    if (!entity.transitions.length) return '';
-    const lines = entity.transitions.map(transition => {
-      const by = Array.isArray(transition.by) ? transition.by.join(',') : transition.by;
-      return `- ${entity.entityId}.${transition.transitionId} ${transition.from.join('|')} -> ${transition.to} by=${by}`;
-    });
-    return `### ${entity.entityId}\n${lines.join('\n')}`;
-  }).filter(Boolean);
-  return blocks.length ? blocks.join('\n\n') : '(none)';
-}
-
 function promptReady(
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
@@ -464,7 +457,7 @@ function doneAnchor(
     stepTitle: 'Workflows done',
     status: 'completed',
     nextSteps: [],
-    result: JSON.stringify({ moduleName, artifactPaths, completedStep: 'workflows50', nextStep: 'integration70' }),
+    result: JSON.stringify({ moduleName, artifactPaths, completedStep: 'workflows50', nextStep: 'ontology30' }),
     planning: { planId: 'workflows50-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
 }

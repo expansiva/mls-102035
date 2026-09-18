@@ -3,7 +3,7 @@
 import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { writePipeline } from '/_102035_/l2/solution/fs.js';
 import type { Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
-import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { NS5_AGENT_NAME, ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 
 export type Ns5StepBeforePrompt = (
   agent: IAgentMeta,
@@ -64,6 +64,33 @@ export async function markAwaitingStep(
   };
   await writePipeline(next);
   return next;
+}
+
+/**
+ * ns5_52b. The one way this flow talks back to the user without the root LLM: the entry gates and
+ * the module10 intent gate both answer with this. The message is English (i18n default).
+ */
+export function ns5StatusMessage(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  message: string,
+): mls.msg.AgentIntentAddMessageAI {
+  return {
+    type: 'add-message-ai',
+    skipRootLLM: true,
+    request: {
+      action: 'addMessageAI',
+      agentName: agent.agentName,
+      inputAI: [
+        { type: 'system', content: `<!-- modelType: general -->\n${message}` },
+        { type: 'human', content: message },
+      ],
+      taskTitle: 'new Solution 5',
+      threadId: context.message.threadId,
+      userMessage: context.message.content,
+      longTermMemory: { taskName: 'newSolution5', flowName: NS5_AGENT_NAME, statusOnly: 'true' },
+    },
+  };
 }
 
 export function updateStatus(

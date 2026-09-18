@@ -35,6 +35,25 @@ export interface Ns5ModuleNormalization {
   normalizations: Ns5ModuleFormNormalization[];
 }
 
+/**
+ * ns5_52b. The invocation gates are deterministic (`ns5EntryRefusal`); whether a non-empty request
+ * asks for a business module at all is not, so module10 answers it in the same tool call it already
+ * makes, and the step refuses before the first write. The verdict never reaches disk.
+ */
+export type Ns5ModuleRequestKind = 'moduleRequest' | 'notAModuleRequest';
+
+/** The answer given to the user when the request does not describe a module. English, i18n default. */
+export const NS5_MODULE_NOT_A_REQUEST =
+  'This does not describe a module to build, so nothing was created. Describe the business the module must support: who works in it, what they do and what has to be recorded.';
+
+/**
+ * A payload without the field is a run recorded before this gate (or a repair of one): it keeps the
+ * old behaviour instead of refusing a module that is already half built.
+ */
+export function ns5ModuleRequestKind(value: unknown): Ns5ModuleRequestKind {
+  return record(value).requestKind === 'notAModuleRequest' ? 'notAModuleRequest' : 'moduleRequest';
+}
+
 export function buildNs5ModuleTool(
   schema: Record<string, unknown>,
   createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,

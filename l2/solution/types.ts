@@ -9,17 +9,32 @@ export const NS5_ONTOLOGY_SCHEMA_VERSION = '2026-09-11-ns5-ontology-v2' as const
 export const NS5_RULES_SCHEMA_VERSION = '2026-09-10-ns5-rules-v1' as const;
 export const NS5_RULES_SCHEMA_VERSION_V2 = '2026-09-16-ns5-rules-v2' as const;
 export const NS5_WORKFLOWS_SCHEMA_VERSION = '2026-09-12-ns5-workflows-v2' as const;
+/**
+ * ns5_48: v3 adds the `alert` stage (a recurring duty of a person). The shape is a superset of v2,
+ * so there is ONE artifact interface and the version is a union — the same move ontology30 made with
+ * `NS5_ONTOLOGY_SCHEMA_VERSION_V3`. `workflows50` emits v3; the thirteen recorded runs stay v2 and
+ * are replayed through `buildNs5WorkflowsArtifact`.
+ */
+export const NS5_WORKFLOWS_SCHEMA_VERSION_V3 = '2026-09-17-ns5-workflows-v3' as const;
+export type Ns5WorkflowsSchemaVersion =
+  | typeof NS5_WORKFLOWS_SCHEMA_VERSION
+  | typeof NS5_WORKFLOWS_SCHEMA_VERSION_V3;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-12-ns5-integration-v2' as const;
 export const NS5_INTEGRATION_REQUEST_SCHEMA_VERSION = '2026-09-12-ns5-integration-request-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
 
+/**
+ * ns5_49: `workflows50` runs BEFORE `ontology30`. A process stage cites the entity and the transition
+ * it makes happen; the ontology then declares them with the stage as owner. The numeric suffixes are
+ * identity, not order — they are frozen so recorded runs keep their step ids.
+ */
 export const NS5_STEP_IDS = [
   'module10',
   'journeys20',
+  'workflows50',
   'ontology30',
   'rules40',
-  'workflows50',
   'access60',
   'integration70',
   'finalize80',
@@ -315,6 +330,22 @@ export interface Ns5OntologyIndexArtifact {
 // ===========================================================================
 
 export const NS5_ONTOLOGY_SCHEMA_VERSION_V3 = '2026-09-15-ns5-ontology-v3' as const;
+/**
+ * v3.1 (ns5_47): what nobody writes is a `derived` field of the row (`description` says the condition), not a
+ * lifecycle state; `time` is therefore gone from `reachedBy` and from `by`. The v3 artifacts already
+ * recorded stay readable — the form only lost a way of saying something, so every reader accepts both
+ * versions through `isNs5OntologyV3Version` and only the generator emits v3.1.
+ */
+export const NS5_ONTOLOGY_SCHEMA_VERSION_V31 = '2026-09-17-ns5-ontology-v3.1' as const;
+
+export type Ns5OntologySchemaVersionV3 =
+  | typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3
+  | typeof NS5_ONTOLOGY_SCHEMA_VERSION_V31;
+
+/** Every reader of the v3 form asks this, never an equality against one constant. */
+export function isNs5OntologyV3Version(value: unknown): value is Ns5OntologySchemaVersionV3 {
+  return value === NS5_ONTOLOGY_SCHEMA_VERSION_V3 || value === NS5_ONTOLOGY_SCHEMA_VERSION_V31;
+}
 
 /** Closed-domain value of a v3 field: the bare code, or the code plus its label. */
 export type Ns5OntologyValueV3 = string | { value: string; title?: string; description?: string };
@@ -370,7 +401,7 @@ export interface Ns5OntologyRelationshipV3 {
 /** What a `role` and a table share. Exported so `nsArtifactFieldRatchet.test.ts` can reach its keys. */
 export interface Ns5OntologyEntityV3Base<Cap extends string = string, Rule extends string = string> {
   /** Gate: the v3 form. */
-  schemaVersion: typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+  schemaVersion: Ns5OntologySchemaVersionV3;
   moduleName: string;
   /** File name, relationship endpoints, grant entityRefs. */
   entityId: string;
@@ -382,12 +413,14 @@ export interface Ns5OntologyEntityV3Base<Cap extends string = string, Rule exten
   record: { fields: Ns5OntologyFieldsV3 };
   /** Composite uniqueness, by field id. */
   uniqueKeys?: readonly (readonly string[])[];
-  lifecycleStates?: readonly { state: string; reachedBy: 'actor' | 'command' | 'time' }[];
+  /** ns5_47: only what somebody moves. A condition over data is a `derived` field of the row. */
+  lifecycleStates?: readonly { state: string; reachedBy: 'actor' | 'command' }[];
   transitions?: readonly {
     transitionId: string;
     from: readonly string[];
     to: string;
-    by: readonly string[] | 'system' | 'time';
+    /** Actor ids of the module; empty when a process owns the move. */
+    by: readonly string[];
     description: string;
     ruleRefs?: readonly string[];
   }[];
@@ -466,7 +499,7 @@ export interface Ns5OntologyIndexRelationshipV3 {
 }
 
 export interface Ns5OntologyIndexV3 {
-  schemaVersion: typeof NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+  schemaVersion: Ns5OntologySchemaVersionV3;
   moduleName: string;
   businessDomain: string;
   /** Path of the platform ontology this module is written on top of. */
@@ -479,6 +512,11 @@ export interface Ns5OntologyIndexV3 {
 
 /** What a reader gets from an ontology entity file, whichever form it is in. Discriminate on `schemaVersion`. */
 export type Ns5OntologyAnyEntity = Ns5OntologyEntityArtifact | Ns5OntologyEntityV3;
+
+/** The discriminator every reader of a written entity uses; accepts v3 and v3.1 alike (ns5_47). */
+export function isNs5OntologyEntityV3(entity: Ns5OntologyAnyEntity): entity is Ns5OntologyEntityV3 {
+  return isNs5OntologyV3Version(entity.schemaVersion);
+}
 
 export interface Ns5Rule {
   /** Cited by transitions.ruleRefs and later screens/endpoints. */
@@ -533,11 +571,15 @@ export interface Ns5WorkflowTrigger {
 export interface Ns5WorkflowTask {
   /** Graph node id. Unique in the process. */
   taskId: string;
-  /** Gate: no neutral value; every stage is one of these. */
-  kind: 'human' | 'mechanical' | 'llm' | 'wait';
-  /** Required on human. */
+  /**
+   * Gate: no neutral value; every stage is one of these. `alert` (v3, ns5_48) is a recurring duty
+   * of a person: the schedule is on `trigger`, the instruction is the `description`, and it carries
+   * neither journeyRef nor entityRef.
+   */
+  kind: 'human' | 'mechanical' | 'llm' | 'wait' | 'alert';
+  /** Required on human and on alert. */
   actorRef?: string;
-  /** Required on human. The journey the person runs, never a screen step. */
+  /** Required on human, forbidden on alert. The journey the person runs, never a screen step. */
   journeyRef?: string;
   /** Required on mechanical|llm. Entity the stage acts on. */
   entityRef?: string;
@@ -574,8 +616,8 @@ export interface Ns5JourneyDecision {
 }
 
 export interface Ns5WorkflowsArtifact {
-  /** Gate of workflows50. Empty processes is valid. */
-  schemaVersion: typeof NS5_WORKFLOWS_SCHEMA_VERSION;
+  /** Gate of workflows50. Empty processes is valid. v2 recorded on disk stays readable. */
+  schemaVersion: Ns5WorkflowsSchemaVersion;
   /** Folder. */
   moduleName: string;
   /** Orchestration only; not the entity FSM. */
@@ -755,7 +797,7 @@ export interface Ns5PipelineStepState {
   actors?: Ns5ModuleActor[];
   /** journeys20: actorIds dropped as inferred-external without an exclusive step. */
   droppedActors?: string[];
-  /** workflows50: true when processes is [] because no handoff, foreign-by, cross-actor decide, system/time transition or time/event phrase. */
+  /** workflows50: true when processes is [] because there is no handoff, no cross-actor decide and no time/event phrase in the prompt. */
   noProcessSignal?: boolean;
   /** integration70: true when inbound/outbound/plugins are [] because no system actor and no plugin-catalog term. */
   noIntegrationSignal?: boolean;

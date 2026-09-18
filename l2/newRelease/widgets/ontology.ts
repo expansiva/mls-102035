@@ -54,6 +54,7 @@ import {
   isOntologyV3Index,
   ontologyNodeLeafCount,
   ontologyPlatformFile,
+  ontologyV3DerivedFields,
   ontologyV3FieldCount,
 } from '/_102035_/l2/newRelease/widgets/ontologyV3Model.js';
 
@@ -810,6 +811,17 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     </details>`;
   }
 
+  /**
+   * ns5_47: what nobody writes. The tree already paints a derived leaf; this says WHY it is derived —
+   * the condition in the user language and the paths it reads.
+   */
+  private renderV3Derived(entity: Ns5OntologyEntityV3 | undefined) {
+    if (!entity) return nothing;
+    const derived = ontologyV3DerivedFields(entity);
+    if (!derived.length) return nothing;
+    return html`<section class="nr-ontology__section nr-v3__section"><header><div><h3>${this.t('ontology.v3.derived')}</h3><p>${this.t('ontology.v3.derivedDescription')}</p></div><span>${this.t('ontology.v3.derivedCount', { count: derived.length })}</span></header><div class="nr-v3__record">${derived.map(field => html`<article><header><strong>${field.title}</strong><code>${field.path}</code></header>${field.description ? html`<p>${field.description}</p>` : nothing}</article>`)}</div></section>`;
+  }
+
   private renderV3Lifecycle(entity: Ns5OntologyEntityV3 | undefined) {
     if (!entity) return nothing;
     const states = entity.lifecycleStates || [];
@@ -870,6 +882,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       ${this.renderV3Relationships(entity.relationships)}
       ${this.renderV3Capabilities(entity.capabilities)}
       ${this.renderV3Rules(entity.rules)}
+      ${this.renderV3Derived(raw)}
       ${this.renderV3Lifecycle(raw)}
     </div>`;
   }
