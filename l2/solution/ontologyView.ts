@@ -26,7 +26,8 @@
  */
 
 import {
-  NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+  isNs5OntologyEntityV3 as isEntityV3,
+  isNs5OntologyV3Version,
   type Ns5OntologyAnyEntity,
   type Ns5OntologyEntityArtifact,
   type Ns5OntologyEntityV3,
@@ -99,10 +100,12 @@ export interface Ns5OntologyEntityViewItem {
   /** Stored columns, without `details`. v2: `fields[]` ids plus the identity. finalize80 I9. */
   columnIds: readonly string[];
   /**
-   * What THIS module writes on this entity. v2: its `fields[]`. v3 `role`: the keys of
-   * `details.<moduleName>`, the only branch a module may write — a papel that stores nothing answers
-   * with an empty list, which is the honest answer and what finalize80 I10 needs. v3 table: its columns
-   * other than `version`, plus each `details.<name>`.
+   * What THIS module writes on this entity — never merely what exists on it. v2: its `fields[]`.
+   * v3 `role`: the keys of `details.<moduleName>` that are not `derived`, the only branch a module may
+   * write — a papel that stores nothing answers with an empty list, which is the honest answer and what
+   * finalize80 I10 needs. v3 table: its columns other than `version`, plus each `details.<name>`, in both
+   * cases without the `derived` ones (ns5_54): a derived node is written by the engine, so a `ddm`, derived
+   * whole, answers with an empty list and I10 asks it for no writer.
    */
   writtenFieldIds: readonly string[];
   /** v3 only. When present it REPLACES `fields`/`details` as the resolvable set (ns5_40 T2). */
@@ -112,11 +115,11 @@ export interface Ns5OntologyEntityViewItem {
 }
 
 export function isNs5OntologyV3Index(index: Ns5OntologyAnyIndex): index is Ns5OntologyIndexV3 {
-  return index.schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+  return isNs5OntologyV3Version(index.schemaVersion);
 }
 
 export function isNs5OntologyV3Entity(entity: Ns5OntologyAnyEntity): entity is Ns5OntologyEntityV3 {
-  return entity.schemaVersion === NS5_ONTOLOGY_SCHEMA_VERSION_V3;
+  return isEntityV3(entity);
 }
 
 /** The entity ids of the index, in declaration order — the file names the step has to open. */
@@ -260,12 +263,20 @@ function viewOfV3(entity: Ns5OntologyEntityV3): Ns5OntologyEntityViewItem {
   };
 }
 
+/**
+ * ns5_54. A `derived: true` field is written by the engine, never by the module: `id` and `version` of every
+ * table, a column or a `details` branch the model marked, and — on a `ddm` — the whole record, which
+ * `contractsV3 markDerived` flags. So a derived node is NOT a written field on either level, and a `ddm`
+ * answers with an empty list, which is what finalize80 I10 needs to stop asking a summary for a writer.
+ */
 function writtenFieldIdsV3(entity: Ns5OntologyEntityV3): string[] {
   const branches = entity.record.fields.details?.fields ?? {};
-  if (entity.kind === 'role') return Object.keys(branches[entity.moduleName]?.fields ?? {});
+  const written = (fields: Ns5OntologyFieldsV3): string[] =>
+    Object.entries(fields).filter(([, field]) => field.derived !== true).map(([id]) => id);
+  if (entity.kind === 'role') return written(branches[entity.moduleName]?.fields ?? {});
   return [
-    ...Object.keys(entity.record.fields).filter(id => id !== 'details' && id !== 'version'),
-    ...Object.keys(branches).map(name => `details.${name}`),
+    ...written(entity.record.fields).filter(id => id !== 'details' && id !== 'version'),
+    ...written(branches).map(name => `details.${name}`),
   ];
 }
 

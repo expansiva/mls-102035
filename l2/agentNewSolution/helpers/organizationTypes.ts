@@ -1,9 +1,5 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution/helpers/organizationTypes.ts" enhancement="_blank"/>
 
-export {
-  NS4_LEVEL1_SCHEMA_VERSION,
-  NS4_LEVEL1_SUBTYPE_VALUES,
-} from '/_102034_/l1/mdm/defs/level1Types.js';
 export type {
   MdmPlatformCatalogArtifact,
   MdmPlatformService,
@@ -14,6 +10,17 @@ export type {
   Ns4Level1RelationshipRef,
   Ns4Level1Subtype,
 } from '/_102034_/l1/mdm/defs/level1Types.js';
+
+// Browser-safe mirror of the two runtime values in 102034/l1/mdm/defs/level1Types.ts.
+// L1 is backend-only and is intentionally not served to Studio; keep the structural
+// types above as type-only imports, which TypeScript erases from the emitted JavaScript.
+export const NS4_LEVEL1_SCHEMA_VERSION = 'ns4-level1-v2' as const;
+
+export const NS4_LEVEL1_SUBTYPE_VALUES = [
+  'Person', 'Company', 'Product', 'Service', 'Location',
+  'AssetGeneric', 'AssetVehicle', 'AssetProperty', 'AssetEquipment',
+  'Animal', 'BankAccount', 'Document', 'ContactChannel',
+] as const;
 
 /** Schema of the per-project solution registry written by E10. */
 export const NS4_SOLUTION_REGISTRY_SCHEMA_VERSION = 'ns4-solution-registry-v1' as const;

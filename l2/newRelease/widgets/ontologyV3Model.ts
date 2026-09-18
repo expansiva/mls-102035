@@ -4,7 +4,7 @@ import type {
   Ns5OntologyEntityV3,
   Ns5OntologyIndexV3,
 } from '/_102035_/l2/solution/types.js';
-import { NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
+import { isNewReleaseOntologyV3Version } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
 import type { Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type {
   OntologyNode,
@@ -14,13 +14,13 @@ import type {
 export function isOntologyV3Index(value: unknown): value is Ns5OntologyIndexV3 {
   return !!value
     && typeof value === 'object'
-    && (value as { schemaVersion?: string }).schemaVersion === NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION;
+    && isNewReleaseOntologyV3Version((value as { schemaVersion?: string }).schemaVersion);
 }
 
 export function isOntologyV3Entity(value: unknown): value is Ns5OntologyEntityV3 {
   return !!value
     && typeof value === 'object'
-    && (value as { schemaVersion?: string }).schemaVersion === NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION;
+    && isNewReleaseOntologyV3Version((value as { schemaVersion?: string }).schemaVersion);
 }
 
 export function ontologyPlatformFile(path: string): Ns5FileInfo {
@@ -40,6 +40,40 @@ export function ontologyNodeLeafCount(nodes: readonly OntologyNode[]): number {
     if (node.children?.length) return count + ontologyNodeLeafCount(node.children);
     return count + 1;
   }, 0);
+}
+
+/** One value the row computes when it is read (ns5_47). `path` is where it sits inside `record.fields`. */
+export interface OntologyV3DerivedField {
+  path: string;
+  id: string;
+  title: string;
+  /** The condition, in the user language, as the ontology states it. */
+  description: string;
+}
+
+/**
+ * The derived fields of a v3 entity, in declaration order. The tree view only says a leaf is derived;
+ * this is what the panel reads to show, next to each one, the condition the ontology states.
+ */
+export function ontologyV3DerivedFields(entity: Ns5OntologyEntityV3): OntologyV3DerivedField[] {
+  const out: OntologyV3DerivedField[] = [];
+  walk(entity.record.fields, '');
+  return out;
+
+  function walk(fields: Ns5OntologyEntityV3['record']['fields'] | undefined, parent: string): void {
+    for (const [id, field] of Object.entries(fields ?? {})) {
+      const path = parent ? `${parent}.${id}` : id;
+      if (field.derived === true) {
+        out.push({
+          path,
+          id,
+          title: field.title || id,
+          description: field.description || '',
+        });
+      }
+      if (field.fields) walk(field.fields, path);
+    }
+  }
 }
 
 export function ontologyV3FieldCount(view: OntologyTreeView): number {

@@ -340,7 +340,7 @@ function doneAnchor(
     stepTitle: 'Journeys done',
     status: 'completed',
     nextSteps: [],
-    result: JSON.stringify({ moduleName, artifactPaths, completedStep: 'journeys20', nextStep: 'ontology30' }),
+    result: JSON.stringify({ moduleName, artifactPaths, completedStep: 'journeys20', nextStep: 'workflows50' }),
     planning: { planId: 'journeys20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
 }

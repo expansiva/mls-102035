@@ -9,7 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ns5OntologyEntitySelector, ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import { buildNs5OntologyPlanHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
+import {
+  buildNs5OntologyEntityHumanPrompt,
+  buildNs5OntologyPlanHumanPrompt,
+  ns5EntityGateFeedback,
+  ns5OntologyChildArgs,
+  parallelEntityStep,
+} from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5JourneyArtifact, Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
@@ -1906,4 +1912,49 @@ void test('real IndicadorAcademia draft: a period field is not a panel so it is 
   assert.equal(lift.liftedEntityIds.includes('IndicadorAcademia'), false);
   assert.equal(lift.plan.entities.some(entity => entity.entityId === 'IndicadorAcademia'), true);
   assert.equal(lift.plan.normalizations?.some(item => item.kind === 'liftedFields' && item.entityId === 'IndicadorAcademia'), false);
+});
+
+// ns5_58: the repair round used to re-run the entity fan-out with only `{planId, moduleName}`, so the
+// prompt of every repaired entity arrived without the gate issue that had condemned it.
+void test('the entity repair round carries the gate issue of each entity into its own prompt', () => {
+  const plan = {
+    schemaVersion: '2026-09-15-ns5-ontology-plan-v3',
+    moduleName: 'mensalidadesAcademia',
+    entities: [
+      { entityId: 'Mensalidade', kind: 'table', family: 'tdm', title: 'M', description: 'D' },
+      { entityId: 'Aluno', kind: 'role', family: 'mdm', title: 'A', description: 'D' },
+    ],
+    relationships: [],
+  } as unknown as Parameters<typeof parallelEntityStep>[3];
+  const context = {
+    task: { PK: 'task#1' },
+    message: { orderAt: 'm1', threadId: 't1' },
+  } as unknown as Parameters<typeof parallelEntityStep>[0];
+  const host = { stepId: 7 } as unknown as Parameters<typeof parallelEntityStep>[1];
+
+  const intent = parallelEntityStep(context, host, 'agentNewSolution5', plan, 1, ['Mensalidade'], {
+    Mensalidade: 'NS5_ONTOLOGY_V3_DISPLAY_FIELD_UNRESOLVED: displayField "nome" is not a field of Mensalidade.',
+  });
+  // The child of the fan-out resolves from a stub; ns5OntologyChildArgs is what carries the issues over.
+  const parsed = ns5OntologyChildArgs(context, (intent.step as { prompt?: unknown }).prompt);
+  assert.match(ns5EntityGateFeedback(parsed, 'Mensalidade'), /displayField "nome" is not a field/u);
+  assert.equal(ns5EntityGateFeedback(parsed, 'Aluno'), '');
+
+  const prompt = buildNs5OntologyEntityHumanPrompt({
+    sourcePrompt: 'Academia',
+    userLanguage: 'pt',
+    actors: [],
+    journeys: [],
+    workflows: null,
+    plan: plan as never,
+    entityId: 'Mensalidade',
+    platformCatalog: '## Platform catalog',
+    gateFeedback: ns5EntityGateFeedback(parsed, 'Mensalidade'),
+  });
+  assert.match(prompt, /## Deterministic repair required/u);
+  assert.match(prompt, /NS5_ONTOLOGY_V3_DISPLAY_FIELD_UNRESOLVED/u);
+
+  // The first fan-out has no feedback at all, so it stays exactly as it was.
+  const first = parallelEntityStep(context, host, 'agentNewSolution5', plan, 0);
+  assert.equal(JSON.parse(String((first.step as { prompt?: unknown }).prompt)).entityFeedback, undefined);
 });

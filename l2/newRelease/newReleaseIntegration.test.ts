@@ -16,6 +16,7 @@ test('behavior service opens the module index through the right-side detail cont
   assert.match(source, /this\._projectEligible \? html`/);
   assert.match(source, /class="nr-service__compatibility" role="status"/);
   assert.doesNotMatch(source, /this\._projects\.length === 0/);
+  assert.match(source, /if \(!hadContext && this\._context\(\)\) await this\._openModuleBlueprint\(\)/);
   assert.match(source, /NEW_RELEASE_TOBE_UPDATED_EVENT/);
   assert.match(source, /_versionValue\s*=\s*this\._module\?\.tobeChanges\s*\?\s*2\s*:\s*1/);
 });

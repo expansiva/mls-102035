@@ -10,6 +10,7 @@ import {
   NS5_MODULE_SCHEMA_VERSION,
   type Ns5ModuleActor,
   type Ns5ModuleArtifact,
+  type Ns5SystemDecision,
 } from '/_102035_/l2/solution/types.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
@@ -33,6 +34,45 @@ export interface Ns5ModuleNormalization {
   actors: Ns5ModuleActor[];
   i18nWarnings: string[];
   normalizations: Ns5ModuleFormNormalization[];
+  /** One `dropSystemActor<Actor>` per `kind: system` actor the model still sent. */
+  systemDecisions: Ns5SystemDecision[];
+}
+
+/**
+ * ns5_53 P-1. An external system the request names (gateway, messaging, ERP) acts INSIDE a step or
+ * starts an event; either way it is a plugin or an inbound of integration70, never an actor. The
+ * prompt says so; when the model sends one anyway the normalize removes it and records the removal,
+ * so the run does not carry an actor that no journey and no grant can ever cover (finalize80 I3).
+ * `Ns5ModuleActor.kind` keeps `system` — a v2 run recorded before this decision still reads.
+ */
+export const NS5_MODULE_SYSTEM_ACTOR_DROP_CHOICE = 'externalSystemIsPlugin' as const;
+export const NS5_MODULE_SYSTEM_ACTOR_KEEP_CHOICE = 'keepAsActor' as const;
+
+/** The note appended to the gate feedback when the drop is why the actor list no longer passes. */
+export const NS5_MODULE_SYSTEM_ACTOR_NOTE =
+  'An external system named in the request is not an actor: it belongs to integration70 as a plugin or an inbound. List only the people who work in the module.';
+
+export function ns5DropSystemActorDecisionId(actorId: string): string {
+  return `dropSystemActor${actorId.charAt(0).toUpperCase()}${actorId.slice(1)}`;
+}
+
+/**
+ * ns5_52b. The invocation gates are deterministic (`ns5EntryRefusal`); whether a non-empty request
+ * asks for a business module at all is not, so module10 answers it in the same tool call it already
+ * makes, and the step refuses before the first write. The verdict never reaches disk.
+ */
+export type Ns5ModuleRequestKind = 'moduleRequest' | 'notAModuleRequest';
+
+/** The answer given to the user when the request does not describe a module. English, i18n default. */
+export const NS5_MODULE_NOT_A_REQUEST =
+  'This does not describe a module to build, so nothing was created. Describe the business the module must support: who works in it, what they do and what has to be recorded.';
+
+/**
+ * A payload without the field is a run recorded before this gate (or a repair of one): it keeps the
+ * old behaviour instead of refusing a module that is already half built.
+ */
+export function ns5ModuleRequestKind(value: unknown): Ns5ModuleRequestKind {
+  return record(value).requestKind === 'notAModuleRequest' ? 'notAModuleRequest' : 'moduleRequest';
 }
 
 export function buildNs5ModuleTool(
@@ -63,7 +103,16 @@ export function normalizeNs5ModuleArtifact(
   );
   const proposedName = normalizeModuleName(text(root.moduleName) || options.fixedModuleName || sourcePrompt, 'newModule');
   const moduleName = options.fixedModuleName || proposedName;
-  const actors = list(root.actors).map((item, index) => normalizeActor(item, index)).filter(actor => actor.title);
+  const declaredActors = list(root.actors).map((item, index) => normalizeActor(item, index)).filter(actor => actor.title);
+  const actors = declaredActors.filter(actor => actor.kind !== 'system');
+  const systemDecisions: Ns5SystemDecision[] = declaredActors
+    .filter(actor => actor.kind === 'system')
+    .map(actor => ({
+      decisionId: ns5DropSystemActorDecisionId(actor.actorId),
+      chosen: NS5_MODULE_SYSTEM_ACTOR_DROP_CHOICE,
+      alternatives: [NS5_MODULE_SYSTEM_ACTOR_KEEP_CHOICE],
+      decidedBy: 'system',
+    }));
   return {
     artifact: {
       schemaVersion: NS5_MODULE_SCHEMA_VERSION,
@@ -77,6 +126,7 @@ export function normalizeNs5ModuleArtifact(
     actors,
     i18nWarnings,
     normalizations,
+    systemDecisions,
   };
 }
 

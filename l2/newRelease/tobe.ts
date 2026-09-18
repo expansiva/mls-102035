@@ -27,7 +27,7 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
-import { NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
+import { isNewReleaseOntologyV3Version } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
 import { NEW_RELEASE_TOBE_UPDATED_EVENT } from '/_102035_/l2/newRelease/helpers/context.js';
 
@@ -99,7 +99,7 @@ export interface NewReleaseOverlaySources {
 export function isNs5OntologyV3(
   value: Ns5OntologyIndexArtifact | Ns5OntologyIndexV3 | null | undefined,
 ): value is Ns5OntologyIndexV3 {
-  return value?.schemaVersion === NEW_RELEASE_ONTOLOGY_V3_SCHEMA_VERSION;
+  return isNewReleaseOntologyV3Version(value?.schemaVersion);
 }
 
 export function ns5OntologyEntityIds(

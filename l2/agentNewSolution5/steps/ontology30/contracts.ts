@@ -99,6 +99,7 @@ export type Ns5OntologyFormNormalizationKind =
 /** Cited `transitionRef` exists but `by` omitted the journey actor; normalize adds it. */
 export const NS5_ONTOLOGY_TRANSITION_BY_ADDED = 'addTransitionBy' as const;
 
+
 /** Child written inside the parent's act, or MDM attached by a create act. */
 export const NS5_ONTOLOGY_WRITER_DERIVED = 'writerDerived' as const;
 
@@ -755,6 +756,19 @@ export interface Ns5CitedTransition {
   stepId: string;
 }
 
+/**
+ * ns5_49: a `mechanical` or `llm` stage of workflows50 names the entity it writes and, on
+ * `effect: transition`, the transition it applies. In the flow v2 order workflows50 runs BEFORE this
+ * step, so the citation is forward: the ontology declares what the stage says it makes happen.
+ */
+export interface Ns5CitedProcessStage {
+  entityId: string;
+  effect: 'create' | 'update' | 'transition';
+  transitionId: string;
+  processId: string;
+  taskId: string;
+}
+
 /** Journey prose that names a personal scope (own / team / assigned). Data for the plan prompt. */
 export const NS5_PERSONAL_SCOPE_PATTERN = new RegExp(
   'próprio|própria|minhas|seus|sua equipe|atribuído',
@@ -849,6 +863,39 @@ export function collectNs5CitedTransitions(
     }
   }
   return cited;
+}
+
+/** The `mechanical`/`llm` stages of every process, in declaration order. Sibling of `collectNs5CitedTransitions`. */
+export function collectNs5CitedProcessStages(
+  workflows: {
+    processes: ReadonlyArray<{
+      processId?: string;
+      tasks: ReadonlyArray<{
+        taskId?: string;
+        kind: string;
+        entityRef?: string;
+        effect?: 'create' | 'update' | 'transition';
+        transitionRef?: string;
+      }>;
+    }>;
+  } | null | undefined,
+): Ns5CitedProcessStage[] {
+  const out: Ns5CitedProcessStage[] = [];
+  for (const process of workflows?.processes || []) {
+    for (const task of process.tasks || []) {
+      if (task.kind !== 'mechanical' && task.kind !== 'llm') continue;
+      const entityId = (task.entityRef || '').split('.')[0];
+      if (!entityId || !task.effect) continue;
+      out.push({
+        entityId,
+        effect: task.effect,
+        transitionId: task.effect === 'transition' ? (task.transitionRef || '') : '',
+        processId: process.processId || '',
+        taskId: task.taskId || '',
+      });
+    }
+  }
+  return out;
 }
 
 export function collectNs5CitedEntities(

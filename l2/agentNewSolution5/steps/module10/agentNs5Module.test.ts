@@ -12,7 +12,14 @@ import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { buildNs5ModuleHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
-import { buildNs5ModuleTool, normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
+import {
+  NS5_MODULE_SYSTEM_ACTOR_DROP_CHOICE,
+  NS5_MODULE_SYSTEM_ACTOR_KEEP_CHOICE,
+  buildNs5ModuleTool,
+  normalizeNs5ModuleArtifact,
+  ns5DropSystemActorDecisionId,
+  ns5ModuleRequestKind,
+} from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
 import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +82,94 @@ void test('real module10 drafts of both runs pass the gate', () => {
     assert.equal('actors' in artifact, false, moduleName);
     assert.equal('scope' in artifact, false, moduleName);
   }
+});
+
+// ns5_52b: the intent gate. The three prompts of the run are answered by the model; what this file
+// proves is that the verdict is read, that it never lands on the artifact, and that the step refuses
+// before its first write.
+void test('module10 tool asks for requestKind', () => {
+  const schema = loadSchema();
+  const required = (schema.required as string[]) || [];
+  assert.ok(required.includes('requestKind'));
+  const properties = schema.properties as Record<string, { enum?: string[] }>;
+  assert.deepEqual(properties.requestKind?.enum, ['moduleRequest', 'notAModuleRequest']);
+});
+
+void test('ns5ModuleRequestKind reads the verdict and keeps older payloads working', () => {
+  assert.equal(ns5ModuleRequestKind(validPayload({ requestKind: 'notAModuleRequest' })), 'notAModuleRequest');
+  assert.equal(ns5ModuleRequestKind(validPayload({ requestKind: 'moduleRequest' })), 'moduleRequest');
+  // A draft recorded before this gate (every fixture) still runs.
+  assert.equal(ns5ModuleRequestKind(validPayload()), 'moduleRequest');
+  assert.equal(ns5ModuleRequestKind(undefined), 'moduleRequest');
+});
+
+void test('the verdict never reaches the artifact', () => {
+  const { artifact } = normalizeNs5ModuleArtifact(validPayload({ requestKind: 'moduleRequest' }), {
+    sourcePrompt: SOURCE,
+    fixedModuleName: 'comandaRestaurante5',
+  });
+  assert.equal('requestKind' in artifact, false);
+});
+
+void test('module10 refuses a non-module request before it writes anything', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
+  const body = after.slice(0, after.indexOf('\nexport async function', 1));
+  const gate = body.indexOf("ns5ModuleRequestKind(payload) === 'notAModuleRequest'");
+  assert.notEqual(gate, -1, 'the intent gate is gone');
+  // ns5_55: `startNs5Pipeline(` is the deletion. It is in this list because the verdict must run
+  // before the module is removed, not after.
+  for (const write of ['startNs5Pipeline(', 'ensurePipeline(', 'writeJson(', 'writeDefs(', 'writePipeline(']) {
+    const at = body.indexOf(write);
+    if (at === -1) continue;
+    assert.ok(gate < at, `${write} runs before the intent gate`);
+  }
+  assert.ok(body.indexOf('NS5_MODULE_NOT_A_REQUEST') > gate, 'the user is not told why nothing was created');
+});
+
+// ns5_55 (a): `/rebuild all` + a text that is not a module request must be refused with the module
+// still on disk. That holds only while the verdict has no exemption and the entry hook deletes
+// nothing — the two halves of the reorder.
+void test('the intent gate has no /rebuild all exemption', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
+  const body = after.slice(0, after.indexOf('\nexport async function', 1));
+  assert.equal(body.includes("!invocation.rebuildAll && ns5ModuleRequestKind"), false);
+  assert.match(body, /if \(ns5ModuleRequestKind\(payload\) === 'notAModuleRequest'\)/);
+});
+
+// ns5_55 (b): the good half. Past the verdict, the rebuild removes the module and opens a fresh
+// pipeline (`startNs5Pipeline` stamps `rebuildAll.at` — see ns5Core.test.ts), before any write.
+void test('module10 starts the rebuild after the verdict and before the first write', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
+  const body = after.slice(0, after.indexOf('\nexport async function', 1));
+  const start = body.indexOf('startNs5Pipeline(moduleName, sourcePrompt, invocation, true)');
+  assert.notEqual(start, -1, 'module10 no longer starts the rebuild');
+  assert.ok(start < body.indexOf('ensurePipeline('), 'the rebuild starts after the pipeline it should replace');
+  assert.ok(start < body.indexOf('writeJson('), 'the draft is written before the removal');
+});
+
+// ns5_55: while the rebuild is in flight the module on disk is the previous run's, so its
+// pipeline.json must not decide the invocation nor the request being rebuilt.
+void test('a rebuild in flight reads its invocation and prompt from the context, not from the old pipeline', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  assert.match(source, /function rebuildAllInFlight\(context: mls\.msg\.ExecutionContext\): boolean/);
+  const read = source.slice(source.indexOf('async function readSourcePrompt'));
+  assert.match(read.slice(0, read.indexOf('\n}')), /!rebuildAllInFlight\(context\)/);
+  const invocation = source.slice(source.indexOf('function invocationOf'));
+  const body = invocation.slice(0, invocation.indexOf('\n}'));
+  assert.ok(body.indexOf('if (memory.rebuildAll) return memory;') < body.indexOf('pipeline?.invocation'));
+});
+
+// ns5_55: same reason, for the draft. The transport retry is scheduled *before* the verdict, so on a
+// rebuild it still sees the previous module's draft — only a repair runs past the removal.
+void test('a rebuild does not offer the previous run draft as the current one', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const before = source.slice(source.indexOf('export async function beforeNs5ModulePromptStep'));
+  const body = before.slice(0, before.indexOf('\nexport async function', 1));
+  assert.match(body, /const keepPreviousDraft = !invocation\.rebuildAll \|\| parsed\.repairAttempt > 0;/);
+  assert.match(body, /moduleName && keepPreviousDraft \? readJson\(draftFile/);
 });
 
 void test('normalize rewrites pt to pt-BR and leaves en alone', () => {
@@ -186,6 +281,46 @@ void test('gate rejects a moduleName that does not match /module', () => {
   });
   assert.equal(gate.ok, false);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_MODULE_NAME_MISMATCH'));
+});
+
+/**
+ * ns5_53 T1 / P-1. The prompt tells the model not to list an external system. When it does anyway,
+ * the actor is removed here rather than three steps later: an actor that no journey performs and no
+ * grant covers is two finalize80 I3 errors, and the external system is already modelled by
+ * integration70 as a plugin or an inbound.
+ */
+void test('a kind: system actor is dropped and recorded in systemDecisions (ns5_53)', () => {
+  const { actors, systemDecisions } = normalizeNs5ModuleArtifact(validPayload({
+    actors: [
+      {
+        actorId: 'caixa',
+        kind: 'internal',
+        origin: 'named',
+        title: 'Cashier',
+        description: 'Receives the payments.',
+      },
+      {
+        actorId: 'stripe',
+        kind: 'system',
+        origin: 'named',
+        title: 'Stripe',
+        description: 'Processes the card payment.',
+      },
+    ],
+  }), { sourcePrompt: SOURCE });
+  assert.deepEqual(actors.map(actor => actor.actorId), ['caixa']);
+  assert.equal(systemDecisions.length, 1);
+  assert.equal(systemDecisions[0].decisionId, ns5DropSystemActorDecisionId('stripe'));
+  assert.equal(systemDecisions[0].decisionId, 'dropSystemActorStripe');
+  assert.equal(systemDecisions[0].chosen, NS5_MODULE_SYSTEM_ACTOR_DROP_CHOICE);
+  assert.deepEqual(systemDecisions[0].alternatives, [NS5_MODULE_SYSTEM_ACTOR_KEEP_CHOICE]);
+  assert.equal(systemDecisions[0].decidedBy, 'system');
+});
+
+void test('a payload with no system actor records no decision (ns5_53)', () => {
+  const { actors, systemDecisions } = normalizeNs5ModuleArtifact(validPayload(), { sourcePrompt: SOURCE });
+  assert.equal(actors.length, 2);
+  assert.equal(systemDecisions.length, 0);
 });
 
 void test('inferred external actor stays on the pipeline list, not the artifact', () => {

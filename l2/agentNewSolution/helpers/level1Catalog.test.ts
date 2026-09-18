@@ -17,6 +17,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import mdm from '/_102034_/l4/ontology/mdm.defs.js';
@@ -34,6 +35,16 @@ import {
   ns4Level1Subtypes,
 } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
 import { formatNs4Level1CatalogPrompt } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
+
+test('frontend level-1 runtime values do not import the backend-only L1 module', () => {
+  const organizationTypes = readFileSync(new URL('./organizationTypes.ts', import.meta.url), 'utf8');
+  const solutionTypes = readFileSync(new URL('../../solution/types.ts', import.meta.url), 'utf8');
+
+  assert.match(organizationTypes, /export const NS4_LEVEL1_SCHEMA_VERSION/);
+  assert.doesNotMatch(organizationTypes, /export\s*\{[^}]*NS4_LEVEL1_SCHEMA_VERSION[^}]*\}\s*from\s*['"]\/_102034_\/l1\//s);
+  assert.doesNotMatch(solutionTypes, /export\s*\{[^}]*NS4_LEVEL1_SCHEMA_VERSION[^}]*\}\s*from\s*['"]\/_102034_\/l1\//s);
+  assert.match(solutionTypes, /from '\/_102035_\/l2\/agentNewSolution\/helpers\/organizationTypes\.js'/);
+});
 
 const NS4_LEVEL1_CATALOG_PROMPT_LINES = [
   "## Platform level-1 catalog (placeholders — not module entities)",

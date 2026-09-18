@@ -1,5 +1,26 @@
 # finalize80
 
+## 2026-09-18 (ns5_53)
+
+- I8 gains a fifth form of registration (e): the login person is registered when her entity resolves
+  to `writer: 'inbound'` and some `integration.inbound[].writes` names it — the same pair of
+  predicates I10 already applies to an inbound entity. A person who arrives with the event that
+  created her record (the financeiro payer, born in another module) was being accused of having no
+  registration. An inbound whose `writes` does not name her still fails I8, and I10 still fails the
+  missing `writes`.
+
+## 2026-09-17 (ns5_49)
+
+- `by: []` is what "no person moves this" looks like since ns5_47's `systemByCollapsed`; the
+  `'system'`/`'time'` strings only reach the oracle from a v1/v2 artifact. Two checks were reading the
+  strings alone and were therefore unreachable on a v3 module:
+  - `taskTransitionByAllows` now lets a `mechanical`/`llm` stage apply a `by: []` transition (it was
+    reporting a false I2 error);
+  - I6's `NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED` now warns on a `by: []` transition that no stage
+    and no `trigger.event` owns (it was warning about nothing).
+- `actorMatches` is unchanged on purpose: a journey `act` on a `by: []` transition is still an I2
+  error, because a person does not fire a process transition.
+
 ## 2026-09-16
 
 - ns5_43 T5: I1 resolves an `affects`/`entity` path against `record.fields` / `details`;

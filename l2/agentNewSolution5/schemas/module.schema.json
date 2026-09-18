@@ -4,6 +4,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "requestKind",
     "schemaVersion",
     "moduleName",
     "title",
@@ -14,6 +15,11 @@
     "actors"
   ],
   "properties": {
+    "requestKind": {
+      "description": "Intent gate read by steps/module10/agentNs5Module.ts before anything is written. It is not persisted on module.defs.ts.",
+      "type": "string",
+      "enum": ["moduleRequest", "notAModuleRequest"]
+    },
     "schemaVersion": { "type": "string", "const": "2026-09-10-ns5-module-v2" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "title": { "type": "string", "minLength": 1 },

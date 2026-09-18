@@ -1,6 +1,6 @@
 {
   "flowId": "agentNewSolution5",
-  "schemaVersion": "2026-09-10-ns5-flow-v1",
+  "schemaVersion": "2026-09-17-ns5-flow-v2",
   "status": "finalize80",
   "description": "Source-only L4 compiler: six business artifacts plus a deterministic finalize. No derived copies. CB/CF are never dispatched.",
   "canonicalReferences": [
@@ -20,7 +20,7 @@
     "Never dispatch agentChangeBackend or agentChangeFrontend.",
     "Permanent TypeScript artifacts import Ns5* types from /_102035_/l2/solution/types.js and are emitted as const satisfies.",
     "Deterministic user text is English keys; the planner translates. Internal messages stay English literals.",
-    "rules40, workflows50 and access60 run in parallel after ontology30-done. integration70 waits for those three done-anchors. finalize80 waits for integration70-done.",
+    "workflows50 runs after journeys20-done and before ontology30: a mechanical or llm stage cites the entity and the transition it makes happen, and ontology30 declares them with the stage as owner. rules40 and access60 run in parallel after ontology30-done. integration70 waits for the rules40, workflows50 and access60 done-anchors. finalize80 waits for integration70-done.",
     "Previous flow versions are never migrated automatically."
   ],
   "invocation": {
@@ -64,17 +64,27 @@
       "clarificationAnchor": { "id": "journeys20-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/journeys/{journeyId}.defs.ts",
-      "goal": "Declare business journeys only: actor, entry, steps with affects, decide, outcome."
+      "goal": "Declare business journeys only: actor, entry, steps with decide and outcome."
+    },
+    {
+      "id": "workflows50",
+      "kind": "agent-checkpoint",
+      "dependsOn": ["journeys20-done"],
+      "doneAnchor": "workflows50-done",
+      "clarificationAnchor": { "id": "workflows50-clarification", "status": "reserved" },
+      "modelAlias": "reasoning",
+      "artifact": "l4/{module}/workflows.defs.ts",
+      "goal": "Orchestrated processes, from the journeys alone. A mechanical or llm stage cites entityRef, effect and transitionRef forward; the ontology declares them. Empty list is allowed."
     },
     {
       "id": "ontology30",
       "kind": "agent-checkpoint",
-      "dependsOn": ["journeys20-done"],
+      "dependsOn": ["workflows50-done"],
       "doneAnchor": "ontology30-done",
       "clarificationAnchor": { "id": "ontology30-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/ontology/{Entity}.defs.ts",
-      "goal": "Entities, mdm, details, lifecycle with allowed transitions, relationships."
+      "goal": "Entities, mdm, details, lifecycle with allowed transitions, relationships. Honours the transitions cited by the journeys and by the process stages; a transition cited only by a process is owned by it (by: [])."
     },
     {
       "id": "rules40",
@@ -85,16 +95,6 @@
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/rules.defs.ts",
       "goal": "Rules as prose: ruleId and description."
-    },
-    {
-      "id": "workflows50",
-      "kind": "agent-checkpoint",
-      "dependsOn": ["ontology30-done"],
-      "doneAnchor": "workflows50-done",
-      "clarificationAnchor": { "id": "workflows50-clarification", "status": "reserved" },
-      "modelAlias": "reasoning",
-      "artifact": "l4/{module}/workflows.defs.ts",
-      "goal": "Orchestrated processes. Empty list is allowed."
     },
     {
       "id": "access60",

@@ -57,6 +57,7 @@ new-release--widgets--workflows-102035 {
   .nr-workflows__trigger > div { display: grid; gap: .12rem; }
   .nr-workflows__trigger strong { color: var(--text-strong, #111827); font-size: .72rem; }
   .nr-workflows__trigger code { color: var(--text-muted, #5d6b7e); font-size: .59rem; }
+  .nr-workflows__duty { justify-self: start; margin-top: .18rem; padding: .16rem .38rem; border-radius: 999px; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); font-size: .55rem; font-style: normal; font-weight: 700; }
   .nr-workflows__trigger.is-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
   .nr-workflows__trigger.is-edit > div, .nr-workflows__trigger.is-edit > label { display: grid; gap: .28rem; }
 
@@ -69,6 +70,7 @@ new-release--widgets--workflows-102035 {
   .nr-workflows__task.kind-mechanical, .nr-workflows__task.kind-system { border-top-color: var(--chart-series-2, #0c8f77); }
   .nr-workflows__task.kind-llm { border-top-color: var(--chart-series-3, #8250df); }
   .nr-workflows__task.kind-wait { border-top-color: var(--chart-series-4, #d17a00); }
+  .nr-workflows__task.kind-alert { border-top-color: var(--chart-series-5, #c2410c); }
   .nr-workflows__task:not(:last-child)::after { position: absolute; top: 50%; right: -.58rem; width: .52rem; border-top: 1px solid var(--border-default, #cfd8e3); content: ''; }
   .nr-workflows__task > header { display: grid; grid-template-columns: 1.9rem minmax(0, 1fr) auto; gap: .45rem; align-items: center; }
   .nr-workflows__task > header i { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: .52rem; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); }

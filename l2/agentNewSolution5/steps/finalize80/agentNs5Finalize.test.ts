@@ -709,6 +709,59 @@ void test('I8 fails when only an external actor writes the login person', () => 
   assert.equal(i8.length, 1, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
 });
 
+/**
+ * ns5_53 T2 / P-2. The person who logs in may arrive with the event that created her record: the
+ * financeiro payer is born in another module and reaches this one through an inbound. That IS a
+ * registration, and it is the same pair of predicates I10 uses — resolved `inbound` plus an
+ * `inbound[].writes` naming the entity. An inbound whose `writes` does not name her registers
+ * nobody, so I8 keeps accusing (and I10 accuses the missing `writes` too).
+ */
+void test('I8 passes when an inbound event writes the login person (ns5_53)', () => {
+  const sources = withRealMatricularAluno(clone(loadSources('comandaRestaurante.json')), []);
+  const aluno = sources.entities.find(item => item.entityId === 'Aluno')!;
+  aluno.writer = 'inbound';
+  sources.integration = {
+    ...sources.integration,
+    inbound: [{
+      id: 'alunoCadastradoEmOutroModulo',
+      kind: 'event',
+      from: 'moduloOrigem',
+      writes: ['Aluno'],
+      effect: 'create',
+      description: 'The person arrives with the event that created her.',
+      entityRefs: [],
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.equal(i8Errors(report).length, 0, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+});
+
+void test('I8 still fails when the inbound does not write the login person (ns5_53)', () => {
+  const sources = withRealMatricularAluno(clone(loadSources('comandaRestaurante.json')), []);
+  const aluno = sources.entities.find(item => item.entityId === 'Aluno')!;
+  aluno.writer = 'inbound';
+  sources.integration = {
+    ...sources.integration,
+    inbound: [{
+      id: 'outroEvento',
+      kind: 'event',
+      from: 'moduloOrigem',
+      writes: ['Matricula'],
+      effect: 'create',
+      description: 'An inbound that writes something else.',
+      entityRefs: [],
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  const i8 = i8Errors(report);
+  assert.equal(i8.length, 1, report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+  assert.match(i8[0].message, /no inbound event writes it/);
+  // Control inside the test: the ONLY difference between accused and registered is whether `writes`
+  // names her. Without this the count of 1 above could come from any other unmet form.
+  sources.integration.inbound[0].writes = ['Aluno'];
+  assert.equal(i8Errors(runNs5Oracle(sources)).length, 0);
+});
+
 void test('I8 also applies to related scope and ignores organization even with a stray person anchor', () => {
   const related = withRealMatricularAluno(clone(loadSources('comandaRestaurante.json')), []);
   related.access.grants[related.access.grants.length - 1].dataScope.mode = 'related';
@@ -922,6 +975,80 @@ void test('I6 warns when a handoff has no covering process', () => {
   assert.ok(report.warnings.some(issue => issue.code === 'NS5_FINALIZE_I6' && /handToCashier/.test(issue.message)));
 });
 
+// --- ns5_49: `by: []` is the process's transition ---------------------------
+// Since ns5_47 the v3 normalize writes "nobody in particular moves this" as `by: []`; the strings
+// `'system'`/`'time'` survive only in v1/v2 artifacts. Both I2 and I6 read the empty list now.
+
+void test('ns5_49: I6 warns on a by: [] transition no stage and no trigger owns', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  comanda.lifecycleStates.push({ state: 'autoClosed', reachedBy: 'command' });
+  comanda.transitions.push({
+    transitionId: 'autoClose',
+    from: ['aberta'],
+    to: 'autoClosed',
+    by: [],
+    description: 'The process closes the tab.',
+  });
+  const report = runNs5Oracle(sources);
+  assert.equal(report.finalStatus, 'passed');
+  assert.ok(report.warnings.some(issue => issue.code === NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED && /autoClose/.test(issue.message)));
+});
+
+void test('ns5_49: a mechanical stage may apply a by: [] transition, and I6 then falls silent', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
+  comanda.lifecycleStates.push({ state: 'autoClosed', reachedBy: 'command' });
+  comanda.transitions.push({
+    transitionId: 'autoClose',
+    from: ['aberta'],
+    to: 'autoClosed',
+    by: [],
+    description: 'The process closes the tab.',
+  });
+  sources.workflows.processes.push({
+    processId: 'fecharComandaAutomatico',
+    title: 'Fechar comanda',
+    description: 'Fecha a comanda.',
+    trigger: { kind: 'event', event: 'Comanda.fecharComanda' },
+    tasks: [{
+      taskId: 'autoClose',
+      kind: 'mechanical',
+      entityRef: 'Comanda',
+      effect: 'transition',
+      transitionRef: 'autoClose',
+      next: [],
+      description: 'Fecha automaticamente.',
+    }],
+  });
+  const report = runNs5Oracle(sources);
+  assert.equal(
+    report.errors.filter(issue => issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /autoClose/.test(issue.message)).length,
+    0,
+    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+  assert.equal(report.warnings.some(issue => issue.code === NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED && /autoClose/.test(issue.message)), false);
+});
+
+void test('ns5_49: a journey act is still refused on a by: [] transition (a person does not fire it)', () => {
+  const journey = withStepIntent(
+    levaDefs('registrarPagamentoDeDespesa.defs.ts'),
+    'registrarDataDePagamento',
+    { effect: 'transition', transitionRef: 'recordPayment' },
+  );
+  const entity = clone(levaDefs<Ns5OntologyEntityArtifact>('Despesa.defs.ts'));
+  const payment = entity.transitions.find(item => item.transitionId === 'recordPayment');
+  assert.ok(payment);
+  payment.by = [];
+  const report = runNs5Oracle(i2OnlySources('reembolsoDespesas', [journey], [entity]));
+  assert.ok(
+    i2Issues(report, 'errors').some(issue =>
+      issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /registrarDataDePagamento/.test(issue.message),
+    ),
+    i2Issues(report, 'errors').map(issue => issue.message).join('\n'),
+  );
+});
+
 void test('I6 warns when a system/time transition is not owned by a stage or trigger', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   const comanda = sources.entities.find(entity => entity.entityId === 'Comanda')!;
@@ -1006,6 +1133,60 @@ void test('I11 warns when inbound event is not published by the sibling; I12 che
   const report = runNs5Oracle(sources);
   assert.ok(report.warnings.some(issue => issue.code === NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING));
   assert.ok(report.errors.some(issue => issue.checkId === 'I12' && /Ghost/.test(issue.message)));
+});
+
+/** ns5_48: an alert stage owns no transition and no journey — I2 and I6 must stay quiet about it. */
+void test('I12 accepts a plugin usedBy that points at an alert stage, and I2/I6 ignore the alert', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const actorRef = sources.access.actors[0].actorId;
+  sources.workflows.processes.push({
+    processId: 'avisarFechamento',
+    title: 'Aviso mensal',
+    description: 'Todo mes alguem fecha o caixa.',
+    trigger: { kind: 'scheduled', schedule: 'todo mes, dia 1' },
+    tasks: [{
+      taskId: 'avisarCaixa',
+      kind: 'alert',
+      actorRef,
+      next: [],
+      description: 'Fechar o caixa do mes.',
+    }],
+  });
+  sources.integration = {
+    ...sources.integration,
+    plugins: [{
+      pluginId: 'calendar',
+      usedBy: ['avisarFechamento.avisarCaixa'],
+      description: 'Agenda o aviso.',
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.equal(report.errors.some(issue => issue.checkId === 'I12'), false,
+    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
+  assert.equal(report.errors.some(issue => issue.checkId === 'I2' && /avisarCaixa/.test(issue.message)), false);
+  assert.equal(report.warnings.some(issue => issue.checkId === 'I6' && /avisarCaixa/.test(issue.message)), false);
+});
+
+void test('I12 still rejects an unknown task under a process that carries an alert', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const actorRef = sources.access.actors[0].actorId;
+  sources.workflows.processes.push({
+    processId: 'avisarFechamento',
+    title: 'Aviso mensal',
+    description: 'Todo mes alguem fecha o caixa.',
+    trigger: { kind: 'scheduled', schedule: 'todo mes, dia 1' },
+    tasks: [{ taskId: 'avisarCaixa', kind: 'alert', actorRef, next: [], description: 'Fechar o caixa do mes.' }],
+  });
+  sources.integration = {
+    ...sources.integration,
+    plugins: [{
+      pluginId: 'calendar',
+      usedBy: ['avisarFechamento.naoExiste'],
+      description: 'Agenda o aviso.',
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.ok(report.errors.some(issue => issue.checkId === 'I12' && /naoExiste/.test(issue.message)));
 });
 
 void test('I13 warns remaining custom grants and does not fail the run', () => {
@@ -1098,6 +1279,46 @@ void test('I9 measures uniqueKeys against the stored columns of a v3 table, not 
     bad.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
   );
 });
+
+/**
+ * ns5_54. A `ddm` table is derived whole (`ontology30 contractsV3 markDerived`): nobody writes a summary,
+ * so it has no written fields and I10 must not ask it for a writer. The same table with its marks removed
+ * is the control — it is the one that must fail, or this case would be green for the wrong reason.
+ */
+void test('I10 asks no writer of a v3 table that is derived whole (ddm)', () => {
+  const asDerivedTable = (): Ns5OntologyEntityV3 => {
+    const table = JSON.parse(JSON.stringify(agendaClinicaConsulta)) as Ns5OntologyEntityV3;
+    markDerivedDeep(table.record.fields as Record<string, { derived?: true; fields?: unknown }>);
+    return table;
+  };
+
+  const derived = clone(loadSources('comandaRestaurante.json'));
+  derived.entities.push(...ns5OntologyEntityViews([asDerivedTable()]));
+  const derivedReport = runNs5Oracle(derived);
+  assert.equal(
+    derivedReport.errors.filter(issue => issue.checkId === 'I10' && /Consulta/.test(issue.path)).length,
+    0,
+    derivedReport.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+
+  const written = clone(loadSources('comandaRestaurante.json'));
+  written.entities.push(...ns5OntologyEntityViews([
+    JSON.parse(JSON.stringify(agendaClinicaConsulta)) as Ns5OntologyEntityV3,
+  ]));
+  const writtenReport = runNs5Oracle(written);
+  assert.ok(
+    writtenReport.errors.some(issue => issue.checkId === 'I10' && /Consulta/.test(issue.path) && /writer/.test(issue.message)),
+    writtenReport.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+});
+
+/** On a `ddm` every node of the record carries `derived`, branches included. */
+function markDerivedDeep(fields: Record<string, { derived?: true; fields?: unknown }>): void {
+  for (const field of Object.values(fields)) {
+    field.derived = true;
+    if (field.fields) markDerivedDeep(field.fields as Record<string, { derived?: true; fields?: unknown }>);
+  }
+}
 
 void test('registry module block maps mdmSubtype to <mod>.<Entity>', () => {
   const sources = loadSources('comandaRestaurante.json');

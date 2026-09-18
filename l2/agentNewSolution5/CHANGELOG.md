@@ -1,5 +1,30 @@
 # agentNewSolution5
 
+## 2026-09-18 (ns5_52b)
+
+- **Nothing is written until the request is known to be a module.** The deterministic invocation
+  gates moved into `ns5EntryRefusal` (`helpers/ns5Core.ts`), one pure function the entry hook only
+  carries to the user; `/rebuild all <module>` with no request in the body is now refused there
+  instead of running a pipeline over the bare command line. Whether a non-empty text asks for a
+  module at all is decided by `module10` in the tool call it already makes, before its first write.
+- `ns5StatusMessage` (`helpers/ns5Dispatch.ts`) is the single way this flow answers the user without
+  the root LLM; `statusTask` and the `module10` refusal both use it.
+
+## 2026-09-17 (ns5_49)
+
+- **Flow v2: `workflows50` runs before `ontology30`.** `NS5_STEP_IDS`, `NS5_STEP_DEPENDS_ON`,
+  `docs/flow.json` (`schemaVersion 2026-09-17-ns5-flow-v2`) and `NS5_FLOW_VERSION` say the same
+  order: `module10 -> journeys20 -> workflows50 -> ontology30 -> {rules40, access60} ->
+  integration70 -> finalize80`. `rules40` and `access60` still fan out after `ontology30-done`;
+  `integration70` still waits for the three done-anchors. Previous flow versions are not migrated.
+- The step guards swapped: `workflows50` requires `journeys20` approved, `ontology30` requires
+  `journeys20` AND `workflows50`.
+- A `mechanical`/`llm` stage now CITES FORWARD: the `entityRef`/`effect`/`transitionRef` it names is
+  a declaration, and `ontology30` declares it. A transition cited only by a stage has `by: []` --
+  the process owns it, no person does.
+- The pipeline panel (`newRelease/widgets/general.ts`) had its own copy of the step order; it now
+  imports `NS5_STEP_IDS`.
+
 ## 2026-09-16 (ns5_45)
 
 - `rules40` writes `rules-v2`: `rules.defs.ts` keeps the catalog as a MAP of `ruleId` to the one

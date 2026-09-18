@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-entity/2026-09-15-ns5-ontology-v3",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/ontology-entity/2026-09-17-ns5-ontology-v3.1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
@@ -17,6 +17,7 @@
     "uniqueKeys": { "type": "array", "items": { "$ref": "#/$defs/uniqueKey" } },
     "lifecycleStates": { "type": "array", "items": { "$ref": "#/$defs/lifecycleState" } },
     "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
+    "derived": { "type": "array", "items": { "$ref": "#/$defs/derivedField" } },
     "relationships": { "type": "array", "items": { "$ref": "#/$defs/link" } },
     "capabilities": { "type": "array", "items": { "$ref": "#/$defs/capability" } },
     "rules": { "type": "array", "items": { "type": "string" } }
@@ -75,7 +76,25 @@
       "required": ["state", "reachedBy"],
       "properties": {
         "state": { "type": "string" },
-        "reachedBy": { "type": "string", "enum": ["actor", "command", "time"] }
+        "reachedBy": { "type": "string", "enum": ["actor", "command"] }
+      }
+    },
+    "derivedField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "title", "description", "ruleRefs"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string", "text", "integer", "number", "money", "boolean", "date", "timestamp", "uuid",
+            "enum", "object", "record"
+          ]
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "ruleRefs": { "type": "array", "items": { "type": "string" } }
       }
     },
     "transition": {

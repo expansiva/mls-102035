@@ -39,7 +39,7 @@ function loadPlan(moduleName: string): Ns5OntologyPlanDraft {
 }
 
 function loadDetail(moduleName: string, entityId: string): Ns5OntologyEntityDraft {
-  return loadLeva<Ns5OntologyEntityDraft>(moduleName, `ontology30-${entityId}-draft.json`);
+  return loadLeva<Ns5OntologyEntityDraft>(moduleName, `ontology30-entity-${entityId}-draft.json`);
 }
 
 function loadJourneys(moduleName: string): Ns5JourneyArtifact[] {

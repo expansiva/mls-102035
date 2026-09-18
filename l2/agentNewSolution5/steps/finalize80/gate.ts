@@ -466,7 +466,13 @@ function checkI6(sources: Ns5OracleSources, warning: IssueFn): void {
   }
   for (const entity of sources.entities) {
     for (const transition of entity.transitions) {
-      if (transition.by !== 'system' && transition.by !== 'time') continue;
+      // ns5_49: "nobody in particular moves it" is `by: []` since ns5_47; the `'system'`/`'time'`
+      // strings survive only in v1/v2 artifacts. Testing for the strings alone left this warning
+      // unreachable on every v3 module.
+      const unowned = Array.isArray(transition.by)
+        ? transition.by.length === 0
+        : transition.by === 'system' || transition.by === 'time';
+      if (!unowned) continue;
       const key = `${entity.entityId}.${transition.transitionId}`;
       if (ownedTransitions.has(key)) continue;
       warning(
@@ -492,7 +498,12 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  * predicate as `NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT` / I10); (c) an `act` of
  * her own external actor writes her (self-registration); (d) derived `parent`
  * or `attach` — attach by an internal actor is cadastro, by an external actor
- * is self-registration. Journey `entry.mode` has no public value.
+ * is self-registration; (e) an inbound event writes her — `writer: 'inbound'`
+ * resolved, with the entity named by some `integration.inbound[].writes` (the
+ * same pair of predicates I10 applies to an inbound entity). The person arrives
+ * with the event that created her record, which is registration by another
+ * module or by an external system, not an unwritten login anchor.
+ * Journey `entry.mode` has no public value.
  */
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
@@ -523,10 +534,12 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     }
     const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
     if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
+    if (resolved.kind === 'inbound'
+      && sources.integration.inbound.some(item => (item.writes || []).includes(personId))) return;
     error(
       'I8',
       `access.grants[${index}]`,
-      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not writer: 'crud' with an internal-actor grant, and the grant's own external actor does not write it (self-registration).`,
+      `Person ${personId} is the ${mode} login anchor of grant ${grant.grantId} but is not registered: no internal actor writes that entity (act entity or affects), it is not writer: 'crud' with an internal-actor grant, the grant's own external actor does not write it (self-registration), and no inbound event writes it.`,
       NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
     );
   });
@@ -720,11 +733,18 @@ function actorMatches(by: Ns5OntologyEntityViewItem['transitions'][number]['by']
   return Boolean(actor && Array.isArray(by) && by.includes(actor));
 }
 
+/**
+ * ns5_49: a `mechanical`/`llm` stage may apply a transition that belongs to no person. Since ns5_47 the
+ * v3 normalize writes that as `by: []`, so the empty list is the permission — the `'system'`/`'time'`
+ * strings only ever reach here from a v1/v2 artifact. `actorMatches` stays strict: a journey `act` on
+ * a `by: []` transition is still an error, because a person does not fire a process transition.
+ */
 function taskTransitionByAllows(
   by: Ns5OntologyEntityViewItem['transitions'][number]['by'],
   actorRef?: string,
 ): boolean {
   if (by === 'system' || by === 'time') return true;
+  if (Array.isArray(by) && by.length === 0) return true;
   return Boolean(actorRef && Array.isArray(by) && by.includes(actorRef));
 }
 

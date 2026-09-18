@@ -9,6 +9,7 @@ import type {
 import { parseNs5InboundEventRef } from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
 import {
   collectNs5Handoffs,
+  collectNs5JourneyTransitionRefs,
   collectNs5ProcessSignals,
   parseNs5TriggerEvent,
   type Ns5WorkflowsEntityView,
@@ -17,9 +18,14 @@ import {
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
-const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait']);
+const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait', 'alert']);
 const EFFECTS = new Set(['create', 'update', 'transition']);
-const MUST_PROCESS = new Set(['handoff', 'foreignBy', 'crossActorDecide']);
+/**
+ * ns5_49: the signals that oblige a process are the ones the JOURNEYS carry. `foreignBy` is read off
+ * the ontology, which in the flow v2 order does not exist yet, so it can no longer oblige anything
+ * here; finalize80 I6 still warns about it once both artifacts are on disk.
+ */
+const MUST_PROCESS = new Set(['handoff', 'crossActorDecide']);
 
 export interface Ns5WorkflowsGateIssue {
   severity: 'error' | 'warning';
@@ -49,6 +55,13 @@ export function validateNs5Workflows(
   const actorIds = new Set(context.actorIds.filter(Boolean));
   const journeyById = new Map(context.journeys.map(journey => [journey.journeyId, journey]));
   const entityById = new Map(context.entities.map(entity => [entity.entityId, entity]));
+  // ns5_49: `[]` means "ontology30 has not run yet" (flow v2 order). The recorded v2 runs still pass
+  // their entities, so the checks against the ontology keep running for them.
+  const hasOntology = context.entities.length > 0;
+  // ns5_56: `Entity.transitionId` a journey step actually moves — the same catalog the human prompt
+  // hands the model (`collectNs5WorkflowsRefCatalog`). With no ontology this is what an event trigger
+  // is checked against, so a condition over data cannot be dressed up as an event.
+  const journeyTransitionRefs = new Set(collectNs5JourneyTransitionRefs(context.journeys));
   const processIds = new Set<string>();
   const coveredHandoffs = new Set<string>();
   const signals = collectNs5ProcessSignals(context.journeys, context.entities);
@@ -75,7 +88,7 @@ export function validateNs5Workflows(
     if (!process.description.trim()) {
       error(issues, 'NS5_WORKFLOWS_DESCRIPTION', 'Process description is required.', `${base}.description`);
     }
-    validateTrigger(process.trigger, `${base}.trigger`, { actorIds, entityById, issues });
+    validateTrigger(process.trigger, `${base}.trigger`, { hasOntology, actorIds, entityById, journeyTransitionRefs, issues });
     if (!process.tasks.length) {
       error(issues, 'NS5_WORKFLOWS_TASKS', 'A process lists at least one task.', `${base}.tasks`);
     }
@@ -83,7 +96,7 @@ export function validateNs5Workflows(
     const taskIds = new Set<string>();
     process.tasks.forEach((task, taskIndex) => {
       const path = `${base}.tasks[${taskIndex}]`;
-      validateTask(task, path, { actorIds, journeyById, entityById, taskIds, coveredHandoffs, issues });
+      validateTask(task, path, { hasOntology, actorIds, journeyById, entityById, taskIds, coveredHandoffs, issues });
     });
 
     process.tasks.forEach((task, taskIndex) => {
@@ -140,8 +153,10 @@ function validateTrigger(
   trigger: Ns5WorkflowTrigger,
   path: string,
   ctx: {
+    hasOntology: boolean;
     actorIds: Set<string>;
     entityById: Map<string, Ns5WorkflowsEntityView>;
+    journeyTransitionRefs: Set<string>;
     issues: Ns5WorkflowsGateIssue[];
   },
 ): void {
@@ -179,6 +194,22 @@ function validateTrigger(
     );
     return;
   }
+  // ns5_56 (was ns5_49: a free declaration): with no ontology the reference is checked against the
+  // transitions the JOURNEYS move — the catalog the model received. `manutencaoFrota` invented
+  // `PlanoManutencao.preventivaVencida`, a condition over data, and only finalize80 I1 saw it, with no
+  // repair round left. With the ontology on hand the lookup below is the stricter one and stands.
+  if (!ctx.hasOntology) {
+    const ref = `${parsed.entityId}.${parsed.transitionId}`;
+    if (!ctx.journeyTransitionRefs.has(ref)) {
+      error(
+        issues,
+        'NS5_WORKFLOWS_TRIGGER_EVENT',
+        `${ref} is not a transition any journey moves. A condition read from the data is a derived field, not an event; what somebody must do about it on a schedule is a scheduled process with an alert stage.`,
+        `${path}.event`,
+      );
+    }
+    return;
+  }
   const entity = ctx.entityById.get(parsed.entityId);
   if (!entity) {
     error(issues, 'NS5_WORKFLOWS_ENTITY_UNKNOWN', `Unknown entity ${parsed.entityId}.`, `${path}.event`);
@@ -198,6 +229,7 @@ function validateTask(
   task: Ns5WorkflowTask,
   path: string,
   ctx: {
+    hasOntology: boolean;
     actorIds: Set<string>;
     journeyById: Map<string, Ns5WorkflowsJourneyView>;
     entityById: Map<string, Ns5WorkflowsEntityView>;
@@ -215,7 +247,7 @@ function validateTask(
   }
   if (task.taskId) ctx.taskIds.add(task.taskId);
   if (!TASK_KINDS.has(task.kind)) {
-    error(issues, 'NS5_WORKFLOWS_KIND', 'kind must be human, mechanical, llm or wait.', `${path}.kind`);
+    error(issues, 'NS5_WORKFLOWS_KIND', 'kind must be human, mechanical, llm, wait or alert.', `${path}.kind`);
   }
   if (!task.description.trim()) {
     error(issues, 'NS5_WORKFLOWS_DESCRIPTION', 'Task description is required.', `${path}.description`);
@@ -235,6 +267,20 @@ function validateTask(
     return;
   }
 
+  // ns5_48: an alert is a recurring duty of a person. The schedule lives on the trigger, the
+  // instruction on the description; it points at no journey and at no entity.
+  if (task.kind === 'alert') {
+    if (!task.actorRef) {
+      error(issues, 'NS5_WORKFLOWS_ALERT_ACTOR', 'An alert stage names actorRef.', `${path}.actorRef`);
+    } else if (!ctx.actorIds.has(task.actorRef)) {
+      error(issues, 'NS5_WORKFLOWS_ALERT_ACTOR', `Unknown actorRef ${task.actorRef}.`, `${path}.actorRef`);
+    }
+    if (task.journeyRef || task.entityRef) {
+      error(issues, 'NS5_WORKFLOWS_KIND', 'alert carries no journey or entity.', `${path}.kind`);
+    }
+    return;
+  }
+
   if (task.actorRef && !ctx.actorIds.has(task.actorRef)) {
     error(issues, 'NS5_WORKFLOWS_ACTOR_UNKNOWN', `Unknown actorRef ${task.actorRef}.`, `${path}.actorRef`);
   }
@@ -244,7 +290,7 @@ function validateTask(
   if (task.kind === 'mechanical' || task.kind === 'llm') {
     if (!task.entityRef || !ENTITY_ID.test(task.entityRef)) {
       error(issues, 'NS5_WORKFLOWS_ENTITY', 'A mechanical or llm task names entityRef.', `${path}.entityRef`);
-    } else if (!ctx.entityById.has(task.entityRef)) {
+    } else if (ctx.hasOntology && !ctx.entityById.has(task.entityRef)) {
       error(issues, 'NS5_WORKFLOWS_ENTITY_UNKNOWN', `Unknown entityRef ${task.entityRef}.`, `${path}.entityRef`);
     }
     if (!task.effect || !EFFECTS.has(task.effect)) {
@@ -284,6 +330,7 @@ function validateTransitionRef(
   task: Ns5WorkflowTask,
   path: string,
   ctx: {
+    hasOntology: boolean;
     entityById: Map<string, Ns5WorkflowsEntityView>;
     issues: Ns5WorkflowsGateIssue[];
   },
@@ -292,6 +339,8 @@ function validateTransitionRef(
     error(ctx.issues, 'NS5_WORKFLOWS_TRANSITION', 'effect transition names transitionRef.', `${path}.transitionRef`);
     return;
   }
+  // ns5_49: the stage DECLARES the transition when the ontology is not written yet.
+  if (!ctx.hasOntology) return;
   const entity = task.entityRef ? ctx.entityById.get(task.entityRef) : undefined;
   if (!entity) return;
   const transition = entity.transitions.find(item => item.transitionId === task.transitionRef);

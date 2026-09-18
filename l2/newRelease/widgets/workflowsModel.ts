@@ -9,7 +9,7 @@ import type {
 } from '../../solution/types.js';
 import type { NewReleaseValidationIssue } from '../tobe.js';
 
-export type WorkflowSchemaKind = 'v1' | 'v2' | 'unknown';
+export type WorkflowSchemaKind = 'v1' | 'v2' | 'v3' | 'unknown';
 export type WorkflowTaskView = Omit<Ns5WorkflowTask, 'kind'> & { kind: Ns5WorkflowTask['kind'] | 'system' };
 export type WorkflowProcessView = Omit<Ns5WorkflowProcess, 'trigger' | 'tasks'> & {
   trigger: Ns5WorkflowTrigger | null;
@@ -46,7 +46,7 @@ function triggerOf(value: unknown): Ns5WorkflowTrigger | null {
 
 function taskOf(value: unknown): WorkflowTaskView {
   const item = record(value);
-  const kind = ['human', 'mechanical', 'llm', 'wait', 'system'].includes(String(item.kind || ''))
+  const kind = ['human', 'mechanical', 'llm', 'wait', 'alert', 'system'].includes(String(item.kind || ''))
     ? String(item.kind) as WorkflowTaskView['kind']
     : 'wait';
   return {
@@ -64,6 +64,7 @@ function taskOf(value: unknown): WorkflowTaskView {
 
 export function workflowSchemaKind(value: unknown): WorkflowSchemaKind {
   const version = String(record(value).schemaVersion || '');
+  if (version.includes('workflows-v3')) return 'v3';
   if (version.includes('workflows-v2')) return 'v2';
   if (version.includes('workflows-v1')) return 'v1';
   return 'unknown';
@@ -127,7 +128,22 @@ export function nextMemberId(prefix: string, existing: readonly string[]): strin
 }
 
 export function workflowsArtifactFromView(view: WorkflowsView): Ns5WorkflowsArtifact | null {
-  if (view.schema !== 'v2') return null;
+  if (!isEditableWorkflowSchema(view.schema)) return null;
   return view.raw as Ns5WorkflowsArtifact;
+}
+
+/** ns5_48: v3 is a superset of v2, so both forms are editable on the screen. */
+export function isEditableWorkflowSchema(schema: WorkflowSchemaKind): boolean {
+  return schema === 'v2' || schema === 'v3';
+}
+
+/**
+ * ns5_48: nobody writes "this is a recurring duty" — the screen derives it. A process fired by a
+ * schedule whose every stage is an alert or a person is an obligation, not orchestration.
+ */
+export function isRecurringDuty(process: WorkflowProcessView): boolean {
+  return process.trigger?.kind === 'scheduled'
+    && process.tasks.length > 0
+    && process.tasks.every(task => task.kind === 'alert' || task.kind === 'human');
 }
 

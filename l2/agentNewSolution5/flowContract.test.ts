@@ -89,8 +89,11 @@ void test('flow has exactly eight steps in declared order with declared dependen
     assert.ok(step.artifact, `${step.id} missing artifact`);
   }
 
+  // ns5_49: workflows50 is a reader of the journeys and a WRITER of what the ontology must declare,
+  // so it runs between them. rules40 and access60 stay after ontology30-done.
+  assert.deepEqual(flow.steps.find(step => step.id === 'workflows50')?.dependsOn, ['journeys20-done']);
+  assert.deepEqual(flow.steps.find(step => step.id === 'ontology30')?.dependsOn, ['workflows50-done']);
   assert.deepEqual(flow.steps.find(step => step.id === 'rules40')?.dependsOn, ['ontology30-done']);
-  assert.deepEqual(flow.steps.find(step => step.id === 'workflows50')?.dependsOn, ['ontology30-done']);
   assert.deepEqual(flow.steps.find(step => step.id === 'access60')?.dependsOn, ['ontology30-done']);
 });
 

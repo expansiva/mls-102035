@@ -44,6 +44,7 @@ export type {
 } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
 
 export {
+  NS4_REGISTRY_LEVEL1_SCHEMA_VERSION as REGISTRY_LEVEL1_SCHEMA_VERSION,
   emptyNs4SolutionRegistry as emptySolutionRegistry,
   upsertNs4SolutionRegistryModule as upsertSolutionRegistryModule,
   inferNs4RegistryMdmSubtype as inferRegistryMdmSubtype,

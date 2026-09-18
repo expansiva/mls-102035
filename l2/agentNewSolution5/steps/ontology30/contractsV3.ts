@@ -23,7 +23,12 @@ import type {
 } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { platformOntologyPath } from '/_102035_/l2/solution/lib.js';
 import {
-  NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+  collectNs5CitedProcessStages,
+  collectNs5CitedTransitions,
+  type Ns5CitedProcessStage,
+} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+import {
+  NS5_ONTOLOGY_SCHEMA_VERSION_V31,
   type Ns5OntologyEntityV3,
   type Ns5OntologyFieldV3,
   type Ns5OntologyFieldsV3,
@@ -60,7 +65,11 @@ export const NS5_ONTOLOGY_V3_MODES = ['fk', 'mdmRelationship', 'throughTable', '
 export const NS5_ONTOLOGY_V3_INDEX_MODES = ['fk', 'mdmRelationship', 'throughTable'] as const;
 export const NS5_ONTOLOGY_V3_CARDINALITIES = ['1:1', '1:N', 'N:1', 'N:N'] as const;
 export const NS5_ONTOLOGY_V3_WRITERS = ['journey', 'crud', 'inbound'] as const;
-export const NS5_ONTOLOGY_V3_REACHED_BY = ['actor', 'command', 'time'] as const;
+/**
+ * ns5_47: `time` is gone. A state is reached because somebody moves the row (`actor`) or because a
+ * command of the module does (`command`); what follows from the data itself is a `derived` field.
+ */
+export const NS5_ONTOLOGY_V3_REACHED_BY = ['actor', 'command'] as const;
 /** The record grammar the module shares with the platform, plus `enum`, `object` and `record`. */
 export const NS5_ONTOLOGY_V3_FIELD_TYPES = [
   'string', 'text', 'integer', 'number', 'money', 'boolean', 'date', 'timestamp', 'uuid',
@@ -152,7 +161,17 @@ export interface Ns5OntologyV3PlanRelationship {
 export type Ns5OntologyV3NormalizationKind =
   | 'derivedFromPlatform'
   | 'tightened'
-  | 'namespaceEmpty';
+  | 'namespaceEmpty'
+  /** ns5_47: `by: ['system']` is not an actor — it is the absence of one, written as an empty list. */
+  | 'systemByCollapsed'
+  /** ns5_47: a `ddm` row is derived whole, so a `derived[]` item on it has nothing to add. */
+  | 'derivedOnDdmIgnored'
+  /** ns5_47: a rule a derived field cites is a rule the entity obeys; it joins `rules`. */
+  | 'derivedRuleRefsLifted'
+  /** ns5_49: a journey cites `Entity.transitionId` and `by` omitted that actor; normalize adds it. */
+  | 'transitionByAdded'
+  /** ns5_49: a transition cited only by a process stage has no human author; `by` becomes `[]`. */
+  | 'transitionOwnedByProcess';
 
 export interface Ns5OntologyV3Normalization {
   kind: Ns5OntologyV3NormalizationKind;
@@ -344,10 +363,42 @@ function normalizePlanRelationship(value: unknown, known: ReadonlySet<string>): 
 // T3 / T4 — the entity
 // ---------------------------------------------------------------------------
 
+/**
+ * ns5_47 — one value of the row nobody writes: it is computed when the row is read, from this same row
+ * or from rows linked to it. It is NOT a lifecycle state: `status` keeps only what an actor or a
+ * command puts there. `description` states the condition, in the user language, and what it reads.
+ * The model writes this list on the entity; it is folded into the record here.
+ */
+export interface Ns5OntologyV3DerivedItem {
+  id: string;
+  type: Ns5OntologyFieldV3['type'];
+  title: string;
+  description: string;
+  ruleRefs: string[];
+}
+
+/** Journeys, in the only shape the citation walk reads. */
+export type Ns5OntologyV3JourneyView = {
+  business: {
+    actorRef?: string;
+    steps: ReadonlyArray<{
+      kind: string;
+      entity: string;
+      stepId?: string;
+      effect?: 'create' | 'update' | 'transition';
+      transitionRef?: string;
+    }>;
+  };
+};
+
 export interface Ns5OntologyV3EntityContext {
   moduleName: string;
   mdm: MdmOntology;
   plan: Ns5OntologyV3PlanDraft;
+  /** ns5_49: who cited each transition. A journey act gives it an actor; a process stage owns it. */
+  journeys?: readonly Ns5OntologyV3JourneyView[];
+  /** ns5_49: workflows50 runs before this step; its mechanical/llm stages declare what to honour. */
+  workflows?: { processes: ReadonlyArray<{ processId?: string; tasks: ReadonlyArray<{ taskId?: string; kind: string; entityRef?: string; effect?: 'create' | 'update' | 'transition'; transitionRef?: string }> }> } | null;
 }
 
 /**
@@ -365,9 +416,23 @@ export function normalizeNs5OntologyEntityV3(
   const raw = record(value);
   const relationships = normalizeEntityRelationships(raw.relationships, entityId, context);
   const capabilities = normalizeCapabilities(raw.capabilities);
-  const rules = list(raw.rules).map(text).filter(Boolean);
+  const family = ns5FamilyOfV3(frozen);
+  // A `ddm` row is derived whole (`normalizeTableRecord` marks every field), so a `derived[]` item on it
+  // would only repeat what the family already says: it is dropped, on the record, not in silence.
+  const derivedItems = family === 'ddm' ? [] : normalizeDerivedItems(raw.derived);
+  if (family === 'ddm') {
+    for (const item of normalizeDerivedItems(raw.derived)) {
+      normalizations.push({ kind: 'derivedOnDdmIgnored', entityId, detail: `derived.${item.id}` });
+    }
+  }
+  const written = list(raw.rules).map(text).filter(Boolean);
+  const cited = derivedItems.flatMap(item => item.ruleRefs).filter(id => !written.includes(id));
+  if (cited.length) {
+    normalizations.push({ kind: 'derivedRuleRefsLifted', entityId, detail: `rules += ${[...new Set(cited)].join(', ')}` });
+  }
+  const rules = [...written, ...new Set(cited)];
   const common = {
-    schemaVersion: NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+    schemaVersion: NS5_ONTOLOGY_SCHEMA_VERSION_V31,
     moduleName: context.moduleName,
     entityId,
     title: frozen.title,
@@ -382,7 +447,12 @@ export function normalizeNs5OntologyEntityV3(
     .map(item => list(Array.isArray(item) ? item : record(item).fields).map(text).filter(Boolean))
     .filter(item => item.length > 0);
   const lifecycleStates = normalizeLifecycleStates(raw.lifecycleStates);
-  const transitions = normalizeTransitions(raw.transitions);
+  const transitions = applyCitedTransitionOwners(
+    normalizeTransitions(raw.transitions, entityId, normalizations),
+    entityId,
+    context,
+    normalizations,
+  );
 
   if (frozen.kind === 'role') {
     const subtype = frozen.subtype as MdmSubtypeName;
@@ -392,7 +462,7 @@ export function normalizeNs5OntologyEntityV3(
       subtype,
       roleTag: frozen.roleTag ?? `${context.moduleName}.${entityId}`,
       source: frozen.source ?? platformOntologyPath(),
-      record: { fields: normalizeRoleRecord(raw.record, entityId, subtype, context, normalizations) },
+      record: { fields: normalizeRoleRecord(raw.record, entityId, subtype, context, normalizations, derivedItems) },
       ...(uniqueKeys.length ? { uniqueKeys } : {}),
     };
   }
@@ -401,14 +471,49 @@ export function normalizeNs5OntologyEntityV3(
     kind: 'entity',
     class: frozen.class ?? 'core',
     storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' },
-    record: { fields: normalizeTableRecord(raw.record, entityId, ns5FamilyOfV3(frozen), normalizations) },
+    record: { fields: normalizeTableRecord(raw.record, entityId, family, normalizations, derivedItems) },
     ...(uniqueKeys.length ? { uniqueKeys } : {}),
     ...(lifecycleStates.length ? { lifecycleStates } : {}),
     ...(transitions.length ? { transitions } : {}),
   };
 }
 
-function normalizeLifecycleStates(value: unknown): { state: string; reachedBy: 'actor' | 'command' | 'time' }[] {
+/** The `derived[]` the model wrote, read tolerantly. Items without an id are dropped. */
+function normalizeDerivedItems(value: unknown): Ns5OntologyV3DerivedItem[] {
+  return list(value).map(item => {
+    const raw = record(item);
+    return {
+      id: text(raw.id),
+      type: oneOf(raw.type, NS5_ONTOLOGY_V3_FIELD_TYPES, 'string') as Ns5OntologyFieldV3['type'],
+      title: text(raw.title),
+      description: text(raw.description),
+      ruleRefs: list(raw.ruleRefs).map(text).filter(Boolean),
+    };
+  }).filter(item => item.id);
+}
+
+/**
+ * Fold the derived items into the one document branch that holds them — `details` on a table, the module
+ * namespace on a role — as ordinary fields carrying `derived: true`. Nothing downstream then
+ * has to know about a second list: the gate, the screen and the emitter all walk `record.fields`.
+ */
+function foldDerived(
+  into: Record<string, Ns5OntologyFieldV3>,
+  items: readonly Ns5OntologyV3DerivedItem[],
+  entityId: string,
+  path: string,
+  normalizations: Ns5OntologyV3Normalization[],
+): void {
+  for (const item of items) {
+    const field: Ns5OntologyFieldV3 = { type: item.type, derived: true };
+    if (item.title) field.title = item.title;
+    if (item.description) field.description = item.description;
+    into[item.id] = field;
+    normalizations.push({ kind: 'derivedFromPlatform', entityId, detail: `${path}.${item.id}.derived (derived[])` });
+  }
+}
+
+function normalizeLifecycleStates(value: unknown): NonNullable<Ns5OntologyEntityV3['lifecycleStates']>[number][] {
   return list(value).map(item => {
     const raw = record(item);
     return {
@@ -418,15 +523,30 @@ function normalizeLifecycleStates(value: unknown): { state: string; reachedBy: '
   }).filter(item => item.state);
 }
 
-function normalizeTransitions(value: unknown): NonNullable<Ns5OntologyEntityV3['transitions']> {
+/**
+ * ns5_47: `by` is a list of actor ids and nothing else. `system` — as the scalar the v2 grammar had, or
+ * as a one-item list — is not an actor but the absence of one, and collapses to `[]`. `time` does NOT
+ * collapse: a move nobody makes is not a transition at all, so it is kept as written and the assembly
+ * gate says, in one message, that the condition belongs in `derived[]`.
+ */
+function normalizeTransitions(
+  value: unknown,
+  entityId: string,
+  normalizations: Ns5OntologyV3Normalization[],
+): NonNullable<Ns5OntologyEntityV3['transitions']> {
   return list(value).map(item => {
     const raw = record(item);
-    const by: 'system' | 'time' | string[] = raw.by === 'system' || raw.by === 'time'
-      ? raw.by
+    const written = raw.by === 'system' || raw.by === 'time'
+      ? [raw.by as string]
       : list(raw.by).map(text).filter(Boolean);
+    const transitionId = text(raw.transitionId);
+    const by = written.length === 1 && written[0] === 'system' ? [] : written;
+    if (by.length !== written.length && transitionId) {
+      normalizations.push({ kind: 'systemByCollapsed', entityId, detail: `transitions.${transitionId}.by` });
+    }
     const ruleRefs = list(raw.ruleRefs).map(text).filter(Boolean);
     return {
-      transitionId: text(raw.transitionId),
+      transitionId,
       from: list(raw.from).map(text).filter(Boolean),
       to: text(raw.to),
       by,
@@ -434,6 +554,51 @@ function normalizeTransitions(value: unknown): NonNullable<Ns5OntologyEntityV3['
       ...(ruleRefs.length ? { ruleRefs } : {}),
     };
   }).filter(item => item.transitionId);
+}
+
+/**
+ * ns5_49: the two citations decide who a transition belongs to.
+ * - a journey `act` with `effect: transition` names an actor: that actor joins `by` (the v2
+ *   `addCitedTransitionActors`, ported);
+ * - a `mechanical`/`llm` stage of workflows50 names no person: a transition cited ONLY that way is
+ *   owned by the process and `by` becomes `[]`.
+ * A transition nobody cites is left exactly as the model wrote it.
+ */
+function applyCitedTransitionOwners(
+  transitions: NonNullable<Ns5OntologyEntityV3['transitions']>,
+  entityId: string,
+  context: Ns5OntologyV3EntityContext,
+  normalizations: Ns5OntologyV3Normalization[],
+): NonNullable<Ns5OntologyEntityV3['transitions']> {
+  const byJourney = collectNs5CitedTransitions(
+    (context.journeys || []).map(journey => ({ business: { actorRef: journey.business.actorRef, steps: journey.business.steps } })),
+  ).filter(item => item.entityId.split('.')[0] === entityId);
+  const byProcess: Ns5CitedProcessStage[] = collectNs5CitedProcessStages(context.workflows)
+    .filter(item => item.entityId === entityId && item.effect === 'transition' && item.transitionId);
+  if (!byJourney.length && !byProcess.length) return transitions;
+  return transitions.map(transition => {
+    const actors = [...new Set(
+      byJourney.filter(item => item.transitionId === transition.transitionId).map(item => item.actorRef).filter(Boolean),
+    )];
+    if (actors.length) {
+      const missing = actors.filter(actor => !transition.by.includes(actor));
+      if (!missing.length) return transition;
+      normalizations.push({
+        kind: 'transitionByAdded',
+        entityId,
+        detail: `by added ${missing.join(', ')} on ${transition.transitionId} (cited transitionRef).`,
+      });
+      return { ...transition, by: [...transition.by, ...missing] };
+    }
+    const owner = byProcess.find(item => item.transitionId === transition.transitionId);
+    if (!owner || !transition.by.length) return transition;
+    normalizations.push({
+      kind: 'transitionOwnedByProcess',
+      entityId,
+      detail: `by emptied on ${transition.transitionId}; cited only by ${owner.processId}.${owner.taskId}.`,
+    });
+    return { ...transition, by: [] };
+  });
 }
 
 function normalizeCapabilities(value: unknown): Record<string, string> {
@@ -460,6 +625,7 @@ function normalizeTableRecord(
   entityId: string,
   family: Ns5OntologyV3Family,
   normalizations: Ns5OntologyV3Normalization[],
+  derivedItems: readonly Ns5OntologyV3DerivedItem[] = [],
 ): Ns5OntologyFieldsV3 {
   const written = keyed(record(value).fields);
   const out: Record<string, Ns5OntologyFieldV3> = {
@@ -482,6 +648,11 @@ function normalizeTableRecord(
     out[id] = field;
   }
   out.details = details ?? { type: 'object', required: true, fields: {} };
+  if (derivedItems.length) {
+    const fields: Record<string, Ns5OntologyFieldV3> = { ...(out.details.fields ?? {}) };
+    foldDerived(fields, derivedItems, entityId, 'record.fields.details.fields', normalizations);
+    out.details = { ...out.details, fields };
+  }
   if (family === 'ddm') markDerived(out, entityId, 'record.fields', normalizations);
   return out;
 }
@@ -516,6 +687,7 @@ function normalizeRoleRecord(
   subtype: MdmSubtypeName,
   context: Ns5OntologyV3EntityContext,
   normalizations: Ns5OntologyV3Normalization[],
+  derivedItems: readonly Ns5OntologyV3DerivedItem[] = [],
 ): Ns5OntologyFieldsV3 {
   const { mdm, moduleName } = context;
   const written = keyed(record(value).fields);
@@ -557,6 +729,11 @@ function normalizeRoleRecord(
         continue;
       }
       fields[id] = mergeWithPlatform(field, platformField, `${entityId}.details.${key}.${id}`, normalizations, entityId);
+    }
+    // The module namespace is the only branch of a role the module writes, so a derived field of a role
+    // lands here — and a namespace that holds one is not empty.
+    if (isNamespace && derivedItems.length) {
+      foldDerived(fields, derivedItems, entityId, `record.fields.details.${key}.fields`, normalizations);
     }
     if (isNamespace && !Object.keys(fields).length) {
       branch.fields = {};
@@ -802,7 +979,7 @@ export function assembleNs5OntologyIndexV3(
       return out;
     });
   return {
-    schemaVersion: NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+    schemaVersion: NS5_ONTOLOGY_SCHEMA_VERSION_V31,
     moduleName: plan.moduleName,
     businessDomain: plan.businessDomain,
     platformOntology: platformOntologyPath(),
@@ -922,6 +1099,7 @@ export function liftNs5AggregateOnlyEntitiesV3(
   plan: Ns5OntologyV3PlanDraft,
   entities: ReadonlyArray<Ns5OntologyEntityV3>,
   journeys: ReadonlyArray<Ns5V3JourneyView>,
+  workflows?: Ns5OntologyV3EntityContext['workflows'],
 ): Ns5V3LiftResult {
   const written = new Set<string>();
   for (const journey of journeys) {
@@ -931,6 +1109,9 @@ export function liftNs5AggregateOnlyEntitiesV3(
       for (const affect of step.affects ?? []) if (affect) written.add(affect.split('.')[0]);
     }
   }
+  // ns5_49: a process stage is a writer too. Without this an entity only a `mechanical`/`llm` stage
+  // writes would be read as a panel and lifted out of the ontology.
+  for (const stage of collectNs5CitedProcessStages(workflows)) written.add(stage.entityId);
   const linked = new Set<string>();
   for (const row of plan.relationships) {
     linked.add(row.from);

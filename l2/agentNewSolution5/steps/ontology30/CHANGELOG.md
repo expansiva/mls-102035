@@ -1,5 +1,86 @@
 # ontology30
 
+## 2026-09-18 (ns5_52b)
+
+- The entity draft is `ontology30-entity-<EntityId>-draft.json`. Under the old name an entity called
+  `Plan` overwrote `ontology30-plan-draft.json` on a case-insensitive file system (APFS) and the step
+  failed with "ontology30 plan draft is missing". Recorded modules keep their old files; a rerun
+  writes the new name.
+
+## 2026-09-17 (ns5_49)
+
+- Reads `workflows.defs.ts` in all three passes (plan, entity, finalize). `collectNs5CitedProcessStages`
+  (`contracts.ts`) returns `{ entityId, effect, transitionId, processId, taskId }` for every
+  `mechanical`/`llm` stage.
+- `normalizeNs5OntologyEntityV3` decides who owns a transition: a journey `act` adds its actor
+  (`transitionByAdded`, the v2 `addCitedTransitionActors` ported); a transition cited ONLY by a stage
+  has `by` emptied (`transitionOwnedByProcess`); a transition nobody cites is left alone.
+- The plan gate's `NS5_ONTOLOGY_JOURNEY_ENTITY` now also fires for an entity only a process stage
+  names, and the message says which stage.
+- `liftNs5AggregateOnlyEntitiesV3` counts a process stage as a writer: an entity only a stage writes
+  is no longer read as a panel and lifted into `module.details`.
+- Entity prompt: `## Process stages that touch this entity`, and `## Cited transitions...` tags a
+  process-owned one `by: (process)`. `promptEntity.md` says the same in prose.
+
+## 2026-09-18 (ns5_47, close — `ddm` sentence)
+
+- `prompt.md` `ddm` bullet: the brake ("declare one only when…") became an affirmative — a panel, a
+  dashboard, a summary or a report of totals **the request names** IS one `ddm` entity, one field per
+  number. No new rule, no gate, no schema. Decision of Wagner, 18/09; measured cause: the same plan
+  code produced a `ddm` panel in 2 of 4 live runs of `mensalidadesAcademia` — the brake was read half
+  the time.
+
+## 2026-09-17, night (ns5_47, rescope — `from` removed)
+
+- **`from` is gone from `derived[]`** (`Ns5OntologyFieldV3`, the entity schema, `normalizeDerivedItems`,
+  `foldDerived`): it had no reader that works without an LLM — the only ones were the gate that existed
+  to validate it and a line on the screen — and every failure of the two live runs was the gate asking
+  one entity for the address of another entity's field, which the entity prompt never sees. The
+  condition, and what it reads, now live in `description`, in prose, in the user language. Decision of
+  Wagner, 17/09 night.
+- **`NS5_ONTOLOGY_DERIVED_FROM_UNRESOLVED` is gone** from `validateNs5OntologyAssemblyV3`, with
+  `derivedFieldsWithFrom`, `resolvesDerivedFrom`, `explainDerivedFrom` and `suggestDerivedFrom`.
+  `ns5ResolvableFieldIdsV3` stays: the per-entity gate reads it. The message of
+  `NS5_ONTOLOGY_TRANSITION_ACTOR_UNKNOWN` for `time` is untouched.
+- **The screen** lists a derived field by `derived === true` alone and shows the condition; the
+  `ontology.v3.derivedFrom` key ("Reads") is gone from both bundles.
+
+## 2026-09-17 (ns5_47, round 2 — the prova viva measured the address, not the grammar)
+
+- **`promptEntity.md`**: the two examples of `from` after a link were invalid for the gate (they dropped
+  the `details.` prefix and named a leaf — `valor` — that no entity declares), and the model copied the
+  shape. They now show the path exactly as `record.fields` spells it, name the role's module branch, and
+  say plainly that the entity on the other side of a link is NOT shown in this prompt: cross a link only
+  for a path you can name for certain, never for an invented field name.
+- **`NS5_ONTOLOGY_DERIVED_FROM_UNRESOLVED`**: `explainDerivedFrom` walks the same hops as
+  `resolvesDerivedFrom` (explanation only — the resolver is unchanged) and names the entity where the
+  walk stopped plus ITS paths. Before, a failure after a link listed only the origin entity's paths,
+  which is precisely what was not missing. `suggestDerivedFrom` lists up to 12 paths (was 6) with `…`.
+
+## 2026-09-17 (ns5_47)
+
+- **v3.1**: `NS5_ONTOLOGY_SCHEMA_VERSION_V31 = '2026-09-17-ns5-ontology-v3.1'`. Every reader asks
+  `isNs5OntologyV3Version` and accepts v3 as well; only the generator emits v3.1, so the artifacts
+  already recorded stay readable and the hand-written `agendaClinica-v3` fixture is untouched.
+- **`derived[]`**: the entity declares what nobody writes — `{ id, type, title, description, ruleRefs }`,
+  computed on read. `normalizeDerived` folds each item into `details` (table) or into the module
+  namespace (role) as a field with `derived: true`; a `ddm` entity ignores it and records
+  `derivedOnDdmIgnored`, because every field of a summary is derived already.
+- **`time` is gone** from `reachedBy` (enum `actor|command`) and from `by`. `by` is a list of actor ids,
+  empty when a process owns the move: a single `system`, scalar or in a list, collapses to `[]` and is
+  recorded as `systemByCollapsed`. A `time` in `by` is kept as written so
+  `NS5_ONTOLOGY_TRANSITION_ACTOR_UNKNOWN` can say, in one message, that the condition belongs in
+  `derived[]`.
+- **A rule a derived field cites** joins `rules`, so `collectNs5CitedRulesV3` hands it to `rules40`
+  (`derivedRuleRefsLifted`).
+- **Papel x tabela**: `prompt.md` says a `role` is a register the organization shares between modules;
+  the object this module operates and whose state it moves — a table, a room, a parking space — is an
+  `entity` of family `tdm`, with its availability as a derived field.
+- `finalize80` states `level1SchemaVersion = mdm.schemaVersion` on every registry write, instead of
+  keeping whatever constant the run that created the registry used.
+- The screen shows the derived fields with their condition and their sources
+  (`ontologyV3DerivedFields`, `newRelease/widgets/ontology.ts`).
+
 ## 2026-09-17 (ns5_46)
 
 - A table now starts from a CATALOG, like a role already did. `mls-102034/l4/ontology/tdm.defs.ts`

@@ -17,7 +17,7 @@ import {
 } from '/_102035_/l2/solution/types.js';
 
 export const NS5_FLOW_ID = 'agentNewSolution5' as const;
-export const NS5_FLOW_VERSION = '2026-09-10-ns5-flow-v1' as const;
+export const NS5_FLOW_VERSION = '2026-09-17-ns5-flow-v2' as const;
 export const NS5_AGENT_NAME = 'agentNewSolution5' as const;
 
 export { NS5_STEP_IDS };
@@ -41,9 +41,9 @@ export const NS5_STEP_TITLES: Record<Ns5StepId, string> = {
 export const NS5_STEP_DEPENDS_ON: Record<Ns5StepId, readonly string[]> = {
   module10: [],
   journeys20: ['module10-done'],
-  ontology30: ['journeys20-done'],
+  workflows50: ['journeys20-done'],
+  ontology30: ['workflows50-done'],
   rules40: ['ontology30-done'],
-  workflows50: ['ontology30-done'],
   access60: ['ontology30-done'],
   integration70: ['rules40-done', 'workflows50-done', 'access60-done'],
   finalize80: ['integration70-done'],
@@ -142,6 +142,35 @@ export function createNs5AgentStep(
 
 export function buildNs5PlannedSteps(moduleName: string): mls.msg.AIAgentStep[] {
   return NS5_STEP_IDS.map(stepId => createNs5AgentStep(stepId, moduleName));
+}
+
+/**
+ * ns5_52b. Every deterministic refusal of the invocation in one pure place: the hook only carries
+ * the message to the user, and the rules are testable without an ExecutionContext. An empty string
+ * means the invocation may start the pipeline. Texts are English (i18n default), like the rest of
+ * this block. `existing` is the module folder already on disk, '' when there is none.
+ */
+export function ns5EntryRefusal(invocation: Ns5ParsedInvocation, existing: string): string {
+  if (!invocation.prompt) {
+    // A bare `/rebuild all <module>` used to pass this gate: the pipeline then ran with the command
+    // line as its only source and invented a module (ns5_52b, achado 3).
+    return invocation.rebuildAll
+      ? 'Write the request in the message body, below the @@newSolution5 command line. /rebuild all rebuilds from the request you write now, not from the previous one.'
+      : 'Provide the module description after @@newSolution5.';
+  }
+  if (invocation.rebuildAll && !invocation.module) {
+    return 'Pass /rebuild all <lowerCamel>. /rebuild all needs the module name.';
+  }
+  if (invocation.module && !moduleTokenOk(invocation.module)) {
+    return 'Module name must be lowerCamel (example: stockControl).';
+  }
+  if (existing && !invocation.rebuildAll) {
+    return `Module "${existing}" already exists. To regenerate, use "@@newSolution5 ${existing} /rebuild all". Nothing was changed.`;
+  }
+  if (invocation.rebuildAll && !existing) {
+    return `Module "${invocation.module}" does not exist. /rebuild all refuses to create a module that is not there.`;
+  }
+  return '';
 }
 
 export function existingModuleName(moduleName: string): string {

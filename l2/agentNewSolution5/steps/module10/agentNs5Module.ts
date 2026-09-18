@@ -11,10 +11,12 @@ import {
   existingModuleName,
   markNs5Step,
   moduleTokenOk,
+  startNs5Pipeline,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
   NS5_STEP_HOOKS,
   drainWaitingSiblings,
+  ns5StatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
@@ -32,8 +34,20 @@ import {
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
-import type { Ns5Invocation, Ns5ModuleActor, Ns5ModuleArtifact, Ns5PipelineState } from '/_102035_/l2/solution/types.js';
-import { buildNs5ModuleTool, normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
+import type {
+  Ns5Invocation,
+  Ns5ModuleActor,
+  Ns5ModuleArtifact,
+  Ns5PipelineState,
+  Ns5SystemDecision,
+} from '/_102035_/l2/solution/types.js';
+import {
+  NS5_MODULE_NOT_A_REQUEST,
+  NS5_MODULE_SYSTEM_ACTOR_NOTE,
+  buildNs5ModuleTool,
+  normalizeNs5ModuleArtifact,
+  ns5ModuleRequestKind,
+} from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
 import { formatNs5ModuleGate, validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
 
 const MAX_REPAIRS = 2;
@@ -83,13 +97,21 @@ export async function beforeNs5ModulePromptStep(
     moduleName = parsed.moduleName;
     const sourcePrompt = await readSourcePrompt(context, moduleName);
     const pipeline = moduleName ? await readPipeline(moduleName) : null;
-    const fixedModuleName = invocationOf(context, pipeline).module;
+    const invocation = invocationOf(context, pipeline);
+    const fixedModuleName = invocation.module;
+    // ns5_55: on a `/rebuild all` the draft on disk answers the *previous* request until this run
+    // removes the module — offering it as "current draft" would rebuild what the user asked to
+    // replace. Only a repair implies the removal already happened (the gate runs after it). A
+    // transport retry does not: it is scheduled before the verdict, so it reads no draft. A
+    // transport retry that follows a repair loses the draft too (`repairAttempt` is not carried
+    // over); it then regenerates from the source prompt, which is the safe side of the trade.
+    const keepPreviousDraft = !invocation.rebuildAll || parsed.repairAttempt > 0;
     const [mdm, prompt, schema, registry, previous] = await Promise.all([
       readNs5MdmSkill(),
       readAgentText('steps/module10', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'module.schema', '.json'),
       readSolutionRegistry(),
-      moduleName ? readJson(draftFile(moduleName, 'module10')) : Promise.resolve(null),
+      moduleName && keepPreviousDraft ? readJson(draftFile(moduleName, 'module10')) : Promise.resolve(null),
     ]);
     const tool = buildNs5ModuleTool(schema, createStrictArtifactTool);
     const humanPrompt = buildNs5ModuleHumanPrompt({
@@ -139,10 +161,28 @@ export async function afterNs5ModulePromptStep(
 
     const sourcePrompt = await readSourcePrompt(context, moduleName);
     const invocation = invocationOf(context, moduleName ? await readPipeline(moduleName) : null);
+
+    // ns5_52b: the intent gate. It runs before `normalizeNs5ModuleArtifact` and before the first
+    // write, so a request that is not a module request leaves no folder in l4/. The remaining steps
+    // are drained so the run ends answered, not `failed` eleven steps later.
+    // ns5_55: no exemption. `/rebuild all` no longer deletes at the entry hook, so a refusal here
+    // leaves the existing module exactly as it was — the removal happens below, after this verdict.
+    if (ns5ModuleRequestKind(payload) === 'notAModuleRequest') {
+      return [
+        ns5StatusMessage(agent, context, NS5_MODULE_NOT_A_REQUEST),
+        ...drainWaitingSiblings(context, step, hookSequential, 'stopped: the request does not describe a module.'),
+        updateStatus(context, mutationParent, step, hookSequential, 'completed', 'module10 refused: the request does not describe a module. Nothing was written.'),
+      ];
+    }
+
     const fixedModuleName = invocation.module;
-    const { artifact, actors, i18nWarnings, normalizations } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
+    const { artifact, actors, i18nWarnings, normalizations, systemDecisions } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
     moduleName = artifact.moduleName;
     if (!moduleTokenOk(moduleName)) throw new Error('moduleName must be lowerCamel.');
+    // ns5_55: the rebuild starts here, past the verdict and before the first write — remove the old
+    // module and open a new pipeline stamped with `rebuildAll.at`. `ensurePipeline` below then finds
+    // that fresh pipeline instead of creating one.
+    if (invocation.rebuildAll) await startNs5Pipeline(moduleName, sourcePrompt, invocation, true);
     await assertModuleWritable(moduleName, invocation.rebuildAll);
 
     let pipeline = await ensurePipeline(moduleName, sourcePrompt, invocation);
@@ -154,10 +194,16 @@ export async function afterNs5ModulePromptStep(
       ...artifact,
       actors,
       ...(normalizations.length ? { normalizations } : {}),
+      ...(systemDecisions.length ? { systemDecisions } : {}),
     });
     const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName, actors });
     if (!gate.ok) {
-      const feedback = formatNs5ModuleGate(gate.issues);
+      // The drop of a `kind: system` actor can be what leaves the list without a person. Saying so
+      // is the difference between a repair that adds the missing internal actor and one that sends
+      // the same external system again.
+      const feedback = systemDecisions.length
+        ? `${formatNs5ModuleGate(gate.issues)}\n${NS5_MODULE_SYSTEM_ACTOR_NOTE}`
+        : formatNs5ModuleGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
         return [
           addStep(context, mutationParent, createNs5RetryStep('module10', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
@@ -173,7 +219,7 @@ export async function afterNs5ModulePromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation, normalizations);
+    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation, normalizations, systemDecisions);
     const warningNote = i18nWarnings.map(item => `\nwarning: ${item}`).join('');
     return [
       doneAnchor(context, mutationParent, moduleName, artifactPath),
@@ -195,6 +241,7 @@ async function persistArtifact(
   actors: Ns5ModuleActor[],
   invocation: Ns5Invocation,
   normalizations: { kind: string; detail: string }[],
+  systemDecisions: Ns5SystemDecision[],
 ): Promise<string> {
   await assertModuleWritable(moduleName, invocation.rebuildAll);
   const artifactPath = await writeDefs(moduleFile(moduleName), `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
@@ -205,6 +252,7 @@ async function persistArtifact(
     artifactPaths: [artifactPath],
     actors,
     ...(normalizations.length ? { normalizations } : {}),
+    ...(systemDecisions.length ? { systemDecisions } : {}),
     ...(invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return artifactPath;
@@ -261,8 +309,18 @@ async function recordFailure(moduleName: string, error: string): Promise<void> {
   } catch { /* task trace remains the fallback */ }
 }
 
+/**
+ * ns5_55. Since the entry hook stopped deleting on `/rebuild all`, the `pipeline.json` on disk is
+ * the *previous* run's until module10 approves. Rebuilding from it would regenerate the previous
+ * request (and report `rebuildAll: false`), so while a rebuild is in flight the invocation and the
+ * request come from the context memory the entry hook filled.
+ */
+function rebuildAllInFlight(context: mls.msg.ExecutionContext): boolean {
+  return memoryString(context, 'rebuildAll') === 'true';
+}
+
 async function readSourcePrompt(context: mls.msg.ExecutionContext, moduleName: string): Promise<string> {
-  if (moduleName) {
+  if (moduleName && !rebuildAllInFlight(context)) {
     const pipeline = await readPipeline(moduleName);
     if (pipeline?.sourcePrompt) return pipeline.sourcePrompt;
   }
@@ -270,12 +328,14 @@ async function readSourcePrompt(context: mls.msg.ExecutionContext, moduleName: s
 }
 
 function invocationOf(context: mls.msg.ExecutionContext, pipeline: Ns5PipelineState | null): Ns5Invocation {
-  if (pipeline?.invocation) return pipeline.invocation;
-  return {
+  const memory: Ns5Invocation = {
     fast: memoryString(context, 'fastMode') === 'true',
     module: memoryString(context, 'moduleName'),
-    rebuildAll: memoryString(context, 'rebuildAll') === 'true',
+    rebuildAll: rebuildAllInFlight(context),
   };
+  if (memory.rebuildAll) return memory;
+  if (pipeline?.invocation) return pipeline.invocation;
+  return memory;
 }
 
 function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): ModuleArgs {

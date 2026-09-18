@@ -1,5 +1,14 @@
 # rules40
 
+## 2026-09-18 (ns5_56)
+
+- A ruleId this step receives CITED (`pipeline.ontology30.citedRules`) belongs to whoever cited it:
+  when the payload returns the same id with a different CASE, `normalizeNs5RulesPayload` adopts the
+  cited spelling and records `normalizations[] { kind: 'citedIdSpellingAdopted' }` (copied into
+  `pipeline.rules40.normalizations`). Only case — a genuinely different id stays untouched and remains
+  an I4 error. Measured on `compras`: cited `pedidoDeveTerFornecedorEItens`, written back `…Eitens`,
+  and finalize80 I4 compares exact strings.
+
 ## 2026-09-16 (ns5_45)
 
 - The artifact is `rules-v2` (`2026-09-16-ns5-rules-v2`): `rules` is a MAP of `ruleId` to the one
