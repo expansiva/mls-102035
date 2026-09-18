@@ -62,7 +62,9 @@ A lifecycle is only for what **somebody moves**. Each state is `{ state, reached
 states, and `status` holds only what an actor or a command writes. Transitions are
 `{ transitionId, from, to, by, description, ruleRefs? }`; `by` is a list of actor ids of the module, and
 is **empty** when the move belongs to a process and to no person. Every `transitionRef` an `act` cites
-on this entity is required, with that journey's actor in `by`. The human prompt lists the citations.
+on this entity is required, with that journey's actor in `by`; a `decide` cited on this entity requires
+at least two transitions leaving the same state — one per outcome — with the deciding actor in `by`.
+The human prompt lists the citations.
 The processes were written before this step: every `entityRef` and `transitionRef` a `mechanical` or
 `llm` stage cites on this entity is required too, and a transition only a stage cites has `by: []` —
 the process moves it, no person does. `## Process stages that touch this entity` lists them.

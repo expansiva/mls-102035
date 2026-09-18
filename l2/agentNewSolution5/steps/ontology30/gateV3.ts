@@ -23,7 +23,12 @@ import {
   type Ns5OntologyIndexV3,
   type Ns5OntologyValueV3,
 } from '/_102035_/l2/solution/types.js';
-import { collectNs5CitedProcessStages } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+import {
+  collectNs5CitedProcessStages,
+  collectNs5LifecycleSignal,
+  ns5LifecycleHasBranchingOrigin,
+  type Ns5LifecycleJourneyView,
+} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
 import {
   NS5_NAMESPACE_EMPTY_DESCRIPTION,
   NS5_ONTOLOGY_V3_CLASSES,
@@ -60,8 +65,13 @@ export interface Ns5OntologyV3GateContext {
   tdm: DataFamilyOntology;
   /** The catalog of a derived table. */
   ddm: DataFamilyOntology;
-  /** Journeys, for the cited-entity check and for the namespace evidence. */
-  journeys?: ReadonlyArray<{ business: { steps: ReadonlyArray<{ entity: string; affects?: string[] }> } }>;
+  /**
+   * Journeys, for the cited-entity check, for the namespace evidence and for the `decide` branch
+   * (ns5_57). The element is the view the lifecycle walk already understands — `kind`, `effect` and
+   * `stepId` were always in the data (`readJourneys()` returns `Ns5JourneyArtifact[]`); only this
+   * declaration was narrower than the value it receives.
+   */
+  journeys?: ReadonlyArray<Ns5LifecycleJourneyView & { journeyId?: string }>;
   /** ns5_49: workflows50 runs first; a mechanical/llm stage names an entity the plan must declare. */
   workflows?: { processes: ReadonlyArray<{ processId?: string; tasks: ReadonlyArray<{ taskId?: string; kind: string; entityRef?: string; effect?: 'create' | 'update' | 'transition'; transitionRef?: string }> }> } | null;
   /** Source prompt plus journey prose: where a module field has to have a trace. */
@@ -364,6 +374,7 @@ export function validateNs5OntologyEntityV3(
   const family = familyOf(entity, plan);
   issues.push(...checkCapabilities(entity, family, context, path));
   issues.push(...checkRules(entity, context, path));
+  issues.push(...checkDecideBranching(entity, context, path));
   issues.push(...checkEntityRelationships(entity, plan, path));
   if (entity.kind === 'role') {
     issues.push(...checkRoleRecord(entity, context, path));
@@ -372,6 +383,61 @@ export function validateNs5OntologyEntityV3(
     if (family === 'ddm') issues.push(...checkDerivedTable(entity, path));
   }
   return ok(issues);
+}
+
+/**
+ * ns5_57: a `decide` a journey cites on this entity needs a real branch — at least two transitions
+ * leaving the same state, one per outcome. The v2 gate charges this in `gate.ts` (`validateLifecycle`)
+ * and repairs it; the v3 gate did not, so the first reader of the defect was the `finalize80` I2, where
+ * there is no repair left. `compras` (leva v4) is the measured case: the model collapsed approve and
+ * reject into one `submitted → approvalResolved`.
+ *
+ * The verdict comes from the same pair the v2 gate and the I2 oracle use, so the three cannot diverge;
+ * only the citation coordinates are looked up here, and a lookup is not a second check.
+ *
+ * No `kind` is skipped: the I2 oracle does not skip one either (a `decide` on a role is as much of a
+ * defect there). An entity with NO lifecycle is a warning, not an error — the ontology would have to
+ * invent a lifecycle for a catalog nobody moves, and the defect is in the journey.
+ */
+function checkDecideBranching(
+  entity: Ns5OntologyEntityV3,
+  context: Ns5OntologyV3GateContext,
+  path: string,
+): Ns5OntologyV3Issue[] {
+  const journeys = context.journeys;
+  if (!journeys) return [];
+  if (!collectNs5LifecycleSignal(journeys, entity.entityId).requiresBranching) return [];
+  const where = decideCitation(journeys, entity.entityId);
+  if (!entity.lifecycleStates?.length) {
+    return [{
+      severity: 'warning',
+      code: 'NS5_ONTOLOGY_DECIDE_NEEDS_BRANCH',
+      message: `${entity.entityId} has a decide step in ${where}, and this record has no lifecycle: a decide on a record nobody moves is a journey defect, not an ontology one.`,
+      path: `${path}.lifecycleStates`,
+    }];
+  }
+  if (ns5LifecycleHasBranchingOrigin({ transitions: entity.transitions ?? [] })) return [];
+  return [{
+    severity: 'error',
+    code: 'NS5_ONTOLOGY_DECIDE_NEEDS_BRANCH',
+    message: `${entity.entityId} has a decide step in ${where}: declare at least two transitions leaving the same state (for example approve and reject from 'submitted'), each with the deciding actor in 'by'.`,
+    path: `${path}.transitions`,
+  }];
+}
+
+/** Where the decide was cited, for the message only: `journey X (stepId)`, or `a journey` if unnamed. */
+function decideCitation(
+  journeys: ReadonlyArray<Ns5LifecycleJourneyView & { journeyId?: string }>,
+  entityId: string,
+): string {
+  for (const journey of journeys) {
+    for (const step of journey.business.steps) {
+      if (step.kind !== 'decide' || step.entity !== entityId) continue;
+      const stepId = step.stepId ? ` (${step.stepId})` : '';
+      return journey.journeyId ? `journey ${journey.journeyId}${stepId}` : `a journey${stepId}`;
+    }
+  }
+  return 'a journey';
 }
 
 /** The family of an entity is a decision of the PLAN; the fan-out never re-decides it. */

@@ -445,7 +445,11 @@ async function handleEntityResult(
   if (!gate.ok) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} gate failed; finalizer will repair it. | ${formatNs5OntologyV3Gate(gate.issues)}`)];
   }
-  return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} detail saved.`)];
+  // A gate that only warns is still a gate: without this the warning would be written nowhere
+  // (the failure branch above is the only place the issues were ever formatted) — ns5_57.
+  const warnings = gate.issues.filter(issue => issue.severity === 'warning');
+  const suffix = warnings.length ? ` | ${formatNs5OntologyV3Gate(warnings)}` : '';
+  return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} detail saved.${suffix}`)];
 }
 
 /** Where a module field has to have a trace: the request plus the journey prose. */

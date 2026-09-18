@@ -1109,3 +1109,74 @@ void test('ns5_49: the entity prompt lists the process stages and tags the trans
   assert.match(prompt, /- registrarFalta by: \(process\)/);
   assert.match(prompt, /- confirmarConsulta by recepcionista/);
 });
+
+// --- ns5_57: a decide cited by a journey needs a branch ---------------------
+
+/** `compras` in miniature: one journey whose only step decides over the entity. */
+const NS5_57_JOURNEYS = [
+  {
+    journeyId: 'avaliarConsulta',
+    business: {
+      actorRef: 'recepcionista',
+      steps: [{ stepId: 'decidirConsulta', kind: 'decide', entity: 'Consulta' }],
+    },
+  },
+];
+
+void test('ns5_57: a decide is green when two transitions leave the same state', () => {
+  // The form branches out of `scheduled` (confirmar, registrarFalta, registrarAtendimento).
+  const gate = validateNs5OntologyEntityV3(CONSULTA, formPlan(), { ...gateContext, journeys: NS5_57_JOURNEYS });
+  assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_DECIDE_NEEDS_BRANCH'), false);
+  assert.deepEqual(gate.issues.filter(issue => issue.severity === 'error'), []);
+});
+
+void test('ns5_57: a decide over a lifecycle that never branches is an error naming the citation', () => {
+  const collapsed = clone(CONSULTA);
+  collapsed.transitions = [collapsed.transitions![0]];
+  const red = validateNs5OntologyEntityV3(collapsed, formPlan(), { ...gateContext, journeys: NS5_57_JOURNEYS });
+  const issue = red.issues.find(item => item.code === 'NS5_ONTOLOGY_DECIDE_NEEDS_BRANCH');
+  assert.ok(issue, `expected the decide error, got: ${codes(red.issues).join(', ')}`);
+  assert.equal(issue!.severity, 'error');
+  assert.equal(red.ok, false);
+  assert.equal(issue!.path, 'entities.Consulta.transitions');
+  assert.match(issue!.message, /journey avaliarConsulta \(decidirConsulta\)/);
+  assert.match(issue!.message, /at least two transitions leaving the same state/);
+});
+
+void test('ns5_57: a decide over a record with no lifecycle is a warning, not an error', () => {
+  const catalog = clone(CONSULTA);
+  delete catalog.lifecycleStates;
+  delete catalog.transitions;
+  const gate = validateNs5OntologyEntityV3(catalog, formPlan(), { ...gateContext, journeys: NS5_57_JOURNEYS });
+  const issue = gate.issues.find(item => item.code === 'NS5_ONTOLOGY_DECIDE_NEEDS_BRANCH');
+  assert.ok(issue, 'the journey defect is still said out loud');
+  assert.equal(issue!.severity, 'warning');
+  assert.equal(issue!.path, 'entities.Consulta.lifecycleStates');
+  assert.match(issue!.message, /journey defect/);
+});
+
+void test('ns5_57: without journeys in the context the check is silent (the v2 replay is untouched)', () => {
+  const collapsed = clone(CONSULTA);
+  collapsed.transitions = [collapsed.transitions![0]];
+  const gate = validateNs5OntologyEntityV3(collapsed, formPlan(), gateContext);
+  assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_DECIDE_NEEDS_BRANCH'), false);
+});
+
+void test('ns5_57: the entity system prompt states what a cited decide requires', () => {
+  const source = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'promptEntity.md'), 'utf8');
+  assert.match(source, /a `decide` cited on this entity requires/);
+  assert.match(source, /at least two transitions leaving the same state — one per outcome — with the deciding actor in `by`/);
+});
+
+void test('ns5_57: the human prompt tags the decide citation the gate reads', () => {
+  const prompt = buildNs5OntologyEntityHumanPrompt({
+    sourcePrompt: 'agenda',
+    userLanguage: 'pt-BR',
+    actors: [],
+    journeys: NS5_57_JOURNEYS as never,
+    plan: formPlan(),
+    entityId: 'Consulta',
+    platformCatalog: '',
+  });
+  assert.match(prompt, /- decidirConsulta decide Consulta decide/);
+});
