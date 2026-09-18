@@ -278,12 +278,14 @@ export type Ns5DefsKind = 'journeys' | 'ontology';
 
 type ListedStorFile = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
 
-function hostListFolder(): ((project: number, level: number, folder: string) => ListedStorFile[]) | undefined {
+/** Host disk listing (`mls.stor.localStor.listFolder`); undefined outside the host. */
+export function hostListFolder(): ((project: number, level: number, folder: string) => ListedStorFile[]) | undefined {
   const fn = (mls.stor.localStor as { listFolder?: unknown } | undefined)?.listFolder;
   return typeof fn === 'function' ? fn as ((project: number, level: number, folder: string) => ListedStorFile[]) : undefined;
 }
 
-function diskFileInfo(info: ListedStorFile): mls.stor.IFileInfo {
+/** An `mls.stor.files` entry for a file seen on host disk but absent from the index. */
+export function diskFileInfo(info: ListedStorFile): mls.stor.IFileInfo {
   const key = mls.stor.getKeyToFile(info);
   const existing = mls.stor.files[key];
   if (existing) return existing;

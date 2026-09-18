@@ -827,6 +827,32 @@ export interface Ns5RebuildAllReport {
   at: string;
 }
 
+/** Mailbox of the module pool: one folder per owner (`l4/<module>/pool/<box>/`). */
+export type PoolBox = 'l1' | 'l2' | 'l4';
+
+/** Implement = do it; estimate = simulate the change and answer the cost. */
+export type PoolMode = 'implement' | 'estimate';
+
+/** What the owner did with the message it processed. */
+export type PoolOutcome = 'delivered' | 'processed' | 'disputed';
+
+/**
+ * One processed pool message, appended to `pipeline.json`. Readers: the pool screen (p4_04) and
+ * L4 itself (round counting). Helpers in `/_102035_/l2/solution/pool.js`.
+ */
+export interface PoolTraceLine {
+  /** ISO timestamp of the trace. */
+  at: string;
+  /** Display path of the message file, e.g. `l4/<module>/pool/l2/<stamp>_<thread>_<round>.json`. */
+  file: string;
+  from: PoolBox;
+  to: PoolBox;
+  thread: string;
+  round: number;
+  mode: PoolMode;
+  outcome: PoolOutcome;
+}
+
 export interface Ns5PipelineState {
   /** Gate of the skeleton; later steps refuse a different version. */
   schemaVersion: typeof NS5_PIPELINE_SCHEMA_VERSION;
@@ -846,6 +872,8 @@ export interface Ns5PipelineState {
   invocation: Ns5Invocation;
   /** Set when this pipeline was created by /rebuild all. */
   rebuildAll?: Ns5RebuildAllReport;
+  /** Pool trace, appended by `tracePool`. Absent in pipelines written before the pool existed. */
+  pool?: PoolTraceLine[];
   updatedAt: string;
 }
 
