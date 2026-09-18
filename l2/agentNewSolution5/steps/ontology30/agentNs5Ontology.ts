@@ -100,6 +100,8 @@ interface OntologyArgs {
   transportAttempt: number;
   entityRepairRound: number;
   gateFeedback: string;
+  /** ns5_58: the gate issues of each entity of a repair round, keyed by entityId. */
+  entityFeedback: Record<string, string>;
 }
 
 export function buildNs5OntologyPlanHumanPrompt(input: {
@@ -206,7 +208,7 @@ export async function beforeNs5OntologyPromptStep(
   const entityId = ns5OntologyEntitySelector(args) || ns5OntologyEntitySelector(step.prompt);
   let moduleName = '';
   try {
-    const parsed = resolveArgs(context, entityId ? JSON.stringify({ planId: 'ontology30' }) : (args || step.prompt));
+    const parsed = entityId ? ns5OntologyChildArgs(context, step.prompt) : resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     if (entityId) return [await buildEntityPrompt(context, parentStep, hookSequential, args || String(step.prompt || ''), parsed, entityId)];
     if (parsed.stage === 'finalize') {
@@ -331,7 +333,7 @@ async function buildEntityPrompt(
     entityId,
     startingPoint: startingPointFor(frozen, parsed.moduleName),
     platformCatalog: formatNs5PlatformCatalog(mdm),
-    gateFeedback: parsed.gateFeedback,
+    gateFeedback: ns5EntityGateFeedback(parsed, entityId),
     previousDraft: previous,
   });
   return promptReady(context, parentStep, hookSequential, args, await ontologySystemPrompt(prompt), humanPrompt, tool);
@@ -489,6 +491,7 @@ async function finalizeOntology(
     actors: actors.map(actor => actor.actorId),
   };
   const invalid: string[] = [];
+  const entityFeedback: Record<string, string> = {};
   const entities: Ns5OntologyEntityV3[] = [];
   const normalizations: Ns5OntologyV3Normalization[] = [];
   for (const planned of plan.entities) {
@@ -496,15 +499,20 @@ async function finalizeOntology(
       entityDraftFile(parsed.moduleName, planned.entityId),
     );
     const entity = saved?.entity;
-    if (!entity || !validateNs5OntologyEntityV3(entity, plan, gateContext).ok) {
+    const gate = entity ? validateNs5OntologyEntityV3(entity, plan, gateContext) : null;
+    if (!entity || !gate?.ok) {
       invalid.push(planned.entityId);
+      // ns5_58: without this the repair round reran the entity blind — the model never saw the issue.
+      entityFeedback[planned.entityId] = gate
+        ? formatNs5OntologyV3Gate(gate.issues)
+        : `The draft of ${planned.entityId} is missing; write it again from the frozen plan.`;
       continue;
     }
     entities.push(entity);
     normalizations.push(...(saved?.normalizations || []));
   }
   if (invalid.length && parsed.entityRepairRound < MAX_ENTITY_REPAIR_ROUNDS) {
-    const parallel = parallelEntityStep(context, step, NS5_AGENT_NAME, plan, parsed.entityRepairRound + 1, invalid);
+    const parallel = parallelEntityStep(context, step, NS5_AGENT_NAME, plan, parsed.entityRepairRound + 1, invalid, entityFeedback);
     return [
       parallel,
       addStep(context, mutationParent, createFinalizeStep(parsed.moduleName, parsed.entityRepairRound + 1, [String(parallel.step.planning?.planId || '')])),
@@ -602,13 +610,14 @@ async function persistArtifacts(
   return artifactPaths;
 }
 
-function parallelEntityStep(
+export function parallelEntityStep(
   context: mls.msg.ExecutionContext,
   hostStep: mls.msg.AIAgentStep,
   agentName: string,
   plan: Ns5OntologyV3PlanDraft,
   repairRound: number,
   entityIds = plan.entities.map(entity => entity.entityId),
+  entityFeedback: Record<string, string> = {},
 ): mls.msg.AgentIntentAddStep {
   if (!context.task) throw new Error('[agentNewSolution5:ontology30] task invalid');
   if (!entityIds.length) throw new Error('ontology30 entity fan-out cannot be empty.');
@@ -633,7 +642,11 @@ function parallelEntityStep(
       nextSteps: [],
       agentName,
       onFailure: 'wait_after_prompt',
-      prompt: JSON.stringify({ planId: 'ontology30', moduleName: plan.moduleName }),
+      prompt: JSON.stringify({
+        planId: 'ontology30',
+        moduleName: plan.moduleName,
+        ...(Object.keys(entityFeedback).length ? { entityFeedback } : {}),
+      }),
       rags: [],
       planning: { planId, dependsOn: [], executionMode: 'parallel_dynamic', executionHost: 'client' },
     } as mls.msg.AIAgentStep,
@@ -764,7 +777,25 @@ function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): Ontolog
     transportAttempt: integer(root.transportAttempt),
     entityRepairRound: integer(root.entityRepairRound),
     gateFeedback: text(root.gateFeedback),
+    entityFeedback: textRecord(root.entityFeedback),
   };
+}
+
+/**
+ * ns5_58: a fan-out child resolves its args from a stub — it must not inherit the host's stage or
+ * repair counters. Its gate issues, though, live only on the host prompt, so they are carried over.
+ */
+export function ns5OntologyChildArgs(context: mls.msg.ExecutionContext, hostPrompt: unknown): OntologyArgs {
+  const host = resolveArgs(context, hostPrompt);
+  return resolveArgs(context, JSON.stringify({ planId: 'ontology30', entityFeedback: host.entityFeedback }));
+}
+
+/**
+ * ns5_58: the entity fan-out is one step for every entity, so a repair round cannot carry a single
+ * feedback string — the issues travel keyed by entityId and each prompt reads only its own.
+ */
+export function ns5EntityGateFeedback(parsed: Pick<OntologyArgs, 'gateFeedback' | 'entityFeedback'>, entityId: string): string {
+  return parsed.entityFeedback[entityId] || parsed.gateFeedback;
 }
 
 function formatActors(actors: Ns5ModuleActor[]): string {
@@ -926,6 +957,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function textRecord(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!isRecord(value)) return out;
+  for (const [key, item] of Object.entries(value)) {
+    const content = text(item);
+    if (content) out[key] = content;
+  }
+  return out;
 }
 
 function integer(value: unknown): number {

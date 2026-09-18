@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { comprasIntegration } from '../../../../mls-102047/l4/compras/integration.defs.js';
+import { comprasIntegration } from './fixtures/compras-integration.defs.js';
 import {
   integrationOracleIssues,
   normalizeIntegration,
@@ -38,10 +38,10 @@ test('selects integration, I11 and I12 issues only', () => {
   assert.equal(issues.length, 3);
 });
 
-test('reads the real compras v2 outbound events', () => {
+test('reads the frozen compras v2 outbound events', () => {
   const view = normalizeIntegration(comprasIntegration);
   assert.equal(view.schema, 'v2');
-  assert.equal(view.outbound.length, 2);
+  assert.equal(view.outbound.length, 1);
   assert.equal(view.outbound[0].to, 'controleEstoque');
-  assert.match(view.outbound[0].on || '', /^PedidoCompra\./u);
+  assert.match(view.outbound[0].on || '', /^GoodsReceipt\./u);
 });

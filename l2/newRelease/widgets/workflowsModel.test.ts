@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { comprasWorkflows } from '../../../../mls-102047/l4/compras/workflows.defs.js';
+import { comprasWorkflows } from './fixtures/compras-workflows.defs.js';
 import {
   isEditableWorkflowSchema,
   isRecurringDuty,
@@ -51,12 +51,13 @@ test('selects workflow and I6 issues only', () => {
   assert.equal(issues.length, 2);
 });
 
-test('reads the real compras fixture with two v2 processes', () => {
+test('reads the frozen compras fixture as a v3 process', () => {
   const view = normalizeWorkflows(comprasWorkflows);
-  assert.equal(view.schema, 'v2');
-  assert.equal(view.processes.length, 2);
+  assert.equal(view.schema, 'v3');
+  assert.equal(view.processes.length, 1);
   assert.equal(view.processes[0].trigger?.kind, 'manual');
-  assert.ok(workflowTaskCount(view.processes) >= 5);
+  assert.equal(workflowTaskCount(view.processes), 2);
+  assert.equal(view.journeyDecisions.length, 5);
 });
 
 test('recognizes workflows v3 and derives the recurring duty from a scheduled alert process', () => {
