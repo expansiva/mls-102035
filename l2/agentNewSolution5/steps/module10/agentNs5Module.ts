@@ -11,6 +11,7 @@ import {
   existingModuleName,
   markNs5Step,
   moduleTokenOk,
+  startNs5Pipeline,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
   NS5_STEP_HOOKS,
@@ -96,13 +97,21 @@ export async function beforeNs5ModulePromptStep(
     moduleName = parsed.moduleName;
     const sourcePrompt = await readSourcePrompt(context, moduleName);
     const pipeline = moduleName ? await readPipeline(moduleName) : null;
-    const fixedModuleName = invocationOf(context, pipeline).module;
+    const invocation = invocationOf(context, pipeline);
+    const fixedModuleName = invocation.module;
+    // ns5_55: on a `/rebuild all` the draft on disk answers the *previous* request until this run
+    // removes the module — offering it as "current draft" would rebuild what the user asked to
+    // replace. Only a repair implies the removal already happened (the gate runs after it). A
+    // transport retry does not: it is scheduled before the verdict, so it reads no draft. A
+    // transport retry that follows a repair loses the draft too (`repairAttempt` is not carried
+    // over); it then regenerates from the source prompt, which is the safe side of the trade.
+    const keepPreviousDraft = !invocation.rebuildAll || parsed.repairAttempt > 0;
     const [mdm, prompt, schema, registry, previous] = await Promise.all([
       readNs5MdmSkill(),
       readAgentText('steps/module10', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'module.schema', '.json'),
       readSolutionRegistry(),
-      moduleName ? readJson(draftFile(moduleName, 'module10')) : Promise.resolve(null),
+      moduleName && keepPreviousDraft ? readJson(draftFile(moduleName, 'module10')) : Promise.resolve(null),
     ]);
     const tool = buildNs5ModuleTool(schema, createStrictArtifactTool);
     const humanPrompt = buildNs5ModuleHumanPrompt({
@@ -156,10 +165,9 @@ export async function afterNs5ModulePromptStep(
     // ns5_52b: the intent gate. It runs before `normalizeNs5ModuleArtifact` and before the first
     // write, so a request that is not a module request leaves no folder in l4/. The remaining steps
     // are drained so the run ends answered, not `failed` eleven steps later.
-    // `/rebuild all` is exempt: `startNs5Pipeline` already deleted the module at the entry hook, so
-    // refusing here would leave the user with nothing instead of a rebuild. The empty rebuild of
-    // achado 3 never reaches this point — `ns5EntryRefusal` stops it before the deletion.
-    if (!invocation.rebuildAll && ns5ModuleRequestKind(payload) === 'notAModuleRequest') {
+    // ns5_55: no exemption. `/rebuild all` no longer deletes at the entry hook, so a refusal here
+    // leaves the existing module exactly as it was — the removal happens below, after this verdict.
+    if (ns5ModuleRequestKind(payload) === 'notAModuleRequest') {
       return [
         ns5StatusMessage(agent, context, NS5_MODULE_NOT_A_REQUEST),
         ...drainWaitingSiblings(context, step, hookSequential, 'stopped: the request does not describe a module.'),
@@ -171,6 +179,10 @@ export async function afterNs5ModulePromptStep(
     const { artifact, actors, i18nWarnings, normalizations, systemDecisions } = normalizeNs5ModuleArtifact(payload, { sourcePrompt, fixedModuleName });
     moduleName = artifact.moduleName;
     if (!moduleTokenOk(moduleName)) throw new Error('moduleName must be lowerCamel.');
+    // ns5_55: the rebuild starts here, past the verdict and before the first write — remove the old
+    // module and open a new pipeline stamped with `rebuildAll.at`. `ensurePipeline` below then finds
+    // that fresh pipeline instead of creating one.
+    if (invocation.rebuildAll) await startNs5Pipeline(moduleName, sourcePrompt, invocation, true);
     await assertModuleWritable(moduleName, invocation.rebuildAll);
 
     let pipeline = await ensurePipeline(moduleName, sourcePrompt, invocation);
@@ -297,8 +309,18 @@ async function recordFailure(moduleName: string, error: string): Promise<void> {
   } catch { /* task trace remains the fallback */ }
 }
 
+/**
+ * ns5_55. Since the entry hook stopped deleting on `/rebuild all`, the `pipeline.json` on disk is
+ * the *previous* run's until module10 approves. Rebuilding from it would regenerate the previous
+ * request (and report `rebuildAll: false`), so while a rebuild is in flight the invocation and the
+ * request come from the context memory the entry hook filled.
+ */
+function rebuildAllInFlight(context: mls.msg.ExecutionContext): boolean {
+  return memoryString(context, 'rebuildAll') === 'true';
+}
+
 async function readSourcePrompt(context: mls.msg.ExecutionContext, moduleName: string): Promise<string> {
-  if (moduleName) {
+  if (moduleName && !rebuildAllInFlight(context)) {
     const pipeline = await readPipeline(moduleName);
     if (pipeline?.sourcePrompt) return pipeline.sourcePrompt;
   }
@@ -306,12 +328,14 @@ async function readSourcePrompt(context: mls.msg.ExecutionContext, moduleName: s
 }
 
 function invocationOf(context: mls.msg.ExecutionContext, pipeline: Ns5PipelineState | null): Ns5Invocation {
-  if (pipeline?.invocation) return pipeline.invocation;
-  return {
+  const memory: Ns5Invocation = {
     fast: memoryString(context, 'fastMode') === 'true',
     module: memoryString(context, 'moduleName'),
-    rebuildAll: memoryString(context, 'rebuildAll') === 'true',
+    rebuildAll: rebuildAllInFlight(context),
   };
+  if (memory.rebuildAll) return memory;
+  if (pipeline?.invocation) return pipeline.invocation;
+  return memory;
 }
 
 function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): ModuleArgs {

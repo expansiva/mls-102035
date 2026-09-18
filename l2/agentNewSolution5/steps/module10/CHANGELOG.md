@@ -1,5 +1,15 @@
 # module10
 
+## 2026-09-18 (ns5_55)
+
+- `/rebuild all` deletes **after** the intent verdict, not at the entry hook. The verdict lost its
+  `rebuildAll` exemption: a request that is not a module request is refused with the existing module
+  untouched. Past the verdict, and before the first write, module10 calls `startNs5Pipeline(…, true)`
+  — remove plus a new pipeline stamped with `rebuildAll.at`.
+- While a rebuild is in flight the `pipeline.json` on disk is the previous run's, so the invocation,
+  the source prompt and the "current draft" of the first attempt come from the context memory the
+  entry hook filled, not from that file.
+
 ## 2026-09-18 (ns5_53)
 
 - An external system the request names (gateway, messaging, ERP) is **not an actor**: the prompt says

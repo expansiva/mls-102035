@@ -92,6 +92,16 @@ void test('startNs5Pipeline stamps rebuildAll { deleted, edited, at } after remo
   assert.match(source, /deleted: result\.deleted, edited: result\.edited/);
 });
 
+// ns5_55 (c): the entry hook still opens the pipeline for a new module — what it stopped doing is
+// deleting (and writing) on `/rebuild all`, which now happens in module10, after the verdict.
+void test('the entry hook does not start the pipeline on /rebuild all', () => {
+  const source = readFileSync(fileURLToPath(new URL('../agentNewSolution5.ts', import.meta.url)), 'utf8');
+  assert.match(source, /if \(moduleName && !invocation\.rebuildAll\) await startNs5Pipeline\(moduleName, invocation\.prompt, flags, false\)/);
+  assert.equal(source.includes('startNs5Pipeline(moduleName, invocation.prompt, flags, invocation.rebuildAll)'), false);
+  // the invocation the hook does not persist is the one module10 reads from memory
+  assert.match(source, /rebuildAll: 'true'/);
+});
+
 void test('empty pipeline starts inProgress with empty steps', () => {
   const pipeline = createEmptyPipeline('teste5', 'criar o modulo x', { fast: true, module: 'teste5', rebuildAll: false }, '2026-09-10T00:00:00.000Z');
   assert.equal(pipeline.status, 'inProgress');

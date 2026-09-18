@@ -56,7 +56,11 @@ async function beforePromptImplicit(
 
   const moduleName = existing || invocation.module;
   const flags: Ns5Invocation = { fast: invocation.fast, module: moduleName, rebuildAll: invocation.rebuildAll };
-  if (moduleName) await startNs5Pipeline(moduleName, invocation.prompt, flags, invocation.rebuildAll);
+  // ns5_55. On `/rebuild all` this hook deletes nothing and writes no pipeline: the module on disk
+  // stays untouched until module10 answers "this is a module request". The invocation in flight
+  // travels in `longTermMemory` below, and module10 calls `startNs5Pipeline` after its verdict.
+  // Without `/rebuild all` the module does not exist yet, so there is nothing to protect.
+  if (moduleName && !invocation.rebuildAll) await startNs5Pipeline(moduleName, invocation.prompt, flags, false);
 
   const addMessage: mls.msg.AgentIntentAddMessageAI = {
     type: 'add-message-ai',

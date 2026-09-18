@@ -117,12 +117,59 @@ void test('module10 refuses a non-module request before it writes anything', () 
   const body = after.slice(0, after.indexOf('\nexport async function', 1));
   const gate = body.indexOf("ns5ModuleRequestKind(payload) === 'notAModuleRequest'");
   assert.notEqual(gate, -1, 'the intent gate is gone');
-  for (const write of ['ensurePipeline(', 'writeJson(', 'writeDefs(', 'writePipeline(']) {
+  // ns5_55: `startNs5Pipeline(` is the deletion. It is in this list because the verdict must run
+  // before the module is removed, not after.
+  for (const write of ['startNs5Pipeline(', 'ensurePipeline(', 'writeJson(', 'writeDefs(', 'writePipeline(']) {
     const at = body.indexOf(write);
     if (at === -1) continue;
     assert.ok(gate < at, `${write} runs before the intent gate`);
   }
   assert.ok(body.indexOf('NS5_MODULE_NOT_A_REQUEST') > gate, 'the user is not told why nothing was created');
+});
+
+// ns5_55 (a): `/rebuild all` + a text that is not a module request must be refused with the module
+// still on disk. That holds only while the verdict has no exemption and the entry hook deletes
+// nothing — the two halves of the reorder.
+void test('the intent gate has no /rebuild all exemption', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
+  const body = after.slice(0, after.indexOf('\nexport async function', 1));
+  assert.equal(body.includes("!invocation.rebuildAll && ns5ModuleRequestKind"), false);
+  assert.match(body, /if \(ns5ModuleRequestKind\(payload\) === 'notAModuleRequest'\)/);
+});
+
+// ns5_55 (b): the good half. Past the verdict, the rebuild removes the module and opens a fresh
+// pipeline (`startNs5Pipeline` stamps `rebuildAll.at` — see ns5Core.test.ts), before any write.
+void test('module10 starts the rebuild after the verdict and before the first write', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
+  const body = after.slice(0, after.indexOf('\nexport async function', 1));
+  const start = body.indexOf('startNs5Pipeline(moduleName, sourcePrompt, invocation, true)');
+  assert.notEqual(start, -1, 'module10 no longer starts the rebuild');
+  assert.ok(start < body.indexOf('ensurePipeline('), 'the rebuild starts after the pipeline it should replace');
+  assert.ok(start < body.indexOf('writeJson('), 'the draft is written before the removal');
+});
+
+// ns5_55: while the rebuild is in flight the module on disk is the previous run's, so its
+// pipeline.json must not decide the invocation nor the request being rebuilt.
+void test('a rebuild in flight reads its invocation and prompt from the context, not from the old pipeline', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  assert.match(source, /function rebuildAllInFlight\(context: mls\.msg\.ExecutionContext\): boolean/);
+  const read = source.slice(source.indexOf('async function readSourcePrompt'));
+  assert.match(read.slice(0, read.indexOf('\n}')), /!rebuildAllInFlight\(context\)/);
+  const invocation = source.slice(source.indexOf('function invocationOf'));
+  const body = invocation.slice(0, invocation.indexOf('\n}'));
+  assert.ok(body.indexOf('if (memory.rebuildAll) return memory;') < body.indexOf('pipeline?.invocation'));
+});
+
+// ns5_55: same reason, for the draft. The transport retry is scheduled *before* the verdict, so on a
+// rebuild it still sees the previous module's draft — only a repair runs past the removal.
+void test('a rebuild does not offer the previous run draft as the current one', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
+  const before = source.slice(source.indexOf('export async function beforeNs5ModulePromptStep'));
+  const body = before.slice(0, before.indexOf('\nexport async function', 1));
+  assert.match(body, /const keepPreviousDraft = !invocation\.rebuildAll \|\| parsed\.repairAttempt > 0;/);
+  assert.match(body, /moduleName && keepPreviousDraft \? readJson\(draftFile/);
 });
 
 void test('normalize rewrites pt to pt-BR and leaves en alone', () => {
