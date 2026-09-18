@@ -143,6 +143,10 @@ void test('entry10 refuses a pending pool without emitting the done-anchor', asy
   });
   const intents = await beforePlEntryPromptStep(AGENT, context, parent, step, 1);
   assert.equal(intents.some(intent => intent.type === 'add-step' && intent.step.planning?.planId === 'entry10-done'), false);
+  const shown = intents.find((intent): intent is mls.msg.AgentIntentAddStep =>
+    intent.type === 'add-step' && intent.step.planning?.planId === 'status');
+  assert.equal(shown?.step.stepTitle, 'Status');
+  assert.match(String((shown?.step as mls.msg.AIResultStep).result), /pending pool messages/);
   const status = intents.find((intent): intent is mls.msg.AgentIntentUpdateStatus => intent.type === 'update-status' && intent.stepId === 10);
   assert.match(String(status?.traceMsg), /pending pool messages/);
 });

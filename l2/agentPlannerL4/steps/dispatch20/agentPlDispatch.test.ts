@@ -3,12 +3,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createPlAgentStep, PL_L2_AGENT } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import { createPlAgentStep } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { PL_STEP_HOOKS } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 import {
   afterPlDispatchPromptStep,
   beforePlDispatchPromptStep,
 } from '/_102035_/l2/agentPlannerL4/steps/dispatch20/agentPlDispatch.js';
+import { listPoolBox, readPoolTrace } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -129,27 +130,28 @@ void test('dispatch20 hook is registered as deterministic', () => {
   assert.equal(PL_STEP_HOOKS.dispatch20?.afterPromptStep, afterPlDispatchPromptStep);
 });
 
-void test('dispatch20 invokes L2 by name and says L1 stayed in the box', async () => {
+void test('dispatch20 writes the boxes, traces them, and does not create planner steps', async () => {
   const { context, parent, step } = contextWith({ l2Agent: true });
   const intents = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
   const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
-  const l2 = added.find(intent => (intent.step as mls.msg.AIAgentStep).agentName === PL_L2_AGENT);
-  assert.ok(l2, 'expected agentPlannerL2 step');
-  const prompt = JSON.parse(String((l2.step as mls.msg.AIAgentStep).prompt)) as { moduleName: string; thread: string; file: string };
-  assert.equal(prompt.moduleName, 'mensalidadesAcademia');
-  assert.ok(prompt.thread);
-  assert.match(prompt.file, /pool\/l2\//);
-  assert.equal((l2.step as mls.msg.AIAgentStep).planning?.executionHost, 'client');
-  assert.equal(added.some(intent => (intent.step as mls.msg.AIAgentStep).agentName === 'agentPlannerL1'), false);
-  const status = intents.find((intent): intent is mls.msg.AgentIntentAddMessageAI => intent.type === 'add-message-ai');
-  assert.match(String(status?.request.inputAI[1]?.content), /l1 pending \(agentPlannerL1 not available\)/);
-  assert.match(String(status?.request.inputAI[1]?.content), /Requests stayed in the box/);
-  assert.equal(added.some(intent => intent.step.planning?.planId === 'dispatch20-done'), true);
-  assert.equal(added.some(intent => String(intent.step.planning?.planId || '').startsWith('loop30-wait-')), true);
-  const loopDone = intents.find(
-    (intent): intent is mls.msg.AgentIntentUpdateStatus => intent.type === 'update-status' && intent.stepId === 30,
-  );
-  assert.equal(loopDone?.status, 'completed');
+  assert.equal(added.length, 1);
+  assert.equal(added[0]?.step.type, 'result');
+  assert.equal(added.some(intent => intent.step.type === 'agent'), false);
+  assert.equal(added.some(intent => String(intent.step.planning?.planId || '').startsWith('loop30-wait-')), false);
+  assert.equal(intents.some(intent => intent.type === 'update-status' && (intent as mls.msg.AgentIntentUpdateStatus).stepId === 30), false);
+  const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
+  const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as {
+    moduleName: string; thread: string; artifactCount: number; status: string;
+  };
+  assert.equal(result.moduleName, 'mensalidadesAcademia');
+  assert.ok(result.thread);
+  assert.equal(result.artifactCount, 1);
+  assert.match(result.status, /pool\/l1 and pool\/l2 pending for the planners/);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
+  assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
 });
 
 void test('dispatch20 afterPrompt fails an LLM reply', async () => {

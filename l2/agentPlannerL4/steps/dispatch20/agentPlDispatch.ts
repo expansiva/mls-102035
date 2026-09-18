@@ -1,25 +1,18 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/steps/dispatch20/agentPlDispatch.ts" enhancement="_blank"/>
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
-import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import {
-  createPlInvokeStep,
-  createPlLoopWaitStep,
   existingModuleName,
-  invokePlanId,
-  PL_L1_AGENT,
-  PL_L2_AGENT,
   runPlDispatch,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
   addPlStep,
   PL_STEP_HOOKS,
-  plStatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 
 export async function beforePlDispatchPromptStep(
-  agent: IAgentMeta,
+  _agent: IAgentMeta,
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
   step: mls.msg.AIAgentStep,
@@ -29,60 +22,18 @@ export async function beforePlDispatchPromptStep(
     || memoryString(context, 'moduleName')
     || moduleNameFromPrompt(step);
   const result = await runPlDispatch(moduleName, new Date());
-  const intents: mls.msg.AgentIntent[] = [];
-  const childIds: string[] = [];
-
-  if (result.invokeL2) {
-    const planId = invokePlanId('l2', result.thread, 1);
-    childIds.push(planId);
-    intents.push(addPlStep(context, parentStep, createPlInvokeStep({
-      agentName: PL_L2_AGENT,
-      moduleName,
-      thread: result.thread,
-      file: result.l2Path,
-      planId,
-    })));
-  }
-  if (result.invokeL1) {
-    const planId = invokePlanId('l1', result.thread, 1);
-    childIds.push(planId);
-    intents.push(addPlStep(context, parentStep, createPlInvokeStep({
-      agentName: PL_L1_AGENT,
-      moduleName,
-      thread: result.thread,
-      file: result.l1Path,
-      planId,
-    })));
-  }
-
-  if (childIds.length) {
-    const plannedLoop = getAllSteps(context.task?.iaCompressed?.nextSteps).find(
-      item => item.planning?.planId === 'loop30' && item.status !== 'completed' && item.status !== 'failed',
-    );
-    if (plannedLoop) {
-      intents.push(updateStatus(
-        context,
-        parentStep,
-        plannedLoop,
-        hookSequential,
-        'completed',
-        'loop waits on planner steps',
-      ));
-    }
-    intents.push(addPlStep(context, parentStep, createPlLoopWaitStep(moduleName, childIds, 1)));
-  }
-
-  if (result.status) intents.push(plStatusMessage(agent, context, result.status));
-  intents.push(doneAnchor(context, parentStep, moduleName, result.thread, result.artifacts.length));
-  intents.push(updateStatus(
-    context,
-    parentStep,
-    step,
-    hookSequential,
-    'completed',
-    `dispatch20 wrote pool/l2 and pool/l1 (${result.artifacts.length} artifacts).`,
-  ));
-  return intents;
+  const status = `pool/l1 and pool/l2 pending for the planners (${result.artifacts.length} artifacts).`;
+  return [
+    doneAnchor(context, parentStep, moduleName, result.thread, result.artifacts.length, status),
+    updateStatus(
+      context,
+      parentStep,
+      step,
+      hookSequential,
+      'completed',
+      `dispatch20 wrote pool/l2 and pool/l1 (${result.artifacts.length} artifacts).`,
+    ),
+  ];
 }
 
 export async function afterPlDispatchPromptStep(
@@ -102,6 +53,7 @@ function doneAnchor(
   moduleName: string,
   thread: string,
   artifactCount: number,
+  status: string,
 ): mls.msg.AgentIntentAddStep {
   return addPlStep(context, parentStep, {
     type: 'result',
@@ -110,7 +62,7 @@ function doneAnchor(
     stepTitle: 'Dispatch done',
     status: 'completed',
     nextSteps: [],
-    result: JSON.stringify({ moduleName, thread, artifactCount, completedStep: 'dispatch20', nextStep: 'loop30' }),
+    result: JSON.stringify({ moduleName, thread, artifactCount, status, completedStep: 'dispatch20', nextStep: 'loop30' }),
     planning: { planId: 'dispatch20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
 }

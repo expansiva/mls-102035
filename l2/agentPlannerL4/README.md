@@ -1,11 +1,16 @@
 # agentPlannerL4
 
-L4 planner. Lists the artifacts of an existing complete module and dispatches the L2/L1
-planners through the module pool. No LLM. Does not read ontology to opine.
+L4 planner. Lists the artifacts of an existing complete module and writes `pool/l1` and
+`pool/l2`. No LLM. Does not read ontology to opine.
+
+Dispatch to other planners is **suspended** (Wagner, 18/09) so the L4 planner can be
+tested alone. `createPlInvokeStep` and `decidePlLoop` stay in the code; the steps do not
+call them to spawn L2/L1.
 
 `entry10` is implemented (parse, refusals, `l5/config.json` planner deps). `dispatch20`
-lists artifacts and writes `pool/l1` + `pool/l2`, then invokes planners by name. `loop30`
-counts rounds from the L4 trace and the boxes (max 3 per side; `disputed` does not delete).
+lists artifacts, writes `pool/l1` + `pool/l2`, traces `delivered`, and completes.
+`loop30` reports the boxes via `listPoolBox` and completes immediately (round counting
+and `disputed` stay in `decidePlLoop`).
 
 ## Invocation
 

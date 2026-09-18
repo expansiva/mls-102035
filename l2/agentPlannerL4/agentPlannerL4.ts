@@ -15,7 +15,6 @@ import {
   drainWaitingSiblings,
   hooksFor,
   planIdOf,
-  plStatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 import '/_102035_/l2/agentPlannerL4/steps/entry10/agentPlEntry.js';
@@ -27,7 +26,7 @@ export function createAgent(): IAgentAsync {
     agentName: PL_AGENT_NAME,
     agentProject: 102035,
     agentFolder: 'agentPlannerL4',
-    agentDescription: 'L4 planner — lists module artifacts and dispatches L2/L1 planners through the module pool',
+    agentDescription: 'L4 planner — lists module artifacts and writes pool/l1 and pool/l2. Dispatch to other planners is suspended.',
     visibility: 'public',
     beforePromptImplicit,
     beforePromptStep,
@@ -124,6 +123,29 @@ function addStepIntent(context: mls.msg.ExecutionContext, step: mls.msg.AIPayloa
     taskId: '',
     parentStepId: 1,
     step,
+  };
+}
+
+function plStatusMessage(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  message: string,
+): mls.msg.AgentIntentAddMessageAI {
+  return {
+    type: 'add-message-ai',
+    skipRootLLM: true,
+    request: {
+      action: 'addMessageAI',
+      agentName: agent.agentName,
+      inputAI: [
+        { type: 'system', content: `<!-- modelType: general -->\n${message}` },
+        { type: 'human', content: message },
+      ],
+      taskTitle: 'planner L4',
+      threadId: context.message.threadId,
+      userMessage: context.message.content,
+      longTermMemory: { taskName: 'plannerL4', flowName: PL_AGENT_NAME, statusOnly: 'true' },
+    },
   };
 }
 

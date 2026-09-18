@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createPlAgentStep, createPlLoopWaitStep } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import { createPlAgentStep, createPlLoopWaitStep, PL_L2_AGENT } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { PL_STEP_HOOKS } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 import {
   afterPlLoopPromptStep,
@@ -147,10 +147,10 @@ void test('loop30 stops when L1 is absent and leaves the message in the box', as
 
   const intents = await beforePlLoopPromptStep(AGENT, context, parent, step, 1);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
-  const status = intents.find((intent): intent is mls.msg.AgentIntentAddMessageAI => intent.type === 'add-message-ai');
-  assert.match(String(status?.request.inputAI[1]?.content), /l1 pending \(agentPlannerL1 not available\)/);
-  assert.match(String(status?.request.inputAI[1]?.content), /Requests stayed in the box/);
   const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+  const done = added.find(intent => intent.step.planning?.planId === 'loop30-done');
+  assert.match(String((done?.step as mls.msg.AIResultStep).result), /l1 pending \(agentPlannerL1 not available\)/);
+  assert.match(String((done?.step as mls.msg.AIResultStep).result), /Requests stayed in the box/);
   assert.equal(added.some(intent => intent.step.planning?.planId === 'loop30-done'), true);
   assert.equal(added.some(intent => (intent.step as mls.msg.AIAgentStep).agentName === 'agentPlannerL1'), false);
 });
@@ -180,10 +180,38 @@ void test('loop30 at round 3 records disputed and does not delete', async () => 
   const before = listPoolBox('mensalidadesAcademia', 'l2').length;
   const intents = await beforePlLoopPromptStep(AGENT, context, parent, step, 1);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, before);
-  const status = intents.find((intent): intent is mls.msg.AgentIntentAddMessageAI => intent.type === 'add-message-ai');
-  assert.match(String(status?.request.inputAI[1]?.content), /disputed/);
+  const done = intents.find((intent): intent is mls.msg.AgentIntentAddStep =>
+    intent.type === 'add-step' && intent.step.planning?.planId === 'loop30-done');
+  assert.match(String((done?.step as mls.msg.AIResultStep).result), /disputed/);
   const nextPipeline = JSON.parse(pipeline.content) as { pool: Array<{ outcome: string }> };
   assert.equal(nextPipeline.pool.some(line => line.outcome === 'disputed'), true);
+});
+
+void test('loop30 does not invoke a present L2 and still completes', async () => {
+  const step = createPlAgentStep('loop30', 'mensalidadesAcademia');
+  const { host, context, parent } = contextWith(step);
+  seed(host, { level: 2, folder: 'agentPlannerL2', shortName: PL_L2_AGENT, extension: '.ts' }, '');
+  const msg = {
+    from: 'l4', to: 'l2', thread: THREAD, round: 1, mode: 'implement',
+    subject: 'Changed artifacts of mensalidadesAcademia',
+    artifacts: ['module.defs.ts'],
+    body: 'Evaluate and dispatch. The recipient decides what to do with these artifacts.',
+  };
+  await writePoolMessage('mensalidadesAcademia', msg, AT);
+
+  const intents = await beforePlLoopPromptStep(AGENT, context, parent, step, 1);
+  const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+  assert.equal(added.some(intent => intent.step.type === 'agent'), false);
+  assert.equal(added.some(intent => (intent.step as mls.msg.AIAgentStep).agentName === PL_L2_AGENT), false);
+  assert.equal(added.some(intent => String(intent.step.planning?.planId || '').startsWith('loop30-wait-')), false);
+  const done = added.find(intent => intent.step.planning?.planId === 'loop30-done');
+  const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as {
+    l1Count: number; l2Count: number; completedStep: string;
+  };
+  assert.equal(result.completedStep, 'loop30');
+  assert.equal(result.l2Count, 1);
+  assert.equal(result.l1Count, 0);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
 });
 
 void test('loop30 afterPrompt fails an LLM reply', async () => {
