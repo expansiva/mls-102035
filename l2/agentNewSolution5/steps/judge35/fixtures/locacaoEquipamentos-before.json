@@ -1,0 +1,180 @@
+{
+  "moduleName": "locacaoEquipamentos",
+  "pack": "ns5_leva_v4",
+  "journeys": [
+    {
+      "journeyId": "acompanharSituacaoEquipamentos",
+      "actorRef": "gerente",
+      "title": "Acompanhar situação dos equipamentos",
+      "steps": [
+        {
+          "stepId": "localizarEquipamentosPorSituacao",
+          "kind": "locate",
+          "entity": "Equipamento",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "consultarSituacaoEquipamento",
+          "kind": "inspect",
+          "entity": "Equipamento",
+          "effect": null,
+          "transitionRef": null
+        }
+      ]
+    },
+    {
+      "journeyId": "criarContratoLocacao",
+      "actorRef": "atendente",
+      "title": "Criar contrato de locação",
+      "steps": [
+        {
+          "stepId": "localizarCliente",
+          "kind": "locate",
+          "entity": "Cliente",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "localizarEquipamentos",
+          "kind": "locate",
+          "entity": "Equipamento",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "registrarContrato",
+          "kind": "act",
+          "entity": "ContratoLocacao",
+          "effect": "create",
+          "transitionRef": null
+        }
+      ]
+    },
+    {
+      "journeyId": "registrarDevolucao",
+      "actorRef": "atendente",
+      "title": "Registrar devolução de equipamentos",
+      "steps": [
+        {
+          "stepId": "localizarContrato",
+          "kind": "locate",
+          "entity": "ContratoLocacao",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "consultarContrato",
+          "kind": "inspect",
+          "entity": "ContratoLocacao",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "confirmarDevolucao",
+          "kind": "act",
+          "entity": "ContratoLocacao",
+          "effect": "transition",
+          "transitionRef": "registrarDevolucao"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "lifecycleStates": [],
+      "transitions": []
+    },
+    {
+      "entityId": "ContratoLocacao",
+      "lifecycleStates": [
+        {
+          "state": "open"
+        },
+        {
+          "state": "closed"
+        }
+      ],
+      "transitions": [
+        {
+          "transitionId": "registrarDevolucao",
+          "from": [
+            "open"
+          ],
+          "to": "closed",
+          "by": [
+            "atendente"
+          ],
+          "description": "Registra a data real de devolução e encerra a locação dos equipamentos do contrato."
+        }
+      ]
+    },
+    {
+      "entityId": "Equipamento",
+      "lifecycleStates": [
+        {
+          "state": "available"
+        },
+        {
+          "state": "rented"
+        },
+        {
+          "state": "maintenance"
+        }
+      ],
+      "transitions": [
+        {
+          "transitionId": "registrarLocacao",
+          "from": [
+            "available"
+          ],
+          "to": "rented",
+          "by": [
+            "atendente"
+          ],
+          "description": "Registra que o equipamento foi entregue para locação."
+        },
+        {
+          "transitionId": "registrarDevolucao",
+          "from": [
+            "rented"
+          ],
+          "to": "available",
+          "by": [
+            "atendente"
+          ],
+          "description": "Registra a devolução do equipamento e o torna disponível novamente."
+        },
+        {
+          "transitionId": "iniciarManutencao",
+          "from": [
+            "available"
+          ],
+          "to": "maintenance",
+          "by": [
+            "gerente"
+          ],
+          "description": "Coloca o equipamento em manutenção, impedindo novas locações."
+        },
+        {
+          "transitionId": "concluirManutencao",
+          "from": [
+            "maintenance"
+          ],
+          "to": "available",
+          "by": [
+            "gerente"
+          ],
+          "description": "Conclui a manutenção e libera o equipamento para locação."
+        }
+      ]
+    },
+    {
+      "entityId": "ItemContratoLocacao",
+      "lifecycleStates": [],
+      "transitions": []
+    }
+  ],
+  "processes": []
+}

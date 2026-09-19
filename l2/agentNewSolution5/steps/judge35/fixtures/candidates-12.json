@@ -1,0 +1,2870 @@
+[
+  {
+    "moduleName": "comandaRestaurante",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "abrirComanda",
+        "actorRef": "garcom",
+        "title": "Abrir comanda para uma mesa",
+        "steps": [
+          {
+            "stepId": "localizarMesa",
+            "kind": "locate",
+            "entity": "Mesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "criarComanda",
+            "kind": "act",
+            "entity": "Comanda",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cancelarItemLancado",
+        "actorRef": "garcom",
+        "title": "Cancelar item lançado por engano",
+        "steps": [
+          {
+            "stepId": "localizarComandaParaCancelamento",
+            "kind": "locate",
+            "entity": "Comanda",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarLancamento",
+            "kind": "inspect",
+            "entity": "ItemComanda",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "cancelarLancamento",
+            "kind": "act",
+            "entity": "ItemComanda",
+            "effect": "transition",
+            "transitionRef": "cancelarItem"
+          }
+        ]
+      },
+      {
+        "journeyId": "fecharComanda",
+        "actorRef": "caixa",
+        "title": "Fechar comanda e liberar mesa",
+        "steps": [
+          {
+            "stepId": "localizarComandaParaFechamento",
+            "kind": "locate",
+            "entity": "Comanda",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarTotal",
+            "kind": "inspect",
+            "entity": "Comanda",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "concluirFechamento",
+            "kind": "act",
+            "entity": "Comanda",
+            "effect": "transition",
+            "transitionRef": "fecharComanda"
+          }
+        ]
+      },
+      {
+        "journeyId": "lancarItemNaComanda",
+        "actorRef": "garcom",
+        "title": "Lançar item na comanda",
+        "steps": [
+          {
+            "stepId": "localizarComandaAberta",
+            "kind": "locate",
+            "entity": "Comanda",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarCardapio",
+            "kind": "inspect",
+            "entity": "ItemCardapio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarItem",
+            "kind": "act",
+            "entity": "ItemComanda",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Comanda",
+        "lifecycleStates": [
+          {
+            "state": "open"
+          },
+          {
+            "state": "closed"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "fecharComanda",
+            "from": [
+              "open"
+            ],
+            "to": "closed",
+            "by": [
+              "caixa"
+            ],
+            "description": "Fecha a comanda após registrar a forma de pagamento e o eventual desconto, liberando a mesa para novo atendimento."
+          }
+        ]
+      },
+      {
+        "entityId": "ItemCardapio",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "ItemComanda",
+        "lifecycleStates": [
+          {
+            "state": "launched"
+          },
+          {
+            "state": "cancelled"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "cancelarItem",
+            "from": [
+              "launched"
+            ],
+            "to": "cancelled",
+            "by": [
+              "garcom"
+            ],
+            "description": "Cancela um lançamento feito por engano enquanto a comanda permanece aberta."
+          }
+        ]
+      },
+      {
+        "entityId": "Mesa",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": []
+  },
+  {
+    "moduleName": "ordenServicio",
+    "pack": "ns5_leva_v4_r2",
+    "journeys": [
+      {
+        "journeyId": "abrirOrdenServicio",
+        "actorRef": "recepcionista",
+        "title": "Abrir una orden al recibir un aparato",
+        "steps": [
+          {
+            "stepId": "registrarRecepcion",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "create",
+            "transitionRef": null
+          },
+          {
+            "stepId": "enviarAanalisis",
+            "kind": "handoff",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "aprobarPresupuesto",
+        "actorRef": "cliente",
+        "title": "Aprobar un presupuesto",
+        "steps": [
+          {
+            "stepId": "revisarPresupuestoRecibido",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "decidirAprobacion",
+            "kind": "decide",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "confirmarAprobacion",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "aprobarPresupuesto"
+          },
+          {
+            "stepId": "derivarReparacion",
+            "kind": "handoff",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "consultarMisOrdenes",
+        "actorRef": "cliente",
+        "title": "Consultar mis órdenes de servicio",
+        "steps": [
+          {
+            "stepId": "localizarMisOrdenes",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarDetalleDeOrden",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "entregarAparatoYfinalizar",
+        "actorRef": "recepcionista",
+        "title": "Entregar el aparato reparado y finalizar la orden",
+        "steps": [
+          {
+            "stepId": "localizarOrdenLista",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "verificarOrdenParaEntrega",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "finalizarEntrega",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "entregarYfinalizar"
+          }
+        ]
+      },
+      {
+        "journeyId": "prepararPresupuesto",
+        "actorRef": "tecnico",
+        "title": "Analizar el aparato y preparar el presupuesto",
+        "steps": [
+          {
+            "stepId": "localizarOrdenPendiente",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarAnalisis",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "update",
+            "transitionRef": null
+          },
+          {
+            "stepId": "emitirPresupuesto",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "emitirPresupuesto"
+          },
+          {
+            "stepId": "enviarPresupuestoAlCliente",
+            "kind": "handoff",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "rechazarPresupuesto",
+        "actorRef": "cliente",
+        "title": "Rechazar un presupuesto",
+        "steps": [
+          {
+            "stepId": "revisarPresupuestoParaRechazo",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "decidirRechazo",
+            "kind": "decide",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "confirmarRechazo",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "rechazarPresupuesto"
+          }
+        ]
+      },
+      {
+        "journeyId": "repararYmarcarLista",
+        "actorRef": "tecnico",
+        "title": "Reparar el aparato y marcar la orden como lista",
+        "steps": [
+          {
+            "stepId": "localizarOrdenAprobada",
+            "kind": "locate",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "revisarDiagnosticoAprobado",
+            "kind": "inspect",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarReparacionTerminada",
+            "kind": "act",
+            "entity": "OrdenServicio",
+            "effect": "transition",
+            "transitionRef": "marcarLista"
+          },
+          {
+            "stepId": "derivarEntrega",
+            "kind": "handoff",
+            "entity": "OrdenServicio",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Aparato",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Cliente",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "OrdenServicio",
+        "lifecycleStates": [
+          {
+            "state": "underAnalysis"
+          },
+          {
+            "state": "budgetSent"
+          },
+          {
+            "state": "approved"
+          },
+          {
+            "state": "rejected"
+          },
+          {
+            "state": "readyForPickup"
+          },
+          {
+            "state": "completed"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "emitirPresupuesto",
+            "from": [
+              "underAnalysis"
+            ],
+            "to": "budgetSent",
+            "by": [
+              "tecnico"
+            ],
+            "description": "El técnico emite el presupuesto con el diagnóstico, las piezas necesarias y el valor propuesto para decisión del cliente."
+          },
+          {
+            "transitionId": "aprobarPresupuesto",
+            "from": [
+              "budgetSent"
+            ],
+            "to": "approved",
+            "by": [
+              "cliente"
+            ],
+            "description": "El cliente de la orden aprueba el presupuesto desde el portal y autoriza la reparación."
+          },
+          {
+            "transitionId": "rechazarPresupuesto",
+            "from": [
+              "budgetSent"
+            ],
+            "to": "rejected",
+            "by": [
+              "cliente"
+            ],
+            "description": "El cliente de la orden rechaza el presupuesto desde el portal; la orden se cierra y el aparato queda disponible para retiro."
+          },
+          {
+            "transitionId": "marcarLista",
+            "from": [
+              "approved"
+            ],
+            "to": "readyForPickup",
+            "by": [
+              "tecnico"
+            ],
+            "description": "El técnico registra la reparación realizada y deja el aparato listo para entrega."
+          },
+          {
+            "transitionId": "entregarYfinalizar",
+            "from": [
+              "readyForPickup"
+            ],
+            "to": "completed",
+            "by": [
+              "recepcionista"
+            ],
+            "description": "El recepcionista entrega al cliente el aparato reparado y finaliza la orden."
+          }
+        ]
+      }
+    ],
+    "processes": [
+      {
+        "processId": "gestionarOrdenServicio",
+        "tasks": [
+          {
+            "taskId": "abrirOrden",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "prepararPresupuesto",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "aprobarPresupuesto",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "rechazarPresupuesto",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "repararYMarcarLista",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "entregarAparatoYFinalizar",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "financeiro",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "acompanharRecebiveis",
+        "actorRef": "gerenteFinanceiro",
+        "title": "Acompanhar recebíveis e títulos vencidos",
+        "steps": [
+          {
+            "stepId": "localizarTitulosParaAnalise",
+            "kind": "locate",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarRecebiveis",
+            "kind": "inspect",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "consultarMeusTitulosErecebimentos",
+        "actorRef": "pagador",
+        "title": "Consultar meus títulos e recebimentos",
+        "steps": [
+          {
+            "stepId": "localizarMeusTitulos",
+            "kind": "locate",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarMeusTitulos",
+            "kind": "inspect",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "localizarMeusRecebimentos",
+            "kind": "locate",
+            "entity": "Recebimento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarMeusRecebimentos",
+            "kind": "inspect",
+            "entity": "Recebimento",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "emitirExtratoPorPagador",
+        "actorRef": "gerenteFinanceiro",
+        "title": "Emitir extrato por pagador",
+        "steps": [
+          {
+            "stepId": "localizarPagador",
+            "kind": "locate",
+            "entity": "Pagador",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarMovimentacoesDoPagador",
+            "kind": "inspect",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "gerarExtratoDoPagador",
+            "kind": "act",
+            "entity": "ExtratoPagador",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "estornarRecebimentoNoMesmoDia",
+        "actorRef": "caixa",
+        "title": "Estornar um recebimento no mesmo dia",
+        "steps": [
+          {
+            "stepId": "localizarRecebimentoDoDia",
+            "kind": "locate",
+            "entity": "Recebimento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "conferirRecebimentoDoDia",
+            "kind": "inspect",
+            "entity": "Recebimento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "estornarRecebimento",
+            "kind": "act",
+            "entity": "Recebimento",
+            "effect": "transition",
+            "transitionRef": "estornarRecebimento"
+          }
+        ]
+      },
+      {
+        "journeyId": "pagarTituloComCartao",
+        "actorRef": "pagador",
+        "title": "Pagar título em aberto com cartão",
+        "steps": [
+          {
+            "stepId": "localizarMeuTituloEmAberto",
+            "kind": "locate",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "conferirMeuTituloParaPagamento",
+            "kind": "inspect",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "pagarTituloComCartao",
+            "kind": "act",
+            "entity": "Recebimento",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "receberTitulo",
+        "actorRef": "caixa",
+        "title": "Receber um título",
+        "steps": [
+          {
+            "stepId": "localizarTituloEmAberto",
+            "kind": "locate",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarTituloParaRecebimento",
+            "kind": "inspect",
+            "entity": "TituloReceber",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarRecebimento",
+            "kind": "act",
+            "entity": "Recebimento",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "ExtratoPagador",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "GerenteFinanceiro",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Pagador",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "PainelRecebiveis",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Recebimento",
+        "lifecycleStates": [
+          {
+            "state": "registered"
+          },
+          {
+            "state": "reversed"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "estornarRecebimento",
+            "from": [
+              "registered"
+            ],
+            "to": "reversed",
+            "by": [
+              "caixa"
+            ],
+            "description": "Estorna um recebimento registrado no mesmo dia, recompondo o saldo do título correspondente."
+          }
+        ]
+      },
+      {
+        "entityId": "TituloReceber",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": []
+  },
+  {
+    "moduleName": "controleEstoque",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "acompanharSaldoProdutos",
+        "actorRef": "estoquista",
+        "title": "Acompanhar saldos de estoque",
+        "steps": [
+          {
+            "stepId": "localizarProdutos",
+            "kind": "locate",
+            "entity": "Produto",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarSaldos",
+            "kind": "inspect",
+            "entity": "Produto",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cadastrarProduto",
+        "actorRef": "estoquista",
+        "title": "Cadastrar produto para controle de estoque",
+        "steps": [
+          {
+            "stepId": "registrarProduto",
+            "kind": "act",
+            "entity": "Produto",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarMovimentacaoEstoque",
+        "actorRef": "estoquista",
+        "title": "Registrar movimentação de estoque",
+        "steps": [
+          {
+            "stepId": "localizarProduto",
+            "kind": "locate",
+            "entity": "Produto",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarSaldoProduto",
+            "kind": "inspect",
+            "entity": "Produto",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarMovimentacao",
+            "kind": "act",
+            "entity": "MovimentacaoEstoque",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "tratarAvisoSaldoBaixo",
+        "actorRef": "estoquista",
+        "title": "Verificar aviso de saldo baixo",
+        "steps": [
+          {
+            "stepId": "consultarProdutoAvisado",
+            "kind": "inspect",
+            "entity": "Produto",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarMovimentacoesProduto",
+            "kind": "inspect",
+            "entity": "MovimentacaoEstoque",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "MovimentacaoEstoque",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Produto",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": []
+  },
+  {
+    "moduleName": "compras",
+    "pack": "ns5_leva_v4_r2",
+    "journeys": [
+      {
+        "journeyId": "abrirEenviarPedidoCompra",
+        "actorRef": "comprador",
+        "title": "Abrir e enviar pedido de compra",
+        "steps": [
+          {
+            "stepId": "localizarFornecedor",
+            "kind": "locate",
+            "entity": "Supplier",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarCondicoesFornecimento",
+            "kind": "inspect",
+            "entity": "SupplierOffering",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "abrirPedidoCompra",
+            "kind": "act",
+            "entity": "PurchaseOrder",
+            "effect": "create",
+            "transitionRef": null
+          },
+          {
+            "stepId": "enviarPedidoCompra",
+            "kind": "act",
+            "entity": "PurchaseOrder",
+            "effect": "transition",
+            "transitionRef": "sendPurchaseOrder"
+          },
+          {
+            "stepId": "encaminharParaAprovacao",
+            "kind": "handoff",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "acompanharIndicadoresCompras",
+        "actorRef": "gerenteCompras",
+        "title": "Acompanhar indicadores de compras",
+        "steps": [
+          {
+            "stepId": "localizarPedidosParaIndicadores",
+            "kind": "locate",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarIndicadoresCompras",
+            "kind": "inspect",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "acompanharIndicadoresDeCompras",
+        "actorRef": "gerenteCompras",
+        "title": "Acompanhar indicadores de compras",
+        "steps": [
+          {
+            "stepId": "consultarPedidosDeCompra",
+            "kind": "locate",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarIndicadoresDePedidos",
+            "kind": "inspect",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "avaliarPedidoAcimaDoLimite",
+        "actorRef": "gerenteCompras",
+        "title": "Avaliar pedido acima do limite",
+        "steps": [
+          {
+            "stepId": "localizarPedidoParaAvaliacao",
+            "kind": "locate",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarPedidoParaAvaliacao",
+            "kind": "inspect",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "decidirPedido",
+            "kind": "decide",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarDecisaoPedido",
+            "kind": "act",
+            "entity": "PurchaseOrder",
+            "effect": "transition",
+            "transitionRef": "resolvePurchaseOrderApproval"
+          }
+        ]
+      },
+      {
+        "journeyId": "cadastrarFornecedor",
+        "actorRef": "comprador",
+        "title": "Cadastrar fornecedor e condições de fornecimento",
+        "steps": [
+          {
+            "stepId": "cadastrarFornecedor",
+            "kind": "act",
+            "entity": "Supplier",
+            "effect": "create",
+            "transitionRef": null
+          },
+          {
+            "stepId": "localizarProduto",
+            "kind": "locate",
+            "entity": "Product",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarCondicaoFornecimento",
+            "kind": "act",
+            "entity": "SupplierOffering",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cadastrarOfertaFornecedor",
+        "actorRef": "comprador",
+        "title": "Cadastrar produto e preço de fornecedor",
+        "steps": [
+          {
+            "stepId": "localizarFornecedor",
+            "kind": "locate",
+            "entity": "Supplier",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "localizarProduto",
+            "kind": "locate",
+            "entity": "Product",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarOferta",
+            "kind": "act",
+            "entity": "SupplierOffering",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "decidirPedidoAcimaDoLimite",
+        "actorRef": "gerenteCompras",
+        "title": "Decidir pedido de compra acima do limite",
+        "steps": [
+          {
+            "stepId": "localizarPedidoPendente",
+            "kind": "locate",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarPedidoCompra",
+            "kind": "inspect",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "decidirPedido",
+            "kind": "decide",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarDecisaoDoPedido",
+            "kind": "act",
+            "entity": "PurchaseOrder",
+            "effect": "transition",
+            "transitionRef": "decidePurchaseOrder"
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarRecebimentoPedido",
+        "actorRef": "almoxarife",
+        "title": "Registrar recebimento total ou parcial",
+        "steps": [
+          {
+            "stepId": "localizarPedidoParaRecebimento",
+            "kind": "locate",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarItensDoPedido",
+            "kind": "inspect",
+            "entity": "PurchaseOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarRecebimento",
+            "kind": "act",
+            "entity": "GoodsReceipt",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Buyer",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "GoodsReceipt",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Product",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "PurchaseDashboard",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "PurchaseOrder",
+        "lifecycleStates": [
+          {
+            "state": "draft"
+          },
+          {
+            "state": "sent"
+          },
+          {
+            "state": "approved"
+          },
+          {
+            "state": "rejected"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "sendPurchaseOrder",
+            "from": [
+              "draft"
+            ],
+            "to": "sent",
+            "by": [
+              "comprador"
+            ],
+            "description": "Envia o pedido ao fornecedor; pedidos acima do limite ficam sujeitos à aprovação antes do recebimento."
+          },
+          {
+            "transitionId": "decidePurchaseOrder",
+            "from": [
+              "sent"
+            ],
+            "to": "approved",
+            "by": [
+              "gerenteCompras"
+            ],
+            "description": "Aprova um pedido enviado cujo valor exige decisão do gerente de compras."
+          },
+          {
+            "transitionId": "rejectPurchaseOrder",
+            "from": [
+              "sent"
+            ],
+            "to": "rejected",
+            "by": [
+              "gerenteCompras"
+            ],
+            "description": "Rejeita um pedido enviado cujo valor exige decisão do gerente de compras."
+          }
+        ]
+      },
+      {
+        "entityId": "PurchaseOrderDashboard",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "PurchaseReceipt",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Supplier",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "SupplierContact",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "SupplierOffering",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": [
+      {
+        "processId": "aprovarPedidoAcimaDoLimite",
+        "tasks": [
+          {
+            "taskId": "enviarEEncaminharPedido",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "decidirPedidoEncaminhado",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "agendaClinica",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "agendarConsulta",
+        "actorRef": "recepcionista",
+        "title": "Agendar consulta",
+        "steps": [
+          {
+            "stepId": "localizarPacienteParaAgendamento",
+            "kind": "locate",
+            "entity": "Paciente",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "localizarProfissional",
+            "kind": "locate",
+            "entity": "Profissional",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarDisponibilidade",
+            "kind": "inspect",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "criarConsulta",
+            "kind": "act",
+            "entity": "Consulta",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cadastrarPaciente",
+        "actorRef": "recepcionista",
+        "title": "Cadastrar paciente",
+        "steps": [
+          {
+            "stepId": "localizarPaciente",
+            "kind": "locate",
+            "entity": "Paciente",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarPaciente",
+            "kind": "act",
+            "entity": "Paciente",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "confirmarConsulta",
+        "actorRef": "recepcionista",
+        "title": "Confirmar consulta por telefone",
+        "steps": [
+          {
+            "stepId": "localizarConsultaParaConfirmacao",
+            "kind": "locate",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarConsultaParaConfirmacao",
+            "kind": "inspect",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarConfirmacao",
+            "kind": "act",
+            "entity": "Consulta",
+            "effect": "transition",
+            "transitionRef": "confirmarConsulta"
+          }
+        ]
+      },
+      {
+        "journeyId": "consultarAgendaDiaria",
+        "actorRef": "profissional",
+        "title": "Consultar agenda diária",
+        "steps": [
+          {
+            "stepId": "localizarMinhasConsultasDoDia",
+            "kind": "locate",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarAgendaDiaria",
+            "kind": "inspect",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarAtendimento",
+        "actorRef": "profissional",
+        "title": "Registrar atendimento",
+        "steps": [
+          {
+            "stepId": "localizarMinhaConsulta",
+            "kind": "locate",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarMinhaConsulta",
+            "kind": "inspect",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarAtendimentoRealizado",
+            "kind": "act",
+            "entity": "Consulta",
+            "effect": "transition",
+            "transitionRef": "registrarAtendimento"
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarFalta",
+        "actorRef": "recepcionista",
+        "title": "Registrar falta do paciente",
+        "steps": [
+          {
+            "stepId": "localizarConsultaParaFalta",
+            "kind": "locate",
+            "entity": "Consulta",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarFaltaPaciente",
+            "kind": "act",
+            "entity": "Consulta",
+            "effect": "transition",
+            "transitionRef": "registrarFalta"
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Consulta",
+        "lifecycleStates": [
+          {
+            "state": "scheduled"
+          },
+          {
+            "state": "confirmed"
+          },
+          {
+            "state": "noShow"
+          },
+          {
+            "state": "attended"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "confirmarConsulta",
+            "from": [
+              "scheduled"
+            ],
+            "to": "confirmed",
+            "by": [
+              "recepcionista"
+            ],
+            "description": "Registra a confirmação da consulta por telefone."
+          },
+          {
+            "transitionId": "registrarFalta",
+            "from": [
+              "scheduled",
+              "confirmed"
+            ],
+            "to": "noShow",
+            "by": [
+              "recepcionista"
+            ],
+            "description": "Registra a falta quando o paciente não comparece à consulta."
+          },
+          {
+            "transitionId": "registrarAtendimento",
+            "from": [
+              "scheduled",
+              "confirmed"
+            ],
+            "to": "attended",
+            "by": [
+              "profissional"
+            ],
+            "description": "Conclui a própria consulta como atendida e exige a anotação do atendimento."
+          }
+        ]
+      },
+      {
+        "entityId": "ContatoPaciente",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Paciente",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Profissional",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Recepcionista",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": []
+  },
+  {
+    "moduleName": "reembolsoDespesas",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "avaliarDespesaDaEquipe",
+        "actorRef": "gestorEquipe",
+        "title": "Avaliar despesa da equipe",
+        "steps": [
+          {
+            "stepId": "localizarDespesaPendente",
+            "kind": "locate",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarDespesaPendente",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "decidirAvaliacao",
+            "kind": "decide",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarDecisaoDaDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "registrarDecisaoDaDespesa"
+          }
+        ]
+      },
+      {
+        "journeyId": "consultarPropriasDespesas",
+        "actorRef": "colaborador",
+        "title": "Consultar próprias despesas",
+        "steps": [
+          {
+            "stepId": "localizarPropriasDespesas",
+            "kind": "locate",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarDespesa",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "corrigirEreenviarDespesa",
+        "actorRef": "colaborador",
+        "title": "Corrigir e reenviar despesa rejeitada",
+        "steps": [
+          {
+            "stepId": "localizarDespesaRejeitada",
+            "kind": "locate",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarMotivoRejeicao",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "corrigirDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "update",
+            "transitionRef": null
+          },
+          {
+            "stepId": "reenviarDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "reenviarParaAprovacao"
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarEenviarDespesa",
+        "actorRef": "colaborador",
+        "title": "Registrar e enviar despesa para aprovação",
+        "steps": [
+          {
+            "stepId": "registrarDespesa",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarPagamentoDeDespesa",
+        "actorRef": "financeiro",
+        "title": "Registrar pagamento de despesa aprovada",
+        "steps": [
+          {
+            "stepId": "localizarDespesaAprovada",
+            "kind": "locate",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarDespesaAprovada",
+            "kind": "inspect",
+            "entity": "Despesa",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarPagamento",
+            "kind": "act",
+            "entity": "Despesa",
+            "effect": "transition",
+            "transitionRef": "registrarPagamento"
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Colaborador",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Despesa",
+        "lifecycleStates": [
+          {
+            "state": "pendingApproval"
+          },
+          {
+            "state": "rejected"
+          },
+          {
+            "state": "approved"
+          },
+          {
+            "state": "paid"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "reenviarParaAprovacao",
+            "from": [
+              "rejected"
+            ],
+            "to": "pendingApproval",
+            "by": [
+              "colaborador"
+            ],
+            "description": "Reenvia uma despesa rejeitada, após correção, para nova avaliação do gestor."
+          },
+          {
+            "transitionId": "registrarDecisaoDaDespesa",
+            "from": [
+              "pendingApproval"
+            ],
+            "to": "approved",
+            "by": [
+              "gestorEquipe"
+            ],
+            "description": "Registra a aprovação do gestor e encaminha a despesa ao financeiro para pagamento."
+          },
+          {
+            "transitionId": "rejeitarDespesa",
+            "from": [
+              "pendingApproval"
+            ],
+            "to": "rejected",
+            "by": [
+              "gestorEquipe"
+            ],
+            "description": "Registra a rejeição do gestor, com o motivo disponível ao colaborador."
+          },
+          {
+            "transitionId": "registrarPagamento",
+            "from": [
+              "approved"
+            ],
+            "to": "paid",
+            "by": [
+              "financeiro"
+            ],
+            "description": "Registra o pagamento de uma despesa aprovada."
+          }
+        ]
+      },
+      {
+        "entityId": "GestorEquipe",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": [
+      {
+        "processId": "submeterEAvaliarDespesa",
+        "tasks": [
+          {
+            "taskId": "registrarEnviarDespesa",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "avaliarDespesaEquipe",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "processId": "reavaliarDespesaReenviada",
+        "tasks": [
+          {
+            "taskId": "avaliarDespesaReenviada",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "processId": "registrarPagamentoDespesaAprovada",
+        "tasks": [
+          {
+            "taskId": "registrarPagamentoDespesa",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "inscricaoEvento",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "acompanharEexportarInscricoes",
+        "actorRef": "organizador",
+        "title": "Acompanhar e exportar inscrições",
+        "steps": [
+          {
+            "stepId": "localizarEvento",
+            "kind": "locate",
+            "entity": "Evento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarInscritosEocupacao",
+            "kind": "inspect",
+            "entity": "Evento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "baixarListaCsv",
+            "kind": "inspect",
+            "entity": "Inscricao",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cadastrarEpublicarEvento",
+        "actorRef": "organizador",
+        "title": "Cadastrar e publicar evento",
+        "steps": [
+          {
+            "stepId": "criarEvento",
+            "kind": "act",
+            "entity": "Evento",
+            "effect": "create",
+            "transitionRef": null
+          },
+          {
+            "stepId": "publicarEvento",
+            "kind": "act",
+            "entity": "Evento",
+            "effect": "transition",
+            "transitionRef": "publicarEvento"
+          }
+        ]
+      },
+      {
+        "journeyId": "cancelarInscricao",
+        "actorRef": "publico",
+        "title": "Cancelar inscrição",
+        "steps": [
+          {
+            "stepId": "localizarInscricao",
+            "kind": "locate",
+            "entity": "Inscricao",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarInscricao",
+            "kind": "inspect",
+            "entity": "Inscricao",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "cancelarInscricao",
+            "kind": "act",
+            "entity": "Inscricao",
+            "effect": "transition",
+            "transitionRef": "cancelarInscricao"
+          }
+        ]
+      },
+      {
+        "journeyId": "inscreverSeEmEvento",
+        "actorRef": "publico",
+        "title": "Inscrever-se em evento",
+        "steps": [
+          {
+            "stepId": "localizarEventoPublicado",
+            "kind": "locate",
+            "entity": "Evento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarDetalhesDoEvento",
+            "kind": "inspect",
+            "entity": "Evento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarInscricao",
+            "kind": "act",
+            "entity": "Inscricao",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "EmailParticipante",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Evento",
+        "lifecycleStates": [
+          {
+            "state": "draft"
+          },
+          {
+            "state": "published"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "publicarEvento",
+            "from": [
+              "draft"
+            ],
+            "to": "published",
+            "by": [
+              "organizador"
+            ],
+            "description": "Publica o evento e disponibiliza sua página para inscrições públicas."
+          }
+        ]
+      },
+      {
+        "entityId": "Inscricao",
+        "lifecycleStates": [
+          {
+            "state": "confirmed"
+          },
+          {
+            "state": "waitlisted"
+          },
+          {
+            "state": "cancelled"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "cancelarInscricao",
+            "from": [
+              "confirmed",
+              "waitlisted"
+            ],
+            "to": "cancelled",
+            "by": [
+              "publico"
+            ],
+            "description": "Cancela a inscrição; se ela ocupava uma vaga, inicia a promoção da primeira pessoa da lista de espera."
+          },
+          {
+            "transitionId": "promoverDaListaEspera",
+            "from": [
+              "waitlisted"
+            ],
+            "to": "confirmed",
+            "by": [],
+            "description": "Promove automaticamente a primeira inscrição da lista de espera quando uma vaga é liberada."
+          }
+        ]
+      },
+      {
+        "entityId": "Participante",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": [
+      {
+        "processId": "promoverListaEsperaAposCancelamento",
+        "tasks": [
+          {
+            "taskId": "promoverPrimeiraInscricaoEmEspera",
+            "kind": "mechanical",
+            "entityRef": "Inscricao",
+            "effect": "transition",
+            "transitionRef": "promoverDaListaEspera"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "locacaoEquipamentos",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "acompanharSituacaoEquipamentos",
+        "actorRef": "gerente",
+        "title": "Acompanhar situação dos equipamentos",
+        "steps": [
+          {
+            "stepId": "localizarEquipamentosPorSituacao",
+            "kind": "locate",
+            "entity": "Equipamento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarSituacaoEquipamento",
+            "kind": "inspect",
+            "entity": "Equipamento",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "criarContratoLocacao",
+        "actorRef": "atendente",
+        "title": "Criar contrato de locação",
+        "steps": [
+          {
+            "stepId": "localizarCliente",
+            "kind": "locate",
+            "entity": "Cliente",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "localizarEquipamentos",
+            "kind": "locate",
+            "entity": "Equipamento",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarContrato",
+            "kind": "act",
+            "entity": "ContratoLocacao",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarDevolucao",
+        "actorRef": "atendente",
+        "title": "Registrar devolução de equipamentos",
+        "steps": [
+          {
+            "stepId": "localizarContrato",
+            "kind": "locate",
+            "entity": "ContratoLocacao",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "consultarContrato",
+            "kind": "inspect",
+            "entity": "ContratoLocacao",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "confirmarDevolucao",
+            "kind": "act",
+            "entity": "ContratoLocacao",
+            "effect": "transition",
+            "transitionRef": "registrarDevolucao"
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Cliente",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "ContratoLocacao",
+        "lifecycleStates": [
+          {
+            "state": "open"
+          },
+          {
+            "state": "closed"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "registrarDevolucao",
+            "from": [
+              "open"
+            ],
+            "to": "closed",
+            "by": [
+              "atendente"
+            ],
+            "description": "Registra a data real de devolução e encerra a locação dos equipamentos do contrato."
+          }
+        ]
+      },
+      {
+        "entityId": "Equipamento",
+        "lifecycleStates": [
+          {
+            "state": "available"
+          },
+          {
+            "state": "rented"
+          },
+          {
+            "state": "maintenance"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "registrarLocacao",
+            "from": [
+              "available"
+            ],
+            "to": "rented",
+            "by": [
+              "atendente"
+            ],
+            "description": "Registra que o equipamento foi entregue para locação."
+          },
+          {
+            "transitionId": "registrarDevolucao",
+            "from": [
+              "rented"
+            ],
+            "to": "available",
+            "by": [
+              "atendente"
+            ],
+            "description": "Registra a devolução do equipamento e o torna disponível novamente."
+          },
+          {
+            "transitionId": "iniciarManutencao",
+            "from": [
+              "available"
+            ],
+            "to": "maintenance",
+            "by": [
+              "gerente"
+            ],
+            "description": "Coloca o equipamento em manutenção, impedindo novas locações."
+          },
+          {
+            "transitionId": "concluirManutencao",
+            "from": [
+              "maintenance"
+            ],
+            "to": "available",
+            "by": [
+              "gerente"
+            ],
+            "description": "Conclui a manutenção e libera o equipamento para locação."
+          }
+        ]
+      },
+      {
+        "entityId": "ItemContratoLocacao",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": []
+  },
+  {
+    "moduleName": "hiringPipeline",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "advanceApplicationToInterview",
+        "actorRef": "recruiter",
+        "title": "Advance an application to interview",
+        "steps": [
+          {
+            "stepId": "locateScreeningApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectScreeningApplication",
+            "kind": "inspect",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectCandidateQualifications",
+            "kind": "inspect",
+            "entity": "Candidate",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "moveToInterview",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "moveToInterview"
+          }
+        ]
+      },
+      {
+        "journeyId": "decideHiringOutcome",
+        "actorRef": "hiringManager",
+        "title": "Decide the hiring outcome",
+        "steps": [
+          {
+            "stepId": "locateOfferedApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectOfferedApplication",
+            "kind": "inspect",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectPositionHeadcount",
+            "kind": "inspect",
+            "entity": "JobPosition",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "selectHiringDecision",
+            "kind": "decide",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "moveToHired",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "moveToHired"
+          },
+          {
+            "stepId": "referDeclinedOffer",
+            "kind": "handoff",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "decideOffer",
+        "actorRef": "hiringManager",
+        "title": "Decide whether to make an offer",
+        "steps": [
+          {
+            "stepId": "locateInterviewApplication",
+            "kind": "locate",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectInterviewApplication",
+            "kind": "inspect",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectCandidateForOffer",
+            "kind": "inspect",
+            "entity": "Candidate",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "selectOfferDecision",
+            "kind": "decide",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "moveToOffer",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "moveToOffer"
+          },
+          {
+            "stepId": "referDeclinedCandidate",
+            "kind": "handoff",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "openJobPosition",
+        "actorRef": "recruiter",
+        "title": "Open a job position",
+        "steps": [
+          {
+            "stepId": "createJobPosition",
+            "kind": "act",
+            "entity": "JobPosition",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "recordApplicationRejection",
+        "actorRef": "recruiter",
+        "title": "Record an application rejection",
+        "steps": [
+          {
+            "stepId": "locateApplicationForRejection",
+            "kind": "locate",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectApplicationForRejection",
+            "kind": "inspect",
+            "entity": "Application",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectPositionForRejection",
+            "kind": "inspect",
+            "entity": "JobPosition",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "recordRejection",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "transition",
+            "transitionRef": "rejectApplication"
+          }
+        ]
+      },
+      {
+        "journeyId": "registerCandidate",
+        "actorRef": "recruiter",
+        "title": "Register a candidate",
+        "steps": [
+          {
+            "stepId": "locateCandidate",
+            "kind": "locate",
+            "entity": "Candidate",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registerCandidateRecord",
+            "kind": "act",
+            "entity": "Candidate",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "startApplicationScreening",
+        "actorRef": "recruiter",
+        "title": "Start screening an application",
+        "steps": [
+          {
+            "stepId": "locateCandidateForApplication",
+            "kind": "locate",
+            "entity": "Candidate",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectCandidateForApplication",
+            "kind": "inspect",
+            "entity": "Candidate",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "locateOpenJobPosition",
+            "kind": "locate",
+            "entity": "JobPosition",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspectJobPositionRequirements",
+            "kind": "inspect",
+            "entity": "JobPosition",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "createApplication",
+            "kind": "act",
+            "entity": "Application",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Application",
+        "lifecycleStates": [
+          {
+            "state": "screening"
+          },
+          {
+            "state": "interview"
+          },
+          {
+            "state": "offer"
+          },
+          {
+            "state": "hired"
+          },
+          {
+            "state": "rejected"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "moveToInterview",
+            "from": [
+              "screening"
+            ],
+            "to": "interview",
+            "by": [
+              "recruiter"
+            ],
+            "description": "Advance a screened application to interview."
+          },
+          {
+            "transitionId": "moveToOffer",
+            "from": [
+              "interview"
+            ],
+            "to": "offer",
+            "by": [
+              "hiringManager"
+            ],
+            "description": "Approve an offer for an interviewed candidate in a position managed by the hiring manager."
+          },
+          {
+            "transitionId": "moveToHired",
+            "from": [
+              "offer"
+            ],
+            "to": "hired",
+            "by": [
+              "hiringManager"
+            ],
+            "description": "Hire an offered candidate while the job position still has hiring capacity."
+          },
+          {
+            "transitionId": "rejectApplication",
+            "from": [
+              "screening",
+              "interview",
+              "offer"
+            ],
+            "to": "rejected",
+            "by": [
+              "recruiter"
+            ],
+            "description": "Reject an application and record the reason it will not proceed."
+          }
+        ]
+      },
+      {
+        "entityId": "Candidate",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "CandidateContact",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "HiringManager",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "JobPosition",
+        "lifecycleStates": [
+          {
+            "state": "open"
+          },
+          {
+            "state": "closed"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "closeFilledPosition",
+            "from": [
+              "open"
+            ],
+            "to": "closed",
+            "by": [],
+            "description": "Close the job position automatically when the required headcount has been hired."
+          }
+        ]
+      }
+    ],
+    "processes": [
+      {
+        "processId": "applicationDecisionProcess",
+        "tasks": [
+          {
+            "taskId": "decideOffer",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "decideHiringOutcome",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "taskId": "recordApplicationRejection",
+            "kind": "human",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "processId": "closeFilledPositionProcess",
+        "tasks": [
+          {
+            "taskId": "closeFilledPosition",
+            "kind": "mechanical",
+            "entityRef": "JobPosition",
+            "effect": "transition",
+            "transitionRef": "closeFilledPosition"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "manutencaoFrota",
+    "pack": "ns5_leva_v4_r2",
+    "journeys": [
+      {
+        "journeyId": "abrirOrdemPorDefeito",
+        "actorRef": "gestor",
+        "title": "Abrir ordem de manutenção por defeito",
+        "steps": [
+          {
+            "stepId": "localizarVeiculoComDefeito",
+            "kind": "locate",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarVeiculoComDefeito",
+            "kind": "inspect",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "abrirOrdemPorDefeito",
+            "kind": "act",
+            "entity": "MaintenanceOrder",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "atualizarOrdemManutencao",
+        "actorRef": "gestor",
+        "title": "Atualizar ordem de manutenção",
+        "steps": [
+          {
+            "stepId": "localizarOrdemManutencao",
+            "kind": "locate",
+            "entity": "MaintenanceOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarOrdemManutencao",
+            "kind": "inspect",
+            "entity": "MaintenanceOrder",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "atualizarDadosDaOrdem",
+            "kind": "act",
+            "entity": "MaintenanceOrder",
+            "effect": "update",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cadastrarPlanoPreventivo",
+        "actorRef": "gestor",
+        "title": "Cadastrar plano de manutenção preventiva",
+        "steps": [
+          {
+            "stepId": "localizarVeiculoDaFrota",
+            "kind": "locate",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarVeiculoDaFrota",
+            "kind": "inspect",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "cadastrarPlano",
+            "kind": "act",
+            "entity": "MaintenancePlan",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "consultarVeiculosAtribuidos",
+        "actorRef": "motorista",
+        "title": "Consultar veículos atribuídos",
+        "steps": [
+          {
+            "stepId": "localizarVeiculosAtribuidos",
+            "kind": "locate",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarVeiculoAtribuido",
+            "kind": "inspect",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarAbastecimento",
+        "actorRef": "motorista",
+        "title": "Registrar abastecimento do veículo dirigido",
+        "steps": [
+          {
+            "stepId": "localizarVeiculoAtribuido",
+            "kind": "locate",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarVeiculo",
+            "kind": "inspect",
+            "entity": "Vehicle",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarAbastecimento",
+            "kind": "act",
+            "entity": "Fueling",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "tratarAlertaPreventivaVencida",
+        "actorRef": "gestor",
+        "title": "Tratar alerta de manutenção preventiva vencida",
+        "steps": [
+          {
+            "stepId": "inspecionarAlertaPreventivo",
+            "kind": "inspect",
+            "entity": "MaintenancePlan",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "abrirOrdemPreventiva",
+            "kind": "act",
+            "entity": "MaintenanceOrder",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Driver",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Fueling",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "MaintenanceOrder",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "MaintenancePlan",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Vehicle",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "VehicleAssignment",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Workshop",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": []
+  },
+  {
+    "moduleName": "mensalidadesAcademia",
+    "pack": "ns5_leva_v4",
+    "journeys": [
+      {
+        "journeyId": "acompanharIndicadoresAcademia",
+        "actorRef": "gerencia",
+        "title": "Acompanhar indicadores da academia",
+        "steps": [
+          {
+            "stepId": "inspecionarIndicadores",
+            "kind": "inspect",
+            "entity": "Mensalidade",
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "cancelarPropriaMatricula",
+        "actorRef": "aluno",
+        "title": "Cancelar própria matrícula",
+        "steps": [
+          {
+            "stepId": "localizarPropriaMatricula",
+            "kind": "locate",
+            "entity": "Matricula",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarPropriaMatricula",
+            "kind": "inspect",
+            "entity": "Matricula",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "cancelarMatricula",
+            "kind": "act",
+            "entity": "Matricula",
+            "effect": "transition",
+            "transitionRef": "cancelarMatricula"
+          }
+        ]
+      },
+      {
+        "journeyId": "gerarMensalidadesDoMes",
+        "actorRef": "gerencia",
+        "title": "Gerar mensalidades do mês",
+        "steps": [
+          {
+            "stepId": "criarMensalidades",
+            "kind": "act",
+            "entity": "Mensalidade",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "matricularAluno",
+        "actorRef": "recepcao",
+        "title": "Matricular aluno em um plano",
+        "steps": [
+          {
+            "stepId": "localizarAluno",
+            "kind": "locate",
+            "entity": "Aluno",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "localizarPlano",
+            "kind": "locate",
+            "entity": "Plano",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "criarMatricula",
+            "kind": "act",
+            "entity": "Matricula",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      },
+      {
+        "journeyId": "registrarPagamentoMensalidade",
+        "actorRef": "recepcao",
+        "title": "Registrar pagamento de mensalidade",
+        "steps": [
+          {
+            "stepId": "localizarMensalidade",
+            "kind": "locate",
+            "entity": "Mensalidade",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "inspecionarMensalidade",
+            "kind": "inspect",
+            "entity": "Mensalidade",
+            "effect": null,
+            "transitionRef": null
+          },
+          {
+            "stepId": "registrarPagamento",
+            "kind": "act",
+            "entity": "Pagamento",
+            "effect": "create",
+            "transitionRef": null
+          }
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "entityId": "Aluno",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "IndicadoresAcademia",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Matricula",
+        "lifecycleStates": [
+          {
+            "state": "active"
+          },
+          {
+            "state": "canceled"
+          }
+        ],
+        "transitions": [
+          {
+            "transitionId": "cancelarMatricula",
+            "from": [
+              "active"
+            ],
+            "to": "canceled",
+            "by": [
+              "aluno"
+            ],
+            "description": "Cancela a própria matrícula ativa e interrompe a geração de mensalidades futuras."
+          }
+        ]
+      },
+      {
+        "entityId": "Mensalidade",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Pagamento",
+        "lifecycleStates": [],
+        "transitions": []
+      },
+      {
+        "entityId": "Plano",
+        "lifecycleStates": [],
+        "transitions": []
+      }
+    ],
+    "processes": [
+      {
+        "processId": "lembrarGeracaoMensalidades",
+        "tasks": [
+          {
+            "taskId": "alertarGerenciaGeracao",
+            "kind": "alert",
+            "entityRef": null,
+            "effect": null,
+            "transitionRef": null
+          }
+        ]
+      }
+    ]
+  }
+]

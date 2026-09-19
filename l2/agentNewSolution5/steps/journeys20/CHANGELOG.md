@@ -1,5 +1,10 @@
 # journeys20
 
+## 2026-09-19 (ns5_62)
+
+- Nested repair from `judge35` does not emit a second `journeys20-done` when that planId already
+  exists in the task. Persist is unchanged. No new gate and no new prompt phrase.
+
 ## 2026-09-16
 
 - ns5_43 T1: an `affects` entry is an entity id OR a path into an embedded child of one

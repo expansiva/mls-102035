@@ -1,6 +1,6 @@
 {
   "flowId": "agentNewSolution5",
-  "schemaVersion": "2026-09-17-ns5-flow-v2",
+  "schemaVersion": "2026-09-19-ns5-flow-v3",
   "status": "finalize80",
   "description": "Source-only L4 compiler: six business artifacts plus a deterministic finalize. No derived copies. CB/CF are never dispatched.",
   "canonicalReferences": [
@@ -16,11 +16,11 @@
     "Sequence is declared in this file via dependsOn and done-anchors. Steps do not enqueue their successor by name.",
     "Pipeline state lives on disk at l4/{module}/pipeline/pipeline.json. The task record is orchestration, not truth.",
     "A step declared here and not implemented stops the run with pipeline.status awaitingStep naming that step. The task completes without failed.",
-    "Six clarification anchors (journeys20, ontology30, rules40, workflows50, access60, integration70) exist as reserved and have no screen. module10 and finalize80 have none. /fast skips them.",
+    "Six clarification anchors (journeys20, ontology30, rules40, workflows50, access60, integration70) exist as reserved and have no screen. module10, judge35 and finalize80 have none. /fast skips them.",
     "Never dispatch agentChangeBackend or agentChangeFrontend.",
     "Permanent TypeScript artifacts import Ns5* types from /_102035_/l2/solution/types.js and are emitted as const satisfies.",
     "Deterministic user text is English keys; the planner translates. Internal messages stay English literals.",
-    "workflows50 runs after journeys20-done and before ontology30: a mechanical or llm stage cites the entity and the transition it makes happen, and ontology30 declares them with the stage as owner. rules40 and access60 run in parallel after ontology30-done. integration70 waits for the rules40, workflows50 and access60 done-anchors. finalize80 waits for integration70-done.",
+    "workflows50 runs after journeys20-done and before ontology30: a mechanical or llm stage cites the entity and the transition it makes happen, and ontology30 declares them with the stage as owner. judge35 runs after ontology30-done: it judges journey completeness against the ontology and the processes, and repairs by a nested journeys20 round. rules40 and access60 run in parallel after judge35-done. integration70 waits for the rules40, workflows50 and access60 done-anchors. finalize80 waits for integration70-done.",
     "Previous flow versions are never migrated automatically."
   ],
   "invocation": {
@@ -87,9 +87,18 @@
       "goal": "Entities, mdm, details, lifecycle with allowed transitions, relationships. Honours the transitions cited by the journeys and by the process stages; a transition cited only by a process is owned by it (by: [])."
     },
     {
-      "id": "rules40",
+      "id": "judge35",
       "kind": "agent-checkpoint",
       "dependsOn": ["ontology30-done"],
+      "doneAnchor": "judge35-done",
+      "modelAlias": "reasoning",
+      "artifact": "l4/{module}/pipeline/judge35-draft.json",
+      "goal": "Judge journey completeness against human ontology transitions and decide branches. Empty candidate list approves with no LLM call. missingJourney schedules a nested journeys20 repair; transitionUnjustified is recorded and the transition is kept."
+    },
+    {
+      "id": "rules40",
+      "kind": "agent-checkpoint",
+      "dependsOn": ["judge35-done"],
       "doneAnchor": "rules40-done",
       "clarificationAnchor": { "id": "rules40-clarification", "status": "reserved" },
       "modelAlias": "reasoning",
@@ -99,7 +108,7 @@
     {
       "id": "access60",
       "kind": "agent-checkpoint",
-      "dependsOn": ["ontology30-done"],
+      "dependsOn": ["judge35-done"],
       "doneAnchor": "access60-done",
       "clarificationAnchor": { "id": "access60-clarification", "status": "reserved" },
       "modelAlias": "reasoning",

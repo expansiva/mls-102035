@@ -4,7 +4,7 @@ L4 v5 source compiler. Writes the six business sources of a module and a determi
 finalize. Does not emit derived copies (operations, workspaces, usecases, landings) and
 never dispatches agentChangeBackend or agentChangeFrontend.
 
-`module10`, `journeys20`, `ontology30`, `rules40`, `workflows50`, `access60`, `integration70`
+`module10`, `journeys20`, `ontology30`, `judge35`, `rules40`, `workflows50`, `access60`, `integration70`
 and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle I1–I13,
 organization registry, l5 config/project.json, `pipeline.status: complete`. It never
 dispatches CB or CF. Gate tests run on the seed-run fixtures plus live access of
@@ -49,7 +49,7 @@ Types live in `/_102035_/l2/solution/types.ts`. Shared pure helpers are re-expor
 
 ## Pipeline
 
-`docs/flow.json` is the contract: `module10 → journeys20 → ontology30 → {rules40, workflows50, access60} → integration70 → finalize80`.
+`docs/flow.json` is the contract: `module10 → journeys20 → workflows50 → ontology30 → judge35 → {rules40, access60} → integration70 → finalize80`.
 `finalize80` writes `pipeline/finalize-report.json` and `pipeline/runNN_newsolution5.json`.
 Oracle errors fail the run; warnings do not. The step never dispatches CB or CF.
 
