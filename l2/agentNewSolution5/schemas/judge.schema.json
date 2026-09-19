@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/judge/2026-09-19-ns5-judge-v1",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/judge/2026-09-19-ns5-judge-v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
@@ -16,11 +16,12 @@
     "verdict": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["candidateId", "verdict", "journeyBrief"],
+      "required": ["candidateId", "verdict", "journeyBrief", "coveredBy"],
       "properties": {
         "candidateId": { "type": "string", "minLength": 1 },
-        "verdict": { "type": "string", "enum": ["missingJourney", "transitionUnjustified"] },
-        "journeyBrief": { "$ref": "#/$defs/journeyBrief" }
+        "verdict": { "type": "string", "enum": ["missingJourney", "transitionUnjustified", "coveredByAct"] },
+        "journeyBrief": { "$ref": "#/$defs/journeyBrief" },
+        "coveredBy": { "type": "string" }
       }
     },
     "journeyBrief": {

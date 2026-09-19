@@ -176,5 +176,27 @@
       "transitions": []
     }
   ],
-  "processes": []
+  "processes": [],
+  "relationships": [
+    {
+      "relationshipId": "contratoLocacaoCliente",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "Cliente"
+    },
+    {
+      "relationshipId": "contratoLocacaoItens",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "ItemContratoLocacao"
+    },
+    {
+      "relationshipId": "itemContratoLocacaoEquipamento",
+      "fromEntity": "ItemContratoLocacao",
+      "toEntity": "Equipamento"
+    },
+    {
+      "relationshipId": "contratoLocacaoEquipamentos",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "Equipamento"
+    }
+  ]
 }

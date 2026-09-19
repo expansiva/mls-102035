@@ -1,5 +1,12 @@
 # agentNewSolution5
 
+## 2026-09-19 (ns5_64)
+
+- **judge35 `coveredByAct`.** A human transition cited on a related entity as the same act is
+  covered, not missing and not unjustified. `coveredBy` is `journeyId.stepId`; the gate refuses a
+  bad pointer by name. No journeys20 repair. Candidates expose `likelyCoveredBy` as a deterministic
+  hint (same transitionId, related index entity, same actor).
+
 ## 2026-09-19 (ns5_62)
 
 - **Flow v3: `judge35` after `ontology30`.** Completeness of the journeys is judged once the

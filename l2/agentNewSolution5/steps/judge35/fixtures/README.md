@@ -4,5 +4,7 @@
   (compras, manutencaoFrota, ordenServicio from `ns5_leva_v4_r2`; the rest from `ns5_leva_v4`).
   Input of `collectNs5JudgeCandidates`. Not a flow-v2 replay pack.
 - `locacaoEquipamentos-before.json` — the locacao slice of that pack, before ns5_63 regenerates it.
+  Includes the four index relationships (`contratoLocacaoEquipamentos` is the N:N the coverage
+  hint/gate uses).
 - `locacaoEquipamentos-after.json` — filled byte-for-byte after ns5_63 (supervisor live proof).
 Not present yet.

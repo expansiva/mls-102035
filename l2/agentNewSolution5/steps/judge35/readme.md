@@ -22,10 +22,15 @@ A draft of `{ candidates, verdicts, rounds }`. No l4 source. Completeness is rep
   and no process stage cites, keyed `entityId.transitionId`; (b) a `decide` whose origin has N>=2
   leaving transitions, this journey cites fewer than N, and the module as a whole also cites fewer
   than N.
-- Verdict enum is required: `missingJourney` | `transitionUnjustified`.
+- Verdict enum is required: `missingJourney` | `transitionUnjustified` | `coveredByAct`.
 - `missingJourney` schedules at most two nested journeys20 repairs, then fails naming the leftovers.
 - `transitionUnjustified` is recorded on `pipeline.judge35.warnings` / `normalizations[]`. The
   transition is not deleted.
+- `coveredByAct` needs `coveredBy` as `journeyId.stepId`. The step is an `act` with `transitionRef`,
+  the step entity is linked in the ontology index (direct relationship, including N:N), and the
+  step actor is in the transition `by`. Recorded as `transitionCoveredByAct`; no repair.
+- Uncited candidates may carry `likelyCoveredBy` (same transitionId on a related entity, same actor).
+  Hint only.
 - The ontology does not regenerate.
 
 ## Known traps

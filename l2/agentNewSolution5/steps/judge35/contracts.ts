@@ -1,9 +1,10 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/judge35/contracts.ts" enhancement="_blank"/>
 
 import { createNs5RetryStep, NS5_AGENT_NAME } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import type { Ns5PipelineNormalization } from '/_102035_/l2/solution/types.js';
 
 export const NS5_JUDGE_MAX_REPAIRS = 2;
-export const NS5_JUDGE_VERDICTS = ['missingJourney', 'transitionUnjustified'] as const;
+export const NS5_JUDGE_VERDICTS = ['missingJourney', 'transitionUnjustified', 'coveredByAct'] as const;
 export type Ns5JudgeVerdictKind = typeof NS5_JUDGE_VERDICTS[number];
 
 export interface Ns5JudgeJourneyStepView {
@@ -32,6 +33,13 @@ export interface Ns5JudgeEntityView {
   transitions: ReadonlyArray<Ns5JudgeTransitionView>;
 }
 
+/** One index edge. Direct `fromEntity`/`toEntity` — including N:N via `through`, not a FK walk. */
+export interface Ns5JudgeRelationshipView {
+  relationshipId: string;
+  fromEntity: string;
+  toEntity: string;
+}
+
 export interface Ns5JudgeProcessTaskView {
   entityRef?: string;
   effect?: string;
@@ -52,6 +60,8 @@ export interface Ns5JudgeUncitedCandidate {
   from: string[];
   to: string;
   description: string;
+  /** Act steps on a related entity that cite the same transitionId with the same actor. Hint, not a verdict. */
+  likelyCoveredBy: string[];
 }
 
 export interface Ns5JudgeDecideCandidate {
@@ -78,6 +88,8 @@ export interface Ns5JudgeVerdict {
   candidateId: string;
   verdict: Ns5JudgeVerdictKind;
   journeyBrief: Ns5JudgeJourneyBrief;
+  /** `journeyId.stepId` when verdict is `coveredByAct`; empty otherwise. */
+  coveredBy: string;
 }
 
 export interface Ns5JudgeDraft {
@@ -168,10 +180,51 @@ export function asNs5JudgeJourneys(
   });
 }
 
+export function ns5JudgeEntitiesLinked(
+  left: string,
+  right: string,
+  relationships: readonly Ns5JudgeRelationshipView[],
+): boolean {
+  if (!left || !right || left === right) return false;
+  return relationships.some(edge => (
+    (edge.fromEntity === left && edge.toEntity === right)
+    || (edge.fromEntity === right && edge.toEntity === left)
+  ));
+}
+
+export function parseNs5JudgeCoveredBy(value: string): { journeyId: string; stepId: string } | null {
+  const trimmed = value.trim();
+  const dot = trimmed.indexOf('.');
+  if (dot <= 0 || dot >= trimmed.length - 1) return null;
+  if (trimmed.includes('.', dot + 1)) return null;
+  return { journeyId: trimmed.slice(0, dot), stepId: trimmed.slice(dot + 1) };
+}
+
+function likelyCoveredByFor(
+  candidate: Omit<Ns5JudgeUncitedCandidate, 'likelyCoveredBy'>,
+  journeys: readonly Ns5JudgeJourneyView[],
+  relationships: readonly Ns5JudgeRelationshipView[],
+): string[] {
+  const hints: string[] = [];
+  for (const journey of journeys) {
+    const actor = journey.actorRef || '';
+    if (!actor || !candidate.by.includes(actor)) continue;
+    for (const step of journey.steps) {
+      if (step.kind !== 'act') continue;
+      if (!step.transitionRef || step.transitionRef !== candidate.transitionId) continue;
+      if (!step.entity || step.entity === candidate.entityId) continue;
+      if (!ns5JudgeEntitiesLinked(step.entity, candidate.entityId, relationships)) continue;
+      hints.push(`${journey.journeyId}.${step.stepId}`);
+    }
+  }
+  return hints;
+}
+
 export function collectNs5JudgeCandidates(
   journeys: readonly Ns5JudgeJourneyView[],
   entities: readonly Ns5JudgeEntityView[],
   processes: readonly Ns5JudgeProcessView[] = [],
+  relationships: readonly Ns5JudgeRelationshipView[] = [],
 ): Ns5JudgeCandidate[] {
   const cited = citedKeys(journeys, processes);
   const uncited: Ns5JudgeUncitedCandidate[] = [];
@@ -180,7 +233,7 @@ export function collectNs5JudgeCandidates(
       if (!isHumanBy(transition.by)) continue;
       const key = citationKey(entity.entityId, transition.transitionId);
       if (cited.has(key)) continue;
-      uncited.push({
+      const row: Omit<Ns5JudgeUncitedCandidate, 'likelyCoveredBy'> = {
         kind: 'uncitedHumanTransition',
         candidateId: `uncited:${key}`,
         entityId: entity.entityId,
@@ -189,7 +242,8 @@ export function collectNs5JudgeCandidates(
         from: [...(transition.from || [])],
         to: transition.to || '',
         description: transition.description || '',
-      });
+      };
+      uncited.push({ ...row, likelyCoveredBy: likelyCoveredByFor(row, journeys, relationships) });
     }
   }
 
@@ -242,7 +296,7 @@ export function buildNs5JudgeTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Judge',
-    'Submit one verdict per candidate: missingJourney or transitionUnjustified.',
+    'Submit one verdict per candidate: missingJourney, transitionUnjustified, or coveredByAct.',
     schema,
   );
 }
@@ -274,8 +328,12 @@ export function normalizeNs5JudgePayload(value: unknown): Ns5JudgeVerdict[] {
     const candidateId = text(item.candidateId);
     const verdict = text(item.verdict);
     if (!candidateId) continue;
-    const kind: Ns5JudgeVerdictKind = verdict === 'transitionUnjustified' ? 'transitionUnjustified' : 'missingJourney';
-    out.push({ candidateId, verdict: kind, journeyBrief: briefOf(item.journeyBrief) });
+    const kind: Ns5JudgeVerdictKind = verdict === 'transitionUnjustified'
+      ? 'transitionUnjustified'
+      : verdict === 'coveredByAct'
+        ? 'coveredByAct'
+        : 'missingJourney';
+    out.push({ candidateId, verdict: kind, journeyBrief: briefOf(item.journeyBrief), coveredBy: text(item.coveredBy) });
   }
   return out;
 }
@@ -284,10 +342,12 @@ export function remainingNs5JudgeCandidates(
   candidates: readonly Ns5JudgeCandidate[],
   verdicts: readonly Ns5JudgeVerdict[],
 ): Ns5JudgeCandidate[] {
-  const unjustified = new Set(
-    verdicts.filter(item => item.verdict === 'transitionUnjustified').map(item => item.candidateId),
+  const settled = new Set(
+    verdicts
+      .filter(item => item.verdict === 'transitionUnjustified' || item.verdict === 'coveredByAct')
+      .map(item => item.candidateId),
   );
-  return candidates.filter(candidate => !unjustified.has(candidate.candidateId));
+  return candidates.filter(candidate => !settled.has(candidate.candidateId));
 }
 
 export function missingJourneyBriefs(
@@ -311,6 +371,36 @@ export function unjustifiedWarnings(
       ? `${candidate.entityId}.${candidate.transitionId}`
       : verdict.candidateId;
     out.push(`transitionUnjustified ${label}`);
+  }
+  return out;
+}
+
+export function ns5JudgeNormalizations(
+  candidates: readonly Ns5JudgeCandidate[],
+  verdicts: readonly Ns5JudgeVerdict[],
+): Ns5PipelineNormalization[] {
+  const byId = new Map(candidates.map(item => [item.candidateId, item]));
+  const out: Ns5PipelineNormalization[] = [];
+  for (const verdict of verdicts) {
+    const candidate = byId.get(verdict.candidateId);
+    if (verdict.verdict === 'transitionUnjustified') {
+      const label = candidate && candidate.kind === 'uncitedHumanTransition'
+        ? `${candidate.entityId}.${candidate.transitionId}`
+        : verdict.candidateId;
+      out.push({ kind: 'transitionUnjustified', detail: `transitionUnjustified ${label}` });
+      continue;
+    }
+    if (verdict.verdict !== 'coveredByAct') continue;
+    const label = candidate && candidate.kind === 'uncitedHumanTransition'
+      ? `${candidate.entityId}.${candidate.transitionId}`
+      : verdict.candidateId;
+    const parsed = parseNs5JudgeCoveredBy(verdict.coveredBy);
+    out.push({
+      kind: 'transitionCoveredByAct',
+      detail: `${label} coveredBy ${verdict.coveredBy}`,
+      ...(candidate && candidate.kind === 'uncitedHumanTransition' ? { entityId: candidate.entityId } : {}),
+      ...(parsed ? { journeyId: parsed.journeyId, stepId: parsed.stepId } : {}),
+    });
   }
   return out;
 }
@@ -341,7 +431,8 @@ export function formatNs5JudgeFailMessage(candidates: readonly Ns5JudgeCandidate
 /**
  * The step's brain, pure. Empty candidates never call a model. After verdicts, missingJourney
  * schedules a journeys20 repair (bounded by MAX_REPAIRS); transitionUnjustified is a warning and
- * never deletes a transition; leftovers after the budget fail with a named list.
+ * never deletes a transition; coveredByAct records a normalization and does not repair; leftovers
+ * after the budget fail with a named list.
  */
 export function decideNs5JudgeAction(input: {
   candidates: readonly Ns5JudgeCandidate[];

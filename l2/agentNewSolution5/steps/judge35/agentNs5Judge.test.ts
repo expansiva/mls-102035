@@ -17,11 +17,13 @@ import {
   decideNs5JudgeAction,
   formatNs5JudgeFailMessage,
   normalizeNs5JudgePayload,
+  ns5JudgeNormalizations,
   planNs5JudgeRepairSteps,
   type Ns5JudgeCandidate,
   type Ns5JudgeEntityView,
   type Ns5JudgeJourneyView,
   type Ns5JudgeProcessView,
+  type Ns5JudgeRelationshipView,
   type Ns5JudgeVerdict,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
 import {
@@ -36,6 +38,7 @@ interface SliceModule {
   journeys: Ns5JudgeJourneyView[];
   entities: Ns5JudgeEntityView[];
   processes: Ns5JudgeProcessView[];
+  relationships?: Ns5JudgeRelationshipView[];
 }
 
 function loadSchema(): Record<string, unknown> {
@@ -71,7 +74,7 @@ void test('twelve real modules: five named human orphans, Equipamento.registrarD
   assert.equal(slices.length, 12);
   const byModule = new Map<string, ReturnType<typeof collectNs5JudgeCandidates>>();
   for (const slice of slices) {
-    byModule.set(slice.moduleName, collectNs5JudgeCandidates(slice.journeys, slice.entities, slice.processes));
+    byModule.set(slice.moduleName, collectNs5JudgeCandidates(slice.journeys, slice.entities, slice.processes, slice.relationships || []));
   }
 
   const namedOrphans = [
@@ -128,6 +131,7 @@ void test('missingJourney schedules a nested journeys20 repair; unjustified is a
     from: ['available'],
     to: 'maintenance',
     description: 'Puts the equipment in maintenance.',
+    likelyCoveredBy: [],
   }];
   const missing: Ns5JudgeVerdict = {
     candidateId: 'uncited:Equipamento.iniciarManutencao',
@@ -138,6 +142,7 @@ void test('missingJourney schedules a nested journeys20 repair; unjustified is a
       goal: 'Put an available equipment into maintenance so it cannot be rented.',
       transitionRef: 'Equipamento.iniciarManutencao',
     },
+    coveredBy: '',
   };
   const first = decideNs5JudgeAction({ candidates, verdicts: [missing], repairAttempt: 0 });
   assert.equal(first.type, 'repairJourneys');
@@ -168,6 +173,7 @@ void test('missingJourney schedules a nested journeys20 repair; unjustified is a
     candidateId: 'uncited:Equipamento.iniciarManutencao',
     verdict: 'transitionUnjustified',
     journeyBrief: { actor: '', title: '', goal: '', transitionRef: '' },
+    coveredBy: '',
   };
   const keep = decideNs5JudgeAction({ candidates, verdicts: [unjustified], repairAttempt: 0 });
   assert.equal(keep.type, 'approveWithWarnings');
@@ -185,6 +191,7 @@ void test('normalize plus gate: one verdict per candidate, brief required on mis
     from: ['pendingApproval'],
     to: 'rejected',
     description: 'Rejects the expense.',
+    likelyCoveredBy: [],
   }];
   const normalized = normalizeNs5JudgePayload({
     verdicts: [{
@@ -205,13 +212,14 @@ void test('normalize plus gate: one verdict per candidate, brief required on mis
     candidateId: 'uncited:Despesa.rejeitarDespesa',
     verdict: 'missingJourney',
     journeyBrief: { actor: '', title: '', goal: '', transitionRef: '' },
+    coveredBy: '',
   }], candidates);
   assert.equal(emptyBrief.ok, false);
   assert.ok(emptyBrief.issues.some(issue => issue.code === 'NS5_JUDGE_BRIEF'));
 
   const extra = validateNs5JudgeVerdicts([
     ...normalized,
-    { candidateId: 'uncited:Ghost.nope', verdict: 'missingJourney', journeyBrief: { actor: 'a', title: 't', goal: 'g', transitionRef: 'Ghost.nope' } },
+    { candidateId: 'uncited:Ghost.nope', verdict: 'missingJourney', journeyBrief: { actor: 'a', title: 't', goal: 'g', transitionRef: 'Ghost.nope' }, coveredBy: '' },
   ], candidates);
   assert.ok(extra.issues.some(issue => issue.code === 'NS5_JUDGE_UNKNOWN_CANDIDATE'));
 });
@@ -230,9 +238,11 @@ void test('human prompt lists only the candidates it was given', () => {
       from: ['available'],
       to: 'maintenance',
       description: 'Puts the equipment in maintenance.',
+      likelyCoveredBy: [],
     }],
   });
   assert.match(prompt, /Candidates \(judge only these\)/);
+  assert.match(prompt, /likelyCoveredBy is a deterministic hint/);
   assert.match(prompt, /iniciarManutencao/);
   assert.doesNotMatch(prompt, /CPF|CNPJ|SSN/);
 });
@@ -245,11 +255,115 @@ void test('nested journeys20 repair from the judge does not emit a second done-a
 void test('locacaoEquipamentos before fixture is the v4 slice the ns5_63 after will compare', () => {
   const before = JSON.parse(readFileSync(path.join(HERE, 'fixtures/locacaoEquipamentos-before.json'), 'utf8')) as SliceModule;
   assert.equal(before.moduleName, 'locacaoEquipamentos');
-  const candidates = collectNs5JudgeCandidates(before.journeys, before.entities, before.processes);
+  const candidates = collectNs5JudgeCandidates(before.journeys, before.entities, before.processes, before.relationships || []);
   assert.deepEqual(uncitedLabels(candidates), [
     'Equipamento.concluirManutencao',
     'Equipamento.iniciarManutencao',
     'Equipamento.registrarDevolucao',
     'Equipamento.registrarLocacao',
   ]);
+});
+
+function loadLocacao(): SliceModule {
+  return JSON.parse(readFileSync(path.join(HERE, 'fixtures/locacaoEquipamentos-before.json'), 'utf8')) as SliceModule;
+}
+
+function locacaoUncited(): Extract<Ns5JudgeCandidate, { kind: 'uncitedHumanTransition' }>[] {
+  const slice = loadLocacao();
+  return collectNs5JudgeCandidates(slice.journeys, slice.entities, slice.processes, slice.relationships || [])
+    .filter((item): item is Extract<Ns5JudgeCandidate, { kind: 'uncitedHumanTransition' }> => item.kind === 'uncitedHumanTransition');
+}
+
+void test('locacaoEquipamentos: likelyCoveredBy is registrarDevolucao only; locacao and maintenance have none', () => {
+  const slice = loadLocacao();
+  const byLabel = new Map(locacaoUncited().map(item => [`${item.entityId}.${item.transitionId}`, item.likelyCoveredBy]));
+  assert.deepEqual(byLabel.get('Equipamento.registrarDevolucao'), ['registrarDevolucao.confirmarDevolucao']);
+  assert.deepEqual(byLabel.get('Equipamento.registrarLocacao'), []);
+  assert.deepEqual(byLabel.get('Equipamento.iniciarManutencao'), []);
+  assert.deepEqual(byLabel.get('Equipamento.concluirManutencao'), []);
+  const withoutNn = collectNs5JudgeCandidates(
+    slice.journeys,
+    slice.entities,
+    slice.processes,
+    (slice.relationships || []).filter(edge => edge.relationshipId !== 'contratoLocacaoEquipamentos'),
+  ).find(item => item.kind === 'uncitedHumanTransition' && item.transitionId === 'registrarDevolucao');
+  assert.deepEqual(withoutNn && withoutNn.kind === 'uncitedHumanTransition' ? withoutNn.likelyCoveredBy : undefined, []);
+});
+
+void test('coveredByAct: locacao Devolucao passes; create-without-transitionRef and other defects are named refusals', () => {
+  const slice = loadLocacao();
+  const candidates = locacaoUncited();
+  const context = { journeys: slice.journeys, relationships: slice.relationships || [] };
+  const emptyBrief = { actor: '', title: '', goal: '', transitionRef: '' };
+
+  const covered: Ns5JudgeVerdict = {
+    candidateId: 'uncited:Equipamento.registrarDevolucao',
+    verdict: 'coveredByAct',
+    journeyBrief: emptyBrief,
+    coveredBy: 'registrarDevolucao.confirmarDevolucao',
+  };
+  const ok = validateNs5JudgeVerdicts(
+    candidates.map(candidate => candidate.candidateId === covered.candidateId
+      ? covered
+      : { candidateId: candidate.candidateId, verdict: 'transitionUnjustified' as const, journeyBrief: emptyBrief, coveredBy: '' }),
+    candidates,
+    context,
+  );
+  assert.equal(ok.ok, true, formatNs5JudgeGate(ok.issues));
+
+  const refusals: Array<{ coveredBy: string; candidateId: string; code: string }> = [
+    { coveredBy: 'ghost.nope', candidateId: 'uncited:Equipamento.registrarDevolucao', code: 'NS5_JUDGE_COVERED_STEP' },
+    { coveredBy: 'criarContratoLocacao.registrarContrato', candidateId: 'uncited:Equipamento.registrarLocacao', code: 'NS5_JUDGE_COVERED_TRANSITION' },
+    { coveredBy: 'acompanharSituacaoEquipamentos.consultarSituacaoEquipamento', candidateId: 'uncited:Equipamento.iniciarManutencao', code: 'NS5_JUDGE_COVERED_ACT' },
+    { coveredBy: 'registrarDevolucao.confirmarDevolucao', candidateId: 'uncited:Equipamento.iniciarManutencao', code: 'NS5_JUDGE_COVERED_ACTOR' },
+  ];
+  for (const row of refusals) {
+    const gate = validateNs5JudgeVerdicts([{
+      candidateId: row.candidateId,
+      verdict: 'coveredByAct',
+      journeyBrief: emptyBrief,
+      coveredBy: row.coveredBy,
+    }], candidates.filter(item => item.candidateId === row.candidateId), context);
+    assert.equal(gate.ok, false, row.code);
+    assert.ok(gate.issues.some(issue => issue.code === row.code), `expected ${row.code}, got ${gate.issues.map(issue => issue.code).join(',')}`);
+  }
+
+  const unlink = validateNs5JudgeVerdicts([{
+    candidateId: 'uncited:Equipamento.registrarDevolucao',
+    verdict: 'coveredByAct',
+    journeyBrief: emptyBrief,
+    coveredBy: 'registrarDevolucao.confirmarDevolucao',
+  }], candidates.filter(item => item.candidateId === 'uncited:Equipamento.registrarDevolucao'), {
+    journeys: slice.journeys,
+    relationships: (slice.relationships || []).filter(edge => edge.relationshipId !== 'contratoLocacaoEquipamentos'),
+  });
+  assert.equal(unlink.ok, false);
+  assert.ok(unlink.issues.some(issue => issue.code === 'NS5_JUDGE_COVERED_LINK'));
+
+  const emptyCovered = validateNs5JudgeVerdicts([{
+    candidateId: 'uncited:Equipamento.registrarDevolucao',
+    verdict: 'coveredByAct',
+    journeyBrief: emptyBrief,
+    coveredBy: '',
+  }], candidates.filter(item => item.candidateId === 'uncited:Equipamento.registrarDevolucao'), context);
+  assert.ok(emptyCovered.issues.some(issue => issue.code === 'NS5_JUDGE_COVERED_BY'));
+});
+
+void test('coveredByAct settles without a journeys20 repair and records transitionCoveredByAct', () => {
+  const candidates = locacaoUncited().filter(item => item.transitionId === 'registrarDevolucao');
+  const covered: Ns5JudgeVerdict = {
+    candidateId: 'uncited:Equipamento.registrarDevolucao',
+    verdict: 'coveredByAct',
+    journeyBrief: { actor: '', title: '', goal: '', transitionRef: '' },
+    coveredBy: 'registrarDevolucao.confirmarDevolucao',
+  };
+  const action = decideNs5JudgeAction({ candidates, verdicts: [covered], repairAttempt: 0 });
+  assert.equal(action.type, 'approveWithoutModel');
+  assert.deepEqual(ns5JudgeNormalizations(candidates, [covered]), [{
+    kind: 'transitionCoveredByAct',
+    detail: 'Equipamento.registrarDevolucao coveredBy registrarDevolucao.confirmarDevolucao',
+    entityId: 'Equipamento',
+    journeyId: 'registrarDevolucao',
+    stepId: 'confirmarDevolucao',
+  }]);
 });

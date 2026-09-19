@@ -29,6 +29,7 @@ import {
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import {
+  ns5OntologyEdges,
   ns5OntologyEntityIds,
   ns5OntologyEntityViews,
   type Ns5OntologyAnyIndex,
@@ -48,9 +49,11 @@ import {
   collectNs5JudgeCandidates,
   decideNs5JudgeAction,
   normalizeNs5JudgePayload,
+  ns5JudgeNormalizations,
   planNs5JudgeRepairSteps,
   type Ns5JudgeCandidate,
   type Ns5JudgeDraft,
+  type Ns5JudgeRelationshipView,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
 import {
   formatNs5JudgeGate,
@@ -94,6 +97,7 @@ export function buildNs5JudgeHumanPrompt(input: {
     formatProcesses(input.processes),
     '',
     '## Candidates (judge only these)',
+    'likelyCoveredBy is a deterministic hint; confirm or decide otherwise.',
     input.candidates.length ? JSON.stringify(input.candidates, null, 2) : '(none)',
   ].join('\n');
 }
@@ -112,8 +116,8 @@ export async function beforeNs5JudgePromptStep(
     const parsed = resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     const mutationParent = findMutableParent(context, parentStep);
-    const { journeys, entities, processes } = await readSources(moduleName);
-    const candidates = collectNs5JudgeCandidates(asNs5JudgeJourneys(journeys), entities, processes);
+    const { journeys, entities, processes, relationships } = await readSources(moduleName);
+    const candidates = collectNs5JudgeCandidates(asNs5JudgeJourneys(journeys), entities, processes, relationships);
     const previous = (await readJson(draftFile(moduleName, 'judge35'))) as Ns5JudgeDraft | null;
     const verdicts = previous?.verdicts || [];
     const action = decideNs5JudgeAction({
@@ -214,10 +218,13 @@ export async function afterNs5JudgePromptStep(
       throw new Error(failure);
     }
 
-    const { journeys, entities, processes } = await readSources(moduleName);
-    const candidates = collectNs5JudgeCandidates(asNs5JudgeJourneys(journeys), entities, processes);
+    const { journeys, entities, processes, relationships } = await readSources(moduleName);
+    const candidates = collectNs5JudgeCandidates(asNs5JudgeJourneys(journeys), entities, processes, relationships);
     const verdicts = normalizeNs5JudgePayload(payload);
-    const gate = validateNs5JudgeVerdicts(verdicts, candidates);
+    const gate = validateNs5JudgeVerdicts(verdicts, candidates, {
+      journeys: asNs5JudgeJourneys(journeys),
+      relationships,
+    });
     if (!gate.ok) {
       const feedback = formatNs5JudgeGate(gate.issues);
       if (parsed.repairAttempt < NS5_JUDGE_MAX_REPAIRS) {
@@ -287,15 +294,14 @@ async function persistApproval(
 ): Promise<string> {
   const pipeline = await requirePipeline(moduleName);
   const draftPath = await writeJson(draftFile(moduleName, 'judge35'), draft);
+  const normalizations = ns5JudgeNormalizations(draft.candidates, draft.verdicts);
   const next = markNs5Step(pipeline, 'judge35', {
     status: 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [draftPath],
     ...(draft.noJudgeSignal ? { noJudgeSignal: true } : {}),
-    ...(warnings.length ? {
-      warnings: [...warnings],
-      normalizations: warnings.map(detail => ({ kind: 'transitionUnjustified', detail })),
-    } : {}),
+    ...(warnings.length ? { warnings: [...warnings] } : {}),
+    ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   await writePipeline(next);
@@ -306,12 +312,13 @@ async function readSources(moduleName: string): Promise<{
   journeys: Ns5JourneyArtifact[];
   entities: ReturnType<typeof ns5OntologyEntityViews>;
   processes: Ns5WorkflowsArtifact['processes'];
+  relationships: Ns5JudgeRelationshipView[];
 }> {
   await readModule(moduleName);
   const journeys = await readJourneys(moduleName);
-  const entities = await readEntities(moduleName);
+  const { entities, relationships } = await readOntology(moduleName);
   const workflows = await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
-  return { journeys, entities, processes: workflows?.processes || [] };
+  return { journeys, entities, processes: workflows?.processes || [], relationships };
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
@@ -336,7 +343,10 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
-async function readEntities(moduleName: string) {
+async function readOntology(moduleName: string): Promise<{
+  entities: ReturnType<typeof ns5OntologyEntityViews>;
+  relationships: Ns5JudgeRelationshipView[];
+}> {
   const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
   if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
   const entities: Ns5OntologyAnyEntity[] = [];
@@ -345,7 +355,14 @@ async function readEntities(moduleName: string) {
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
-  return ns5OntologyEntityViews(entities);
+  return {
+    entities: ns5OntologyEntityViews(entities),
+    relationships: ns5OntologyEdges(index).map(edge => ({
+      relationshipId: edge.relationshipId,
+      fromEntity: edge.fromEntity,
+      toEntity: edge.toEntity,
+    })),
+  };
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
