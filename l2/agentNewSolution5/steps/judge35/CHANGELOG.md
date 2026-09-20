@@ -1,5 +1,13 @@
 # judge35
 
+## 2026-09-20 (ns5_66)
+
+- Additive: the step never fails the run. A malformed verdict, a leftover orphan after repair and a
+  missing precondition become `comments[]` (`code` + `message`) on `judge35-draft.json` and
+  `normalizations[] { kind: 'judgeComment' }`. Valid verdicts in the same batch still apply. The
+  draft is written on every path, including skip. `finalize80` remains the step that fails a broken
+  pipeline.
+
 ## 2026-09-20 (ns5_65)
 
 - Fourth verdict `switchNeedsLifecycle`: a written boolean or two-value enum on an entity with no

@@ -11,9 +11,11 @@ import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpe
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { buildNs5JudgeHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/judge35/agentNs5Judge.js';
 import {
+  NS5_JUDGE_COMMENT_CODES,
   NS5_JUDGE_MAX_ONTOLOGY_REPAIRS,
   NS5_JUDGE_MAX_REPAIRS,
   NS5_JUDGE_ONTOLOGY_REPAIR_ROUND,
+  actionableNs5JudgeCandidates,
   buildNs5JudgeTool,
   collectNs5JudgeCandidates,
   decideNs5JudgeAction,
@@ -21,8 +23,11 @@ import {
   formatNs5JudgeFailMessage,
   formatNs5JudgeOntologyFeedback,
   normalizeNs5JudgePayload,
+  ns5JudgeCommentNormalizations,
   ns5JudgeFieldsOf,
+  ns5JudgeLeftoverComments,
   ns5JudgeNormalizations,
+  ns5JudgeSkipComment,
   planNs5JudgeOntologyRevalidate,
   planNs5JudgeRepairSteps,
   type Ns5JudgeCandidate,
@@ -35,6 +40,7 @@ import {
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
 import {
   formatNs5JudgeGate,
+  partitionNs5JudgeVerdicts,
   validateNs5JudgeVerdicts,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/gate.js';
 
@@ -129,7 +135,7 @@ void test('empty candidates skip the model — no prompt_ready on that path', ()
   assert.match(afterCallModel, /return \[promptReady/);
 });
 
-void test('missingJourney schedules a nested journeys20 repair; unjustified is a warning; leftovers fail', () => {
+void test('missingJourney schedules a nested journeys20 repair; unjustified is a warning; leftovers are commented', () => {
   const candidates: Ns5JudgeCandidate[] = [{
     kind: 'uncitedHumanTransition',
     candidateId: 'uncited:Equipamento.iniciarManutencao',
@@ -172,10 +178,11 @@ void test('missingJourney schedules a nested journeys20 repair; unjustified is a
     verdicts: [missing],
     repairAttempt: NS5_JUDGE_MAX_REPAIRS,
   });
-  assert.equal(last.type, 'fail');
-  if (last.type !== 'fail') return;
+  assert.equal(last.type, 'commentLeftovers');
+  if (last.type !== 'commentLeftovers') return;
   assert.match(last.message, /Equipamento\.iniciarManutencao/);
   assert.equal(last.message, formatNs5JudgeFailMessage(candidates));
+  assert.deepEqual(last.leftovers.map(item => item.candidateId), [candidates[0].candidateId]);
 
   const unjustified: Ns5JudgeVerdict = {
     candidateId: 'uncited:Equipamento.iniciarManutencao',
@@ -430,7 +437,7 @@ void test('a written switch on an entity that already has a lifecycle is not a c
   assert.deepEqual(switchLabels(candidates), []);
 });
 
-void test('switchNeedsLifecycle: gate wants two states; ontology repair then fail; keep-as-field records switchKeptAsField', () => {
+void test('switchNeedsLifecycle: gate wants two states; ontology repair then leftover comments; keep-as-field records switchKeptAsField', () => {
   const candidate: Ns5JudgeCandidate = {
     kind: 'writtenSwitch',
     candidateId: 'switch:Equipamento.emManutencao',
@@ -487,8 +494,8 @@ void test('switchNeedsLifecycle: gate wants two states; ontology repair then fai
     repairAttempt: 0,
     ontologyRepairAttempt: NS5_JUDGE_MAX_ONTOLOGY_REPAIRS,
   });
-  assert.equal(last.type, 'fail');
-  if (last.type !== 'fail') return;
+  assert.equal(last.type, 'commentLeftovers');
+  if (last.type !== 'commentLeftovers') return;
   assert.match(last.message, /Equipamento\.emManutencao/);
 
   const keep: Ns5JudgeVerdict = {
@@ -551,4 +558,174 @@ void test('coveredByAct settles without a journeys20 repair and records transiti
     journeyId: 'registrarDevolucao',
     stepId: 'confirmarDevolucao',
   }]);
+});
+
+void test('a malformed verdict does not drop valid verdicts in the same batch; the step completes with a named comment', () => {
+  const slice = loadLocacao();
+  const all = locacaoUncited();
+  const registrarDevolucao = all.find(item => item.transitionId === 'registrarDevolucao');
+  const registrarLocacao = all.find(item => item.transitionId === 'registrarLocacao');
+  const iniciarManutencao = all.find(item => item.transitionId === 'iniciarManutencao');
+  assert.ok(registrarDevolucao && registrarLocacao && iniciarManutencao);
+  const candidates = [registrarDevolucao, registrarLocacao, iniciarManutencao];
+  const emptyBrief = { actor: '', title: '', goal: '', transitionRef: '' };
+  const verdicts: Ns5JudgeVerdict[] = [
+    {
+      candidateId: registrarDevolucao.candidateId,
+      verdict: 'coveredByAct',
+      journeyBrief: emptyBrief,
+      coveredBy: 'registrarDevolucao.confirmarDevolucao',
+    },
+    {
+      candidateId: registrarLocacao.candidateId,
+      verdict: 'coveredByAct',
+      journeyBrief: emptyBrief,
+      coveredBy: 'criarContratoLocacao.registrarContrato',
+    },
+    {
+      candidateId: iniciarManutencao.candidateId,
+      verdict: 'transitionUnjustified',
+      journeyBrief: emptyBrief,
+      coveredBy: '',
+    },
+  ];
+  const wholeGate = validateNs5JudgeVerdicts(verdicts, candidates, {
+    journeys: slice.journeys,
+    relationships: slice.relationships || [],
+  });
+  assert.equal(wholeGate.ok, false);
+  assert.ok(wholeGate.issues.some(issue => issue.code === 'NS5_JUDGE_COVERED_TRANSITION'));
+
+  const partitioned = partitionNs5JudgeVerdicts(verdicts, candidates, {
+    journeys: slice.journeys,
+    relationships: slice.relationships || [],
+  });
+  assert.equal(partitioned.accepted.length, 2, 'a whole-batch discard would leave accepted empty');
+  assert.deepEqual(
+    partitioned.accepted.map(item => item.candidateId).sort(),
+    [registrarDevolucao.candidateId, iniciarManutencao.candidateId].sort(),
+  );
+  const malformed = partitioned.comments.find(item => item.code === 'NS5_JUDGE_COVERED_TRANSITION');
+  assert.ok(malformed);
+  assert.equal(malformed.candidateId, registrarLocacao.candidateId);
+  assert.ok((NS5_JUDGE_COMMENT_CODES as readonly string[]).includes(malformed.code));
+  assert.equal(malformed.code, 'NS5_JUDGE_COVERED_TRANSITION');
+
+  const applied = ns5JudgeNormalizations(candidates, partitioned.accepted);
+  assert.ok(applied.some(item => item.kind === 'transitionCoveredByAct' && item.stepId === 'confirmarDevolucao'));
+  assert.ok(applied.some(item => item.kind === 'transitionUnjustified' && item.detail.includes('iniciarManutencao')));
+  assert.ok(!applied.some(item => item.kind === 'transitionCoveredByAct' && item.detail.includes('registrarLocacao')));
+  assert.deepEqual(ns5JudgeCommentNormalizations(partitioned.comments).map(item => item.kind), ['judgeComment']);
+
+  const action = decideNs5JudgeAction({
+    candidates: actionableNs5JudgeCandidates(candidates, partitioned.accepted),
+    verdicts: partitioned.accepted,
+    repairAttempt: 0,
+  });
+  assert.equal(action.type, 'approveWithWarnings');
+
+  const source = readFileSync(path.join(HERE, 'agentNs5Judge.ts'), 'utf8');
+  const after = source.slice(source.indexOf('export async function afterNs5JudgePromptStep'));
+  assert.match(after, /partitionNs5JudgeVerdicts/);
+  assert.match(after, /actionableNs5JudgeCandidates/);
+  assert.doesNotMatch(after, /if \(!gate\.ok\)/);
+  assert.doesNotMatch(after, /updateStatus\([^\n]*'failed'/);
+  assert.doesNotMatch(source, /[\u00C0-\u00FF]/);
+});
+
+void test('a leftover orphan after repair completes the step with a named comment, not a failed status', () => {
+  const leftover: Ns5JudgeCandidate = {
+    kind: 'uncitedHumanTransition',
+    candidateId: 'uncited:Equipamento.iniciarManutencao',
+    entityId: 'Equipamento',
+    transitionId: 'iniciarManutencao',
+    by: ['gerente'],
+    from: ['available'],
+    to: 'maintenance',
+    description: 'Puts the equipment in maintenance.',
+    likelyCoveredBy: [],
+  };
+  const missing: Ns5JudgeVerdict = {
+    candidateId: leftover.candidateId,
+    verdict: 'missingJourney',
+    journeyBrief: {
+      actor: 'gerente',
+      title: 'Start equipment maintenance',
+      goal: 'Put an available equipment into maintenance so it cannot be rented.',
+      transitionRef: 'Equipamento.iniciarManutencao',
+    },
+    coveredBy: '',
+  };
+  const action = decideNs5JudgeAction({
+    candidates: [leftover],
+    verdicts: [missing],
+    repairAttempt: NS5_JUDGE_MAX_REPAIRS,
+  });
+  assert.equal(action.type, 'commentLeftovers');
+  if (action.type !== 'commentLeftovers') return;
+  const comments = ns5JudgeLeftoverComments(action.leftovers);
+  assert.equal(comments.length, 1);
+  assert.equal(comments[0].code, 'NS5_JUDGE_ORPHAN_PERSISTS');
+  assert.equal(comments[0].candidateId, leftover.candidateId);
+  assert.match(comments[0].message, /Equipamento\.iniciarManutencao/);
+  assert.deepEqual(ns5JudgeCommentNormalizations(comments), [{
+    kind: 'judgeComment',
+    detail: `NS5_JUDGE_ORPHAN_PERSISTS ${leftover.candidateId}: ${comments[0].message}`,
+  }]);
+
+  const source = readFileSync(path.join(HERE, 'agentNs5Judge.ts'), 'utf8');
+  assert.match(source, /action\.type === 'commentLeftovers'/);
+  assert.match(source, /ns5JudgeLeftoverComments/);
+  assert.doesNotMatch(source, /recordFailure/);
+  assert.doesNotMatch(source, /drainWaitingSiblings/);
+  const leftoverBranch = source.slice(
+    source.indexOf("action.type === 'commentLeftovers'"),
+    source.indexOf("await writeJson(draftFile(moduleName, 'judge35'), {", source.indexOf("action.type === 'commentLeftovers'")),
+  );
+  assert.match(leftoverBranch, /'completed'/);
+  assert.doesNotMatch(leftoverBranch, /'failed'/);
+});
+
+void test('a missing precondition completes the step with judge35 skipped and still writes the draft', () => {
+  const comment = ns5JudgeSkipComment('module.defs.ts is missing for locacaoEquipamentos; module10 must run first.');
+  assert.equal(comment.code, 'NS5_JUDGE_SKIPPED');
+  assert.equal(
+    comment.message,
+    'judge35 skipped: module.defs.ts is missing for locacaoEquipamentos; module10 must run first.',
+  );
+  assert.deepEqual(ns5JudgeCommentNormalizations([comment]), [{
+    kind: 'judgeComment',
+    detail: 'NS5_JUDGE_SKIPPED: judge35 skipped: module.defs.ts is missing for locacaoEquipamentos; module10 must run first.',
+  }]);
+  const alreadyPrefixed = ns5JudgeSkipComment('judge35 skipped: pipeline.json is missing for locacaoEquipamentos.');
+  assert.equal(alreadyPrefixed.message, 'judge35 skipped: pipeline.json is missing for locacaoEquipamentos.');
+
+  const source = readFileSync(path.join(HERE, 'agentNs5Judge.ts'), 'utf8');
+  assert.match(source, /completeSkipped/);
+  assert.match(source, /persistSkipComment/);
+  assert.match(source, /ns5JudgeSkipComment/);
+  const catchBlocks = [...source.matchAll(/catch \(error\) \{\n    return completeSkipped/g)];
+  assert.equal(catchBlocks.length, 2);
+  assert.match(source, /updateStatus\([\s\S]*?'completed', comment\.message\)/);
+  assert.doesNotMatch(source, /updateStatus\([^\n]*'failed'/);
+});
+
+void test('every comment path writes judge35-draft and the judge never sets failed', () => {
+  const source = readFileSync(path.join(HERE, 'agentNs5Judge.ts'), 'utf8');
+  assert.match(source, /if \(!context\.task\) throw/);
+  assert.doesNotMatch(source, /recordFailure/);
+  assert.doesNotMatch(source, /drainWaitingSiblings/);
+  assert.doesNotMatch(source, /status: 'failed'/);
+  assert.match(source, /persistSkipComment/);
+  assert.match(source, /persistApproval/);
+  const persist = source.slice(
+    source.indexOf('async function persistApproval'),
+    source.indexOf('async function persistSkipComment'),
+  );
+  assert.match(persist, /writeJson\(draftFile\(moduleName, 'judge35'\)/);
+  const persistSkip = source.slice(
+    source.indexOf('async function persistSkipComment'),
+    source.indexOf('async function completeSkipped'),
+  );
+  assert.match(persistSkip, /persistApproval\(/);
 });

@@ -5,6 +5,9 @@ import {
   ns5JudgeEntitiesLinked,
   parseNs5JudgeCoveredBy,
   type Ns5JudgeCandidate,
+  type Ns5JudgeComment,
+  type Ns5JudgeCommentCode,
+  type Ns5JudgeGateCode,
   type Ns5JudgeJourneyView,
   type Ns5JudgeRelationshipView,
   type Ns5JudgeVerdict,
@@ -12,7 +15,7 @@ import {
 
 export interface Ns5JudgeGateIssue {
   severity: 'error' | 'warning';
-  code: string;
+  code: Ns5JudgeGateCode;
   message: string;
   path?: string;
 }
@@ -27,7 +30,7 @@ export interface Ns5JudgeGateContext {
   relationships: readonly Ns5JudgeRelationshipView[];
 }
 
-function error(issues: Ns5JudgeGateIssue[], code: string, message: string, path?: string): void {
+function error(issues: Ns5JudgeGateIssue[], code: Ns5JudgeGateCode, message: string, path?: string): void {
   issues.push({ severity: 'error', code, message, path });
 }
 
@@ -99,6 +102,98 @@ function validateSwitchNeedsLifecycle(
   }
 }
 
+function collectVerdictIssues(
+  verdict: Ns5JudgeVerdict,
+  candidates: readonly Ns5JudgeCandidate[],
+  context: Ns5JudgeGateContext,
+  seen: Set<string>,
+  path: string,
+): Ns5JudgeGateIssue[] {
+  const issues: Ns5JudgeGateIssue[] = [];
+  const candidateIds = new Set(candidates.map(item => item.candidateId));
+  const byId = new Map(candidates.map(item => [item.candidateId, item]));
+  if (!verdict.candidateId) {
+    error(issues, 'NS5_JUDGE_CANDIDATE_ID', 'candidateId is required.', `${path}.candidateId`);
+    return issues;
+  }
+  if (!candidateIds.has(verdict.candidateId)) {
+    error(issues, 'NS5_JUDGE_UNKNOWN_CANDIDATE', `Unknown candidate ${verdict.candidateId}.`, `${path}.candidateId`);
+  }
+  if (seen.has(verdict.candidateId)) {
+    error(issues, 'NS5_JUDGE_CANDIDATE_DUPLICATE', `Duplicate candidate ${verdict.candidateId}.`, `${path}.candidateId`);
+  }
+  seen.add(verdict.candidateId);
+  if (!(NS5_JUDGE_VERDICTS as readonly string[]).includes(verdict.verdict)) {
+    error(issues, 'NS5_JUDGE_VERDICT', 'verdict must be missingJourney, transitionUnjustified, coveredByAct or switchNeedsLifecycle.', `${path}.verdict`);
+  }
+  if (verdict.verdict === 'missingJourney') {
+    const brief = verdict.journeyBrief;
+    if (!brief.actor || !brief.title || !brief.goal || !brief.transitionRef) {
+      error(
+        issues,
+        'NS5_JUDGE_BRIEF',
+        'missingJourney needs actor, title, goal and transitionRef (Entity.transitionId) in English.',
+        `${path}.journeyBrief`,
+      );
+    }
+  }
+  if (verdict.verdict === 'coveredByAct') {
+    validateCoveredByAct(issues, verdict, byId.get(verdict.candidateId), context, path);
+  }
+  if (verdict.verdict === 'switchNeedsLifecycle') {
+    validateSwitchNeedsLifecycle(issues, verdict, byId.get(verdict.candidateId), path);
+  }
+  return issues;
+}
+
+function commentFromIssue(issue: Ns5JudgeGateIssue, candidateId?: string): Ns5JudgeComment {
+  const code: Ns5JudgeCommentCode = issue.code;
+  return {
+    code,
+    message: issue.message,
+    ...(candidateId ? { candidateId } : {}),
+  };
+}
+
+/**
+ * Split a batch so a malformed verdict is discarded and commented, and the valid rows still apply.
+ * The gate itself does not loosen: each refusal keeps its named code.
+ */
+export function partitionNs5JudgeVerdicts(
+  verdicts: readonly Ns5JudgeVerdict[],
+  candidates: readonly Ns5JudgeCandidate[],
+  context: Ns5JudgeGateContext = { journeys: [], relationships: [] },
+): { accepted: Ns5JudgeVerdict[]; comments: Ns5JudgeComment[] } {
+  const accepted: Ns5JudgeVerdict[] = [];
+  const comments: Ns5JudgeComment[] = [];
+  const seen = new Set<string>();
+  const commentedIds = new Set<string>();
+
+  for (const [index, verdict] of verdicts.entries()) {
+    const path = `verdicts[${index}]`;
+    const issues = collectVerdictIssues(verdict, candidates, context, seen, path);
+    const errors = issues.filter(issue => issue.severity === 'error');
+    if (!errors.length) {
+      accepted.push(verdict);
+      continue;
+    }
+    for (const issue of errors) comments.push(commentFromIssue(issue, verdict.candidateId || undefined));
+    if (verdict.candidateId) commentedIds.add(verdict.candidateId);
+  }
+
+  const acceptedIds = new Set(accepted.map(item => item.candidateId));
+  for (const candidate of candidates) {
+    if (acceptedIds.has(candidate.candidateId) || commentedIds.has(candidate.candidateId)) continue;
+    comments.push({
+      code: 'NS5_JUDGE_CANDIDATE_MISSING',
+      message: `No verdict for ${candidate.candidateId}.`,
+      candidateId: candidate.candidateId,
+    });
+  }
+
+  return { accepted, comments };
+}
+
 /** The verdict list is well-formed: one row per candidate, enum, brief required on missingJourney. */
 export function validateNs5JudgeVerdicts(
   verdicts: readonly Ns5JudgeVerdict[],
@@ -106,43 +201,10 @@ export function validateNs5JudgeVerdicts(
   context: Ns5JudgeGateContext = { journeys: [], relationships: [] },
 ): Ns5JudgeGateResult {
   const issues: Ns5JudgeGateIssue[] = [];
-  const candidateIds = new Set(candidates.map(item => item.candidateId));
-  const byId = new Map(candidates.map(item => [item.candidateId, item]));
   const seen = new Set<string>();
 
   for (const [index, verdict] of verdicts.entries()) {
-    const path = `verdicts[${index}]`;
-    if (!verdict.candidateId) {
-      error(issues, 'NS5_JUDGE_CANDIDATE_ID', 'candidateId is required.', `${path}.candidateId`);
-      continue;
-    }
-    if (!candidateIds.has(verdict.candidateId)) {
-      error(issues, 'NS5_JUDGE_UNKNOWN_CANDIDATE', `Unknown candidate ${verdict.candidateId}.`, `${path}.candidateId`);
-    }
-    if (seen.has(verdict.candidateId)) {
-      error(issues, 'NS5_JUDGE_CANDIDATE_DUPLICATE', `Duplicate candidate ${verdict.candidateId}.`, `${path}.candidateId`);
-    }
-    seen.add(verdict.candidateId);
-    if (!(NS5_JUDGE_VERDICTS as readonly string[]).includes(verdict.verdict)) {
-      error(issues, 'NS5_JUDGE_VERDICT', 'verdict must be missingJourney, transitionUnjustified, coveredByAct or switchNeedsLifecycle.', `${path}.verdict`);
-    }
-    if (verdict.verdict === 'missingJourney') {
-      const brief = verdict.journeyBrief;
-      if (!brief.actor || !brief.title || !brief.goal || !brief.transitionRef) {
-        error(
-          issues,
-          'NS5_JUDGE_BRIEF',
-          'missingJourney needs actor, title, goal and transitionRef (Entity.transitionId) in English.',
-          `${path}.journeyBrief`,
-        );
-      }
-    }
-    if (verdict.verdict === 'coveredByAct') {
-      validateCoveredByAct(issues, verdict, byId.get(verdict.candidateId), context, path);
-    }
-    if (verdict.verdict === 'switchNeedsLifecycle') {
-      validateSwitchNeedsLifecycle(issues, verdict, byId.get(verdict.candidateId), path);
-    }
+    issues.push(...collectVerdictIssues(verdict, candidates, context, seen, `verdicts[${index}]`));
   }
 
   for (const candidate of candidates) {

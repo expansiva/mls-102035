@@ -25,10 +25,13 @@ A draft of `{ candidates, verdicts, rounds }`. No l4 source. Completeness is rep
   is cited by a rule, a process stage or another entity's derived field (`writtenSwitch`).
 - Verdict enum is required: `missingJourney` | `transitionUnjustified` | `coveredByAct` |
   `switchNeedsLifecycle`.
-- `missingJourney` schedules at most two nested journeys20 repairs, then fails naming the leftovers.
+- The judge is additive and never fails the run. A gate refusal, a leftover after repair and a
+  missing precondition are comments (`code` closed enum, no default); the step completes. Valid
+  verdicts in the same batch still apply. The draft is written on every path, including skip.
+- `missingJourney` schedules at most two nested journeys20 repairs, then comments naming the leftovers.
 - `switchNeedsLifecycle` schedules one nested ontology30 entity repair (`parallelEntityStep` with
   per-entity feedback), then revalidates; new human transitions fall into (a) and use the journeys
-  repair. Persist after 1 ontology + 2 journey rounds ⇒ fail naming the leftovers.
+  repair. Persist after 1 ontology + 2 journey rounds ⇒ comment naming the leftovers.
 - `transitionUnjustified` is recorded on `pipeline.judge35.warnings` / `normalizations[]`. The
   transition is not deleted. On a `writtenSwitch` it records `switchKeptAsField` and is not a warning.
 - `coveredByAct` needs `coveredBy` as `journeyId.stepId`. The step is an `act` with `transitionRef`,

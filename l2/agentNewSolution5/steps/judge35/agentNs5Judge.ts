@@ -8,7 +8,6 @@ import {
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import {
   NS5_STEP_HOOKS,
-  drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import {
@@ -41,7 +40,6 @@ import type {
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
-  Ns5PipelineState,
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
@@ -50,26 +48,30 @@ import {
   parallelEntityStep,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import {
-  NS5_JUDGE_MAX_REPAIRS,
   NS5_JUDGE_ONTOLOGY_REPAIR_ROUND,
-  buildNs5JudgeTool,
+  actionableNs5JudgeCandidates,
   asNs5JudgeJourneys,
+  buildNs5JudgeTool,
   collectNs5JudgeCandidates,
   decideNs5JudgeAction,
+  ns5JudgeCommentNormalizations,
   ns5JudgeFieldsOf,
+  ns5JudgeLeftoverComments,
+  ns5JudgeSkipComment,
   normalizeNs5JudgePayload,
   ns5JudgeNormalizations,
   planNs5JudgeOntologyRevalidate,
   planNs5JudgeRepairSteps,
+  unjustifiedWarnings,
   type Ns5JudgeCandidate,
+  type Ns5JudgeComment,
   type Ns5JudgeDraft,
   type Ns5JudgeEntityView,
   type Ns5JudgeRelationshipView,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
 import {
-  formatNs5JudgeGate,
-  validateNs5JudgeVerdicts,
+  partitionNs5JudgeVerdicts,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/gate.js';
 
 const MAX_TRANSPORT_RETRIES = 1;
@@ -203,14 +205,27 @@ export async function beforeNs5JudgePromptStep(
       );
     }
 
-    if (action.type === 'fail') {
-      await recordFailure(moduleName, action.message);
+    if (action.type === 'commentLeftovers') {
+      const comments = ns5JudgeLeftoverComments(action.leftovers);
+      const warnings = unjustifiedWarnings(candidates, verdicts);
+      const draftPath = await persistApproval(moduleName, {
+        candidates,
+        verdicts,
+        rounds: parsed.repairAttempt,
+        comments,
+        ...(warnings.length ? { warnings } : {}),
+      }, warnings);
       return [
-        ...drainWaitingSiblings(context, step, hookSequential, `stopped: ${action.message}`),
-        updateStatus(context, parentStep, step, hookSequential, 'failed', action.message),
+        doneAnchor(context, mutationParent, moduleName, [draftPath]),
+        updateStatus(context, parentStep, step, hookSequential, 'completed', action.message),
       ];
     }
 
+    await writeJson(draftFile(moduleName, 'judge35'), {
+      candidates,
+      verdicts,
+      rounds: parsed.repairAttempt,
+    } satisfies Ns5JudgeDraft);
     const [prompt, schema] = await Promise.all([
       readAgentText('steps/judge35', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'judge.schema', '.json'),
@@ -224,12 +239,7 @@ export async function beforeNs5JudgePromptStep(
     });
     return [promptReady(context, parentStep, hookSequential, args || String(step.prompt || ''), prompt, humanPrompt, tool)];
   } catch (error) {
-    const message = errorMessage(error);
-    await recordFailure(moduleName, message);
-    return [
-      ...drainWaitingSiblings(context, step, hookSequential, `stopped: ${message}`),
-      updateStatus(context, parentStep, step, hookSequential, 'failed', message),
-    ];
+    return completeSkipped(context, parentStep, step, hookSequential, moduleName, errorMessage(error));
   }
 }
 
@@ -254,7 +264,7 @@ export async function afterNs5JudgePromptStep(
           updateStatus(context, mutationParent, step, hookSequential, 'completed', `judge35 transport retry ${parsed.transportAttempt + 1} scheduled: ${failure}`),
         ];
       }
-      throw new Error(failure);
+      return completeSkipped(context, mutationParent, step, hookSequential, moduleName, failure);
     }
 
     const { journeys, entities, processes, relationships, rules } = await readSources(moduleName);
@@ -265,30 +275,22 @@ export async function afterNs5JudgePromptStep(
       relationships,
       rules,
     );
-    const verdicts = normalizeNs5JudgePayload(payload);
-    const gate = validateNs5JudgeVerdicts(verdicts, candidates, {
+    const rawVerdicts = normalizeNs5JudgePayload(payload);
+    const partitioned = partitionNs5JudgeVerdicts(rawVerdicts, candidates, {
       journeys: asNs5JudgeJourneys(journeys),
       relationships,
     });
-    if (!gate.ok) {
-      const feedback = formatNs5JudgeGate(gate.issues);
-      if (parsed.repairAttempt < NS5_JUDGE_MAX_REPAIRS) {
-        return [
-          addStep(context, mutationParent, createNs5RetryStep('judge35', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
-          updateStatus(context, mutationParent, step, hookSequential, 'completed', `judge35 gate scheduled repair ${parsed.repairAttempt + 1}.`),
-        ];
-      }
-      throw new Error(feedback);
-    }
-
+    const verdicts = partitioned.accepted;
+    const comments = partitioned.comments;
     await writeJson(draftFile(moduleName, 'judge35'), {
       candidates,
       verdicts,
       rounds: parsed.repairAttempt,
+      ...(comments.length ? { comments } : {}),
     } satisfies Ns5JudgeDraft);
 
     const action = decideNs5JudgeAction({
-      candidates,
+      candidates: actionableNs5JudgeCandidates(candidates, verdicts),
       verdicts,
       repairAttempt: parsed.repairAttempt,
       ontologyRepairAttempt: parsed.ontologyRepairAttempt,
@@ -300,6 +302,7 @@ export async function afterNs5JudgePromptStep(
         candidates,
         verdicts,
         rounds: action.attempt,
+        ...(comments.length ? { comments } : {}),
       } satisfies Ns5JudgeDraft);
       return [
         addStep(context, mutationParent, planned.repair),
@@ -313,6 +316,7 @@ export async function afterNs5JudgePromptStep(
         candidates,
         verdicts,
         rounds: parsed.repairAttempt,
+        ...(comments.length ? { comments } : {}),
       } satisfies Ns5JudgeDraft);
       return await scheduleOntologyRepair(
         context,
@@ -326,8 +330,21 @@ export async function afterNs5JudgePromptStep(
       );
     }
 
-    if (action.type === 'fail') {
-      throw new Error(action.message);
+    if (action.type === 'commentLeftovers') {
+      const leftoverComments = ns5JudgeLeftoverComments(action.leftovers);
+      const allComments = [...comments, ...leftoverComments];
+      const warnings = unjustifiedWarnings(candidates, verdicts);
+      const draftPath = await persistApproval(moduleName, {
+        candidates,
+        verdicts,
+        rounds: parsed.repairAttempt,
+        comments: allComments,
+        ...(warnings.length ? { warnings } : {}),
+      }, warnings);
+      return [
+        doneAnchor(context, mutationParent, moduleName, [draftPath]),
+        updateStatus(context, mutationParent, step, hookSequential, 'completed', action.message),
+      ];
     }
 
     const warnings = action.type === 'approveWithWarnings' ? action.warnings : [];
@@ -335,6 +352,7 @@ export async function afterNs5JudgePromptStep(
       candidates,
       verdicts,
       rounds: parsed.repairAttempt,
+      ...(comments.length ? { comments } : {}),
       ...(warnings.length ? { warnings } : {}),
     }, warnings);
     return [
@@ -342,12 +360,7 @@ export async function afterNs5JudgePromptStep(
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `judge35 approved: ${draftPath}`),
     ];
   } catch (error) {
-    const message = errorMessage(error);
-    await recordFailure(moduleName, message);
-    return [
-      ...drainWaitingSiblings(context, step, hookSequential, `stopped: ${message}`),
-      updateStatus(context, parentStep, step, hookSequential, 'failed', message),
-    ];
+    return completeSkipped(context, parentStep, step, hookSequential, moduleName, errorMessage(error));
   }
 }
 
@@ -356,20 +369,61 @@ async function persistApproval(
   draft: Ns5JudgeDraft,
   warnings: readonly string[],
 ): Promise<string> {
-  const pipeline = await requirePipeline(moduleName);
   const draftPath = await writeJson(draftFile(moduleName, 'judge35'), draft);
-  const normalizations = ns5JudgeNormalizations(draft.candidates, draft.verdicts);
-  const next = markNs5Step(pipeline, 'judge35', {
-    status: 'approved',
-    updatedAt: new Date().toISOString(),
-    artifactPaths: [draftPath],
-    ...(draft.noJudgeSignal ? { noJudgeSignal: true } : {}),
-    ...(warnings.length ? { warnings: [...warnings] } : {}),
-    ...(normalizations.length ? { normalizations } : {}),
-    ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
-  });
-  await writePipeline(next);
+  const comments = draft.comments || [];
+  const normalizations = [
+    ...ns5JudgeNormalizations(draft.candidates, draft.verdicts),
+    ...ns5JudgeCommentNormalizations(comments),
+  ];
+  try {
+    const pipeline = await readPipeline(moduleName);
+    if (!pipeline) return draftPath;
+    const next = markNs5Step(pipeline, 'judge35', {
+      status: 'approved',
+      updatedAt: new Date().toISOString(),
+      artifactPaths: [draftPath],
+      ...(draft.noJudgeSignal ? { noJudgeSignal: true } : {}),
+      ...(warnings.length ? { warnings: [...warnings] } : {}),
+      ...(normalizations.length ? { normalizations } : {}),
+      ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
+    });
+    await writePipeline(next);
+  } catch { /* draft is the evidence when the pipeline cannot be updated */ }
   return draftPath;
+}
+
+async function persistSkipComment(moduleName: string, reason: string): Promise<string> {
+  const previous = (await readJson(draftFile(moduleName, 'judge35'))) as Ns5JudgeDraft | null;
+  const comment = ns5JudgeSkipComment(reason);
+  const comments: Ns5JudgeComment[] = [...(previous?.comments || []), comment];
+  return persistApproval(moduleName, {
+    candidates: previous?.candidates || [],
+    verdicts: previous?.verdicts || [],
+    rounds: previous?.rounds || 0,
+    comments,
+    ...(previous?.warnings?.length ? { warnings: previous.warnings } : {}),
+    ...(previous?.noJudgeSignal ? { noJudgeSignal: true } : {}),
+  }, previous?.warnings || []);
+}
+
+async function completeSkipped(
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIPayload,
+  step: mls.msg.AIPayload,
+  hookSequential: number,
+  moduleName: string,
+  reason: string,
+): Promise<mls.msg.AgentIntent[]> {
+  const comment = ns5JudgeSkipComment(reason);
+  const mutationParent = findMutableParent(context, parentStep as mls.msg.AIAgentStep);
+  let draftPath = '';
+  if (moduleName) {
+    try { draftPath = await persistSkipComment(moduleName, reason); } catch { /* still complete so rules40/access60 run */ }
+  }
+  return [
+    ...(moduleName ? [doneAnchor(context, mutationParent, moduleName, draftPath ? [draftPath] : [])] : []),
+    updateStatus(context, parentStep, step, hookSequential, 'completed', comment.message),
+  ];
 }
 
 async function scheduleOntologyRepair(
@@ -384,7 +438,14 @@ async function scheduleOntologyRepair(
 ): Promise<mls.msg.AgentIntent[]> {
   const plan = await readJson<Ns5OntologyV3PlanDraft>(draftFile(moduleName, 'ontology30-plan'));
   if (!plan || !plan.entities?.length) {
-    throw new Error(`judge35 cannot repair ontology: ontology30 plan draft is missing for ${moduleName}.`);
+    return completeSkipped(
+      context,
+      mutationParent,
+      step,
+      hookSequential,
+      moduleName,
+      `ontology30 plan draft is missing for ${moduleName}.`,
+    );
   }
   const round = NS5_JUDGE_ONTOLOGY_REPAIR_ROUND + action.attempt - 1;
   const parallel = parallelEntityStep(context, step, agentName, plan, round, action.entityIds, action.entityFeedback);
@@ -475,25 +536,6 @@ async function readOntology(moduleName: string): Promise<{
       toEntity: edge.toEntity,
     })),
   };
-}
-
-async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
-  const pipeline = await readPipeline(moduleName);
-  if (!pipeline) throw new Error(`pipeline.json is missing for ${moduleName}.`);
-  return pipeline;
-}
-
-async function recordFailure(moduleName: string, error: string): Promise<void> {
-  if (!moduleName) return;
-  try {
-    const pipeline = await readPipeline(moduleName);
-    if (!pipeline) return;
-    await writePipeline(markNs5Step(pipeline, 'judge35', {
-      status: 'failed',
-      updatedAt: new Date().toISOString(),
-      error,
-    }));
-  } catch { /* task trace remains the fallback */ }
 }
 
 function formatJourneys(journeys: Ns5JourneyArtifact[]): string {

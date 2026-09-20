@@ -10,6 +10,39 @@ export const NS5_JUDGE_ONTOLOGY_REPAIR_ROUND = 10;
 export const NS5_JUDGE_VERDICTS = ['missingJourney', 'transitionUnjustified', 'coveredByAct', 'switchNeedsLifecycle'] as const;
 export type Ns5JudgeVerdictKind = typeof NS5_JUDGE_VERDICTS[number];
 
+/** Named gate refusals. Closed set — the comment enum includes these, no default. */
+export const NS5_JUDGE_GATE_CODES = [
+  'NS5_JUDGE_CANDIDATE_ID',
+  'NS5_JUDGE_UNKNOWN_CANDIDATE',
+  'NS5_JUDGE_CANDIDATE_DUPLICATE',
+  'NS5_JUDGE_VERDICT',
+  'NS5_JUDGE_BRIEF',
+  'NS5_JUDGE_COVERED_KIND',
+  'NS5_JUDGE_COVERED_BY',
+  'NS5_JUDGE_COVERED_STEP',
+  'NS5_JUDGE_COVERED_ACT',
+  'NS5_JUDGE_COVERED_TRANSITION',
+  'NS5_JUDGE_COVERED_LINK',
+  'NS5_JUDGE_COVERED_ACTOR',
+  'NS5_JUDGE_SWITCH_KIND',
+  'NS5_JUDGE_SWITCH_STATES',
+  'NS5_JUDGE_CANDIDATE_MISSING',
+] as const;
+export type Ns5JudgeGateCode = typeof NS5_JUDGE_GATE_CODES[number];
+
+export const NS5_JUDGE_COMMENT_CODES = [
+  ...NS5_JUDGE_GATE_CODES,
+  'NS5_JUDGE_ORPHAN_PERSISTS',
+  'NS5_JUDGE_SKIPPED',
+] as const;
+export type Ns5JudgeCommentCode = typeof NS5_JUDGE_COMMENT_CODES[number];
+
+export interface Ns5JudgeComment {
+  code: Ns5JudgeCommentCode;
+  message: string;
+  candidateId?: string;
+}
+
 export interface Ns5JudgeJourneyStepView {
   stepId: string;
   kind: string;
@@ -136,6 +169,7 @@ export interface Ns5JudgeDraft {
   rounds: number;
   noJudgeSignal?: boolean;
   warnings?: string[];
+  comments?: Ns5JudgeComment[];
 }
 
 export type Ns5JudgeAction =
@@ -144,7 +178,7 @@ export type Ns5JudgeAction =
   | { type: 'repairJourneys'; briefs: string; attempt: number }
   | { type: 'repairOntology'; entityIds: string[]; entityFeedback: Record<string, string>; attempt: number }
   | { type: 'approveWithWarnings'; warnings: string[] }
-  | { type: 'fail'; message: string };
+  | { type: 'commentLeftovers'; leftovers: Ns5JudgeCandidate[]; message: string };
 
 function citationKey(entityId: string, transitionId: string): string {
   return `${entityId}.${transitionId}`;
@@ -621,6 +655,41 @@ export function formatNs5JudgeRepairFeedback(briefs: readonly Ns5JudgeVerdict[])
   return lines.join('\n');
 }
 
+export function ns5JudgeSkipComment(reason: string): Ns5JudgeComment {
+  const trimmed = reason.trim();
+  return {
+    code: 'NS5_JUDGE_SKIPPED',
+    message: trimmed.startsWith('judge35 skipped:') ? trimmed : `judge35 skipped: ${trimmed}`,
+  };
+}
+
+export function ns5JudgeLeftoverComments(leftovers: readonly Ns5JudgeCandidate[]): Ns5JudgeComment[] {
+  return leftovers.map(candidate => ({
+    code: 'NS5_JUDGE_ORPHAN_PERSISTS',
+    message: formatNs5JudgeFailMessage([candidate]),
+    candidateId: candidate.candidateId,
+  }));
+}
+
+export function ns5JudgeCommentNormalizations(
+  comments: readonly Ns5JudgeComment[],
+): Ns5PipelineNormalization[] {
+  return comments.map(comment => ({
+    kind: 'judgeComment',
+    detail: comment.candidateId
+      ? `${comment.code} ${comment.candidateId}: ${comment.message}`
+      : `${comment.code}: ${comment.message}`,
+  }));
+}
+
+export function actionableNs5JudgeCandidates(
+  candidates: readonly Ns5JudgeCandidate[],
+  accepted: readonly Ns5JudgeVerdict[],
+): Ns5JudgeCandidate[] {
+  const acceptedIds = new Set(accepted.map(item => item.candidateId));
+  return candidates.filter(candidate => acceptedIds.has(candidate.candidateId));
+}
+
 export function formatNs5JudgeFailMessage(candidates: readonly Ns5JudgeCandidate[]): string {
   const labels = candidates.map(candidate => {
     if (candidate.kind === 'uncitedHumanTransition') return `${candidate.entityId}.${candidate.transitionId}`;
@@ -667,7 +736,8 @@ export function formatNs5JudgeOntologyFeedback(
  * schedules a journeys20 repair (bounded by MAX_REPAIRS); switchNeedsLifecycle schedules one
  * ontology30 entity repair then revalidates; transitionUnjustified is a warning and never deletes
  * a transition (on a written switch it records switchKeptAsField); coveredByAct records a
- * normalization and does not repair; leftovers after the budget fail with a named list.
+ * normalization and does not repair; leftovers after the budget are named comments, never a
+ * failed step.
  */
 export function decideNs5JudgeAction(input: {
   candidates: readonly Ns5JudgeCandidate[];
@@ -702,7 +772,11 @@ export function decideNs5JudgeAction(input: {
         entityFeedback: formatNs5JudgeOntologyFeedback(input.candidates, input.verdicts),
       };
     }
-    return { type: 'fail', message: formatNs5JudgeFailMessage(switchRemaining) };
+    return {
+      type: 'commentLeftovers',
+      leftovers: [...switchRemaining],
+      message: formatNs5JudgeFailMessage(switchRemaining),
+    };
   }
 
   const nextAttempt = input.repairAttempt + 1;
@@ -714,7 +788,11 @@ export function decideNs5JudgeAction(input: {
       briefs: formatNs5JudgeRepairFeedback(briefs),
     };
   }
-  return { type: 'fail', message: formatNs5JudgeFailMessage(remaining) };
+  return {
+    type: 'commentLeftovers',
+    leftovers: [...remaining],
+    message: formatNs5JudgeFailMessage(remaining),
+  };
 }
 
 export function planNs5JudgeRepairSteps(
