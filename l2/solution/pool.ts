@@ -12,6 +12,7 @@ import {
   displayPath,
   hostListFolder,
   moduleFile,
+  moduleFileForProject,
   normalizeModuleName,
   pipelineFile,
   readJson,
@@ -149,8 +150,8 @@ export function isPoolMessageShortName(shortName: string): boolean {
 }
 
 /** Oldest first, by name. Index ∪ host disk, so a message written by another process is seen. */
-export function listPoolBox(moduleName: string, box: PoolBox): Ns5FileInfo[] {
-  const base = moduleFile(moduleName);
+export function listPoolBoxForProject(project: number, moduleName: string, box: PoolBox): Ns5FileInfo[] {
+  const base = moduleFileForProject(project, moduleName);
   const folder = `${base.folder}/pool/${box}`;
   const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
   const found = new Map<string, Ns5FileInfo>();
@@ -173,6 +174,10 @@ export function listPoolBox(moduleName: string, box: PoolBox): Ns5FileInfo[] {
     }
   }
   return [...found.keys()].sort().map(shortName => found.get(shortName) as Ns5FileInfo);
+}
+
+export function listPoolBox(moduleName: string, box: PoolBox): Ns5FileInfo[] {
+  return listPoolBoxForProject(moduleFile(moduleName).project, moduleName, box);
 }
 
 export async function readPoolMessage(file: Ns5FileInfo): Promise<PoolMessage> {

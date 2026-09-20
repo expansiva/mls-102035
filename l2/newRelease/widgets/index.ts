@@ -37,10 +37,11 @@ import '/_102035_/l2/newRelease/widgets/ontology.js';
 import '/_102035_/l2/newRelease/widgets/rules.js';
 import '/_102035_/l2/newRelease/widgets/workflows.js';
 import '/_102035_/l2/newRelease/widgets/integration.js';
+import '/_102035_/l2/newRelease/widgets/review.js';
 
-type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration';
+type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration' | 'review';
 
-const TABS: NewReleaseTab[] = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration'];
+const TABS: NewReleaseTab[] = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration', 'review'];
 
 @customElement('new-release--widgets--index-102035')
 export class NewReleaseIndex102035 extends StateLitElement {
@@ -193,6 +194,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       case 'rules': return common(svg`<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>`);
       case 'workflows': return common(svg`<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.5 8l3.5 7.5M16.5 8 13 15.5"/>`);
       case 'integration': return common(svg`<path d="M9 8 6.5 5.5a3.5 3.5 0 0 0-5 5L5 14a3.5 3.5 0 0 0 5 0l1-1M15 16l2.5 2.5a3.5 3.5 0 0 0 5-5L19 10a3.5 3.5 0 0 0-5 0l-1 1M8 12h8"/>`);
+      case 'review': return common(svg`<path d="M7 5h13M7 12h13M7 19h9"/><circle cx="4" cy="5" r="1.4"/><circle cx="4" cy="12" r="1.4"/><circle cx="4" cy="19" r="1.4"/>`);
     }
   }
 
@@ -384,6 +386,17 @@ export class NewReleaseIndex102035 extends StateLitElement {
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--integration-102035>
+      `;
+    }
+    if (this.activeTab === 'review') {
+      return html`
+        <new-release--widgets--review-102035
+          .project=${this.project}
+          .moduleName=${this.moduleName}
+          .version=${this.version}
+          .data=${this.data}
+          .t=${this.t}
+        ></new-release--widgets--review-102035>
       `;
     }
     return html`
