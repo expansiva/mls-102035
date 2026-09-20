@@ -11,19 +11,26 @@ import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpe
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { buildNs5JudgeHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/judge35/agentNs5Judge.js';
 import {
+  NS5_JUDGE_MAX_ONTOLOGY_REPAIRS,
   NS5_JUDGE_MAX_REPAIRS,
+  NS5_JUDGE_ONTOLOGY_REPAIR_ROUND,
   buildNs5JudgeTool,
   collectNs5JudgeCandidates,
   decideNs5JudgeAction,
+  foldNs5JudgeText,
   formatNs5JudgeFailMessage,
+  formatNs5JudgeOntologyFeedback,
   normalizeNs5JudgePayload,
+  ns5JudgeFieldsOf,
   ns5JudgeNormalizations,
+  planNs5JudgeOntologyRevalidate,
   planNs5JudgeRepairSteps,
   type Ns5JudgeCandidate,
   type Ns5JudgeEntityView,
   type Ns5JudgeJourneyView,
   type Ns5JudgeProcessView,
   type Ns5JudgeRelationshipView,
+  type Ns5JudgeRuleView,
   type Ns5JudgeVerdict,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
 import {
@@ -39,6 +46,7 @@ interface SliceModule {
   entities: Ns5JudgeEntityView[];
   processes: Ns5JudgeProcessView[];
   relationships?: Ns5JudgeRelationshipView[];
+  rules?: Ns5JudgeRuleView[];
 }
 
 function loadSchema(): Record<string, unknown> {
@@ -347,6 +355,183 @@ void test('coveredByAct: locacao Devolucao passes; create-without-transitionRef 
     coveredBy: '',
   }], candidates.filter(item => item.candidateId === 'uncited:Equipamento.registrarDevolucao'), context);
   assert.ok(emptyCovered.issues.some(issue => issue.code === 'NS5_JUDGE_COVERED_BY'));
+});
+
+void test('promptEntity states the switch criterion in place of lifecycle-only-for-what-somebody-moves', () => {
+  const source = readFileSync(path.join(HERE, '../ontology30/promptEntity.md'), 'utf8');
+  assert.match(source, /A lifecycle is for what somebody moves AND the system reacts to/);
+  assert.match(source, /a switch with no such consequence is a field, not a state/);
+  assert.doesNotMatch(source, /A lifecycle is only for what \*\*somebody moves\*\*/);
+});
+
+function switchLabels(candidates: readonly Ns5JudgeCandidate[]): string[] {
+  return candidates
+    .filter((item): item is Extract<Ns5JudgeCandidate, { kind: 'writtenSwitch' }> => item.kind === 'writtenSwitch')
+    .map(item => `${item.entityId}.${item.fieldId}`)
+    .sort();
+}
+
+void test('locacaoEquipamentos after: one written switch emManutencao cited by the maintenance rule', () => {
+  const after = JSON.parse(readFileSync(path.join(HERE, 'fixtures/locacaoEquipamentos-after.json'), 'utf8')) as SliceModule;
+  const candidates = collectNs5JudgeCandidates(
+    after.journeys,
+    after.entities,
+    after.processes,
+    after.relationships || [],
+    after.rules || [],
+  );
+  assert.deepEqual(uncitedLabels(candidates), []);
+  assert.deepEqual(switchLabels(candidates), ['Equipamento.emManutencao']);
+  const row = candidates.find((item): item is Extract<Ns5JudgeCandidate, { kind: 'writtenSwitch' }> => item.kind === 'writtenSwitch');
+  assert.ok(row);
+  assert.ok(row.citedBy.includes('rule:equipamentoEmManutencaoIndisponivel'), String(row.citedBy));
+  assert.equal(row.type, 'boolean');
+});
+
+void test('written switch match is folded id and title, not raw fieldId in accented prose', () => {
+  const field = { fieldId: 'emManutencao', title: 'Em manutenção', type: 'boolean' as const };
+  const entity: Ns5JudgeEntityView = {
+    entityId: 'Equipamento',
+    transitions: [],
+    lifecycleStates: [],
+    fields: [field],
+    derivedFields: [],
+  };
+  const miss = collectNs5JudgeCandidates([], [entity], [], [], [
+    { ruleId: 'foo', description: 'Um equipamento em manutenção não pode ser incluído.' },
+  ]);
+  assert.deepEqual(switchLabels(miss), ['Equipamento.emManutencao']);
+  const byTitle = miss[0];
+  assert.equal(byTitle.kind, 'writtenSwitch');
+  if (byTitle.kind === 'writtenSwitch') {
+    assert.deepEqual(byTitle.citedBy, ['rule:foo']);
+  }
+  assert.equal(foldNs5JudgeText('Em manutenção'), 'em manutencao');
+  assert.equal('Um equipamento em manutenção'.includes('emManutencao'), false);
+
+  const byRuleId = collectNs5JudgeCandidates([], [entity], [], [], [
+    { ruleId: 'equipamentoEmManutencaoIndisponivel', description: 'Something unrelated.' },
+  ]);
+  assert.deepEqual(switchLabels(byRuleId), ['Equipamento.emManutencao']);
+
+  const none = collectNs5JudgeCandidates([], [entity], [], [], [
+    { ruleId: 'codigoUnico', description: 'The equipment code is unique.' },
+  ]);
+  assert.deepEqual(switchLabels(none), []);
+});
+
+void test('a written switch on an entity that already has a lifecycle is not a candidate', () => {
+  const candidates = collectNs5JudgeCandidates([], [{
+    entityId: 'Equipamento',
+    transitions: [],
+    lifecycleStates: [{ state: 'available' }],
+    fields: [{ fieldId: 'emManutencao', title: 'Em manutenção', type: 'boolean' }],
+  }], [], [], [{ ruleId: 'equipamentoEmManutencaoIndisponivel', description: 'Um equipamento em manutenção não pode.' }]);
+  assert.deepEqual(switchLabels(candidates), []);
+});
+
+void test('switchNeedsLifecycle: gate wants two states; ontology repair then fail; keep-as-field records switchKeptAsField', () => {
+  const candidate: Ns5JudgeCandidate = {
+    kind: 'writtenSwitch',
+    candidateId: 'switch:Equipamento.emManutencao',
+    entityId: 'Equipamento',
+    fieldId: 'emManutencao',
+    title: 'Em manutenção',
+    type: 'boolean',
+    citedBy: ['rule:equipamentoEmManutencaoIndisponivel'],
+  };
+  const needs: Ns5JudgeVerdict = {
+    candidateId: candidate.candidateId,
+    verdict: 'switchNeedsLifecycle',
+    journeyBrief: { actor: '', title: '', goal: '', transitionRef: '' },
+    coveredBy: '',
+    states: ['maintenance', 'available'],
+  };
+  const gate = validateNs5JudgeVerdicts([needs], [candidate]);
+  assert.equal(gate.ok, true, formatNs5JudgeGate(gate.issues));
+
+  const noStates = validateNs5JudgeVerdicts([{ ...needs, states: [] }], [candidate]);
+  assert.equal(noStates.ok, false);
+  assert.ok(noStates.issues.some(issue => issue.code === 'NS5_JUDGE_SWITCH_STATES'));
+
+  const wrongKind = validateNs5JudgeVerdicts([needs], [{
+    kind: 'uncitedHumanTransition',
+    candidateId: candidate.candidateId,
+    entityId: 'Equipamento',
+    transitionId: 'iniciarManutencao',
+    by: ['gerente'],
+    from: ['available'],
+    to: 'maintenance',
+    description: '',
+    likelyCoveredBy: [],
+  }]);
+  assert.ok(wrongKind.issues.some(issue => issue.code === 'NS5_JUDGE_SWITCH_KIND'));
+
+  const first = decideNs5JudgeAction({ candidates: [candidate], verdicts: [needs], repairAttempt: 0 });
+  assert.equal(first.type, 'repairOntology');
+  if (first.type !== 'repairOntology') return;
+  assert.equal(first.attempt, 1);
+  assert.deepEqual(first.entityIds, ['Equipamento']);
+  assert.match(first.entityFeedback.Equipamento, /model `emManutencao` as a lifecycle state/);
+  assert.match(first.entityFeedback.Equipamento, /keep the derived availability/);
+  assert.deepEqual(formatNs5JudgeOntologyFeedback([candidate], [needs]), first.entityFeedback);
+
+  const revalidate = planNs5JudgeOntologyRevalidate('locacaoEquipamentos', first.attempt, 0, `ontology30-finalize-${NS5_JUDGE_ONTOLOGY_REPAIR_ROUND}`);
+  assert.equal(revalidate.planning?.planId, 'judge35-revalidate-ontology-1');
+  assert.deepEqual(revalidate.planning?.dependsOn, [`ontology30-finalize-${NS5_JUDGE_ONTOLOGY_REPAIR_ROUND}`]);
+  assert.equal(ownerStepId(String(revalidate.planning?.planId)), 'judge35');
+
+  const last = decideNs5JudgeAction({
+    candidates: [candidate],
+    verdicts: [needs],
+    repairAttempt: 0,
+    ontologyRepairAttempt: NS5_JUDGE_MAX_ONTOLOGY_REPAIRS,
+  });
+  assert.equal(last.type, 'fail');
+  if (last.type !== 'fail') return;
+  assert.match(last.message, /Equipamento\.emManutencao/);
+
+  const keep: Ns5JudgeVerdict = {
+    candidateId: candidate.candidateId,
+    verdict: 'transitionUnjustified',
+    journeyBrief: { actor: '', title: '', goal: '', transitionRef: '' },
+    coveredBy: '',
+    states: [],
+  };
+  const kept = decideNs5JudgeAction({ candidates: [candidate], verdicts: [keep], repairAttempt: 0 });
+  assert.equal(kept.type, 'approveWithoutModel');
+  assert.deepEqual(ns5JudgeNormalizations([candidate], [keep]), [{
+    kind: 'switchKeptAsField',
+    detail: 'switchKeptAsField Equipamento.emManutencao',
+    entityId: 'Equipamento',
+  }]);
+});
+
+void test('ns5JudgeFieldsOf reads the v3 emManutencao boolean and the derived situacaoAtual', () => {
+  const split = ns5JudgeFieldsOf({
+    entityId: 'Equipamento',
+    record: {
+      fields: {
+        id: { type: 'uuid', derived: true, title: 'Id' },
+        emManutencao: { type: 'boolean', title: 'Em manutenção', description: 'Indica que o equipamento está indisponível.' },
+        details: {
+          type: 'object',
+          fields: {
+            situacaoAtual: { type: 'enum', derived: true, title: 'Situação atual', description: 'em manutenção quando…' },
+          },
+        },
+      },
+    },
+  });
+  assert.ok(split.fields.some(item => item.fieldId === 'emManutencao' && item.type === 'boolean'));
+  assert.ok(split.derivedFields.some(item => item.fieldId === 'situacaoAtual'));
+  assert.ok(!split.fields.some(item => item.fieldId === 'id'));
+});
+
+void test('nested ontology30 repair from the judge does not emit a second done-anchor', () => {
+  const source = readFileSync(path.join(HERE, '../ontology30/agentNs5Ontology.ts'), 'utf8');
+  assert.match(source, /hasPlanId\(context, 'ontology30-done'\)/);
+  assert.match(source, /parallelEntityStep/);
 });
 
 void test('coveredByAct settles without a journeys20 repair and records transitionCoveredByAct', () => {

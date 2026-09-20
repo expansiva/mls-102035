@@ -25,6 +25,9 @@ whether the story is missing, the transition should not exist, or a cited act al
   covered: say which step, and do not ask for a journey. Put `journeyId.stepId` in `coveredBy`.
   Leave every `journeyBrief` field as an empty string. `likelyCoveredBy` on the candidate is a
   hint; confirm or decide otherwise.
+- `switchNeedsLifecycle` — when a written switch is cited by a rule, a process or another entity's
+  derived field, it needs a lifecycle with a transition in and out: say the two states in English;
+  a switch with no such consequence stays a field (`transitionUnjustified`).
 
 Return one verdict per candidate, using the `candidateId` you were given. Do not add candidates.
 Do not look for other defects.

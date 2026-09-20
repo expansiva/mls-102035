@@ -4,7 +4,10 @@ import { createNs5RetryStep, NS5_AGENT_NAME } from '/_102035_/l2/agentNewSolutio
 import type { Ns5PipelineNormalization } from '/_102035_/l2/solution/types.js';
 
 export const NS5_JUDGE_MAX_REPAIRS = 2;
-export const NS5_JUDGE_VERDICTS = ['missingJourney', 'transitionUnjustified', 'coveredByAct'] as const;
+export const NS5_JUDGE_MAX_ONTOLOGY_REPAIRS = 1;
+/** Fan-out round used by the nested ontology30 repair so it never collides with 0..2. */
+export const NS5_JUDGE_ONTOLOGY_REPAIR_ROUND = 10;
+export const NS5_JUDGE_VERDICTS = ['missingJourney', 'transitionUnjustified', 'coveredByAct', 'switchNeedsLifecycle'] as const;
 export type Ns5JudgeVerdictKind = typeof NS5_JUDGE_VERDICTS[number];
 
 export interface Ns5JudgeJourneyStepView {
@@ -28,9 +31,22 @@ export interface Ns5JudgeTransitionView {
   description?: string;
 }
 
+export interface Ns5JudgeFieldView {
+  fieldId: string;
+  title: string;
+  type: string;
+  derived?: boolean;
+  owner?: string;
+  values?: string[];
+  description?: string;
+}
+
 export interface Ns5JudgeEntityView {
   entityId: string;
   transitions: ReadonlyArray<Ns5JudgeTransitionView>;
+  lifecycleStates?: ReadonlyArray<{ state: string }>;
+  fields?: ReadonlyArray<Ns5JudgeFieldView>;
+  derivedFields?: ReadonlyArray<Ns5JudgeFieldView>;
 }
 
 /** One index edge. Direct `fromEntity`/`toEntity` — including N:N via `through`, not a FK walk. */
@@ -41,14 +57,23 @@ export interface Ns5JudgeRelationshipView {
 }
 
 export interface Ns5JudgeProcessTaskView {
+  taskId?: string;
   entityRef?: string;
   effect?: string;
   transitionRef?: string;
+  description?: string;
 }
 
 export interface Ns5JudgeProcessView {
   processId: string;
+  title?: string;
+  description?: string;
   tasks: ReadonlyArray<Ns5JudgeProcessTaskView>;
+}
+
+export interface Ns5JudgeRuleView {
+  ruleId: string;
+  description: string;
 }
 
 export interface Ns5JudgeUncitedCandidate {
@@ -75,7 +100,18 @@ export interface Ns5JudgeDecideCandidate {
   citedTransitionIds: string[];
 }
 
-export type Ns5JudgeCandidate = Ns5JudgeUncitedCandidate | Ns5JudgeDecideCandidate;
+export interface Ns5JudgeSwitchCandidate {
+  kind: 'writtenSwitch';
+  candidateId: string;
+  entityId: string;
+  fieldId: string;
+  title: string;
+  type: 'boolean' | 'enum';
+  /** Rule, process stage or other-entity derived field that names this switch. Hint, not a verdict. */
+  citedBy: string[];
+}
+
+export type Ns5JudgeCandidate = Ns5JudgeUncitedCandidate | Ns5JudgeDecideCandidate | Ns5JudgeSwitchCandidate;
 
 export interface Ns5JudgeJourneyBrief {
   actor: string;
@@ -90,6 +126,8 @@ export interface Ns5JudgeVerdict {
   journeyBrief: Ns5JudgeJourneyBrief;
   /** `journeyId.stepId` when verdict is `coveredByAct`; empty otherwise. */
   coveredBy: string;
+  /** `[on, off]` English state ids when verdict is `switchNeedsLifecycle`; empty otherwise. */
+  states?: string[];
 }
 
 export interface Ns5JudgeDraft {
@@ -104,6 +142,7 @@ export type Ns5JudgeAction =
   | { type: 'approveWithoutModel' }
   | { type: 'callModel' }
   | { type: 'repairJourneys'; briefs: string; attempt: number }
+  | { type: 'repairOntology'; entityIds: string[]; entityFeedback: Record<string, string>; attempt: number }
   | { type: 'approveWithWarnings'; warnings: string[] }
   | { type: 'fail'; message: string };
 
@@ -200,6 +239,156 @@ export function parseNs5JudgeCoveredBy(value: string): { journeyId: string; step
   return { journeyId: trimmed.slice(0, dot), stepId: trimmed.slice(dot + 1) };
 }
 
+export function foldNs5JudgeText(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function enumValuesOf(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => {
+    if (typeof item === 'string') return item.trim();
+    return text(record(item).value);
+  }).filter(Boolean);
+}
+
+function walkV3Fields(
+  fields: Record<string, unknown>,
+  written: Ns5JudgeFieldView[],
+  derived: Ns5JudgeFieldView[],
+): void {
+  for (const [fieldId, raw] of Object.entries(fields)) {
+    if (!fieldId || fieldId === 'details') {
+      const nested = record(record(raw).fields);
+      if (fieldId === 'details' && Object.keys(nested).length) walkV3Fields(nested, written, derived);
+      continue;
+    }
+    const field = record(raw);
+    const view: Ns5JudgeFieldView = {
+      fieldId,
+      title: text(field.title),
+      type: text(field.type) || (Array.isArray(field.values) ? 'enum' : ''),
+      ...(field.derived === true ? { derived: true } : {}),
+      ...(text(field.owner) ? { owner: text(field.owner) } : {}),
+      ...(Array.isArray(field.values) ? { values: enumValuesOf(field.values) } : {}),
+      ...(text(field.description) ? { description: text(field.description) } : {}),
+    };
+    if (field.derived === true) derived.push(view);
+    else written.push(view);
+    const children = record(field.fields);
+    if (Object.keys(children).length) walkV3Fields(children, written, derived);
+  }
+}
+
+/**
+ * Written and derived fields of an ontology entity, v2 list or v3 `record.fields`.
+ * Platform-owned and identity fields stay in the lists; the switch collector skips them.
+ */
+export function ns5JudgeFieldsOf(source: unknown): { fields: Ns5JudgeFieldView[]; derivedFields: Ns5JudgeFieldView[] } {
+  const root = record(source);
+  const v3 = record(record(root.record).fields);
+  if (Object.keys(v3).length) {
+    const fields: Ns5JudgeFieldView[] = [];
+    const derivedFields: Ns5JudgeFieldView[] = [];
+    walkV3Fields(v3, fields, derivedFields);
+    return { fields, derivedFields };
+  }
+  const fields: Ns5JudgeFieldView[] = [];
+  const derivedFields: Ns5JudgeFieldView[] = [];
+  const rows = Array.isArray(root.fields) ? root.fields : [];
+  for (const item of rows) {
+    const field = record(item);
+    const view: Ns5JudgeFieldView = {
+      fieldId: text(field.fieldId),
+      title: text(field.title),
+      type: text(field.type) || (Array.isArray(field.enum) ? 'enum' : ''),
+      ...(Array.isArray(field.enum) ? { values: enumValuesOf(field.enum) } : {}),
+      ...(text(field.description) ? { description: text(field.description) } : {}),
+    };
+    if (!view.fieldId) continue;
+    if (field.derived === true) derivedFields.push(view);
+    else fields.push(view);
+  }
+  return { fields, derivedFields };
+}
+
+function isWrittenSwitch(field: Ns5JudgeFieldView): field is Ns5JudgeFieldView & { type: 'boolean' | 'enum' } {
+  if (field.derived) return false;
+  if (field.owner === 'platform' || field.owner === 'organization') return false;
+  if (field.fieldId === 'id' || field.fieldId === 'version' || field.fieldId === 'details') return false;
+  if (field.type === 'boolean') return true;
+  return field.type === 'enum' && (field.values || []).length === 2;
+}
+
+function haystackHits(haystack: string, fieldId: string, title: string): boolean {
+  const folded = foldNs5JudgeText(haystack);
+  if (!folded) return false;
+  const id = foldNs5JudgeText(fieldId);
+  const label = foldNs5JudgeText(title);
+  return (!!id && folded.includes(id)) || (!!label && folded.includes(label));
+}
+
+function switchCitationCorpus(
+  entityId: string,
+  rules: readonly Ns5JudgeRuleView[],
+  processes: readonly Ns5JudgeProcessView[],
+  entities: readonly Ns5JudgeEntityView[],
+): Array<{ id: string; text: string }> {
+  const rows: Array<{ id: string; text: string }> = [];
+  for (const rule of rules) {
+    rows.push({ id: `rule:${rule.ruleId}`, text: `${rule.ruleId} ${rule.description}` });
+  }
+  for (const process of processes) {
+    rows.push({ id: `process:${process.processId}`, text: `${process.processId} ${process.title || ''} ${process.description || ''}` });
+    for (const task of process.tasks) {
+      const taskId = task.taskId || '';
+      rows.push({
+        id: `process:${process.processId}.${taskId}`,
+        text: `${taskId} ${task.description || ''} ${task.entityRef || ''} ${task.transitionRef || ''}`,
+      });
+    }
+  }
+  for (const entity of entities) {
+    if (entity.entityId === entityId) continue;
+    for (const field of entity.derivedFields || []) {
+      rows.push({
+        id: `derived:${entity.entityId}.${field.fieldId}`,
+        text: `${field.fieldId} ${field.title} ${field.description || ''}`,
+      });
+    }
+  }
+  return rows;
+}
+
+function collectWrittenSwitches(
+  entities: readonly Ns5JudgeEntityView[],
+  processes: readonly Ns5JudgeProcessView[],
+  rules: readonly Ns5JudgeRuleView[],
+): Ns5JudgeSwitchCandidate[] {
+  const out: Ns5JudgeSwitchCandidate[] = [];
+  for (const entity of entities) {
+    if ((entity.lifecycleStates || []).length) continue;
+    const fields = entity.fields || [];
+    for (const field of fields) {
+      if (!isWrittenSwitch(field)) continue;
+      const citedBy: string[] = [];
+      for (const row of switchCitationCorpus(entity.entityId, rules, processes, entities)) {
+        if (haystackHits(row.text, field.fieldId, field.title)) citedBy.push(row.id);
+      }
+      if (!citedBy.length) continue;
+      out.push({
+        kind: 'writtenSwitch',
+        candidateId: `switch:${entity.entityId}.${field.fieldId}`,
+        entityId: entity.entityId,
+        fieldId: field.fieldId,
+        title: field.title,
+        type: field.type === 'enum' ? 'enum' : 'boolean',
+        citedBy,
+      });
+    }
+  }
+  return out;
+}
+
 function likelyCoveredByFor(
   candidate: Omit<Ns5JudgeUncitedCandidate, 'likelyCoveredBy'>,
   journeys: readonly Ns5JudgeJourneyView[],
@@ -225,6 +414,7 @@ export function collectNs5JudgeCandidates(
   entities: readonly Ns5JudgeEntityView[],
   processes: readonly Ns5JudgeProcessView[] = [],
   relationships: readonly Ns5JudgeRelationshipView[] = [],
+  rules: readonly Ns5JudgeRuleView[] = [],
 ): Ns5JudgeCandidate[] {
   const cited = citedKeys(journeys, processes);
   const uncited: Ns5JudgeUncitedCandidate[] = [];
@@ -287,7 +477,7 @@ export function collectNs5JudgeCandidates(
     }
   }
 
-  return [...uncited, ...decides];
+  return [...uncited, ...decides, ...collectWrittenSwitches(entities, processes, rules)];
 }
 
 export function buildNs5JudgeTool(
@@ -296,7 +486,7 @@ export function buildNs5JudgeTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Judge',
-    'Submit one verdict per candidate: missingJourney, transitionUnjustified, or coveredByAct.',
+    'Submit one verdict per candidate: missingJourney, transitionUnjustified, coveredByAct, or switchNeedsLifecycle.',
     schema,
   );
 }
@@ -332,8 +522,11 @@ export function normalizeNs5JudgePayload(value: unknown): Ns5JudgeVerdict[] {
       ? 'transitionUnjustified'
       : verdict === 'coveredByAct'
         ? 'coveredByAct'
-        : 'missingJourney';
-    out.push({ candidateId, verdict: kind, journeyBrief: briefOf(item.journeyBrief), coveredBy: text(item.coveredBy) });
+        : verdict === 'switchNeedsLifecycle'
+          ? 'switchNeedsLifecycle'
+          : 'missingJourney';
+    const states = Array.isArray(item.states) ? item.states.map(entry => text(entry)).filter(Boolean) : [];
+    out.push({ candidateId, verdict: kind, journeyBrief: briefOf(item.journeyBrief), coveredBy: text(item.coveredBy), states });
   }
   return out;
 }
@@ -367,6 +560,7 @@ export function unjustifiedWarnings(
   for (const verdict of verdicts) {
     if (verdict.verdict !== 'transitionUnjustified') continue;
     const candidate = byId.get(verdict.candidateId);
+    if (candidate && candidate.kind === 'writtenSwitch') continue;
     const label = candidate && candidate.kind === 'uncitedHumanTransition'
       ? `${candidate.entityId}.${candidate.transitionId}`
       : verdict.candidateId;
@@ -384,6 +578,14 @@ export function ns5JudgeNormalizations(
   for (const verdict of verdicts) {
     const candidate = byId.get(verdict.candidateId);
     if (verdict.verdict === 'transitionUnjustified') {
+      if (candidate && candidate.kind === 'writtenSwitch') {
+        out.push({
+          kind: 'switchKeptAsField',
+          detail: `switchKeptAsField ${candidate.entityId}.${candidate.fieldId}`,
+          entityId: candidate.entityId,
+        });
+        continue;
+      }
       const label = candidate && candidate.kind === 'uncitedHumanTransition'
         ? `${candidate.entityId}.${candidate.transitionId}`
         : verdict.candidateId;
@@ -422,25 +624,62 @@ export function formatNs5JudgeRepairFeedback(briefs: readonly Ns5JudgeVerdict[])
 export function formatNs5JudgeFailMessage(candidates: readonly Ns5JudgeCandidate[]): string {
   const labels = candidates.map(candidate => {
     if (candidate.kind === 'uncitedHumanTransition') return `${candidate.entityId}.${candidate.transitionId}`;
+    if (candidate.kind === 'writtenSwitch') return `${candidate.entityId}.${candidate.fieldId}`;
     const missing = candidate.transitionIds.filter(id => !candidate.citedTransitionIds.includes(id));
     return `${candidate.entityId}.${candidate.origin} (${missing.join(', ') || candidate.transitionIds.join(', ')})`;
   });
+  const switches = candidates.filter(candidate => candidate.kind === 'writtenSwitch');
+  if (switches.length && switches.length === candidates.length) {
+    return `judge35: written switches still need a lifecycle after ontology repair: ${labels.join(', ')}.`;
+  }
+  if (switches.length) {
+    return `judge35: leftovers after repair: ${labels.join(', ')}.`;
+  }
   return `judge35: journeys still miss these human transitions after repair: ${labels.join(', ')}.`;
+}
+
+export function formatNs5JudgeOntologyFeedback(
+  candidates: readonly Ns5JudgeCandidate[],
+  verdicts: readonly Ns5JudgeVerdict[],
+): Record<string, string> {
+  const byId = new Map(candidates.map(item => [item.candidateId, item]));
+  const lines = new Map<string, string[]>();
+  for (const verdict of verdicts) {
+    if (verdict.verdict !== 'switchNeedsLifecycle') continue;
+    const candidate = byId.get(verdict.candidateId);
+    if (!candidate || candidate.kind !== 'writtenSwitch') continue;
+    const states = (verdict.states || []).filter(Boolean).join(', ');
+    const line = [
+      `model \`${candidate.fieldId}\` as a lifecycle state with a transition in and out; keep the derived availability`,
+      states ? `suggested states: ${states}` : '',
+    ].filter(Boolean).join('; ');
+    const current = lines.get(candidate.entityId) || [];
+    current.push(line);
+    lines.set(candidate.entityId, current);
+  }
+  const out: Record<string, string> = {};
+  for (const [entityId, items] of lines) out[entityId] = items.join('\n');
+  return out;
 }
 
 /**
  * The step's brain, pure. Empty candidates never call a model. After verdicts, missingJourney
- * schedules a journeys20 repair (bounded by MAX_REPAIRS); transitionUnjustified is a warning and
- * never deletes a transition; coveredByAct records a normalization and does not repair; leftovers
- * after the budget fail with a named list.
+ * schedules a journeys20 repair (bounded by MAX_REPAIRS); switchNeedsLifecycle schedules one
+ * ontology30 entity repair then revalidates; transitionUnjustified is a warning and never deletes
+ * a transition (on a written switch it records switchKeptAsField); coveredByAct records a
+ * normalization and does not repair; leftovers after the budget fail with a named list.
  */
 export function decideNs5JudgeAction(input: {
   candidates: readonly Ns5JudgeCandidate[];
   verdicts: readonly Ns5JudgeVerdict[];
   repairAttempt: number;
+  ontologyRepairAttempt?: number;
   maxRepairs?: number;
+  maxOntologyRepairs?: number;
 }): Ns5JudgeAction {
   const maxRepairs = input.maxRepairs ?? NS5_JUDGE_MAX_REPAIRS;
+  const maxOntologyRepairs = input.maxOntologyRepairs ?? NS5_JUDGE_MAX_ONTOLOGY_REPAIRS;
+  const ontologyRepairAttempt = input.ontologyRepairAttempt ?? 0;
   if (!input.candidates.length) return { type: 'approveWithoutModel' };
 
   const remaining = remainingNs5JudgeCandidates(input.candidates, input.verdicts);
@@ -450,6 +689,20 @@ export function decideNs5JudgeAction(input: {
   if (!input.verdicts.length || unanswered.length) return { type: 'callModel' };
   if (!remaining.length) {
     return warnings.length ? { type: 'approveWithWarnings', warnings } : { type: 'approveWithoutModel' };
+  }
+
+  const switchRemaining = remaining.filter((candidate): candidate is Ns5JudgeSwitchCandidate => candidate.kind === 'writtenSwitch');
+  if (switchRemaining.length) {
+    const nextOntology = ontologyRepairAttempt + 1;
+    if (nextOntology <= maxOntologyRepairs) {
+      return {
+        type: 'repairOntology',
+        attempt: nextOntology,
+        entityIds: [...new Set(switchRemaining.map(item => item.entityId))],
+        entityFeedback: formatNs5JudgeOntologyFeedback(input.candidates, input.verdicts),
+      };
+    }
+    return { type: 'fail', message: formatNs5JudgeFailMessage(switchRemaining) };
   }
 
   const nextAttempt = input.repairAttempt + 1;
@@ -489,4 +742,34 @@ export function planNs5JudgeRepairSteps(
     },
   };
   return { repair, revalidate };
+}
+
+export function planNs5JudgeOntologyRevalidate(
+  moduleName: string,
+  ontologyRepairAttempt: number,
+  repairAttempt: number,
+  finalizePlanId: string,
+): mls.msg.AIAgentStep {
+  return {
+    type: 'agent',
+    stepId: 0,
+    interaction: null,
+    stepTitle: ontologyRepairAttempt > 1 ? `Judge · ontology ${ontologyRepairAttempt}` : 'Judge · ontology revalidate',
+    status: 'waiting_dependency',
+    nextSteps: [],
+    agentName: NS5_AGENT_NAME,
+    prompt: JSON.stringify({
+      planId: 'judge35',
+      moduleName,
+      repairAttempt,
+      ontologyRepairAttempt,
+    }),
+    rags: [],
+    planning: {
+      planId: `judge35-revalidate-ontology-${ontologyRepairAttempt}`,
+      dependsOn: [finalizePlanId],
+      executionMode: 'sequential',
+      executionHost: 'client',
+    },
+  };
 }

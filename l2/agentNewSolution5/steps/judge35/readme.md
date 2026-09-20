@@ -21,17 +21,21 @@ A draft of `{ candidates, verdicts, rounds }`. No l4 source. Completeness is rep
 - Candidates: (a) human transition (`by` is a non-empty actor list) that no journey `transitionRef`
   and no process stage cites, keyed `entityId.transitionId`; (b) a `decide` whose origin has N>=2
   leaving transitions, this journey cites fewer than N, and the module as a whole also cites fewer
-  than N.
-- Verdict enum is required: `missingJourney` | `transitionUnjustified` | `coveredByAct`.
+  than N; (c) a written boolean or two-value enum on an entity with no lifecycle, whose id or title
+  is cited by a rule, a process stage or another entity's derived field (`writtenSwitch`).
+- Verdict enum is required: `missingJourney` | `transitionUnjustified` | `coveredByAct` |
+  `switchNeedsLifecycle`.
 - `missingJourney` schedules at most two nested journeys20 repairs, then fails naming the leftovers.
+- `switchNeedsLifecycle` schedules one nested ontology30 entity repair (`parallelEntityStep` with
+  per-entity feedback), then revalidates; new human transitions fall into (a) and use the journeys
+  repair. Persist after 1 ontology + 2 journey rounds ⇒ fail naming the leftovers.
 - `transitionUnjustified` is recorded on `pipeline.judge35.warnings` / `normalizations[]`. The
-  transition is not deleted.
+  transition is not deleted. On a `writtenSwitch` it records `switchKeptAsField` and is not a warning.
 - `coveredByAct` needs `coveredBy` as `journeyId.stepId`. The step is an `act` with `transitionRef`,
   the step entity is linked in the ontology index (direct relationship, including N:N), and the
   step actor is in the transition `by`. Recorded as `transitionCoveredByAct`; no repair.
 - Uncited candidates may carry `likelyCoveredBy` (same transitionId on a related entity, same actor).
-  Hint only.
-- The ontology does not regenerate.
+  Hint only. `writtenSwitch` carries `citedBy`.
 
 ## Known traps
 

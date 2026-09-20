@@ -6,5 +6,6 @@
 - `locacaoEquipamentos-before.json` — the locacao slice of that pack, before ns5_63 regenerates it.
   Includes the four index relationships (`contratoLocacaoEquipamentos` is the N:N the coverage
   hint/gate uses).
-- `locacaoEquipamentos-after.json` — filled byte-for-byte after ns5_63 (supervisor live proof).
-Not present yet.
+- `locacaoEquipamentos-after.json` — ns5_63 regenerated slice: Equipamento has no lifecycle,
+  written `emManutencao` (boolean) and derived `situacaoAtual`, plus the module rules. Input of
+  the written-switch collector (one candidate: `Equipamento.emManutencao`).

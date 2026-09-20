@@ -20,7 +20,7 @@
     "Never dispatch agentChangeBackend or agentChangeFrontend.",
     "Permanent TypeScript artifacts import Ns5* types from /_102035_/l2/solution/types.js and are emitted as const satisfies.",
     "Deterministic user text is English keys; the planner translates. Internal messages stay English literals.",
-    "workflows50 runs after journeys20-done and before ontology30: a mechanical or llm stage cites the entity and the transition it makes happen, and ontology30 declares them with the stage as owner. judge35 runs after ontology30-done: it judges journey completeness against the ontology and the processes, and repairs by a nested journeys20 round. rules40 and access60 run in parallel after judge35-done. integration70 waits for the rules40, workflows50 and access60 done-anchors. finalize80 waits for integration70-done.",
+    "workflows50 runs after journeys20-done and before ontology30: a mechanical or llm stage cites the entity and the transition it makes happen, and ontology30 declares them with the stage as owner. judge35 runs after ontology30-done: it judges journey completeness against the ontology and the processes, repairs a written switch that needs a lifecycle with one nested ontology30 entity round, then repairs missing journeys with a nested journeys20 round. rules40 and access60 run in parallel after judge35-done. integration70 waits for the rules40, workflows50 and access60 done-anchors. finalize80 waits for integration70-done.",
     "Previous flow versions are never migrated automatically."
   ],
   "invocation": {
@@ -93,7 +93,7 @@
       "doneAnchor": "judge35-done",
       "modelAlias": "reasoning",
       "artifact": "l4/{module}/pipeline/judge35-draft.json",
-      "goal": "Judge journey completeness against human ontology transitions and decide branches. Empty candidate list approves with no LLM call. missingJourney schedules a nested journeys20 repair; transitionUnjustified is recorded and the transition is kept."
+      "goal": "Judge journey completeness against human ontology transitions, decide branches and written switches cited by a rule, process or derived field. Empty candidate list approves with no LLM call. missingJourney schedules a nested journeys20 repair; switchNeedsLifecycle schedules one ontology30 entity repair then the journeys repair; transitionUnjustified is recorded and the transition or field is kept."
     },
     {
       "id": "rules40",

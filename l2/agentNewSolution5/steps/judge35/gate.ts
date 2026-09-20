@@ -82,6 +82,23 @@ function validateCoveredByAct(
   }
 }
 
+function validateSwitchNeedsLifecycle(
+  issues: Ns5JudgeGateIssue[],
+  verdict: Ns5JudgeVerdict,
+  candidate: Ns5JudgeCandidate | undefined,
+  path: string,
+): void {
+  if (!candidate) return;
+  if (candidate.kind !== 'writtenSwitch') {
+    error(issues, 'NS5_JUDGE_SWITCH_KIND', 'switchNeedsLifecycle applies only to a written switch field.', `${path}.verdict`);
+    return;
+  }
+  const states = (verdict.states || []).map(item => item.trim()).filter(Boolean);
+  if (states.length !== 2) {
+    error(issues, 'NS5_JUDGE_SWITCH_STATES', 'switchNeedsLifecycle needs states: [<on>, <off>] in English.', `${path}.states`);
+  }
+}
+
 /** The verdict list is well-formed: one row per candidate, enum, brief required on missingJourney. */
 export function validateNs5JudgeVerdicts(
   verdicts: readonly Ns5JudgeVerdict[],
@@ -107,7 +124,7 @@ export function validateNs5JudgeVerdicts(
     }
     seen.add(verdict.candidateId);
     if (!(NS5_JUDGE_VERDICTS as readonly string[]).includes(verdict.verdict)) {
-      error(issues, 'NS5_JUDGE_VERDICT', 'verdict must be missingJourney, transitionUnjustified or coveredByAct.', `${path}.verdict`);
+      error(issues, 'NS5_JUDGE_VERDICT', 'verdict must be missingJourney, transitionUnjustified, coveredByAct or switchNeedsLifecycle.', `${path}.verdict`);
     }
     if (verdict.verdict === 'missingJourney') {
       const brief = verdict.journeyBrief;
@@ -122,6 +139,9 @@ export function validateNs5JudgeVerdicts(
     }
     if (verdict.verdict === 'coveredByAct') {
       validateCoveredByAct(issues, verdict, byId.get(verdict.candidateId), context, path);
+    }
+    if (verdict.verdict === 'switchNeedsLifecycle') {
+      validateSwitchNeedsLifecycle(issues, verdict, byId.get(verdict.candidateId), path);
     }
   }
 

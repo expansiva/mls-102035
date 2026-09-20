@@ -1,5 +1,16 @@
 # judge35
 
+## 2026-09-20 (ns5_65)
+
+- Fourth verdict `switchNeedsLifecycle`: a written boolean or two-value enum on an entity with no
+  lifecycle, cited by a rule, a process stage or another entity's derived field, needs a lifecycle
+  with a transition in and out. `states` is `[on, off]` in English. One nested `ontology30`
+  `parallelEntityStep` (entity feedback) then the existing journeys20 repair. A switch the judge
+  does not confirm records `normalizations[] { kind: 'switchKeptAsField' }` and is not repaired.
+- Candidates: `writtenSwitch`, keyed `entityId.fieldId`. Match is folded (lowercase, no accent) on
+  field id and title against rule id/text, process text and other-entity derived descriptions.
+  No citation ⇒ not a candidate.
+
 ## 2026-09-19 (ns5_64)
 
 - Third verdict `coveredByAct`: a cited `act` on a related entity is the same human act. `coveredBy`

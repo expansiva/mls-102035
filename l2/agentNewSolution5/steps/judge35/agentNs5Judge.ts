@@ -23,6 +23,7 @@ import {
   readDefsJson,
   readJson,
   readPipeline,
+  rulesFile,
   workflowsFile,
   writeJson,
   writePipeline,
@@ -34,27 +35,38 @@ import {
   ns5OntologyEntityViews,
   type Ns5OntologyAnyIndex,
 } from '/_102035_/l2/solution/ontologyView.js';
+import { ns5RuleEntries } from '/_102035_/l2/solution/rulesView.js';
 import type {
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
   Ns5PipelineState,
+  Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import {
+  createFinalizeStep,
+  parallelEntityStep,
+} from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
+import {
   NS5_JUDGE_MAX_REPAIRS,
+  NS5_JUDGE_ONTOLOGY_REPAIR_ROUND,
   buildNs5JudgeTool,
   asNs5JudgeJourneys,
   collectNs5JudgeCandidates,
   decideNs5JudgeAction,
+  ns5JudgeFieldsOf,
   normalizeNs5JudgePayload,
   ns5JudgeNormalizations,
+  planNs5JudgeOntologyRevalidate,
   planNs5JudgeRepairSteps,
   type Ns5JudgeCandidate,
   type Ns5JudgeDraft,
+  type Ns5JudgeEntityView,
   type Ns5JudgeRelationshipView,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
 import {
   formatNs5JudgeGate,
   validateNs5JudgeVerdicts,
@@ -66,6 +78,7 @@ interface JudgeArgs {
   planId: string;
   moduleName: string;
   repairAttempt: number;
+  ontologyRepairAttempt: number;
   transportAttempt: number;
   gateFeedback: string;
 }
@@ -98,6 +111,7 @@ export function buildNs5JudgeHumanPrompt(input: {
     '',
     '## Candidates (judge only these)',
     'likelyCoveredBy is a deterministic hint; confirm or decide otherwise.',
+    'citedBy on a writtenSwitch is a deterministic hint; confirm switchNeedsLifecycle or keep the field.',
     input.candidates.length ? JSON.stringify(input.candidates, null, 2) : '(none)',
   ].join('\n');
 }
@@ -116,14 +130,21 @@ export async function beforeNs5JudgePromptStep(
     const parsed = resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     const mutationParent = findMutableParent(context, parentStep);
-    const { journeys, entities, processes, relationships } = await readSources(moduleName);
-    const candidates = collectNs5JudgeCandidates(asNs5JudgeJourneys(journeys), entities, processes, relationships);
+    const { journeys, entities, processes, relationships, rules } = await readSources(moduleName);
+    const candidates = collectNs5JudgeCandidates(
+      asNs5JudgeJourneys(journeys),
+      asNs5JudgeEntities(entities),
+      processes,
+      relationships,
+      rules,
+    );
     const previous = (await readJson(draftFile(moduleName, 'judge35'))) as Ns5JudgeDraft | null;
     const verdicts = previous?.verdicts || [];
     const action = decideNs5JudgeAction({
       candidates,
       verdicts,
       repairAttempt: parsed.repairAttempt,
+      ontologyRepairAttempt: parsed.ontologyRepairAttempt,
     });
 
     if (action.type === 'approveWithoutModel' || action.type === 'approveWithWarnings') {
@@ -162,6 +183,24 @@ export async function beforeNs5JudgePromptStep(
         addStep(context, mutationParent, planned.revalidate),
         updateStatus(context, mutationParent, step, hookSequential, 'completed', `judge35 scheduled journeys20 repair ${action.attempt}.`),
       ];
+    }
+
+    if (action.type === 'repairOntology') {
+      await writeJson(draftFile(moduleName, 'judge35'), {
+        candidates,
+        verdicts,
+        rounds: parsed.repairAttempt,
+      } satisfies Ns5JudgeDraft);
+      return await scheduleOntologyRepair(
+        context,
+        mutationParent,
+        step,
+        hookSequential,
+        agent.agentName,
+        moduleName,
+        action,
+        parsed.repairAttempt,
+      );
     }
 
     if (action.type === 'fail') {
@@ -218,8 +257,14 @@ export async function afterNs5JudgePromptStep(
       throw new Error(failure);
     }
 
-    const { journeys, entities, processes, relationships } = await readSources(moduleName);
-    const candidates = collectNs5JudgeCandidates(asNs5JudgeJourneys(journeys), entities, processes, relationships);
+    const { journeys, entities, processes, relationships, rules } = await readSources(moduleName);
+    const candidates = collectNs5JudgeCandidates(
+      asNs5JudgeJourneys(journeys),
+      asNs5JudgeEntities(entities),
+      processes,
+      relationships,
+      rules,
+    );
     const verdicts = normalizeNs5JudgePayload(payload);
     const gate = validateNs5JudgeVerdicts(verdicts, candidates, {
       journeys: asNs5JudgeJourneys(journeys),
@@ -246,6 +291,7 @@ export async function afterNs5JudgePromptStep(
       candidates,
       verdicts,
       repairAttempt: parsed.repairAttempt,
+      ontologyRepairAttempt: parsed.ontologyRepairAttempt,
     });
 
     if (action.type === 'repairJourneys') {
@@ -260,6 +306,24 @@ export async function afterNs5JudgePromptStep(
         addStep(context, mutationParent, planned.revalidate),
         updateStatus(context, mutationParent, step, hookSequential, 'completed', `judge35 scheduled journeys20 repair ${action.attempt}.`),
       ];
+    }
+
+    if (action.type === 'repairOntology') {
+      await writeJson(draftFile(moduleName, 'judge35'), {
+        candidates,
+        verdicts,
+        rounds: parsed.repairAttempt,
+      } satisfies Ns5JudgeDraft);
+      return await scheduleOntologyRepair(
+        context,
+        mutationParent,
+        step,
+        hookSequential,
+        agent.agentName,
+        moduleName,
+        action,
+        parsed.repairAttempt,
+      );
     }
 
     if (action.type === 'fail') {
@@ -308,17 +372,65 @@ async function persistApproval(
   return draftPath;
 }
 
+async function scheduleOntologyRepair(
+  context: mls.msg.ExecutionContext,
+  mutationParent: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+  agentName: string,
+  moduleName: string,
+  action: Extract<ReturnType<typeof decideNs5JudgeAction>, { type: 'repairOntology' }>,
+  repairAttempt: number,
+): Promise<mls.msg.AgentIntent[]> {
+  const plan = await readJson<Ns5OntologyV3PlanDraft>(draftFile(moduleName, 'ontology30-plan'));
+  if (!plan || !plan.entities?.length) {
+    throw new Error(`judge35 cannot repair ontology: ontology30 plan draft is missing for ${moduleName}.`);
+  }
+  const round = NS5_JUDGE_ONTOLOGY_REPAIR_ROUND + action.attempt - 1;
+  const parallel = parallelEntityStep(context, step, agentName, plan, round, action.entityIds, action.entityFeedback);
+  const finalizePlanId = `ontology30-finalize-${round}`;
+  return [
+    parallel,
+    addStep(context, mutationParent, createFinalizeStep(moduleName, round, [String(parallel.step.planning?.planId || '')])),
+    addStep(context, mutationParent, planNs5JudgeOntologyRevalidate(moduleName, action.attempt, repairAttempt, finalizePlanId)),
+    updateStatus(context, mutationParent, step, hookSequential, 'completed', `judge35 scheduled ontology30 entity repair ${action.attempt}: ${action.entityIds.join(', ')}.`),
+  ];
+}
+
+function asNs5JudgeEntities(views: ReturnType<typeof ns5OntologyEntityViews>): Ns5JudgeEntityView[] {
+  return views.map(view => {
+    const split = ns5JudgeFieldsOf(view.source);
+    return {
+      entityId: view.entityId,
+      transitions: view.transitions,
+      lifecycleStates: view.lifecycleStates,
+      fields: split.fields,
+      derivedFields: split.derivedFields,
+    };
+  });
+}
+
 async function readSources(moduleName: string): Promise<{
   journeys: Ns5JourneyArtifact[];
   entities: ReturnType<typeof ns5OntologyEntityViews>;
   processes: Ns5WorkflowsArtifact['processes'];
   relationships: Ns5JudgeRelationshipView[];
+  rules: ReturnType<typeof ns5RuleEntries>;
 }> {
   await readModule(moduleName);
   const journeys = await readJourneys(moduleName);
   const { entities, relationships } = await readOntology(moduleName);
-  const workflows = await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
-  return { journeys, entities, processes: workflows?.processes || [], relationships };
+  const [workflows, rulesArtifact] = await Promise.all([
+    readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName)),
+    readDefsJson<Ns5RulesAny>(rulesFile(moduleName)),
+  ]);
+  return {
+    journeys,
+    entities,
+    processes: workflows?.processes || [],
+    relationships,
+    rules: rulesArtifact ? ns5RuleEntries(rulesArtifact) : [],
+  };
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
@@ -437,6 +549,7 @@ function resolveArgs(context: mls.msg.ExecutionContext, value: unknown): JudgeAr
     planId: text(root.planId) || 'judge35',
     moduleName,
     repairAttempt: integer(root.repairAttempt),
+    ontologyRepairAttempt: integer(root.ontologyRepairAttempt),
     transportAttempt: integer(root.transportAttempt),
     gateFeedback: text(root.gateFeedback),
   };
