@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "2026-09-20-p2-menu-v2.2",
+  "moduleName": "agendaClinica",
+  "userLanguage": "pt-BR",
+  "device": "web",
+  "tree": [
+    {
+      "id": "inicio_profissional",
+      "kind": "page",
+      "label": "Início",
+      "organisms": [
+        { "kind": "summary", "text": "Resumo da minha agenda." }
+      ],
+      "action": "keep"
+    },
+    {
+      "id": "agenda_diaria",
+      "kind": "page",
+      "label": "Minha agenda",
+      "organisms": [
+        { "kind": "list", "text": "Veja somente as minhas consultas do dia." },
+        { "kind": "form", "text": "Registre o atendimento." }
+      ],
+      "action": "change"
+    },
+    {
+      "id": "meu_perfil_profissional",
+      "kind": "hub",
+      "label": "Meu cadastro",
+      "context": "Profissional",
+      "text": "Seu cadastro profissional já está selecionado.",
+      "children": [
+        {
+          "id": "docs_profissional",
+          "kind": "group",
+          "label": "Documentos",
+          "text": "Pastas de documentos profissionais.",
+          "children": [
+            {
+              "id": "perfil_profissional",
+              "kind": "page",
+              "label": "Meus dados profissionais",
+              "organisms": [
+                { "kind": "detail", "text": "Consulte seus dados profissionais." }
+              ],
+              "action": "new"
+            }
+          ],
+          "action": "new"
+        }
+      ],
+      "action": "new"
+    },
+    {
+      "id": "inicio_recepcionista",
+      "kind": "page",
+      "label": "Início recepção",
+      "organisms": [
+        { "kind": "inbox", "text": "Consultas que aguardam confirmação." }
+      ],
+      "action": "keep"
+    },
+    {
+      "id": "hidden_hub",
+      "kind": "hub",
+      "label": "Central oculta",
+      "context": "Recepcionista",
+      "text": "Hub que o ator não recebe inteiro.",
+      "children": [
+        {
+          "id": "pacientes",
+          "kind": "page",
+          "label": "Pacientes",
+          "organisms": [
+            { "kind": "list", "text": "Localize pacientes cadastrados." }
+          ],
+          "action": "change"
+        }
+      ],
+      "action": "keep"
+    }
+  ],
+  "authorities": {
+    "actor:profissional": [
+      "inicio_profissional",
+      "agenda_diaria",
+      "meu_perfil_profissional"
+    ],
+    "actor:recepcionista": [
+      "inicio_recepcionista",
+      "pacientes"
+    ]
+  },
+  "meta": {
+    "journeys": {},
+    "processes": {},
+    "entities": {},
+    "removed": [
+      {
+        "id": "central_profissional",
+        "kind": "hub",
+        "label": "Minha agenda antiga",
+        "context": "Profissional",
+        "text": "Hub anterior da agenda.",
+        "children": [
+          {
+            "id": "painel_antigo",
+            "kind": "page",
+            "label": "Painel antigo",
+            "organisms": [
+              { "kind": "alerts", "text": "Alertas da agenda anterior." }
+            ],
+            "action": "remove"
+          }
+        ],
+        "action": "remove"
+      }
+    ]
+  }
+}

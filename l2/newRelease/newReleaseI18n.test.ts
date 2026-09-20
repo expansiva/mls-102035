@@ -35,6 +35,7 @@ test('every widget keeps visible copy in external message bundles', () => {
     'widgets/rules.ts',
     'widgets/workflows.ts',
     'widgets/integration.ts',
+    'widgets/review.ts',
   ]
     .map(path => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/^\/\/\/.*$/gm, ''));
   for (const source of widgetSources) {

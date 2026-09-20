@@ -76,6 +76,28 @@ void test('write then read is byte for byte the same message', async () => {
   assert.deepEqual(await pool.readPoolMessage(written), { ...MESSAGE, artifacts: [...MESSAGE.artifacts] });
 });
 
+void test('listPoolBoxForProject lists the selected project, not actualProject', async () => {
+  const host = installHost();
+  const pool = await loadPool();
+  const folder = 'agendaClinica/pool/l4';
+  seed(host, folder, '20260920120000_m-20260920120000_1');
+  const other: Stored = {
+    project: 102099, level: 4, folder, shortName: '20260920120000_other-20260920120000_1', extension: '.json',
+    status: 'changed', versionRef: '1', content: '',
+    getValueInfo: async () => ({ content: other.content }),
+    getContent: async () => other.content,
+  };
+  host.files[keyOf(other)] = other;
+
+  assert.deepEqual(pool.listPoolBoxForProject(PROJECT, 'agendaClinica', 'l4').map(file => file.shortName), [
+    '20260920120000_m-20260920120000_1',
+  ]);
+  assert.deepEqual(pool.listPoolBoxForProject(102099, 'agendaClinica', 'l4').map(file => file.shortName), [
+    '20260920120000_other-20260920120000_1',
+  ]);
+  assert.equal(pool.listPoolBoxForProject(102035, 'agendaClinica', 'l4').length, 0);
+});
+
 void test('listPoolBox is oldest first by name and sees the host disk', async () => {
   const host = installHost();
   const pool = await loadPool();
