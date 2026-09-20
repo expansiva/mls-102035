@@ -21,6 +21,8 @@ new-release--widgets--index-102035 {
     box-shadow: 0 1.25rem 3rem rgba(15, 23, 42, .08);
     font-family: var(--font-family-sans, Inter, system-ui, sans-serif);
     line-height: 1.45;
+    container-type: inline-size;
+    container-name: nr-index;
   }
 
   .nr-index :where(button, input, select, textarea, summary, [tabindex]):focus-visible {
@@ -32,23 +34,28 @@ new-release--widgets--index-102035 {
     position: sticky;
     z-index: 3;
     top: 0;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    align-items: stretch;
     gap: .18rem;
     padding: .55rem 1.15rem 0;
-    overflow-x: auto;
+    overflow-x: hidden;
     border-bottom: 1px solid var(--border-subtle, #e4e9f0);
     background: color-mix(in srgb, var(--surface-bg, #fff) 96%, transparent);
     backdrop-filter: blur(.7rem);
-    scrollbar-width: thin;
   }
 
   .nr-index__tabs button {
     position: relative;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    flex: none;
-    gap: .42rem;
-    padding: .7rem .62rem .66rem;
+    justify-content: flex-start;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    gap: .22rem;
+    padding: .55rem .2rem .5rem;
     border: 0;
     outline: none;
     background: transparent;
@@ -62,9 +69,9 @@ new-release--widgets--index-102035 {
   .nr-index__tabs button::after {
     content: '';
     position: absolute;
-    right: .55rem;
+    right: .2rem;
     bottom: -1px;
-    left: .55rem;
+    left: .2rem;
     height: .18rem;
     border-radius: .2rem .2rem 0 0;
     background: transparent;
@@ -72,6 +79,7 @@ new-release--widgets--index-102035 {
 
   .nr-tab__icon {
     display: grid;
+    flex: none;
     width: 1.15rem;
     height: 1.15rem;
     place-items: center;
@@ -88,6 +96,20 @@ new-release--widgets--index-102035 {
     transition: fill .16s ease, color .16s ease;
   }
 
+  .nr-tab__label {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+    color: inherit;
+    font: inherit;
+    letter-spacing: -.01em;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
   .nr-index__tabs button:hover { color: var(--text-strong, #111827); }
   .nr-index__tabs button:focus-visible { border-radius: .45rem; outline-offset: -.18rem; }
   .nr-index__tabs button.is-active { color: var(--selected-text, #0d5296); }
@@ -95,12 +117,47 @@ new-release--widgets--index-102035 {
   .nr-index__tabs button.is-active .nr-tab__icon svg { fill: color-mix(in srgb, currentColor 28%, transparent); }
 
   .nr-tab__source {
+    position: absolute;
+    top: .32rem;
+    right: .18rem;
     width: .42rem;
     height: .42rem;
     border: .1rem solid var(--surface-bg, #fff);
     border-radius: 50%;
     background: var(--status-warning-text, #9a6700);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-warning-text, #9a6700) 35%, transparent);
+  }
+
+  @container nr-index (max-width: 419px) {
+    .nr-index__tabs {
+      display: flex;
+      gap: .1rem;
+    }
+
+    .nr-index__tabs button {
+      flex: 0 0 2rem;
+      width: 2rem;
+      min-width: 2rem;
+      padding: .5rem .12rem .42rem;
+    }
+
+    .nr-index__tabs button.is-active {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 6.5rem;
+    }
+
+    .nr-index__tabs button:not(.is-active) .nr-tab__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   }
 
   .nr-index__tobe {

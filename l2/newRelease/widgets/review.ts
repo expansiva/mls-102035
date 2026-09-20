@@ -11,6 +11,7 @@ import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRel
 import {
   actorIdFromKey,
   buildReviewView,
+  MENU_ACTIONS,
   REVIEW_ALL_ACTORS,
   type ReviewNodeDetail,
   type ReviewNodeScope,
@@ -31,9 +32,10 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private menuRead: MenuReadResult = EMPTY_MENU;
   @state() private pool: ReviewPoolBoxView[] = [];
   @state() private loading = false;
-  @state() private selectedActor = REVIEW_ALL_ACTORS;
+  @state() private selectedActor = '';
   @state() private selectedId = '';
   @state() private selectedScope: ReviewNodeScope = 'future';
+  @state() private expandedIds: string[] = [];
 
   private loadToken = 0;
 
@@ -41,9 +43,10 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   updated(changed: PropertyValues) {
     if (changed.has('project') || changed.has('moduleName') || changed.has('version') || changed.has('data')) {
-      this.selectedActor = REVIEW_ALL_ACTORS;
+      this.selectedActor = '';
       this.selectedId = '';
       this.selectedScope = 'future';
+      this.expandedIds = [];
       void this.load();
     }
   }
@@ -91,11 +94,45 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.selectedActor = actor;
     this.selectedId = '';
     this.selectedScope = 'future';
+    this.expandedIds = [];
   }
 
   private selectNode(id: string, scope: ReviewNodeScope) {
     this.selectedId = id;
     this.selectedScope = scope;
+  }
+
+  private ancestorIds(nodes: ReviewTreeNode[], id: string): string[] {
+    const found: string[] = [];
+    const walk = (list: ReviewTreeNode[], trail: string[]): boolean => {
+      for (const node of list) {
+        if (node.id === id) {
+          found.push(...trail);
+          return true;
+        }
+        if (node.children.length && walk(node.children, [...trail, node.id])) return true;
+      }
+      return false;
+    };
+    walk(nodes, []);
+    return found;
+  }
+
+  private openIds(view: ReviewView): Set<string> {
+    const ids = new Set(this.expandedIds);
+    const forest = view.selectedScope === 'removed' ? view.removed : view.tree;
+    for (const id of this.ancestorIds(forest, view.selectedId)) ids.add(id);
+    return ids;
+  }
+
+  private toggleExpand(id: string) {
+    const view = this.view();
+    const wasOpen = this.openIds(view).has(id);
+    const forest = view.selectedScope === 'removed' ? view.removed : view.tree;
+    if (wasOpen && this.ancestorIds(forest, view.selectedId).includes(id)) this.selectNode(id, view.selectedScope);
+    this.expandedIds = wasOpen
+      ? this.expandedIds.filter(item => item !== id)
+      : [...this.expandedIds, id];
   }
 
   private actionClass(action: string): string {
@@ -110,26 +147,37 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
   }
 
-  private renderTree(nodes: ReviewTreeNode[], scope: ReviewNodeScope, depth = 0): TemplateResult {
-    const view = this.view();
+  private renderMenuList(nodes: ReviewTreeNode[], scope: ReviewNodeScope, view: ReviewView, openIds: Set<string>): TemplateResult {
     return html`
-      <ul role=${depth === 0 ? 'tree' : 'group'}>
-        ${nodes.map(node => html`
-          <li role="none">
-            <button
-              type="button"
-              role="treeitem"
-              class=${`nr-review__node ${this.actionClass(node.action)}${view.selectedId === node.id && view.selectedScope === scope ? ' is-active' : ''}`}
-              aria-label=${this.nodeAria(node)}
-              aria-selected=${view.selectedId === node.id && view.selectedScope === scope ? 'true' : 'false'}
-              @click=${() => this.selectNode(node.id, scope)}
-            >
-              <span class=${`nr-review__label ${this.actionClass(node.action)}`}>${node.label}</span>
-              <span class=${`nr-review__badge ${this.actionClass(node.action)}`}>${this.t(`review.action.${node.action}`)}</span>
-            </button>
-            ${node.children.length ? this.renderTree(node.children, scope, depth + 1) : nothing}
-          </li>
-        `)}
+      <ul>
+        ${nodes.map(node => {
+          const selected = view.selectedId === node.id && view.selectedScope === scope;
+          const expandable = node.children.length > 0;
+          const expanded = expandable && openIds.has(node.id);
+          return html`
+            <li>
+              <div class="nr-review__row">
+                ${expandable ? html`
+                  <button
+                    type="button"
+                    class=${`nr-review__toggle${expanded ? ' is-open' : ''}`}
+                    aria-expanded=${expanded ? 'true' : 'false'}
+                    aria-label=${this.nodeAria(node)}
+                    @click=${() => this.toggleExpand(node.id)}
+                  ></button>
+                ` : html`<span class="nr-review__toggle is-leaf" aria-hidden="true"></span>`}
+                <button
+                  type="button"
+                  class=${`nr-review__link ${this.actionClass(node.action)}${selected ? ' is-active' : ''}`}
+                  aria-label=${this.nodeAria(node)}
+                  aria-current=${selected ? 'true' : 'false'}
+                  @click=${() => this.selectNode(node.id, scope)}
+                >${node.label}</button>
+              </div>
+              ${expanded ? this.renderMenuList(node.children, scope, view, openIds) : nothing}
+            </li>
+          `;
+        })}
       </ul>
     `;
   }
@@ -195,6 +243,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         </section>
       `;
     }
+    const openIds = this.openIds(view);
     return html`
       <div class="nr-review__toolbar">
         <label>
@@ -204,20 +253,20 @@ export class NewReleaseReview102035 extends StateLitElement {
             ${view.actors.map(actor => html`<option value=${actor.key} ?selected=${view.selectedActor === actor.key}>${this.actorTitle(actor.key)}</option>`)}
           </select>
         </label>
+        <ul class="nr-review__legend">
+          ${MENU_ACTIONS.map(action => html`<li class=${this.actionClass(action)}>${this.t(`review.action.${action}`)}</li>`)}
+        </ul>
       </div>
       <div class="nr-review__split">
-        <div class="nr-review__trees">
-          <section class="nr-review__tree" aria-label=${this.t('review.futureTree')}>
-            <h3>${this.t('review.futureTree')}</h3>
-            ${this.renderTree(view.tree, 'future')}
-          </section>
+        <nav class="nr-review__menu" aria-label=${this.t('review.futureTree')}>
+          ${this.renderMenuList(view.tree, 'future', view, openIds)}
           ${view.removed.length ? html`
-            <section class="nr-review__tree is-removed" aria-label=${this.t('review.removedTree')}>
-              <h3>${this.t('review.removedTree')}</h3>
-              ${this.renderTree(view.removed, 'removed')}
-            </section>
+            <details class="nr-review__removed" ?open=${view.selectedScope === 'removed'}>
+              <summary>${this.t('review.removedTree')}</summary>
+              ${this.renderMenuList(view.removed, 'removed', view, openIds)}
+            </details>
           ` : nothing}
-        </div>
+        </nav>
         ${this.renderDetail(view.selected)}
       </div>
       <div class="nr-review__continue">

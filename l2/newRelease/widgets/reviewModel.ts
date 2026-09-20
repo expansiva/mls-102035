@@ -200,6 +200,12 @@ export function actorIdFromKey(key: string): string {
   return key.startsWith('actor:') ? key.slice('actor:'.length) : key;
 }
 
+export function resolveSelectedActor(actors: ReviewActorOption[], selected: string): string {
+  if (selected === REVIEW_ALL_ACTORS) return REVIEW_ALL_ACTORS;
+  if (actors.some(actor => actor.key === selected)) return selected;
+  return actors[0]?.key || REVIEW_ALL_ACTORS;
+}
+
 function toTree(nodes: MenuNode[]): ReviewTreeNode[] {
   return nodes.map(node => ({
     id: node.id,
@@ -331,7 +337,7 @@ export function buildReviewView(input: ReviewInput): ReviewView {
     };
   }
   const actors = Object.keys(parsed.menu.authorities).map(key => ({ key, actorId: actorIdFromKey(key) }));
-  const selectedActor = actors.some(actor => actor.key === input.selectedActor) ? input.selectedActor : REVIEW_ALL_ACTORS;
+  const selectedActor = resolveSelectedActor(actors, input.selectedActor);
   const future = menuTreeForActor(parsed.menu, selectedActor);
   const tree = toTree(future);
   const removed = selectedActor === REVIEW_ALL_ACTORS ? toTree(parsed.menu.removed) : [];

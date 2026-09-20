@@ -11,6 +11,7 @@ import {
   MENU_SCHEMA_VERSION,
   menuTreeForActor,
   parseReviewMenu,
+  resolveSelectedActor,
   REVIEW_ALL_ACTORS,
   type MenuNode,
   type ReviewInput,
@@ -85,6 +86,24 @@ test('Todos keeps original tree order and exposes removed as a separate forest',
   assert.equal(ready.showContinue, true);
   assert.equal(ready.showCalculate, false);
   assert.deepEqual(menuTreeForActor(parsed.menu, REVIEW_ALL_ACTORS).map(node => node.id), parsed.menu.tree.map(node => node.id));
+});
+
+test('empty or unknown selection opens the first authorities actor, not Todos', () => {
+  const first = view({ selectedActor: '' });
+  assert.equal(first.selectedActor, 'actor:profissional');
+  assert.deepEqual(labels(first.tree), ['Início', 'Minha agenda', 'Meu cadastro']);
+  assert.deepEqual(first.removed, []);
+  assert.equal(first.tree[2].children.length, 1);
+
+  const unknown = view({ selectedActor: 'actor:ghost' });
+  assert.equal(unknown.selectedActor, 'actor:profissional');
+  assert.deepEqual(unknown.removed, []);
+
+  const everyone = view({ selectedActor: REVIEW_ALL_ACTORS });
+  assert.equal(everyone.selectedActor, REVIEW_ALL_ACTORS);
+  assert.equal(everyone.removed.length, 1);
+  assert.equal(resolveSelectedActor(first.actors, ''), 'actor:profissional');
+  assert.equal(resolveSelectedActor(first.actors, REVIEW_ALL_ACTORS), REVIEW_ALL_ACTORS);
 });
 
 test('actor filter uses authorities order, inherits hub descendants and promotes orphans', () => {

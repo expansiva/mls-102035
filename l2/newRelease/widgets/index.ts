@@ -58,6 +58,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private t: NewReleaseTranslate = key => key;
   private languageObserver?: MutationObserver;
   private loadToken = 0;
+  private languageToken = 0;
   private validationTimer?: number;
   private mutationQueue: Promise<void> = Promise.resolve();
   private pendingMutations = 0;
@@ -91,7 +92,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async loadLanguage() {
-    this.t = createNewReleaseTranslator(await loadNewReleaseMessages(this.project || Number(mls.actualProject || 0)));
+    const token = ++this.languageToken;
+    const project = this.project || Number(mls.actualProject || 0);
+    const bundles = await loadNewReleaseMessages(project);
+    if (token !== this.languageToken) return;
+    this.t = createNewReleaseTranslator(bundles);
     this.requestUpdate();
   }
 
@@ -201,18 +206,23 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private renderTabs() {
     return html`
       <nav class="nr-index__tabs" role="tablist" aria-label=${this.t('a11y.tabs')} @keydown=${this.onTabKeydown}>
-        ${TABS.map(tab => html`
-          <button
-            id=${`nr-tab-${tab}`}
-            type="button"
-            role="tab"
-            class=${this.activeTab === tab ? 'is-active' : ''}
-            aria-selected=${this.activeTab === tab ? 'true' : 'false'}
-            aria-controls=${`nr-panel-${tab}`}
-            tabindex=${this.activeTab === tab ? '0' : '-1'}
-            @click=${() => void this.activateTab(tab)}
-          ><span class="nr-tab__icon">${this.tabIcon(tab)}</span><span>${this.t(`tab.${tab}`)}</span>${this.tabHasTobe(tab) ? html`<i class="nr-tab__source" title=${this.t('tobe.tabSource')}></i>` : nothing}</button>
-        `)}
+        ${TABS.map(tab => {
+          const label = this.t(`tab.${tab}`);
+          return html`
+            <button
+              id=${`nr-tab-${tab}`}
+              type="button"
+              role="tab"
+              class=${this.activeTab === tab ? 'is-active' : ''}
+              aria-label=${label}
+              title=${label}
+              aria-selected=${this.activeTab === tab ? 'true' : 'false'}
+              aria-controls=${`nr-panel-${tab}`}
+              tabindex=${this.activeTab === tab ? '0' : '-1'}
+              @click=${() => void this.activateTab(tab)}
+            ><span class="nr-tab__icon">${this.tabIcon(tab)}</span><span class="nr-tab__label">${label}</span>${this.tabHasTobe(tab) ? html`<i class="nr-tab__source" title=${this.t('tobe.tabSource')}></i>` : nothing}</button>
+          `;
+        })}
       </nav>
     `;
   }
