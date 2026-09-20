@@ -58,6 +58,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private t: NewReleaseTranslate = key => key;
   private languageObserver?: MutationObserver;
   private loadToken = 0;
+  private languageToken = 0;
   private validationTimer?: number;
   private mutationQueue: Promise<void> = Promise.resolve();
   private pendingMutations = 0;
@@ -91,7 +92,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async loadLanguage() {
-    this.t = createNewReleaseTranslator(await loadNewReleaseMessages(this.project || Number(mls.actualProject || 0)));
+    const token = ++this.languageToken;
+    const project = this.project || Number(mls.actualProject || 0);
+    const bundles = await loadNewReleaseMessages(project);
+    if (token !== this.languageToken) return;
+    this.t = createNewReleaseTranslator(bundles);
     this.requestUpdate();
   }
 
