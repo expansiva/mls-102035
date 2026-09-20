@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/helpers/plDispatch.ts" enhancement="_blank"/>
 
 import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
-import { ownerStepId, PL_AGENT_NAME, type PlStepId } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import { ownerStepId, type PlStepId } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 
 export type PlStepBeforePrompt = (
   agent: IAgentMeta,
@@ -36,29 +36,6 @@ export function planIdOf(step: mls.msg.AIAgentStep): string {
 export function hooksFor(planId: string): PlStepHooks | undefined {
   const stepId = ownerStepId(planId);
   return stepId ? PL_STEP_HOOKS[stepId] : undefined;
-}
-
-export function plStatusMessage(
-  agent: IAgentMeta,
-  context: mls.msg.ExecutionContext,
-  message: string,
-): mls.msg.AgentIntentAddMessageAI {
-  return {
-    type: 'add-message-ai',
-    skipRootLLM: true,
-    request: {
-      action: 'addMessageAI',
-      agentName: agent.agentName,
-      inputAI: [
-        { type: 'system', content: `<!-- modelType: general -->\n${message}` },
-        { type: 'human', content: message },
-      ],
-      taskTitle: 'planner L4',
-      threadId: context.message.threadId,
-      userMessage: context.message.content,
-      longTermMemory: { taskName: 'plannerL4', flowName: PL_AGENT_NAME, statusOnly: 'true' },
-    },
-  };
 }
 
 export function addPlStep(

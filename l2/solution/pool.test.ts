@@ -240,3 +240,41 @@ void test('deletePoolMessageAt checks the pointed pipeline, not the l4 one', asy
   assert.equal(await pool.deletePoolMessageAt(l2Info, file, path), path);
   assert.deepEqual(host.deleted, [`${folder}/${file.shortName}`]);
 });
+
+// p2_09: o L2 guarda um `menu.json` dentro da própria caixa. Nome fixo, sem `_<thread>_<round>`, não é
+// mensagem do pool — a caixa é do dono e ele pode guardar o que quiser lá. Ignorar, não recusar.
+void test('listPoolBox ignores a .json that is not a pool message name, from index and from disk', async () => {
+  const host = installHost();
+  const pool = await loadPool();
+  const folder = 'mensalidadesAcademia/pool/l2';
+  seed(host, folder, '20260918090000_m-20260918090000_1');
+  seed(host, folder, 'menu');
+  host.listed[`${PROJECT}_4_${folder}`] = [
+    { project: PROJECT, level: 4, folder, shortName: '20260918110000_m-20260918100000_1', extension: '.json' },
+    { project: PROJECT, level: 4, folder, shortName: 'menu', extension: '.json' },
+    { project: PROJECT, level: 4, folder, shortName: 'draft-notes', extension: '.json' },
+  ];
+
+  assert.deepEqual(pool.listPoolBox('mensalidadesAcademia', 'l2').map(file => file.shortName), [
+    '20260918090000_m-20260918090000_1',
+    '20260918110000_m-20260918100000_1',
+  ]);
+});
+
+void test('a box with only non-message files is not pending', async () => {
+  const host = installHost();
+  const pool = await loadPool();
+  seed(host, 'mensalidadesAcademia/pool/l2', 'menu');
+
+  assert.equal(pool.poolHasPending('mensalidadesAcademia'), false);
+});
+
+void test('isPoolMessageShortName accepts what writePoolMessage generates and rejects the rest', async () => {
+  const pool = await loadPool();
+  assert.equal(pool.isPoolMessageShortName('20260918090000_mensalidadesAcademia-20260918090000_1'), true);
+  assert.equal(pool.isPoolMessageShortName('menu'), false);
+  assert.equal(pool.isPoolMessageShortName('20260918090000_m-20260918090000'), false);
+  assert.equal(pool.isPoolMessageShortName('m-20260918090000_1'), false);
+  // thread com underscore não é nome ilegal de arquivo; quem recusa isso é o normalize, na leitura.
+  assert.equal(pool.isPoolMessageShortName('20260918090000_m_20260918090000_1'), true);
+});

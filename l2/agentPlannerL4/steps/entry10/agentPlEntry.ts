@@ -11,13 +11,13 @@ import {
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
   PL_STEP_HOOKS,
+  addPlStep,
   drainWaitingSiblings,
-  plStatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 
 export async function beforePlEntryPromptStep(
-  agent: IAgentMeta,
+  _agent: IAgentMeta,
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
   step: mls.msg.AIAgentStep,
@@ -31,7 +31,16 @@ export async function beforePlEntryPromptStep(
   const refusal = plEntryRefusal(invocation, facts);
   if (refusal) {
     return [
-      plStatusMessage(agent, context, refusal),
+      addPlStep(context, parentStep, {
+        type: 'result',
+        stepId: 0,
+        status: 'completed',
+        interaction: null,
+        nextSteps: [],
+        stepTitle: 'Status',
+        result: refusal,
+        planning: { planId: 'status', dependsOn: [], executionMode: 'sequential', executionHost: 'client' },
+      } as mls.msg.AIResultStep),
       ...drainWaitingSiblings(context, step, hookSequential, `stopped: ${refusal}`),
       updateStatus(context, parentStep, step, hookSequential, 'completed', refusal),
     ];

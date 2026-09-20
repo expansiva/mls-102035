@@ -4,23 +4,18 @@ import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import {
   applyPlLoopDecision,
-  createPlInvokeStep,
-  createPlLoopWaitStep,
   existingModuleName,
   gatherPlLoopDecision,
-  invokePlanId,
-  nextLoopWaitTick,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
   addPlStep,
-  planIdOf,
   PL_STEP_HOOKS,
-  plStatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
+import { listPoolBox } from '/_102035_/l2/solution/pool.js';
 
 export async function beforePlLoopPromptStep(
-  agent: IAgentMeta,
+  _agent: IAgentMeta,
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
   step: mls.msg.AIAgentStep,
@@ -37,42 +32,17 @@ export async function beforePlLoopPromptStep(
     || memoryString(context, 'moduleName')
     || moduleNameFromPrompt(step);
   const decision = await gatherPlLoopDecision(moduleName);
-  await applyPlLoopDecision(moduleName, decision, new Date());
+  // Suspension: do not invoke other planners. Keep disputed recording so the round rule stays live.
+  await applyPlLoopDecision(moduleName, { ...decision, invoke: [] }, new Date());
+  const l1Count = listPoolBox(moduleName, 'l1').length;
+  const l2Count = listPoolBox(moduleName, 'l2').length;
+  const status = decision.status
+    || `pool/l1 ${l1Count} pending, pool/l2 ${l2Count} pending. Dispatch to other planners is suspended.`;
 
-  const intents: mls.msg.AgentIntent[] = [];
-  const childIds: string[] = [];
-  for (const item of decision.invoke) {
-    const planId = invokePlanId(item.box, item.thread, item.round);
-    childIds.push(planId);
-    intents.push(addPlStep(context, parentStep, createPlInvokeStep({
-      agentName: item.agentName,
-      moduleName,
-      thread: item.thread,
-      file: item.path,
-      planId,
-    })));
-  }
-
-  if (childIds.length) {
-    intents.push(addPlStep(
-      context,
-      parentStep,
-      createPlLoopWaitStep(moduleName, childIds, nextLoopWaitTick(planIdOf(step))),
-    ));
-  } else {
-    if (decision.status) intents.push(plStatusMessage(agent, context, decision.status));
-    intents.push(doneAnchor(context, parentStep, moduleName, decision.status, decision.maxRound));
-  }
-
-  intents.push(updateStatus(
-    context,
-    parentStep,
-    step,
-    hookSequential,
-    'completed',
-    decision.status || `loop30 scheduled ${childIds.length} planner step(s).`,
-  ));
-  return intents;
+  return [
+    doneAnchor(context, parentStep, moduleName, status, decision.maxRound, l1Count, l2Count),
+    updateStatus(context, parentStep, step, hookSequential, 'completed', status),
+  ];
 }
 
 export async function afterPlLoopPromptStep(
@@ -92,6 +62,8 @@ function doneAnchor(
   moduleName: string,
   status: string,
   maxRound: number,
+  l1Count: number,
+  l2Count: number,
 ): mls.msg.AgentIntentAddStep {
   return addPlStep(context, parentStep, {
     type: 'result',
@@ -100,7 +72,9 @@ function doneAnchor(
     stepTitle: 'Loop done',
     status: 'completed',
     nextSteps: [],
-    result: JSON.stringify({ moduleName, status, maxRound, completedStep: 'loop30', nextStep: '' }),
+    result: JSON.stringify({
+      moduleName, status, maxRound, l1Count, l2Count, completedStep: 'loop30', nextStep: '',
+    }),
     planning: { planId: 'loop30-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
 }

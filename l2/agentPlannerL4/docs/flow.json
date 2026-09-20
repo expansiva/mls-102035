@@ -2,7 +2,7 @@
   "flowId": "agentPlannerL4",
   "schemaVersion": "2026-09-18-pl-flow-v1",
   "status": "entry10",
-  "description": "L4 planner: list the module artifacts and dispatch L2/L1 planners through the module pool. No LLM. Does not read ontology to opine.",
+  "description": "L4 planner: list the module artifacts and write pool/l1 and pool/l2. Dispatch to other planners is suspended (Wagner, 18/09) so the L4 planner can be tested alone. No LLM. Does not read ontology to opine.",
   "canonicalReferences": [
     "mls-base/skills/00_index.md",
     "mls-base/skills/agentsBestPractices.md",
@@ -16,6 +16,7 @@
     "Pipeline state of the module lives on disk at l4/{module}/pipeline/pipeline.json. The planner records l5Adjusted there; it does not own the NS5 status.",
     "Each owner traces only on its own pipeline.json (L4 on l4, L2 on l2). One file, one writer.",
     "workspaceDependencies of the current project's l5/config.json must list 102020 and 102021 so the platform finds the planners by name. Missing ids are appended at the end.",
+    "Dispatch to other planners is suspended (Wagner, 18/09): write the pool boxes and stop. createPlInvokeStep stays unused by the steps; decidePlLoop still runs (invoke ignored). They come back when L2/L1 are published.",
     "Pending pool messages block a new run. /estimate is not available yet. There is no /rebuild.",
     "Deterministic user text is English. Internal messages stay English literals."
   ],
@@ -48,7 +49,7 @@
       "dependsOn": ["entry10-done"],
       "doneAnchor": "dispatch20-done",
       "artifact": "l4/{module}/pool/l2/{stamp}_{thread}_{round}.json",
-      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), write the two pool messages, invoke agentPlannerL2 by name and agentPlannerL1 when that agent exists."
+      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), write the two pool messages, record delivered on the module pipeline. Do not invoke other planners — dispatch is suspended (Wagner, 18/09)."
     },
     {
       "id": "loop30",
@@ -56,7 +57,7 @@
       "dependsOn": ["dispatch20-done"],
       "doneAnchor": "loop30-done",
       "artifact": "l4/{module}/pipeline/pipeline.json",
-      "goal": "Count rounds from the L4 pool trace and the boxes on disk. Create the next planner step while round < 3. At 3 with a non-empty box, record disputed and do not delete."
+      "goal": "Report pool/l1 and pool/l2 via listPoolBox and complete immediately. Do not invoke other planners. decidePlLoop still runs so round counting and disputed stay live; disputed is recorded, invoke is ignored. Dispatch suspended (Wagner, 18/09)."
     }
   ]
 }

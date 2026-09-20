@@ -134,6 +134,20 @@ export async function writePoolMessage(moduleName: string, msg: unknown, now: Da
   return info;
 }
 
+/**
+ * `<stamp>_<thread>_<round>`, o nome que o `writePoolMessage` gera. Um `.json` na caixa que não siga
+ * isso não é mensagem do pool — a p2_09 põe um `menu.json` ali — e é **ignorado**, não é erro: a caixa
+ * é de quem a lê, e nada impede o dono de guardar outro arquivo dentro dela.
+ *
+ * O padrão fica **frouxo de propósito**: o formato do `thread` e a faixa do `round` são recusados com
+ * causa nomeada na leitura (`normalizePoolMessage`), e repeti-los aqui seria a mesma regra em dois
+ * lugares. Mais importante: errar para o lado estrito esconderia uma mensagem real da caixa, e caixa
+ * que parece vazia faz a guarda de pendência não disparar — é a direção cara do erro.
+ */
+export function isPoolMessageShortName(shortName: string): boolean {
+  return /^\d{14}_.+_\d+$/u.test(shortName);
+}
+
 /** Oldest first, by name. Index ∪ host disk, so a message written by another process is seen. */
 export function listPoolBox(moduleName: string, box: PoolBox): Ns5FileInfo[] {
   const base = moduleFile(moduleName);
@@ -143,12 +157,14 @@ export function listPoolBox(moduleName: string, box: PoolBox): Ns5FileInfo[] {
   for (const file of Object.values(files)) {
     if (!file || file.project !== base.project || Number(file.level) !== 4 || file.status === 'deleted') continue;
     if (String(file.folder || '') !== folder || file.extension !== '.json' || !file.shortName) continue;
+    if (!isPoolMessageShortName(String(file.shortName))) continue;
     found.set(String(file.shortName), { project: base.project, level: 4, folder, shortName: String(file.shortName), extension: '.json' });
   }
   const listFolder = hostListFolder();
   if (listFolder) {
     for (const info of listFolder(base.project, 4, folder)) {
       if (info.extension !== '.json' || !info.shortName) continue;
+      if (!isPoolMessageShortName(String(info.shortName))) continue;
       const key = mls.stor.getKeyToFile(info);
       const indexed = files[key];
       if (indexed?.status === 'deleted') continue;

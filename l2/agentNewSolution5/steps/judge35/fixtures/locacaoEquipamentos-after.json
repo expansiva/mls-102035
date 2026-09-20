@@ -1,0 +1,191 @@
+{
+  "moduleName": "locacaoEquipamentos",
+  "pack": "ns5_63",
+  "journeys": [
+    {
+      "journeyId": "criarContratoLocacao",
+      "actorRef": "atendente",
+      "title": "Criar contrato de locação",
+      "steps": [
+        {
+          "stepId": "informarContrato",
+          "kind": "act",
+          "entity": "ContratoLocacao",
+          "effect": "create",
+          "transitionRef": null
+        }
+      ]
+    },
+    {
+      "journeyId": "registrarDevolucao",
+      "actorRef": "atendente",
+      "title": "Registrar devolução de locação",
+      "steps": [
+        {
+          "stepId": "localizarContrato",
+          "kind": "locate",
+          "entity": "ContratoLocacao",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "conferirContrato",
+          "kind": "inspect",
+          "entity": "ContratoLocacao",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "registrarRetorno",
+          "kind": "act",
+          "entity": "ContratoLocacao",
+          "effect": "transition",
+          "transitionRef": "registrarDevolucao"
+        }
+      ]
+    },
+    {
+      "journeyId": "consultarSituacaoEquipamentos",
+      "actorRef": "gerente",
+      "title": "Consultar situação dos equipamentos",
+      "steps": [
+        {
+          "stepId": "localizarEquipamentos",
+          "kind": "locate",
+          "entity": "Equipamento",
+          "effect": null,
+          "transitionRef": null
+        },
+        {
+          "stepId": "consultarSituacao",
+          "kind": "inspect",
+          "entity": "Equipamento",
+          "effect": null,
+          "transitionRef": null
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "entityId": "Cliente",
+      "lifecycleStates": [],
+      "transitions": [],
+      "fields": [],
+      "derivedFields": []
+    },
+    {
+      "entityId": "ContratoLocacao",
+      "lifecycleStates": [{ "state": "open" }, { "state": "closed" }],
+      "transitions": [
+        {
+          "transitionId": "registrarDevolucao",
+          "from": ["open"],
+          "to": "closed",
+          "by": ["atendente"],
+          "description": "Registra a data real de devolução e encerra a locação dos equipamentos do contrato."
+        }
+      ],
+      "fields": [],
+      "derivedFields": []
+    },
+    {
+      "entityId": "Equipamento",
+      "lifecycleStates": [],
+      "transitions": [],
+      "fields": [
+        {
+          "fieldId": "codigo",
+          "title": "Código",
+          "type": "string",
+          "description": "Código interno que identifica o equipamento no catálogo da locadora."
+        },
+        {
+          "fieldId": "emManutencao",
+          "title": "Em manutenção",
+          "type": "boolean",
+          "description": "Indica que o equipamento está indisponível para novas locações por estar em manutenção."
+        }
+      ],
+      "derivedFields": [
+        {
+          "fieldId": "situacaoAtual",
+          "title": "Situação atual",
+          "type": "enum",
+          "derived": true,
+          "description": "Situação operacional mostrada ao gerente: em manutenção quando o equipamento estiver marcado para manutenção; locado quando houver contrato de locação em andamento para ele sem devolução efetiva; disponível nos demais casos."
+        }
+      ]
+    },
+    {
+      "entityId": "ItemContratoLocacao",
+      "lifecycleStates": [],
+      "transitions": [],
+      "fields": [
+        {
+          "fieldId": "contratoLocacaoId",
+          "title": "Contrato de locação",
+          "type": "record"
+        },
+        {
+          "fieldId": "equipamentoId",
+          "title": "Equipamento",
+          "type": "record"
+        }
+      ],
+      "derivedFields": [
+        {
+          "fieldId": "multaAtraso",
+          "title": "Multa por atraso",
+          "type": "money",
+          "derived": true,
+          "description": "Valor da multa deste equipamento quando a devolução real do contrato for posterior à devolução prevista, calculado pela diária do equipamento multiplicada pelos dias de atraso e por 1,5."
+        }
+      ]
+    }
+  ],
+  "processes": [],
+  "relationships": [
+    {
+      "relationshipId": "contratoLocacaoCliente",
+      "fromEntity": "ContratoLocacao",
+      "toEntity": "Cliente"
+    },
+    {
+      "relationshipId": "itemContratoLocacaoContrato",
+      "fromEntity": "ItemContratoLocacao",
+      "toEntity": "ContratoLocacao"
+    },
+    {
+      "relationshipId": "itemContratoLocacaoEquipamento",
+      "fromEntity": "ItemContratoLocacao",
+      "toEntity": "Equipamento"
+    }
+  ],
+  "rules": [
+    {
+      "ruleId": "dataDevolucaoValida",
+      "description": "A data real de devolução deve ser igual ou posterior à data de retirada do contrato."
+    },
+    {
+      "ruleId": "multaPorAtraso",
+      "description": "A multa por atraso do contrato deve corresponder à soma das diárias dos equipamentos locados multiplicada pelos dias de atraso e pelo fator 1,5."
+    },
+    {
+      "ruleId": "codigoEquipamentoUnico",
+      "description": "O código de cada equipamento deve ser único no catálogo da locadora."
+    },
+    {
+      "ruleId": "situacaoOperacionalDoEquipamento",
+      "description": "A situação do equipamento deve ser em manutenção quando estiver marcado para manutenção, locado quando possuir contrato em andamento sem devolução efetiva e disponível nos demais casos."
+    },
+    {
+      "ruleId": "equipamentoEmManutencaoIndisponivel",
+      "description": "Um equipamento em manutenção não pode ser incluído em uma nova locação."
+    },
+    {
+      "ruleId": "locacaoDeEquipamentoSemSobreposicao",
+      "description": "Um mesmo equipamento não pode ser locado em contratos cujos períodos se sobreponham."
+    }
+  ]
+}

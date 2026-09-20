@@ -23,6 +23,7 @@ function parallelBatch(): { root: mls.msg.AIAgentStep; byPlan: Record<Ns5StepId,
     numberedStep(10, 'module10', 'completed'),
     numberedStep(20, 'journeys20', 'completed'),
     numberedStep(30, 'ontology30', 'completed'),
+    numberedStep(35, 'judge35', 'completed'),
     numberedStep(40, 'rules40', 'waiting_human_input'),
     numberedStep(50, 'workflows50', 'waiting_human_input'),
     numberedStep(60, 'access60', 'waiting_human_input'),
@@ -62,8 +63,10 @@ function statusStepIds(intents: mls.msg.AgentIntent[]): number[] {
     .map(intent => intent.stepId);
 }
 
-void test('all eight steps including finalize80 are hooked', () => {
+void test('all nine steps including judge35 and finalize80 are hooked', () => {
   createAgent();
+  assert.ok(NS5_STEP_HOOKS.judge35?.beforePromptStep, 'judge35 hook must be registered');
+  assert.ok(NS5_STEP_HOOKS.judge35?.afterPromptStep, 'judge35 afterPrompt must be registered');
   assert.ok(NS5_STEP_HOOKS.rules40?.beforePromptStep, 'rules40 hook must be registered');
   assert.ok(NS5_STEP_HOOKS.workflows50?.beforePromptStep, 'workflows50 hook must be registered');
   assert.ok(NS5_STEP_HOOKS.access60?.beforePromptStep, 'access60 hook must be registered');

@@ -1,5 +1,13 @@
 # ontology30
 
+## 2026-09-20 (ns5_65)
+
+- `promptEntity.md`: a lifecycle is for what somebody moves AND the system reacts to (a rule, a
+  process, another entity's derived value) or that has a duration people ask about; a switch with
+  no such consequence is a field, not a state. Replaces "A lifecycle is only for what somebody
+  moves." Nested entity repair from judge35 reuses `parallelEntityStep` and does not emit a second
+  `ontology30-done`.
+
 ## 2026-09-18 (ns5_52b)
 
 - The entity draft is `ontology30-entity-<EntityId>-draft.json`. Under the old name an entity called

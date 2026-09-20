@@ -27,11 +27,14 @@ interface FlowStep {
   doneAnchor: string;
   implementation?: string;
   artifact: string;
+  goal?: string;
 }
 
 interface FlowDoc {
   flowId: string;
   schemaVersion: string;
+  description: string;
+  principles: string[];
   artifacts: Record<string, string>;
   steps: FlowStep[];
 }
@@ -79,6 +82,17 @@ void test('flow has exactly three steps in declared order with declared dependen
 void test('flow artifacts match the planner table', () => {
   const flow = loadFlow();
   assert.deepEqual(flow.artifacts, EXPECTED_ARTIFACTS);
+});
+
+void test('flow records that dispatch to other planners is suspended', () => {
+  const flow = loadFlow();
+  assert.match(flow.description, /suspended/i);
+  assert.equal(flow.principles.some(line => /suspended/i.test(line)), true);
+  const dispatch = flow.steps.find(step => step.id === 'dispatch20');
+  const loop = flow.steps.find(step => step.id === 'loop30');
+  assert.match(dispatch?.goal || '', /suspended/i);
+  assert.match(loop?.goal || '', /suspended/i);
+  assert.match(loop?.goal || '', /immediately/i);
 });
 
 void test('each step folder that exists implements beforePromptStep and is on the dispatch table', async () => {

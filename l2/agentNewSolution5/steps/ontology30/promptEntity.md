@@ -57,9 +57,11 @@ else goes inside `details`, as a tree, however deep the business needs.
 - `uniqueKeys` names columns only.
 - `id` and `version` are written for you; do not declare them.
 
-A lifecycle is only for what **somebody moves**. Each state is `{ state, reachedBy }` (`actor` or
-`command`); an entity with a lifecycle carries an indexed `status` column whose `values` cover the
-states, and `status` holds only what an actor or a command writes. Transitions are
+A lifecycle is for what somebody moves AND the system reacts to (a rule forbids or requires something
+while in the state, a process fires, another entity's derived value changes) or that has a duration
+people ask about; a switch with no such consequence is a field, not a state. Each state is
+`{ state, reachedBy }` (`actor` or `command`); an entity with a lifecycle carries an indexed `status`
+column whose `values` cover the states, and `status` holds only what an actor or a command writes. Transitions are
 `{ transitionId, from, to, by, description, ruleRefs? }`; `by` is a list of actor ids of the module, and
 is **empty** when the move belongs to a process and to no person. Every `transitionRef` an `act` cites
 on this entity is required, with that journey's actor in `by`; a `decide` cited on this entity requires

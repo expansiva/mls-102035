@@ -72,9 +72,9 @@ void test('moduleTokenOk accepts lowerCamel only', () => {
   assert.equal(moduleTokenOk(''), false);
 });
 
-void test('planned tree is eight sequential steps with module10 first', () => {
+void test('planned tree is nine sequential steps with module10 first', () => {
   const steps = buildNs5PlannedSteps('teste5');
-  assert.equal(steps.length, 8);
+  assert.equal(steps.length, 9);
   assert.deepEqual(steps.map(step => step.planning?.planId), [...NS5_STEP_IDS]);
   assert.equal(steps[0].status, 'waiting_human_input');
   assert.deepEqual(steps[0].planning?.dependsOn, []);
@@ -82,7 +82,9 @@ void test('planned tree is eight sequential steps with module10 first', () => {
     assert.equal(step.status, 'waiting_dependency');
     assert.equal(step.planning?.executionMode, 'sequential');
   }
+  assert.deepEqual(steps.find(step => step.planning?.planId === 'judge35')?.planning?.dependsOn, [...NS5_STEP_DEPENDS_ON.judge35]);
   assert.deepEqual(steps.find(step => step.planning?.planId === 'rules40')?.planning?.dependsOn, [...NS5_STEP_DEPENDS_ON.rules40]);
+  assert.deepEqual(steps.find(step => step.planning?.planId === 'access60')?.planning?.dependsOn, [...NS5_STEP_DEPENDS_ON.access60]);
 });
 
 void test('startNs5Pipeline stamps rebuildAll { deleted, edited, at } after removeModule', () => {
@@ -132,6 +134,8 @@ void test('ownerStepId maps ontology fan-out children and leaves done-anchors un
   assert.equal(ownerStepId('ontology30-finalize-1'), 'ontology30');
   assert.equal(ownerStepId('ontology30-done'), '');
   assert.equal(ownerStepId('ontology30-clarification'), '');
+  assert.equal(ownerStepId('judge35-revalidate-1'), 'judge35');
+  assert.equal(ownerStepId('judge35-done'), '');
   assert.equal(ns5OntologyEntitySelector('entity:ItemCardapio'), 'ItemCardapio');
   assert.equal(ns5OntologyEntitySelector('{"planId":"ontology30"}'), '');
 });

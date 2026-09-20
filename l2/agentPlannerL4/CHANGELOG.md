@@ -1,5 +1,19 @@
 # agentPlannerL4
 
+## 2026-09-18 (p4_06)
+
+- Dispatch to other planners is suspended (Wagner, 18/09) so the L4 planner can be tested
+  alone. `dispatch20` writes `pool/l1` and `pool/l2`, traces `delivered`, and completes.
+  `loop30` reports the boxes via `listPoolBox` and completes immediately. Neither step
+  creates a `type: 'agent'` child or a wait. `createPlInvokeStep` and `decidePlLoop` stay
+  in the code (the 3-round / `disputed` rule is unchanged; it is just not fired).
+
+## 2026-09-18 (p4_05)
+
+- A step never emits `add-message-ai`. Refusal and planner-missing status travel as an
+  `AIResultStep` (`stepTitle: 'Status'` or the step's done-anchor) plus `updateStatus`.
+  `plStatusMessage` lives next to `statusTask` and is not exported.
+
 ## 2026-09-18 (p4_03)
 
 - `dispatch20` lists module artifacts (excluding `pipeline/`, `tobe/`, `pool/`), writes the two

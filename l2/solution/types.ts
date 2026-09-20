@@ -26,7 +26,9 @@ export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const
 
 /**
  * ns5_49: `workflows50` runs BEFORE `ontology30`. A process stage cites the entity and the transition
- * it makes happen; the ontology then declares them with the stage as owner. The numeric suffixes are
+ * it makes happen; the ontology then declares them with the stage as owner.
+ * ns5_62: `judge35` runs AFTER `ontology30` and BEFORE `rules40`/`access60`. Completeness of the
+ * journeys is judged only once the ontology (and the processes) exist. The numeric suffixes are
  * identity, not order — they are frozen so recorded runs keep their step ids.
  */
 export const NS5_STEP_IDS = [
@@ -34,6 +36,7 @@ export const NS5_STEP_IDS = [
   'journeys20',
   'workflows50',
   'ontology30',
+  'judge35',
   'rules40',
   'access60',
   'integration70',
@@ -808,6 +811,10 @@ export interface Ns5PipelineStepState {
   noProcessSignal?: boolean;
   /** integration70: true when inbound/outbound/plugins are [] because no system actor and no plugin-catalog term. */
   noIntegrationSignal?: boolean;
+  /** judge35: true when the deterministic candidate list was empty and the step approved without an LLM call. */
+  noJudgeSignal?: boolean;
+  /** judge35: `transitionUnjustified` verdicts recorded for the human; the transition is not deleted. */
+  warnings?: string[];
 }
 
 export interface Ns5Invocation {

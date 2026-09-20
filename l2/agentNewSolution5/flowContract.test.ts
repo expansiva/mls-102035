@@ -64,11 +64,11 @@ function loadFlow(): FlowDoc {
   return JSON.parse(readFileSync(FLOW_PATH, 'utf8')) as FlowDoc;
 }
 
-void test('flow has exactly eight steps in declared order with declared dependencies', () => {
+void test('flow has exactly nine steps in declared order with declared dependencies', () => {
   const flow = loadFlow();
   assert.equal(flow.flowId, NS5_FLOW_ID);
   assert.equal(flow.schemaVersion, NS5_FLOW_VERSION);
-  assert.equal(flow.steps.length, 8);
+  assert.equal(flow.steps.length, 9);
   assert.deepEqual(flow.steps.map(step => step.id), [...NS5_STEP_IDS]);
 
   for (const step of flow.steps) {
@@ -90,11 +90,12 @@ void test('flow has exactly eight steps in declared order with declared dependen
   }
 
   // ns5_49: workflows50 is a reader of the journeys and a WRITER of what the ontology must declare,
-  // so it runs between them. rules40 and access60 stay after ontology30-done.
+  // so it runs between them. ns5_62: judge35 sits after ontology30-done; rules40 and access60 wait for it.
   assert.deepEqual(flow.steps.find(step => step.id === 'workflows50')?.dependsOn, ['journeys20-done']);
   assert.deepEqual(flow.steps.find(step => step.id === 'ontology30')?.dependsOn, ['workflows50-done']);
-  assert.deepEqual(flow.steps.find(step => step.id === 'rules40')?.dependsOn, ['ontology30-done']);
-  assert.deepEqual(flow.steps.find(step => step.id === 'access60')?.dependsOn, ['ontology30-done']);
+  assert.deepEqual(flow.steps.find(step => step.id === 'judge35')?.dependsOn, ['ontology30-done']);
+  assert.deepEqual(flow.steps.find(step => step.id === 'rules40')?.dependsOn, ['judge35-done']);
+  assert.deepEqual(flow.steps.find(step => step.id === 'access60')?.dependsOn, ['judge35-done']);
 });
 
 void test('flow artifacts match the l4 table', () => {

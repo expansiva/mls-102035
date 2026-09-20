@@ -1,6 +1,10 @@
-# dispatch20 — list artifacts, write pool messages, invoke by name
+# dispatch20 — list artifacts, write pool messages, stop
 
 Deterministic. No LLM call.
+
+Dispatch to other planners is suspended (Wagner, 18/09). This step does **not** create
+an `agentPlannerL2` / `agentPlannerL1` child or a wait. `createPlInvokeStep` stays in
+`plCore` for when that suspension lifts.
 
 ## Input
 
@@ -10,8 +14,7 @@ A complete module whose `entry10` already ran. Pool was empty at entry (entry10 
 
 - `l4/<mod>/pool/l2/<stamp>_<thread>_1.json` and `pool/l1/...` — two equal messages except `to`.
 - `pipeline.json` pool trace: two `delivered` lines.
-- Step `agentPlannerL2` with `prompt: { moduleName, thread, file }` when that agent exists.
-- Step `agentPlannerL1` only when that agent exists. Otherwise the status names the pending box.
+- `dispatch20-done` result: module, thread, artifact count, both boxes pending for the planners.
 
 ## Artifact list
 

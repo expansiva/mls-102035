@@ -548,10 +548,12 @@ async function finalizeOntology(
     journeys,
     lift.liftedEntityIds,
   );
-  return [
-    doneAnchor(context, mutationParent, parsed.moduleName, artifactPaths),
-    updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 approved: ${artifactPaths.join(', ')}`),
-  ];
+  const intents: mls.msg.AgentIntent[] = [];
+  if (!hasPlanId(context, 'ontology30-done')) {
+    intents.push(doneAnchor(context, mutationParent, parsed.moduleName, artifactPaths));
+  }
+  intents.push(updateStatus(context, mutationParent, step, hookSequential, 'completed', `ontology30 approved: ${artifactPaths.join(', ')}`));
+  return intents;
 }
 
 function moduleNamespaceDescription(moduleName: string): string {
@@ -654,7 +656,7 @@ export function parallelEntityStep(
   };
 }
 
-function createFinalizeStep(moduleName: string, entityRepairRound: number, dependsOn: string[]): mls.msg.AIAgentStep {
+export function createFinalizeStep(moduleName: string, entityRepairRound: number, dependsOn: string[]): mls.msg.AIAgentStep {
   return {
     type: 'agent',
     stepId: 0,
@@ -912,6 +914,10 @@ function addStep(
     parentStepId: parentStep.stepId,
     step,
   };
+}
+
+function hasPlanId(context: mls.msg.ExecutionContext, planId: string): boolean {
+  return getAllSteps(context.task?.iaCompressed?.nextSteps).some(step => step.planning?.planId === planId);
 }
 
 function findMutableParent(

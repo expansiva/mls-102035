@@ -17,7 +17,7 @@ import {
 } from '/_102035_/l2/solution/types.js';
 
 export const NS5_FLOW_ID = 'agentNewSolution5' as const;
-export const NS5_FLOW_VERSION = '2026-09-17-ns5-flow-v2' as const;
+export const NS5_FLOW_VERSION = '2026-09-19-ns5-flow-v3' as const;
 export const NS5_AGENT_NAME = 'agentNewSolution5' as const;
 
 export { NS5_STEP_IDS };
@@ -31,6 +31,7 @@ export const NS5_STEP_TITLES: Record<Ns5StepId, string> = {
   module10: 'Module',
   journeys20: 'Journeys',
   ontology30: 'Ontology',
+  judge35: 'Judge',
   rules40: 'Rules',
   workflows50: 'Workflows',
   access60: 'Access',
@@ -43,8 +44,9 @@ export const NS5_STEP_DEPENDS_ON: Record<Ns5StepId, readonly string[]> = {
   journeys20: ['module10-done'],
   workflows50: ['journeys20-done'],
   ontology30: ['workflows50-done'],
-  rules40: ['ontology30-done'],
-  access60: ['ontology30-done'],
+  judge35: ['ontology30-done'],
+  rules40: ['judge35-done'],
+  access60: ['judge35-done'],
   integration70: ['rules40-done', 'workflows50-done', 'access60-done'],
   finalize80: ['integration70-done'],
 };

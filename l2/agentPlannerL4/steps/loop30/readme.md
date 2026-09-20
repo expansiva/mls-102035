@@ -1,6 +1,10 @@
-# loop30 — count rounds, next planner step, stop at 3
+# loop30 — report the boxes and complete immediately
 
 Deterministic. No LLM call.
+
+Dispatch to other planners is suspended (Wagner, 18/09). This step does **not** create
+the next planner step. `decidePlLoop` still runs so the 3-round / `disputed` rule stays
+live; invoke is ignored, `disputed` is still recorded.
 
 ## Input
 
@@ -9,6 +13,6 @@ The L4 pool trace (`l4/<mod>/pipeline/pipeline.json.pool[]`) and the boxes on di
 
 ## Output
 
-- Next `agentPlannerL2` / `agentPlannerL1` step while there is a new message and `round < 3`.
+- `loop30-done` result with `l1Count` / `l2Count` from `listPoolBox`.
 - At round 3 with a non-empty box: `outcome: disputed` on the L4 trace. The message stays.
-- Status in English. Without L1, round 1 with `pool/l1` pending is the expected stop.
+- Completes immediately so the task can leave `in progress`.

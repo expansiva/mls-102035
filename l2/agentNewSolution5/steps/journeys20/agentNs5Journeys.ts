@@ -179,10 +179,13 @@ export async function afterNs5JourneysPromptStep(
 
     const dropped = applyNs5InferredActorDrop(journeys, actors);
     const artifactPaths = await persistArtifacts(moduleName, dropped, pipeline, normalizations);
-    return [
-      doneAnchor(context, mutationParent, moduleName, artifactPaths),
-      updateStatus(context, mutationParent, step, hookSequential, 'completed', `journeys20 approved: ${artifactPaths.join(', ')}`),
-    ];
+    // Nested repair from judge35 must not emit a second journeys20-done: planIds are unique in the task.
+    const intents: mls.msg.AgentIntent[] = [];
+    if (!hasPlanId(context, 'journeys20-done')) {
+      intents.push(doneAnchor(context, mutationParent, moduleName, artifactPaths));
+    }
+    intents.push(updateStatus(context, mutationParent, step, hookSequential, 'completed', `journeys20 approved: ${artifactPaths.join(', ')}`));
+    return intents;
   } catch (error) {
     const message = errorMessage(error);
     await recordFailure(moduleName, message);
@@ -358,6 +361,10 @@ function addStep(
     parentStepId: parentStep.stepId,
     step,
   };
+}
+
+function hasPlanId(context: mls.msg.ExecutionContext, planId: string): boolean {
+  return getAllSteps(context.task?.iaCompressed?.nextSteps).some(step => step.planning?.planId === planId);
 }
 
 function findMutableParent(
