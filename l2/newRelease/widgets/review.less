@@ -50,6 +50,46 @@ new-release--widgets--review-102035 {
   .nr-review__hero h2 { margin-top: .28rem; color: var(--text-strong, #111827); font-size: 1.5rem; letter-spacing: -.03em; }
   .nr-review__hero p { max-width: 46rem; margin-top: .42rem; color: var(--text-muted, #5d6b7e); font-size: .82rem; line-height: 1.55; }
 
+  .nr-review__primary-action {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(11rem, 15rem);
+    align-items: center;
+    gap: .8rem 1.25rem;
+    padding: 1rem 1.25rem;
+    background: color-mix(in srgb, var(--selected-bg, #e3f1ff) 38%, var(--surface-bg, #fff));
+  }
+  .nr-review__primary-action.is-top { border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-review__primary-action.is-bottom { border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-review__primary-action > div { display: grid; min-width: 0; gap: .22rem; }
+  .nr-review__primary-action > div > span {
+    color: var(--link-text, #0f62b8);
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+  .nr-review__primary-action p { color: var(--text-default, #2f3a48); font-size: .78rem; line-height: 1.5; }
+  .nr-review__primary-action small { color: var(--text-muted, #5d6b7e); font-size: .67rem; }
+  .nr-review__primary-action .nr-review__action-error { color: var(--status-error-text, #ab2328); }
+  .nr-review__primary-action button {
+    min-height: 2.75rem;
+    width: 100%;
+    padding: .65rem 1rem;
+    border: 1px solid var(--button-primary-bg, #1273d4);
+    border-radius: .7rem;
+    background: var(--button-primary-bg, #1273d4);
+    color: var(--button-primary-text, #fff);
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 800;
+  }
+  .nr-review__primary-action button:disabled {
+    border-color: var(--button-primary-bg-disabled, #b9d6f2);
+    background: var(--button-primary-bg-disabled, #b9d6f2);
+    color: var(--button-primary-text-disabled, #657689);
+    cursor: not-allowed;
+  }
+
   .nr-review__loading,
   .nr-review__empty,
   .nr-review__pending {
@@ -60,9 +100,7 @@ new-release--widgets--review-102035 {
   .nr-review__empty h3,
   .nr-review__pending h3 { color: var(--text-strong, #111827); font-size: 1.05rem; }
   .nr-review__empty p,
-  .nr-review__pending p,
-  .nr-review__pending small,
-  .nr-review__continue small { color: var(--text-muted, #5d6b7e); font-size: .78rem; line-height: 1.5; }
+  .nr-review__pending p { color: var(--text-muted, #5d6b7e); font-size: .78rem; line-height: 1.5; }
 
   .nr-review__toolbar {
     display: flex;
@@ -197,30 +235,9 @@ new-release--widgets--review-102035 {
     background: var(--surface-bg, #fff);
   }
   .nr-review__detail section article strong { color: var(--text-strong, #111827); font-size: .72rem; }
-  .nr-review__continue,
   .nr-review__pending {
     align-items: center;
     justify-items: start;
-  }
-  .nr-review__continue {
-    display: flex;
-    align-items: center;
-    gap: .7rem;
-    padding: .85rem 1.25rem 1.1rem;
-    border-top: 1px solid var(--border-subtle, #e4e9f0);
-    background: var(--surface-bg, #fff);
-  }
-  .nr-review__continue button,
-  .nr-review__pending button {
-    min-width: 8rem;
-    padding: .5rem .78rem;
-    border: 1px solid var(--button-secondary-border-disabled, #dbe1e9);
-    border-radius: .6rem;
-    background: var(--button-secondary-bg-disabled, #f6f7fa);
-    color: var(--button-secondary-text-disabled, #989fa7);
-    cursor: not-allowed;
-    font-size: .72rem;
-    font-weight: 700;
   }
 
   .nr-review__backend { min-width: 0; padding: 1rem 1.25rem 1.2rem; border-top: 1px solid var(--border-subtle, #e4e9f0); }
@@ -297,6 +314,7 @@ new-release--widgets--review-102035 {
   .nr-review__pool section > p { color: var(--text-muted, #5d6b7e); font-size: .68rem; }
 
   @container (max-width: 519px) {
+    .nr-review__primary-action { grid-template-columns: minmax(0, 1fr); padding-inline: .85rem; }
     .nr-review__split.has-detail { grid-template-columns: 1fr; }
     .nr-review__menu { border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
     .nr-review__backend { padding-inline: .85rem; }
@@ -305,8 +323,8 @@ new-release--widgets--review-102035 {
 
   @media (max-width: 780px) {
     .nr-review__hero,
-    .nr-review__toolbar,
-    .nr-review__continue { padding-inline: .85rem; }
+    .nr-review__toolbar { padding-inline: .85rem; }
+    .nr-review__primary-action { grid-template-columns: minmax(0, 1fr); padding-inline: .85rem; }
     .nr-review__split.has-detail { grid-template-columns: 1fr; }
     .nr-review__menu { border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
     .nr-review__pool { margin-inline: .85rem; }

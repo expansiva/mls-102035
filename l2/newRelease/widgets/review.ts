@@ -11,6 +11,9 @@ import { readReviewArtifact, type ReviewArtifactRead } from '/_102035_/l2/newRel
 import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRelease/helpers/poolBoxes.js';
 import {
   actorIdFromKey,
+  beginReviewPrimaryAction,
+  buildReviewActionPresentation,
+  buildReviewActionPlacements,
   buildReviewView,
   MENU_ACTIONS,
   openReviewExpansionKeys,
@@ -19,6 +22,8 @@ import {
   toggleReviewExpansion,
   type ReviewNodeDetail,
   type ReviewNodeScope,
+  type ReviewPrimaryActionPresentation,
+  type ReviewPrimaryActionPlacement,
   type ReviewTreeNode,
   type ReviewView,
   toggleReviewSelection,
@@ -45,6 +50,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private selectedId = '';
   @state() private selectedScope: ReviewNodeScope = 'future';
   @state() private expandedKeys: string[] = [];
+  @state() private actionBusy = false;
+  @state() private actionError = '';
 
   private loadToken = 0;
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
@@ -57,6 +64,8 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.selectedId = '';
       this.selectedScope = 'future';
       this.expandedKeys = [];
+      this.actionBusy = false;
+      this.actionError = '';
       void this.load();
     }
   }
@@ -215,8 +224,6 @@ export class NewReleaseReview102035 extends StateLitElement {
         <section class="nr-review__pending">
           <h3>${this.t('review.pendingTitle')}</h3>
           <p>${this.t('review.pendingBody')}</p>
-          <button type="button" disabled aria-disabled="true">${this.t('review.calculate')}</button>
-          <small>${this.t('review.actionLater')}</small>
         </section>
       `;
     }
@@ -262,10 +269,51 @@ export class NewReleaseReview102035 extends StateLitElement {
         </nav>
         ${this.renderDetail(view.selected)}
       </div>
-      <div class="nr-review__continue">
-        <button type="button" disabled aria-disabled="true">${this.t('review.continue')}</button>
-        <small>${this.t('review.actionLater')}</small>
-      </div>
+    `;
+  }
+
+  /** Single integration point reserved for the official mr_04 channel. */
+  private runReviewPrimaryAction = () => {
+    const action = this.actionPresentation(this.view(), this.isCurrentLoad());
+    const start = beginReviewPrimaryAction(action);
+    if (!start.accepted) return;
+    this.actionBusy = start.busy;
+  };
+
+  private actionPresentation(view: ReviewView, current: boolean): ReviewPrimaryActionPresentation {
+    const backend = buildBackendReview(this.backendRead, view.kind === 'pending', this.moduleName);
+    const effort = parseEffortSummary(this.effortRead, this.moduleName);
+    return buildReviewActionPresentation({
+      viewKind: view.kind,
+      version: this.version,
+      loading: this.loading,
+      current,
+      resultCurrent: this.data?.resultCurrent === true,
+      backendKind: backend.kind,
+      effortKind: effort.kind,
+      busy: this.actionBusy,
+      connected: false,
+      error: this.actionError,
+    });
+  }
+
+  private renderPrimaryAction(block: ReviewPrimaryActionPlacement) {
+    const { action, placement } = block;
+    return html`
+      <section class=${`nr-review__primary-action is-${placement}`} aria-busy=${action.busy ? 'true' : 'false'}>
+        <div>
+          <span>${this.t('review.primaryActionTitle')}</span>
+          <p>${this.t(action.descriptionKey)}</p>
+          ${action.availabilityKey ? html`<small>${this.t(action.availabilityKey)}</small>` : nothing}
+          ${action.error ? html`<p class="nr-review__action-error" role=${block.announceError ? 'alert' : nothing}>${action.error}</p>` : nothing}
+        </div>
+        <button
+          type="button"
+          ?disabled=${action.disabled}
+          aria-disabled=${action.disabled ? 'true' : 'false'}
+          @click=${this.runReviewPrimaryAction}
+        >${this.t(action.labelKey)}</button>
+      </section>
     `;
   }
 
@@ -389,6 +437,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   render() {
     const view = this.view();
     const current = this.isCurrentLoad();
+    const action = this.actionPresentation(view, current);
+    const [topAction, bottomAction] = buildReviewActionPlacements(action);
     return html`
       <section class="nr-review">
         <header class="nr-review__hero">
@@ -398,7 +448,9 @@ export class NewReleaseReview102035 extends StateLitElement {
             <p>${this.t('review.description')}</p>
           </div>
         </header>
+        ${this.renderPrimaryAction(topAction)}
         ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
+        ${this.renderPrimaryAction(bottomAction)}
         ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}
       </section>
     `;

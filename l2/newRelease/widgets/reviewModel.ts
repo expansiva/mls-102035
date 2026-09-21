@@ -15,6 +15,7 @@ export type MenuOrganismKind = typeof MENU_ORGANISM_KINDS[number];
 export type MenuAction = typeof MENU_ACTIONS[number];
 export type ReviewScreenKind = 'pending' | 'empty' | 'invalid' | 'ready';
 export type ReviewNodeScope = 'future' | 'removed';
+export type ReviewPrimaryActionKind = 'calculate' | 'continue' | 'unavailable';
 
 export interface MenuOrganism {
   kind: MenuOrganismKind;
@@ -109,6 +110,79 @@ export interface ReviewInput {
 export interface ReviewExpansionState {
   expandedKeys: string[];
   selectedId: string;
+}
+
+export interface ReviewPrimaryActionInput {
+  viewKind: ReviewScreenKind;
+  version: 'asis' | 'tobe' | `release:${string}`;
+  loading: boolean;
+  current: boolean;
+  resultCurrent: boolean;
+  backendKind: 'missing' | 'invalid' | 'stale' | 'ready';
+  effortKind: 'missing' | 'invalid' | 'counts';
+  busy: boolean;
+  connected: boolean;
+  error: string;
+}
+
+export interface ReviewPrimaryActionPlacement {
+  placement: 'top' | 'bottom';
+  action: ReviewPrimaryActionPresentation;
+  announceError: boolean;
+}
+
+export interface ReviewPrimaryActionPresentation {
+  kind: ReviewPrimaryActionKind;
+  labelKey: string;
+  descriptionKey: string;
+  availabilityKey: string;
+  disabled: boolean;
+  busy: boolean;
+  error: string;
+}
+
+export function buildReviewActionPresentation(input: ReviewPrimaryActionInput): ReviewPrimaryActionPresentation {
+  let kind: ReviewPrimaryActionKind = 'unavailable';
+  if (!input.loading && input.current && input.version === 'tobe') {
+    if (input.viewKind === 'pending') kind = 'calculate';
+    else if (input.viewKind === 'ready' && input.resultCurrent
+      && input.backendKind === 'ready' && input.effortKind !== 'invalid') kind = 'continue';
+  }
+  const labelKey = input.busy
+    ? 'review.actionBusy'
+    : kind === 'calculate' ? 'review.calculate'
+      : kind === 'continue' ? 'review.continue'
+        : 'review.actionUnavailable';
+  const expectsCurrentResult = input.viewKind === 'ready' && input.resultCurrent;
+  const descriptionKey = input.loading || !input.current
+    ? 'review.actionLoading'
+    : kind === 'calculate' ? 'review.actionCalculateBody'
+      : kind === 'continue' ? 'review.actionContinueBody'
+        : expectsCurrentResult && input.backendKind === 'missing' ? 'review.actionBackendMissing'
+          : expectsCurrentResult && input.backendKind === 'invalid' ? 'review.actionBackendInvalid'
+            : expectsCurrentResult && input.backendKind === 'stale' ? 'review.actionBackendStale'
+              : expectsCurrentResult && input.effortKind === 'invalid' ? 'review.actionEffortInvalid'
+        : 'review.actionUnavailableBody';
+  return {
+    kind,
+    labelKey,
+    descriptionKey,
+    availabilityKey: input.busy ? 'review.actionBusy' : input.connected ? '' : 'review.actionLater',
+    disabled: input.busy || !input.connected || kind === 'unavailable',
+    busy: input.busy,
+    error: input.error,
+  };
+}
+
+export function buildReviewActionPlacements(action: ReviewPrimaryActionPresentation): readonly ReviewPrimaryActionPlacement[] {
+  return [
+    { placement: 'top', action, announceError: true },
+    { placement: 'bottom', action, announceError: false },
+  ];
+}
+
+export function beginReviewPrimaryAction(action: ReviewPrimaryActionPresentation): { accepted: boolean; busy: boolean } {
+  return action.disabled || action.busy ? { accepted: false, busy: action.busy } : { accepted: true, busy: true };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
