@@ -7,6 +7,7 @@ import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import { readModuleMenu, type MenuReadResult } from '/_102035_/l2/newRelease/helpers/menuReader.js';
+import { readReviewArtifact, type ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRelease/helpers/poolBoxes.js';
 import {
   actorIdFromKey,
@@ -18,8 +19,10 @@ import {
   type ReviewTreeNode,
   type ReviewView,
 } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
 
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
+const EMPTY_ARTIFACT: ReviewArtifactRead = { status: 'missing', path: '' };
 
 @customElement('new-release--widgets--review-102035')
 export class NewReleaseReview102035 extends StateLitElement {
@@ -31,6 +34,8 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   @state() private menuRead: MenuReadResult = EMPTY_MENU;
   @state() private pool: ReviewPoolBoxView[] = [];
+  @state() private backendRead: ReviewArtifactRead = EMPTY_ARTIFACT;
+  @state() private effortRead: ReviewArtifactRead = EMPTY_ARTIFACT;
   @state() private loading = false;
   @state() private selectedActor = '';
   @state() private selectedId = '';
@@ -38,6 +43,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private expandedIds: string[] = [];
 
   private loadToken = 0;
+  private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
 
   createRenderRoot() { return this; }
 
@@ -52,7 +58,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private pendingCount(): number {
-    return this.data?.manifest?.changes.length ?? 0;
+    return this.version === 'tobe' && this.data?.changeId && !this.data.resultCurrent ? 1 : 0;
   }
 
   private actorTitle(key: string): string {
@@ -71,22 +77,38 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
   }
 
+  private isCurrentLoad(): boolean {
+    const loaded = this.loadedFor;
+    return !!loaded && loaded.project === this.project && loaded.moduleName === this.moduleName
+      && loaded.version === this.version && loaded.data === this.data;
+  }
+
   private async load() {
     const token = ++this.loadToken;
+    const context = { project: this.project, moduleName: this.moduleName, version: this.version, data: this.data };
+    this.loadedFor = null;
     if (!this.project || !this.moduleName) {
       this.menuRead = EMPTY_MENU;
+      this.backendRead = EMPTY_ARTIFACT;
+      this.effortRead = EMPTY_ARTIFACT;
       this.pool = [];
+      this.loadedFor = context;
       this.loading = false;
       return;
     }
     this.loading = true;
-    const [menuRead, pool] = await Promise.all([
-      readModuleMenu(this.project, this.moduleName),
-      readReviewPoolBoxes(this.project, this.moduleName),
+    const [menuRead, backendRead, effortRead, pool] = await Promise.all([
+      readModuleMenu(context.project, context.moduleName),
+      readReviewArtifact(context.project, context.moduleName, 'backend'),
+      readReviewArtifact(context.project, context.moduleName, 'effort'),
+      readReviewPoolBoxes(context.project, context.moduleName),
     ]);
     if (token !== this.loadToken) return;
     this.menuRead = menuRead;
+    this.backendRead = backendRead;
+    this.effortRead = effortRead;
     this.pool = pool;
+    this.loadedFor = context;
     this.loading = false;
   }
 
@@ -276,6 +298,92 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
+  private tableTitle(entity: string): string {
+    const value = this.data?.artifacts.entities.find(item => (item.value as { entityId?: string } | null)?.entityId === entity)?.value as { title?: string } | undefined;
+    return value?.title || entity;
+  }
+
+  private renderBackendItem(item: BackendItem, knownTables: ReadonlySet<string>) {
+    const status = this.t(`review.backend.status.${item.tone}`);
+    const tableNames = item.tableRefs.join(', ');
+    const unresolved = item.tableRefs.filter(ref => !knownTables.has(ref));
+    return html`
+      <article class=${`nr-review__backend-item is-${item.tone}`}>
+        <header>
+          <div><span>${this.t(`review.backend.kind.${item.kind}`)}</span><strong>${item.kind === 'table' ? this.tableTitle(item.entity) : item.label}</strong></div>
+          <small class=${`nr-review__badge is-${item.tone}`} aria-label=${status}>${status}${item.tone === 'unknown' && item.status ? ` · ${item.status}` : ''}</small>
+        </header>
+        ${item.kind === 'table' || item.kind === 'change' ? html`<code>${item.kind === 'table' ? item.detail : item.label}</code>` : nothing}
+        ${item.detail && item.kind !== 'table' ? html`<p><span>${this.t('review.backend.detail')}</span> ${item.detail}</p>` : nothing}
+        ${item.reason ? html`<p><span>${this.t('review.backend.reason')}</span> ${item.reason}</p>` : nothing}
+        ${item.source ? html`<p><span>${this.t('review.backend.source')}</span> <code>${item.source}</code></p>` : nothing}
+        ${item.usecaseRefs.length ? html`<p><span>${this.t('review.backend.usecases')}</span> ${item.usecaseRefs.join(', ')}</p>` : nothing}
+        ${item.tableRefs.length > 1 ? html`<p><span>${this.t('review.backend.tables')}</span> ${tableNames}</p>` : nothing}
+        ${!item.tableRefs.length ? html`<p class="nr-review__backend-limitation">${this.t(`review.backend.noTable.${item.noTable}`)}</p>` : nothing}
+        ${unresolved.length ? html`<p class="nr-review__backend-limitation">${this.t('review.backend.unresolvedRefs', { refs: unresolved.join(', ') })}</p>` : nothing}
+      </article>
+    `;
+  }
+
+  private renderBackendGroup(title: string, technical: string, items: BackendItem[], knownTables: ReadonlySet<string>) {
+    return html`
+      <details class="nr-review__backend-group">
+        <summary><span><strong>${title}</strong>${technical ? html`<code>${technical}</code>` : nothing}</span><small>${this.t('review.backend.itemCount', { count: items.length })}</small></summary>
+        <div>${items.length ? items.map(item => this.renderBackendItem(item, knownTables)) : html`<p class="nr-review__backend-empty">${this.t('review.backend.noItems')}</p>`}</div>
+      </details>
+    `;
+  }
+
+  private renderEffort() {
+    const summary = parseEffortSummary(this.effortRead, this.moduleName);
+    return html`
+      <section class="nr-review__effort" aria-label=${this.t('review.backend.effortTitle')}>
+        <header><strong>${this.t('review.backend.effortTitle')}</strong><span>${this.t(summary.kind === 'counts' ? 'review.backend.partial' : summary.kind === 'invalid' ? 'review.backend.effortInvalid' : 'review.backend.notCalculated')}</span></header>
+        ${summary.kind === 'counts' ? html`
+          <p>${this.t('review.backend.effortCoverage')}</p>
+          <div>${summary.counts.map(category => html`
+            <div><strong>${this.t(`review.backend.count.${category.category}`)}</strong>
+              <span>${category.statuses.map(value => {
+                const tone = backendTone(value.status);
+                return `${this.t(`review.backend.status.${tone}`)}${tone === 'unknown' ? ` (${value.status})` : ''}: ${value.count}`;
+              }).join(' · ')}</span>
+            </div>
+          `)}</div>
+        ` : nothing}
+      </section>
+    `;
+  }
+
+  private renderBackend(view: ReviewView) {
+    // pool/l2/web holds the candidate result, not a snapshot of Atual or a past release.
+    if (this.version !== 'tobe') return nothing;
+    const stale = view.kind === 'pending';
+    const backend: BackendReviewView = buildBackendReview(this.backendRead, stale, this.moduleName);
+    const knownTables = new Set(backend.groups.map(group => group.tableId));
+    return html`
+      <section class="nr-review__backend" aria-label=${this.t('review.backend.title')}>
+        <header>
+          <div><span>${this.t('review.backend.eyebrow')}</span><h3>${this.t('review.backend.title')}</h3><p>${this.t('review.backend.moduleScope')}</p></div>
+          ${backend.kind === 'ready' ? html`<strong>${this.t('review.backend.uniqueCount', { count: backend.itemCount })}</strong>` : nothing}
+        </header>
+        ${backend.kind === 'stale' ? html`<p class="nr-review__backend-message">${this.t('review.backend.stale')}</p>` : nothing}
+        ${backend.kind === 'missing' ? html`<p class="nr-review__backend-message">${this.t('review.backend.missing')}</p>` : nothing}
+        ${backend.kind === 'invalid' ? html`<p class="nr-review__backend-message" role="alert">${this.t(backend.errorCode)}</p>` : nothing}
+        ${backend.kind === 'ready' ? html`
+          <ul class="nr-review__backend-legend">
+            ${(['new', 'change', 'keep', 'remove', 'unknown'] as const).map(tone => html`<li class=${`is-${tone}`}>${this.t(`review.backend.status.${tone}`)}</li>`)}
+          </ul>
+          <div class="nr-review__backend-groups">
+            ${backend.groups.map(group => this.renderBackendGroup(group.entity ? this.tableTitle(group.entity) : this.t('review.backend.removedTable'), group.tableId, group.items, knownTables))}
+            ${backend.shared.length ? this.renderBackendGroup(this.t('review.backend.shared'), '', backend.shared, knownTables) : nothing}
+            ${backend.unassociated.length ? this.renderBackendGroup(this.t('review.backend.unassociated'), '', backend.unassociated, knownTables) : nothing}
+          </div>
+        ` : nothing}
+        ${backend.kind !== 'stale' ? this.renderEffort() : nothing}
+      </section>
+    `;
+  }
+
   private renderPool() {
     return html`
       <details class="nr-review__pool">
@@ -303,6 +411,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   render() {
     const view = this.view();
+    const current = this.isCurrentLoad();
     return html`
       <section class="nr-review">
         <header class="nr-review__hero">
@@ -312,8 +421,8 @@ export class NewReleaseReview102035 extends StateLitElement {
             <p>${this.t('review.description')}</p>
           </div>
         </header>
-        ${this.loading ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : this.renderMenu(view)}
-        ${this.renderPool()}
+        ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
+        ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}
       </section>
     `;
   }
