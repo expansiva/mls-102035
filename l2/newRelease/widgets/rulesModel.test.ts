@@ -9,7 +9,16 @@ import {
   filterRules,
   groupRulesByEntity,
   isValidNewRuleId,
+  readRulesV2,
 } from './rulesModel.js';
+
+test('reads v2 rule map for display without claiming it is editable v1', () => {
+  assert.deepEqual(readRulesV2({ schemaVersion: '2026-09-16-ns5-rules-v2', rules: { approvalRequired: 'Approval is required.' } }), [
+    { ruleId: 'approvalRequired', description: 'Approval is required.' },
+  ]);
+  assert.equal(readRulesV2(rules), null);
+  assert.equal(readRulesV2({ schemaVersion: '2026-09-16-ns5-rules-v2', rules: { broken: 42 } }), null);
+});
 
 const rules: Ns5RulesArtifact = {
   schemaVersion: '2026-09-10-ns5-rules-v1',

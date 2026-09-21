@@ -24,6 +24,11 @@ new-release--widgets--rules-102035 {
   .nr-rules__hero dt { color: var(--text-muted, #5d6b7e); font-size: .54rem; font-weight: 750; text-transform: uppercase; }
   .nr-rules__hero dd { order: -1; color: var(--text-strong, #111827); font-size: 1.2rem; font-weight: 800; letter-spacing: -.04em; }
 
+  .nr-rules__v2-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: .75rem; padding: 1rem 1.25rem 1.5rem; }
+  .nr-rules__v2-list article { min-width: 0; padding: .9rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .85rem; background: var(--surface-bg, #fff); }
+  .nr-rules__v2-list h3 { margin: 0 0 .45rem; color: var(--text-strong, #111827); font: 700 .72rem var(--font-family-mono, ui-monospace, monospace); overflow-wrap: anywhere; }
+  .nr-rules__v2-list p { color: var(--text-default, #2f3a48); font-size: .72rem; line-height: 1.55; }
+
   .nr-rules__workspace { display: grid; grid-template-columns: minmax(16rem, .92fr) minmax(0, 2fr); gap: 1rem; align-items: start; padding: 1rem 1.25rem 1.5rem; }
   .nr-rules__catalog, .nr-rules__detail, .nr-rules__empty-detail { min-width: 0; overflow: hidden; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .85rem; background: var(--surface-bg, #fff); }
   .nr-rules__search { display: grid; gap: .25rem; padding: .7rem; border-bottom: 1px solid var(--border-subtle, #e4e9f0); background: var(--surface-alt-bg, #f5f7fa); }

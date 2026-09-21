@@ -27,6 +27,7 @@ import {
   isValidNewRuleId,
   ruleEntityIds,
   rulesOracleIssues,
+  readRulesV2,
   type RuleCitation,
 } from '/_102035_/l2/newRelease/widgets/rulesModel.js';
 
@@ -58,6 +59,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
 
   updated(changed: PropertyValues) {
     if (!changed.has('data') || this.mode === 'edit') return;
+    if (readRulesV2(this.data?.artifacts.rules.value)) return;
     const rules = this.currentRules()?.rules || [];
     if (!rules.some(rule => rule.ruleId === this.selectedRuleId)) this.selectedRuleId = rules[0]?.ruleId || '';
   }
@@ -224,6 +226,11 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
   }
 
   render() {
+    const v2Rules = readRulesV2(this.data?.artifacts.rules.value);
+    if (v2Rules) return html`<section class="nr-rules nr-rules--v2" aria-label=${this.t('rules.title')}>
+      <header class="nr-rules__hero"><div><span>${this.t('general.readonly')}</span><h2>${this.t('rules.title')}</h2></div><dl><div><dt>${this.t('rules.plural')}</dt><dd>${v2Rules.length}</dd></div></dl></header>
+      <div class="nr-rules__v2-list">${v2Rules.map(rule => html`<article><h3>${rule.ruleId}</h3><p>${rule.description}</p></article>`)}</div>
+    </section>`;
     const artifact = this.currentRules();
     if (!artifact) return html`<section class="nr-rules__empty"><h2>${this.t('rules.emptyTitle')}</h2><p>${this.t('rules.emptyBody')}</p></section>`;
     const citations = this.citations();

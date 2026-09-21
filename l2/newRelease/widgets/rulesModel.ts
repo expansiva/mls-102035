@@ -23,6 +23,16 @@ export interface RuleCitation {
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 
+/** Rules v2 is a map of business statements, not the editable v1 array. */
+export function readRulesV2(value: unknown): Ns5Rule[] | null {
+  if (!value || typeof value !== 'object' || (value as { schemaVersion?: unknown }).schemaVersion !== '2026-09-16-ns5-rules-v2') return null;
+  const rules = (value as { rules?: unknown }).rules;
+  if (!rules || typeof rules !== 'object' || Array.isArray(rules)) return null;
+  const entries = Object.entries(rules);
+  if (entries.some(([ruleId, description]) => !MEMBER_ID.test(ruleId) || typeof description !== 'string')) return null;
+  return entries.map(([ruleId, description]) => ({ ruleId, description: description as string }));
+}
+
 function textMentionsRule(text: string, ruleId: string): boolean {
   const escaped = ruleId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(^|[^A-Za-z0-9])${escaped}([^A-Za-z0-9]|$)`, 'i').test(text);
