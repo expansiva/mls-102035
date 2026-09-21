@@ -1,5 +1,10 @@
 # entry10
 
+## 2026-09-20 (p4_08)
+
+- Wipes the module pool on accept (messages + `web/*.json`). `poolWiped` on the l4
+  pipeline. Pending pool no longer refuses.
+
 ## 2026-09-18 (p4_05)
 
 - A refusal is an `AIResultStep` (`stepTitle: 'Status'`) plus `updateStatus` and

@@ -29,7 +29,8 @@ import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { isNewReleaseOntologyV3Version } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
-import { NEW_RELEASE_TOBE_UPDATED_EVENT } from '/_102035_/l2/newRelease/helpers/context.js';
+import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, revertL4CandidatePath } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 
 // The complete gates depend on the backend-only level-1 catalog. Keep that graph out of the
 // browser bundle: the review UI enforces its own edit invariants and the full validation still
@@ -60,7 +61,9 @@ export type Ns5TobeArtifactPath =
   | 'rules.defs.ts'
   | 'workflows.defs.ts'
   | 'access.defs.ts'
-  | 'integration.defs.ts';
+  | 'integration.defs.ts'
+  | 'workspace-model.defs.ts'
+  | `workspaces/${string}.defs.ts`;
 
 export interface Ns5TobeChange {
   path: Ns5TobeArtifactPath;
@@ -75,6 +78,9 @@ export interface Ns5TobeManifest {
   author: string;
   base: Partial<Record<Ns5TobeArtifactPath, string>>;
   changes: Ns5TobeChange[];
+  changeId?: string;
+  revisionId?: string;
+  baseId?: string;
 }
 
 export interface NewReleaseArtifact<T> {
@@ -134,6 +140,8 @@ export interface NewReleaseTobeDiff {
 export interface NewReleaseOverlayResult {
   sources: NewReleaseOverlaySources;
   manifest: Ns5TobeManifest | null;
+  changeId: string | null;
+  revisionId: string | null;
   stalePaths: Ns5TobeArtifactPath[];
   diffs: NewReleaseTobeDiff[];
   validation: NewReleaseOverlayValidation;
@@ -156,15 +164,16 @@ function assertProject(project: number): void {
 }
 
 export function normalizeTobeArtifactPath(path: string): Ns5TobeArtifactPath {
-  const value = String(path || '').replace(/^\/+|\/+$/gu, '');
+  const value = String(path || '');
   const fixed = new Set([
     'module.defs.ts', 'journeys/index.defs.ts', 'ontology/index.defs.ts', 'rules.defs.ts',
-    'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts',
+    'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts', 'workspace-model.defs.ts',
   ]);
   if (fixed.has(value)) return value as Ns5TobeArtifactPath;
   if (/^(journeys\/[a-z][A-Za-z0-9]*|ontology\/[A-Z][A-Za-z0-9]*)\.defs\.ts$/u.test(value)) {
     return value as Ns5TobeArtifactPath;
   }
+  if (/^workspaces\/[a-z][A-Za-z0-9]*\.defs\.ts$/u.test(value)) return value as Ns5TobeArtifactPath;
   throw new Error(`Unsupported tobe artifact path: ${path}`);
 }
 
@@ -247,7 +256,10 @@ function artifactWriteSpec(moduleName: string, path: Ns5TobeArtifactPath): { exp
   if (path === 'rules.defs.ts') return { exportName: `${moduleName}Rules`, typeName: 'Ns5RulesArtifact' };
   if (path === 'workflows.defs.ts') return { exportName: `${moduleName}Workflows`, typeName: 'Ns5WorkflowsArtifact' };
   if (path === 'access.defs.ts') return { exportName: `${moduleName}Access`, typeName: 'Ns5AccessArtifact' };
-  return { exportName: `${moduleName}Integration`, typeName: 'Ns5IntegrationArtifact' };
+  if (path === 'integration.defs.ts') return { exportName: `${moduleName}Integration`, typeName: 'Ns5IntegrationArtifact' };
+  if (path === 'workspace-model.defs.ts') return { exportName: `${moduleName}WorkspaceModel`, typeName: 'unknown' };
+  if (path.startsWith('workspaces/')) return { exportName: `${shortName}Workspace`, typeName: 'unknown' };
+  throw new Error(`Unsupported tobe artifact path: ${path}`);
 }
 
 async function manifestAuthor(): Promise<string> {
@@ -265,25 +277,29 @@ export async function saveTobeArtifact(
   moduleName: string,
   pathValue: Ns5TobeArtifactPath,
   value: unknown,
-  options?: { jsonPath?: string; author?: string; now?: string },
+  options: { expectedRevisionId: string | null; expectedChangeId?: string | null; jsonPath?: string; author?: string; now?: string },
 ): Promise<Ns5TobeManifest> {
   const path = normalizeTobeArtifactPath(pathValue);
-  const asisInfo = tobeArtifactFileInfo(project, moduleName, path, 'asis');
-  const asis = await readDefsJson<unknown>(asisInfo);
-  if (asis === null) throw new Error(`Cannot prepare ${path}: current artifact was not found.`);
-  const current = await readManifest(project, moduleName);
-  const baseHash = current?.base?.[path] || await sha256Tobe(asis);
-  const spec = artifactWriteSpec(moduleName, path);
-  await writeDefs(tobeArtifactFileInfo(project, moduleName, path, 'tobe'), spec.exportName, value, spec.typeName);
-  const manifest = recordTobeSave(
-    current,
-    path,
-    options?.jsonPath || '$',
-    baseHash,
-    options?.author || await manifestAuthor(),
-    options?.now,
-  );
-  await writeJson(tobeManifestFileInfo(project, moduleName), manifest);
+  const oldManifest = await readManifest(project, moduleName);
+  const prepared = await prepareL4Change(project, moduleName, oldManifest);
+  if (options.expectedChangeId !== undefined && options.expectedChangeId !== prepared.change.changeId && !(options.expectedChangeId === null && prepared.created)) {
+    throw new Error('L4 change conflict: reload before saving.');
+  }
+  const expected = options.expectedRevisionId;
+  const { value: manifest, revision } = await editL4Candidate(project, moduleName, expected, prepared.change.changeId, async () => {
+    const original = await readDefsJson<unknown>(originalL4FileInfo(project, moduleName, prepared.release.baseId, path));
+    if (original === null) throw new Error(`Cannot prepare ${path}: captured artifact was not found.`);
+    const current = await readManifest(project, moduleName);
+    const baseHash = current?.base?.[path] || await sha256Tobe(original);
+    const spec = artifactWriteSpec(moduleName, path);
+    await writeDefs(tobeArtifactFileInfo(project, moduleName, path, 'tobe'), spec.exportName, value, spec.typeName);
+    const next = recordTobeSave(current, path, options.jsonPath || '$', baseHash, options.author || await manifestAuthor(), options.now);
+    await writeJson(tobeManifestFileInfo(project, moduleName), next);
+    return next;
+  });
+  manifest.changeId = revision.changeId;
+  manifest.revisionId = revision.revisionId;
+  manifest.baseId = revision.baseId;
   announceTobeUpdated(project, moduleName);
   return manifest;
 }
@@ -324,20 +340,17 @@ export async function discardTobe(
   project: number,
   moduleName: string,
   pathValue?: Ns5TobeArtifactPath,
+  announce = true,
 ): Promise<{ deleted: string[]; manifest: Ns5TobeManifest | null }> {
   assertProject(project);
-  const inventory = listedPlanFiles(project, moduleName);
   const path = pathValue ? normalizeTobeArtifactPath(pathValue) : null;
-  const targets = path
-    ? inventory.filter(file => relativePlanPath(file, moduleName) === path)
-    : inventory;
-  const deleted = targets.map(file => `l4/${file.folder}/${file.shortName}${file.extension}`).sort();
-  await deleteInventory(targets);
+  const deleted: string[] = [];
 
   let manifest: Ns5TobeManifest | null = null;
   if (path) {
-    const current = await readManifest(project, moduleName);
-    if (current) {
+    const updateManifest = async () => {
+      const current = await readManifest(project, moduleName);
+      if (!current) return;
       manifest = recordTobeDiscard(current, path);
       if (manifest) await writeJson(tobeManifestFileInfo(project, moduleName), manifest);
       else {
@@ -348,16 +361,32 @@ export async function discardTobe(
           deleted.push(`l4/${manifestFile.folder}/${manifestFile.shortName}${manifestFile.extension}`);
         }
       }
+    };
+    const active = await readActiveL4Change(project, moduleName);
+    if (active) {
+      await revertL4CandidatePath(project, moduleName, path, active.activeRevisionId, updateManifest);
+    } else {
+      const inventory = listedPlanFiles(project, moduleName);
+      const target = inventory.filter(file => relativePlanPath(file, moduleName) === path);
+      deleted.push(...target.map(file => `l4/${file.folder}/${file.shortName}${file.extension}`));
+      await deleteInventory(target);
+      await updateManifest();
     }
+  } else {
+    await deactivateL4Change(project, moduleName, async () => {
+      const inventory = listedPlanFiles(project, moduleName);
+      deleted.push(...inventory.map(file => `l4/${file.folder}/${file.shortName}${file.extension}`));
+      await deleteInventory(inventory);
+    });
   }
 
   const remaining = listedPlanFiles(project, moduleName)
     .map(file => relativePlanPath(file, moduleName));
-  const forbidden = path ? [path, ...(manifest ? [] : ['tobe.json'])] : remaining;
+  const forbidden = path ? (manifest ? [] : ['tobe.json']) : remaining;
   if (forbidden.some(item => remaining.includes(item))) {
     throw new Error(`Discard inventory mismatch: ${forbidden.filter(item => remaining.includes(item)).join(', ')}`);
   }
-  announceTobeUpdated(project, moduleName);
+  if (announce) announceTobeUpdated(project, moduleName);
   return { deleted: [...new Set(deleted)].sort(), manifest };
 }
 
@@ -367,17 +396,21 @@ async function readArtifact<T>(
   path: Ns5TobeArtifactPath,
   version: 'asis' | 'tobe',
   errors: Array<{ path: string; message: string }>,
+  baseId?: string,
 ): Promise<NewReleaseArtifact<T>> {
   const planned = tobeArtifactFileInfo(project, moduleName, path, 'tobe');
-  const source = version === 'tobe' && fileExists(planned) ? 'tobe' : 'asis';
-  const info = source === 'tobe' ? planned : tobeArtifactFileInfo(project, moduleName, path, 'asis');
+  const original = baseId ? originalL4FileInfo(project, moduleName, baseId, path) : tobeArtifactFileInfo(project, moduleName, path, 'asis');
+  const hasPlanned = version === 'tobe' && fileExists(planned);
+  const info = hasPlanned ? planned : original;
   try {
     const value = await readDefsJson<T>(info);
-    if (source === 'tobe' && value === null) errors.push({ path, message: 'Prepared artifact is unreadable; current data was not substituted.' });
+    const originalValue = hasPlanned ? await readDefsJson<T>(original) : value;
+    const source = hasPlanned && value !== null && await sha256Tobe(value) !== await sha256Tobe(originalValue) ? 'tobe' : 'asis';
+    if (hasPlanned && value === null) errors.push({ path, message: 'Prepared artifact is unreadable; captured data was not substituted.' });
     return { path, source, value };
   } catch (error) {
     errors.push({ path, message: error instanceof Error ? error.message : String(error) });
-    return { path, source, value: null };
+    return { path, source: hasPlanned ? 'tobe' : 'asis', value: null };
   }
 }
 
@@ -530,11 +563,12 @@ async function overlayDiffs(
   project: number,
   moduleName: string,
   sources: NewReleaseOverlaySources,
+  baseId?: string,
 ): Promise<NewReleaseTobeDiff[]> {
   const result: NewReleaseTobeDiff[] = [];
   for (const artifact of sources.all) {
     if (artifact.source !== 'tobe' || artifact.value === null) continue;
-    const asis = await readDefsJson<unknown>(tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis'));
+    const asis = await readDefsJson<unknown>(baseId ? originalL4FileInfo(project, moduleName, baseId, artifact.path) : tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis'));
     if (asis === null) continue;
     const entries = tobeDiff(asis, artifact.value);
     if (entries.length) result.push({ path: artifact.path, entries });
@@ -545,30 +579,37 @@ async function overlayDiffs(
 export async function readNs5Overlay(
   project: number,
   moduleName: string,
-  version: 'asis' | 'tobe' = 'asis',
+  version: NewReleaseVersion = 'asis',
   context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[] },
 ): Promise<NewReleaseOverlayResult> {
   const errors: Array<{ path: string; message: string }> = [];
-  const module = await readArtifact<Ns5ModuleArtifact>(project, moduleName, 'module.defs.ts', version, errors);
-  const journeyIndex = await readArtifact<Ns5JourneyIndexArtifact>(project, moduleName, 'journeys/index.defs.ts', version, errors);
+  const historicalId = historicalReleaseId(version);
+  if (historicalId && !await readL4Release(project, moduleName, historicalId)) throw new Error('Historical release is incomplete.');
+  let active = historicalId ? null : await readActiveL4Change(project, moduleName);
+  if (version === 'tobe' && !active) active = (await prepareL4Change(project, moduleName, await readManifest(project, moduleName))).change;
+  const baseId = historicalId ?? active?.baseId;
+  const reading = version === 'tobe' ? 'tobe' : 'asis';
+  const module = await readArtifact<Ns5ModuleArtifact>(project, moduleName, 'module.defs.ts', reading, errors, baseId);
+  const journeyIndex = await readArtifact<Ns5JourneyIndexArtifact>(project, moduleName, 'journeys/index.defs.ts', reading, errors, baseId);
   const journeyIds = journeyIndex.value?.journeys.map(item => item.journeyId) || idsFromFiles(project, moduleName, 'journeys');
-  const journeys = await Promise.all(journeyIds.map(id => readArtifact<Ns5JourneyArtifact>(project, moduleName, `journeys/${id}.defs.ts`, version, errors)));
-  const ontologyIndex = await readArtifact<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>(project, moduleName, 'ontology/index.defs.ts', version, errors);
+  const journeys = await Promise.all(journeyIds.map(id => readArtifact<Ns5JourneyArtifact>(project, moduleName, `journeys/${id}.defs.ts`, reading, errors, baseId)));
+  const ontologyIndex = await readArtifact<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>(project, moduleName, 'ontology/index.defs.ts', reading, errors, baseId);
   const entityIds = ns5OntologyEntityIds(ontologyIndex.value);
   const resolvedEntityIds = entityIds.length ? entityIds : idsFromFiles(project, moduleName, 'ontology');
-  const entities = await Promise.all(resolvedEntityIds.map(id => readArtifact<Ns5OntologyAnyEntity>(project, moduleName, `ontology/${id}.defs.ts`, version, errors)));
+  const entities = await Promise.all(resolvedEntityIds.map(id => readArtifact<Ns5OntologyAnyEntity>(project, moduleName, `ontology/${id}.defs.ts`, reading, errors, baseId)));
   const [rules, workflows, access, integration] = await Promise.all([
-    readArtifact<Ns5RulesArtifact>(project, moduleName, 'rules.defs.ts', version, errors),
-    readArtifact<Ns5WorkflowsArtifact>(project, moduleName, 'workflows.defs.ts', version, errors),
-    readArtifact<Ns5AccessArtifact>(project, moduleName, 'access.defs.ts', version, errors),
-    readArtifact<Ns5IntegrationArtifact>(project, moduleName, 'integration.defs.ts', version, errors),
+    readArtifact<Ns5RulesArtifact>(project, moduleName, 'rules.defs.ts', reading, errors, baseId),
+    readArtifact<Ns5WorkflowsArtifact>(project, moduleName, 'workflows.defs.ts', reading, errors, baseId),
+    readArtifact<Ns5AccessArtifact>(project, moduleName, 'access.defs.ts', reading, errors, baseId),
+    readArtifact<Ns5IntegrationArtifact>(project, moduleName, 'integration.defs.ts', reading, errors, baseId),
   ]);
   const all: NewReleaseArtifact<unknown>[] = [module, journeyIndex, ...journeys, ontologyIndex, ...entities, rules, workflows, access, integration];
   const sources: NewReleaseOverlaySources = { module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration, all };
-  const manifest = await readManifest(project, moduleName);
+  const storedManifest = historicalId ? null : await readManifest(project, moduleName);
+  const manifest = storedManifest && active ? { ...storedManifest, changeId: active.changeId, revisionId: active.activeRevisionId ?? undefined, baseId: active.baseId } : storedManifest;
   const [stalePaths, diffs] = await Promise.all([
     staleManifestPaths(project, moduleName, manifest),
-    overlayDiffs(project, moduleName, sources),
+    overlayDiffs(project, moduleName, sources, baseId),
   ]);
-  return { sources, manifest, stalePaths, diffs, validation: await validateNs5Overlay(sources, context), errors };
+  return { sources, manifest, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, context), errors };
 }

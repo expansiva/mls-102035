@@ -2,6 +2,7 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import {
+  createRound1InvokeSteps,
   existingModuleName,
   runPlDispatch,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
@@ -22,16 +23,21 @@ export async function beforePlDispatchPromptStep(
     || memoryString(context, 'moduleName')
     || moduleNameFromPrompt(step);
   const result = await runPlDispatch(moduleName, new Date());
-  const status = `pool/l1 and pool/l2 pending for the planners (${result.artifacts.length} artifacts).`;
+  const invoke = createRound1InvokeSteps(moduleName, result);
+  const missing = result.status;
+  const status = missing
+    || `pool/l1 and pool/l2 pending for the planners (${result.artifacts.length} artifacts).`;
   return [
-    doneAnchor(context, parentStep, moduleName, result.thread, result.artifacts.length, status),
+    ...invoke.map(child => addPlStep(context, parentStep, child)),
+    doneAnchor(context, parentStep, moduleName, result.thread, result.artifacts.length, status, invoke.length),
     updateStatus(
       context,
       parentStep,
       step,
       hookSequential,
       'completed',
-      `dispatch20 wrote pool/l2 and pool/l1 (${result.artifacts.length} artifacts).`,
+      missing
+        || `dispatch20 wrote pool/l2 and pool/l1 and created ${invoke.length} planner step(s).`,
     ),
   ];
 }
@@ -54,6 +60,7 @@ function doneAnchor(
   thread: string,
   artifactCount: number,
   status: string,
+  invokeCount: number,
 ): mls.msg.AgentIntentAddStep {
   return addPlStep(context, parentStep, {
     type: 'result',
@@ -62,7 +69,10 @@ function doneAnchor(
     stepTitle: 'Dispatch done',
     status: 'completed',
     nextSteps: [],
-    result: JSON.stringify({ moduleName, thread, artifactCount, status, completedStep: 'dispatch20', nextStep: 'loop30' }),
+    result: JSON.stringify({
+      moduleName, thread, artifactCount, status, invokeCount,
+      completedStep: 'dispatch20', nextStep: 'loop30',
+    }),
     planning: { planId: 'dispatch20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
 }

@@ -8,6 +8,7 @@ import {
   gatherPlEntryFacts,
   parsePlInvocation,
   plEntryRefusal,
+  wipeModulePool,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
   PL_STEP_HOOKS,
@@ -47,17 +48,21 @@ export async function beforePlEntryPromptStep(
   }
 
   const existing = existingModuleName(invocation.module) || invocation.module;
+  const wiped = await wipeModulePool(existing, new Date());
   const adjusted = await applyL5PlannerDeps(existing);
   const already = getAllSteps(context.task?.iaCompressed?.nextSteps).some(
     item => item.planning?.planId === 'entry10-done',
   );
-  const extra = already ? [] : [doneAnchor(context, parentStep, existing, adjusted)];
-  const trace = adjusted.length
-    ? `entry10 adjusted l5/config.json (${adjusted.join(', ')}).`
-    : 'entry10: l5/config.json already lists the planner projects.';
+  const extra = already ? [] : [doneAnchor(context, parentStep, existing, adjusted, wiped)];
+  const parts = [
+    wiped.length ? `wiped ${wiped.length} pool path(s)` : 'pool already empty',
+    adjusted.length
+      ? `adjusted l5/config.json (${adjusted.join(', ')})`
+      : 'l5/config.json already lists the planner projects',
+  ];
   return [
     ...extra,
-    updateStatus(context, parentStep, step, hookSequential, 'completed', trace),
+    updateStatus(context, parentStep, step, hookSequential, 'completed', `entry10: ${parts.join('; ')}.`),
   ];
 }
 
@@ -77,6 +82,7 @@ function doneAnchor(
   parentStep: mls.msg.AIAgentStep,
   moduleName: string,
   l5Adjusted: string[],
+  poolWiped: string[],
 ): mls.msg.AgentIntentAddStep {
   return {
     type: 'add-step',
@@ -91,7 +97,9 @@ function doneAnchor(
       stepTitle: 'Entry done',
       status: 'completed',
       nextSteps: [],
-      result: JSON.stringify({ moduleName, l5Adjusted, completedStep: 'entry10', nextStep: 'dispatch20' }),
+      result: JSON.stringify({
+        moduleName, l5Adjusted, poolWiped, completedStep: 'entry10', nextStep: 'dispatch20',
+      }),
       planning: { planId: 'entry10-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
     } as mls.msg.AIResultStep,
   };

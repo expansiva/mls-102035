@@ -3,18 +3,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { parseP2StepPrompt } from '/_102020_/l2/agentPlannerL2/helpers/p2Core.js';
+import { parseP1StepPrompt } from '/_102021_/l2/agentPlannerL1/helpers/p1Core.js';
 import {
   adjustL5PlannerDeps,
   applyL5PlannerDeps,
   buildPlPlannedSteps,
   buildPlPoolMessage,
+  createRound1InvokeSteps,
   decidePlLoop,
   listPlArtifacts,
+  listPoolWebFiles,
   moduleTokenOk,
   parsePlInvocation,
   plDispatchSubject,
   plEntryRefusal,
+  plRoundPlanId,
   plannerAgentPresent,
+  plInvokeOutput,
+  plStepPrompt,
+  wipeModulePool,
   PL_DISPATCH_BODY,
   PL_L1_AGENT,
   PL_L2_AGENT,
@@ -23,7 +31,7 @@ import {
   runPlDispatch,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { displayPath } from '/_102035_/l2/solution/fs.js';
-import { listPoolBox, nextThread, readPoolMessage, readPoolTrace } from '/_102035_/l2/solution/pool.js';
+import { listPoolBox, nextThread, readPoolMessage, readPoolTrace, writePoolMessage } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -62,6 +70,7 @@ function installHost(): Host {
       localStor: {
         setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
         listFolder: () => [],
+        deleteFile: (file: Stored) => { file.status = 'deleted'; },
       },
     },
   };
@@ -85,7 +94,6 @@ function seed(
 const OPEN_FACTS = {
   moduleExists: true,
   pipelineStatus: 'complete',
-  poolPending: false,
   l5ConfigExists: true,
 };
 
@@ -111,10 +119,6 @@ void test('plEntryRefusal refuses each listed cause in English', () => {
   assert.match(plEntryRefusal(parsePlInvocation(''), OPEN_FACTS), /Provide the module name/);
   assert.match(plEntryRefusal(parsePlInvocation('mensalidadesAcademia'), { ...OPEN_FACTS, moduleExists: false }), /does not exist in l4/);
   assert.match(plEntryRefusal(parsePlInvocation('mensalidadesAcademia'), { ...OPEN_FACTS, pipelineStatus: 'inProgress' }), /pipeline is not complete/);
-  assert.equal(
-    plEntryRefusal(parsePlInvocation('mensalidadesAcademia'), { ...OPEN_FACTS, poolPending: true }),
-    'module has pending pool messages; finish or dispute them first',
-  );
   assert.match(plEntryRefusal(parsePlInvocation('mensalidadesAcademia'), { ...OPEN_FACTS, l5ConfigExists: false }), /l5\/config\.json is missing/);
 });
 
@@ -357,4 +361,116 @@ void test('runPlDispatch traces both deliveries and does not invoke a missing L1
   assert.equal(trace.length, 2);
   assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
   assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
+});
+
+const POOL_MSG = {
+  from: 'l4' as const, to: 'l2' as const, thread: 'mensalidadesAcademia-20260918103000', round: 1 as const,
+  mode: 'implement' as const, subject: 'Changed artifacts of mensalidadesAcademia',
+  artifacts: ['module.defs.ts'],
+  body: 'Evaluate and dispatch. The recipient decides what to do with these artifacts.',
+};
+
+void test('wipeModulePool empties the boxes, removes web artifacts, and records poolWiped', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  const pipeline = seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918103000_mensalidadesAcademia-20260918103000_1', extension: '.json' },
+    `${JSON.stringify(POOL_MSG, null, 2)}\n`,
+  );
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' },
+    '{"schemaVersion":"x"}\n',
+  );
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pool/l1/web', shortName: 'needs', extension: '.json' },
+    '{"schemaVersion":"x"}\n',
+  );
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
+  assert.equal(listPoolWebFiles('mensalidadesAcademia', 'l2').length, 1);
+
+  const wiped = await wipeModulePool('mensalidadesAcademia', new Date(Date.UTC(2026, 8, 20, 12, 0, 0)));
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 0);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 0);
+  assert.equal(listPoolWebFiles('mensalidadesAcademia', 'l2').length, 0);
+  assert.equal(listPoolWebFiles('mensalidadesAcademia', 'l1').length, 0);
+  const state = JSON.parse(pipeline.content) as { poolWiped: string[]; pool: Array<{ outcome: string }> };
+  assert.deepEqual(state.poolWiped, wiped);
+  assert.equal(state.poolWiped.some(path => path.endsWith('/menu.json')), true);
+  assert.equal(state.poolWiped.some(path => path.endsWith('/needs.json')), true);
+  assert.equal(state.pool.some(line => line.outcome === 'processed'), true);
+});
+
+void test('L2 and L1 step prompts require a non-empty file — empty file is not kind:step (ramification B)', () => {
+  const empty = plStepPrompt('mensalidadesAcademia', 'mensalidadesAcademia-20260918103000', '');
+  assert.equal(parseP2StepPrompt(empty).kind, 'entry');
+  assert.equal(parseP1StepPrompt(empty).kind, 'entry');
+  const filled = plStepPrompt(
+    'mensalidadesAcademia',
+    'mensalidadesAcademia-20260918103000',
+    'l4/mensalidadesAcademia/pool/l2/20260918103000_mensalidadesAcademia-20260918103000_1.json',
+  );
+  assert.equal(parseP2StepPrompt(filled).kind, 'step');
+});
+
+void test('round-1 invoke steps are only L2 r1 with the step prompt shape — L1 waits for the box', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  seed(host, { level: 2, folder: 'agentPlannerL2', shortName: 'agentPlannerL2', extension: '.ts' }, '');
+  seed(host, { level: 2, folder: 'agentPlannerL1', shortName: 'agentPlannerL1', extension: '.ts' }, '');
+  const now = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
+  const run = await runPlDispatch('mensalidadesAcademia', now);
+  const steps = createRound1InvokeSteps('mensalidadesAcademia', run);
+  assert.equal(steps.length, 1);
+  assert.equal(steps[0].agentName, PL_L2_AGENT);
+  assert.equal(steps[0].planning?.planId, plRoundPlanId('l2', 1));
+  assert.deepEqual(steps[0].planning?.dependsOn, []);
+  const l2Prompt = JSON.parse(String(steps[0].prompt)) as { moduleName: string; thread: string; file: string };
+  assert.equal(l2Prompt.moduleName, 'mensalidadesAcademia');
+  assert.equal(l2Prompt.thread, run.thread);
+  assert.equal(l2Prompt.file, run.l2Path);
+  assert.equal(steps.some(step => step.agentName === PL_L1_AGENT), false);
+});
+
+void test('plInvokeOutput is done only when L2 wrote menu.json plus l2→l1, or L1 wrote a reply or backend.json', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const thread = 'mensalidadesAcademia-20260918103000';
+  const at = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
+  assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'no-output');
+  assert.equal(await plInvokeOutput('l1', 'mensalidadesAcademia', thread), 'no-output');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' },
+    '{}\n',
+  );
+  assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'no-output');
+  await writePoolMessage('mensalidadesAcademia', {
+    from: 'l2', to: 'l1', thread, round: 1, mode: 'implement',
+    subject: 'needs', artifacts: ['pool/l1/web/needs.json'], body: 'needs',
+  }, at);
+  assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'done');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'backend', extension: '.json' },
+    '{}\n',
+  );
+  assert.equal(await plInvokeOutput('l1', 'mensalidadesAcademia', thread), 'done');
 });

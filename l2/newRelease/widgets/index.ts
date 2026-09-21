@@ -5,6 +5,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import {
   NEW_RELEASE_CONTEXT_EVENT,
+  NEW_RELEASE_TOBE_UPDATED_EVENT,
+  historicalReleaseId,
   type NewReleaseContext,
   type NewReleaseVersion,
 } from '/_102035_/l2/newRelease/helpers/context.js';
@@ -18,9 +20,9 @@ import {
   observeNewReleaseLanguage,
   type NewReleaseTranslate,
 } from '/_102035_/l2/newRelease/helpers/i18n.js';
+import { ChangeRequestDrafts, contextStillCurrent, readChangeRequest, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import {
   discardTobe,
-  NEW_RELEASE_TOBE_UPDATED_EVENT,
   saveTobeArtifact,
   type NewReleaseValidationIssue,
   type Ns5TobeArtifactPath,
@@ -54,6 +56,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private loading = true;
   @state() private changing = false;
   @state() private mutationError = '';
+  @state() private requestText = '';
+  @state() private savedRequest = '';
+  @state() private requestBusy = false;
+  @state() private requestError = '';
+  @state() private resultCurrent = false;
 
   private t: NewReleaseTranslate = key => key;
   private languageObserver?: MutationObserver;
@@ -62,8 +69,23 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private validationTimer?: number;
   private mutationQueue: Promise<void> = Promise.resolve();
   private pendingMutations = 0;
+  private expectedChangeId: string | null = null;
+  private expectedRevisionId: string | null = null;
+  private changeByModule = new Map<string, string | null>();
+  private revisionByModule = new Map<string, string | null>();
+  private requestDrafts = new ChangeRequestDrafts();
+  private requestKey: string | null = null;
 
   createRenderRoot() { return this; }
+
+  private revisionError(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('revision conflict') || message.includes('change conflict')) return this.t('request.conflict');
+    if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
+    if (message.includes('Historical inventory differs')) return this.t('request.historyIncompatible');
+    if (message.includes('Discard the active candidate')) return this.t('request.activeCandidate');
+    return message;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -101,20 +123,51 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async loadModule() {
+    this.requestDrafts.remember(this.requestKey, this.requestText, this.savedRequest);
+    this.requestKey = null;
     if (this.validationTimer) {
       window.clearTimeout(this.validationTimer);
       this.validationTimer = undefined;
     }
     const token = ++this.loadToken;
+    this.data = null;
+    this.requestText = '';
+    this.savedRequest = '';
+    this.requestError = '';
+    this.resultCurrent = false;
+    this.expectedChangeId = null;
+    this.expectedRevisionId = null;
     if (!this.project || !this.moduleName) {
       this.data = null;
       this.loading = false;
       return;
     }
     this.loading = true;
-    const data = await readNs5Module(this.project, this.moduleName, this.version);
-    if (token !== this.loadToken) return;
+    const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+    let data: NewReleaseModuleData;
+    let request: Awaited<ReturnType<typeof readChangeRequest>> = null;
+    try {
+      data = await readNs5Module(context.project, context.moduleName, context.version);
+      if (context.version === 'asis' || context.version === 'tobe') request = await readChangeRequest(context.project, context.moduleName);
+    } catch (error) {
+      if (token === this.loadToken && contextStillCurrent(context, this)) {
+        this.mutationError = this.revisionError(error);
+        this.loading = false;
+      }
+      return;
+    }
+    if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
     this.data = data;
+    this.expectedChangeId = data.changeId;
+    this.expectedRevisionId = data.revisionId;
+    this.changeByModule.set(`${this.project}/${this.moduleName}`, data.changeId);
+    this.revisionByModule.set(`${this.project}/${this.moduleName}`, data.revisionId);
+    this.savedRequest = request?.text ?? '';
+    this.requestKey = context.version === 'asis' || context.version === 'tobe'
+      ? ChangeRequestDrafts.key(context.project, context.moduleName, request?.changeId ?? data.changeId)
+      : null;
+    this.requestText = this.requestKey ? this.requestDrafts.restore(this.requestKey, this.savedRequest) ?? this.savedRequest : '';
+    this.resultCurrent = request?.resultCurrent ?? false;
     this.loading = false;
   }
 
@@ -125,6 +178,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.project = context.project;
     this.moduleName = context.moduleName;
     this.version = context.version;
+    this.expectedChangeId = null;
+    this.expectedRevisionId = null;
+    this.mutationError = '';
+    this.requestBusy = false;
+    this.changing = this.pendingMutations > 0;
     if (projectChanged) void this.loadLanguage();
     void this.loadModule();
   };
@@ -169,23 +227,103 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private onArtifactChanged = (event: Event) => {
     const detail = (event as CustomEvent<NewReleaseChangedDetail>).detail;
-    if (!detail?.path) return;
+    const source = event.target as HTMLElement & { project?: number; moduleName?: string; version?: NewReleaseVersion };
+    if (!detail?.path || historicalReleaseId(this.version)
+      || source.project !== this.project || source.moduleName !== this.moduleName || source.version !== this.version) return;
+    const project = this.project;
+    const moduleName = this.moduleName;
+    const version = this.version;
+    const moduleKey = `${project}/${moduleName}`;
+    const initialChange = this.expectedChangeId;
+    const initialRevision = this.expectedRevisionId;
+    this.requestDrafts.remember(this.requestKey, this.requestText, this.savedRequest);
     this.pendingMutations += 1;
     this.changing = true;
     this.mutationError = '';
     this.mutationQueue = this.mutationQueue.then(async () => {
       try {
-        await saveTobeArtifact(this.project, this.moduleName, detail.path, detail.value, { jsonPath: detail.jsonPath });
-        this.version = 'tobe';
-        this.scheduleOverlayReload();
+        if (!contextStillCurrent({ project, moduleName, version }, this)) return;
+        const manifest = await saveTobeArtifact(project, moduleName, detail.path, detail.value, {
+          jsonPath: detail.jsonPath,
+          expectedChangeId: this.changeByModule.has(moduleKey) ? this.changeByModule.get(moduleKey)! : initialChange,
+          expectedRevisionId: this.revisionByModule.has(moduleKey) ? this.revisionByModule.get(moduleKey)! : initialRevision,
+        });
+        if (initialChange === null && manifest.changeId) {
+          this.requestDrafts.move(
+            ChangeRequestDrafts.key(project, moduleName, null),
+            ChangeRequestDrafts.key(project, moduleName, manifest.changeId),
+          );
+        }
+        this.changeByModule.set(moduleKey, manifest.changeId ?? null);
+        this.revisionByModule.set(moduleKey, manifest.revisionId ?? null);
+        if (this.project === project && this.moduleName === moduleName) {
+          this.expectedChangeId = manifest.changeId ?? null;
+          this.expectedRevisionId = manifest.revisionId ?? null;
+          this.version = 'tobe';
+          this.scheduleOverlayReload();
+        }
       } catch (error) {
-        this.mutationError = error instanceof Error ? error.message : String(error);
+        if (this.project === project && this.moduleName === moduleName) this.mutationError = this.revisionError(error);
       } finally {
         this.pendingMutations -= 1;
         this.changing = this.pendingMutations > 0;
       }
     });
   };
+
+  private async saveRequest() {
+    if (this.requestBusy || this.changing || this.requestText === this.savedRequest) return;
+    const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+    const text = this.requestText;
+    const expectedChange = this.expectedChangeId;
+    const expectedRevision = this.expectedRevisionId;
+    this.requestBusy = true;
+    this.requestError = '';
+    try {
+      const saved = await saveChangeRequest(context.project, context.moduleName, text, expectedChange, expectedRevision);
+      if (!contextStillCurrent(context, this)) return;
+      this.expectedChangeId = saved.changeId;
+      this.expectedRevisionId = saved.revisionId;
+      this.changeByModule.set(`${context.project}/${context.moduleName}`, saved.changeId);
+      this.revisionByModule.set(`${context.project}/${context.moduleName}`, saved.revisionId);
+      this.savedRequest = text;
+      this.requestDrafts.forget(this.requestKey);
+      this.resultCurrent = false;
+      this.version = 'tobe';
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
+      await this.loadModule();
+    } catch (error) {
+      if (contextStillCurrent(context, this)) this.requestError = this.revisionError(error);
+    } finally {
+      if (this.project === context.project && this.moduleName === context.moduleName) this.requestBusy = false;
+    }
+  }
+
+  private async reuseHistory() {
+    if (!historicalReleaseId(this.version) || this.changing) return;
+    const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+    this.changing = true;
+    this.mutationError = '';
+    try {
+      try {
+        await reuseHistoricalRelease(context.project, context.moduleName, context.version);
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes('Discard the active candidate')
+          || !contextStillCurrent(context, this) || !window.confirm(this.t('request.replaceCandidateConfirm'))) throw error;
+        await discardTobe(context.project, context.moduleName, undefined, false);
+        if (!contextStillCurrent(context, this)) return;
+        await reuseHistoricalRelease(context.project, context.moduleName, context.version);
+      }
+      if (!contextStillCurrent(context, this)) return;
+      this.version = 'tobe';
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
+      await this.loadModule();
+    } catch (error) {
+      if (this.project === context.project && this.moduleName === context.moduleName) this.mutationError = this.revisionError(error);
+    } finally {
+      this.changing = this.pendingMutations > 0;
+    }
+  }
 
   private tabIcon(tab: NewReleaseTab) {
     const common = (content: unknown) => svg`
@@ -247,7 +385,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       if (!this.data?.manifest || Object.keys(this.data.manifest.base).length <= paths.length) this.version = 'asis';
       await this.loadModule();
     } catch (error) {
-      this.mutationError = error instanceof Error ? error.message : String(error);
+      this.mutationError = this.revisionError(error);
     } finally {
       this.changing = false;
     }
@@ -429,6 +567,31 @@ export class NewReleaseIndex102035 extends StateLitElement {
     `;
   }
 
+  private renderRequest() {
+    if (historicalReleaseId(this.version)) return html`
+      <section class="nr-index__request nr-index__request--history">
+        <div><strong>${this.t('request.historyTitle')}</strong><p>${this.t('request.historyBody')}</p></div>
+        <button type="button" ?disabled=${this.changing} @click=${() => void this.reuseHistory()}>${this.t('request.reuseHistory')}</button>
+      </section>
+    `;
+    return html`
+      <details class="nr-index__request" ?open=${!this.savedRequest}>
+        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : this.requestText === this.savedRequest ? this.t('request.saved') : this.t('request.unsaved')}</span></summary>
+        <div class="nr-index__request-body">
+          <p>${this.t('request.description')}</p>
+          <label for="nr-change-request">${this.t('request.label')}</label>
+          <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
+          ${this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
+          <div class="nr-index__request-actions">
+            <button type="button" ?disabled=${this.requestBusy || this.changing || this.requestText === this.savedRequest} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
+            <button type="button" disabled title=${this.t('request.calculateUnavailable')}>${this.t('request.calculate')}</button>
+            <small>${this.t('request.calculateUnavailable')}</small>
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
   private renderEmpty() {
     return html`
       <section class="nr-index__empty">
@@ -441,9 +604,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   render() {
     const editableVersion = this.version === 'asis' || this.version === 'tobe';
+    const historical = !!historicalReleaseId(this.version);
     return html`
       <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
         ${this.renderTabs()}
+
+        ${!this.loading && this.data?.module ? this.renderRequest() : nothing}
+        ${!this.loading && this.data?.baseProvenance?.status === 'unverified' ? html`<p class="nr-index__base-warning" role="status">${this.t('request.baseUnverified')}</p>` : nothing}
 
         ${this.renderTobeStatus()}
 
@@ -461,7 +628,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
             role="tabpanel"
             aria-labelledby=${`nr-tab-${this.activeTab}`}
             tabindex="0"
-          >${this.renderTabContent()}</section>
+          ><fieldset class="nr-index__revision-content" ?disabled=${historical}>
+            ${this.activeTab === 'review' && this.version === 'tobe' && !this.resultCurrent && (!!this.requestText || !!this.data.diffs.length)
+              ? html`<div class="nr-index__review-pending"><h2>${this.t('request.reviewPendingTitle')}</h2><p>${this.t('request.reviewPendingBody')}</p></div>`
+              : this.renderTabContent()}
+          </fieldset></section>
           ${this.renderDiffs()}
         `}
 

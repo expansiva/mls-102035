@@ -1,10 +1,13 @@
-# loop30 — report the boxes and complete immediately
+# loop30 — wait, L2 effort, conditional rounds 2–3, table
 
 Deterministic. No LLM call.
 
-Dispatch to other planners is suspended (Wagner, 18/09). This step does **not** create
-the next planner step. `decidePlLoop` still runs so the 3-round / `disputed` rule stays
-live; invoke is ignored, `disputed` is still recorded.
+After `dispatch20` created L2 r1, this step waits for L2 (and the children it
+scheduled) until the `l2→l1` message is in the box, then creates `L1 r1` with that
+real filename, then `L2 effort r1` with the real `l1→l2` filename (L2 does not
+accept `file: ''` as a step prompt). A completed planner without output fails the
+task. Further rounds only when a new message with `round > 1` is in the box, up to
+3. Round 3 with a non-empty box is `disputed` (message stays).
 
 ## Input
 
@@ -13,6 +16,7 @@ The L4 pool trace (`l4/<mod>/pipeline/pipeline.json.pool[]`) and the boxes on di
 
 ## Output
 
-- `loop30-done` result with `l1Count` / `l2Count` from `listPoolBox`.
-- At round 3 with a non-empty box: `outcome: disputed` on the L4 trace. The message stays.
-- Completes immediately so the task can leave `in progress`.
+- `l2-effort-r1` (and later rounds when needed) plus wait ticks `loop30-wait-N`.
+- `loop30-done` result with `l1Count` / `l2Count` and the `{ round, l2, l1, effort }` table.
+- The same table on the l4 `pipeline.json` as `plOrchestration`.
+- A failed planner step fails this step with that planId.

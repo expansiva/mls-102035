@@ -423,6 +423,15 @@ export async function readDefsJson<T>(fileInfo: Ns5FileInfo): Promise<T | null> 
   }
 }
 
+/** Preserve the exact L4 source when sealing a release or copying it to the candidate. */
+export async function readSourceText(fileInfo: Ns5FileInfo): Promise<string> {
+  return readText(fileInfo, true);
+}
+
+export async function writeSourceText(fileInfo: Ns5FileInfo, source: string): Promise<void> {
+  await writeText(fileInfo, source);
+}
+
 /**
  * An ontology entity file in whichever form it is written (ns5_39 T4). Both forms are one JSON literal,
  * so the reading is the same; only the type of what comes back changes, and `schemaVersion` is the

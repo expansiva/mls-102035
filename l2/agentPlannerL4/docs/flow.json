@@ -1,8 +1,8 @@
 {
   "flowId": "agentPlannerL4",
-  "schemaVersion": "2026-09-18-pl-flow-v1",
+  "schemaVersion": "2026-09-20-pl-flow-v3",
   "status": "entry10",
-  "description": "L4 planner: list the module artifacts and write pool/l1 and pool/l2. Dispatch to other planners is suspended (Wagner, 18/09) so the L4 planner can be tested alone. No LLM. Does not read ontology to opine.",
+  "description": "L4 planner: wipe the module pool, list the artifacts, write pool/l1 and pool/l2, and orchestrate L2 → L1 → L2 by type:agent steps in the same task. No LLM. Does not read ontology to opine. Never add-message-ai from a step.",
   "canonicalReferences": [
     "mls-base/skills/00_index.md",
     "mls-base/skills/agentsBestPractices.md",
@@ -16,8 +16,9 @@
     "Pipeline state of the module lives on disk at l4/{module}/pipeline/pipeline.json. The planner records l5Adjusted there; it does not own the NS5 status.",
     "Each owner traces only on its own pipeline.json (L4 on l4, L2 on l2). One file, one writer.",
     "workspaceDependencies of the current project's l5/config.json must list 102020 and 102021 so the platform finds the planners by name. Missing ids are appended at the end.",
-    "Dispatch to other planners is suspended (Wagner, 18/09): write the pool boxes and stop. createPlInvokeStep stays unused by the steps; decidePlLoop still runs (invoke ignored). They come back when L2/L1 are published.",
-    "Pending pool messages block a new run. /estimate is not available yet. There is no /rebuild.",
+    "On accept, entry10 wipes l4/<mod>/pool/{l1,l2,l4}/ (messages and web/*.json). The pool is derived from l4 — if l4 changed, planning is redone.",
+    "dispatch20 writes the two pool messages then creates the L2 r1 type:agent step in the same task. loop30 creates L1 r1 with the real l2→l1 file when that message is in the box (dependsOn of an agent step waits for scheduling, not the artifact), then L2 effort r1 with the real l1→l2 file. Further rounds only when a new message with round>1 is in the box, up to 3. Round 3 with a non-empty box is disputed.",
+    "A missing planner is a readable status (L2/L1 not available). A failed planner step fails the task with the step name. A completed planner that produced no output fails the task with '<planId> ran without output'. /estimate is not available yet. There is no /rebuild.",
     "Deterministic user text is English. Internal messages stay English literals."
   ],
   "invocation": {
@@ -41,7 +42,7 @@
       "dependsOn": [],
       "doneAnchor": "entry10-done",
       "artifact": "l5/config.json",
-      "goal": "Parse the invocation, refuse deterministically, append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline."
+      "goal": "Parse the invocation, refuse deterministically, wipe the module pool (messages + web/*.json, poolWiped on the pipeline), append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline."
     },
     {
       "id": "dispatch20",
@@ -49,7 +50,7 @@
       "dependsOn": ["entry10-done"],
       "doneAnchor": "dispatch20-done",
       "artifact": "l4/{module}/pool/l2/{stamp}_{thread}_{round}.json",
-      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), write the two pool messages, record delivered on the module pipeline. Do not invoke other planners — dispatch is suspended (Wagner, 18/09)."
+      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), write the two pool messages, record delivered, create the L2 r1 type:agent step. Prompt is {moduleName, thread, file}. L1 r1 is created by loop30 when the l2→l1 message exists."
     },
     {
       "id": "loop30",
@@ -57,7 +58,7 @@
       "dependsOn": ["dispatch20-done"],
       "doneAnchor": "loop30-done",
       "artifact": "l4/{module}/pipeline/pipeline.json",
-      "goal": "Report pool/l1 and pool/l2 via listPoolBox and complete immediately. Do not invoke other planners. decidePlLoop still runs so round counting and disputed stay live; disputed is recorded, invoke is ignored. Dispatch suspended (Wagner, 18/09)."
+      "goal": "After L2 r1, create L1 r1 with the real l2→l1 filename when that message is in the box, then L2 effort r1 with the real l1→l2 filename. A completed planner without output fails the task. Further rounds only when a new message with round>1 is in the box, up to 3 (disputed at 3). Write {round, l2, l1, effort} on the l4 pipeline and complete."
     }
   ]
 }
