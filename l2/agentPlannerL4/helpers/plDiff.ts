@@ -2,6 +2,7 @@
 
 import { parseNs4ClassicDefsSource as parseDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
 import {
+  fileExists,
   moduleFile,
   moduleFolder,
   normalizeModuleName,
@@ -406,6 +407,16 @@ async function findSealedBaseRoot(moduleName: string): Promise<string> {
   return baseId ? `${canonical}/pipeline/releases/${baseId}/l4` : '';
 }
 
+/** Label written to `l4diff.json.base` plus the literal folder `loadSnapshot` reads. */
+async function resolveBase(moduleName: string): Promise<{ base: string; root: string }> {
+  const canonical = normalizeModuleName(moduleName);
+  const sealed = await findSealedBaseRoot(moduleName);
+  if (sealed) return { base: sealed, root: sealed };
+  const project = moduleFile(moduleName).project;
+  if (!fileExists(fileAt(project, canonical, 'module.defs.ts'))) return { base: '', root: '' };
+  return { base: 'canonical', root: canonical };
+}
+
 export function emptyL4Diff(moduleName: string, base = '', candidate = ''): L4Diff {
   return {
     schemaVersion: L4_DIFF_SCHEMA,
@@ -433,9 +444,14 @@ export async function runPlDiff(moduleName: string): Promise<L4Diff> {
     return empty;
   }
   const project = moduleFile(existing).project;
-  const base = await findSealedBaseRoot(existing);
-  const items = diffL4Snapshots(await loadSnapshot(project, base), await loadSnapshot(project, candidate));
-  const diff: L4Diff = { schemaVersion: L4_DIFF_SCHEMA, moduleName: existing, base, candidate, items };
+  const resolved = await resolveBase(existing);
+  const items = diffL4Snapshots(
+    await loadSnapshot(project, resolved.root),
+    await loadSnapshot(project, candidate),
+  );
+  const diff: L4Diff = {
+    schemaVersion: L4_DIFF_SCHEMA, moduleName: existing, base: resolved.base, candidate, items,
+  };
   await writeJson(l4diffFile(existing, 'l1'), diff);
   await writeJson(l4diffFile(existing, 'l2'), diff);
   return diff;

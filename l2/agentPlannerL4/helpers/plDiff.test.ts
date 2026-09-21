@@ -229,3 +229,67 @@ void test('T3: two real l4s of mensalidadesAcademia differ by one rule; canonica
     setModuleRoot(MODULE, null);
   }
 });
+
+void test('without a sealed release, one changed rule against canonical l4 is one rule:changed item', async () => {
+  const files = loadFixtureFiles();
+  const originalRules = files.get('rules.defs.ts') || '';
+  const candidateFiles = new Map(files);
+  candidateFiles.set('rules.defs.ts', originalRules.replace(RULE_OLD, RULE_NEW));
+  const before = fingerprint(files);
+  const host = installHost();
+  seedTree(host, MODULE, files);
+  seedTree(host, `${MODULE}/tobe/plan`, candidateFiles);
+  try {
+    setModuleRoot(MODULE, `${MODULE}/tobe/plan`);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.schemaVersion, L4_DIFF_SCHEMA);
+    assert.equal(diff.base, 'canonical');
+    assert.equal(diff.candidate, `${MODULE}/tobe/plan`);
+    assert.equal(diff.items.length, 1);
+    assert.equal(diff.items[0].kind, 'rule');
+    assert.equal(diff.items[0].op, 'changed');
+    assert.equal(diff.items[0].changeId, 'rule:paymentAmountPositive');
+    assert.equal((diff.items[0].before as { description?: string } | undefined)?.description, RULE_OLD);
+    assert.equal((diff.items[0].after as { description?: string } | undefined)?.description, RULE_NEW);
+    assert.equal(fingerprint(canonicalFromHost(host, files)), before);
+    const written = JSON.parse(host.files[keyOf({
+      project: PROJECT, level: 4, folder: `${MODULE}/tobe/plan/pool/l2/web`, shortName: 'l4diff', extension: '.json',
+    })]?.content || 'null') as { base: string; items: unknown[] };
+    assert.equal(written.base, 'canonical');
+    assert.equal(written.items.length, 1);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
+void test('identical candidate against canonical base yields empty items', async () => {
+  const files = loadFixtureFiles();
+  const host = installHost();
+  seedTree(host, MODULE, files);
+  seedTree(host, `${MODULE}/tobe/plan`, files);
+  try {
+    setModuleRoot(MODULE, `${MODULE}/tobe/plan`);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.base, 'canonical');
+    assert.equal(diff.candidate, `${MODULE}/tobe/plan`);
+    assert.deepEqual(diff.items, []);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
+void test('without canonical module, base is empty and every item is added', async () => {
+  const files = loadFixtureFiles();
+  const host = installHost();
+  seedTree(host, `${MODULE}/tobe/plan`, files);
+  try {
+    setModuleRoot(MODULE, `${MODULE}/tobe/plan`);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.base, '');
+    assert.equal(diff.candidate, `${MODULE}/tobe/plan`);
+    assert.equal(diff.items.length > 0, true);
+    assert.equal(diff.items.every(item => item.op === 'added'), true);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
