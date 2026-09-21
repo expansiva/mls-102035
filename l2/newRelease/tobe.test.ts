@@ -21,7 +21,7 @@ import {
 } from './tobe.js';
 import { tabForArtifactPath } from './editContract.js';
 import { sha256Tobe } from './tobeDiff.js';
-import { markL4Result, readActiveL4Change, readL4Release, readL4Revision, resolveL4Folders, sealL4Revision } from './helpers/moduleRevision.js';
+import { L4SealedCandidateError, markL4Result, readActiveL4Change, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from './helpers/moduleRevision.js';
 import { historicalReleaseId } from './helpers/context.js';
 import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, readChangeRequest, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
 
@@ -349,6 +349,7 @@ test('revisions retain request separately, reject late saves, and keep prior sna
   assert.ok(first.changeId && first.revisionId && first.baseId);
   const firstRevision = await readL4Revision(project, moduleName, first.changeId, first.revisionId);
   assert.equal(firstRevision?.changedPaths[0], 'module.defs.ts');
+  assert.match(firstRevision?.requestHash || '', /^sha256:[a-f0-9]{64}$/u);
   await assert.rejects(() => saveTobeArtifact(project, moduleName, 'module.defs.ts', { ...fixture.source.module, title: 'Late title' }, {
     author: 'tester@example.com', expectedRevisionId: null,
   }), /revision conflict/);
@@ -358,8 +359,15 @@ test('revisions retain request separately, reject late saves, and keep prior sna
   assert.equal(changed?.sourcePrompt, fixture.source.module.sourcePrompt);
   assert.equal(changed?.resultRevisionId, null);
   assert.equal(request.requestRevision, 1);
+  assert.match(request.requestHash || '', /^sha256:[a-f0-9]{64}$/u);
   const requestKey = `${project}:4:${moduleName}/pipeline/changes/${first.changeId}/requests:request-1.json`;
   assert.equal(JSON.parse(fixture.contents.get(requestKey) || '{}').request, 'Adjust the title');
+  const sealed = await readSealedL4Candidate(project, moduleName, first.changeId!, request.revisionId);
+  assert.equal(sealed?.request, 'Adjust the title');
+  assert.deepEqual(sealed?.sources.map(item => item.path), Object.keys(request.files).sort());
+  assert.ok(sealed?.sources.every(item => item.source === fixture.contents.get(
+    `${project}:4:${moduleName}/pipeline/changes/${first.changeId}/revisions/${request.revisionId}/l4${item.path.includes('/') ? `/${item.path.slice(0, item.path.lastIndexOf('/'))}` : ''}:${item.path.slice(item.path.lastIndexOf('/') + 1).replace('.defs.ts', '')}.defs.ts`,
+  )));
   await assert.rejects(() => markL4Result(project, moduleName, first.revisionId!), /result is stale/);
   assert.equal((await markL4Result(project, moduleName, request.revisionId)).resultRevisionId, request.revisionId);
   const originalSet = (globalThis as any).mls.stor.localStor.setContent;
@@ -372,6 +380,68 @@ test('revisions retain request separately, reject late saves, and keep prior sna
   }), /synthetic revision write failure/);
   assert.ok(await readL4Revision(project, moduleName, first.changeId, first.revisionId));
   assert.equal((await readActiveL4Change(project, moduleName))?.activeRevisionId, request.revisionId);
+});
+
+test('sealed migration boundary rejects a tampered request and a legacy manifest without request hash', async t => {
+  await t.test('tampered request', async () => {
+    const project = 102047;
+    const moduleName = 'ordenServicio5';
+    const fixture = installStorFixture(project, moduleName);
+    const first = await saveTobeArtifact(project, moduleName, 'module.defs.ts', fixture.source.module, {
+      author: 'tester@example.com', expectedRevisionId: null,
+    });
+    const revision = await sealL4Revision(project, moduleName, first.revisionId!, 'Original request');
+    const requestKey = `${project}:4:${moduleName}/pipeline/changes/${revision.changeId}/requests:request-${revision.requestRevision}.json`;
+    const record = JSON.parse(fixture.contents.get(requestKey) || '{}');
+    fixture.contents.set(requestKey, JSON.stringify({ ...record, request: 'Tampered request' }));
+    await assert.rejects(
+      () => readSealedL4Candidate(project, moduleName, revision.changeId, revision.revisionId),
+      (error: unknown) => error instanceof L4SealedCandidateError
+        && error.code === 'candidate.request_integrity_failed',
+    );
+  });
+
+  await t.test('legacy manifest', async () => {
+    const project = 102047;
+    const moduleName = 'ordenServicio5';
+    const fixture = installStorFixture(project, moduleName);
+    const first = await saveTobeArtifact(project, moduleName, 'module.defs.ts', fixture.source.module, {
+      author: 'tester@example.com', expectedRevisionId: null,
+    });
+    const manifestKey = `${project}:4:${moduleName}/pipeline/changes/${first.changeId}/revisions/${first.revisionId}:manifest.json`;
+    const manifest = JSON.parse(fixture.contents.get(manifestKey) || '{}');
+    delete manifest.requestHash;
+    fixture.contents.set(manifestKey, JSON.stringify(manifest));
+    assert.ok(await readL4Revision(project, moduleName, first.changeId!, first.revisionId!));
+    await assert.rejects(
+      () => readSealedL4Candidate(project, moduleName, first.changeId!, first.revisionId!),
+      (error: unknown) => error instanceof L4SealedCandidateError
+        && error.code === 'candidate.legacy_request_hash_missing',
+    );
+  });
+});
+
+test('sealed migration boundary hashes the exact source strings returned after revision verification', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const first = await saveTobeArtifact(project, moduleName, 'module.defs.ts', fixture.source.module, {
+    author: 'tester@example.com', expectedRevisionId: null,
+  });
+  const sourceKey = `${project}:4:${moduleName}/pipeline/changes/${first.changeId}/revisions/${first.revisionId}/l4:module.defs.ts`;
+  const file = fixture.files[sourceKey];
+  const original = fixture.contents.get(sourceKey) || '';
+  let reads = 0;
+  file.getValueInfo = async () => ({
+    content: ++reads === 1 ? original : original.replace('ordenServicio5', 'tamperedModule'),
+  });
+
+  await assert.rejects(
+    () => readSealedL4Candidate(project, moduleName, first.changeId!, first.revisionId!),
+    (error: unknown) => error instanceof L4SealedCandidateError
+      && error.code === 'candidate.source_integrity_failed',
+  );
+  assert.equal(reads, 2);
 });
 
 test('pre-existing partial overlay survives first full-copy preparation', async () => {

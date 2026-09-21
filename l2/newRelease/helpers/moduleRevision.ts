@@ -48,6 +48,21 @@ export interface L4CandidateManifest {
   files: L4HashMap;
   changedPaths: string[];
   requestRevision: number;
+  /** Absent only on legacy manifests, which remain readable but cannot cross the migration boundary. */
+  requestHash?: string;
+}
+
+export interface L4SealedCandidateSnapshot {
+  manifest: L4CandidateManifest;
+  request: string;
+  sources: Array<{ path: Ns5TobeArtifactPath; source: string }>;
+}
+
+export class L4SealedCandidateError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+    this.name = 'L4SealedCandidateError';
+  }
 }
 
 const locks = new Map<string, Promise<void>>();
@@ -391,6 +406,21 @@ async function sealL4RevisionInsideWriter(project: number, moduleName: string, e
     const change = await readActiveL4Change(project, moduleName);
     if (!change) throw new Error('No active L4 change.');
     if (change.activeRevisionId !== expectedRevisionId) throw new Error('L4 revision conflict: reload before saving.');
+    if (request !== undefined && typeof request !== 'string') throw new Error('Change request must be text.');
+    const requestRevision = change.requestRevision + (request === undefined ? 0 : 1);
+    const storedRequest = request === undefined && requestRevision > 0
+      ? await readJson<{ request?: unknown }>(jsonInfo(
+        project,
+        moduleName,
+        `pipeline/changes/${change.changeId}/requests`,
+        `request-${requestRevision}`,
+      ))
+      : null;
+    if (request === undefined && requestRevision > 0 && typeof storedRequest?.request !== 'string') {
+      throw new Error('Current change request is missing or incomplete.');
+    }
+    const requestText = request ?? (typeof storedRequest?.request === 'string' ? storedRequest.request : '');
+    const requestHash = await sourceHash(requestText);
     const release = await readL4Release(project, moduleName, change.baseId);
     if (!release) throw new Error('Captured L4 base is incomplete.');
     const paths = Object.keys(release.files).map(normalizeTobeArtifactPath);
@@ -406,15 +436,15 @@ async function sealL4RevisionInsideWriter(project: number, moduleName: string, e
     const manifest: L4CandidateManifest = {
       schemaVersion: L4_REVISION_SCHEMA, project, moduleName, changeId: change.changeId, revisionId,
       baseId: change.baseId, createdAt: now, files: current, changedPaths,
-      requestRevision: change.requestRevision + (request === undefined ? 0 : 1),
+      requestRevision,
+      requestHash,
     };
-    await writeJson(revisionInfo(project, moduleName, change.changeId, revisionId), manifest);
     if (request !== undefined) {
-      if (typeof request !== 'string') throw new Error('Change request must be text.');
       await writeJson(jsonInfo(project, moduleName, `pipeline/changes/${change.changeId}/requests`, `request-${manifest.requestRevision}`), {
         schemaVersion: L4_REVISION_SCHEMA, revision: manifest.requestRevision, request, createdAt: now,
       });
     }
+    await writeJson(revisionInfo(project, moduleName, change.changeId, revisionId), manifest);
     await writeJson(changeInfo(project, moduleName, change.changeId), {
       ...change, activeRevisionId: revisionId, requestRevision: manifest.requestRevision,
       resultRevisionId: null, updatedAt: now,
@@ -433,4 +463,60 @@ export async function readL4Revision(project: number, moduleName: string, change
   } catch {
     return null;
   }
+}
+
+/** Read exact immutable revision bytes; never substitutes the mutable tobe/plan mirror. */
+export async function readSealedL4Candidate(
+  project: number,
+  moduleName: string,
+  changeId: string,
+  revisionId: string,
+): Promise<L4SealedCandidateSnapshot | null> {
+  const manifest = await readL4Revision(project, moduleName, changeId, revisionId);
+  if (!manifest) return null;
+  if (!manifest.requestHash) {
+    throw new L4SealedCandidateError('candidate.legacy_request_hash_missing');
+  }
+  if (!/^sha256:[a-f0-9]{64}$/u.test(manifest.requestHash)) {
+    throw new L4SealedCandidateError('candidate.request_integrity_failed');
+  }
+  const paths = Object.keys(manifest.files).map(normalizeTobeArtifactPath).sort();
+  const sources = await Promise.all(paths.map(async path => ({
+    path,
+    source: await readSourceText(artifactInfo(project, moduleName, path, 'revision', changeId, revisionId)),
+  })));
+  const returnedHashes = Object.fromEntries(await Promise.all(
+    sources.map(async item => [item.path, await sourceHash(item.source)] as const),
+  ));
+  if (!sameHashes(returnedHashes, manifest.files)) {
+    throw new L4SealedCandidateError('candidate.source_integrity_failed');
+  }
+  const requestRecord = manifest.requestRevision > 0
+    ? await readJson<{ request?: unknown }>(jsonInfo(
+      project,
+      moduleName,
+      `pipeline/changes/${changeId}/requests`,
+      `request-${manifest.requestRevision}`,
+    ))
+    : null;
+  if (manifest.requestRevision > 0 && typeof requestRecord?.request !== 'string') {
+    throw new L4SealedCandidateError('candidate.request_integrity_failed');
+  }
+  const request = typeof requestRecord?.request === 'string' ? requestRecord.request : '';
+  if (await sourceHash(request) !== manifest.requestHash) {
+    throw new L4SealedCandidateError('candidate.request_integrity_failed');
+  }
+  return { manifest, request, sources };
+}
+
+/** Resolve only a complete active sealed revision. An incomplete active record fails closed. */
+export async function readActiveSealedL4Candidate(
+  project: number,
+  moduleName: string,
+): Promise<L4SealedCandidateSnapshot | null> {
+  const active = await readActiveL4Change(project, moduleName);
+  if (!active?.activeRevisionId) return null;
+  const sealed = await readSealedL4Candidate(project, moduleName, active.changeId, active.activeRevisionId);
+  if (!sealed) throw new Error('Active sealed L4 candidate is incomplete.');
+  return sealed;
 }
