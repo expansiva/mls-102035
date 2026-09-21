@@ -59,6 +59,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
 
   updated(changed: PropertyValues) {
     if (!changed.has('data') || this.mode === 'edit') return;
+    if (readRulesV2(this.data?.artifacts.rules.value)) return;
     const rules = this.currentRules()?.rules || [];
     if (!rules.some(rule => rule.ruleId === this.selectedRuleId)) this.selectedRuleId = rules[0]?.ruleId || '';
   }

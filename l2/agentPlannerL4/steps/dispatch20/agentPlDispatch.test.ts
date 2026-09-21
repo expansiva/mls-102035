@@ -143,11 +143,12 @@ void test('dispatch20 writes the boxes and creates only L2 r1 — L1 waits for t
   assert.equal((agents[0].step as mls.msg.AIAgentStep).agentName, PL_L2_AGENT);
   assert.equal(agents[0].step.planning?.planId, plRoundPlanId('l2', 1));
   const l2Prompt = JSON.parse(String((agents[0].step as mls.msg.AIAgentStep).prompt)) as {
-    moduleName: string; thread: string; file: string;
+    moduleName: string; thread: string; file: string; candidate: string;
   };
   assert.equal(l2Prompt.moduleName, 'mensalidadesAcademia');
   assert.ok(l2Prompt.thread);
   assert.match(l2Prompt.file, /pool\/l2\//);
+  assert.equal(l2Prompt.candidate, '');
   assert.equal(added.some(intent => (intent.step as mls.msg.AIAgentStep).agentName === PL_L1_AGENT), false);
   const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
   const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as {
@@ -155,7 +156,7 @@ void test('dispatch20 writes the boxes and creates only L2 r1 — L1 waits for t
   };
   assert.equal(result.moduleName, 'mensalidadesAcademia');
   assert.ok(result.thread);
-  assert.equal(result.artifactCount, 1);
+  assert.equal(result.artifactCount, 3);
   assert.equal(result.invokeCount, 1);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
