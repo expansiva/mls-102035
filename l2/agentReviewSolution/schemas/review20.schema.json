@@ -1,0 +1,29 @@
+{
+  "$id": "agentReviewSolution/review20/2026-09-21-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "decision", "clarification", "operations"],
+  "properties": {
+    "schemaVersion": { "const": "2026-09-21-review20-v1" },
+    "decision": { "enum": ["apply", "clarification"] },
+    "clarification": { "type": "string" },
+    "operations": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifactPath", "op", "pointer", "basis", "expectedJson", "valueJson", "reason"],
+        "properties": {
+          "artifactPath": { "type": "string" },
+          "op": { "const": "replace" },
+          "pointer": { "type": "string" },
+          "basis": { "enum": ["base-unchanged", "refine-candidate-edit"] },
+          "expectedJson": { "type": "string" },
+          "valueJson": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

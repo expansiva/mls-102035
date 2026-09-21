@@ -355,7 +355,9 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private renderBackend(view: ReviewView) {
-    const stale = view.kind === 'pending' || this.version.startsWith('release:');
+    // pool/l2/web holds the candidate result, not a snapshot of Atual or a past release.
+    if (this.version !== 'tobe') return nothing;
+    const stale = view.kind === 'pending';
     const backend: BackendReviewView = buildBackendReview(this.backendRead, stale, this.moduleName);
     const knownTables = new Set(backend.groups.map(group => group.tableId));
     return html`

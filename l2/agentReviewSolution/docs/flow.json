@@ -1,0 +1,41 @@
+{
+  "flowId": "agentReviewSolution",
+  "schemaVersion": "2026-09-21-review-flow-v1",
+  "status": "entry10-executable-private-cores-partial",
+  "visibility": "private",
+  "description": "Deterministic entry plus a pure, in-memory review20 staging contract. Candidate mutation, model invocation and result publication are not enabled in this version.",
+  "invocation": {
+    "cli": "@@agentReviewSolution {\"moduleName\":\"...\",\"originalL4Path\":\"l4/<module>/pipeline/releases/<baseId>/l4\",\"temporaryL4Path\":\"l4/<module>/tobe/plan\",\"request\":\"...\"}",
+    "ui": "The same structured object, with expectedRevisionId supplied by the UI.",
+    "project": "Required from the selected host project (mls.actualProject), never inferred from stored modules.",
+    "invalidInput": "A status-only task with root LLM skipped; no source or candidate write."
+  },
+  "executableSteps": [
+    {
+      "id": "entry10",
+      "agentName": "agentReviewSolution",
+      "kind": "deterministic",
+      "modelAlias": null,
+      "dependsOn": [],
+      "doneAnchor": "entry10-done",
+      "reads": ["captured release manifest and bytes", "active change and revision manifest", "temporary L4 bytes"],
+      "writes": [],
+      "goal": "Freeze the explicit project, module, base, change, revision and request after validating both folder references and all source hashes."
+    }
+  ],
+  "privateStages": [
+    { "id": "review20", "dependsOn": ["entry10-done"], "kind": "pure-in-memory-core", "maturity": "partial-not-an-agent-step", "schema": "../schemas/review20.schema.json", "goal": "Compare candidate against the base and stage only policy-qualified scalar replacements or a clarification; no filesystem writes or approval." },
+    { "id": "validate40", "dependsOn": ["reconcile30-done"], "kind": "pure-in-memory-core", "maturity": "partial-not-an-agent-step", "goal": "Validate an assembled proposal with caller-supplied real context while observing, but never consuming, the persisted correction counter; unsupported candidates remain drafts." }
+  ],
+  "reservedNotScheduled": [
+    { "id": "review20", "dependsOn": ["entry10-done"], "reason": "The pure core exists, but no step intent obtains the structured model response; orchestration and shared-run gates are not enabled." },
+    { "id": "reconcile30", "dependsOn": ["review20-done"], "reason": "Dependency reconciliation is not implemented yet." },
+    { "id": "validate40", "dependsOn": ["reconcile30-done"], "reason": "The pure core consumes mr_03a coverage, but reconcile30 and a step/orchestrator are not implemented." },
+    { "id": "finalize50", "dependsOn": ["validate40-done"], "reason": "Requires conditional publication from mr_00; never uses local-only locks as a global CAS." }
+  ],
+  "safety": [
+    "No LLM call, candidate write, original write, materializer or planner dispatch occurs in entry10 or private review20 staging.",
+    "A missing or stale active revision is a refusal, not an implicit snapshot rewrite.",
+    "This flow does not report an accepted review or completed release."
+  ]
+}

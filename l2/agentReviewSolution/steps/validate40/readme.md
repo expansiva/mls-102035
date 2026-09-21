@@ -1,0 +1,5 @@
+# validate40 — core privado
+
+`validate40Private` recebe a proposta completa em memória, a base, contexto real do caller e o contador durável de **correções** da solicitação. Ele monta o contrato `NewReleaseOverlaySources`, calcula as áreas diretamente afetadas e reutiliza `validateV3Candidate` (v3) ou `validateNs5Overlay` (v2). Só retorna `publishable` quando existe mudança, todos os gates das áreas afetadas estão `checked`, não há erro em nenhuma área e nenhum path alterado está sem cobertura.
+
+O caller deve persistir e reenviar `{ requestKey, correctionAttemptsUsed }`; estado de outra solicitação é recusado e o limite de correções é três. Validar nunca incrementa esse valor. Candidato válido é reconhecido mesmo quando o contador já está em três; candidato corrigível inválido retorna `mayCorrect: false`/`attempt-limit` nesse ponto. Falta de contexto, `unsupported` e falha operacional retornam rascunho com `mayCorrect: false`, sem consumir correção. Catálogos, plano de ontologia, registry e pipeline nunca são inventados. Este arquivo não é step/intento, não chama LLM e não lê ou escreve stor.

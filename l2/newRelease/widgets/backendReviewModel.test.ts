@@ -24,7 +24,7 @@ function fixture() {
     ],
     ports: [{ portId: 'ConsultaRepository', entity: 'Consulta', status: 'done', tableRefs: ['consulta'], noTable: 'ok' }],
     endpoints: [{ route: '/consultas', usecaseRef: 'agendarConsulta', status: 'toUpdate', tableRefs: ['consulta'], noTable: 'ok' }],
-    removed: [{ kind: 'usecase', id: 'legacy', status: 'toRemove', reason: 'Removed from base', tableRefs: [], noTable: 'none' }],
+    removed: [{ kind: 'usecase', id: 'legacy', status: 'toRemove', reason: 'Removed from base', tableRefs: [] as string[], noTable: 'none' }],
     changes: [
       { changeId: 'field:Consulta.status', kind: 'field', op: 'changed', entity: 'Consulta', tableRefs: ['consulta'], noTable: 'ok', usecaseRefs: ['agendarConsulta'], reason: 'Status rule', source: 'ontology/Consulta.defs.ts' },
       { changeId: 'grant:shared', kind: 'grant', op: 'added', entity: '', tableRefs: ['consulta', 'paciente'], noTable: 'ok', usecaseRefs: [], reason: 'Shared grant', source: 'access.defs.ts' },
