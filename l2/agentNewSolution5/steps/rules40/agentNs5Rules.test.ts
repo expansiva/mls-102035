@@ -20,6 +20,7 @@ import {
   buildNs5RulesArtifactV2,
   buildNs5RulesTool,
   normalizeNs5RulesPayload,
+  partitionCitedRules,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
   formatNs5RulesGate,
@@ -293,6 +294,7 @@ void test('rules40 prompt has no domain examples and no appliesTo/title', () => 
   assert.doesNotMatch(prompt, /appliesTo/);
   assert.doesNotMatch(prompt, /title is a short label/);
   assert.match(prompt, /Do not invent a rule that has no basis/);
+  assert.match(prompt, /Platform rules already defined by the platform — cite them, never restate or rename them/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto/i);
 });
 
@@ -337,10 +339,118 @@ void test('ns5_56: adopting a spelling that collides is reported as a duplicate,
 });
 
 void test('ns5_56: a platform (kebab) cited id never lends its spelling', () => {
+  // ns5_67 supersedes keeping the camelCase restatement: it is discarded, not adopted.
   const { rules, normalizations } = normalizeNs5RulesPayload(
     { rules: [{ ruleId: 'ruleDocumentShapeValidated', description: 'X.' }] },
     ['rule-document-shape-validated'],
   );
-  assert.deepEqual(Object.keys(rules), ['ruleDocumentShapeValidated']);
-  assert.deepEqual(normalizations, []);
+  assert.deepEqual(Object.keys(rules), []);
+  assert.deepEqual(normalizations, [
+    { kind: 'platformRuleNotRestated', detail: 'ruleDocumentShapeValidated -> rule-document-shape-validated' },
+  ]);
+});
+
+// --- ns5_67: a platform rule is cited, never restated --------------------------
+
+void test('ns5_67: a platform id returned in camelCase is discarded and recorded', () => {
+  // Measured on mensalidadesAcademia: ontology cited kebab `rule-foreign-namespace-refused`,
+  // rules40 wrote `ruleForeignNamespaceRefused`. Disabling the discard turns this red.
+  const { rules, normalizations, duplicateRuleIds } = normalizeNs5RulesPayload(
+    { rules: [{ ruleId: 'ruleForeignNamespaceRefused', description: 'A caller may not write another module key.' }] },
+    ['rule-foreign-namespace-refused'],
+  );
+  assert.deepEqual(Object.keys(rules), []);
+  assert.deepEqual(normalizations, [
+    { kind: 'platformRuleNotRestated', detail: 'ruleForeignNamespaceRefused -> rule-foreign-namespace-refused' },
+  ]);
+  assert.deepEqual(duplicateRuleIds, []);
+});
+
+void test('ns5_67: a module rule is kept; case adoption of ns5_56 still applies', () => {
+  const { rules, normalizations } = normalizeNs5RulesPayload(
+    {
+      rules: [
+        { ruleId: 'ruleForeignNamespaceRefused', description: 'Restated platform rule.' },
+        { ruleId: 'pedidoDeveTerFornecedorEitens', description: 'Um pedido tem fornecedor e itens.' },
+      ],
+    },
+    ['rule-foreign-namespace-refused', 'pedidoDeveTerFornecedorEItens'],
+  );
+  assert.deepEqual(Object.keys(rules), ['pedidoDeveTerFornecedorEItens']);
+  assert.deepEqual(normalizations, [
+    { kind: 'platformRuleNotRestated', detail: 'ruleForeignNamespaceRefused -> rule-foreign-namespace-refused' },
+    { kind: 'citedIdSpellingAdopted', detail: 'pedidoDeveTerFornecedorEitens -> pedidoDeveTerFornecedorEItens' },
+  ]);
+});
+
+void test('ns5_67: citedRules are partitioned — platform as data, module to produce', () => {
+  const split = partitionCitedRules([
+    'rule-foreign-namespace-refused',
+    'modalidadePlanoPermitida',
+    'rule-identity-never-in-namespace',
+    'modalidadePlanoPermitida',
+  ]);
+  assert.deepEqual(split.platform, [
+    'rule-foreign-namespace-refused',
+    'rule-identity-never-in-namespace',
+  ]);
+  assert.deepEqual(split.module, ['modalidadePlanoPermitida']);
+});
+
+void test('ns5_67: the human prompt labels platform ids as given, not as rules to produce', () => {
+  const comanda = {
+    schemaVersion: '2026-09-11-ns5-ontology-v2',
+    moduleName: 'comandaRestaurante5',
+    entityId: 'Comanda',
+    title: 'Order',
+    description: 'Open table order.',
+    kind: 'core',
+    party: 'none',
+    displayField: 'status',
+    fields: [
+      { fieldId: 'status', title: 'Status', type: 'string', required: true, description: 'Open or closed.' },
+    ],
+    lifecycleStates: [
+      { state: 'open', reachedBy: 'actor' },
+      { state: 'closed', reachedBy: 'actor' },
+    ],
+    transitions: [{
+      transitionId: 'fecharComanda',
+      from: ['open'],
+      to: 'closed',
+      by: ['caixa'],
+      description: 'Cashier closes the order.',
+      ruleRefs: ['fecharComandaAposQuitacao'],
+    }],
+    storage: { target: 'moduleDatabase', scope: 'module', idField: 'comandaId' },
+  } as Ns5OntologyEntityArtifact;
+  const human = buildNs5RulesHumanPrompt({
+    sourcePrompt: 'modulo comanda.',
+    userLanguage: 'pt',
+    journeys: [],
+    entities: ns5OntologyEntityViews([comanda]),
+    citedRules: ['rule-person-privacy-consent-required-br-eu', 'fecharComandaAposQuitacao'],
+  });
+  const platformAt = human.indexOf('## platform rules already defined by the platform — cite them, never restate or rename them');
+  const produceAt = human.indexOf('## rules the ontology cited; keep these ids');
+  assert.ok(platformAt >= 0, 'platform heading present');
+  assert.ok(produceAt >= 0, 'produce heading present');
+  const platformBlock = human.slice(platformAt, produceAt);
+  const produceBlock = human.slice(produceAt);
+  assert.match(platformBlock, /- rule-person-privacy-consent-required-br-eu/);
+  assert.doesNotMatch(platformBlock, /fecharComandaAposQuitacao/);
+  assert.match(produceBlock, /- fecharComandaAposQuitacao/);
+  assert.doesNotMatch(produceBlock, /rule-person-privacy-consent-required-br-eu/);
+});
+
+void test('ns5_67: recorded v2 rule drafts do not restate a platform rule', () => {
+  for (const moduleName of NS5_REAL_MODULES) {
+    const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', `${moduleName}-draft.json`);
+    const { normalizations } = normalizeNs5RulesPayload(draft);
+    assert.equal(
+      normalizations.filter(item => item.kind === 'platformRuleNotRestated').length,
+      0,
+      moduleName,
+    );
+  }
 });

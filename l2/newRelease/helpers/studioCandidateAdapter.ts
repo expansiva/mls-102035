@@ -58,6 +58,18 @@ export interface StudioCandidateSubmittedReplayInput {
 const CHECK_REQUIRED = 'candidate.finalize50_check_required';
 const ordinal = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0;
 
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+  }
+  return value;
+}
+
+function frozenClone<T>(value: T): T {
+  return deepFreeze(structuredClone(value));
+}
+
 const productionLegacyReader: StudioLegacyCandidateReader = {
   read: scope => readActiveSealedL4Candidate(scope.project, scope.moduleName),
   withStableCandidate: (scope, work) => withModuleWriter(scope.project, scope.moduleName, work),
@@ -86,7 +98,7 @@ export class StudioCandidateAdapter {
   readonly #repository: CandidateRepository;
 
   constructor(scope: CandidateScope, options: StudioCandidateAdapterOptions = {}) {
-    this.#scope = structuredClone(scope);
+    this.#scope = frozenClone(scope);
     this.#legacy = options.legacy ?? productionLegacyReader;
     this.#checks = options.checks ?? null;
     const store = options.store ?? new IndexedDbCandidateDraftStore(options.indexedDb);
@@ -115,12 +127,12 @@ export class StudioCandidateAdapter {
 
   /** Retries an already-submitted durable draft before any authoritative pointer gate. */
   replaySubmitted(input: StudioCandidateSubmittedReplayInput): Promise<CandidatePublishResult | null> {
-    return this.#repository.replaySubmitted(structuredClone(input));
+    return this.#repository.replaySubmitted(frozenClone(input));
   }
 
   /** Publishes only through a fresh, authoritative and still-current completed-result permit. */
   async publishWithPermit(input: StudioCandidatePublishInput): Promise<CandidatePublishResult> {
-    const fixed = structuredClone(input);
+    const fixed = frozenClone(input);
     const wire: CandidateRepositoryPermittedPublishInput = {
       expectedRevisionId: fixed.permit.inputRevisionId,
       changeId: fixed.changeId,

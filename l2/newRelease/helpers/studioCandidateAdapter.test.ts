@@ -295,11 +295,22 @@ test('publishWithPermit rechecks the complete authoritative mark and never expos
   });
 
   assert.equal('publish' in adapter, false);
-  const result = await adapter.publishWithPermit({
+  const publishInput = {
     changeId: 'change-output', revisionId: 'rev-output', snapshot: outputSnapshot, permit,
-  });
+  };
+  const expected = structuredClone(publishInput);
+  const pending = adapter.publishWithPermit(publishInput);
+  publishInput.changeId = 'mutated-change';
+  publishInput.revisionId = 'mutated-revision';
+  publishInput.permit.resultId = 'mutated-result';
+  publishInput.snapshot.baseId = 'mutated-base';
+  publishInput.snapshot.files[0].path = 'other/Illegal.defs.ts';
+  const result = await pending;
   assert.equal(result.status, 'committed');
-  assert.deepEqual(published[0]?.permit, permit);
+  assert.equal(published[0]?.changeId, expected.changeId);
+  assert.equal(published[0]?.revisionId, expected.revisionId);
+  assert.deepEqual(published[0]?.snapshot, expected.snapshot);
+  assert.deepEqual(published[0]?.permit, expected.permit);
   assert.equal(adapter.state.authoritative?.pointer?.revisionId, 'rev-output');
 });
 

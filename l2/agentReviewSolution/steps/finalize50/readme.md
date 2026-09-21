@@ -1,8 +1,11 @@
 # finalize50 — materialização exata e marca privada
 
-`finalize50` só aceita um `validate40-private-result` integralmente coberto. Ele relê a revisão
-imutável em `pipeline/changes/<change>/revisions/<revision>/l4`, relê a base capturada, recalcula os
-hashes e recusa qualquer diferença de identidade, request, conjunto de paths ou bytes.
+`finalize50` só aceita um `validate40-private-result` integralmente coberto. Antes de qualquer marca
+ou publicação, recompõe todos os pares `validate40`/`correction45` até o
+`correctionAttemptsUsed` final, reexecuta cada correção e validação determinística e recusa draft,
+áreas, diagnóstico ou contador divergente. Depois relê a revisão imutável em
+`pipeline/changes/<change>/revisions/<revision>/l4`, relê a base capturada, recalcula os hashes e
+recusa qualquer diferença de identidade, request, conjunto de paths ou bytes.
 
 O scanner compartilhado de defs separa `prefix`, objeto JSON e `suffix`. Arquivo cujo objeto não
 mudou conserva todos os bytes. Arquivo alterado substitui somente o objeto por

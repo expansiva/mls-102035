@@ -8,11 +8,17 @@ import {
   type ReviewEntrySnapshot,
 } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
 import { parseReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
-import { correctionStateOf, reviewTaskStateFromContext } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
+import { reviewTaskStateFromContext } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
 import {
+  assertReconcileStateIntegrity,
+  assertValidate40DeterministicMatch,
   parseValidate40PrivateState,
+  readPrivateReconcileResult,
+  resolveValidate40Draft,
+  type Validate40Runtime,
   type Validate40PrivateState,
 } from '/_102035_/l2/agentReviewSolution/steps/validate40/agentValidate40.js';
+import { validate40Private } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
 import {
   buildCandidateResult,
   buildCandidateSnapshot,
@@ -43,7 +49,7 @@ import {
 } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 
-export const FINALIZE50_PRIVATE_RESULT_VERSION = '2026-09-21-finalize50-private-result-v2' as const;
+export const FINALIZE50_PRIVATE_RESULT_VERSION = '2026-09-21-finalize50-private-result-v3' as const;
 
 export interface Finalize50PrivateResult {
   schemaVersion: typeof FINALIZE50_PRIVATE_RESULT_VERSION;
@@ -53,6 +59,7 @@ export interface Finalize50PrivateResult {
   inputRevisionId: string;
   outputRevisionId: string;
   outputSnapshotHash: string;
+  correctionState: Validate40PrivateState['correctionState'];
   pointer: CandidatePointer;
   summary: {
     fileCount: number;
@@ -70,6 +77,7 @@ export interface Finalize50Runtime {
   markResult(input: CandidateMarkResultInput): Promise<CandidateMarkResultResult>;
   replaySubmitted(scope: { project: number; moduleName: string }, input: StudioCandidateSubmittedReplayInput): Promise<CandidatePublishResult | null>;
   publishWithPermit(scope: { project: number; moduleName: string }, input: StudioCandidatePublishInput): Promise<CandidatePublishResult>;
+  validateDraft: Validate40Runtime['validate'];
 }
 
 const defaultRuntime: Finalize50Runtime = {
@@ -84,6 +92,7 @@ const defaultRuntime: Finalize50Runtime = {
   markResult: candidateMarkResult,
   replaySubmitted: (scope, input) => createStudioCandidateAdapter(scope).replaySubmitted(input),
   publishWithPermit: (scope, input) => createStudioCandidateAdapter(scope).publishWithPermit(input),
+  validateDraft: validate40Private,
 };
 
 async function readFinalizeSnapshot(invocation: ReviewInvocation): Promise<ReviewEntrySnapshot> {
@@ -123,8 +132,24 @@ export async function beforeFinalize50Step(
     const current = await runtime.readSnapshot(invocation);
     assertReviewSnapshotMatches(frozen, current);
     const taskState = await reviewTaskStateFromContext(context, frozen);
+    const reconciled = readPrivateReconcileResult(context);
+    assertReconcileStateIntegrity(reconciled, frozen, invocation, taskState);
     const validated = readPrivateValidateResult(context);
-    assertValidatedState(validated, frozen, invocation, taskState.validationContextHash, correctionStateOf(taskState));
+    const reconstructed = await resolveValidate40Draft(
+      context,
+      reconciled,
+      validated.correctionState.correctionAttemptsUsed,
+      { validationContext: taskState.validationContext, validate: runtime.validateDraft },
+    );
+    assertValidatedState(validated, frozen, invocation, taskState.validationContextHash, reconstructed.correctionState);
+    const deterministicValidation = await runtime.validateDraft({
+      requestKey: reconstructed.correctionState.requestKey,
+      state: { ...reconstructed.correctionState },
+      base: reconstructed.base,
+      proposal: reconstructed.draft,
+      context: taskState.validationContext,
+    });
+    assertValidate40DeterministicMatch(validated, deterministicValidation);
 
     const sealed = await runtime.readSealedCandidate(
       frozen.project, frozen.moduleName, frozen.changeId, frozen.revisionId,
@@ -157,6 +182,8 @@ export async function beforeFinalize50Step(
       inputRevisionId: frozen.revisionId,
       inputSnapshotHash: inputSnapshot.hash,
       outputSnapshotHash: outputSnapshot.hash,
+      validationContextHash: validated.validationContextHash,
+      correctionState: validated.correctionState,
     }));
     const resultId = `result-${publicationKey.slice(0, 32)}`;
     const outputRevisionId = `review-${publicationKey.slice(0, 32)}`;
@@ -169,7 +196,7 @@ export async function beforeFinalize50Step(
     if (replayed) {
       const pointer = exactCommittedPointer(replayed, frozen.changeId, outputRevisionId, outputSnapshot.hash);
       return successfulFinalizeIntents(context, parentStep, step, hookSequential,
-        privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources));
+        privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources, validated));
     }
     const authoritative = await runtime.readAuthoritative(scope);
     if (!authoritative.pointer || !authoritative.snapshot
@@ -215,7 +242,7 @@ export async function beforeFinalize50Step(
     );
     const pointer = exactCommittedPointer(published, frozen.changeId, outputRevisionId, outputSnapshot.hash);
     return successfulFinalizeIntents(context, parentStep, step, hookSequential,
-      privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources));
+      privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources, validated));
   } catch (error) {
     return [status(context, parentStep, step, hookSequential, 'failed', errorMessage(error))];
   }
@@ -427,6 +454,7 @@ function privateFinalizeResult(
   outputSnapshot: CandidateSnapshot,
   pointer: CandidatePointer,
   sources: MaterializedFinalize50Source[],
+  validated: Validate40PrivateState,
 ): Finalize50PrivateResult {
   return {
     schemaVersion: FINALIZE50_PRIVATE_RESULT_VERSION,
@@ -436,6 +464,7 @@ function privateFinalizeResult(
     inputRevisionId: frozen.revisionId,
     outputRevisionId,
     outputSnapshotHash: outputSnapshot.hash,
+    correctionState: { ...validated.correctionState },
     pointer: { ...pointer },
     summary: {
       fileCount: outputSnapshot.files.length,

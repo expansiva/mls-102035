@@ -1,5 +1,16 @@
 # rules40
 
+## 2026-09-21 (ns5_67)
+
+- Platform rules (`mdm.rules`, same import ontology30 uses) are not restated. `citedRules` is
+  partitioned before the prompt: catalog ids go as data labeled "platform rules already defined by
+  the platform — cite them, never restate or rename them"; only the rest are produced. `prompt.md`
+  gained that one label line. A payload id that matches a catalog id without case and without
+  hyphens/underscores is discarded with `normalizations[] { kind: 'platformRuleNotRestated' }`.
+  Case between module ids stays ns5_56 (`citedIdSpellingAdopted`). Measured on
+  `mensalidadesAcademia`: kebab `rule-foreign-namespace-refused` was rewritten as
+  `ruleForeignNamespaceRefused`.
+
 ## 2026-09-18 (ns5_56)
 
 - A ruleId this step receives CITED (`pipeline.ontology30.citedRules`) belongs to whoever cited it:

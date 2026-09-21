@@ -18,6 +18,21 @@ const sourcePaths = [
   'module.defs.ts', 'journeys/index.defs.ts', 'ontology/index.defs.ts',
   'rules.defs.ts', 'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts',
 ] as const;
+const acceptedExtraPaths = [
+  'workspace-model.defs.ts',
+  'journeys/checkIn2.defs.ts',
+  'ontology/Patient2.defs.ts',
+  'workspaces/mainDesk2.defs.ts',
+] as const;
+const rejectedExtraPaths = [
+  'other/Patient.defs.ts',
+  'journeys/CheckIn.defs.ts',
+  'ontology/patient.defs.ts',
+  'workspaces/MainDesk.defs.ts',
+  'ontology/nested/Patient.defs.ts',
+  'ontology/Patient-2.defs.ts',
+  'journeys/check_in.defs.ts',
+] as const;
 
 async function snapshot(title = 'one') {
   return buildCandidateSnapshot({
@@ -242,6 +257,87 @@ test('missing core source and duplicate path fail closed', async () => {
   const snap = await snapshot();
   await rejectsCode(() => verifyCandidateSnapshot({ ...snap, files: snap.files.slice(1) }), 502, 'candidate.incomplete_snapshot');
   await rejectsCode(() => verifyCandidateSnapshot({ ...snap, files: [...snap.files, snap.files[0]] }), 502, 'candidate.invalid_snapshot');
+});
+
+test('snapshot builder uses the canonical L4 path grammar shared with CBE and host', async () => {
+  for (const path of acceptedExtraPaths) {
+    const built = await buildCandidateSnapshot({
+      baseId: 'base-one', requestRevision: 1, request: 'paths',
+      sources: [...sourcePaths, path].map(item => ({ path: item, source: `// ${item}\n` })),
+    });
+    assert.equal(built.files.some(file => file.path === path), true);
+  }
+  for (const path of rejectedExtraPaths) {
+    await rejectsCode(() => buildCandidateSnapshot({
+      baseId: 'base-one', requestRevision: 1, request: 'paths',
+      sources: [...sourcePaths, path].map(item => ({ path: item, source: `// ${item}\n` })),
+    }), 400, 'candidate.invalid_file');
+  }
+});
+
+test('publish captures and freezes every input field before the first await', async () => {
+  const snap = await snapshot('immutable-publish');
+  const input = {
+    ...scope, expectedRevisionId: null, requestId: 'request-immutable',
+    changeId: 'change-immutable', revisionId: 'rev-immutable', snapshot: snap,
+  };
+  const expected = structuredClone(input);
+  let body: Record<string, unknown> | undefined;
+  const pending = candidatePublish(input, {
+    fetchImpl: async (_url, init) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return answer(200, { status: 'committed', pointer: {
+        changeId: expected.changeId, revisionId: expected.revisionId,
+        snapshotHash: expected.snapshot.hash, revisionNumber: 1,
+      } });
+    },
+  });
+  input.project = 999999;
+  input.moduleName = 'otherModule';
+  input.requestId = 'mutated-request';
+  input.changeId = 'mutated-change';
+  input.revisionId = 'mutated-revision';
+  input.snapshot.baseId = 'mutated-base';
+  input.snapshot.files[0].path = 'other/Illegal.defs.ts';
+  assert.equal((await pending).status, 'committed');
+  assert.deepEqual(body, { action: 'candidatePublish', ...expected });
+});
+
+test('markResult captures and freezes every input field before the first await', async () => {
+  const output = await snapshot('immutable-mark');
+  const input = await buildCandidateResult({
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+    result: {
+      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
+      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+    },
+  });
+  const expected = structuredClone(input);
+  let body: Record<string, unknown> | undefined;
+  const markedPointer = {
+    ...pointer(expected.expectedSnapshotHash), resultRevisionId: expected.expectedRevisionId,
+    resultSnapshotHash: expected.expectedSnapshotHash, resultRevisionNumber: expected.expectedRevisionNumber,
+    resultId: expected.resultId, resultHash: expected.resultHash,
+  };
+  const pending = candidateMarkResult(input, {
+    fetchImpl: async (_url, init) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return answer(200, { status: 'marked', pointer: markedPointer });
+    },
+  });
+  input.project = 999999;
+  input.moduleName = 'otherModule';
+  input.expectedRevisionId = 'mutated-revision';
+  input.expectedSnapshotHash = 'e'.repeat(64);
+  input.expectedRevisionNumber = 9;
+  input.resultId = 'mutated-result';
+  input.resultHash = 'f'.repeat(64);
+  input.result.taskId = 'mutated-task';
+  input.outputSnapshot.baseId = 'mutated-base';
+  input.outputSnapshot.files[0].path = 'other/Illegal.defs.ts';
+  assert.equal((await pending).status, 'marked');
+  assert.deepEqual(body, { action: 'candidateMarkResult', ...expected });
 });
 
 test('authentication, authorization, storage and transport failures never become local success', async () => {

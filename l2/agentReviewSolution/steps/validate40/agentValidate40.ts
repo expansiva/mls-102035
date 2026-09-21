@@ -24,6 +24,11 @@ import {
 } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
 import type { CandidateArea } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
 import type { NewReleaseOverlayValidation } from '/_102035_/l2/newRelease/tobe.js';
+import {
+  correct45Directed,
+  correction45ResultMatches,
+  parseCorrection45PrivateState,
+} from '/_102035_/l2/agentReviewSolution/steps/correction45/correction45.js';
 
 export const VALIDATE40_PRIVATE_STATE_VERSION = '2026-09-21-validate40-private-state-v1' as const;
 export const MAX_VALIDATE40_PRIVATE_STATE_CHARS = 550_000;
@@ -61,6 +66,12 @@ export interface Validate40Runtime {
 
 const defaultRuntime: Validate40Runtime = { validate: validate40Private };
 
+export interface Validate40DraftState {
+  base: Record<string, unknown>;
+  draft: Record<string, unknown>;
+  correctionState: Validate40CorrectionState;
+}
+
 export async function beforeValidate40Step(
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
@@ -74,21 +85,23 @@ export async function beforeValidate40Step(
     const taskState = await reviewTaskStateFromContext(context, frozen);
     const reconciled = readPrivateReconcileResult(context);
     assertReconcileStateIntegrity(reconciled, frozen, invocation, taskState);
-    const baseBefore = JSON.stringify(reconciled.base);
-    const draftBefore = JSON.stringify(reconciled.draft);
-    const correctionBefore = JSON.stringify(reconciled.correctionState);
+    const expectedAttempts = attemptsForValidateStep(step, reconciled.correctionState.correctionAttemptsUsed);
+    const source = await resolveValidate40Draft(context, reconciled, expectedAttempts);
+    const baseBefore = JSON.stringify(source.base);
+    const draftBefore = JSON.stringify(source.draft);
+    const correctionBefore = JSON.stringify(source.correctionState);
     const validated = await runtime.validate({
-      requestKey: reconciled.correctionState.requestKey,
-      state: { ...reconciled.correctionState },
-      base: reconciled.base,
-      proposal: reconciled.draft,
+      requestKey: source.correctionState.requestKey,
+      state: { ...source.correctionState },
+      base: source.base,
+      proposal: source.draft,
       context: taskState.validationContext,
     });
-    if (JSON.stringify(reconciled.base) !== baseBefore || JSON.stringify(reconciled.draft) !== draftBefore
+    if (JSON.stringify(source.base) !== baseBefore || JSON.stringify(source.draft) !== draftBefore
       || JSON.stringify(validated.draft) !== draftBefore || JSON.stringify(validated.state) !== correctionBefore) {
       throw new Error('validate40 mutated the draft or consumed a correction attempt without a correction.');
     }
-    const affected = validate40AffectedAreas(reconciled.base, reconciled.draft);
+    const affected = validate40AffectedAreas(source.base, source.draft);
     if (!sameJson(validated.affectedAreas, affected.areas)
       || !sameJson(validated.unsupportedPaths, affected.unsupportedPaths)) {
       throw new Error('validate40 result does not match the affected draft areas.');
@@ -100,16 +113,23 @@ export async function beforeValidate40Step(
     }
     parseValidate40PrivateState(serialized);
     const ready = privateState.status === 'ready';
+    const resultPlanId = ready ? 'validate40-private-result'
+      : validate40TerminalPlanId(privateState.correctionState.correctionAttemptsUsed);
     const intents: mls.msg.AgentIntent[] = [addStep(context, parentStep, {
       type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
       stepTitle: ready ? 'Private validated draft' : 'Private validation diagnostic', result: serialized,
       planning: {
-        planId: ready ? 'validate40-private-result' : 'validate40-private-terminal',
+        planId: resultPlanId,
         dependsOn: [], executionMode: 'manual_later', executionHost: 'client',
       },
     } as mls.msg.AIResultStep)];
     if (ready) {
       intents.push(addStep(context, parentStep, createFinalize50Step(String(step.prompt || ''))));
+    } else if (privateState.status === 'invalid' && privateState.mayCorrect) {
+      intents.push(addStep(context, parentStep, createCorrection45Step(
+        String(step.prompt || ''),
+        privateState.correctionState.correctionAttemptsUsed + 1,
+      )));
     } else if (privateState.status === 'clarification') {
       intents.push(addStep(context, parentStep, {
         type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],
@@ -125,7 +145,7 @@ export async function beforeValidate40Step(
       hookSequential,
       'completed',
       ready
-        ? 'validate40 passed all affected gates; finalize50 scheduled to mark exact output bytes without publishing.'
+        ? 'validate40 passed all affected gates; finalize50 scheduled to mark and conditionally publish exact output bytes.'
         : `validate40 ended as ${privateState.status}; draft and correction counter preserved.`,
     ));
     return intents;
@@ -140,6 +160,86 @@ export function createValidate40Step(invocationPrompt: string): mls.msg.AIAgentS
     agentName: 'agentReviewSolution', stepTitle: 'Validate private L4 draft', prompt: invocationPrompt, rags: [],
     planning: { planId: 'validate40', dependsOn: ['reconcile30-private-result'], executionMode: 'sequential', executionHost: 'client' },
   };
+}
+
+export function createValidate40RetryStep(invocationPrompt: string, attemptsUsed: number): mls.msg.AIAgentStep {
+  if (!Number.isSafeInteger(attemptsUsed) || attemptsUsed < 1 || attemptsUsed > 3) {
+    throw new Error('Invalid validate40 retry counter.');
+  }
+  return {
+    type: 'agent', stepId: 0, interaction: null, nextSteps: [], status: 'waiting_dependency',
+    agentName: 'agentReviewSolution', stepTitle: `Revalidate corrected private L4 draft (${attemptsUsed}/3)`,
+    prompt: invocationPrompt, rags: [],
+    planning: {
+      planId: `validate40-attempt-${attemptsUsed}`,
+      dependsOn: [`correction45-private-result-${attemptsUsed}`],
+      executionMode: 'sequential', executionHost: 'client',
+    },
+  };
+}
+
+export function validate40TerminalPlanId(attemptsUsed: number): string {
+  if (!Number.isSafeInteger(attemptsUsed) || attemptsUsed < 0 || attemptsUsed > 3) {
+    throw new Error('Invalid validate40 terminal counter.');
+  }
+  return `validate40-private-terminal-${attemptsUsed}`;
+}
+
+export async function resolveValidate40Draft(
+  context: mls.msg.ExecutionContext,
+  reconciled: Reconcile30PrivateState,
+  expectedAttempts: number,
+  verify?: {
+    validationContext: ReviewTaskState['validationContext'];
+    validate?: Validate40Runtime['validate'];
+  },
+): Promise<Validate40DraftState> {
+  const initial = reconciled.correctionState.correctionAttemptsUsed;
+  if (!Number.isSafeInteger(expectedAttempts) || expectedAttempts < initial || expectedAttempts > 3) {
+    throw new Error('validate40 retry counter is outside the persisted request chain.');
+  }
+  let draft = cloneJson(reconciled.draft);
+  let correctionState = { ...reconciled.correctionState };
+  for (let attempt = initial + 1; attempt <= expectedAttempts; attempt += 1) {
+    const sourcePlanId = validate40TerminalPlanId(attempt - 1);
+    const sourceValidation = readSinglePrivateResult(context, sourcePlanId, parseValidate40PrivateState);
+    assertValidateStateForCorrection(sourceValidation, reconciled, draft, correctionState);
+    if (verify) {
+      const rerun = await (verify.validate || validate40Private)({
+        requestKey: correctionState.requestKey,
+        state: { ...correctionState },
+        base: reconciled.base,
+        proposal: draft,
+        context: verify.validationContext,
+      });
+      assertValidate40DeterministicMatch(sourceValidation, rerun);
+    }
+    const correctionPlanId = `correction45-private-result-${attempt}`;
+    const stored = readSinglePrivateResult(context, correctionPlanId, parseCorrection45PrivateState);
+    assertCorrectionEnvelope(stored, reconciled, sourcePlanId);
+    const expected = correct45Directed(reconciled.base, draft, sourceValidation.validation, correctionState);
+    if (!expected.attempted || expected.state.correctionAttemptsUsed !== attempt
+      || !correction45ResultMatches(stored, expected)) {
+      throw new Error('correction45 private result was altered or does not match its validation source.');
+    }
+    draft = cloneJson(stored.draft);
+    correctionState = { ...stored.state };
+  }
+  return { base: cloneJson(reconciled.base), draft, correctionState };
+}
+
+export function assertValidate40DeterministicMatch(
+  state: Validate40PrivateState,
+  result: Validate40Result,
+): void {
+  if (state.status !== classify(result) || state.coreStatus !== result.status
+    || state.publishable !== result.publishable || state.mayCorrect !== result.mayCorrect
+    || state.schemaFamily !== result.schemaFamily || !sameJson(state.affectedAreas, result.affectedAreas)
+    || !sameJson(state.unsupportedPaths, result.unsupportedPaths) || !sameJson(state.correctionState, result.state)
+    || !sameJson(state.reasons, result.reasons) || !sameJson(state.draft, result.draft)
+    || !sameJson(state.validation, result.validation)) {
+    throw new Error('validate40 private result was altered or differs from deterministic validation.');
+  }
 }
 
 export function parseValidate40PrivateState(raw: string): Validate40PrivateState {
@@ -173,7 +273,7 @@ export function parseValidate40PrivateState(raw: string): Validate40PrivateState
   return parsed as unknown as Validate40PrivateState;
 }
 
-function readPrivateReconcileResult(context: mls.msg.ExecutionContext): Reconcile30PrivateState {
+export function readPrivateReconcileResult(context: mls.msg.ExecutionContext): Reconcile30PrivateState {
   const matches = getAllSteps(context.task?.iaCompressed?.nextSteps).filter((item): item is mls.msg.AIResultStep =>
     item.type === 'result' && item.status === 'completed' && item.planning?.planId === 'reconcile30-private-result');
   if (matches.length !== 1) throw new Error('Expected exactly one completed private reconcile30 result.');
@@ -182,7 +282,7 @@ function readPrivateReconcileResult(context: mls.msg.ExecutionContext): Reconcil
   return state;
 }
 
-function assertReconcileStateIntegrity(
+export function assertReconcileStateIntegrity(
   state: Reconcile30PrivateState,
   snapshot: ReviewEntrySnapshot,
   invocation: ReviewInvocation,
@@ -206,6 +306,68 @@ function assertReconcileStateIntegrity(
   const changedPaths = changedPathsOf(state.base, state.draft);
   if (!sameJson(affected.areas, state.directAreas) || !sameJson(changedPaths, state.changedPaths)) {
     throw new Error('reconcile30 private result does not match its base and draft.');
+  }
+}
+
+function createCorrection45Step(invocationPrompt: string, attempt: number): mls.msg.AIAgentStep {
+  if (!Number.isSafeInteger(attempt) || attempt < 1 || attempt > 3) throw new Error('Invalid correction45 attempt.');
+  return {
+    type: 'agent', stepId: 0, interaction: null, nextSteps: [], status: 'waiting_dependency',
+    agentName: 'agentReviewSolution', stepTitle: `Apply directed private correction (${attempt}/3)`,
+    prompt: invocationPrompt, rags: [],
+    planning: {
+      planId: `correction45-attempt-${attempt}`,
+      dependsOn: [validate40TerminalPlanId(attempt - 1)],
+      executionMode: 'sequential', executionHost: 'client',
+    },
+  };
+}
+
+function attemptsForValidateStep(step: mls.msg.AIAgentStep, initial: number): number {
+  if (step.planning?.planId === 'validate40') return initial;
+  const match = /^validate40-attempt-(\d+)$/u.exec(step.planning?.planId || '');
+  if (!match) throw new Error('Invalid validate40 step identity.');
+  return Number(match[1]);
+}
+
+function readSinglePrivateResult<T>(
+  context: mls.msg.ExecutionContext,
+  planId: string,
+  parse: (raw: string) => T,
+): T {
+  const matches = getAllSteps(context.task?.iaCompressed?.nextSteps).filter((item): item is mls.msg.AIResultStep =>
+    item.type === 'result' && item.status === 'completed' && item.planning?.planId === planId);
+  if (matches.length !== 1) throw new Error(`Expected exactly one completed ${planId} result.`);
+  return parse(matches[0].result);
+}
+
+export function assertValidateStateForCorrection(
+  state: Validate40PrivateState,
+  reconciled: Reconcile30PrivateState,
+  draft: Record<string, unknown>,
+  correctionState: Validate40CorrectionState,
+): void {
+  if (state.project !== reconciled.project || state.moduleName !== reconciled.moduleName || state.baseId !== reconciled.baseId
+    || state.changeId !== reconciled.changeId || state.revisionId !== reconciled.revisionId
+    || state.requestRevision !== reconciled.requestRevision || !sameJson(state.originalHashes, reconciled.originalHashes)
+    || !sameJson(state.candidateHashes, reconciled.candidateHashes)
+    || state.validationContextHash !== reconciled.validationContextHash || state.status !== 'invalid'
+    || !state.mayCorrect || !sameJson(state.draft, draft) || !sameJson(state.correctionState, correctionState)) {
+    throw new Error('validate40 correction source was altered or is stale.');
+  }
+}
+
+function assertCorrectionEnvelope(
+  state: ReturnType<typeof parseCorrection45PrivateState>,
+  reconciled: Reconcile30PrivateState,
+  sourcePlanId: string,
+): void {
+  if (state.project !== reconciled.project || state.moduleName !== reconciled.moduleName || state.baseId !== reconciled.baseId
+    || state.changeId !== reconciled.changeId || state.revisionId !== reconciled.revisionId
+    || state.requestRevision !== reconciled.requestRevision || !sameJson(state.originalHashes, reconciled.originalHashes)
+    || !sameJson(state.candidateHashes, reconciled.candidateHashes)
+    || state.validationContextHash !== reconciled.validationContextHash || state.sourceValidationPlanId !== sourcePlanId) {
+    throw new Error('correction45 private result identity differs from its frozen validation source.');
   }
 }
 
@@ -328,4 +490,8 @@ async function sha256(source: string): Promise<string> {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }

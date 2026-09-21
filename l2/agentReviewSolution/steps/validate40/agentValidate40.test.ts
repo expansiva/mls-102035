@@ -18,6 +18,10 @@ import {
   parseValidate40PrivateState,
   type Validate40Runtime,
 } from './agentValidate40.js';
+import {
+  CORRECTION45_PRIVATE_STATE_VERSION,
+  correct45Directed,
+} from '/_102035_/l2/agentReviewSolution/steps/correction45/correction45.js';
 
 const invocation = {
   project: 102047,
@@ -116,7 +120,11 @@ function runtime(value: Validate40Result, inspect?: (input: Parameters<Validate4
   return { validate: async input => { inspect?.(input); return clone(value); } };
 }
 
-function context(task: ReviewTaskState, state: Reconcile30PrivateState = reconcile(task)): mls.msg.ExecutionContext {
+function context(
+  task: ReviewTaskState,
+  state: Reconcile30PrivateState = reconcile(task),
+  extras: mls.msg.AIPayload[] = [],
+): mls.msg.ExecutionContext {
   const reconcileResult: mls.msg.AIResultStep = {
     type: 'result', stepId: 31, status: 'completed', interaction: null, nextSteps: [], result: JSON.stringify(state),
     planning: { planId: 'reconcile30-private-result', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
@@ -125,7 +133,7 @@ function context(task: ReviewTaskState, state: Reconcile30PrivateState = reconci
     message: { orderAt: 'order', threadId: 'thread' },
     task: { PK: 'task', iaCompressed: {
       longMemory: { entrySnapshot: JSON.stringify(snapshot), reviewPrivateState: JSON.stringify(task) },
-      nextSteps: [reconcileResult],
+      nextSteps: [reconcileResult, ...extras],
     } },
     isTest: true,
   } as unknown as mls.msg.ExecutionContext;
@@ -145,6 +153,16 @@ function step(): mls.msg.AIAgentStep {
   })), stepId: 40, status: 'waiting_human_input' };
 }
 
+function retryStep(attempt: number): mls.msg.AIAgentStep {
+  return { ...step(), planning: { planId: `validate40-attempt-${attempt}`, dependsOn: [`correction45-private-result-${attempt}`],
+    executionMode: 'sequential', executionHost: 'client' } };
+}
+
+function stored(planId: string, value: unknown): mls.msg.AIResultStep {
+  return { type: 'result', stepId: 99, status: 'completed', interaction: null, nextSteps: [], result: JSON.stringify(value),
+    planning: { planId, dependsOn: [], executionMode: 'manual_later', executionHost: 'client' } };
+}
+
 async function withProject<T>(fn: () => Promise<T>): Promise<T> {
   const previous = (globalThis as { mls?: unknown }).mls;
   let writes = 0;
@@ -161,7 +179,7 @@ async function withProject<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-test('validate40 keeps valid output private and schedules finalize50 without publishing', async () => withProject(async () => {
+test('validate40 keeps valid output private and schedules permit-gated finalize50', async () => withProject(async () => {
   const task = await taskState(0);
   const intents = await beforeValidate40Step(context(task), parent(), step(), 40, runtime(result(task, 'publishable', 'checked')));
   assert.deepEqual(intents.map(intent => intent.type), ['add-step', 'add-step', 'update-status']);
@@ -197,6 +215,10 @@ test('validate40 preserves correction counters zero and three for invalid drafts
   assert.equal(zeroState.status, 'invalid');
   assert.equal(zeroState.correctionState.correctionAttemptsUsed, 0);
   assert.equal(zeroState.mayCorrect, true);
+  const correction = zeroIntents.find(intent => intent.type === 'add-step'
+    && (intent as mls.msg.AgentIntentAddStep).step.planning?.planId === 'correction45-attempt-1') as mls.msg.AgentIntentAddStep;
+  assert.ok(correction);
+  assert.deepEqual(correction.step.planning?.dependsOn, ['validate40-private-terminal-0']);
 
   const three = await taskState(3);
   const atLimit = result(three, 'attempt-limit', 'error');
@@ -208,6 +230,8 @@ test('validate40 preserves correction counters zero and three for invalid drafts
   assert.equal(threeState.mayCorrect, false);
   assert.equal(threeIntents.some(intent => intent.type === 'add-step'
     && (intent as mls.msg.AgentIntentAddStep).step.planning?.planId === 'finalize50'), false);
+  assert.equal(threeIntents.some(intent => intent.type === 'add-step'
+    && (intent as mls.msg.AgentIntentAddStep).step.planning?.planId?.startsWith('correction45-attempt-')), false);
 }));
 
 test('validate40 rejects stale identity and tampered hashes before validation', async () => withProject(async () => {
@@ -229,6 +253,56 @@ test('validate40 rejects stale identity and tampered hashes before validation', 
   assert.equal((tamperedIntents[0] as mls.msg.AgentIntentUpdateStatus).status, 'failed');
   assert.match(String((tamperedIntents[0] as mls.msg.AgentIntentUpdateStatus).traceMsg), /altered or is stale/u);
   assert.equal(calls, 0);
+}));
+
+test('validate40 resumes from the persisted correction chain without resetting the counter', async () => withProject(async () => {
+  const task = await taskState(0);
+  const reconciled = reconcile(task);
+  const first = result(task, 'draft', 'error');
+  const firstIntents = await beforeValidate40Step(context(task, reconciled), parent(), step(), 46, runtime(first));
+  const invalidStep = (firstIntents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep;
+  assert.equal(invalidStep.planning?.planId, 'validate40-private-terminal-0');
+  const invalid = parseValidate40PrivateState(invalidStep.result);
+  const corrected = correct45Directed(reconciled.base, reconciled.draft, invalid.validation, invalid.correctionState);
+  assert.equal(corrected.attempted, true);
+  const correction = {
+    schemaVersion: CORRECTION45_PRIVATE_STATE_VERSION,
+    project: reconciled.project, moduleName: reconciled.moduleName, baseId: reconciled.baseId,
+    changeId: reconciled.changeId, revisionId: reconciled.revisionId, requestRevision: reconciled.requestRevision,
+    originalHashes: { ...reconciled.originalHashes }, candidateHashes: { ...reconciled.candidateHashes },
+    validationContextHash: reconciled.validationContextHash, sourceValidationPlanId: 'validate40-private-terminal-0',
+    ...corrected,
+  };
+  const after = result(task, 'draft', 'checked');
+  after.state = { requestKey: task.requestKey, correctionAttemptsUsed: 1 };
+  after.draft = clone(corrected.draft);
+  after.affectedAreas = [];
+  after.publishable = false;
+  after.mayCorrect = false;
+  after.reasons = ['The correction removed the invalid change.'];
+  let calls = 0;
+  const intents = await beforeValidate40Step(context(task, reconciled, [
+    invalidStep,
+    stored('correction45-private-result-1', correction),
+  ]), parent(), retryStep(1), 47, runtime(after, input => {
+    calls += 1;
+    assert.equal(input.state.correctionAttemptsUsed, 1);
+    assert.deepEqual(input.proposal, corrected.draft);
+  }));
+  assert.equal(calls, 1);
+  const resumed = parseValidate40PrivateState(((intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result);
+  assert.equal(resumed.correctionState.correctionAttemptsUsed, 1);
+  assert.deepEqual(resumed.draft, corrected.draft);
+
+  const tampered = clone(correction);
+  (tampered.draft['module.defs.ts'] as { title: string }).title = 'Injected';
+  const refused = await beforeValidate40Step(context(task, reconciled, [
+    invalidStep,
+    stored('correction45-private-result-1', tampered),
+  ]), parent(), retryStep(1), 48, runtime(after, () => { calls += 100; }));
+  assert.equal((refused[0] as mls.msg.AgentIntentUpdateStatus).status, 'failed');
+  assert.match(String((refused[0] as mls.msg.AgentIntentUpdateStatus).traceMsg), /altered|does not match/u);
+  assert.equal(calls, 1);
 }));
 
 function clone<T>(value: T): T {

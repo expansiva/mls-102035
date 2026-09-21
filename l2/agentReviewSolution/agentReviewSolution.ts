@@ -8,6 +8,7 @@ import { beforeReviewEntryStep } from '/_102035_/l2/agentReviewSolution/steps/en
 import { afterReview20PromptStep, beforeReview20PromptStep } from '/_102035_/l2/agentReviewSolution/steps/review20/agentReview20.js';
 import { beforeReconcile30Step } from '/_102035_/l2/agentReviewSolution/steps/reconcile30/agentReconcile30.js';
 import { beforeValidate40Step } from '/_102035_/l2/agentReviewSolution/steps/validate40/agentValidate40.js';
+import { beforeCorrection45Step } from '/_102035_/l2/agentReviewSolution/steps/correction45/agentCorrection45.js';
 import { beforeFinalize50Step } from '/_102035_/l2/agentReviewSolution/steps/finalize50/agentFinalize50.js';
 
 export const REVIEW_AGENT_NAME = 'agentReviewSolution' as const;
@@ -77,6 +78,8 @@ export async function beforePromptStep(
   if (step.planning?.planId === 'review20') return beforeReview20PromptStep(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'reconcile30') return beforeReconcile30Step(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'validate40') return beforeValidate40Step(context, parentStep, step, hookSequential);
+  if (step.planning?.planId?.startsWith('validate40-attempt-')) return beforeValidate40Step(context, parentStep, step, hookSequential);
+  if (step.planning?.planId?.startsWith('correction45-attempt-')) return beforeCorrection45Step(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'finalize50') return beforeFinalize50Step(context, parentStep, step, hookSequential);
   if (!step.planning?.planId) return [update(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed without LLM.')];
   return [update(context, parentStep, step, hookSequential, 'failed', `Review step ${step.planning.planId} is not enabled.`)];

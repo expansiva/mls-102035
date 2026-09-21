@@ -116,6 +116,7 @@ const MAX_FILE_BYTES = 250_000;
 const MAX_SNAPSHOT_BYTES = 700_000;
 const MAX_REQUEST_BYTES = 64_000;
 const RESULT_PATH = /^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+$/u;
+const DYNAMIC_L4_PATH = /^(?:journeys\/[a-z][A-Za-z0-9]*|ontology\/[A-Z][A-Za-z0-9]*|workspaces\/[a-z][A-Za-z0-9]*)\.defs\.ts$/u;
 
 function requireScope(scope: CandidateScope): void {
   if (!Number.isSafeInteger(scope.project) || scope.project <= 0 || !MODULE.test(scope.moduleName)) {
@@ -127,10 +128,30 @@ function requireToken(value: string): void {
   if (!TOKEN.test(value)) throw new CandidateGatewayError(400, 'candidate.invalid_identifier');
 }
 
-function validPath(path: string): boolean {
+/** Canonical L4 snapshot grammar, intentionally duplicated at the CBE and CLI trust boundaries. */
+function isCandidateSnapshotPath(path: string): boolean {
   return CORE_PATHS.some(core => core === path)
     || path === 'workspace-model.defs.ts'
-    || /^(?:journeys\/[a-z][A-Za-z0-9]*|ontology\/[A-Z][A-Za-z0-9]*|workspaces\/[a-z][A-Za-z0-9]*)\.defs\.ts$/u.test(path);
+    || DYNAMIC_L4_PATH.test(path);
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+  }
+  return value;
+}
+
+function frozenClone<T>(value: T): T {
+  return deepFreeze(structuredClone(value));
+}
+
+function fixedOptions(options: CandidateGatewayOptions): CandidateGatewayOptions {
+  return Object.freeze({
+    ...(options.endpoint !== undefined ? { endpoint: options.endpoint } : {}),
+    ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
+  });
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
@@ -202,7 +223,10 @@ function parsePointer(value: unknown): CandidatePointer | null {
 
 /** Validates every source byte and the exact ordered manifest hash used by the CBE. */
 export async function verifyCandidateSnapshot(value: unknown): Promise<CandidateSnapshot> {
-  const snapshot = record(value);
+  let fixed: unknown;
+  try { fixed = frozenClone(value); }
+  catch { throw new CandidateGatewayError(502, 'candidate.invalid_snapshot'); }
+  const snapshot = record(fixed);
   if (!snapshot || typeof snapshot.hash !== 'string' || !HASH.test(snapshot.hash)
     || typeof snapshot.baseId !== 'string' || !TOKEN.test(snapshot.baseId)
     || !Number.isSafeInteger(snapshot.requestRevision) || Number(snapshot.requestRevision) < 0
@@ -217,7 +241,7 @@ export async function verifyCandidateSnapshot(value: unknown): Promise<Candidate
   const metadata: Array<{ path: string; sha256: string; bytes: number }> = [];
   for (const raw of snapshot.files) {
     const file = record(raw);
-    if (!file || typeof file.path !== 'string' || !validPath(file.path) || file.path.length > 180
+    if (!file || typeof file.path !== 'string' || !isCandidateSnapshotPath(file.path) || file.path.length > 180
       || seen.has(file.path) || typeof file.sha256 !== 'string' || !HASH.test(file.sha256)
       || typeof file.contentBase64 !== 'string') {
       throw new CandidateGatewayError(502, 'candidate.invalid_snapshot');
@@ -274,7 +298,7 @@ async function normalizeResultManifest(value: unknown, failureStatus: 400 | 502)
     }
     const path = artifact.path;
     const artifactHash = artifact.sha256;
-    const pathValid = status === 'completed' ? validPath(path) : RESULT_PATH.test(path);
+    const pathValid = status === 'completed' ? isCandidateSnapshotPath(path) : RESULT_PATH.test(path);
     if (path.length > 180 || !pathValid || path.split('/').some(part => part === '.' || part === '..')
       || !HASH.test(artifactHash) || seen.has(path)) fail('candidate.invalid_result_artifact');
     seen.add(path);
@@ -304,14 +328,15 @@ function normalizePermit(value: CandidatePublishPermit | undefined, required: bo
 }
 
 export async function buildCandidateResult(input: Omit<CandidateMarkResultInput, 'resultHash'>): Promise<CandidateMarkResultInput> {
-  requireScope(input);
-  requireToken(input.expectedRevisionId);
-  if (!HASH.test(input.expectedSnapshotHash) || !Number.isSafeInteger(input.expectedRevisionNumber)
-    || input.expectedRevisionNumber < 1) throw new CandidateGatewayError(400, 'candidate.invalid_identifier');
-  requireToken(input.resultId);
-  const normalized = await normalizeResultManifest(input.result, 400);
+  const fixed = frozenClone(input);
+  requireScope(fixed);
+  requireToken(fixed.expectedRevisionId);
+  if (!HASH.test(fixed.expectedSnapshotHash) || !Number.isSafeInteger(fixed.expectedRevisionNumber)
+    || fixed.expectedRevisionNumber < 1) throw new CandidateGatewayError(400, 'candidate.invalid_identifier');
+  requireToken(fixed.resultId);
+  const normalized = await normalizeResultManifest(fixed.result, 400);
   let outputSnapshot: CandidateSnapshot;
-  try { outputSnapshot = await verifyCandidateSnapshot(input.outputSnapshot); }
+  try { outputSnapshot = await verifyCandidateSnapshot(fixed.outputSnapshot); }
   catch { throw new CandidateGatewayError(400, 'candidate.invalid_snapshot'); }
   if (normalized.manifest.outputSnapshotHash !== outputSnapshot.hash) {
     throw new CandidateGatewayError(400, 'candidate.result_output_mismatch');
@@ -323,7 +348,7 @@ export async function buildCandidateResult(input: Omit<CandidateMarkResultInput,
       throw new CandidateGatewayError(400, 'candidate.result_output_mismatch');
     }
   }
-  return { ...input, outputSnapshot, result: normalized.manifest, resultHash: normalized.hash };
+  return { ...fixed, outputSnapshot, result: normalized.manifest, resultHash: normalized.hash };
 }
 
 export async function verifyCandidateResult(value: unknown, pointer: CandidatePointer): Promise<CandidateResultRef> {
@@ -352,14 +377,15 @@ export async function buildCandidateSnapshot(input: {
   request: string;
   sources: readonly { path: string; source: string }[];
 }): Promise<CandidateSnapshot> {
-  requireToken(input.baseId);
-  if (!Number.isSafeInteger(input.requestRevision) || input.requestRevision < 0
-    || typeof input.request !== 'string' || new TextEncoder().encode(input.request).byteLength > MAX_REQUEST_BYTES) {
+  const fixed = frozenClone(input);
+  requireToken(fixed.baseId);
+  if (!Number.isSafeInteger(fixed.requestRevision) || fixed.requestRevision < 0
+    || typeof fixed.request !== 'string' || new TextEncoder().encode(fixed.request).byteLength > MAX_REQUEST_BYTES) {
     throw new CandidateGatewayError(400, 'candidate.invalid_request');
   }
   const files: CandidateFile[] = [];
-  for (const item of input.sources) {
-    if (!validPath(item.path) || typeof item.source !== 'string') {
+  for (const item of fixed.sources) {
+    if (!isCandidateSnapshotPath(item.path) || typeof item.source !== 'string') {
       throw new CandidateGatewayError(400, 'candidate.invalid_file');
     }
     const bytes = new TextEncoder().encode(item.source);
@@ -367,10 +393,10 @@ export async function buildCandidateSnapshot(input: {
   }
   const metadata = files.map(file => ({ path: file.path, sha256: file.sha256, bytes: decodeBase64(file.contentBase64).length }))
     .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
-  const manifest = { baseId: input.baseId, requestRevision: input.requestRevision, request: input.request, files: metadata };
+  const manifest = { baseId: fixed.baseId, requestRevision: fixed.requestRevision, request: fixed.request, files: metadata };
   const snapshot: CandidateSnapshot = {
     hash: await sha256(new TextEncoder().encode(JSON.stringify(manifest))),
-    baseId: input.baseId, requestRevision: input.requestRevision, request: input.request, files,
+    baseId: fixed.baseId, requestRevision: fixed.requestRevision, request: fixed.request, files,
   };
   try { await verifyCandidateSnapshot(snapshot); }
   catch { throw new CandidateGatewayError(400, 'candidate.invalid_snapshot'); }
@@ -426,59 +452,63 @@ export async function candidateRead(scope: CandidateScope, options: CandidateGat
 }
 
 export async function candidatePublish(input: CandidatePublishInput, options: CandidateGatewayOptions = {}): Promise<CandidatePublishResult> {
-  requireScope(input);
-  requireToken(input.requestId);
-  requireToken(input.changeId);
-  requireToken(input.revisionId);
-  if (input.expectedRevisionId !== null) requireToken(input.expectedRevisionId);
-  const snapshot = await verifyCandidateSnapshot(input.snapshot);
-  const permit = normalizePermit(input.permit, input.expectedRevisionId !== null);
-  if (permit && (permit.inputRevisionId !== input.expectedRevisionId
+  const fixed = frozenClone(input);
+  const transport = fixedOptions(options);
+  requireScope(fixed);
+  requireToken(fixed.requestId);
+  requireToken(fixed.changeId);
+  requireToken(fixed.revisionId);
+  if (fixed.expectedRevisionId !== null) requireToken(fixed.expectedRevisionId);
+  const snapshot = await verifyCandidateSnapshot(fixed.snapshot);
+  const permit = normalizePermit(fixed.permit, fixed.expectedRevisionId !== null);
+  if (permit && (permit.inputRevisionId !== fixed.expectedRevisionId
     || permit.outputSnapshotHash !== snapshot.hash)) {
     throw new CandidateGatewayError(409, 'candidate.result_permit_mismatch');
   }
   const { httpStatus, payload } = await post({
-    action: 'candidatePublish', project: input.project, moduleName: input.moduleName,
-    expectedRevisionId: input.expectedRevisionId, requestId: input.requestId,
-    changeId: input.changeId, revisionId: input.revisionId, snapshot, ...(permit ? { permit } : {}),
-  }, options);
+    action: 'candidatePublish', project: fixed.project, moduleName: fixed.moduleName,
+    expectedRevisionId: fixed.expectedRevisionId, requestId: fixed.requestId,
+    changeId: fixed.changeId, revisionId: fixed.revisionId, snapshot, ...(permit ? { permit } : {}),
+  }, transport);
   if (httpStatus === 409 && payload.status === 'conflict') {
     return { status: 'conflict', pointer: parsePointer(payload.pointer) };
   }
   if (httpStatus !== 200 || payload.status !== 'committed') throw new CandidateGatewayError(502, 'candidate.invalid_response');
   const pointer = parsePointer(payload.pointer);
-  if (!pointer || pointer.changeId !== input.changeId || pointer.revisionId !== input.revisionId
+  if (!pointer || pointer.changeId !== fixed.changeId || pointer.revisionId !== fixed.revisionId
     || pointer.snapshotHash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_response');
   return { status: 'committed', pointer };
 }
 
 export async function candidateMarkResult(input: CandidateMarkResultInput, options: CandidateGatewayOptions = {}): Promise<CandidateMarkResultResult> {
-  const normalized = await buildCandidateResult({ ...input, result: input.result });
-  if (normalized.resultHash !== input.resultHash) throw new CandidateGatewayError(400, 'candidate.invalid_result_hash');
+  const fixed = frozenClone(input);
+  const transport = fixedOptions(options);
+  const normalized = await buildCandidateResult({ ...fixed, result: fixed.result });
+  if (normalized.resultHash !== fixed.resultHash) throw new CandidateGatewayError(400, 'candidate.invalid_result_hash');
   const { httpStatus, payload } = await post({
-    action: 'candidateMarkResult', project: input.project, moduleName: input.moduleName,
-    expectedRevisionId: input.expectedRevisionId, expectedSnapshotHash: input.expectedSnapshotHash,
-    expectedRevisionNumber: input.expectedRevisionNumber, resultId: input.resultId,
-    resultHash: input.resultHash, result: normalized.result, outputSnapshot: normalized.outputSnapshot,
-  }, options);
+    action: 'candidateMarkResult', project: fixed.project, moduleName: fixed.moduleName,
+    expectedRevisionId: fixed.expectedRevisionId, expectedSnapshotHash: fixed.expectedSnapshotHash,
+    expectedRevisionNumber: fixed.expectedRevisionNumber, resultId: fixed.resultId,
+    resultHash: fixed.resultHash, result: normalized.result, outputSnapshot: normalized.outputSnapshot,
+  }, transport);
   if (httpStatus === 409 && payload.status === 'conflict') {
     return { status: 'conflict', pointer: parsePointer(payload.pointer) };
   }
   if (httpStatus !== 200 || payload.status !== 'marked') throw new CandidateGatewayError(502, 'candidate.invalid_response');
   const pointer = parsePointer(payload.pointer);
-  if (!pointer || pointer.revisionId !== input.expectedRevisionId || pointer.snapshotHash !== input.expectedSnapshotHash
-    || pointer.revisionNumber !== input.expectedRevisionNumber || pointer.resultRevisionId !== input.expectedRevisionId
-    || pointer.resultSnapshotHash !== input.expectedSnapshotHash
-    || pointer.resultRevisionNumber !== input.expectedRevisionNumber
-    || pointer.resultId !== input.resultId || pointer.resultHash !== input.resultHash) {
+  if (!pointer || pointer.revisionId !== fixed.expectedRevisionId || pointer.snapshotHash !== fixed.expectedSnapshotHash
+    || pointer.revisionNumber !== fixed.expectedRevisionNumber || pointer.resultRevisionId !== fixed.expectedRevisionId
+    || pointer.resultSnapshotHash !== fixed.expectedSnapshotHash
+    || pointer.resultRevisionNumber !== fixed.expectedRevisionNumber
+    || pointer.resultId !== fixed.resultId || pointer.resultHash !== fixed.resultHash) {
     throw new CandidateGatewayError(502, 'candidate.invalid_response');
   }
   return {
     status: 'marked', pointer,
     permit: {
-      resultId: input.resultId, resultHash: input.resultHash,
-      inputRevisionId: input.expectedRevisionId, inputSnapshotHash: input.expectedSnapshotHash,
-      inputRevisionNumber: input.expectedRevisionNumber,
+      resultId: fixed.resultId, resultHash: fixed.resultHash,
+      inputRevisionId: fixed.expectedRevisionId, inputSnapshotHash: fixed.expectedSnapshotHash,
+      inputRevisionNumber: fixed.expectedRevisionNumber,
       outputSnapshotHash: normalized.result.outputSnapshotHash,
     },
   };
