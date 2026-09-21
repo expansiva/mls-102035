@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { L4_REVISION_SCHEMA, type L4CandidateManifest, type L4ChangeRecord, type L4ReleaseManifest } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import { freezeReviewEntry } from './entrySnapshot.js';
+import {
+  freezeReviewEntry,
+  readReviewInventories,
+  type ReviewEntrySnapshot,
+  type ReviewInventoryRuntime,
+} from './entrySnapshot.js';
 import { parseReviewInvocation } from './invocation.js';
 
 const invocation = parseReviewInvocation({
@@ -46,3 +51,68 @@ test('entry refuses stale revision, other module, incomplete source inventory an
   assert.throws(() => freezeReviewEntry(invocation, change, release, revision, { 'module.defs.ts': 'sha256:later' }), /bytes differ/);
   assert.throws(() => freezeReviewEntry(invocation, { ...change, activeRevisionId: null }, release, null, {}), /Save the request/);
 });
+
+test('inventory refuses altered original bytes with a stable manifest before review20 or validate40', async () => {
+  const original = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Original title' });
+  const tampered = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Tampered title' });
+  const candidate = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Candidate title' });
+  const stable: ReviewEntrySnapshot = {
+    project: invocation.project,
+    moduleName: invocation.moduleName,
+    originalL4Path: invocation.originalL4Path,
+    temporaryL4Path: invocation.temporaryL4Path,
+    request: invocation.request,
+    baseId: invocation.baseId,
+    changeId: change.changeId,
+    revisionId: revision.revisionId,
+    requestRevision: revision.requestRevision,
+    originalHashes: { 'module.defs.ts': await hash(original) },
+    candidateHashes: { 'module.defs.ts': await hash(candidate) },
+    changedPaths: ['module.defs.ts'],
+  };
+  let snapshotReads = 0;
+  const runtime: ReviewInventoryRuntime = {
+    readSnapshot: async () => { snapshotReads += 1; return JSON.parse(JSON.stringify(stable)) as ReviewEntrySnapshot; },
+    readRequest: async () => ({
+      changeId: stable.changeId, revisionId: stable.revisionId, text: stable.request, resultCurrent: false,
+    }),
+    readOriginalSource: async () => tampered,
+    readCandidateSource: async () => candidate,
+  };
+  await assert.rejects(() => readReviewInventories(invocation, runtime), /base bytes changed without a matching release manifest/u);
+  assert.equal(snapshotReads, 1, 'failure occurs before downstream review steps or the final snapshot acceptance');
+});
+
+test('inventory parses the hashed bytes and revalidates the snapshot after reading', async () => {
+  const original = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Original title' });
+  const candidate = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Candidate title' });
+  const stable: ReviewEntrySnapshot = {
+    project: invocation.project, moduleName: invocation.moduleName,
+    originalL4Path: invocation.originalL4Path, temporaryL4Path: invocation.temporaryL4Path,
+    request: invocation.request, baseId: invocation.baseId, changeId: change.changeId,
+    revisionId: revision.revisionId, requestRevision: revision.requestRevision,
+    originalHashes: { 'module.defs.ts': await hash(original) },
+    candidateHashes: { 'module.defs.ts': await hash(candidate) }, changedPaths: ['module.defs.ts'],
+  };
+  let snapshotReads = 0;
+  const result = await readReviewInventories(invocation, {
+    readSnapshot: async () => { snapshotReads += 1; return JSON.parse(JSON.stringify(stable)) as ReviewEntrySnapshot; },
+    readRequest: async () => ({
+      changeId: stable.changeId, revisionId: stable.revisionId, text: stable.request, resultCurrent: false,
+    }),
+    readOriginalSource: async () => original,
+    readCandidateSource: async () => candidate,
+  });
+  assert.equal((result.base['module.defs.ts'] as { title: string }).title, 'Original title');
+  assert.equal((result.candidate['module.defs.ts'] as { title: string }).title, 'Candidate title');
+  assert.equal(snapshotReads, 2);
+});
+
+function defsSource(value: unknown): string {
+  return `export const module = ${JSON.stringify(value)} as const;\n`;
+}
+
+async function hash(source: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+  return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+}

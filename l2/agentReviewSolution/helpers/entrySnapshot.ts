@@ -1,7 +1,9 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/entrySnapshot.ts" enhancement="_blank" />
 
+import { parseNs4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
 import { fileExists, readSourceText } from '/_102035_/l2/solution/fs.js';
 import { readActiveL4Change, readL4Release, readL4Revision, originalL4FileInfo, type L4CandidateManifest, type L4ChangeRecord, type L4HashMap, type L4ReleaseManifest } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { readChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import { normalizeTobeArtifactPath, tobeArtifactFileInfo } from '/_102035_/l2/newRelease/tobe.js';
 import type { ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 
@@ -20,10 +22,51 @@ export interface ReviewEntrySnapshot {
   changedPaths: string[];
 }
 
+export interface ReviewInventories {
+  snapshot: ReviewEntrySnapshot;
+  persistedRequest: { revision: number; request: string };
+  base: Record<string, unknown>;
+  candidate: Record<string, unknown>;
+}
+
+export interface ReviewInventoryRuntime {
+  readSnapshot(invocation: ReviewInvocation): Promise<ReviewEntrySnapshot>;
+  readRequest(project: number, moduleName: string): ReturnType<typeof readChangeRequest>;
+  readOriginalSource(snapshot: ReviewEntrySnapshot, path: string): Promise<string>;
+  readCandidateSource(snapshot: ReviewEntrySnapshot, path: string): Promise<string>;
+}
+
 function sameMap(left: L4HashMap, right: L4HashMap): boolean {
   const leftKeys = Object.keys(left).sort();
   const rightKeys = Object.keys(right).sort();
   return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
+}
+
+function sameStrings(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+export function assertReviewSnapshotMatches(expected: ReviewEntrySnapshot, actual: ReviewEntrySnapshot): void {
+  if (expected.project !== actual.project || expected.moduleName !== actual.moduleName
+    || expected.originalL4Path !== actual.originalL4Path || expected.temporaryL4Path !== actual.temporaryL4Path
+    || expected.request !== actual.request || expected.baseId !== actual.baseId || expected.changeId !== actual.changeId
+    || expected.revisionId !== actual.revisionId || expected.requestRevision !== actual.requestRevision
+    || !sameMap(expected.originalHashes, actual.originalHashes) || !sameMap(expected.candidateHashes, actual.candidateHashes)
+    || !sameStrings(expected.changedPaths, actual.changedPaths)) {
+    throw new Error('L4 revision conflict: candidate changed after the review task was created.');
+  }
+}
+
+export function reviewSnapshotFromContext(context: mls.msg.ExecutionContext): ReviewEntrySnapshot {
+  const raw = context.task?.iaCompressed?.longMemory?.entrySnapshot;
+  if (typeof raw !== 'string') throw new Error('Review entry snapshot is missing from the task.');
+  let snapshot: unknown;
+  try { snapshot = JSON.parse(raw); }
+  catch { throw new Error('Review entry snapshot is invalid.'); }
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    throw new Error('Review entry snapshot is invalid.');
+  }
+  return snapshot as ReviewEntrySnapshot;
 }
 
 /** Pure identity/integrity decision; storage is injected by readReviewEntrySnapshot. */
@@ -95,4 +138,62 @@ export async function readReviewEntrySnapshot(invocation: ReviewInvocation): Pro
     if (!(path in release.files)) throw new Error(`Unexpected temporary L4 artifact: ${path}`);
   }
   return freezeReviewEntry(invocation, change, release, revision, temporaryHashes);
+}
+
+const reviewInventoryRuntime: ReviewInventoryRuntime = {
+  readSnapshot: readReviewEntrySnapshot,
+  readRequest: readChangeRequest,
+  readOriginalSource: (snapshot, path) => readSourceText(originalL4FileInfo(
+    snapshot.project, snapshot.moduleName, snapshot.baseId, normalizeTobeArtifactPath(path),
+  )),
+  readCandidateSource: (snapshot, path) => readSourceText(tobeArtifactFileInfo(
+    snapshot.project, snapshot.moduleName, normalizeTobeArtifactPath(path), 'tobe',
+  )),
+};
+
+/**
+ * Read the exact base/candidate pair bound to the task. The second snapshot read rejects a
+ * revision or byte change that races the inventory read. No storage is mutated.
+ */
+export async function readReviewInventories(
+  invocation: ReviewInvocation,
+  runtime: ReviewInventoryRuntime = reviewInventoryRuntime,
+): Promise<ReviewInventories> {
+  const before = await runtime.readSnapshot(invocation);
+  const stored = await runtime.readRequest(before.project, before.moduleName);
+  if (!stored || stored.changeId !== before.changeId || stored.revisionId !== before.revisionId
+    || stored.text !== before.request) {
+    throw new Error('Review request differs from the persisted candidate revision.');
+  }
+  const base: Record<string, unknown> = {};
+  const candidate: Record<string, unknown> = {};
+  for (const rawPath of Object.keys(before.originalHashes).sort()) {
+    const path = normalizeTobeArtifactPath(rawPath);
+    const [baseSource, candidateSource] = await Promise.all([
+      runtime.readOriginalSource(before, path),
+      runtime.readCandidateSource(before, path),
+    ]);
+    if (await sha256(baseSource) !== before.originalHashes[path]) {
+      throw new Error(`Captured L4 base bytes changed without a matching release manifest: ${path}`);
+    }
+    if (await sha256(candidateSource) !== before.candidateHashes[path]) {
+      throw new Error(`Temporary L4 bytes changed without a matching candidate revision: ${path}`);
+    }
+    const baseArtifact = parseNs4ClassicDefsSource<unknown>(baseSource);
+    const candidateArtifact = parseNs4ClassicDefsSource<unknown>(candidateSource);
+    if (!baseArtifact || typeof baseArtifact !== 'object' || Array.isArray(baseArtifact)
+      || !candidateArtifact || typeof candidateArtifact !== 'object' || Array.isArray(candidateArtifact)) {
+      throw new Error(`Invalid L4 artifact: ${path}`);
+    }
+    base[path] = baseArtifact;
+    candidate[path] = candidateArtifact;
+  }
+  const after = await runtime.readSnapshot(invocation);
+  assertReviewSnapshotMatches(before, after);
+  return {
+    snapshot: after,
+    persistedRequest: { revision: after.requestRevision, request: stored.text },
+    base,
+    candidate,
+  };
 }

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildCandidateSnapshot,
+  buildCandidateResult,
+  candidateMarkResult,
   candidatePublish,
   candidateRead,
   CandidateGatewayError,
@@ -26,6 +28,10 @@ async function snapshot(title = 'one') {
 
 function pointer(hash: string, revisionId = 'rev-one'): CandidatePointer {
   return { changeId: 'change-one', revisionId, snapshotHash: hash, revisionNumber: 1 };
+}
+
+function artifactsOf(value: Awaited<ReturnType<typeof snapshot>>) {
+  return value.files.map(({ path, sha256 }) => ({ path, sha256 }));
 }
 
 function answer(status: number, body: Record<string, unknown>): Response {
@@ -100,6 +106,117 @@ test('publish accepts only a committed pointer for the submitted immutable bytes
   await rejectsCode(() => candidatePublish(input, {
     fetchImpl: async () => answer(200, { status: 'committed', pointer: pointer('f'.repeat(64)) }),
   }), 502, 'candidate.invalid_response');
+});
+
+test('mark-result binds a canonical manifest to the expected revision and preserves conflict', async () => {
+  const output = await snapshot('output');
+  const input = await buildCandidateResult({
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+    result: {
+      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
+      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+    },
+  });
+  const markedPointer = {
+    ...pointer('a'.repeat(64)), resultRevisionId: 'rev-one',
+    resultSnapshotHash: 'a'.repeat(64), resultRevisionNumber: 1,
+    resultId: input.resultId, resultHash: input.resultHash,
+  };
+  const posted: Array<Record<string, unknown>> = [];
+  const marked = await candidateMarkResult(input, {
+    fetchImpl: async (_request, init) => {
+      posted.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return answer(200, { status: 'marked', pointer: markedPointer });
+    },
+  });
+  assert.deepEqual(marked, {
+    status: 'marked', pointer: markedPointer,
+    permit: {
+      resultId: input.resultId, resultHash: input.resultHash,
+      inputRevisionId: input.expectedRevisionId, inputSnapshotHash: input.expectedSnapshotHash,
+      inputRevisionNumber: input.expectedRevisionNumber, outputSnapshotHash: output.hash,
+    },
+  });
+  assert.deepEqual(posted[0]?.outputSnapshot, output);
+  const winner = { ...pointer('f'.repeat(64), 'rev-two'), revisionNumber: 2 };
+  const conflict = await candidateMarkResult(input, {
+    fetchImpl: async () => answer(409, { status: 'conflict', pointer: winner }),
+  });
+  assert.deepEqual(conflict, { status: 'conflict', pointer: winner });
+});
+
+test('mark-result rejects arbitrary artifact hashes, output hash and divergent bytes locally', async () => {
+  const output = await snapshot('output');
+  const base = {
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+  };
+  const manifest = {
+    runId: 'run-one', taskId: 'task-one', status: 'completed' as const, traceHash: 'c'.repeat(64),
+    outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+  };
+  const arbitrary = structuredClone(manifest);
+  arbitrary.artifacts[0].sha256 = 'f'.repeat(64);
+  await rejectsCode(() => buildCandidateResult({ ...base, result: arbitrary }), 400, 'candidate.result_output_mismatch');
+  await rejectsCode(() => buildCandidateResult({
+    ...base, result: { ...manifest, outputSnapshotHash: 'e'.repeat(64) },
+  }), 400, 'candidate.result_output_mismatch');
+  const divergent = structuredClone(output);
+  divergent.files[0].contentBase64 = btoa('different bytes');
+  await rejectsCode(() => buildCandidateResult({ ...base, outputSnapshot: divergent, result: manifest }), 400, 'candidate.invalid_snapshot');
+});
+
+test('read verifies terminal result manifest against pointer hash', async () => {
+  const snap = await snapshot();
+  const output = await snapshot('output');
+  const result = await buildCandidateResult({
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+    result: {
+      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
+      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+    },
+  });
+  const current = {
+    ...pointer(snap.hash), resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash,
+    resultRevisionNumber: 1, resultId: result.resultId, resultHash: result.resultHash,
+  };
+  const read = await candidateRead(scope, { fetchImpl: async () => answer(200, {
+    status: 'read', pointer: current, snapshot: snap,
+    result: { resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
+      resultId: result.resultId, resultHash: result.resultHash, manifest: result.result },
+  }) });
+  assert.equal('result' in read ? read.result?.manifest.runId : undefined, 'run-one');
+  await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
+    status: 'read', pointer: current, snapshot: snap,
+    result: { resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
+      resultId: result.resultId, resultHash: result.resultHash, manifest: { ...result.result, taskId: 'tampered' } },
+  }) }), 502, 'candidate.invalid_result_hash');
+});
+
+test('non-initial publish requires and forwards the exact result permit', async () => {
+  const snap = await snapshot('output');
+  const base = {
+    ...scope, expectedRevisionId: 'rev-input', requestId: 'request-next',
+    changeId: 'change-next', revisionId: 'rev-next', snapshot: snap,
+  };
+  await rejectsCode(() => candidatePublish(base), 409, 'candidate.result_permit_required');
+  const permit = {
+    resultId: 'result-one', resultHash: 'a'.repeat(64), inputRevisionId: 'rev-input',
+    inputSnapshotHash: 'b'.repeat(64), inputRevisionNumber: 3, outputSnapshotHash: snap.hash,
+  };
+  let body: Record<string, unknown> | undefined;
+  await candidatePublish({ ...base, permit }, { fetchImpl: async (_url, init) => {
+    body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return answer(200, { status: 'committed', pointer: {
+      changeId: base.changeId, revisionId: base.revisionId,
+      snapshotHash: snap.hash, revisionNumber: 4,
+    } });
+  } });
+  assert.deepEqual(body?.permit, permit);
+  await rejectsCode(() => candidatePublish({ ...base, permit: { ...permit, outputSnapshotHash: 'f'.repeat(64) } }),
+    409, 'candidate.result_permit_mismatch');
 });
 
 test('tampered bytes, file hash and snapshot hash are rejected', async () => {

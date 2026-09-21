@@ -6,6 +6,11 @@ export interface CandidatePointer {
   revisionId: string;
   snapshotHash: string;
   revisionNumber: number;
+  resultRevisionId?: string;
+  resultSnapshotHash?: string;
+  resultRevisionNumber?: number;
+  resultId?: string;
+  resultHash?: string;
 }
 
 export interface CandidateFile {
@@ -33,14 +38,56 @@ export interface CandidatePublishInput extends CandidateScope {
   changeId: string;
   revisionId: string;
   snapshot: CandidateSnapshot;
+  permit?: CandidatePublishPermit;
+}
+
+export interface CandidateResultManifest {
+  runId: string;
+  taskId: string;
+  status: 'completed' | 'failed' | 'disputed';
+  outputSnapshotHash: string;
+  artifacts: Array<{ path: string; sha256: string }>;
+  traceHash: string;
+}
+
+export interface CandidatePublishPermit {
+  resultId: string;
+  resultHash: string;
+  inputRevisionId: string;
+  inputSnapshotHash: string;
+  inputRevisionNumber: number;
+  outputSnapshotHash: string;
+}
+
+export interface CandidateResultRef {
+  resultRevisionId: string;
+  resultSnapshotHash: string;
+  resultRevisionNumber: number;
+  resultId: string;
+  resultHash: string;
+  manifest: CandidateResultManifest;
+}
+
+export interface CandidateMarkResultInput extends CandidateScope {
+  expectedRevisionId: string;
+  expectedSnapshotHash: string;
+  expectedRevisionNumber: number;
+  resultId: string;
+  resultHash: string;
+  result: CandidateResultManifest;
+  outputSnapshot: CandidateSnapshot;
 }
 
 export type CandidateReadResult =
   | { status: 'read'; pointer: null; snapshot: null }
-  | { status: 'read'; pointer: CandidatePointer; snapshot: CandidateSnapshot };
+  | { status: 'read'; pointer: CandidatePointer; snapshot: CandidateSnapshot; result?: CandidateResultRef };
 
 export type CandidatePublishResult =
   | { status: 'committed'; pointer: CandidatePointer }
+  | { status: 'conflict'; pointer: CandidatePointer | null };
+
+export type CandidateMarkResultResult =
+  | { status: 'marked'; pointer: CandidatePointer; permit: CandidatePublishPermit }
   | { status: 'conflict'; pointer: CandidatePointer | null };
 
 export class CandidateGatewayError extends Error {
@@ -68,6 +115,7 @@ const MAX_FILES = 80;
 const MAX_FILE_BYTES = 250_000;
 const MAX_SNAPSHOT_BYTES = 700_000;
 const MAX_REQUEST_BYTES = 64_000;
+const RESULT_PATH = /^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+$/u;
 
 function requireScope(scope: CandidateScope): void {
   if (!Number.isSafeInteger(scope.project) || scope.project <= 0 || !MODULE.test(scope.moduleName)) {
@@ -126,11 +174,29 @@ function parsePointer(value: unknown): CandidatePointer | null {
     || !Number.isSafeInteger(pointer.revisionNumber) || Number(pointer.revisionNumber) < 1) {
     throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
   }
+  const hasResult = pointer.resultRevisionId !== undefined || pointer.resultSnapshotHash !== undefined
+    || pointer.resultRevisionNumber !== undefined || pointer.resultId !== undefined || pointer.resultHash !== undefined;
+  if (hasResult && (typeof pointer.resultRevisionId !== 'string' || !TOKEN.test(pointer.resultRevisionId)
+    || typeof pointer.resultSnapshotHash !== 'string' || !HASH.test(pointer.resultSnapshotHash)
+    || !Number.isSafeInteger(pointer.resultRevisionNumber) || Number(pointer.resultRevisionNumber) < 1
+    || typeof pointer.resultId !== 'string' || !TOKEN.test(pointer.resultId)
+    || typeof pointer.resultHash !== 'string' || !HASH.test(pointer.resultHash)
+    || pointer.resultRevisionId !== pointer.revisionId || pointer.resultSnapshotHash !== pointer.snapshotHash
+    || Number(pointer.resultRevisionNumber) !== Number(pointer.revisionNumber))) {
+    throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
+  }
   return {
     changeId: pointer.changeId,
     revisionId: pointer.revisionId,
     snapshotHash: pointer.snapshotHash,
     revisionNumber: Number(pointer.revisionNumber),
+    ...(hasResult ? {
+      resultRevisionId: pointer.resultRevisionId as string,
+      resultSnapshotHash: pointer.resultSnapshotHash as string,
+      resultRevisionNumber: Number(pointer.resultRevisionNumber),
+      resultId: pointer.resultId as string,
+      resultHash: pointer.resultHash as string,
+    } : {}),
   };
 }
 
@@ -178,6 +244,105 @@ export async function verifyCandidateSnapshot(value: unknown): Promise<Candidate
     throw new CandidateGatewayError(502, 'candidate.invalid_snapshot_hash');
   }
   return { hash: snapshot.hash, baseId: snapshot.baseId, requestRevision: Number(snapshot.requestRevision), request: snapshot.request, files };
+}
+
+async function normalizeResultManifest(value: unknown, failureStatus: 400 | 502): Promise<{
+  manifest: CandidateResultManifest; hash: string;
+}> {
+  const raw = record(value);
+  const fail = (code: string): never => { throw new CandidateGatewayError(failureStatus, code); };
+  if (!raw || typeof raw.runId !== 'string' || !TOKEN.test(raw.runId)
+    || typeof raw.taskId !== 'string' || !TOKEN.test(raw.taskId)
+    || (raw.status !== 'completed' && raw.status !== 'failed' && raw.status !== 'disputed')
+    || typeof raw.traceHash !== 'string' || !HASH.test(raw.traceHash)
+    || typeof raw.outputSnapshotHash !== 'string' || !HASH.test(raw.outputSnapshotHash)
+    || !Array.isArray(raw.artifacts) || raw.artifacts.length > 80
+    || (raw.status === 'completed' && raw.artifacts.length === 0)) {
+    throw new CandidateGatewayError(failureStatus, 'candidate.invalid_result');
+  }
+  const runId = raw.runId;
+  const taskId = raw.taskId;
+  const status = raw.status;
+  const traceHash = raw.traceHash;
+  const outputSnapshotHash = raw.outputSnapshotHash;
+  const rawArtifacts = raw.artifacts;
+  const seen = new Set<string>();
+  const artifacts = rawArtifacts.map((item): { path: string; sha256: string } => {
+    const artifact = record(item);
+    if (!artifact || typeof artifact.path !== 'string' || typeof artifact.sha256 !== 'string') {
+      throw new CandidateGatewayError(failureStatus, 'candidate.invalid_result_artifact');
+    }
+    const path = artifact.path;
+    const artifactHash = artifact.sha256;
+    const pathValid = status === 'completed' ? validPath(path) : RESULT_PATH.test(path);
+    if (path.length > 180 || !pathValid || path.split('/').some(part => part === '.' || part === '..')
+      || !HASH.test(artifactHash) || seen.has(path)) fail('candidate.invalid_result_artifact');
+    seen.add(path);
+    return { path, sha256: artifactHash };
+  }).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  if (status === 'completed' && CORE_PATHS.some(path => !seen.has(path))) {
+    fail('candidate.incomplete_result_artifacts');
+  }
+  const manifest: CandidateResultManifest = {
+    runId, taskId, status, outputSnapshotHash, artifacts, traceHash,
+  };
+  return { manifest, hash: await sha256(new TextEncoder().encode(JSON.stringify(manifest))) };
+}
+
+function normalizePermit(value: CandidatePublishPermit | undefined, required: boolean): CandidatePublishPermit | null {
+  if (!value) {
+    if (required) throw new CandidateGatewayError(409, 'candidate.result_permit_required');
+    return null;
+  }
+  if (!required) throw new CandidateGatewayError(400, 'candidate.unexpected_result_permit');
+  if (!TOKEN.test(value.resultId) || !HASH.test(value.resultHash) || !TOKEN.test(value.inputRevisionId)
+    || !HASH.test(value.inputSnapshotHash) || !Number.isSafeInteger(value.inputRevisionNumber)
+    || value.inputRevisionNumber < 1 || !HASH.test(value.outputSnapshotHash)) {
+    throw new CandidateGatewayError(400, 'candidate.invalid_result_permit');
+  }
+  return { ...value };
+}
+
+export async function buildCandidateResult(input: Omit<CandidateMarkResultInput, 'resultHash'>): Promise<CandidateMarkResultInput> {
+  requireScope(input);
+  requireToken(input.expectedRevisionId);
+  if (!HASH.test(input.expectedSnapshotHash) || !Number.isSafeInteger(input.expectedRevisionNumber)
+    || input.expectedRevisionNumber < 1) throw new CandidateGatewayError(400, 'candidate.invalid_identifier');
+  requireToken(input.resultId);
+  const normalized = await normalizeResultManifest(input.result, 400);
+  let outputSnapshot: CandidateSnapshot;
+  try { outputSnapshot = await verifyCandidateSnapshot(input.outputSnapshot); }
+  catch { throw new CandidateGatewayError(400, 'candidate.invalid_snapshot'); }
+  if (normalized.manifest.outputSnapshotHash !== outputSnapshot.hash) {
+    throw new CandidateGatewayError(400, 'candidate.result_output_mismatch');
+  }
+  if (normalized.manifest.status === 'completed') {
+    const files = outputSnapshot.files.map(({ path, sha256 }) => ({ path, sha256 }))
+      .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+    if (JSON.stringify(files) !== JSON.stringify(normalized.manifest.artifacts)) {
+      throw new CandidateGatewayError(400, 'candidate.result_output_mismatch');
+    }
+  }
+  return { ...input, outputSnapshot, result: normalized.manifest, resultHash: normalized.hash };
+}
+
+export async function verifyCandidateResult(value: unknown, pointer: CandidatePointer): Promise<CandidateResultRef> {
+  const result = record(value);
+  if (!pointer.resultRevisionId || !pointer.resultSnapshotHash || !pointer.resultRevisionNumber
+    || !pointer.resultId || !pointer.resultHash || !result
+    || result.resultRevisionId !== pointer.resultRevisionId || result.resultId !== pointer.resultId
+    || result.resultSnapshotHash !== pointer.resultSnapshotHash
+    || result.resultRevisionNumber !== pointer.resultRevisionNumber
+    || result.resultHash !== pointer.resultHash) {
+    throw new CandidateGatewayError(502, 'candidate.invalid_result');
+  }
+  const normalized = await normalizeResultManifest(result.manifest, 502);
+  if (normalized.hash !== pointer.resultHash) throw new CandidateGatewayError(502, 'candidate.invalid_result_hash');
+  return {
+    resultRevisionId: pointer.resultRevisionId, resultSnapshotHash: pointer.resultSnapshotHash,
+    resultRevisionNumber: pointer.resultRevisionNumber, resultId: pointer.resultId,
+    resultHash: pointer.resultHash, manifest: normalized.manifest,
+  };
 }
 
 /** Builds immutable wire bytes from complete L4 sources, never from a mutable shared path. */
@@ -253,6 +418,10 @@ export async function candidateRead(scope: CandidateScope, options: CandidateGat
   }
   const snapshot = await verifyCandidateSnapshot(payload.snapshot);
   if (pointer.snapshotHash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot_hash');
+  if (pointer.resultId) {
+    return { status: 'read', pointer, snapshot, result: await verifyCandidateResult(payload.result, pointer) };
+  }
+  if (payload.result !== undefined && payload.result !== null) throw new CandidateGatewayError(502, 'candidate.invalid_response');
   return { status: 'read', pointer, snapshot };
 }
 
@@ -263,10 +432,15 @@ export async function candidatePublish(input: CandidatePublishInput, options: Ca
   requireToken(input.revisionId);
   if (input.expectedRevisionId !== null) requireToken(input.expectedRevisionId);
   const snapshot = await verifyCandidateSnapshot(input.snapshot);
+  const permit = normalizePermit(input.permit, input.expectedRevisionId !== null);
+  if (permit && (permit.inputRevisionId !== input.expectedRevisionId
+    || permit.outputSnapshotHash !== snapshot.hash)) {
+    throw new CandidateGatewayError(409, 'candidate.result_permit_mismatch');
+  }
   const { httpStatus, payload } = await post({
     action: 'candidatePublish', project: input.project, moduleName: input.moduleName,
     expectedRevisionId: input.expectedRevisionId, requestId: input.requestId,
-    changeId: input.changeId, revisionId: input.revisionId, snapshot,
+    changeId: input.changeId, revisionId: input.revisionId, snapshot, ...(permit ? { permit } : {}),
   }, options);
   if (httpStatus === 409 && payload.status === 'conflict') {
     return { status: 'conflict', pointer: parsePointer(payload.pointer) };
@@ -276,4 +450,36 @@ export async function candidatePublish(input: CandidatePublishInput, options: Ca
   if (!pointer || pointer.changeId !== input.changeId || pointer.revisionId !== input.revisionId
     || pointer.snapshotHash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_response');
   return { status: 'committed', pointer };
+}
+
+export async function candidateMarkResult(input: CandidateMarkResultInput, options: CandidateGatewayOptions = {}): Promise<CandidateMarkResultResult> {
+  const normalized = await buildCandidateResult({ ...input, result: input.result });
+  if (normalized.resultHash !== input.resultHash) throw new CandidateGatewayError(400, 'candidate.invalid_result_hash');
+  const { httpStatus, payload } = await post({
+    action: 'candidateMarkResult', project: input.project, moduleName: input.moduleName,
+    expectedRevisionId: input.expectedRevisionId, expectedSnapshotHash: input.expectedSnapshotHash,
+    expectedRevisionNumber: input.expectedRevisionNumber, resultId: input.resultId,
+    resultHash: input.resultHash, result: normalized.result, outputSnapshot: normalized.outputSnapshot,
+  }, options);
+  if (httpStatus === 409 && payload.status === 'conflict') {
+    return { status: 'conflict', pointer: parsePointer(payload.pointer) };
+  }
+  if (httpStatus !== 200 || payload.status !== 'marked') throw new CandidateGatewayError(502, 'candidate.invalid_response');
+  const pointer = parsePointer(payload.pointer);
+  if (!pointer || pointer.revisionId !== input.expectedRevisionId || pointer.snapshotHash !== input.expectedSnapshotHash
+    || pointer.revisionNumber !== input.expectedRevisionNumber || pointer.resultRevisionId !== input.expectedRevisionId
+    || pointer.resultSnapshotHash !== input.expectedSnapshotHash
+    || pointer.resultRevisionNumber !== input.expectedRevisionNumber
+    || pointer.resultId !== input.resultId || pointer.resultHash !== input.resultHash) {
+    throw new CandidateGatewayError(502, 'candidate.invalid_response');
+  }
+  return {
+    status: 'marked', pointer,
+    permit: {
+      resultId: input.resultId, resultHash: input.resultHash,
+      inputRevisionId: input.expectedRevisionId, inputSnapshotHash: input.expectedSnapshotHash,
+      inputRevisionNumber: input.expectedRevisionNumber,
+      outputSnapshotHash: normalized.result.outputSnapshotHash,
+    },
+  };
 }

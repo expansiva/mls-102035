@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { beforePromptImplicit, createAgent } from './agentReviewSolution.js';
 
-test('unfinished review agent is private and malformed input creates no model step', async () => {
+test('review agent remains private and malformed input creates no model step', async () => {
   assert.equal(createAgent().visibility, 'private');
   const previous = (globalThis as any).mls;
   (globalThis as any).mls = { actualProject: 102047 };

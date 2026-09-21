@@ -1,9 +1,9 @@
 {
   "flowId": "agentReviewSolution",
   "schemaVersion": "2026-09-21-review-flow-v1",
-  "status": "entry10-executable-private-cores-partial",
+  "status": "entry10-review20-reconcile30-validate40-finalize50-private-executable",
   "visibility": "private",
-  "description": "Deterministic entry plus a pure, in-memory review20 staging contract. Candidate mutation, model invocation and result publication are not enabled in this version.",
+  "description": "Deterministic entry, one private structured review20 model step, pure reconcile30/validate40 and byte-preserving finalize50. Drafts and validation context stay private; finalize50 confirms an authoritative permit and conditionally publishes the exact in-memory snapshot.",
   "invocation": {
     "cli": "@@agentReviewSolution {\"moduleName\":\"...\",\"originalL4Path\":\"l4/<module>/pipeline/releases/<baseId>/l4\",\"temporaryL4Path\":\"l4/<module>/tobe/plan\",\"request\":\"...\"}",
     "ui": "The same structured object, with expectedRevisionId supplied by the UI.",
@@ -18,23 +18,66 @@
       "modelAlias": null,
       "dependsOn": [],
       "doneAnchor": "entry10-done",
-      "reads": ["captured release manifest and bytes", "active change and revision manifest", "temporary L4 bytes"],
-      "writes": [],
+      "reads": ["captured release manifest and bytes", "active change and revision manifest", "temporary L4 bytes", "real platform catalogs, pipeline, ontology plan and module registry captured once for later validation"],
+      "writes": ["private task long memory only: frozen validation context, its hash and correctionAttemptsUsed"],
       "goal": "Freeze the explicit project, module, base, change, revision and request after validating both folder references and all source hashes."
+    },
+    {
+      "id": "review20",
+      "agentName": "agentReviewSolution",
+      "kind": "single-structured-llm",
+      "modelAlias": "reasoning",
+      "dependsOn": ["entry10-done"],
+      "doneAnchor": "review20-private-result",
+      "reads": ["frozen entry snapshot", "persisted request", "captured base bytes", "sealed candidate bytes", "review20 prompt and schema"],
+      "writes": ["private task result only (maximum 280000 serialized characters, including the sealed base and snapshot hashes required by reconcile30)"],
+      "goal": "Produce and deterministically validate either policy-qualified scalar replacements or a clarification without writing L4 storage."
+    },
+    {
+      "id": "reconcile30",
+      "agentName": "agentReviewSolution",
+      "kind": "deterministic-private-diagnostic",
+      "modelAlias": null,
+      "dependsOn": ["review20-private-result"],
+      "doneAnchor": "reconcile30-private-result",
+      "reads": ["frozen entry snapshot", "validated review20 private result containing sealed base, proposal, snapshot hashes, validation context hash and correction state"],
+      "writes": ["private task result only (maximum 400000 serialized characters)"],
+      "goal": "Run only mechanically demonstrable dependency gates, preserve the proposal byte-for-byte and return ready, clarification or unsupported without any transformation."
+    },
+    {
+      "id": "validate40",
+      "agentName": "agentReviewSolution",
+      "kind": "deterministic-private-validation",
+      "modelAlias": null,
+      "dependsOn": ["reconcile30-private-result"],
+      "doneAnchor": "validate40-private-result",
+      "reads": ["ready reconcile30 private result", "frozen validation context and correctionAttemptsUsed from task long memory"],
+      "writes": ["private validation result only (maximum 550000 serialized characters)", "finalize50 step only when every affected gate is checked"],
+      "goal": "Validate the reconciled draft with the real context frozen at entry, preserve the draft and correction counter, and classify ready, clarification, unsupported or invalid without correction or publication."
+    },
+    {
+      "id": "finalize50",
+      "agentName": "agentReviewSolution",
+      "kind": "deterministic-byte-preserving-mark",
+      "modelAlias": null,
+      "dependsOn": ["validate40-private-result"],
+      "doneAnchor": "finalize50-private-result",
+      "reads": ["immutable sealed revision namespace", "captured release bytes", "durable submitted draft replay", "fresh authoritative candidate pointer/snapshot when replay misses", "ready validate40 private result"],
+      "writes": ["authoritative candidate result mark", "permit-gated candidate revision", "private pointer/hash/summary without source bytes"],
+      "goal": "Rehash frozen bytes, rebuild the deterministic exact snapshot, replay a durable submitted attempt first, or else mark the complete output snapshot and conditionally publish it."
     }
   ],
-  "privateStages": [
-    { "id": "review20", "dependsOn": ["entry10-done"], "kind": "pure-in-memory-core", "maturity": "partial-not-an-agent-step", "schema": "../schemas/review20.schema.json", "goal": "Compare candidate against the base and stage only policy-qualified scalar replacements or a clarification; no filesystem writes or approval." },
-    { "id": "validate40", "dependsOn": ["reconcile30-done"], "kind": "pure-in-memory-core", "maturity": "partial-not-an-agent-step", "goal": "Validate an assembled proposal with caller-supplied real context while observing, but never consuming, the persisted correction counter; unsupported candidates remain drafts." }
-  ],
+  "privateStages": [],
   "reservedNotScheduled": [
-    { "id": "review20", "dependsOn": ["entry10-done"], "reason": "The pure core exists, but no step intent obtains the structured model response; orchestration and shared-run gates are not enabled." },
-    { "id": "reconcile30", "dependsOn": ["review20-done"], "reason": "Dependency reconciliation is not implemented yet." },
-    { "id": "validate40", "dependsOn": ["reconcile30-done"], "reason": "The pure core consumes mr_03a coverage, but reconcile30 and a step/orchestrator are not implemented." },
-    { "id": "finalize50", "dependsOn": ["validate40-done"], "reason": "Requires conditional publication from mr_00; never uses local-only locks as a global CAS." }
+    { "id": "correction", "dependsOn": ["validate40-private-terminal"], "reason": "No safe directed correction rule or correction LLM step is integrated; validation never increments correctionAttemptsUsed." },
+    { "id": "run", "dependsOn": ["finalize50-private-result"], "reason": "Publication is complete, but no button, shared CLI or implementation run is connected by this private agent." }
   ],
   "safety": [
-    "No LLM call, candidate write, original write, materializer or planner dispatch occurs in entry10 or private review20 staging.",
+    "entry10 and reconcile30 make no LLM call; review20 makes exactly one structured call and has no automatic retry.",
+    "No candidate write, original write, materializer or planner dispatch occurs; a validated proposal is kept only in bounded private task step state.",
+    "reconcile30 recomputes review diffs, accepts no mutation and turns clarification/unsupported into private terminal state rather than inventing dependencies.",
+    "validate40 rechecks identity, revision, hashes, context hash and affected areas; it neither rereads stor/tobe nor consumes a correction attempt.",
+    "finalize50 reads the immutable revision namespace rather than tobe/plan, preserves unchanged source bytes, refuses drift, replays only the exact durable submitted identity before pointer gating, and never serializes CandidateSnapshot bytes into task results.",
     "A missing or stale active revision is a refusal, not an implicit snapshot rewrite.",
     "This flow does not report an accepted review or completed release."
   ]

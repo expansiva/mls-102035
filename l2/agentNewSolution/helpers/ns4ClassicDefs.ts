@@ -29,9 +29,15 @@ export function parseNs4ClassicDefsSource<T>(source: string): T | null {
 }
 
 export function extractNs4ClassicJsonObject(source: string): string {
+  const bounds = scanNs4ClassicJsonObject(source);
+  return bounds ? source.slice(bounds.start, bounds.end) : '';
+}
+
+/** The single brace/string scanner shared by readers and byte-preserving rewriters. */
+export function scanNs4ClassicJsonObject(source: string): { start: number; end: number } | null {
   const assignment = source.search(/export\s+const\s+[A-Za-z_$][A-Za-z0-9_$]*\s*=/);
   const start = source.indexOf('{', Math.max(0, assignment));
-  if (assignment < 0 || start < 0) return '';
+  if (assignment < 0 || start < 0) return null;
   let depth = 0;
   let inString = false;
   let escaped = false;
@@ -45,7 +51,7 @@ export function extractNs4ClassicJsonObject(source: string): string {
     }
     if (char === '"') { inString = true; continue; }
     if (char === '{') depth += 1;
-    else if (char === '}') { depth -= 1; if (depth === 0) return source.slice(start, index + 1); }
+    else if (char === '}') { depth -= 1; if (depth === 0) return { start, end: index + 1 }; }
   }
-  return '';
+  return null;
 }

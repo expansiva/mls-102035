@@ -2,8 +2,13 @@
 
 import type { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { parseReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
-import { readReviewEntrySnapshot, type ReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
+import { readReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
+import { captureReviewTaskState } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
 import { beforeReviewEntryStep } from '/_102035_/l2/agentReviewSolution/steps/entry10/entry10.js';
+import { afterReview20PromptStep, beforeReview20PromptStep } from '/_102035_/l2/agentReviewSolution/steps/review20/agentReview20.js';
+import { beforeReconcile30Step } from '/_102035_/l2/agentReviewSolution/steps/reconcile30/agentReconcile30.js';
+import { beforeValidate40Step } from '/_102035_/l2/agentReviewSolution/steps/validate40/agentValidate40.js';
+import { beforeFinalize50Step } from '/_102035_/l2/agentReviewSolution/steps/finalize50/agentFinalize50.js';
 
 export const REVIEW_AGENT_NAME = 'agentReviewSolution' as const;
 
@@ -12,7 +17,7 @@ export function createAgent(): IAgentAsync {
     agentName: REVIEW_AGENT_NAME,
     agentProject: 102035,
     agentFolder: 'agentReviewSolution',
-    agentDescription: 'Read-only preparation of a module L4 review; candidate mutation is not enabled yet.',
+    agentDescription: 'Private L4 review with exact-byte, permit-gated conditional candidate publication.',
     visibility: 'private',
     beforePromptImplicit,
     beforePromptStep,
@@ -29,6 +34,7 @@ export async function beforePromptImplicit(
     const project = mls.actualProject || 0;
     const invocation = parseReviewInvocation(userPrompt, project);
     const snapshot = await readReviewEntrySnapshot(invocation);
+    const reviewPrivateState = await captureReviewTaskState(snapshot);
     const addMessage: mls.msg.AgentIntentAddMessageAI = {
       type: 'add-message-ai', skipRootLLM: true,
       request: {
@@ -40,7 +46,11 @@ export async function beforePromptImplicit(
         taskTitle: `Prepare review ${snapshot.moduleName}`,
         threadId: context.message.threadId,
         userMessage: context.message.content,
-        longTermMemory: { flowName: REVIEW_AGENT_NAME, entrySnapshot: JSON.stringify(snapshot) },
+        longTermMemory: {
+          flowName: REVIEW_AGENT_NAME,
+          entrySnapshot: JSON.stringify(snapshot),
+          reviewPrivateState: JSON.stringify(reviewPrivateState),
+        },
       },
     };
     return [addMessage, {
@@ -64,6 +74,10 @@ export async function beforePromptStep(
   hookSequential: number,
 ): Promise<mls.msg.AgentIntent[]> {
   if (step.planning?.planId === 'entry10') return beforeReviewEntryStep(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'review20') return beforeReview20PromptStep(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'reconcile30') return beforeReconcile30Step(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'validate40') return beforeValidate40Step(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'finalize50') return beforeFinalize50Step(context, parentStep, step, hookSequential);
   if (!step.planning?.planId) return [update(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed without LLM.')];
   return [update(context, parentStep, step, hookSequential, 'failed', `Review step ${step.planning.planId} is not enabled.`)];
 }
@@ -75,8 +89,9 @@ export async function afterPromptStep(
   step: mls.msg.AIAgentStep,
   hookSequential: number,
 ): Promise<mls.msg.AgentIntent[]> {
+  if (step.planning?.planId === 'review20') return afterReview20PromptStep(context, parentStep, step, hookSequential);
   if (!step.planning?.planId) return [update(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed without LLM.')];
-  return [update(context, parentStep, step, hookSequential, 'failed', 'This review flow has no LLM step.')];
+  return [update(context, parentStep, step, hookSequential, 'failed', `Review step ${step.planning.planId} has no afterPrompt handler.`)];
 }
 
 export function update(
@@ -111,11 +126,4 @@ function statusOnly(agent: IAgentMeta, context: mls.msg.ExecutionContext, messag
       planning: { planId: 'status', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
     } as mls.msg.AIResultStep,
   }];
-}
-
-export function snapshotFromMemory(context: mls.msg.ExecutionContext): ReviewEntrySnapshot | null {
-  const raw = context.task?.iaCompressed?.longMemory?.entrySnapshot;
-  if (typeof raw !== 'string') return null;
-  try { return JSON.parse(raw) as ReviewEntrySnapshot; }
-  catch { return null; }
 }
