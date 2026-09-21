@@ -79,6 +79,36 @@ test('read uses the dedicated same-origin route and verifies every returned byte
   assert.equal(result.snapshot?.files.length, sourcePaths.length);
 });
 
+test('default production read consumes the restricted host candidateIO when injected', async () => {
+  const snap = await snapshot();
+  const host = globalThis as typeof globalThis & { mls?: unknown };
+  const previous = host.mls;
+  let received: unknown;
+  let fetched = false;
+  host.mls = {
+    candidateIO: {
+      read: async (input: unknown) => {
+        received = structuredClone(input);
+        return { statusCode: 200, status: 'read', pointer: pointer(snap.hash), snapshot: snap };
+      },
+      publish: async () => { throw new Error('unexpected publish'); },
+      markResult: async () => { throw new Error('unexpected mark'); },
+    },
+  };
+  try {
+    const result = await candidateRead(scope);
+    assert.deepEqual(received, scope);
+    assert.equal(result.snapshot?.hash, snap.hash);
+    await candidateRead(scope, { fetchImpl: async () => {
+      fetched = true;
+      return answer(200, { status: 'read', pointer: null });
+    } });
+    assert.equal(fetched, true, 'an explicit transport must override the host capability');
+  } finally {
+    host.mls = previous;
+  }
+});
+
 test('empty authoritative state is represented explicitly', async () => {
   const result = await candidateRead(scope, {
     endpoint: 'https://example.test/candidate',

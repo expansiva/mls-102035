@@ -98,9 +98,17 @@ export class CandidateGatewayError extends Error {
 }
 
 export interface CandidateGatewayOptions {
-  /** Same-origin in Studio; the CLI may inject an authenticated fetch and URL. */
+  /** Explicit test/Studio override. Production host calls use the restricted `mls.candidateIO`. */
   endpoint?: string;
   fetchImpl?: typeof fetch;
+}
+
+type CandidateCapabilityResponse = Record<string, unknown> & { statusCode: number };
+
+interface CandidateIoCapability {
+  read(input: CandidateScope): Promise<CandidateCapabilityResponse>;
+  publish(input: CandidatePublishInput): Promise<CandidateCapabilityResponse>;
+  markResult(input: CandidateMarkResultInput): Promise<CandidateCapabilityResponse>;
 }
 
 const DEFAULT_ENDPOINT = '/exec/candidate';
@@ -184,6 +192,45 @@ function encodeBase64(bytes: Uint8Array): string {
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function injectedCandidateIo(): CandidateIoCapability | null {
+  const host = record((globalThis as typeof globalThis & { mls?: unknown }).mls);
+  if (!host || host.candidateIO === undefined) return null;
+  const capability = record(host.candidateIO);
+  if (!capability || typeof capability.read !== 'function' || typeof capability.publish !== 'function'
+    || typeof capability.markResult !== 'function') {
+    throw new CandidateGatewayError(503, 'candidate.transport_unavailable');
+  }
+  return capability as unknown as CandidateIoCapability;
+}
+
+async function postThroughCandidateIo(
+  body: Record<string, unknown>,
+  capability: CandidateIoCapability,
+): Promise<{ httpStatus: number; payload: Record<string, unknown> }> {
+  const { action, ...input } = frozenClone(body);
+  let raw: CandidateCapabilityResponse;
+  try {
+    if (action === 'candidateRead') raw = await capability.read(input as unknown as CandidateScope);
+    else if (action === 'candidatePublish') raw = await capability.publish(input as unknown as CandidatePublishInput);
+    else if (action === 'candidateMarkResult') raw = await capability.markResult(input as unknown as CandidateMarkResultInput);
+    else throw new CandidateGatewayError(400, 'candidate.invalid_action');
+  } catch (error) {
+    if (error instanceof CandidateGatewayError) throw error;
+    const failure = record(error);
+    if (failure && Number.isInteger(failure.statusCode) && Number(failure.statusCode) >= 400
+      && Number(failure.statusCode) <= 599 && typeof failure.code === 'string'
+      && failure.code.startsWith('candidate.')) {
+      throw new CandidateGatewayError(Number(failure.statusCode), failure.code);
+    }
+    throw new CandidateGatewayError(503, 'candidate.transport_unavailable');
+  }
+  const payload = record(frozenClone(raw));
+  if (!payload || !Number.isInteger(payload.statusCode)) {
+    throw new CandidateGatewayError(502, 'candidate.invalid_response');
+  }
+  return { httpStatus: Number(payload.statusCode), payload };
 }
 
 function parsePointer(value: unknown): CandidatePointer | null {
@@ -407,6 +454,10 @@ async function post(
   body: Record<string, unknown>,
   options: CandidateGatewayOptions,
 ): Promise<{ httpStatus: number; payload: Record<string, unknown> }> {
+  if (options.endpoint === undefined && options.fetchImpl === undefined) {
+    const capability = injectedCandidateIo();
+    if (capability) return postThroughCandidateIo(body, capability);
+  }
   let response: Response;
   try {
     response = await (options.fetchImpl ?? fetch)(options.endpoint ?? DEFAULT_ENDPOINT, {
