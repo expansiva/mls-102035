@@ -16,6 +16,7 @@ import type {
   Ns5StepId,
 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import { readActiveL4Change, readL4Release, type L4ReleaseManifest } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import {
   readNs5Overlay,
   type NewReleaseOverlaySources,
@@ -65,6 +66,10 @@ export interface NewReleaseModuleData {
   tobeChanges: number;
   artifacts: NewReleaseOverlaySources;
   manifest: Ns5TobeManifest | null;
+  changeId: string | null;
+  revisionId: string | null;
+  baseProvenance: L4ReleaseManifest['provenance'] | null;
+  resultCurrent: boolean;
   stalePaths: Ns5TobeArtifactPath[];
   diffs: NewReleaseTobeDiff[];
   validation: NewReleaseOverlayValidation;
@@ -230,22 +235,29 @@ export async function readNs5Module(
     readLatestRun(project, moduleName, errors),
   ]);
   const overlay = await readNs5Overlay(project, moduleName, version, {
-    pipeline,
+    pipeline: version.startsWith('release:') ? null : pipeline,
     registryModuleNames: listNs5Modules(project),
   });
   errors.push(...overlay.errors);
-  const finalizeReport = version === 'tobe' && overlay.validation.oracle
+  const finalizeReport = version.startsWith('release:') ? null : version === 'tobe' && overlay.validation.oracle
     ? overlay.validation.oracle
     : persistedReport;
+  const active = version.startsWith('release:') ? null : await readActiveL4Change(project, moduleName);
+  const baseProvenance = active ? (await readL4Release(project, moduleName, active.baseId))?.provenance ?? null : null;
+  const resultCurrent = !!active?.activeRevisionId && active.resultRevisionId === active.activeRevisionId;
 
   return {
     module: overlay.sources.module.value,
-    pipeline,
+    pipeline: version.startsWith('release:') ? null : pipeline,
     finalizeReport,
-    run,
+    run: version.startsWith('release:') ? null : run,
     tobeChanges: overlay.manifest?.changes.length ?? 0,
     artifacts: overlay.sources,
     manifest: overlay.manifest,
+    changeId: overlay.changeId,
+    revisionId: overlay.revisionId,
+    baseProvenance,
+    resultCurrent,
     stalePaths: overlay.stalePaths,
     diffs: overlay.diffs,
     validation: overlay.validation,
