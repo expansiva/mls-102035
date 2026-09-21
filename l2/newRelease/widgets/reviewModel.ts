@@ -167,7 +167,7 @@ export function buildReviewActionPresentation(input: ReviewPrimaryActionInput): 
     kind,
     labelKey,
     descriptionKey,
-    availabilityKey: input.busy ? 'review.actionBusy' : input.connected ? '' : 'review.actionLater',
+    availabilityKey: input.busy ? 'review.actionBusy' : input.connected ? '' : 'review.actionReadinessBlocked',
     disabled: input.busy || !input.connected || kind === 'unavailable',
     busy: input.busy,
     error: input.error,

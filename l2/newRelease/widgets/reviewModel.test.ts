@@ -132,7 +132,7 @@ test('review primary action distinguishes calculate, continue and unavailable wh
   assert.equal(calculate.kind, 'calculate');
   assert.equal(calculate.labelKey, 'review.calculate');
   assert.equal(calculate.disabled, true);
-  assert.equal(calculate.availabilityKey, 'review.actionLater');
+  assert.equal(calculate.availabilityKey, 'review.actionReadinessBlocked');
 
   const ready = buildReviewActionPresentation({ ...base, resultCurrent: true });
   assert.equal(ready.kind, 'continue');

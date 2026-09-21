@@ -4,7 +4,8 @@ import {
   applyReviewObservation,
   buildReviewAgentInvocation,
   evaluateReviewReadiness,
-  retryFailedReviewRun,
+  recordReviewTransportFailure,
+  retryReviewTransport,
   submittingReviewRun,
   type ReviewAgentInvocation,
   type ReviewReadinessProof,
@@ -39,11 +40,9 @@ export type ExecuteReviewRunResult =
   | { status: 'disabled'; run: ReviewRunRecord; missing: ReturnType<typeof evaluateReviewReadiness>['missing'] }
   | { status: 'finished'; run: ReviewRunRecord };
 
-const ACTIVE = new Set(['submitting', 'reviewing', 'planning']);
-const TERMINAL = new Set(['ready', 'failed', 'disputed', 'stale']);
+const TERMINAL = new Set(['ready', 'failed', 'disputed']);
 const RESUMABLE_PENDING = new Set([
   'review-run.planner_result_contract_pending',
-  'review-run.stale_output_pending',
 ]);
 
 function deepFreeze<T>(value: T): T {
@@ -89,12 +88,7 @@ async function failActive(
   code: string,
   now: string,
 ): Promise<ReviewRunRecord> {
-  const failed = await applyReviewObservation(current, {
-    currentRevisionId: current.binding.inputRevisionId,
-    taskStatus: 'failed',
-    phase: current.state === 'reviewing' ? 'reviewing' : 'planning',
-    errorCode: code,
-  }, now);
+  const failed = recordReviewTransportFailure(current, code, now);
   return commit(store, current, failed);
 }
 
@@ -107,16 +101,17 @@ export async function executeReviewRun(input: ExecuteReviewRunInput): Promise<Ex
   if (!readiness.ready) return { status: 'disabled', run: current, missing: readiness.missing };
 
   let mode: ReviewChannelMode;
-  if (current.state === 'draft') {
+  if (current.status === 'planning') {
     const next = submittingReviewRun(current, fixed.now());
     const submitted = await fixed.store.compareAndSwap(current.storeRevision, next);
     if (!submitted.committed) return { status: 'finished', run: submitted.current };
     current = submitted.current;
     mode = 'submit';
-  } else if (ACTIVE.has(current.state)) {
+  } else if (current.status === 'running'
+    && (current.errorCode === null || RESUMABLE_PENDING.has(current.errorCode))) {
     mode = 'reattach';
-  } else if (current.state === 'failed' && fixed.retryFailed) {
-    current = await commit(fixed.store, current, retryFailedReviewRun(current, fixed.now()));
+  } else if (current.status === 'running' && current.errorCode !== null && fixed.retryFailed) {
+    current = await commit(fixed.store, current, retryReviewTransport(current, fixed.now()));
     mode = 'retry';
   } else {
     return { status: 'finished', run: current };
@@ -128,13 +123,13 @@ export async function executeReviewRun(input: ExecuteReviewRunInput): Promise<Ex
       mode, taskId: current.taskId, threadId: current.threadId, attempt: current.attemptsUsed,
     })) {
       current = await commit(fixed.store, current, await applyReviewObservation(current, observation, fixed.now()));
-      if (TERMINAL.has(current.state)) break;
+      if (TERMINAL.has(current.status)) break;
     }
   } catch (error) {
     if (error instanceof Error && error.message === 'review-run.concurrent_update') throw error;
     current = await failActive(fixed.store, current, 'review-run.channel_failed', fixed.now());
   }
-  if (ACTIVE.has(current.state) && !RESUMABLE_PENDING.has(current.errorCode ?? '')) {
+  if (current.status === 'running' && !current.superseded && current.errorCode === null) {
     current = await failActive(fixed.store, current, 'review-run.channel_ended_without_terminal', fixed.now());
   }
   return { status: 'finished', run: current };

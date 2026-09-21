@@ -14,6 +14,11 @@ import {
 } from './reviewRun.js';
 
 interface ReviewRunRow { key: string; run: ReviewRunRecord; }
+interface LegacyReviewRunRecord extends Omit<ReviewRunRecord, 'schemaVersion' | 'status' | 'phase' | 'superseded'> {
+  schemaVersion: '2026-09-21-review-run-v3';
+  state: 'draft' | 'submitting' | 'reviewing' | 'planning' | 'ready' | 'failed' | 'disputed' | 'stale';
+  archivePending: boolean;
+}
 export interface ReviewRunStore {
   read(binding: Pick<ReviewRunBinding, 'project' | 'moduleName' | 'changeId' | 'inputRevisionId'>): Promise<ReviewRunRecord | null>;
   create(run: ReviewRunRecord): Promise<ReviewRunRecord>;
@@ -41,6 +46,46 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+function migrateStoredRun(value: unknown): ReviewRunRecord {
+  if (!value || typeof value !== 'object') throw new Error('review-run.invalid_record');
+  const raw = clone(value as Record<string, unknown>);
+  if (raw.schemaVersion === '2026-09-21-review-run-v4') {
+    return raw as unknown as ReviewRunRecord;
+  }
+  if (raw.schemaVersion !== '2026-09-21-review-run-v3') throw new Error('review-run.invalid_record');
+  const legacy = raw as unknown as LegacyReviewRunRecord;
+  const terminal = legacy.state === 'ready' || legacy.state === 'stale'
+    ? 'ready'
+    : legacy.state === 'failed' || legacy.state === 'disputed' ? legacy.state : 'running';
+  const run: ReviewRunRecord = {
+    schemaVersion: '2026-09-21-review-run-v4',
+    binding: legacy.binding,
+    request: legacy.request,
+    runId: legacy.runId,
+    requestId: legacy.requestId,
+    status: legacy.state === 'draft' ? 'planning' : terminal,
+    phase: legacy.state === 'draft' || legacy.state === 'submitting' || legacy.state === 'reviewing'
+      ? 'reviewing'
+      : legacy.state === 'ready' || legacy.state === 'stale' ? 'finalizing' : 'planning',
+    superseded: legacy.archivePending || legacy.state === 'stale',
+    storeRevision: legacy.storeRevision,
+    attemptsUsed: legacy.attemptsUsed,
+    taskId: legacy.taskId,
+    threadId: legacy.threadId,
+    output: legacy.output,
+    errorCode: legacy.state === 'stale' || legacy.archivePending ? null : legacy.errorCode,
+    createdAt: legacy.createdAt,
+    updatedAt: legacy.updatedAt,
+  };
+  return run;
+}
+
+async function normalizeStoredRun(value: unknown): Promise<ReviewRunRecord> {
+  const run = migrateStoredRun(value);
+  await verifyReviewRunRecord(run);
+  return run;
+}
+
 export class IndexedDbReviewRunStore implements ReviewRunStore {
   readonly #factory: IDBFactory | undefined;
   readonly #databaseName: string;
@@ -55,8 +100,7 @@ export class IndexedDbReviewRunStore implements ReviewRunStore {
     const key = reviewRunKey(binding);
     const row = await this.#request<ReviewRunRow | undefined>('readonly', store => store.get(key));
     if (!row) return null;
-    await verifyReviewRunRecord(row.run);
-    return clone(row.run);
+    return clone(await normalizeStoredRun(row.run));
   }
 
   async create(run: ReviewRunRecord): Promise<ReviewRunRecord> {
@@ -86,7 +130,8 @@ export class IndexedDbReviewRunStore implements ReviewRunStore {
             abort(new ReviewRunStoreError('review-run.revision_already_bound'));
             return;
           }
-          value = clone(existing.run);
+          try { value = clone(migrateStoredRun(existing.run)); }
+          catch (error) { abort(error); }
           return;
         }
         value = clone(fixed);
@@ -126,11 +171,14 @@ export class IndexedDbReviewRunStore implements ReviewRunStore {
       get.onsuccess = () => {
         const existing = get.result as ReviewRunRow | undefined;
         if (!existing) { abort(new ReviewRunStoreError('review-run.not_found')); return; }
-        if (existing.run.storeRevision !== expectedStoreRevision) {
-          value = { committed: false, current: clone(existing.run) };
+        let current: ReviewRunRecord;
+        try { current = migrateStoredRun(existing.run); }
+        catch (error) { abort(error); return; }
+        if (current.storeRevision !== expectedStoreRevision) {
+          value = { committed: false, current: clone(current) };
           return;
         }
-        try { assertReviewRunUpdate(existing.run, fixed); }
+        try { assertReviewRunUpdate(current, fixed); }
         catch (error) { abort(error); return; }
         value = { committed: true, current: clone(fixed) };
         const put = store.put({ key, run: clone(fixed) } satisfies ReviewRunRow);

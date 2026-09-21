@@ -90,6 +90,26 @@ new-release--widgets--review-102035 {
     cursor: not-allowed;
   }
 
+  .nr-review__run {
+    display: grid;
+    gap: .55rem;
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--border-subtle, #e4e9f0);
+    background: var(--surface-alt-bg, #f5f7fa);
+  }
+  .nr-review__run > header { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem 1rem; }
+  .nr-review__run > header span { color: var(--link-text, #0f62b8); font-size: .64rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+  .nr-review__run > header h3 { margin-top: .15rem; color: var(--text-strong, #111827); font-size: .95rem; }
+  .nr-review__run > header strong { color: var(--text-default, #2f3a48); font-size: .72rem; }
+  .nr-review__run > p { color: var(--status-error-text, #ab2328); font-size: .72rem; }
+  .nr-review__run dl { display: flex; flex-wrap: wrap; gap: .35rem 1rem; margin: 0; }
+  .nr-review__run dl div { min-width: min(100%, 12rem); }
+  .nr-review__run dt { color: var(--text-muted, #5d6b7e); font-size: .6rem; font-weight: 750; text-transform: uppercase; }
+  .nr-review__run dd { margin: .08rem 0 0; overflow-wrap: anywhere; font-size: .66rem; }
+  .nr-review__run.is-ready > header strong { color: var(--status-success-text, #25640e); }
+  .nr-review__run.is-failed > header strong,
+  .nr-review__run.is-disputed > header strong { color: var(--status-error-text, #ab2328); }
+
   .nr-review__loading,
   .nr-review__empty,
   .nr-review__pending {
@@ -319,6 +339,8 @@ new-release--widgets--review-102035 {
     .nr-review__menu { border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
     .nr-review__backend { padding-inline: .85rem; }
     .nr-review__backend-groups { grid-template-columns: minmax(0, 1fr); }
+    .nr-review__run { padding-inline: .85rem; }
+    .nr-review__run > header { display: grid; }
   }
 
   @media (max-width: 780px) {

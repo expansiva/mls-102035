@@ -3,10 +3,11 @@
 import type { Finalize50PrivateResult } from '/_102035_/l2/agentReviewSolution/steps/finalize50/agentFinalize50.js';
 import type { CandidateResultRef } from './candidateGateway.js';
 
-export const REVIEW_RUN_SCHEMA = '2026-09-21-review-run-v3' as const;
+export const REVIEW_RUN_SCHEMA = '2026-09-21-review-run-v4' as const;
 export type CanonicalSha256 = `sha256:${string}`;
 
-export type ReviewRunState = 'draft' | 'submitting' | 'reviewing' | 'planning' | 'ready' | 'failed' | 'disputed' | 'stale';
+export type ReviewRunStatus = 'planning' | 'running' | 'ready' | 'failed' | 'disputed';
+export type ReviewRunPhase = 'reviewing' | 'planning' | 'finalizing';
 
 export interface ReviewRunBinding {
   project: number;
@@ -49,14 +50,15 @@ export interface ReviewRunRecord {
   request: string;
   runId: string;
   requestId: string;
-  state: ReviewRunState;
+  status: ReviewRunStatus;
+  phase: ReviewRunPhase;
+  /** Orthogonal archive marker: once true it never returns to false. */
+  superseded: boolean;
   storeRevision: number;
   attemptsUsed: number;
   taskId: string | null;
   threadId: string | null;
   output: ReviewRunOutputRef | null;
-  /** A newer input revision exists, but this run must stay attachable until its own terminal output arrives. */
-  archivePending: boolean;
   errorCode: string | null;
   createdAt: string;
   updatedAt: string;
@@ -90,8 +92,10 @@ export interface ReviewTerminalObservation {
   currentRevisionId: string;
   taskStatus: ReviewTaskStatus;
   phase: ReviewObservedPhase;
-  taskId?: string;
-  threadId?: string;
+  /** Studio/messages task used only to reattach the execution channel. */
+  channelTaskId?: string;
+  /** Studio/messages thread used only to reattach the execution channel. */
+  channelThreadId?: string;
   /** CandidateResultManifest.runId observed from the same terminal channel event. */
   resultRunId?: string;
   disputed?: boolean;
@@ -100,9 +104,10 @@ export interface ReviewTerminalObservation {
   errorCode?: string;
 }
 export interface ReviewTerminalDecision {
-  state: Exclude<ReviewRunState, 'draft' | 'submitting'>;
+  status: ReviewRunStatus;
+  phase: ReviewRunPhase;
+  superseded: boolean;
   output: ReviewRunOutputRef | null;
-  archivePending: boolean;
   errorCode: string | null;
 }
 
@@ -115,10 +120,10 @@ const CORE_PATHS = [
   'rules.defs.ts', 'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts',
 ] as const;
 const MAX_ATTEMPTS = 3;
-const STATES = new Set<ReviewRunState>([
-  'draft', 'submitting', 'reviewing', 'planning', 'ready', 'failed', 'disputed', 'stale',
+const STATUSES = new Set<ReviewRunStatus>([
+  'planning', 'running', 'ready', 'failed', 'disputed',
 ]);
-const STALE_PENDING = 'review-run.stale_output_pending';
+const PHASES = new Set<ReviewRunPhase>(['reviewing', 'planning', 'finalizing']);
 
 function isToken(value: unknown): value is string {
   return typeof value === 'string' && TOKEN.test(value);
@@ -234,13 +239,14 @@ export async function createReviewRun(
     request: exactRequest,
     runId: fixed.identity.runId,
     requestId: fixed.identity.requestId,
-    state: 'draft',
+    status: 'planning',
+    phase: 'reviewing',
+    superseded: false,
     storeRevision: 1,
     attemptsUsed: 0,
     taskId: null,
     threadId: null,
     output: null,
-    archivePending: false,
     errorCode: null,
     createdAt: fixed.identity.now,
     updatedAt: fixed.identity.now,
@@ -249,9 +255,9 @@ export async function createReviewRun(
 
 export async function verifyReviewRunDraft(run: ReviewRunRecord): Promise<void> {
   await verifyReviewRunRecord(run);
-  if (run.state !== 'draft' || run.storeRevision !== 1
+  if (run.status !== 'planning' || run.phase !== 'reviewing' || run.superseded || run.storeRevision !== 1
     || run.attemptsUsed !== 0 || run.taskId !== null || run.threadId !== null || run.output !== null
-    || run.archivePending || run.errorCode !== null || run.createdAt !== run.updatedAt) {
+    || run.errorCode !== null || run.createdAt !== run.updatedAt) {
     throw new Error('review-run.invalid_draft');
   }
 }
@@ -307,7 +313,7 @@ async function candidateManifestBareHash(result: CandidateResultRef): Promise<st
 async function validateTerminalEvidence(
   run: ReviewRunRecord,
   evidence: ReviewCandidateTerminalEvidence,
-  refs: { taskId: string | null; threadId: string | null; resultRunId: string | null },
+  refs: { channelTaskId: string | null; channelThreadId: string | null; resultRunId: string | null },
 ): Promise<ReviewRunOutputRef | null> {
   const fixed = structuredClone(evidence);
   if (!isRecord(fixed) || !isRecord(fixed.finalize50) || !isRecord(fixed.result)
@@ -328,7 +334,8 @@ async function validateTerminalEvidence(
   const artifactPaths = new Set(snapshotArtifacts.map(item => item.path));
   const manifestPaths = new Set(manifestArtifacts.map(item => item.path));
   const changedPaths = finalize.summary.changedPaths as string[];
-  if (!refs.taskId || !refs.threadId || !refs.resultRunId
+  const resultIdentity = /^result-([a-f0-9]{32})$/u.exec(manifest.runId);
+  if (!refs.channelTaskId || !refs.channelThreadId || !refs.resultRunId
     || finalize.schemaVersion !== '2026-09-21-finalize50-private-result-v3'
     || finalize.project !== run.binding.project || finalize.moduleName !== run.binding.moduleName
     || finalize.changeId !== run.binding.changeId || finalize.inputRevisionId !== run.binding.inputRevisionId
@@ -348,7 +355,9 @@ async function validateTerminalEvidence(
     || result.resultRevisionId !== run.binding.inputRevisionId
     || result.resultSnapshotHash !== bareFromCanonical(run.binding.inputSnapshotHash)
     || result.resultRevisionNumber !== run.binding.inputRevisionNumber
-    || manifest.runId !== refs.resultRunId || manifest.taskId !== refs.taskId
+    || manifest.runId !== refs.resultRunId || !resultIdentity
+    || manifest.taskId !== `task-${resultIdentity[1]}`
+    || finalize.outputRevisionId !== `review-${resultIdentity[1]}`
     || result.resultId !== manifest.runId || result.resultHash !== await candidateManifestBareHash(result)
     || manifest.status !== 'completed' || manifest.outputSnapshotHash !== finalize.outputSnapshotHash
     || !isBareHash(result.resultSnapshotHash) || !isBareHash(result.resultHash)
@@ -374,8 +383,8 @@ async function validateTerminalEvidence(
 /** No generic planner completion exists: only the exact finalize50+CBE evidence can become ready. */
 export async function evaluateReviewTerminality(run: ReviewRunRecord, observation: ReviewTerminalObservation): Promise<ReviewTerminalDecision> {
   const refs = {
-    taskId: run.taskId ?? observation.taskId ?? null,
-    threadId: run.threadId ?? observation.threadId ?? null,
+    channelTaskId: run.taskId ?? observation.channelTaskId ?? null,
+    channelThreadId: run.threadId ?? observation.channelThreadId ?? null,
     resultRunId: observation.resultRunId ?? null,
   };
   const hasCompleteEvidence = !!observation.finalize50 && !!observation.candidateResult;
@@ -384,41 +393,39 @@ export async function evaluateReviewTerminality(run: ReviewRunRecord, observatio
     result: observation.candidateResult!.result,
     snapshotArtifacts: observation.candidateResult!.snapshotArtifacts,
   }, refs) : null;
-  const mustArchive = run.archivePending || observation.currentRevisionId !== run.binding.inputRevisionId;
-  if (mustArchive) {
-    if (output) {
-      return { state: 'stale', output, archivePending: false, errorCode: 'review-run.input_revision_changed' };
-    }
-    return { state: 'planning', output: null, archivePending: true, errorCode: STALE_PENDING };
+  const superseded = run.superseded || observation.currentRevisionId !== run.binding.inputRevisionId;
+  if (run.status === 'ready' || run.status === 'failed' || run.status === 'disputed') {
+    return {
+      status: run.status,
+      phase: run.phase,
+      superseded,
+      output: run.output,
+      errorCode: run.errorCode,
+    };
   }
   if (observation.taskStatus === 'failed') {
-    return { state: 'failed', output: null, archivePending: false, errorCode: observation.errorCode || 'review-run.task_failed' };
+    return { status: 'failed', phase: observation.phase, superseded, output: null, errorCode: observation.errorCode || 'review-run.task_failed' };
   }
   if (observation.disputed) {
-    return { state: 'disputed', output: null, archivePending: false, errorCode: observation.errorCode || 'review-run.planner_disputed' };
+    return { status: 'disputed', phase: observation.phase, superseded, output: null, errorCode: observation.errorCode || 'review-run.planner_disputed' };
   }
   if (hasCompleteEvidence && !output) {
-    return { state: 'failed', output: null, archivePending: false, errorCode: 'review-run.invalid_terminal_result' };
+    return { status: 'failed', phase: observation.phase, superseded, output: null, errorCode: 'review-run.invalid_terminal_result' };
   }
   if (observation.taskStatus === 'completed') {
     return output
-      ? { state: 'ready', output, archivePending: false, errorCode: null }
-      : { state: 'planning', output: null, archivePending: false, errorCode: 'review-run.planner_result_contract_pending' };
+      ? { status: 'ready', phase: 'finalizing', superseded, output, errorCode: null }
+      : { status: 'running', phase: 'planning', superseded, output: null, errorCode: 'review-run.planner_result_contract_pending' };
   }
-  return observation.phase === 'reviewing'
-    ? { state: 'reviewing', output: null, archivePending: false, errorCode: null }
-    : { state: 'planning', output: null, archivePending: false, errorCode: null };
+  return { status: 'running', phase: observation.phase, superseded, output: null, errorCode: null };
 }
 
-const TRANSITIONS: Record<ReviewRunState, readonly ReviewRunState[]> = {
-  draft: ['submitting', 'stale'],
-  submitting: ['reviewing', 'planning', 'ready', 'failed', 'disputed', 'stale'],
-  reviewing: ['reviewing', 'planning', 'ready', 'failed', 'disputed', 'stale'],
-  planning: ['planning', 'ready', 'failed', 'disputed', 'stale'],
-  ready: ['stale'],
-  failed: ['submitting', 'stale'],
-  disputed: ['stale'],
-  stale: [],
+const TRANSITIONS: Record<ReviewRunStatus, readonly ReviewRunStatus[]> = {
+  planning: ['planning', 'running'],
+  running: ['running', 'ready', 'failed', 'disputed'],
+  ready: ['ready'],
+  failed: ['failed'],
+  disputed: ['disputed'],
 };
 
 export function assertReviewRunUpdate(current: ReviewRunRecord, next: ReviewRunRecord): void {
@@ -428,29 +435,25 @@ export function assertReviewRunUpdate(current: ReviewRunRecord, next: ReviewRunR
     throw new Error('review-run.immutable_identity_changed');
   }
   if (next.storeRevision !== current.storeRevision + 1) throw new Error('review-run.invalid_store_revision');
-  if (!TRANSITIONS[current.state].includes(next.state)) throw new Error('review-run.invalid_state_transition');
-  const retry = current.state === 'failed' && next.state === 'submitting';
-  const firstSubmit = current.state === 'draft' && next.state === 'submitting';
-  if (next.attemptsUsed !== current.attemptsUsed + (retry || firstSubmit ? 1 : 0)
+  if (!TRANSITIONS[current.status].includes(next.status)) throw new Error('review-run.invalid_status_transition');
+  const submission = current.status === 'planning' && next.status === 'running';
+  const transportRetry = current.status === 'running' && next.status === 'running'
+    && current.errorCode !== null && next.errorCode === null;
+  if (next.attemptsUsed !== current.attemptsUsed + (submission || transportRetry ? 1 : 0)
     || next.attemptsUsed < 0 || next.attemptsUsed > MAX_ATTEMPTS) throw new Error('review-run.invalid_attempt_counter');
   if (current.taskId !== null && next.taskId !== current.taskId) throw new Error('review-run.immutable_task_ref_changed');
   if (current.threadId !== null && next.threadId !== current.threadId) throw new Error('review-run.immutable_thread_ref_changed');
   if (current.output && (!next.output || !stableEqual(current.output, next.output))) throw new Error('review-run.immutable_output_ref_changed');
+  if (current.superseded && !next.superseded) throw new Error('review-run.superseded_cleared');
   if ((next.taskId !== null && (!next.taskId.trim() || next.taskId.length > 256))
     || (next.threadId !== null && (!next.threadId.trim() || next.threadId.length > 256))
     || !next.updatedAt || (next.errorCode !== null && (!next.errorCode.trim() || next.errorCode.length > 256))) {
     throw new Error('review-run.invalid_mutable_state');
   }
-  if (next.state === 'ready' && !next.output) throw new Error('review-run.ready_without_output');
-  if (next.output && next.state !== 'ready' && next.state !== 'stale') throw new Error('review-run.output_before_ready');
-  if (current.archivePending && !(next.archivePending || (next.state === 'stale' && next.output))) {
-    throw new Error('review-run.archive_pending_cleared_without_output');
-  }
-  if (next.archivePending && (next.state !== 'planning' || next.output !== null || next.errorCode !== STALE_PENDING)) {
-    throw new Error('review-run.invalid_archive_pending');
-  }
-  if (next.state === 'stale' && (!next.output || next.archivePending)) throw new Error('review-run.stale_without_archived_output');
-  if (retry && (next.output !== null || next.errorCode !== null)) throw new Error('review-run.invalid_retry_state');
+  if (next.status === 'ready' && !next.output) throw new Error('review-run.ready_without_output');
+  if (next.output && next.status !== 'ready') throw new Error('review-run.output_before_ready');
+  if (submission && (next.output !== null || next.errorCode !== null)) throw new Error('review-run.invalid_submission_state');
+  if (transportRetry && (next.output !== null || next.errorCode !== null)) throw new Error('review-run.invalid_retry_state');
 }
 
 export async function verifyReviewRunRecord(run: ReviewRunRecord): Promise<void> {
@@ -473,7 +476,8 @@ export async function verifyReviewRunRecord(run: ReviewRunRecord): Promise<void>
   if (typeof run.request !== 'string' || !run.request || run.request !== run.request.trim()) {
     throw new Error('review-run.invalid_request');
   }
-  if (!STATES.has(run.state)) throw new Error('review-run.invalid_state');
+  if (!STATUSES.has(run.status)) throw new Error('review-run.invalid_status');
+  if (!PHASES.has(run.phase) || typeof run.superseded !== 'boolean') throw new Error('review-run.invalid_phase');
   requirePositiveInteger(run.storeRevision, 'store_revision');
   if (!Number.isSafeInteger(run.attemptsUsed) || run.attemptsUsed < 0 || run.attemptsUsed > MAX_ATTEMPTS) {
     throw new Error('review-run.invalid_attempt_counter');
@@ -481,61 +485,45 @@ export async function verifyReviewRunRecord(run: ReviewRunRecord): Promise<void>
   requireNullableRef(run.taskId, 'task_id');
   requireNullableRef(run.threadId, 'thread_id');
   requireNullableRef(run.errorCode, 'error_code');
-  if (typeof run.archivePending !== 'boolean' || typeof run.createdAt !== 'string' || !run.createdAt
+  if (typeof run.createdAt !== 'string' || !run.createdAt
     || typeof run.updatedAt !== 'string' || !run.updatedAt) throw new Error('review-run.invalid_record_metadata');
-  if ((run.state === 'draft' && run.attemptsUsed !== 0) || (run.state !== 'draft' && run.attemptsUsed < 1)) {
+  if ((run.status === 'planning' && run.attemptsUsed !== 0) || (run.status !== 'planning' && run.attemptsUsed < 1)) {
     throw new Error('review-run.invalid_attempt_counter');
   }
   if (run.storeRevision <= run.attemptsUsed) throw new Error('review-run.invalid_store_revision');
-  if (run.state === 'draft' && (run.storeRevision !== 1 || run.taskId !== null || run.threadId !== null
-    || run.output !== null || run.archivePending || run.errorCode !== null || run.createdAt !== run.updatedAt)) {
-    throw new Error('review-run.invalid_draft');
+  if (run.status === 'planning' && (run.storeRevision !== 1 || run.taskId !== null || run.threadId !== null
+    || run.output !== null || run.errorCode !== null || run.createdAt !== run.updatedAt)) {
+    throw new Error('review-run.invalid_planning_draft');
   }
-  if ((run.state === 'submitting' || run.state === 'reviewing')
-    && (run.output !== null || run.archivePending || run.errorCode !== null)) {
-    throw new Error('review-run.invalid_active_state');
-  }
-  if (run.state === 'planning' && (run.output !== null
-    || (run.errorCode !== null && run.errorCode !== 'review-run.planner_result_contract_pending'
-      && run.errorCode !== STALE_PENDING))) {
-    throw new Error('review-run.invalid_planning_state');
-  }
-  if (run.archivePending && (run.state !== 'planning' || run.output !== null || run.errorCode !== STALE_PENDING)) {
-    throw new Error('review-run.invalid_archive_pending');
-  }
-  if ((run.errorCode === STALE_PENDING) !== run.archivePending) throw new Error('review-run.invalid_archive_pending');
-  if (run.state === 'ready' && (!run.output || !run.taskId || !run.threadId || run.errorCode !== null || run.archivePending)) {
+  if (run.status === 'running' && run.output !== null) throw new Error('review-run.invalid_running_state');
+  if (run.status === 'ready' && (!run.output || !run.taskId || !run.threadId || run.errorCode !== null)) {
     throw new Error('review-run.invalid_ready_state');
   }
-  if (run.state === 'stale' && (!run.output || !run.taskId || !run.threadId
-    || run.errorCode !== 'review-run.input_revision_changed' || run.archivePending)) {
-    throw new Error('review-run.invalid_stale_state');
-  }
   if (run.output !== null && !isRecord(run.output)) throw new Error('review-run.invalid_output_ref');
-  if (run.output && run.state !== 'ready' && run.state !== 'stale') throw new Error('review-run.output_before_ready');
-  if (!run.output && (run.state === 'ready' || run.state === 'stale')) throw new Error('review-run.missing_output_ref');
-  if ((run.state === 'failed' || run.state === 'disputed') && (!run.errorCode || run.output)) {
+  if (run.output && run.status !== 'ready') throw new Error('review-run.output_before_ready');
+  if (!run.output && run.status === 'ready') throw new Error('review-run.missing_output_ref');
+  if ((run.status === 'failed' || run.status === 'disputed') && (!run.errorCode || run.output)) {
     throw new Error('review-run.invalid_terminal_state');
   }
   if (await canonicalSha256(run.request) !== binding.requestHash) throw new Error('review-run.request_binding_mismatch');
   if (run.output) {
     const verified = await validateTerminalEvidence(run, {
       finalize50: run.output.finalize50, result: run.output.result, snapshotArtifacts: run.output.snapshotArtifacts,
-    }, { taskId: run.taskId, threadId: run.threadId, resultRunId: run.output.result.manifest.runId });
+    }, { channelTaskId: run.taskId, channelThreadId: run.threadId, resultRunId: run.output.result.manifest.runId });
     if (!verified || !stableEqual(verified, run.output)) throw new Error('review-run.invalid_output_ref');
   }
 }
 
 export async function applyReviewObservation(run: ReviewRunRecord, observation: ReviewTerminalObservation, now: string): Promise<ReviewRunRecord> {
   const fixed = structuredClone(observation);
-  if (run.taskId && fixed.taskId && run.taskId !== fixed.taskId) throw new Error('review-run.task_binding_mismatch');
-  if (run.threadId && fixed.threadId && run.threadId !== fixed.threadId) throw new Error('review-run.thread_binding_mismatch');
+  if (run.taskId && fixed.channelTaskId && run.taskId !== fixed.channelTaskId) throw new Error('review-run.task_binding_mismatch');
+  if (run.threadId && fixed.channelThreadId && run.threadId !== fixed.channelThreadId) throw new Error('review-run.thread_binding_mismatch');
   const decision = await evaluateReviewTerminality(run, fixed);
   const next: ReviewRunRecord = {
-    ...structuredClone(run), state: decision.state, storeRevision: run.storeRevision + 1,
-    taskId: run.taskId ?? fixed.taskId ?? null, threadId: run.threadId ?? fixed.threadId ?? null,
-    output: decision.output ?? (decision.state === 'stale' ? run.output : null),
-    archivePending: decision.archivePending, errorCode: decision.errorCode, updatedAt: now,
+    ...structuredClone(run), status: decision.status, phase: decision.phase, superseded: decision.superseded,
+    storeRevision: run.storeRevision + 1,
+    taskId: run.taskId ?? fixed.channelTaskId ?? null, threadId: run.threadId ?? fixed.channelThreadId ?? null,
+    output: decision.output ?? run.output, errorCode: decision.errorCode, updatedAt: now,
   };
   assertReviewRunUpdate(run, next);
   return next;
@@ -543,15 +531,34 @@ export async function applyReviewObservation(run: ReviewRunRecord, observation: 
 
 export function submittingReviewRun(run: ReviewRunRecord, now: string): ReviewRunRecord {
   const next = {
-    ...structuredClone(run), state: 'submitting' as const, storeRevision: run.storeRevision + 1,
-    attemptsUsed: run.attemptsUsed + 1, errorCode: null, output: null, archivePending: false, updatedAt: now,
+    ...structuredClone(run), status: 'running' as const, phase: 'reviewing' as const,
+    storeRevision: run.storeRevision + 1, attemptsUsed: run.attemptsUsed + 1,
+    errorCode: null, output: null, updatedAt: now,
   };
   assertReviewRunUpdate(run, next);
   return next;
 }
 
-export function retryFailedReviewRun(run: ReviewRunRecord, now: string): ReviewRunRecord {
-  if (run.state !== 'failed') throw new Error('review-run.retry_requires_failed');
+export function supersedeReviewRun(run: ReviewRunRecord, now: string): ReviewRunRecord {
+  if (run.superseded) return structuredClone(run);
+  const next = {
+    ...structuredClone(run), superseded: true, storeRevision: run.storeRevision + 1, updatedAt: now,
+  };
+  assertReviewRunUpdate(run, next);
+  return next;
+}
+
+export function recordReviewTransportFailure(run: ReviewRunRecord, code: string, now: string): ReviewRunRecord {
+  if (run.status !== 'running' || !code.trim()) throw new Error('review-run.transport_failure_requires_running');
+  const next = {
+    ...structuredClone(run), storeRevision: run.storeRevision + 1, errorCode: code, updatedAt: now,
+  };
+  assertReviewRunUpdate(run, next);
+  return next;
+}
+
+export function retryReviewTransport(run: ReviewRunRecord, now: string): ReviewRunRecord {
+  if (run.status !== 'running' || run.errorCode === null) throw new Error('review-run.retry_requires_transport_error');
   if (run.attemptsUsed >= MAX_ATTEMPTS) throw new Error('review-run.retry_limit');
   return submittingReviewRun(run, now);
 }
@@ -560,7 +567,7 @@ export function assertBoundReviewResult(
   run: ReviewRunRecord,
   expected: Pick<ReviewRunBinding, 'changeId' | 'inputRevisionId'> & { runId: string; outputSnapshotHash: CanonicalSha256 },
 ): ReviewRunOutputRef {
-  if (run.state !== 'ready' || !run.output || run.runId !== expected.runId
+  if (run.status !== 'ready' || run.superseded || !run.output || run.runId !== expected.runId
     || run.binding.changeId !== expected.changeId || run.binding.inputRevisionId !== expected.inputRevisionId
     || run.output.canonical.outputSnapshotHash !== expected.outputSnapshotHash) {
     throw new Error('review-run.result_binding_mismatch');

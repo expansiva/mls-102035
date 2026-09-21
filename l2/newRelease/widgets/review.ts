@@ -9,6 +9,8 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import { readModuleMenu, type MenuReadResult } from '/_102035_/l2/newRelease/helpers/menuReader.js';
 import { readReviewArtifact, type ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRelease/helpers/poolBoxes.js';
+import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.js';
+import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import {
   actorIdFromKey,
   beginReviewPrimaryAction,
@@ -52,8 +54,11 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private expandedKeys: string[] = [];
   @state() private actionBusy = false;
   @state() private actionError = '';
+  @state() private reviewRun: ReviewRunRecord | null = null;
+  @state() private reviewRunLoadError = '';
 
   private loadToken = 0;
+  private readonly reviewRunStore = new IndexedDbReviewRunStore();
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
 
   createRenderRoot() { return this; }
@@ -66,6 +71,8 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.expandedKeys = [];
       this.actionBusy = false;
       this.actionError = '';
+      this.reviewRun = null;
+      this.reviewRunLoadError = '';
       void this.load();
     }
   }
@@ -105,22 +112,35 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.backendRead = EMPTY_ARTIFACT;
       this.effortRead = EMPTY_ARTIFACT;
       this.pool = [];
+      this.reviewRun = null;
+      this.reviewRunLoadError = '';
       this.loadedFor = context;
       this.loading = false;
       return;
     }
     this.loading = true;
-    const [menuRead, backendRead, effortRead, pool] = await Promise.all([
+    const runRead = context.version === 'tobe' && context.data?.changeId && context.data.revisionId
+      ? this.reviewRunStore.read({
+        project: context.project,
+        moduleName: context.moduleName,
+        changeId: context.data.changeId,
+        inputRevisionId: context.data.revisionId,
+      }).then(run => ({ run, errorCode: '' }), () => ({ run: null, errorCode: 'review.run.storeError' }))
+      : Promise.resolve({ run: null, errorCode: '' });
+    const [menuRead, backendRead, effortRead, pool, persistedRun] = await Promise.all([
       readModuleMenu(context.project, context.moduleName),
       readReviewArtifact(context.project, context.moduleName, 'backend'),
       readReviewArtifact(context.project, context.moduleName, 'effort'),
       readReviewPoolBoxes(context.project, context.moduleName),
+      runRead,
     ]);
     if (token !== this.loadToken) return;
     this.menuRead = menuRead;
     this.backendRead = backendRead;
     this.effortRead = effortRead;
     this.pool = pool;
+    this.reviewRun = persistedRun.run;
+    this.reviewRunLoadError = persistedRun.errorCode;
     this.loadedFor = context;
     this.loading = false;
   }
@@ -293,8 +313,49 @@ export class NewReleaseReview102035 extends StateLitElement {
       effortKind: effort.kind,
       busy: this.actionBusy,
       connected: false,
-      error: this.actionError,
+      error: this.actionError ? this.t(this.actionError) : '',
     });
+  }
+
+  private reviewRunErrorKey(code: string | null): string {
+    if (code === 'review-run.planner_result_contract_pending') return 'review.run.error.resultPending';
+    if (code === 'review-run.channel_failed' || code === 'review-run.channel_ended_without_terminal') {
+      return 'review.run.error.channel';
+    }
+    if (code === 'review-run.invalid_terminal_result') return 'review.run.error.invalidResult';
+    return code ? 'review.run.error.generic' : '';
+  }
+
+  private renderReviewRun() {
+    if (this.version !== 'tobe') return nothing;
+    if (this.reviewRunLoadError) {
+      return html`<section class="nr-review__run"><p role="alert">${this.t(this.reviewRunLoadError)}</p></section>`;
+    }
+    const run = this.reviewRun;
+    if (!run) return nothing;
+    const terminal = run.status === 'ready' || run.status === 'failed' || run.status === 'disputed';
+    const stateKey = terminal ? `review.run.status.${run.status}` : `review.run.phase.${run.phase}`;
+    const errorKey = this.reviewRunErrorKey(run.errorCode);
+    return html`
+      <section class=${`nr-review__run is-${run.status}`} aria-live="polite">
+        <header>
+          <div><span>${this.t('review.run.eyebrow')}</span><h3>${this.t('review.run.title')}</h3></div>
+          <strong>${this.t(stateKey)}</strong>
+        </header>
+        ${run.superseded ? html`<p>${this.t('review.run.superseded')}</p>` : nothing}
+        ${errorKey ? html`<p role="alert">${this.t(errorKey)}</p>` : nothing}
+        <dl>
+          <div><dt>${this.t('review.run.runId')}</dt><dd><code>${run.runId}</code></dd></div>
+          ${run.taskId ? html`<div><dt>${this.t('review.run.taskId')}</dt><dd><code>${run.taskId}</code></dd></div>` : nothing}
+          ${run.threadId ? html`<div><dt>${this.t('review.run.threadId')}</dt><dd><code>${run.threadId}</code></dd></div>` : nothing}
+          ${run.output ? html`
+            <div><dt>${this.t('review.run.resultId')}</dt><dd><code>${run.output.result.resultId}</code></dd></div>
+            <div><dt>${this.t('review.run.manifestTaskId')}</dt><dd><code>${run.output.result.manifest.taskId}</code></dd></div>
+            <div><dt>${this.t('review.run.trace')}</dt><dd><code>${run.output.result.manifest.traceHash}</code></dd></div>
+          ` : nothing}
+        </dl>
+      </section>
+    `;
   }
 
   private renderPrimaryAction(block: ReviewPrimaryActionPlacement) {
@@ -449,6 +510,7 @@ export class NewReleaseReview102035 extends StateLitElement {
           </div>
         </header>
         ${this.renderPrimaryAction(topAction)}
+        ${this.renderReviewRun()}
         ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
         ${this.renderPrimaryAction(bottomAction)}
         ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}

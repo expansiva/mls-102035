@@ -6,6 +6,7 @@ import { buildCandidateResult, buildCandidateSnapshot, type CandidateResultRef }
 import {
   applyReviewObservation,
   createReviewRun,
+  reviewRunKey,
   submittingReviewRun,
   type ReviewRunCreateBinding,
   type ReviewRunRecord,
@@ -131,12 +132,12 @@ async function readyRun(current: ReviewRunRecord): Promise<ReviewRunRecord> {
     baseId: 'base-one', requestRevision: 1, request: 'request',
     sources: PATHS.map(path => ({ path, source: path })),
   });
-  const resultId = 'result-one';
+  const resultId = `result-${'d'.repeat(32)}`;
   const built = await buildCandidateResult({
     project: 102047, moduleName: 'agendaClinica', expectedRevisionId: 'revision-one',
     expectedSnapshotHash: 'a'.repeat(64), expectedRevisionNumber: 1, resultId,
     result: {
-      runId: resultId, taskId: 'task-one', status: 'completed', outputSnapshotHash: outputSnapshot.hash,
+      runId: resultId, taskId: `task-${'d'.repeat(32)}`, status: 'completed', outputSnapshotHash: outputSnapshot.hash,
       artifacts: outputSnapshot.files.map(({ path, sha256 }) => ({ path, sha256 })), traceHash: 'c'.repeat(64),
     },
     outputSnapshot,
@@ -147,12 +148,12 @@ async function readyRun(current: ReviewRunRecord): Promise<ReviewRunRecord> {
   };
   return applyReviewObservation(current, {
     currentRevisionId: 'revision-one', taskStatus: 'completed', phase: 'finalizing',
-    taskId: 'task-one', threadId: 'thread-one', resultRunId: result.resultId,
+    channelTaskId: 'studio-task-one', channelThreadId: 'thread-one', resultRunId: result.resultId,
     finalize50: {
       schemaVersion: '2026-09-21-finalize50-private-result-v3', project: 102047, moduleName: 'agendaClinica',
-      changeId: 'change-one', inputRevisionId: 'revision-one', outputRevisionId: 'review-output',
+      changeId: 'change-one', inputRevisionId: 'revision-one', outputRevisionId: `review-${'d'.repeat(32)}`,
       outputSnapshotHash: outputSnapshot.hash, correctionState: { requestKey: 'change-one/request-1', correctionAttemptsUsed: 0 },
-      pointer: { changeId: 'change-one', revisionId: 'review-output', snapshotHash: outputSnapshot.hash, revisionNumber: 2 },
+      pointer: { changeId: 'change-one', revisionId: `review-${'d'.repeat(32)}`, snapshotHash: outputSnapshot.hash, revisionNumber: 2 },
       summary: { fileCount: outputSnapshot.files.length, changedPaths: ['module.defs.ts'] },
     },
     candidateResult: {
@@ -214,6 +215,29 @@ test('create and CAS snapshot caller values before their first await', async () 
   assert.equal(committed.current.updatedAt, 'later');
 });
 
+test('v3 stale record migrates in memory to ready plus superseded and preserves output', async () => {
+  const factory = new FakeFactory();
+  const store = new IndexedDbReviewRunStore(factory as unknown as IDBFactory, 'review-run-v3-migration');
+  const first = await draft();
+  const ready = await readyRun(submittingReviewRun(first, 'submitted'));
+  const { status: _status, phase: _phase, superseded: _superseded, ...rest } = ready;
+  const legacy = {
+    ...rest,
+    schemaVersion: '2026-09-21-review-run-v3',
+    state: 'stale',
+    archivePending: false,
+    errorCode: 'review-run.input_revision_changed',
+  };
+  const key = reviewRunKey(ready.binding);
+  factory.database.rows.set(key, { key, run: legacy });
+  const migrated = await store.read(ready.binding);
+  assert.equal(migrated?.status, 'ready');
+  assert.equal(migrated?.phase, 'finalizing');
+  assert.equal(migrated?.superseded, true);
+  assert.deepEqual(migrated?.output, ready.output);
+  assert.equal(migrated?.errorCode, null);
+});
+
 test('fabricated records fail complete validation before IndexedDB is opened', async () => {
   const factory = new FakeFactory();
   const store = new IndexedDbReviewRunStore(factory as unknown as IDBFactory, 'review-run-invalid-record-test');
@@ -225,12 +249,12 @@ test('fabricated records fail complete validation before IndexedDB is opened', a
     { ...first, binding: { ...first.binding, originalL4Path: 'l4/wrong' } },
     { ...first, binding: { ...first.binding, inputSnapshotHash: 'sha256:short' as ReviewRunRecord['binding']['inputSnapshotHash'] } },
     { ...first, binding: { ...first.binding, inputRevisionNumber: 1.5 } },
-    { ...first, state: 'fabricated' as ReviewRunRecord['state'] },
+    { ...first, status: 'fabricated' as ReviewRunRecord['status'] },
     { ...first, attemptsUsed: 99 },
-    { ...first, archivePending: true },
+    { ...first, phase: 'fabricated' as ReviewRunRecord['phase'] },
     { ...first, binding: null as unknown as ReviewRunRecord['binding'] },
     {
-      ...first, state: 'ready', attemptsUsed: 1, taskId: 'task-one', threadId: 'thread-one',
+      ...first, status: 'ready', phase: 'finalizing', attemptsUsed: 1, taskId: 'task-one', threadId: 'thread-one',
       output: {} as ReviewRunRecord['output'],
     },
   ];
@@ -287,7 +311,7 @@ test('bound reader accepts only exact run/change/revision/canonical output hash'
   const output = await readBoundReviewResult(store, {
     ...ready.binding, runId: 'run-one', outputSnapshotHash: ready.output!.canonical.outputSnapshotHash,
   });
-  assert.equal(output.result.resultId, 'result-one');
+  assert.equal(output.result.resultId, `result-${'d'.repeat(32)}`);
   await assert.rejects(() => readBoundReviewResult(store, {
     ...ready.binding, runId: 'run-one', outputSnapshotHash: `sha256:${'f'.repeat(64)}`,
   }), /result_binding_mismatch/);
