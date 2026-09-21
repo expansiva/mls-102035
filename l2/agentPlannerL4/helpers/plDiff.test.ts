@@ -7,11 +7,23 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { prepareL4Change, sealL4Revision } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { sha256Tobe } from '/_102035_/l2/newRelease/tobeDiff.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
+import {
+  gatherPlEntryFacts,
+  loadPlRevision,
+  parsePlInvocation,
+  plEntryRefusal,
+  releaseMissingRefusal,
+  revisionMissingRefusal,
+  writePlRevision,
+} from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
   diffL4Snapshots,
   L4_DIFF_SCHEMA,
   parseDefsSource,
+  resolveBase,
   runPlDiff,
   snapshotFromParsed,
   type L4DiffSnapshot,
@@ -178,6 +190,7 @@ void test('runPlDiff without /candidate writes empty items and does not touch ca
     assert.deepEqual(diff.items, []);
     assert.equal(diff.base, '');
     assert.equal(diff.candidate, '');
+    assert.equal(diff.revision, null);
     assert.equal(fingerprint(canonicalFromHost(host, files)), before);
   } finally {
     setModuleRoot(MODULE, null);
@@ -223,8 +236,10 @@ void test('T3: two real l4s of mensalidadesAcademia differ by one rule; canonica
       project: PROJECT, level: 4, folder: `${MODULE}/tobe/plan/pool/l2/web`, shortName: 'l4diff', extension: '.json',
     })];
     assert.equal(l1?.content, l2?.content);
-    const written = JSON.parse(l1?.content || 'null') as { items: unknown[] };
+    const written = JSON.parse(l1?.content || 'null') as { items: unknown[]; revision: unknown };
     assert.equal(written.items.length, 1);
+    assert.equal(written.revision, null);
+    assert.equal(diff.revision, null);
   } finally {
     setModuleRoot(MODULE, null);
   }
@@ -254,9 +269,16 @@ void test('without a sealed release, one changed rule against canonical l4 is on
     assert.equal(fingerprint(canonicalFromHost(host, files)), before);
     const written = JSON.parse(host.files[keyOf({
       project: PROJECT, level: 4, folder: `${MODULE}/tobe/plan/pool/l2/web`, shortName: 'l4diff', extension: '.json',
-    })]?.content || 'null') as { base: string; items: unknown[] };
+    })]?.content || 'null') as { base: string; items: unknown[]; revision: unknown };
     assert.equal(written.base, 'canonical');
     assert.equal(written.items.length, 1);
+    assert.equal(written.revision, null);
+    assert.equal(diff.revision, null);
+    await writePlRevision(MODULE, null);
+    const pipeline = JSON.parse(host.files[keyOf({
+      project: PROJECT, level: 4, folder: `${MODULE}/tobe/plan/pipeline`, shortName: 'pipeline', extension: '.json',
+    })]?.content || 'null') as { revision: unknown };
+    assert.equal(pipeline.revision, null);
   } finally {
     setModuleRoot(MODULE, null);
   }
@@ -289,6 +311,105 @@ void test('without canonical module, base is empty and every item is added', asy
     assert.equal(diff.candidate, `${MODULE}/tobe/plan`);
     assert.equal(diff.items.length > 0, true);
     assert.equal(diff.items.every(item => item.op === 'added'), true);
+    assert.equal(diff.revision, null);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
+function seedL5(host: Host): void {
+  seed(host, { level: 5, folder: '', shortName: 'config', extension: '.json' }, `${JSON.stringify({
+    workspaceDependencies: ['102020', '102021'],
+  })}\n`);
+}
+
+void test('resolveBase uses manifest baseId and refuses when that release folder is missing', async () => {
+  const host = installHost();
+  const root = `${MODULE}/pipeline/changes/c1/revisions/rev-1/l4`;
+  seed(host, { level: 4, folder: MODULE, shortName: 'module', extension: '.defs.ts' }, 'export default {}\n');
+  seed(
+    host,
+    { level: 4, folder: `${MODULE}/pipeline/changes/c1/revisions/rev-1`, shortName: 'manifest', extension: '.json' },
+    `${JSON.stringify({ baseId: 'base1' })}\n`,
+  );
+  seed(host, { level: 4, folder: `${MODULE}/pipeline/releases/base1/l4`, shortName: 'module', extension: '.defs.ts' }, 'export default {}\n');
+  try {
+    setModuleRoot(MODULE, root);
+    const present = await resolveBase(MODULE);
+    assert.equal(present.refusal, '');
+    assert.equal(present.base, `${MODULE}/pipeline/releases/base1/l4`);
+    assert.equal(present.root, present.base);
+    const release = host.files[keyOf({
+      project: PROJECT, level: 4, folder: `${MODULE}/pipeline/releases/base1/l4`, shortName: 'module', extension: '.defs.ts',
+    })];
+    release.status = 'deleted';
+    const missing = await resolveBase(MODULE);
+    assert.equal(missing.refusal, releaseMissingRefusal(MODULE, 'base1'));
+    assert.equal(missing.base, '');
+    await assert.rejects(runPlDiff(MODULE), new RegExp(releaseMissingRefusal(MODULE, 'base1').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal(host.files[keyOf({
+      project: PROJECT, level: 4, folder: `${root}/pool/l2/web`, shortName: 'l4diff', extension: '.json',
+    })], undefined);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
+void test('p4_13: a sealed revision is accepted without pipeline.json and records revision; one altered byte is refused', async () => {
+  const files = loadFixtureFiles();
+  const host = installHost();
+  seedTree(host, MODULE, files);
+  seedL5(host);
+  const sealed = await (async () => {
+    await prepareL4Change(PROJECT, MODULE);
+    return sealL4Revision(PROJECT, MODULE, null);
+  })();
+  const root = `${MODULE}/pipeline/changes/${sealed.changeId}/revisions/${sealed.revisionId}/l4`;
+  const pipelineKey = keyOf({
+    project: PROJECT, level: 4, folder: `${root}/pipeline`, shortName: 'pipeline', extension: '.json',
+  });
+  const pipelineBefore = host.files[pipelineKey];
+  assert.equal(pipelineBefore, undefined);
+  const invocation = parsePlInvocation(`${MODULE} /candidate pipeline/changes/${sealed.changeId}/revisions/${sealed.revisionId}/l4`);
+  try {
+    setModuleRoot(MODULE, root);
+    const facts = await gatherPlEntryFacts(MODULE);
+    assert.equal(facts.pipelineStatus, '');
+    assert.equal(plEntryRefusal(invocation, facts), '');
+    assert.equal(facts.revision?.changeId, sealed.changeId);
+    assert.equal(facts.revision?.revisionId, sealed.revisionId);
+    assert.equal(facts.revision?.baseId, sealed.baseId);
+    assert.equal(facts.revision?.manifestHash, await sha256Tobe(sealed.files));
+    await writePlRevision(MODULE, facts.revision ?? null);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.base, `${MODULE}/pipeline/releases/${sealed.baseId}/l4`);
+    assert.equal(diff.candidate, root);
+    assert.deepEqual(diff.revision, facts.revision);
+    const pipeline = JSON.parse(host.files[pipelineKey]?.content || 'null') as { revision: { revisionId: string } };
+    assert.equal(pipeline.revision.revisionId, sealed.revisionId);
+    for (const box of ['l1', 'l2'] as const) {
+      const written = JSON.parse(host.files[keyOf({
+        project: PROJECT, level: 4, folder: `${root}/pool/${box}/web`, shortName: 'l4diff', extension: '.json',
+      })]?.content || 'null') as { revision: { revisionId: string }; base: string };
+      assert.equal(written.revision.revisionId, sealed.revisionId);
+      assert.equal(written.base, diff.base);
+    }
+    const rules = host.files[keyOf({
+      project: PROJECT, level: 4, folder: root, shortName: 'rules', extension: '.defs.ts',
+    })];
+    assert.ok(rules);
+    const beforeKeys = Object.keys(host.files).length;
+    rules.content = `${rules.content.slice(0, -1)} `;
+    const tampered = await gatherPlEntryFacts(MODULE);
+    assert.equal(
+      plEntryRefusal(invocation, tampered),
+      revisionMissingRefusal(MODULE, sealed.changeId, sealed.revisionId),
+    );
+    await assert.rejects(
+      runPlDiff(MODULE),
+      new RegExp(revisionMissingRefusal(MODULE, sealed.changeId, sealed.revisionId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    );
+    assert.equal(Object.keys(host.files).length, beforeKeys);
   } finally {
     setModuleRoot(MODULE, null);
   }

@@ -2,6 +2,16 @@
 
 import { parseNs4ClassicDefsSource as parseDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
 import {
+  declaredRevisionBaseId,
+  loadPlRevision,
+  parseRevisionRoot,
+  releaseL4Present,
+  releaseL4Root,
+  releaseMissingRefusal,
+  revisionMissingRefusal,
+  type PlRevisionIdentity,
+} from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import {
   fileExists,
   moduleFile,
   moduleFolder,
@@ -48,6 +58,8 @@ export interface L4Diff {
   moduleName: string;
   base: string;
   candidate: string;
+  /** Null on a canonical run and on a manual root (`tobe/plan`). */
+  revision: PlRevisionIdentity | null;
   items: L4DiffItem[];
 }
 
@@ -407,14 +419,29 @@ async function findSealedBaseRoot(moduleName: string): Promise<string> {
   return baseId ? `${canonical}/pipeline/releases/${baseId}/l4` : '';
 }
 
-/** Label written to `l4diff.json.base` plus the literal folder `loadSnapshot` reads. */
-async function resolveBase(moduleName: string): Promise<{ base: string; root: string }> {
+/**
+ * Label written to `l4diff.json.base` plus the literal folder `loadSnapshot` reads.
+ * A sealed revision uses `manifest.baseId` and never falls through to canonical.
+ */
+export async function resolveBase(moduleName: string): Promise<{ base: string; root: string; refusal: string }> {
   const canonical = normalizeModuleName(moduleName);
+  const rev = parseRevisionRoot(moduleFolder(canonical));
+  if (rev) {
+    const baseId = await declaredRevisionBaseId(canonical);
+    const releaseRoot = releaseL4Root(canonical, baseId);
+    if (!baseId || !releaseRoot || !releaseL4Present(canonical, baseId)) {
+      const refusal = baseId
+        ? releaseMissingRefusal(canonical, baseId)
+        : revisionMissingRefusal(canonical, rev.changeId, rev.revisionId);
+      return { base: '', root: '', refusal };
+    }
+    return { base: releaseRoot, root: releaseRoot, refusal: '' };
+  }
   const sealed = await findSealedBaseRoot(moduleName);
-  if (sealed) return { base: sealed, root: sealed };
+  if (sealed) return { base: sealed, root: sealed, refusal: '' };
   const project = moduleFile(moduleName).project;
-  if (!fileExists(fileAt(project, canonical, 'module.defs.ts'))) return { base: '', root: '' };
-  return { base: 'canonical', root: canonical };
+  if (!fileExists(fileAt(project, canonical, 'module.defs.ts'))) return { base: '', root: '', refusal: '' };
+  return { base: 'canonical', root: canonical, refusal: '' };
 }
 
 export function emptyL4Diff(moduleName: string, base = '', candidate = ''): L4Diff {
@@ -423,6 +450,7 @@ export function emptyL4Diff(moduleName: string, base = '', candidate = ''): L4Di
     moduleName: normalizeModuleName(moduleName),
     base,
     candidate,
+    revision: null,
     items: [],
   };
 }
@@ -445,12 +473,21 @@ export async function runPlDiff(moduleName: string): Promise<L4Diff> {
   }
   const project = moduleFile(existing).project;
   const resolved = await resolveBase(existing);
+  if (resolved.refusal) throw new Error(resolved.refusal);
+  const revision = await loadPlRevision(existing);
+  const rev = parseRevisionRoot(candidate);
+  if (rev && !revision) throw new Error(revisionMissingRefusal(existing, rev.changeId, rev.revisionId));
   const items = diffL4Snapshots(
     await loadSnapshot(project, resolved.root),
     await loadSnapshot(project, candidate),
   );
   const diff: L4Diff = {
-    schemaVersion: L4_DIFF_SCHEMA, moduleName: existing, base: resolved.base, candidate, items,
+    schemaVersion: L4_DIFF_SCHEMA,
+    moduleName: existing,
+    base: resolved.base,
+    candidate,
+    revision,
+    items,
   };
   await writeJson(l4diffFile(existing, 'l1'), diff);
   await writeJson(l4diffFile(existing, 'l2'), diff);

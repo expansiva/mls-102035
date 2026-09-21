@@ -16,6 +16,7 @@ import {
   listPoolWebFiles,
   moduleTokenOk,
   parsePlInvocation,
+  parseRevisionRoot,
   plDispatchSubject,
   plEntryRefusal,
   plRoundPlanId,
@@ -119,6 +120,18 @@ void test('parsePlInvocation /candidate with a relative root keeps /fast as a fl
   const parsed = parsePlInvocation('mensalidadesAcademia /fast /candidate pipeline/changes/c1/revisions/r1/l4');
   assert.equal(parsed.fast, true);
   assert.equal(parsed.candidate, 'mensalidadesAcademia/pipeline/changes/c1/revisions/r1/l4');
+});
+
+void test('parsePlInvocation of a sealed revision root parses changeId and revisionId; tobe/plan is not one', () => {
+  const parsed = parsePlInvocation('x /candidate pipeline/changes/c1/revisions/rev-1/l4');
+  assert.equal(parsed.module, 'x');
+  assert.equal(parsed.candidate, 'x/pipeline/changes/c1/revisions/rev-1/l4');
+  assert.deepEqual(parseRevisionRoot(parsed.candidate), { changeId: 'c1', revisionId: 'rev-1' });
+  assert.equal(parseRevisionRoot('x/tobe/plan'), null);
+  assert.equal(parseRevisionRoot('tobe/plan'), null);
+  const manual = parsePlInvocation('x /candidate');
+  assert.equal(manual.candidate, 'x/tobe/plan');
+  assert.equal(parseRevisionRoot(manual.candidate), null);
 });
 
 void test('parsePlInvocation strips the @@agentPlannerL4 prefix and /estimate', () => {
