@@ -6,6 +6,9 @@ import test from 'node:test';
 import { menuFileForProject } from '../helpers/menuReader.js';
 import {
   actorIdFromKey,
+  beginReviewPrimaryAction,
+  buildReviewActionPresentation,
+  buildReviewActionPlacements,
   buildReviewView,
   MENU_ACTIONS,
   MENU_SCHEMA_VERSION,
@@ -110,6 +113,93 @@ test('menu starts without detail and label selection toggles only the same node 
     selectedId: 'inicio', selectedScope: 'removed',
   });
   assert.equal(view({ selectedId: 'does-not-exist' }).selected, null);
+});
+
+test('review primary action distinguishes calculate, continue and unavailable while disconnected', () => {
+  const base = {
+    viewKind: 'ready' as const,
+    version: 'tobe' as const,
+    loading: false,
+    current: true,
+    resultCurrent: false,
+    backendKind: 'ready' as const,
+    effortKind: 'missing' as const,
+    busy: false,
+    connected: false,
+    error: '',
+  };
+  const calculate = buildReviewActionPresentation({ ...base, viewKind: 'pending' });
+  assert.equal(calculate.kind, 'calculate');
+  assert.equal(calculate.labelKey, 'review.calculate');
+  assert.equal(calculate.disabled, true);
+  assert.equal(calculate.availabilityKey, 'review.actionLater');
+
+  const ready = buildReviewActionPresentation({ ...base, resultCurrent: true });
+  assert.equal(ready.kind, 'continue');
+  assert.equal(ready.labelKey, 'review.continue');
+  assert.equal(ready.disabled, true);
+
+  for (const input of [
+    { ...base, loading: true },
+    { ...base, current: false },
+    { ...base, viewKind: 'empty' as const },
+    { ...base, viewKind: 'invalid' as const },
+    { ...base, version: 'asis' as const, resultCurrent: true },
+  ]) {
+    const unavailable = buildReviewActionPresentation(input);
+    assert.equal(unavailable.kind, 'unavailable');
+    assert.equal(unavailable.disabled, true);
+  }
+});
+
+test('continue requires a current valid backend, accepts missing effort, and rejects invalid effort', () => {
+  const base = {
+    viewKind: 'ready' as const,
+    version: 'tobe' as const,
+    loading: false,
+    current: true,
+    resultCurrent: true,
+    backendKind: 'ready' as const,
+    effortKind: 'missing' as const,
+    busy: false,
+    connected: true,
+    error: '',
+  };
+  assert.equal(buildReviewActionPresentation(base).kind, 'continue');
+  assert.equal(buildReviewActionPresentation({ ...base, effortKind: 'counts' }).kind, 'continue');
+  assert.equal(buildReviewActionPresentation({ ...base, effortKind: 'invalid' }).descriptionKey, 'review.actionEffortInvalid');
+  for (const backendKind of ['missing', 'invalid', 'stale'] as const) {
+    const result = buildReviewActionPresentation({ ...base, backendKind });
+    assert.equal(result.kind, 'unavailable');
+    assert.equal(result.descriptionKey, `review.actionBackend${backendKind[0].toUpperCase()}${backendKind.slice(1)}`);
+  }
+});
+
+test('review action placements share one state, announce one error and deduplicate while busy', () => {
+  const input = {
+    viewKind: 'pending' as const,
+    version: 'tobe' as const,
+    loading: false,
+    current: true,
+    resultCurrent: false,
+    backendKind: 'stale' as const,
+    effortKind: 'missing' as const,
+    busy: false,
+    connected: true,
+    error: '',
+  };
+  const available = buildReviewActionPresentation(input);
+  assert.equal(available.disabled, false);
+  const placements = buildReviewActionPlacements(available);
+  assert.equal(placements.length, 2);
+  assert.equal(placements[0].action, placements[1].action);
+  assert.equal(placements.filter(block => block.announceError).length, 1);
+  assert.deepEqual(beginReviewPrimaryAction(available), { accepted: true, busy: true });
+  const busy = buildReviewActionPresentation({ ...input, busy: true, error: 'review failed' });
+  assert.equal(busy.disabled, true);
+  assert.equal(busy.labelKey, 'review.actionBusy');
+  assert.equal(busy.error, 'review failed');
+  assert.deepEqual(beginReviewPrimaryAction(busy), { accepted: false, busy: true });
 });
 
 test('equal ids in future and removed keep expansion and ancestor closing scoped', () => {

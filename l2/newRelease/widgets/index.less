@@ -152,9 +152,6 @@ new-release--widgets--index-102035 {
   .nr-index__request--history strong { font-size: .74rem; }
   .nr-index__request--history button { flex: none; }
   .nr-index__revision-content { min-width: 0; margin: 0; padding: 0; border: 0; }
-  .nr-index__review-pending { padding: 1.2rem; }
-  .nr-index__review-pending h2 { margin: 0 0 .4rem; font-size: 1rem; }
-  .nr-index__review-pending p { margin: 0; color: var(--text-muted, #5d6b7e); }
 
   .nr-tab__source {
     position: absolute;
@@ -242,8 +239,7 @@ new-release--widgets--index-102035 {
   .nr-index__stale-list { display: grid; gap: .38rem; }
   .nr-index__stale-list > span { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
   .nr-index__stale code { overflow: hidden; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
-  .nr-index__stale button,
-  .nr-index__discard {
+  .nr-index__stale button {
     padding: .38rem .58rem;
     border: 1px solid currentColor;
     border-radius: .5rem;
@@ -254,8 +250,7 @@ new-release--widgets--index-102035 {
     font-size: .64rem;
     font-weight: 750;
   }
-  .nr-index__stale button:focus-visible,
-  .nr-index__discard:focus-visible { outline: .15rem solid var(--focus-ring, #7ab8f5); outline-offset: .12rem; }
+  .nr-index__stale button:focus-visible { outline: .15rem solid var(--focus-ring, #7ab8f5); outline-offset: .12rem; }
 
   .nr-index__content { min-height: 17rem; }
   .nr-index__content:focus-visible { outline-offset: -.2rem; }
@@ -340,7 +335,20 @@ new-release--widgets--index-102035 {
   .nr-index__diff section { border-top: 1px solid var(--border-subtle, #e4e9f0); }
   .nr-index__diff section > header { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .9rem; background: var(--surface-alt-bg, #f5f7fa); }
   .nr-index__diff section > header code { color: var(--link-text, #0f62b8); font-size: .66rem; font-weight: 750; }
+  .nr-index__diff section > header > div { display: flex; align-items: center; gap: .65rem; }
   .nr-index__diff section > header span { color: var(--text-muted, #5d6b7e); font-size: .62rem; }
+  .nr-index__diff section > header button {
+    min-height: 2rem;
+    border: 1px solid color-mix(in srgb, var(--status-error-text, #ab2328) 34%, transparent);
+    border-radius: .45rem;
+    background: transparent;
+    color: var(--status-error-text, #ab2328);
+    cursor: pointer;
+    font-size: .62rem;
+    font-weight: 750;
+  }
+  .nr-index__diff section > header button:focus-visible { outline: 2px solid var(--focus-ring, #0f62b8); outline-offset: 2px; }
+  .nr-index__diff section > header button:disabled { cursor: not-allowed; opacity: .58; }
   .nr-index__diff-lines { display: grid; }
   .nr-index__diff-lines article {
     display: grid;
@@ -356,47 +364,6 @@ new-release--widgets--index-102035 {
   .nr-index__diff-lines .is-before { color: var(--status-error-text, #ab2328); text-decoration: line-through; }
   .nr-index__diff-lines .is-after { color: var(--status-success-text, #25640e); font-weight: 700; }
 
-  .nr-index__footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1rem;
-    padding: .85rem 1.2rem;
-    border-top: 1px solid var(--border-subtle, #e4e9f0);
-    background: var(--surface-bg, #fff);
-  }
-
-  .nr-index__footer div { display: flex; align-items: center; gap: .5rem; }
-  .nr-index__footer span {
-    padding: .28rem .5rem;
-    border-radius: 999px;
-    background: var(--status-info-bg, #e2effc);
-    color: var(--status-info-text, #0b5497);
-    font-size: .6rem;
-    font-weight: 750;
-    text-transform: uppercase;
-  }
-
-  .nr-index__footer button {
-    min-width: 5rem;
-    padding: .5rem .72rem;
-    border: 1px solid var(--button-secondary-border-disabled, #dbe1e9);
-    border-radius: .6rem;
-    background: var(--button-secondary-bg-disabled, #f6f7fa);
-    color: var(--button-secondary-text-disabled, #989fa7);
-    cursor: not-allowed;
-    font: inherit;
-    font-size: .72rem;
-    font-weight: 700;
-  }
-
-  .nr-index__footer .nr-index__discard {
-    border-color: color-mix(in srgb, var(--status-error-text, #ab2328) 45%, transparent);
-    background: var(--surface-bg, #fff);
-    color: var(--status-error-text, #ab2328);
-    cursor: pointer;
-  }
-
   @keyframes nr-shimmer { to { background-position: -240% 0; } }
 
   @media (max-width: 780px) {
@@ -405,7 +372,6 @@ new-release--widgets--index-102035 {
     .nr-index__stale { grid-template-columns: 1fr; margin-inline: .85rem; }
     .nr-index__diff { margin-inline: .85rem; }
     .nr-index__diff-lines article { grid-template-columns: 1fr; }
-    .nr-index__footer { padding: .85rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {

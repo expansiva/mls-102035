@@ -60,7 +60,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private savedRequest = '';
   @state() private requestBusy = false;
   @state() private requestError = '';
-  @state() private resultCurrent = false;
 
   private t: NewReleaseTranslate = key => key;
   private languageObserver?: MutationObserver;
@@ -134,7 +133,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestText = '';
     this.savedRequest = '';
     this.requestError = '';
-    this.resultCurrent = false;
     this.expectedChangeId = null;
     this.expectedRevisionId = null;
     if (!this.project || !this.moduleName) {
@@ -167,7 +165,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
       ? ChangeRequestDrafts.key(context.project, context.moduleName, request?.changeId ?? data.changeId)
       : null;
     this.requestText = this.requestKey ? this.requestDrafts.restore(this.requestKey, this.savedRequest) ?? this.savedRequest : '';
-    this.resultCurrent = request?.resultCurrent ?? false;
     this.loading = false;
   }
 
@@ -288,7 +285,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.revisionByModule.set(`${context.project}/${context.moduleName}`, saved.revisionId);
       this.savedRequest = text;
       this.requestDrafts.forget(this.requestKey);
-      this.resultCurrent = false;
       this.version = 'tobe';
       window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
       await this.loadModule();
@@ -369,12 +365,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return !!this.data?.artifacts.all.some(artifact => artifact.source === 'tobe' && tabForArtifactPath(artifact.path) === tab);
   }
 
-  private tabTobePaths(tab = this.activeTab): Ns5TobeArtifactPath[] {
-    return this.data?.artifacts.all
-      .filter(artifact => artifact.source === 'tobe' && tabForArtifactPath(artifact.path) === tab)
-      .map(artifact => artifact.path) ?? [];
-  }
-
   private async discardPaths(paths: Ns5TobeArtifactPath[]) {
     if (!paths.length || this.changing) return;
     if (!window.confirm(this.t('tobe.discardConfirm', { count: paths.length }))) return;
@@ -441,7 +431,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <summary>${this.t('tobe.diffTitle', { count: diffs.reduce((total, item) => total + item.entries.length, 0) })}</summary>
         ${diffs.map(diff => html`
           <section>
-            <header><code>${diff.path}</code><span>${this.t('tobe.diffCount', { count: diff.entries.length })}</span></header>
+            <header>
+              <code>${diff.path}</code>
+              <div>
+                <span>${this.t('tobe.diffCount', { count: diff.entries.length })}</span>
+                <button type="button" ?disabled=${this.changing} @click=${() => void this.discardPaths([diff.path])}>${this.t('tobe.discardPath')}</button>
+              </div>
+            </header>
             <div class="nr-index__diff-lines">
               ${diff.entries.map(entry => html`
                 <article>
@@ -603,7 +599,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   render() {
-    const editableVersion = this.version === 'asis' || this.version === 'tobe';
     const historical = !!historicalReleaseId(this.version);
     return html`
       <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
@@ -629,23 +624,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
             aria-labelledby=${`nr-tab-${this.activeTab}`}
             tabindex="0"
           ><fieldset class="nr-index__revision-content" ?disabled=${historical}>
-            ${this.activeTab === 'review' && this.version === 'tobe' && !this.resultCurrent && (!!this.requestText || !!this.data.diffs.length)
-              ? html`<div class="nr-index__review-pending"><h2>${this.t('request.reviewPendingTitle')}</h2><p>${this.t('request.reviewPendingBody')}</p></div>`
-              : this.renderTabContent()}
+            ${this.renderTabContent()}
           </fieldset></section>
           ${this.renderDiffs()}
         `}
-
-        ${editableVersion ? html`
-          <footer class="nr-index__footer">
-            <div>
-              ${this.tabTobePaths().length ? html`<button class="nr-index__discard" type="button" ?disabled=${this.changing} @click=${() => void this.discardPaths(this.tabTobePaths())}>${this.t('tobe.discardTab')}</button>` : nothing}
-              <span>${this.t('action.inDevelopment')}</span>
-              <button type="button" disabled>${this.t('action.apply')}</button>
-              <button type="button" disabled>${this.t('action.execute')}</button>
-            </div>
-          </footer>
-        ` : nothing}
       </main>
     `;
   }

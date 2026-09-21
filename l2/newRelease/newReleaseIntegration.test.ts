@@ -96,9 +96,6 @@ test('fine-tuned layout keeps context left and prioritizes editable module setti
   assert.match(serviceStyles, /nr-service__knob\.is-selected > button::after/);
 
   assert.doesNotMatch(index, /nr-index__hero/);
-  assert.match(index, /editableVersion\s*=\s*this\.version\s*===\s*'asis'\s*\|\|\s*this\.version\s*===\s*'tobe'/);
-  assert.match(index, /editableVersion\s*\?\s*html`[\s\S]*nr-index__footer/);
-
   const languagePosition = general.indexOf('${this.renderLanguagePanel(module)}');
   const metricsPosition = general.indexOf('class="nr-general__metrics"');
   const advancedPosition = general.indexOf('general.advancedTitle');
