@@ -69,6 +69,7 @@ export interface NewReleaseModuleData {
   changeId: string | null;
   revisionId: string | null;
   baseProvenance: L4ReleaseManifest['provenance'] | null;
+  resultCurrent: boolean;
   stalePaths: Ns5TobeArtifactPath[];
   diffs: NewReleaseTobeDiff[];
   validation: NewReleaseOverlayValidation;
@@ -243,6 +244,7 @@ export async function readNs5Module(
     : persistedReport;
   const active = version.startsWith('release:') ? null : await readActiveL4Change(project, moduleName);
   const baseProvenance = active ? (await readL4Release(project, moduleName, active.baseId))?.provenance ?? null : null;
+  const resultCurrent = !!active?.activeRevisionId && active.resultRevisionId === active.activeRevisionId;
 
   return {
     module: overlay.sources.module.value,
@@ -255,6 +257,7 @@ export async function readNs5Module(
     changeId: overlay.changeId,
     revisionId: overlay.revisionId,
     baseProvenance,
+    resultCurrent,
     stalePaths: overlay.stalePaths,
     diffs: overlay.diffs,
     validation: overlay.validation,

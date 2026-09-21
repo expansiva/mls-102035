@@ -4,6 +4,7 @@ import { getSessionUser } from '/_102033_/l2/shared/sessionUser.js';
 import type { Ns5FinalizeReport, Ns5OracleSources } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
 import {
   fileExists,
+  pipelineJsonFileForProject,
   readDefsJson,
   readJson,
   writeDefs,
@@ -31,6 +32,8 @@ import { isNewReleaseOntologyV3Version } from '/_102035_/l2/newRelease/ontologyV
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, revertL4CandidatePath } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import type { CandidateArea, CandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
 
 // The complete gates depend on the backend-only level-1 catalog. Keep that graph out of the
 // browser bundle: the review UI enforces its own edit invariants and the full validation still
@@ -45,6 +48,15 @@ const validationRuntimePromise = typeof window === 'undefined'
     import('/_102035_/l2/agentNewSolution5/steps/access60/gate.js'),
     import('/_102035_/l2/agentNewSolution5/steps/integration70/gate.js'),
     import('/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js'),
+  ] as const)
+  : null;
+
+const v3ValidationRuntimePromise = typeof window === 'undefined'
+  ? Promise.all([
+    import('/_102035_/l2/newRelease/helpers/candidateValidation.js'),
+    import('/_102034_/l4/ontology/mdm.defs.js'),
+    import('/_102034_/l4/ontology/tdm.defs.js'),
+    import('/_102034_/l4/ontology/ddm.defs.js'),
   ] as const)
   : null;
 
@@ -130,6 +142,7 @@ export interface NewReleaseOverlayValidation {
   ok: boolean;
   issues: NewReleaseValidationIssue[];
   oracle: Ns5FinalizeReport | null;
+  coverage: CandidateCoverage;
 }
 
 export interface NewReleaseTobeDiff {
@@ -448,7 +461,7 @@ function artifactForOraclePath(path: string): Ns5TobeArtifactPath | 'module' {
 
 export async function validateNs5Overlay(
   sources: NewReleaseOverlaySources,
-  context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[] },
+  context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[]; ontologyPlan?: Ns5OntologyV3PlanDraft | null },
 ): Promise<NewReleaseOverlayValidation> {
   const issues: NewReleaseValidationIssue[] = [];
   const module = sources.module.value;
@@ -456,6 +469,20 @@ export async function validateNs5Overlay(
   const journeys = sources.journeys.map(item => item.value).filter((value): value is Ns5JourneyArtifact => !!value);
   const ontologyIndex = sources.ontologyIndex.value;
   const ontologyV3 = isNs5OntologyV3(ontologyIndex);
+  if (ontologyV3) {
+    if (v3ValidationRuntimePromise) {
+      const [adapter, { mdm }, { tdm }, { ddm }] = await v3ValidationRuntimePromise;
+      return adapter.validateV3Candidate(sources, { mdm, tdm, ddm, ontologyPlan: context?.ontologyPlan, registryModuleNames: context?.registryModuleNames });
+    }
+    const areas: CandidateArea[] = ['module', 'journeys', 'ontologyAssembly', 'ontologyEntities', 'rules', 'workflows', 'access', 'integration', 'oracle'];
+    const coverage = Object.fromEntries(areas.map(area => [area, {
+      status: 'unsupported', reason: 'Complete v3 gates run in the validator worker, not this browser.',
+    }])) as CandidateCoverage;
+    return {
+      ok: false, oracle: null, coverage,
+      issues: [{ artifact: 'ontology/index.defs.ts', path: '$', severity: 'warning', code: 'NR_VALIDATION_UNAVAILABLE', message: 'Complete v3 validation has not run in this browser.', source: 'gate' }],
+    };
+  }
   const entities = ontologyV3
     ? []
     : sources.entities.map(item => item.value).filter((value): value is Ns5OntologyEntityArtifact => !!value);
@@ -466,15 +493,21 @@ export async function validateNs5Overlay(
 
   for (const artifact of sources.all) if (!artifact.value) issues.push(missingIssue(artifact.path));
   let oracle: Ns5FinalizeReport | null = null;
+  const coverage: CandidateCoverage = Object.fromEntries(
+    (['module', 'journeys', 'ontologyAssembly', 'ontologyEntities', 'rules', 'workflows', 'access', 'integration', 'oracle'] as CandidateArea[])
+      .map(area => [area, { status: 'unsupported', reason: 'Gate has not run.' }]),
+  ) as CandidateCoverage;
+  const checked = (area: CandidateArea) => { coverage[area] = { status: 'checked' }; };
   const validationRuntime = validationRuntimePromise ? await validationRuntimePromise : null;
   if (validationRuntime) {
     const [moduleGate, journeysGate, ontologyGate, rulesGate, workflowsGate, accessGate, integrationGate, finalizeGate] = validationRuntime;
-    if (module) pushGate(issues, 'module.defs.ts', moduleGate.validateNs5ModuleArtifact(module, { fixedModuleName: module.moduleName, actors: access?.actors }).issues);
+    if (module) { pushGate(issues, 'module.defs.ts', moduleGate.validateNs5ModuleArtifact(module, { fixedModuleName: module.moduleName, actors: access?.actors }).issues); checked('module'); }
     if (module && journeys.length) {
       pushGate(issues, 'journeys/index.defs.ts', journeysGate.validateNs5Journeys(
         journeys.map(journey => ({ journeyId: journey.journeyId, business: journey.business })),
         { actors: access?.actors || context?.pipeline?.steps.module10?.actors || [], moduleName: module.moduleName },
       ).issues);
+      if (journeys.length === sources.journeys.length && journeyIndex) checked('journeys');
     }
     if (module && ontologyIndex && !ontologyV3 && entities.length) {
       pushGate(issues, 'ontology/index.defs.ts', ontologyGate.validateNs5OntologyAssembly(
@@ -486,23 +519,24 @@ export async function validateNs5Overlay(
           liftedAggregateEntityIds: context?.pipeline?.steps.ontology30?.liftedAggregateEntities,
         },
       ).issues);
+      if (entities.length === sources.entities.length) { checked('ontologyAssembly'); checked('ontologyEntities'); }
     }
-    if (rules) pushGate(issues, 'rules.defs.ts', rulesGate.validateNs5Rules(ns5RuleRecord(rules), { moduleName: module?.moduleName }).issues);
-    if (workflows && !ontologyV3) pushGate(issues, 'workflows.defs.ts', workflowsGate.validateNs5Workflows(workflows.processes, {
+    if (rules) { pushGate(issues, 'rules.defs.ts', rulesGate.validateNs5Rules(ns5RuleRecord(rules), { moduleName: module?.moduleName }).issues); checked('rules'); }
+    if (workflows && !ontologyV3) { pushGate(issues, 'workflows.defs.ts', workflowsGate.validateNs5Workflows(workflows.processes, {
       moduleName: module?.moduleName,
       actorIds: (access?.actors || []).map(actor => actor.actorId),
       journeys,
       entities,
       journeyDecisions: workflows.journeyDecisions,
-    }).issues);
-    if (access && ontologyIndex && !ontologyV3) pushGate(issues, 'access.defs.ts', accessGate.validateNs5Access(access.grants, {
+    }).issues); checked('workflows'); }
+    if (access && ontologyIndex && !ontologyV3) { pushGate(issues, 'access.defs.ts', accessGate.validateNs5Access(access.grants, {
       moduleName: module?.moduleName,
       actors: access.actors,
       entities,
       relationships: ontologyIndex.relationships,
       journeys,
-    }).issues);
-    if (integration && module && !ontologyV3) pushGate(issues, 'integration.defs.ts', integrationGate.validateNs5Integration(
+    }).issues); checked('access'); }
+    if (integration && module && !ontologyV3) { pushGate(issues, 'integration.defs.ts', integrationGate.validateNs5Integration(
       integration.inbound,
       integration.outbound,
       integration.plugins,
@@ -515,7 +549,7 @@ export async function validateNs5Overlay(
         journeySteps: journeys.map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
         processTasks: workflows?.processes.map(process => ({ processId: process.processId, taskIds: process.tasks.map(task => task.taskId) })) || [],
       },
-    ).issues);
+    ).issues); checked('integration'); }
 
     if (!ontologyV3 && module && journeyIndex && ontologyIndex && rules && workflows && access && integration
       && journeys.length === sources.journeys.length && entities.length === sources.entities.length) {
@@ -529,6 +563,7 @@ export async function validateNs5Overlay(
         liftedAggregateEntities: context?.pipeline?.steps.ontology30?.liftedAggregateEntities,
       };
       oracle = finalizeGate.runNs5Oracle(oracleSources);
+      checked('oracle');
       for (const issue of [...oracle.errors, ...oracle.warnings]) {
         issues.push({
           artifact: artifactForOraclePath(issue.path),
@@ -541,7 +576,22 @@ export async function validateNs5Overlay(
       }
     }
   }
-  return { ok: !issues.some(issue => issue.severity === 'error'), issues, oracle };
+  if (!validationRuntime) issues.push({
+    artifact: 'module.defs.ts', path: '$', severity: 'warning', code: 'NR_VALIDATION_UNAVAILABLE',
+    message: 'Complete L4 gates have not run in this browser.', source: 'gate',
+  });
+  const areaArtifacts: Partial<Record<CandidateArea, string[]>> = {
+    module: ['module.defs.ts'], journeys: ['journeys/index.defs.ts'], ontologyAssembly: ['ontology/index.defs.ts'],
+    ontologyEntities: ['ontology/index.defs.ts'], rules: ['rules.defs.ts'], workflows: ['workflows.defs.ts'],
+    access: ['access.defs.ts'], integration: ['integration.defs.ts'], oracle: [],
+  };
+  for (const area of Object.keys(coverage) as CandidateArea[]) {
+    if (coverage[area].status !== 'checked') continue;
+    if (issues.some(issue => issue.severity === 'error' && (issue.source === 'oracle' && area === 'oracle' || areaArtifacts[area]?.includes(issue.artifact)))) {
+      coverage[area] = { status: 'error' };
+    }
+  }
+  return { ok: Object.values(coverage).every(item => item.status === 'checked') && !issues.some(issue => issue.severity === 'error'), issues, oracle, coverage };
 }
 
 async function staleManifestPaths(
@@ -605,11 +655,14 @@ export async function readNs5Overlay(
   ]);
   const all: NewReleaseArtifact<unknown>[] = [module, journeyIndex, ...journeys, ontologyIndex, ...entities, rules, workflows, access, integration];
   const sources: NewReleaseOverlaySources = { module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration, all };
+  const ontologyPlan = !historicalId && isNs5OntologyV3(ontologyIndex.value)
+    ? await readJson<Ns5OntologyV3PlanDraft>(pipelineJsonFileForProject(project, moduleName, 'ontology30-plan-draft'))
+    : null;
   const storedManifest = historicalId ? null : await readManifest(project, moduleName);
   const manifest = storedManifest && active ? { ...storedManifest, changeId: active.changeId, revisionId: active.activeRevisionId ?? undefined, baseId: active.baseId } : storedManifest;
   const [stalePaths, diffs] = await Promise.all([
     staleManifestPaths(project, moduleName, manifest),
     overlayDiffs(project, moduleName, sources, baseId),
   ]);
-  return { sources, manifest, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, context), errors };
+  return { sources, manifest, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }), errors };
 }
