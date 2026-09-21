@@ -6,6 +6,7 @@ import {
   hostListFolder,
   listModuleFolders,
   moduleFile,
+  moduleFolder,
   normalizeModuleName,
   pipelineFile,
   readPipeline,
@@ -31,11 +32,15 @@ import {
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
 
 export const PL_FLOW_ID = 'agentPlannerL4' as const;
-export const PL_FLOW_VERSION = '2026-09-20-pl-flow-v3' as const;
+export const PL_FLOW_VERSION = '2026-09-21-pl-flow-v4' as const;
 export const PL_AGENT_NAME = 'agentPlannerL4' as const;
 
-export const PL_STEP_IDS = ['entry10', 'dispatch20', 'loop30'] as const;
+export const PL_STEP_IDS = ['entry10', 'diff20', 'dispatch20', 'loop30'] as const;
 export type PlStepId = (typeof PL_STEP_IDS)[number];
+
+export const PL_KNOWN_FLOW_IDS = ['agentNewSolution5', 'agentReviewSolution', 'agentPlannerL4'] as const;
+export const PL_DEFAULT_CANDIDATE_REL = 'tobe/plan' as const;
+export const PL_L4DIFF_REL = ['pool/l1/web/l4diff.json', 'pool/l2/web/l4diff.json'] as const;
 
 export const PL_PLANNER_PROJECTS = ['102020', '102021'] as const;
 export const PL_L2_AGENT = 'agentPlannerL2' as const;
@@ -46,28 +51,34 @@ export const PL_DISPATCH_BODY =
 
 export const PL_STEP_TITLES: Record<PlStepId, string> = {
   entry10: 'Entry',
+  diff20: 'Diff',
   dispatch20: 'Dispatch',
   loop30: 'Loop',
 };
 
 export const PL_STEP_DEPENDS_ON: Record<PlStepId, readonly string[]> = {
   entry10: [],
-  dispatch20: ['entry10-done'],
+  diff20: ['entry10-done'],
+  dispatch20: ['diff20-done'],
   loop30: ['dispatch20-done'],
 };
 
 const FAST_RE = /(^|\s)\/fast(?=\s|$)/i;
 const ESTIMATE_RE = /(^|\s)\/estimate(?=\s|$)/i;
+const CANDIDATE_RE = /(^|\s)\/candidate(?:\s+(?!\/)(\S+))?(?=\s|$)/i;
 
 export interface PlParsedInvocation {
   fast: boolean;
   estimate: boolean;
   module: string;
+  /** Resolved `l4/` folder when `/candidate` is present; otherwise `''`. */
+  candidate: string;
 }
 
 export interface PlEntryFacts {
   moduleExists: boolean;
   pipelineStatus: string;
+  pipelineFlowId: string;
   l5ConfigExists: boolean;
 }
 
@@ -97,18 +108,43 @@ export function moduleTokenOk(moduleName: string): boolean {
   return /^[a-z][A-Za-z0-9]*$/.test(moduleName);
 }
 
+export function resolveCandidateFolder(moduleName: string, relativePath = ''): string {
+  const mod = normalizeModuleName(moduleName);
+  const rel = String(relativePath || '').trim().replace(/^\/+|\/+$/g, '') || PL_DEFAULT_CANDIDATE_REL;
+  if (rel.includes('..')) return '';
+  if (rel === mod || rel.startsWith(`${mod}/`)) return rel;
+  return `${mod}/${rel}`;
+}
+
+export function candidateRootOf(moduleName: string): string {
+  const root = moduleFolder(moduleName);
+  const canonical = normalizeModuleName(moduleName);
+  return root === canonical ? '' : root;
+}
+
+export function unknownPipelineFlowId(flowId: string): string {
+  const id = String(flowId || '').trim();
+  if (!id) return '';
+  return (PL_KNOWN_FLOW_IDS as readonly string[]).includes(id) ? '' : id;
+}
+
 export function parsePlInvocation(value: string): PlParsedInvocation {
   const raw = String(value || '').replace(/^@@agentPlannerL4\b/i, ' ').trim();
   const fast = FAST_RE.test(raw);
   const estimate = ESTIMATE_RE.test(raw);
+  const candidateMatch = CANDIDATE_RE.exec(raw);
+  const hasCandidate = !!candidateMatch;
+  const candidateRel = candidateMatch?.[2] || '';
   const stripped = raw
     .replace(new RegExp(FAST_RE.source, 'gi'), ' ')
     .replace(new RegExp(ESTIMATE_RE.source, 'gi'), ' ')
+    .replace(new RegExp(CANDIDATE_RE.source, 'gi'), ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const token = stripped.split(' ')[0] || '';
   const module = moduleTokenOk(token) ? token : normalizeModuleName(token, '');
-  return { fast, estimate, module };
+  const candidate = hasCandidate && module ? resolveCandidateFolder(module, candidateRel) : '';
+  return { fast, estimate, module, candidate };
 }
 
 export function existingModuleName(moduleName: string): string {
@@ -142,6 +178,7 @@ export async function gatherPlEntryFacts(moduleName: string): Promise<PlEntryFac
   return {
     moduleExists: !!existing,
     pipelineStatus: pipeline?.status || '',
+    pipelineFlowId: pipeline?.flowId || '',
     l5ConfigExists: config !== null,
   };
 }
@@ -244,52 +281,52 @@ export function plannerAgentPresent(agentName: string): boolean {
   return false;
 }
 
-function topSegmentAfterModule(folder: string, moduleName: string): string {
-  const rest = folder === moduleName
+function topSegmentAfterModule(folder: string, root: string): string {
+  const rest = folder === root
     ? ''
-    : folder.startsWith(`${moduleName}/`)
-      ? folder.slice(moduleName.length + 1)
+    : folder.startsWith(`${root}/`)
+      ? folder.slice(root.length + 1)
       : folder;
   return rest.split('/').filter(Boolean)[0] || '';
 }
 
-function artifactRelPath(file: { folder?: string; shortName?: string; extension?: string }, moduleName: string): string {
+function artifactRelPath(file: { folder?: string; shortName?: string; extension?: string }, root: string): string {
   const folder = String(file.folder || '');
-  const rest = folder === moduleName
+  const rest = folder === root
     ? ''
-    : folder.startsWith(`${moduleName}/`)
-      ? folder.slice(moduleName.length + 1)
+    : folder.startsWith(`${root}/`)
+      ? folder.slice(root.length + 1)
       : folder;
   const name = `${file.shortName || ''}${file.extension || ''}`;
   return rest ? `${rest}/${name}` : name;
 }
 
-/** Every file under `l4/<mod>/` except `pipeline/`, `tobe/`, `pool/`. Paths relative to the module. */
+/** Every file under the module root (canonical or `/candidate`) except `pipeline/`, `tobe/`, `pool/`. */
 export function listPlArtifacts(moduleName: string): string[] {
-  const module = normalizeModuleName(moduleName);
-  const project = moduleFile(module).project;
+  const root = moduleFolder(moduleName);
+  const project = moduleFile(moduleName).project;
   const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
   const found = new Map<string, true>();
 
   const consider = (file: { folder?: string; shortName?: string; extension?: string; status?: string }) => {
     if (file.status === 'deleted' || !file.shortName) return;
     const folder = String(file.folder || '');
-    const top = topSegmentAfterModule(folder, module);
+    const top = topSegmentAfterModule(folder, root);
     if ((PL_EXCLUDED_TOP as readonly string[]).includes(top)) return;
-    const rel = artifactRelPath(file, module);
+    const rel = artifactRelPath(file, root);
     if (rel) found.set(rel, true);
   };
 
   for (const file of Object.values(files)) {
     if (!file || file.project !== project || Number(file.level) !== 4) continue;
     const folder = String(file.folder || '');
-    if (folder !== module && !folder.startsWith(`${module}/`)) continue;
+    if (folder !== root && !folder.startsWith(`${root}/`)) continue;
     consider(file);
   }
 
   const listFolder = hostListFolder();
   if (listFolder) {
-    for (const info of listFolder(project, 4, module)) {
+    for (const info of listFolder(project, 4, root)) {
       const key = mls.stor.getKeyToFile(info);
       const indexed = files[key];
       if (indexed?.status === 'deleted') continue;
@@ -334,7 +371,7 @@ export function plRoundTitle(side: PlInvokeSide, round: number): string {
 }
 
 export function plStepPrompt(moduleName: string, thread: string, file: string): string {
-  return JSON.stringify({ moduleName, thread, file });
+  return JSON.stringify({ moduleName, thread, file, candidate: candidateRootOf(moduleName) });
 }
 
 export function createPlInvokeStep(args: {
@@ -406,7 +443,7 @@ export interface PlDispatchRun {
 }
 
 export async function runPlDispatch(moduleName: string, now: Date): Promise<PlDispatchRun> {
-  const artifacts = listPlArtifacts(moduleName);
+  const artifacts = [...listPlArtifacts(moduleName), ...PL_L4DIFF_REL];
   const thread = nextThread(moduleName, now);
   const at = now.toISOString();
   const l2File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l2', thread, artifacts), now);
@@ -438,8 +475,7 @@ function otherBox(box: PoolBox): PoolBox {
 }
 
 function listIndexedPoolFiles(moduleName: string, folder: string): Ns5FileInfo[] {
-  const module = normalizeModuleName(moduleName);
-  const project = moduleFile(module).project;
+  const project = moduleFile(moduleName).project;
   const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
   const found = new Map<string, Ns5FileInfo>();
   const consider = (file: { folder?: string; shortName?: string; extension?: string; status?: string }) => {
@@ -469,9 +505,8 @@ function listIndexedPoolFiles(moduleName: string, folder: string): Ns5FileInfo[]
 
 /** `l4/<mod>/pool/<box>/web/**.json` — not pool messages (menu/needs/backend/effort). */
 export function listPoolWebFiles(moduleName: string, box: PoolBox): Ns5FileInfo[] {
-  const module = normalizeModuleName(moduleName);
-  const folder = `${module}/pool/${box}/web`;
-  return listIndexedPoolFiles(module, folder).filter(file => file.extension === '.json');
+  const folder = `${moduleFolder(moduleName)}/pool/${box}/web`;
+  return listIndexedPoolFiles(moduleName, folder).filter(file => file.extension === '.json');
 }
 
 /**

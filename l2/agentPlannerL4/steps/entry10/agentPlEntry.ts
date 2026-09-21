@@ -2,12 +2,14 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
+import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import {
   applyL5PlannerDeps,
   existingModuleName,
   gatherPlEntryFacts,
   parsePlInvocation,
   plEntryRefusal,
+  unknownPipelineFlowId,
   wipeModulePool,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
@@ -24,10 +26,13 @@ export async function beforePlEntryPromptStep(
   step: mls.msg.AIAgentStep,
   hookSequential: number,
 ): Promise<mls.msg.AgentIntent[]> {
-  const moduleName = memoryString(context, 'moduleName') || moduleNameFromPrompt(step);
-  const invocation = parsePlInvocation(moduleName);
-  invocation.fast = memoryString(context, 'fastMode') === 'true';
+  const invocation = parsePlInvocation(String(context.message?.content || ''));
+  const moduleName = memoryString(context, 'moduleName') || invocation.module || moduleNameFromPrompt(step);
+  invocation.fast = invocation.fast || memoryString(context, 'fastMode') === 'true';
   if (moduleName) invocation.module = moduleName;
+  const candidate = invocation.candidate || memoryString(context, 'candidate');
+  invocation.candidate = candidate;
+  setModuleRoot(invocation.module, candidate || null);
   const facts = await gatherPlEntryFacts(invocation.module);
   const refusal = plEntryRefusal(invocation, facts);
   if (refusal) {
@@ -53,13 +58,16 @@ export async function beforePlEntryPromptStep(
   const already = getAllSteps(context.task?.iaCompressed?.nextSteps).some(
     item => item.planning?.planId === 'entry10-done',
   );
-  const extra = already ? [] : [doneAnchor(context, parentStep, existing, adjusted, wiped)];
+  const unknownFlowId = unknownPipelineFlowId(facts.pipelineFlowId);
+  const extra = already ? [] : [doneAnchor(context, parentStep, existing, adjusted, wiped, candidate, unknownFlowId)];
   const parts = [
     wiped.length ? `wiped ${wiped.length} pool path(s)` : 'pool already empty',
     adjusted.length
       ? `adjusted l5/config.json (${adjusted.join(', ')})`
       : 'l5/config.json already lists the planner projects',
   ];
+  if (candidate) parts.push(`candidate ${candidate}`);
+  if (unknownFlowId) parts.push(`unknown pipeline flowId "${unknownFlowId}" recorded`);
   return [
     ...extra,
     updateStatus(context, parentStep, step, hookSequential, 'completed', `entry10: ${parts.join('; ')}.`),
@@ -83,6 +91,8 @@ function doneAnchor(
   moduleName: string,
   l5Adjusted: string[],
   poolWiped: string[],
+  candidate: string,
+  unknownFlowId: string,
 ): mls.msg.AgentIntentAddStep {
   return {
     type: 'add-step',
@@ -98,7 +108,8 @@ function doneAnchor(
       status: 'completed',
       nextSteps: [],
       result: JSON.stringify({
-        moduleName, l5Adjusted, poolWiped, completedStep: 'entry10', nextStep: 'dispatch20',
+        moduleName, l5Adjusted, poolWiped, candidate, unknownFlowId,
+        completedStep: 'entry10', nextStep: 'diff20',
       }),
       planning: { planId: 'entry10-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
     } as mls.msg.AIResultStep,

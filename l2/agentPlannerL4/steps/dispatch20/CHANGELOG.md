@@ -1,5 +1,10 @@
 # dispatch20
 
+## 2026-09-21 (p4_09)
+
+- Depends on `diff20-done`. Pool messages cite `pool/l1/web/l4diff.json` and
+  `pool/l2/web/l4diff.json`. Invoke prompt includes `candidate`.
+
 ## 2026-09-20 (p4_08 rodada 2)
 
 - Creates only L2 r1. L1 r1 is created by loop30 when the `l2→l1` message exists.

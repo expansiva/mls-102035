@@ -22,15 +22,17 @@ import {
   plannerAgentPresent,
   plInvokeOutput,
   plStepPrompt,
+  resolveCandidateFolder,
   wipeModulePool,
   PL_DISPATCH_BODY,
   PL_L1_AGENT,
   PL_L2_AGENT,
+  PL_L4DIFF_REL,
   PL_STEP_DEPENDS_ON,
   PL_STEP_IDS,
   runPlDispatch,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
-import { displayPath } from '/_102035_/l2/solution/fs.js';
+import { displayPath, setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import { listPoolBox, nextThread, readPoolMessage, readPoolTrace, writePoolMessage } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
@@ -94,6 +96,7 @@ function seed(
 const OPEN_FACTS = {
   moduleExists: true,
   pipelineStatus: 'complete',
+  pipelineFlowId: 'agentNewSolution5',
   l5ConfigExists: true,
 };
 
@@ -102,6 +105,20 @@ void test('parsePlInvocation reads the module token and /fast', () => {
   assert.equal(parsed.module, 'mensalidadesAcademia');
   assert.equal(parsed.fast, true);
   assert.equal(parsed.estimate, false);
+  assert.equal(parsed.candidate, '');
+});
+
+void test('parsePlInvocation /candidate alone points at <mod>/tobe/plan', () => {
+  const parsed = parsePlInvocation('@@agentPlannerL4 mensalidadesAcademia /candidate');
+  assert.equal(parsed.module, 'mensalidadesAcademia');
+  assert.equal(parsed.candidate, 'mensalidadesAcademia/tobe/plan');
+  assert.equal(resolveCandidateFolder('mensalidadesAcademia', ''), 'mensalidadesAcademia/tobe/plan');
+});
+
+void test('parsePlInvocation /candidate with a relative root keeps /fast as a flag', () => {
+  const parsed = parsePlInvocation('mensalidadesAcademia /fast /candidate pipeline/changes/c1/revisions/r1/l4');
+  assert.equal(parsed.fast, true);
+  assert.equal(parsed.candidate, 'mensalidadesAcademia/pipeline/changes/c1/revisions/r1/l4');
 });
 
 void test('parsePlInvocation strips the @@agentPlannerL4 prefix and /estimate', () => {
@@ -128,15 +145,17 @@ void test('moduleTokenOk accepts lowerCamel only', () => {
   assert.equal(moduleTokenOk(''), false);
 });
 
-void test('planned tree is three sequential steps with entry10 first', () => {
+void test('planned tree is four sequential steps with entry10 first and diff20 before dispatch20', () => {
   const steps = buildPlPlannedSteps('mensalidadesAcademia');
-  assert.equal(steps.length, 3);
+  assert.equal(steps.length, 4);
   assert.deepEqual(steps.map(step => step.planning?.planId), [...PL_STEP_IDS]);
   assert.equal(steps[0].status, 'waiting_human_input');
   assert.equal(steps[0].agentName, 'agentPlannerL4');
-  assert.deepEqual(steps[1].planning?.dependsOn, [...PL_STEP_DEPENDS_ON.dispatch20]);
+  assert.deepEqual(steps[1].planning?.dependsOn, [...PL_STEP_DEPENDS_ON.diff20]);
+  assert.deepEqual(steps[2].planning?.dependsOn, [...PL_STEP_DEPENDS_ON.dispatch20]);
   assert.equal(steps[1].status, 'waiting_dependency');
   assert.equal(steps[2].status, 'waiting_dependency');
+  assert.equal(steps[3].status, 'waiting_dependency');
 });
 
 void test('adjustL5PlannerDeps appends missing 102021 and leaves both unchanged', () => {
@@ -245,6 +264,20 @@ void test('listPlArtifacts excludes pipeline/, tobe/ and pool/', () => {
   ]);
 });
 
+void test('listPlArtifacts under /candidate lists the override root and leaves canonical files out', () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, 'canonical');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/tobe/plan', shortName: 'module', extension: '.defs.ts' }, 'candidate');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/tobe/plan', shortName: 'rules', extension: '.defs.ts' }, 'rule');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/tobe/plan/pipeline', shortName: 'pipeline', extension: '.json' }, '{}');
+  try {
+    setModuleRoot('mensalidadesAcademia', 'mensalidadesAcademia/tobe/plan');
+    assert.deepEqual(listPlArtifacts('mensalidadesAcademia'), ['module.defs.ts', 'rules.defs.ts']);
+  } finally {
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+});
+
 void test('the two pool messages are equal byte for byte except to', async () => {
   const host = installHost();
   seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
@@ -255,7 +288,7 @@ void test('the two pool messages are equal byte for byte except to', async () =>
     `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
   );
   const now = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
-  const artifacts = listPlArtifacts('mensalidadesAcademia');
+  const artifacts = [...listPlArtifacts('mensalidadesAcademia'), ...PL_L4DIFF_REL];
   const thread = nextThread('mensalidadesAcademia', now);
   const expectedL2 = buildPlPoolMessage('mensalidadesAcademia', 'l2', thread, artifacts);
   const expectedL1 = buildPlPoolMessage('mensalidadesAcademia', 'l1', thread, artifacts);
@@ -437,10 +470,11 @@ void test('round-1 invoke steps are only L2 r1 with the step prompt shape — L1
   assert.equal(steps[0].agentName, PL_L2_AGENT);
   assert.equal(steps[0].planning?.planId, plRoundPlanId('l2', 1));
   assert.deepEqual(steps[0].planning?.dependsOn, []);
-  const l2Prompt = JSON.parse(String(steps[0].prompt)) as { moduleName: string; thread: string; file: string };
+  const l2Prompt = JSON.parse(String(steps[0].prompt)) as { moduleName: string; thread: string; file: string; candidate: string };
   assert.equal(l2Prompt.moduleName, 'mensalidadesAcademia');
   assert.equal(l2Prompt.thread, run.thread);
   assert.equal(l2Prompt.file, run.l2Path);
+  assert.equal(l2Prompt.candidate, '');
   assert.equal(steps.some(step => step.agentName === PL_L1_AGENT), false);
 });
 

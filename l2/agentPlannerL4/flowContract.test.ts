@@ -45,6 +45,8 @@ const EXPECTED_ARTIFACTS: Record<string, string> = {
   poolL1: 'l4/{module}/pool/l1/{stamp}_{thread}_{round}.json',
   poolL2: 'l4/{module}/pool/l2/{stamp}_{thread}_{round}.json',
   poolL4: 'l4/{module}/pool/l4/{stamp}_{thread}_{round}.json',
+  l4diffL1: 'l4/{module}/pool/l1/web/l4diff.json',
+  l4diffL2: 'l4/{module}/pool/l2/web/l4diff.json',
 };
 
 function loadFlow(): FlowDoc {
@@ -60,11 +62,11 @@ void test('createAgent meta matches the public planner L4', () => {
   assert.equal(typeof agent.beforePromptImplicit, 'function');
 });
 
-void test('flow has exactly three steps in declared order with declared dependencies', () => {
+void test('flow has exactly four steps in declared order with declared dependencies', () => {
   const flow = loadFlow();
   assert.equal(flow.flowId, PL_FLOW_ID);
   assert.equal(flow.schemaVersion, PL_FLOW_VERSION);
-  assert.equal(flow.steps.length, 3);
+  assert.equal(flow.steps.length, 4);
   assert.deepEqual(flow.steps.map(step => step.id), [...PL_STEP_IDS]);
 
   for (const step of flow.steps) {
@@ -89,9 +91,12 @@ void test('flow records that L4 orchestrates L2 then L1 then L2 in the same task
   assert.match(flow.description, /orchestrate L2/i);
   assert.equal(flow.principles.some(line => /same task/i.test(line)), true);
   const entry = flow.steps.find(step => step.id === 'entry10');
+  const diff = flow.steps.find(step => step.id === 'diff20');
   const dispatch = flow.steps.find(step => step.id === 'dispatch20');
   const loop = flow.steps.find(step => step.id === 'loop30');
   assert.match(entry?.goal || '', /wipe/i);
+  assert.match(entry?.goal || '', /candidate/i);
+  assert.match(diff?.goal || '', /l4diff/i);
   assert.match(dispatch?.goal || '', /L2 r1/i);
   assert.match(loop?.goal || '', /L1 r1/i);
   assert.match(loop?.goal || '', /effort/i);

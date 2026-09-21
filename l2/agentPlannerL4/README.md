@@ -1,30 +1,38 @@
 # agentPlannerL4
 
-L4 planner. On accept it **wipes** the module pool, lists the artifacts of an existing
-complete module, writes `pool/l1` and `pool/l2`, and orchestrates L2 → L1 → L2 by
-`type: 'agent'` steps **in the same task**. No LLM. Does not read ontology to opine.
-A step never emits `add-message-ai`.
+L4 planner. On accept it **wipes** the module pool, diffs the sealed release against
+the `/candidate` root, lists the artifacts of an existing complete module, writes
+`pool/l1` and `pool/l2`, and orchestrates L2 → L1 → L2 by `type: 'agent'` steps
+**in the same task**. No LLM. Does not read ontology to opine. A step never emits
+`add-message-ai`.
 
-`entry10` parses, refuses, wipes `l4/<mod>/pool/{l1,l2,l4}/` (messages + `web/*.json`),
-adjusts `l5/config.json`. `dispatch20` lists artifacts, writes the two messages, traces
-`delivered`, and creates `L2 r1`. `loop30` creates `L1 r1` with the real `l2→l1`
-filename when that message is in the box, then `L2 effort r1` with the real `l1→l2`
-filename (L2 does not accept `file: ''` as a step prompt). A completed planner without
-output fails the task. Rounds 2 and 3 only when a new message with `round > 1` is in
-the box. Round 3 with a non-empty box is `disputed`. The l4 pipeline records
-`{ round, l2, l1, effort }`.
+`entry10` parses (including `/candidate`), sets `moduleFolder`, refuses, wipes
+`l4/<mod>/pool/{l1,l2,l4}/` (messages + `web/*.json`), adjusts `l5/config.json`.
+`diff20` writes `pool/l1/web/l4diff.json` and `pool/l2/web/l4diff.json`.
+`dispatch20` lists artifacts, cites the two `l4diff.json` files, writes the two
+messages, traces `delivered`, and creates `L2 r1`. `loop30` creates `L1 r1` with
+the real `l2→l1` filename when that message is in the box, then `L2 effort r1`
+with the real `l1→l2` filename (L2 does not accept `file: ''` as a step prompt).
+A completed planner without output fails the task. Rounds 2 and 3 only when a new
+message with `round > 1` is in the box. Round 3 with a non-empty box is `disputed`.
+The l4 pipeline records `{ round, l2, l1, effort }`.
 
 ## Invocation
 
 ```
 @@agentPlannerL4 <lowerCamel>
 @@agentPlannerL4 <lowerCamel> /fast
+@@agentPlannerL4 <lowerCamel> /candidate
+@@agentPlannerL4 <lowerCamel> /candidate pipeline/changes/<id>/revisions/<rev>/l4
 ```
 
 - Module must already exist in `l4/` with `pipeline.status: complete`.
+- `/candidate` alone points `moduleFolder` at `<mod>/tobe/plan`. A relative path is
+  joined under the module. Without the flag the canonical l4 is byte-identical.
 - The pool is derived from l4: a new run wipes it and plans again. Pending messages do not refuse.
 - `/estimate` is refused (`not available yet`). There is no `/rebuild`.
 - Mode is implicit `implement`.
+- Unknown `pipeline.flowId` (not NS5 / review / this planner) is recorded, not refused.
 
 ## What entry10 writes
 

@@ -1,5 +1,11 @@
 # entry10
 
+## 2026-09-21 (p4_09)
+
+- Parses `/candidate` (optional relative root). Calls `setModuleRoot`. Stores
+  `candidate` on the done-anchor. Unknown `pipeline.flowId` is recorded.
+  Next step is `diff20`.
+
 ## 2026-09-20 (p4_08)
 
 - Wipes the module pool on accept (messages + `web/*.json`). `poolWiped` on the l4

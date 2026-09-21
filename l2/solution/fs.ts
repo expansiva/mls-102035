@@ -27,8 +27,38 @@ function currentProject(): number {
   return mls.actualProject || 0;
 }
 
-function moduleFolder(moduleName: string): string {
-  return normalizeModuleName(moduleName);
+const moduleRootsByMls = new WeakMap<object, Map<string, string>>();
+
+function moduleRoots(): Map<string, string> {
+  const bag = typeof mls === 'undefined' ? undefined : mls as object | undefined;
+  if (!bag) return new Map();
+  let roots = moduleRootsByMls.get(bag);
+  if (!roots) {
+    roots = new Map();
+    moduleRootsByMls.set(bag, roots);
+  }
+  return roots;
+}
+
+/**
+ * Point `moduleFolder` at a root relative to `l4/` (example: `stockControl/tobe/plan`).
+ * `null` or `''` restores the canonical folder. Lives on the current `mls` (the task process).
+ */
+export function setModuleRoot(moduleName: string, relativeRoot: string | null): void {
+  const name = normalizeModuleName(moduleName);
+  if (!name) return;
+  const root = typeof relativeRoot === 'string' ? relativeRoot.trim() : '';
+  if (!root) {
+    moduleRoots().delete(name);
+    return;
+  }
+  moduleRoots().set(name, root);
+}
+
+/** `l4/<mod>` or the `/candidate` override when `setModuleRoot` was called. */
+export function moduleFolder(moduleName: string): string {
+  const name = normalizeModuleName(moduleName);
+  return moduleRoots().get(name) || name;
 }
 
 export function moduleFile(moduleName: string): Ns5FileInfo {
@@ -421,6 +451,15 @@ export async function readDefsJson<T>(fileInfo: Ns5FileInfo): Promise<T | null> 
   } catch {
     return null;
   }
+}
+
+/** Preserve the exact L4 source when sealing a release or copying it to the candidate. */
+export async function readSourceText(fileInfo: Ns5FileInfo): Promise<string> {
+  return readText(fileInfo, true);
+}
+
+export async function writeSourceText(fileInfo: Ns5FileInfo, source: string): Promise<void> {
+  await writeText(fileInfo, source);
 }
 
 /**

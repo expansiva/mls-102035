@@ -1,5 +1,15 @@
 # agentPlannerL4
 
+## 2026-09-21 (p4_09)
+
+- `setModuleRoot` / `moduleFolder` override: `/candidate` (default `<mod>/tobe/plan`)
+  or `/candidate <relativeRoot>`. Stored on `longTermMemory.candidate` and on the
+  invoke prompt `{ moduleName, thread, file, candidate }`. Without the flag
+  `moduleFolder` is the canonical name, byte for byte.
+- New `diff20` between `entry10` and `dispatch20`. Writes `pool/l1/web/l4diff.json`
+  and `pool/l2/web/l4diff.json` (sealed release × candidate). No candidate ⇒
+  `items: []`. Dispatch cites both files. Unknown pipeline `flowId` is recorded.
+
 ## 2026-09-20 (p4_08 rodada 2)
 
 - `dispatch20` creates only L2 r1. L1 r1 is created by `loop30` with the real `l2→l1`
