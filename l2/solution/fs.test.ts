@@ -13,6 +13,7 @@ async function loadFs(): Promise<typeof import('/_102035_/l2/solution/fs.js')> {
 
 void test('every generated path matches the NS5 l4 table', async () => {
   const fs = await loadFs();
+  fs.setModuleRoot('teste5', null);
   const m = 'teste5';
   const asPath = (info: { folder: string; shortName: string; extension: string }) =>
     `l4/${info.folder ? `${info.folder}/` : ''}${info.shortName}${info.extension}`;
@@ -186,5 +187,36 @@ void test('reconcileModuleDefs removes defs whose id is not in the index', async
     assert.deepEqual(deleted, ['oldName']);
   } finally {
     g.mls = prev;
+  }
+});
+
+void test('moduleFolder without override is the canonical module name byte for byte', async () => {
+  const fs = await loadFs();
+  fs.setModuleRoot('teste5', null);
+  assert.equal(fs.moduleFolder('teste5'), 'teste5');
+  assert.equal(fs.moduleFile('teste5').folder, 'teste5');
+  assert.equal(fs.journeyFile('teste5', 'fecharComanda').folder, 'teste5/journeys');
+  assert.equal(fs.pipelineFile('teste5').folder, 'teste5/pipeline');
+  assert.equal(fs.rulesFile('teste5').folder, 'teste5');
+  assert.equal(fs.draftFile('teste5', 'module10').folder, 'teste5/pipeline');
+});
+
+void test('setModuleRoot points moduleFolder and every derived path at the candidate', async () => {
+  const fs = await loadFs();
+  try {
+    fs.setModuleRoot('teste5', 'teste5/tobe/plan');
+    assert.equal(fs.moduleFolder('teste5'), 'teste5/tobe/plan');
+    assert.equal(fs.moduleFile('teste5').folder, 'teste5/tobe/plan');
+    assert.equal(fs.journeyFile('teste5', 'fecharComanda').folder, 'teste5/tobe/plan/journeys');
+    assert.equal(fs.ontologyEntityFile('teste5', 'Comanda').folder, 'teste5/tobe/plan/ontology');
+    assert.equal(fs.rulesFile('teste5').folder, 'teste5/tobe/plan');
+    assert.equal(fs.pipelineFile('teste5').folder, 'teste5/tobe/plan/pipeline');
+    assert.equal(fs.draftFile('teste5', 'module10').folder, 'teste5/tobe/plan/pipeline');
+    fs.setModuleRoot('teste5', 'teste5/pipeline/changes/c1/revisions/r1/l4');
+    assert.equal(fs.moduleFolder('teste5'), 'teste5/pipeline/changes/c1/revisions/r1/l4');
+    assert.equal(fs.accessFile('teste5').folder, 'teste5/pipeline/changes/c1/revisions/r1/l4');
+  } finally {
+    fs.setModuleRoot('teste5', null);
+    assert.equal(fs.moduleFolder('teste5'), 'teste5');
   }
 });

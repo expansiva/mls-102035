@@ -8,16 +8,18 @@ silent skip of the box (the message stays).
 
 ## Input
 
-A complete module whose `entry10` already ran and wiped the previous pool.
+A complete module whose `entry10` already ran and wiped the previous pool, and
+whose `diff20` already wrote `l4diff.json`.
 
 ## Output
 
 - `l4/<mod>/pool/l2/<stamp>_<thread>_1.json` and `pool/l1/...` — two equal messages except `to`.
 - `pipeline.json` pool trace: two `delivered` lines.
-- Step `l2-r1`. Prompt `{ moduleName, thread, file }`.
+- Step `l2-r1`. Prompt `{ moduleName, thread, file, candidate }`.
 - `dispatch20-done` result: module, thread, artifact count, invoke count.
 
 ## Artifact list
 
-Every file under `l4/<mod>/` except `pipeline/`, `tobe/`, `pool/`. Paths relative to the module.
-First generation is the complete list.
+Every file under the module root except `pipeline/`, `tobe/`, `pool/`, plus
+`pool/l1/web/l4diff.json` and `pool/l2/web/l4diff.json`. Paths relative to the
+module root (canonical or `/candidate`). First generation is the complete list.

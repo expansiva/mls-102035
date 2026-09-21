@@ -4,8 +4,10 @@ Deterministic. No LLM call.
 
 ## Input
 
-`@@agentPlannerL4 <lowerCamel>` on a module that already exists in `l4/` with
-`pipeline.status: complete`. The pool is wiped on accept (it is derived from l4).
+`@@agentPlannerL4 <lowerCamel> [/candidate [<relativeRoot>]]` on a module that
+already exists in `l4/` with `pipeline.status: complete`. `/candidate` alone
+points `moduleFolder` at `<mod>/tobe/plan`. The pool is wiped on accept (it is
+derived from l4). Unknown `pipeline.flowId` is recorded, not refused.
 
 ## Output
 
@@ -14,7 +16,7 @@ Deterministic. No LLM call.
   both are already there.
 - `l4/<mod>/pipeline/pipeline.json` — `l5Adjusted` tokens when something was added;
   `poolWiped` paths of the mailbox that was cleared.
-- Done-anchor `entry10-done` so `dispatch20` can run.
+- Done-anchor `entry10-done` so `diff20` can run.
 
 ## Refusals
 

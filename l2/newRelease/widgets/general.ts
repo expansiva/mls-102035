@@ -379,13 +379,16 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     const module = this.currentModule();
     if (!module) return nothing;
     const counts = this.data?.finalizeReport?.counts ?? {};
-    const actors = this.data?.pipeline?.steps.module10?.actors?.length ?? 0;
+    const artifacts = this.data?.artifacts;
+    const actors = this.data?.pipeline?.steps.module10?.actors?.length ?? artifacts?.access.value?.actors?.length ?? 0;
+    const rawRules: unknown = artifacts?.rules.value?.rules;
+    const rules = Array.isArray(rawRules) ? rawRules.length : rawRules && typeof rawRules === 'object' ? Object.keys(rawRules).length : 0;
     const issues = this.data?.validation.issues.filter(issue => issue.artifact === 'module.defs.ts' || issue.artifact === 'module') ?? this.issues;
     return html`
       <section class="nr-general" aria-label=${this.t('general.title', { module: module.title || module.moduleName })}>
         <div class="nr-general__foundation">
           ${this.renderLanguagePanel(module)}
-          <div class="nr-general__metrics">${this.metric('general.actors', actors)}${this.metric('general.journeys', counts.journeys)}${this.metric('general.entities', counts.entities)}${this.metric('general.rules', counts.rules)}</div>
+          <div class="nr-general__metrics">${this.metric('general.actors', actors)}${this.metric('general.journeys', counts.journeys ?? artifacts?.journeyIndex.value?.journeys.length ?? 0)}${this.metric('general.entities', counts.entities ?? artifacts?.entities.length ?? 0)}${this.metric('general.rules', counts.rules ?? rules)}</div>
           ${issues.length ? html`<section class="nr-general__issues" aria-live="polite"><strong>${this.t('general.validationTitle')}</strong>${issues.map(issue => html`<p><code>${issue.path}</code> ${issue.message}</p>`)}</section>` : nothing}
           <details class="nr-general__group">
             <summary><div><strong>${this.t('general.advancedTitle')}</strong><small>${this.t('general.advancedDescription')}</small></div><span aria-hidden="true">⌄</span></summary>
