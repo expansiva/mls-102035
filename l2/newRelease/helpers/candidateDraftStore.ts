@@ -122,7 +122,7 @@ export class IndexedDbCandidateDraftStore implements CandidateDraftStore {
     });
   }
 
-  async #write(operation: (store: IDBObjectStore) => IDBRequest<unknown>): Promise<void> {
+  async #write<T>(operation: (store: IDBObjectStore) => IDBRequest<T>): Promise<void> {
     const database = await this.#database();
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, 'readwrite');
