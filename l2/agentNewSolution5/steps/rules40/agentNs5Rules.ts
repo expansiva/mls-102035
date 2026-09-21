@@ -50,6 +50,7 @@ import {
   buildNs5RulesTool,
   normalizeNs5RulesPayload,
   ns5RulesToolPayload,
+  partitionCitedRules,
 } from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
 import {
   formatNs5RulesGate,
@@ -74,8 +75,9 @@ export function buildNs5RulesHumanPrompt(input: {
   entities: Ns5OntologyEntityViewItem[];
   /**
    * ns5_43 T2. `pipeline.ontology30.citedRules[]` — every rule id the ontology cited, the platform ones
-   * of `mdm.rules` included. Same nature as the `ruleRefs` of a transition: data, not instruction. The
-   * step must keep these ids; finalize80 I4 checks each of them resolves.
+   * of `mdm.rules` included. Same nature as the `ruleRefs` of a transition: data, not instruction.
+   * ns5_67 partitions before the prompt: platform ids are given as data (cite, never restate);
+   * only the rest are produced. finalize80 I4 still checks `transitions[].ruleRefs`.
    */
   citedRules?: readonly string[];
   gateFeedback?: string;
@@ -85,6 +87,7 @@ export function buildNs5RulesHumanPrompt(input: {
     ...input.entities.flatMap(entity => entity.transitions.flatMap(transition => transition.ruleRefs || [])),
     ...(input.citedRules || []),
   ])].filter(Boolean);
+  const partitioned = partitionCitedRules(citedRuleIds);
   return [
     '## Source request',
     input.sourcePrompt,
@@ -97,8 +100,11 @@ export function buildNs5RulesHumanPrompt(input: {
     '',
     '## Ontology (entities, fields, transitions)',
     formatOntology(input.entities),
-    citedRuleIds.length
-      ? `## rules the ontology cited; keep these ids\n${citedRuleIds.map(id => `- ${id}`).join('\n')}`
+    partitioned.platform.length
+      ? `## platform rules already defined by the platform — cite them, never restate or rename them\n${partitioned.platform.map(id => `- ${id}`).join('\n')}`
+      : '',
+    partitioned.module.length
+      ? `## rules the ontology cited; keep these ids\n${partitioned.module.map(id => `- ${id}`).join('\n')}`
       : '',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     // Shown in the TOOL's shape, not the artifact's: the model is about to submit this back (ns5_45).

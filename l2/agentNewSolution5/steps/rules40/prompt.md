@@ -22,6 +22,7 @@ a transition, or a calculated value that must hold. Do not invent a rule that ha
 request or a journey. An empty catalog is valid when neither names a constraint.
 
 If a transition in the ontology already lists `ruleRefs`, those ids must appear in this catalog.
+Platform rules already defined by the platform — cite them, never restate or rename them.
 
 Do not add scope, source references, triggers, conditions, authorities, error codes, frontend
 messages, acceptance cases, implementation advice or technical fields.

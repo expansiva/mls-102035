@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/rules40/contracts.ts" enhancement="_blank"/>
 
+import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import type { Ns5PipelineNormalization } from '/_102035_/l2/solution/types.js';
 import {
@@ -16,9 +17,10 @@ export interface Ns5RulesNormalization {
   /** The catalog in the artifact form: `ruleId` to the one sentence. */
   rules: Record<string, string>;
   /**
-   * ns5_56: what the step adopted from the ids it was CITED. Today only
-   * `citedIdSpellingAdopted`, in the shape every other step records
-   * (`{ kind, detail }`): the caller copies it into `pipeline.rules40.normalizations`.
+   * What the step recorded while converting the payload. `citedIdSpellingAdopted`
+   * (ns5_56) and `platformRuleNotRestated` (ns5_67), in the shape every other
+   * step records (`{ kind, detail }`): the caller copies it into
+   * `pipeline.rules40.normalizations`.
    */
   normalizations: Ns5PipelineNormalization[];
   /**
@@ -58,6 +60,34 @@ export function buildNs5RulesTool(
 }
 
 /**
+ * ns5_67. Same catalog ontology30 imports (`/_102034_/l4/ontology/mdm.defs.js`).
+ * Compared without case and without hyphens/underscores: `ruleForeignNamespaceRefused`
+ * is `rule-foreign-namespace-refused`, not a module rule.
+ */
+export function platformRuleIdOf(id: string): string | undefined {
+  if (!id) return undefined;
+  const folded = foldRuleId(id);
+  for (const platformId of Object.keys(mdm.rules)) {
+    if (foldRuleId(platformId) === folded) return platformId;
+  }
+  return undefined;
+}
+
+/** Split cited ids into platform (already owned) vs module (to produce). First-seen order. */
+export function partitionCitedRules(cited: readonly string[]): { platform: string[]; module: string[] } {
+  const platform: string[] = [];
+  const moduleIds: string[] = [];
+  const seen = new Set<string>();
+  for (const id of cited) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    if (platformRuleIdOf(id)) platform.push(id);
+    else moduleIds.push(id);
+  }
+  return { platform, module: moduleIds };
+}
+
+/**
  * Tool payload (an array of `{ ruleId, description }`, the only thing a strict tool schema can ask for)
  * to the artifact form (a map). A payload ALREADY in map form — the previous draft handed back on a
  * repair, or a hand-written catalog — is read unchanged, exactly like `keyed()` does in
@@ -76,7 +106,8 @@ export function normalizeNs5RulesPayload(
   // ns5_56: an id this step RECEIVED cited belongs to whoever cited it. `compras` was cited
   // `pedidoDeveTerFornecedorEItens` and the model wrote it back as `…Eitens`; finalize80 I4 compares
   // exact strings, so one letter of case failed the module. Only case: a genuinely different id is a
-  // new rule (or an I4 error), not a typo to fix here. Platform ids are kebab and never match MEMBER_ID.
+  // new rule (or an I4 error), not a typo to fix here. MEMBER_ID keeps a kebab platform id from
+  // lending its spelling; ns5_67 then discards a restatement of that id.
   const citedByCase = new Map<string, string>();
   for (const cited of citedRuleIds) {
     if (!cited || !MEMBER_ID.test(cited)) continue;
@@ -89,6 +120,11 @@ export function normalizeNs5RulesPayload(
   for (const rule of rulePairs(root.rules)) {
     if (!rule.ruleId && !rule.description) continue;
     let ruleId = rule.ruleId;
+    const platformId = ruleId ? platformRuleIdOf(ruleId) : undefined;
+    if (platformId) {
+      normalizations.push({ kind: 'platformRuleNotRestated', detail: `${ruleId} -> ${platformId}` });
+      continue;
+    }
     const cited = ruleId ? citedByCase.get(ruleId.toLowerCase()) : undefined;
     if (cited && cited !== ruleId) {
       normalizations.push({ kind: 'citedIdSpellingAdopted', detail: `${ruleId} -> ${cited}` });
@@ -100,6 +136,10 @@ export function normalizeNs5RulesPayload(
     rules[ruleId] = rule.description;
   }
   return { rules, duplicateRuleIds, normalizations };
+}
+
+function foldRuleId(id: string): string {
+  return id.replace(/[-_]/g, '').toLowerCase();
 }
 
 /**
