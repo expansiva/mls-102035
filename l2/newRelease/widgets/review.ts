@@ -13,11 +13,15 @@ import {
   actorIdFromKey,
   buildReviewView,
   MENU_ACTIONS,
+  openReviewExpansionKeys,
   REVIEW_ALL_ACTORS,
+  reviewExpansionKey,
+  toggleReviewExpansion,
   type ReviewNodeDetail,
   type ReviewNodeScope,
   type ReviewTreeNode,
   type ReviewView,
+  toggleReviewSelection,
 } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
 import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
 
@@ -40,7 +44,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private selectedActor = '';
   @state() private selectedId = '';
   @state() private selectedScope: ReviewNodeScope = 'future';
-  @state() private expandedIds: string[] = [];
+  @state() private expandedKeys: string[] = [];
 
   private loadToken = 0;
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
@@ -52,7 +56,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.selectedActor = '';
       this.selectedId = '';
       this.selectedScope = 'future';
-      this.expandedIds = [];
+      this.expandedKeys = [];
       void this.load();
     }
   }
@@ -116,45 +120,19 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.selectedActor = actor;
     this.selectedId = '';
     this.selectedScope = 'future';
-    this.expandedIds = [];
+    this.expandedKeys = [];
   }
 
   private selectNode(id: string, scope: ReviewNodeScope) {
-    this.selectedId = id;
-    this.selectedScope = scope;
+    const selected = toggleReviewSelection(this.selectedId, this.selectedScope, id, scope);
+    this.selectedId = selected.selectedId;
+    this.selectedScope = selected.selectedScope;
   }
 
-  private ancestorIds(nodes: ReviewTreeNode[], id: string): string[] {
-    const found: string[] = [];
-    const walk = (list: ReviewTreeNode[], trail: string[]): boolean => {
-      for (const node of list) {
-        if (node.id === id) {
-          found.push(...trail);
-          return true;
-        }
-        if (node.children.length && walk(node.children, [...trail, node.id])) return true;
-      }
-      return false;
-    };
-    walk(nodes, []);
-    return found;
-  }
-
-  private openIds(view: ReviewView): Set<string> {
-    const ids = new Set(this.expandedIds);
-    const forest = view.selectedScope === 'removed' ? view.removed : view.tree;
-    for (const id of this.ancestorIds(forest, view.selectedId)) ids.add(id);
-    return ids;
-  }
-
-  private toggleExpand(id: string) {
-    const view = this.view();
-    const wasOpen = this.openIds(view).has(id);
-    const forest = view.selectedScope === 'removed' ? view.removed : view.tree;
-    if (wasOpen && this.ancestorIds(forest, view.selectedId).includes(id)) this.selectNode(id, view.selectedScope);
-    this.expandedIds = wasOpen
-      ? this.expandedIds.filter(item => item !== id)
-      : [...this.expandedIds, id];
+  private toggleExpand(id: string, scope: ReviewNodeScope) {
+    const next = toggleReviewExpansion(this.expandedKeys, this.view(), id, scope);
+    this.selectedId = next.selectedId;
+    this.expandedKeys = next.expandedKeys;
   }
 
   private actionClass(action: string): string {
@@ -169,13 +147,13 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
   }
 
-  private renderMenuList(nodes: ReviewTreeNode[], scope: ReviewNodeScope, view: ReviewView, openIds: Set<string>): TemplateResult {
+  private renderMenuList(nodes: ReviewTreeNode[], scope: ReviewNodeScope, view: ReviewView, openKeys: Set<string>): TemplateResult {
     return html`
       <ul>
         ${nodes.map(node => {
           const selected = view.selectedId === node.id && view.selectedScope === scope;
           const expandable = node.children.length > 0;
-          const expanded = expandable && openIds.has(node.id);
+          const expanded = expandable && openKeys.has(reviewExpansionKey(scope, node.id));
           return html`
             <li>
               <div class="nr-review__row">
@@ -185,18 +163,18 @@ export class NewReleaseReview102035 extends StateLitElement {
                     class=${`nr-review__toggle${expanded ? ' is-open' : ''}`}
                     aria-expanded=${expanded ? 'true' : 'false'}
                     aria-label=${this.nodeAria(node)}
-                    @click=${() => this.toggleExpand(node.id)}
+                    @click=${() => this.toggleExpand(node.id, scope)}
                   ></button>
                 ` : html`<span class="nr-review__toggle is-leaf" aria-hidden="true"></span>`}
                 <button
                   type="button"
                   class=${`nr-review__link ${this.actionClass(node.action)}${selected ? ' is-active' : ''}`}
                   aria-label=${this.nodeAria(node)}
-                  aria-current=${selected ? 'true' : 'false'}
+                  aria-pressed=${selected ? 'true' : 'false'}
                   @click=${() => this.selectNode(node.id, scope)}
                 >${node.label}</button>
               </div>
-              ${expanded ? this.renderMenuList(node.children, scope, view, openIds) : nothing}
+              ${expanded ? this.renderMenuList(node.children, scope, view, openKeys) : nothing}
             </li>
           `;
         })}
@@ -205,14 +183,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private renderDetail(detail: ReviewNodeDetail | null) {
-    if (!detail) {
-      return html`
-        <div class="nr-review__empty-detail">
-          <h3>${this.t('review.noSelection')}</h3>
-          <p>${this.t('review.noSelectionBody')}</p>
-        </div>
-      `;
-    }
+    if (!detail) return nothing;
     const struck = detail.scope === 'removed' || detail.action === 'remove';
     return html`
       <article class="nr-review__detail" aria-live="polite">
@@ -265,7 +236,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         </section>
       `;
     }
-    const openIds = this.openIds(view);
+    const openKeys = openReviewExpansionKeys(this.expandedKeys, view);
     return html`
       <div class="nr-review__toolbar">
         <label>
@@ -279,13 +250,13 @@ export class NewReleaseReview102035 extends StateLitElement {
           ${MENU_ACTIONS.map(action => html`<li class=${this.actionClass(action)}>${this.t(`review.action.${action}`)}</li>`)}
         </ul>
       </div>
-      <div class="nr-review__split">
+      <div class=${`nr-review__split${view.selected ? ' has-detail' : ''}`}>
         <nav class="nr-review__menu" aria-label=${this.t('review.futureTree')}>
-          ${this.renderMenuList(view.tree, 'future', view, openIds)}
+          ${this.renderMenuList(view.tree, 'future', view, openKeys)}
           ${view.removed.length ? html`
             <details class="nr-review__removed" ?open=${view.selectedScope === 'removed'}>
               <summary>${this.t('review.removedTree')}</summary>
-              ${this.renderMenuList(view.removed, 'removed', view, openIds)}
+              ${this.renderMenuList(view.removed, 'removed', view, openKeys)}
             </details>
           ` : nothing}
         </nav>
@@ -308,20 +279,26 @@ export class NewReleaseReview102035 extends StateLitElement {
     const tableNames = item.tableRefs.join(', ');
     const unresolved = item.tableRefs.filter(ref => !knownTables.has(ref));
     return html`
-      <article class=${`nr-review__backend-item is-${item.tone}`}>
-        <header>
+      <details class=${`nr-review__backend-item is-${item.tone}`}>
+        <summary>
           <div><span>${this.t(`review.backend.kind.${item.kind}`)}</span><strong>${item.kind === 'table' ? this.tableTitle(item.entity) : item.label}</strong></div>
           <small class=${`nr-review__badge is-${item.tone}`} aria-label=${status}>${status}${item.tone === 'unknown' && item.status ? ` · ${item.status}` : ''}</small>
-        </header>
-        ${item.kind === 'table' || item.kind === 'change' ? html`<code>${item.kind === 'table' ? item.detail : item.label}</code>` : nothing}
-        ${item.detail && item.kind !== 'table' ? html`<p><span>${this.t('review.backend.detail')}</span> ${item.detail}</p>` : nothing}
-        ${item.reason ? html`<p><span>${this.t('review.backend.reason')}</span> ${item.reason}</p>` : nothing}
-        ${item.source ? html`<p><span>${this.t('review.backend.source')}</span> <code>${item.source}</code></p>` : nothing}
-        ${item.usecaseRefs.length ? html`<p><span>${this.t('review.backend.usecases')}</span> ${item.usecaseRefs.join(', ')}</p>` : nothing}
-        ${item.tableRefs.length > 1 ? html`<p><span>${this.t('review.backend.tables')}</span> ${tableNames}</p>` : nothing}
-        ${!item.tableRefs.length ? html`<p class="nr-review__backend-limitation">${this.t(`review.backend.noTable.${item.noTable}`)}</p>` : nothing}
-        ${unresolved.length ? html`<p class="nr-review__backend-limitation">${this.t('review.backend.unresolvedRefs', { refs: unresolved.join(', ') })}</p>` : nothing}
-      </article>
+        </summary>
+        <div class="nr-review__backend-item-detail">
+          ${item.kind === 'table' || item.kind === 'change' ? html`<code>${item.kind === 'table' ? item.detail : item.label}</code>` : nothing}
+          ${item.detail && item.kind !== 'table' ? html`<p><span>${this.t(
+            item.kind === 'usecase' ? 'review.backend.operation'
+              : item.kind === 'endpoint' ? 'review.backend.usecases'
+                : 'review.backend.detail',
+          )}</span> ${item.detail}</p>` : nothing}
+          ${item.reason ? html`<p><span>${this.t('review.backend.reason')}</span> ${item.reason}</p>` : nothing}
+          ${item.source ? html`<p><span>${this.t('review.backend.source')}</span> <code>${item.source}</code></p>` : nothing}
+          ${item.usecaseRefs.length ? html`<p><span>${this.t('review.backend.usecases')}</span> ${item.usecaseRefs.join(', ')}</p>` : nothing}
+          ${item.tableRefs.length ? html`<p><span>${this.t('review.backend.tables')}</span> ${tableNames}</p>` : nothing}
+          ${!item.tableRefs.length ? html`<p class="nr-review__backend-limitation">${this.t(`review.backend.noTable.${item.noTable}`)}</p>` : nothing}
+          ${unresolved.length ? html`<p class="nr-review__backend-limitation">${this.t('review.backend.unresolvedRefs', { refs: unresolved.join(', ') })}</p>` : nothing}
+        </div>
+      </details>
     `;
   }
 
@@ -369,6 +346,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         ${backend.kind === 'stale' ? html`<p class="nr-review__backend-message">${this.t('review.backend.stale')}</p>` : nothing}
         ${backend.kind === 'missing' ? html`<p class="nr-review__backend-message">${this.t('review.backend.missing')}</p>` : nothing}
         ${backend.kind === 'invalid' ? html`<p class="nr-review__backend-message" role="alert">${this.t(backend.errorCode)}</p>` : nothing}
+        ${backend.kind !== 'stale' ? this.renderEffort() : nothing}
         ${backend.kind === 'ready' ? html`
           <ul class="nr-review__backend-legend">
             ${(['new', 'change', 'keep', 'remove', 'unknown'] as const).map(tone => html`<li class=${`is-${tone}`}>${this.t(`review.backend.status.${tone}`)}</li>`)}
@@ -379,7 +357,6 @@ export class NewReleaseReview102035 extends StateLitElement {
             ${backend.unassociated.length ? this.renderBackendGroup(this.t('review.backend.unassociated'), '', backend.unassociated, knownTables) : nothing}
           </div>
         ` : nothing}
-        ${backend.kind !== 'stale' ? this.renderEffort() : nothing}
       </section>
     `;
   }

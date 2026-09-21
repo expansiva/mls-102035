@@ -106,6 +106,11 @@ export interface ReviewInput {
   selectedScope: ReviewNodeScope;
 }
 
+export interface ReviewExpansionState {
+  expandedKeys: string[];
+  selectedId: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -267,12 +272,62 @@ function indexNodes(nodes: MenuNode[]): Map<string, MenuNode> {
   return found;
 }
 
-function firstId(nodes: ReviewTreeNode[]): string {
-  return nodes[0]?.id || '';
-}
-
 function containsId(nodes: ReviewTreeNode[], id: string): boolean {
   return nodes.some(node => node.id === id || containsId(node.children, id));
+}
+
+export function toggleReviewSelection(
+  selectedId: string,
+  selectedScope: ReviewNodeScope,
+  id: string,
+  scope: ReviewNodeScope,
+): { selectedId: string; selectedScope: ReviewNodeScope } {
+  return selectedId === id && selectedScope === scope
+    ? { selectedId: '', selectedScope: scope }
+    : { selectedId: id, selectedScope: scope };
+}
+
+export function reviewExpansionKey(scope: ReviewNodeScope, id: string): string {
+  return `${scope}:${id}`;
+}
+
+function ancestorIds(nodes: ReviewTreeNode[], id: string): string[] {
+  const found: string[] = [];
+  const walk = (list: ReviewTreeNode[], trail: string[]): boolean => {
+    for (const node of list) {
+      if (node.id === id) {
+        found.push(...trail);
+        return true;
+      }
+      if (node.children.length && walk(node.children, [...trail, node.id])) return true;
+    }
+    return false;
+  };
+  walk(nodes, []);
+  return found;
+}
+
+export function openReviewExpansionKeys(expandedKeys: readonly string[], view: ReviewView): Set<string> {
+  const keys = new Set(expandedKeys);
+  const forest = view.selectedScope === 'removed' ? view.removed : view.tree;
+  for (const id of ancestorIds(forest, view.selectedId)) keys.add(reviewExpansionKey(view.selectedScope, id));
+  return keys;
+}
+
+export function toggleReviewExpansion(
+  expandedKeys: readonly string[],
+  view: ReviewView,
+  id: string,
+  scope: ReviewNodeScope,
+): ReviewExpansionState {
+  const key = reviewExpansionKey(scope, id);
+  const wasOpen = openReviewExpansionKeys(expandedKeys, view).has(key);
+  const forest = scope === 'removed' ? view.removed : view.tree;
+  const closesSelectedAncestor = wasOpen && view.selectedScope === scope && ancestorIds(forest, view.selectedId).includes(id);
+  return {
+    expandedKeys: wasOpen ? expandedKeys.filter(item => item !== key) : [...expandedKeys, key],
+    selectedId: closesSelectedAncestor ? '' : view.selectedId,
+  };
 }
 
 function detailOf(node: MenuNode, scope: ReviewNodeScope): ReviewNodeDetail {
@@ -349,11 +404,7 @@ export function buildReviewView(input: ReviewInput): ReviewView {
     selectedScope = 'future';
     selectedId = '';
   }
-  if (selectedScope === 'future' && !containsId(tree, selectedId)) selectedId = firstId(tree);
-  if (!selectedId && removed.length) {
-    selectedScope = 'removed';
-    selectedId = firstId(removed);
-  }
+  if (selectedScope === 'future' && !containsId(tree, selectedId)) selectedId = '';
   const selectedNode = selectedScope === 'removed' ? removedIndex.get(selectedId) : futureIndex.get(selectedId);
   return {
     kind: 'ready',
