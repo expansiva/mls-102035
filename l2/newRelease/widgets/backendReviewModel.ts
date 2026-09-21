@@ -5,6 +5,7 @@ import type { ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backend
 export const BACKEND_SCHEMA_V11 = '2026-09-21-p1-backend-v1.1';
 export const BACKEND_SCHEMA_V1 = '2026-09-21-p1-backend-v1';
 export const EFFORT_SCHEMA_V1 = '2026-09-21-p2-effort-v1';
+export const EFFORT_SCHEMA_V11 = '2026-09-21-p2-effort-v1.1';
 
 export type BackendItemKind = 'table' | 'usecase' | 'port' | 'endpoint' | 'removed' | 'change' | 'unmapped';
 export type BackendTone = 'new' | 'change' | 'keep' | 'remove' | 'unknown';
@@ -85,18 +86,15 @@ function invalid(errorCode = 'review.backend.invalid'): BackendReviewView {
   return { ...EMPTY, kind: 'invalid', errorCode };
 }
 
-function tableRefsOf(row: Record<string, unknown>, legacy: boolean, fallbackEntity: string, byEntity: Map<string, string[]>): { refs: string[]; noTable: string } | null {
-  if (!legacy) {
-    const refs = strings(row.tableRefs);
-    const noTable = string(row.noTable);
-    if (!refs || !['ok', 'mdm', 'none'].includes(noTable) || (refs.length > 0) !== (noTable === 'ok')) return null;
-    return { refs: [...new Set(refs)], noTable };
-  }
-  const matches = byEntity.get(fallbackEntity) ?? [];
-  return { refs: matches.length === 1 ? [matches[0]] : [], noTable: 'legacy' };
+function tableRefsOf(row: Record<string, unknown>, legacy: boolean): { refs: string[]; noTable: string } | null {
+  if (legacy && row.tableRefs === undefined && row.noTable === undefined) return { refs: [], noTable: 'legacy' };
+  const refs = strings(row.tableRefs);
+  const noTable = string(row.noTable);
+  if (!refs || !['ok', 'mdm', 'none'].includes(noTable) || (refs.length > 0) !== (noTable === 'ok')) return null;
+  return { refs: [...new Set(refs)], noTable };
 }
 
-/** Group only producer-provided references, with a narrow, unambiguous v1 fallback. */
+/** Group only producer-provided references. Legacy rows without them stay explicitly unassociated. */
 export function buildBackendReview(read: ReviewArtifactRead, stale = false, expectedModuleName = ''): BackendReviewView {
   if (stale) return { ...EMPTY, kind: 'stale', errorCode: '' };
   if (read.status === 'missing') return { ...EMPTY, kind: 'missing', errorCode: '' };
@@ -125,16 +123,13 @@ export function buildBackendReview(read: ReviewArtifactRead, stale = false, expe
   }
   const groupById = new Map(groups.map(group => [group.tableId, group]));
   if (groupById.size !== groups.length) return invalid();
-  const byEntity = new Map<string, string[]>();
-  for (const group of groups) byEntity.set(group.entity, [...(byEntity.get(group.entity) ?? []), group.tableId]);
   const usecases = (raw.usecases as unknown[]).map(record);
   if (usecases.some(item => !item || !string(item.usecaseId))) return invalid();
-  const usecaseById = new Map(usecases.map(item => [string(item!.usecaseId), item!]));
-  if (usecaseById.size !== usecases.length) return invalid();
+  if (new Set(usecases.map(item => string(item!.usecaseId))).size !== usecases.length) return invalid();
   const rows: BackendItem[] = [];
   const add = (kind: BackendItemKind, row: Record<string, unknown>, id: string, label: string, entity: string, detail = ''): boolean => {
     if (!id) return false;
-    const relation = legacy && kind === 'table' ? { refs: [id], noTable: 'legacy' } : tableRefsOf(row, legacy, entity, byEntity);
+    const relation = tableRefsOf(row, legacy);
     if (!relation) return false;
     const status = string(kind === 'change' ? row.op : row.status);
     rows.push({
@@ -158,8 +153,7 @@ export function buildBackendReview(read: ReviewArtifactRead, stale = false, expe
     const item = record(value);
     if (!item) return invalid();
     const ref = string(item.usecaseRef);
-    const entity = legacy ? string(usecaseById.get(ref)?.entity) : '';
-    if (!add('endpoint', item, string(item.route), string(item.route), entity, ref)) return invalid();
+    if (!add('endpoint', item, string(item.route), string(item.route), '', ref)) return invalid();
   }
   for (const value of raw.removed as unknown[]) {
     const item = record(value);
@@ -199,15 +193,25 @@ export function parseEffortSummary(read: ReviewArtifactRead, expectedModuleName 
   if (read.status === 'invalid') return { kind: 'invalid', counts: [] };
   const raw = record(read.value);
   const totals = record(raw?.totals);
-  if (raw?.schemaVersion !== EFFORT_SCHEMA_V1 || raw.device !== 'web' || !totals || (expectedModuleName && raw.moduleName !== expectedModuleName)) return { kind: 'invalid', counts: [] };
+  const schemas = [EFFORT_SCHEMA_V1, EFFORT_SCHEMA_V11];
+  const moduleName = typeof raw?.moduleName === 'string' && raw.moduleName.trim() ? raw.moduleName : '';
+  if (!schemas.includes(raw?.schemaVersion as string) || raw?.device !== 'web' || !moduleName || !totals
+    || (expectedModuleName && moduleName !== expectedModuleName)) return { kind: 'invalid', counts: [] };
   const categories = ['screens', 'endpoints', 'usecases', 'tables'] as const;
+  const statuses = ['toCreate', 'toUpdate', 'toRemove', 'done'] as const;
+  if (Object.keys(totals).length !== categories.length || Object.keys(totals).some(category => !categories.includes(category as typeof categories[number]))) {
+    return { kind: 'invalid', counts: [] };
+  }
   const counts: EffortCount[] = [];
   for (const category of categories) {
     const values = record(totals[category]);
-    if (!values) continue;
-    const statuses = Object.entries(values).filter((entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] >= 0)
-      .map(([status, count]) => ({ status, count }));
-    counts.push({ category, statuses });
+    if (!values || Object.keys(values).length !== statuses.length
+      || Object.keys(values).some(status => !statuses.includes(status as typeof statuses[number]))) return { kind: 'invalid', counts: [] };
+    const parsed = statuses.map(status => ({ status, count: values[status] }));
+    if (parsed.some(value => typeof value.count !== 'number' || !Number.isSafeInteger(value.count) || value.count < 0)) {
+      return { kind: 'invalid', counts: [] };
+    }
+    counts.push({ category, statuses: parsed as Array<{ status: string; count: number }> });
   }
-  return counts.length ? { kind: 'counts', counts } : { kind: 'invalid', counts: [] };
+  return { kind: 'counts', counts };
 }

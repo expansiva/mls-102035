@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { reviewArtifactFile, type ReviewArtifactRead } from '../helpers/backendReader.js';
-import { BACKEND_SCHEMA_V1, BACKEND_SCHEMA_V11, backendTone, buildBackendReview, parseEffortSummary } from './backendReviewModel.js';
+import { BACKEND_SCHEMA_V1, BACKEND_SCHEMA_V11, EFFORT_SCHEMA_V1, EFFORT_SCHEMA_V11, backendTone, buildBackendReview, parseEffortSummary } from './backendReviewModel.js';
 import { buildReviewView } from './reviewModel.js';
 
 function read(value: unknown): ReviewArtifactRead {
@@ -50,6 +50,20 @@ test('real v1.1 backend artifact is consumed without inventing changes', () => {
   assert.ok(view.unassociated.some(item => item.noTable === 'mdm'));
 });
 
+test('current candidate keeps the measured backend roots and producer associations', () => {
+  const real = JSON.parse(readFileSync(new URL('../../../../mls-102047/l4/mensalidadesAcademia/tobe/plan/pool/l2/web/backend.json', import.meta.url), 'utf8'));
+  const view = buildBackendReview(read(real), false, 'mensalidadesAcademia');
+  assert.equal(view.kind, 'ready');
+  assert.equal(view.groups.length, 5);
+  assert.equal(real.tables.length, 5);
+  assert.equal(real.usecases.length, 12);
+  assert.equal(real.ports.length, 5);
+  assert.equal(real.endpoints.length, 15);
+  assert.equal(real.changes.length, 2);
+  assert.ok(view.groups.find(group => group.tableId === 'mensalidade')?.items.some(item => item.id === 'change:rule:situacaoMensalidadeDerivada'));
+  assert.ok(view.unassociated.some(item => item.id === 'change:rule:alunoBloqueadoPorDuasMensalidadesVencidas'));
+});
+
 test('two real menu authorities do not filter the module-wide backend', () => {
   const base = new URL('../../../../mls-102047/l4/mensalidadesAcademia/pool/l2/web/', import.meta.url);
   const menu = JSON.parse(readFileSync(new URL('menu.json', base), 'utf8'));
@@ -87,25 +101,30 @@ test('v1.1 explicit associations make one shared item and keep all no-table item
   assert.ok(buildBackendReview(read(removedTable)).groups.find(group => group.tableId === 'oldAudit')?.items.some(item => item.id === 'removed:oldAudit'));
 });
 
-test('legacy v1 fallback associates only a unique table.entity and endpoint usecaseRef', () => {
+test('legacy v1 never infers table association from entity or endpoint usecaseRef', () => {
   const legacy = fixture() as any;
   legacy.schemaVersion = BACKEND_SCHEMA_V1;
   legacy.changes = undefined;
   legacy.meta = {};
-  legacy.tables.push({ tableId: 'consultaAudit', entity: 'Consulta', status: 'done' });
   for (const list of [legacy.tables, legacy.usecases, legacy.ports, legacy.endpoints, legacy.removed]) {
     for (const item of list) { delete item.tableRefs; delete item.noTable; }
   }
   const view = buildBackendReview(read(legacy));
   assert.equal(view.kind, 'ready');
-  assert.ok(view.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.kind === 'table'));
-  assert.ok(view.unassociated.some(item => item.id === 'usecase:agendarConsulta'));
-  assert.ok(view.unassociated.some(item => item.id === 'endpoint:/consultas'));
-  assert.ok(view.unassociated.some(item => item.id === 'removed:legacy'));
-  legacy.tables = legacy.tables.filter((table: { tableId: string }) => table.tableId !== 'consultaAudit');
-  const unambiguous = buildBackendReview(read(legacy));
-  assert.ok(unambiguous.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.id === 'usecase:agendarConsulta'));
-  assert.ok(unambiguous.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.id === 'endpoint:/consultas'));
+  assert.ok(view.groups.every(group => group.items.length === 0));
+  assert.ok(view.unassociated.some(item => item.id === 'table:consulta' && item.noTable === 'legacy'));
+  assert.ok(view.unassociated.some(item => item.id === 'usecase:agendarConsulta' && item.noTable === 'legacy'));
+  assert.ok(view.unassociated.some(item => item.id === 'endpoint:/consultas' && item.noTable === 'legacy'));
+  assert.ok(view.unassociated.some(item => item.id === 'removed:legacy' && item.noTable === 'legacy'));
+
+  const explicit = fixture() as any;
+  explicit.schemaVersion = BACKEND_SCHEMA_V1;
+  explicit.changes = undefined;
+  explicit.meta = {};
+  const withProducerRefs = buildBackendReview(read(explicit));
+  assert.equal(withProducerRefs.kind, 'ready');
+  assert.ok(withProducerRefs.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.id === 'usecase:agendarConsulta'));
+  assert.ok(withProducerRefs.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.id === 'endpoint:/consultas'));
 });
 
 test('unknown status stays explicit, duplicate change IDs fail, and stale revision hides all rows', () => {
@@ -126,12 +145,19 @@ test('unknown status stays explicit, duplicate change IDs fail, and stale revisi
   assert.equal(buildBackendReview(read(fixture()), false, 'financeiro').errorCode, 'review.backend.context');
 });
 
-test('effort keeps emitted category counts and never derives hours', () => {
-  const effort = JSON.parse(readFileSync(new URL('../../../../mls-102047/l4/mensalidadesAcademia/pool/l2/web/effort.json', import.meta.url), 'utf8'));
+test('effort v1 and v1.1 keep strict emitted counts and never derive hours', () => {
+  const effort = JSON.parse(readFileSync(new URL('../../../../mls-102047/l4/mensalidadesAcademia/tobe/plan/pool/l2/web/effort.json', import.meta.url), 'utf8'));
   const summary = parseEffortSummary(read(effort));
+  assert.equal(effort.schemaVersion, EFFORT_SCHEMA_V11);
   assert.equal(summary.kind, 'counts');
   assert.deepEqual(summary.counts.map(count => count.category), ['screens', 'endpoints', 'usecases', 'tables']);
   assert.equal(summary.counts.find(count => count.category === 'tables')?.statuses.find(value => value.status === 'toCreate')?.count, effort.totals.tables.toCreate);
+  assert.equal(parseEffortSummary(read({ ...effort, schemaVersion: EFFORT_SCHEMA_V1 })).kind, 'counts');
   assert.equal(parseEffortSummary({ status: 'missing', path: '' }).kind, 'missing');
   assert.equal(parseEffortSummary(read(effort), 'outroModulo').kind, 'invalid');
+  assert.equal(parseEffortSummary(read({ ...effort, schemaVersion: '2026-09-21-p2-effort-v2' })).kind, 'invalid');
+  assert.equal(parseEffortSummary(read({ ...effort, device: 'mobile' })).kind, 'invalid');
+  assert.equal(parseEffortSummary(read({ ...effort, totals: { ...effort.totals, extra: {} } })).kind, 'invalid');
+  assert.equal(parseEffortSummary(read({ ...effort, totals: { ...effort.totals, tables: { ...effort.totals.tables, toCreate: -1 } } })).kind, 'invalid');
+  assert.equal(parseEffortSummary(read({ ...effort, totals: { ...effort.totals, tables: { ...effort.totals.tables, surprise: 1 } } })).kind, 'invalid');
 });

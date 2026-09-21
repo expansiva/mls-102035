@@ -10,11 +10,17 @@ import {
   MENU_ACTIONS,
   MENU_SCHEMA_VERSION,
   menuTreeForActor,
+  openReviewExpansionKeys,
   parseReviewMenu,
   resolveSelectedActor,
   REVIEW_ALL_ACTORS,
+  reviewExpansionKey,
+  toggleReviewExpansion,
+  toggleReviewSelection,
   type MenuNode,
   type ReviewInput,
+  type ReviewTreeNode,
+  type ReviewView,
 } from './reviewModel.js';
 
 const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', import.meta.url), 'utf8'));
@@ -85,7 +91,53 @@ test('Todos keeps original tree order and exposes removed as a separate forest',
   assert.equal(ready.removed[0].action, 'remove');
   assert.equal(ready.showContinue, true);
   assert.equal(ready.showCalculate, false);
+  assert.equal(ready.selectedId, '');
+  assert.equal(ready.selected, null);
   assert.deepEqual(menuTreeForActor(parsed.menu, REVIEW_ALL_ACTORS).map(node => node.id), parsed.menu.tree.map(node => node.id));
+});
+
+test('menu starts without detail and label selection toggles only the same node and scope', () => {
+  const initial = view();
+  assert.equal(initial.selectedId, '');
+  assert.equal(initial.selected, null);
+
+  const opened = toggleReviewSelection('', 'future', 'inicio', 'future');
+  assert.deepEqual(opened, { selectedId: 'inicio', selectedScope: 'future' });
+  assert.deepEqual(toggleReviewSelection(opened.selectedId, opened.selectedScope, 'inicio', 'future'), {
+    selectedId: '', selectedScope: 'future',
+  });
+  assert.deepEqual(toggleReviewSelection('inicio', 'future', 'inicio', 'removed'), {
+    selectedId: 'inicio', selectedScope: 'removed',
+  });
+  assert.equal(view({ selectedId: 'does-not-exist' }).selected, null);
+});
+
+test('equal ids in future and removed keep expansion and ancestor closing scoped', () => {
+  const root = (childId: string): ReviewTreeNode => ({
+    id: 'same-root', kind: 'hub', label: 'Root', action: 'keep',
+    children: [{ id: childId, kind: 'page', label: childId, action: 'keep', children: [] }],
+  });
+  const scoped: ReviewView = {
+    ...view(),
+    tree: [root('future-child')],
+    removed: [root('removed-child')],
+    selectedId: 'removed-child',
+    selectedScope: 'removed',
+    selected: null,
+  };
+  const futureKey = reviewExpansionKey('future', 'same-root');
+  const removedKey = reviewExpansionKey('removed', 'same-root');
+  assert.notEqual(futureKey, removedKey);
+  const automatic = openReviewExpansionKeys([], scoped);
+  assert.equal(automatic.has(futureKey), false);
+  assert.equal(automatic.has(removedKey), true);
+
+  const futureOpened = toggleReviewExpansion([], scoped, 'same-root', 'future');
+  assert.deepEqual(futureOpened.expandedKeys, [futureKey]);
+  assert.equal(futureOpened.selectedId, 'removed-child');
+  const removedClosed = toggleReviewExpansion(futureOpened.expandedKeys, scoped, 'same-root', 'removed');
+  assert.deepEqual(removedClosed.expandedKeys, [futureKey]);
+  assert.equal(removedClosed.selectedId, '');
 });
 
 test('empty or unknown selection opens the first authorities actor, not Todos', () => {
