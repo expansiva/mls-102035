@@ -38,18 +38,4 @@ void test('a planner L4 step never emits add-message-ai — use updateStatus or 
   );
 });
 
-const FORBIDDEN_AGENT = /createPlInvokeStep|createPlLoopWaitStep|\btype:\s*['"]agent['"]/;
 
-void test('a planner L4 step never emits type: agent — dispatch to other planners is suspended', () => {
-  const offenders: string[] = [];
-  for (const file of walk(STEPS)) {
-    const source = readFileSync(file, 'utf8');
-    if (FORBIDDEN_AGENT.test(source)) offenders.push(relative(STEPS, file));
-  }
-  assert.deepEqual(
-    offenders,
-    [],
-    `A step created a type: 'agent' child (or called createPlInvokeStep / createPlLoopWaitStep). Dispatch to other planners is suspended (Wagner, 18/09) so the L4 planner can be tested alone.\n`
-      + `Write the pool boxes, record the trace, and complete with an AIResultStep.\n  ${offenders.join('\n  ')}`,
-  );
-});

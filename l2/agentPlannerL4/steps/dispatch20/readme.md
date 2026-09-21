@@ -1,20 +1,21 @@
-# dispatch20 — list artifacts, write pool messages, stop
+# dispatch20 — list artifacts, write pool messages, create L2 r1
 
 Deterministic. No LLM call.
 
-Dispatch to other planners is suspended (Wagner, 18/09). This step does **not** create
-an `agentPlannerL2` / `agentPlannerL1` child or a wait. `createPlInvokeStep` stays in
-`plCore` for when that suspension lifts.
+Creates a `type: 'agent'` child for `agentPlannerL2` in the same task. L1 r1 is created
+by loop30 when the `l2→l1` message is in the box. Missing planner: readable status, no
+silent skip of the box (the message stays).
 
 ## Input
 
-A complete module whose `entry10` already ran. Pool was empty at entry (entry10 refuses otherwise).
+A complete module whose `entry10` already ran and wiped the previous pool.
 
 ## Output
 
 - `l4/<mod>/pool/l2/<stamp>_<thread>_1.json` and `pool/l1/...` — two equal messages except `to`.
 - `pipeline.json` pool trace: two `delivered` lines.
-- `dispatch20-done` result: module, thread, artifact count, both boxes pending for the planners.
+- Step `l2-r1`. Prompt `{ moduleName, thread, file }`.
+- `dispatch20-done` result: module, thread, artifact count, invoke count.
 
 ## Artifact list
 

@@ -84,15 +84,17 @@ void test('flow artifacts match the planner table', () => {
   assert.deepEqual(flow.artifacts, EXPECTED_ARTIFACTS);
 });
 
-void test('flow records that dispatch to other planners is suspended', () => {
+void test('flow records that L4 orchestrates L2 then L1 then L2 in the same task', () => {
   const flow = loadFlow();
-  assert.match(flow.description, /suspended/i);
-  assert.equal(flow.principles.some(line => /suspended/i.test(line)), true);
+  assert.match(flow.description, /orchestrate L2/i);
+  assert.equal(flow.principles.some(line => /same task/i.test(line)), true);
+  const entry = flow.steps.find(step => step.id === 'entry10');
   const dispatch = flow.steps.find(step => step.id === 'dispatch20');
   const loop = flow.steps.find(step => step.id === 'loop30');
-  assert.match(dispatch?.goal || '', /suspended/i);
-  assert.match(loop?.goal || '', /suspended/i);
-  assert.match(loop?.goal || '', /immediately/i);
+  assert.match(entry?.goal || '', /wipe/i);
+  assert.match(dispatch?.goal || '', /L2 r1/i);
+  assert.match(loop?.goal || '', /L1 r1/i);
+  assert.match(loop?.goal || '', /effort/i);
 });
 
 void test('each step folder that exists implements beforePromptStep and is on the dispatch table', async () => {

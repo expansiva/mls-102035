@@ -1,5 +1,24 @@
 # agentPlannerL4
 
+## 2026-09-20 (p4_08 rodada 2)
+
+- `dispatch20` creates only L2 r1. L1 r1 is created by `loop30` with the real `l2→l1`
+  filename once that message is in the box (`dependsOn` of an agent step waits for
+  scheduling, not the artifact). A completed planner that produced no output fails
+  the task (`<planId> ran without output`); the table cell is `no-output`.
+
+## 2026-09-20 (p4_08)
+
+- `entry10` wipes `l4/<mod>/pool/{l1,l2,l4}/` (messages via `deletePoolMessage` after
+  `outcome: 'processed'`, plus `web/*.json`) and records `poolWiped`. Pending pool no
+  longer refuses: the pool is derived from l4.
+- `dispatch20` creates `type: 'agent'` steps L2 r1 → L1 r1 (`dependsOn: l2-r1`) in the
+  same task. Prompt is `{ moduleName, thread, file }`. No `add-message-ai`.
+- `loop30` creates L2 effort r1 with the real `l1→l2` filename (ramification B: L2 does
+  not accept `file: ''` as a step prompt). Rounds 2 and 3 only when a new message with
+  `round > 1` is in the box; round 3 with a non-empty box is `disputed`. Writes
+  `{ round, l2, l1, effort }` on the l4 pipeline.
+
 ## 2026-09-18 (p4_06)
 
 - Dispatch to other planners is suspended (Wagner, 18/09) so the L4 planner can be tested

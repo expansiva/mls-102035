@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createPlAgentStep } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import { createPlAgentStep, PL_L1_AGENT, PL_L2_AGENT, plRoundPlanId } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { PL_STEP_HOOKS } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 import {
   afterPlDispatchPromptStep,
@@ -48,6 +48,7 @@ function installHost(): Host {
       localStor: {
         setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
         listFolder: () => [],
+        deleteFile: (file: Stored) => { file.status = 'deleted'; },
       },
     },
   };
@@ -79,7 +80,7 @@ const COMPLETE_PIPELINE = {
   updatedAt: '2026-09-18T00:00:00.000Z',
 };
 
-function contextWith(opts?: { l2Agent?: boolean }): {
+function contextWith(opts?: { l2Agent?: boolean; l1Agent?: boolean }): {
   host: Host;
   context: mls.msg.ExecutionContext;
   parent: mls.msg.AIAgentStep;
@@ -95,6 +96,9 @@ function contextWith(opts?: { l2Agent?: boolean }): {
   );
   if (opts?.l2Agent) {
     seed(host, { level: 2, folder: 'agentPlannerL2', shortName: 'agentPlannerL2', extension: '.ts' }, '');
+  }
+  if (opts?.l1Agent) {
+    seed(host, { level: 2, folder: 'agentPlannerL1', shortName: 'agentPlannerL1', extension: '.ts' }, '');
   }
   const step = createPlAgentStep('dispatch20', 'mensalidadesAcademia');
   step.stepId = 20;
@@ -130,28 +134,44 @@ void test('dispatch20 hook is registered as deterministic', () => {
   assert.equal(PL_STEP_HOOKS.dispatch20?.afterPromptStep, afterPlDispatchPromptStep);
 });
 
-void test('dispatch20 writes the boxes, traces them, and does not create planner steps', async () => {
-  const { context, parent, step } = contextWith({ l2Agent: true });
+void test('dispatch20 writes the boxes and creates only L2 r1 — L1 waits for the box', async () => {
+  const { context, parent, step } = contextWith({ l2Agent: true, l1Agent: true });
   const intents = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
   const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
-  assert.equal(added.length, 1);
-  assert.equal(added[0]?.step.type, 'result');
-  assert.equal(added.some(intent => intent.step.type === 'agent'), false);
-  assert.equal(added.some(intent => String(intent.step.planning?.planId || '').startsWith('loop30-wait-')), false);
-  assert.equal(intents.some(intent => intent.type === 'update-status' && (intent as mls.msg.AgentIntentUpdateStatus).stepId === 30), false);
+  const agents = added.filter(intent => intent.step.type === 'agent');
+  assert.equal(agents.length, 1);
+  assert.equal((agents[0].step as mls.msg.AIAgentStep).agentName, PL_L2_AGENT);
+  assert.equal(agents[0].step.planning?.planId, plRoundPlanId('l2', 1));
+  const l2Prompt = JSON.parse(String((agents[0].step as mls.msg.AIAgentStep).prompt)) as {
+    moduleName: string; thread: string; file: string;
+  };
+  assert.equal(l2Prompt.moduleName, 'mensalidadesAcademia');
+  assert.ok(l2Prompt.thread);
+  assert.match(l2Prompt.file, /pool\/l2\//);
+  assert.equal(added.some(intent => (intent.step as mls.msg.AIAgentStep).agentName === PL_L1_AGENT), false);
   const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
   const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as {
-    moduleName: string; thread: string; artifactCount: number; status: string;
+    moduleName: string; thread: string; artifactCount: number; invokeCount: number;
   };
   assert.equal(result.moduleName, 'mensalidadesAcademia');
   assert.ok(result.thread);
   assert.equal(result.artifactCount, 1);
-  assert.match(result.status, /pool\/l1 and pool\/l2 pending for the planners/);
+  assert.equal(result.invokeCount, 1);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
   const trace = await readPoolTrace('mensalidadesAcademia');
   assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
   assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
+});
+
+void test('dispatch20 without planners writes the boxes and creates no agent steps', async () => {
+  const { context, parent, step } = contextWith();
+  const intents = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
+  const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+  assert.equal(added.some(intent => intent.step.type === 'agent'), false);
+  const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
+  const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { status: string };
+  assert.match(result.status, /not available/);
 });
 
 void test('dispatch20 afterPrompt fails an LLM reply', async () => {

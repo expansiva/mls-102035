@@ -1,5 +1,14 @@
 # dispatch20
 
+## 2026-09-20 (p4_08 rodada 2)
+
+- Creates only L2 r1. L1 r1 is created by loop30 when the `l2→l1` message exists.
+
+## 2026-09-20 (p4_08)
+
+- Creates `type: 'agent'` steps L2 r1 then L1 r1 (`dependsOn: l2-r1`) in the same task.
+  Prompt `{ moduleName, thread, file }`. Missing planner stays a readable status.
+
 ## 2026-09-18 (p4_06)
 
 - Stops after writing the two boxes and the trace. No `type: 'agent'` child, no wait

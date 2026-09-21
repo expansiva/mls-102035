@@ -7,15 +7,18 @@ import {
   listModuleFolders,
   moduleFile,
   normalizeModuleName,
+  pipelineFile,
   readPipeline,
+  writeJson,
   writePipeline,
   type Ns5FileInfo,
 } from '/_102035_/l2/solution/fs.js';
 import { readL5Config, writeL5Config } from '/_102035_/l2/solution/lib.js';
 import {
+  deletePoolMessage,
   listPoolBox,
   nextThread,
-  poolHasPending,
+  POOL_BOXES,
   POOL_MAX_ROUND,
   readPoolMessage,
   readPoolTrace,
@@ -28,7 +31,7 @@ import {
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
 
 export const PL_FLOW_ID = 'agentPlannerL4' as const;
-export const PL_FLOW_VERSION = '2026-09-18-pl-flow-v1' as const;
+export const PL_FLOW_VERSION = '2026-09-20-pl-flow-v3' as const;
 export const PL_AGENT_NAME = 'agentPlannerL4' as const;
 
 export const PL_STEP_IDS = ['entry10', 'dispatch20', 'loop30'] as const;
@@ -65,8 +68,16 @@ export interface PlParsedInvocation {
 export interface PlEntryFacts {
   moduleExists: boolean;
   pipelineStatus: string;
-  poolPending: boolean;
   l5ConfigExists: boolean;
+}
+
+export type PlInvokeSide = 'l2' | 'l1' | 'effort';
+
+export interface PlOrchestrationRow {
+  round: number;
+  l2: string;
+  l1: string;
+  effort: string;
 }
 
 export function isPlStepId(value: string): value is PlStepId {
@@ -120,7 +131,6 @@ export function plEntryRefusal(invocation: PlParsedInvocation, facts: PlEntryFac
   if (facts.pipelineStatus !== 'complete') {
     return `Module "${invocation.module}" pipeline is not complete.`;
   }
-  if (facts.poolPending) return 'module has pending pool messages; finish or dispute them first';
   if (!facts.l5ConfigExists) return 'l5/config.json is missing.';
   return '';
 }
@@ -132,7 +142,6 @@ export async function gatherPlEntryFacts(moduleName: string): Promise<PlEntryFac
   return {
     moduleExists: !!existing,
     pipelineStatus: pipeline?.status || '',
-    poolPending: existing ? poolHasPending(existing) : false,
     l5ConfigExists: config !== null,
   };
 }
@@ -314,26 +323,44 @@ export function invokePlanId(box: 'l1' | 'l2', thread: string, round: number): s
   return `pool-${box}-${thread}-${round}`;
 }
 
+export function plRoundPlanId(side: PlInvokeSide, round: number): string {
+  return side === 'effort' ? `l2-effort-r${round}` : `${side}-r${round}`;
+}
+
+export function plRoundTitle(side: PlInvokeSide, round: number): string {
+  if (side === 'effort') return `L2 effort r${round}`;
+  if (side === 'l1') return `L1 r${round}`;
+  return `L2 r${round}`;
+}
+
+export function plStepPrompt(moduleName: string, thread: string, file: string): string {
+  return JSON.stringify({ moduleName, thread, file });
+}
+
 export function createPlInvokeStep(args: {
   agentName: string;
   moduleName: string;
   thread: string;
   file: string;
   planId: string;
+  dependsOn?: string[];
+  stepTitle?: string;
 }): mls.msg.AIAgentStep {
+  const dependsOn = [...(args.dependsOn || [])];
   return {
     type: 'agent',
     stepId: 0,
     interaction: null,
-    stepTitle: args.agentName === PL_L1_AGENT ? 'Planner L1' : 'Planner L2',
-    status: 'waiting_human_input',
+    stepTitle: args.stepTitle
+      || (args.agentName === PL_L1_AGENT ? 'Planner L1' : 'Planner L2'),
+    status: dependsOn.length ? 'waiting_dependency' : 'waiting_human_input',
     nextSteps: [],
     agentName: args.agentName,
-    prompt: JSON.stringify({ moduleName: args.moduleName, thread: args.thread, file: args.file }),
+    prompt: plStepPrompt(args.moduleName, args.thread, args.file),
     rags: [],
     planning: {
       planId: args.planId,
-      dependsOn: [],
+      dependsOn,
       executionMode: 'sequential',
       executionHost: 'client',
     },
@@ -392,6 +419,158 @@ export async function runPlDispatch(moduleName: string, now: Date): Promise<PlDi
   const invokeL2 = plannerAgentPresent(PL_L2_AGENT);
   const invokeL1 = plannerAgentPresent(PL_L1_AGENT);
   return { artifacts, thread, l2File, l1File, l2Path, l1Path, invokeL2, invokeL1, status: formatMissingPlannerStatus(1, invokeL2, invokeL1) };
+}
+
+export function createRound1InvokeSteps(moduleName: string, run: PlDispatchRun): mls.msg.AIAgentStep[] {
+  if (!run.invokeL2) return [];
+  return [createPlInvokeStep({
+    agentName: PL_L2_AGENT,
+    moduleName,
+    thread: run.thread,
+    file: run.l2Path,
+    planId: plRoundPlanId('l2', 1),
+    stepTitle: plRoundTitle('l2', 1),
+  })];
+}
+
+function otherBox(box: PoolBox): PoolBox {
+  return box === 'l4' ? 'l2' : 'l4';
+}
+
+function listIndexedPoolFiles(moduleName: string, folder: string): Ns5FileInfo[] {
+  const module = normalizeModuleName(moduleName);
+  const project = moduleFile(module).project;
+  const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
+  const found = new Map<string, Ns5FileInfo>();
+  const consider = (file: { folder?: string; shortName?: string; extension?: string; status?: string }) => {
+    if (file.status === 'deleted' || !file.shortName) return;
+    if (String(file.folder || '') !== folder) return;
+    const info: Ns5FileInfo = {
+      project, level: 4, folder, shortName: String(file.shortName), extension: String(file.extension || ''),
+    };
+    found.set(`${info.shortName}${info.extension}`, info);
+  };
+  for (const file of Object.values(files)) {
+    if (!file || file.project !== project || Number(file.level) !== 4) continue;
+    consider(file);
+  }
+  const listFolder = hostListFolder();
+  if (listFolder) {
+    for (const info of listFolder(project, 4, folder)) {
+      const key = mls.stor.getKeyToFile(info);
+      const indexed = files[key];
+      if (indexed?.status === 'deleted') continue;
+      if (!indexed) files[key] = diskFileInfo(info);
+      consider(indexed || info);
+    }
+  }
+  return [...found.values()];
+}
+
+/** `l4/<mod>/pool/<box>/web/**.json` — not pool messages (menu/needs/backend/effort). */
+export function listPoolWebFiles(moduleName: string, box: PoolBox): Ns5FileInfo[] {
+  const module = normalizeModuleName(moduleName);
+  const folder = `${module}/pool/${box}/web`;
+  return listIndexedPoolFiles(module, folder).filter(file => file.extension === '.json');
+}
+
+/**
+ * se os artefatos do l4 mudarem, todo o planejamento dos pools deve ser refeito
+ *
+ * Wipes every mailbox of the module: pool messages (trace `processed` then
+ * `deletePoolMessage`) and `web/*.json`. Records `poolWiped` on the l4 pipeline.
+ * Trace outcome stays `processed` (the pool enum does not grow); the reason is
+ * `pool wiped: l4 changed`.
+ */
+export async function wipeModulePool(moduleName: string, now: Date): Promise<string[]> {
+  const wiped: string[] = [];
+  const at = now.toISOString();
+  const threadFallback = `${normalizeModuleName(moduleName)}-00000000000000`;
+  for (const box of POOL_BOXES) {
+    for (const file of listPoolBox(moduleName, box)) {
+      const path = displayPath(file);
+      let from: PoolBox = otherBox(box);
+      let to: PoolBox = box;
+      let thread = threadFallback;
+      let round = 1;
+      let mode: PoolMessage['mode'] = 'implement';
+      try {
+        const message = await readPoolMessage(file);
+        from = message.from;
+        to = message.to;
+        thread = message.thread;
+        round = message.round;
+        mode = message.mode;
+      } catch {
+        // unreadable leftover: still wipe, with a synthetic trace so deletePoolMessage can run
+      }
+      await tracePool(moduleName, {
+        at, file: path, from, to, thread, round, mode,
+        outcome: 'processed',
+      });
+      await deletePoolMessage(moduleName, file, path);
+      wiped.push(path);
+    }
+    for (const file of listPoolWebFiles(moduleName, box)) {
+      const path = displayPath(file);
+      const { deleteFile } = await import('/_102027_/l2/libStor.js');
+      await deleteFile(diskFileInfo(file));
+      wiped.push(path);
+    }
+  }
+  const pipeline = await readPipeline(moduleName);
+  if (pipeline) {
+    await writeJson(pipelineFile(moduleName), { ...pipeline, poolWiped: wiped, updatedAt: at });
+  }
+  return wiped;
+}
+
+export async function findOldestBoxMessage(
+  moduleName: string,
+  box: PoolBox,
+  from: PoolBox,
+  thread: string,
+): Promise<PlBoxMessage | null> {
+  const items = await loadPlBoxMessages(moduleName, box);
+  const match = items.filter(item => item.message.thread === thread && item.message.from === from);
+  return match[0] || null;
+}
+
+function hasPoolWebJson(moduleName: string, box: PoolBox, shortName: string): boolean {
+  return listPoolWebFiles(moduleName, box).some(file => file.shortName === shortName && file.extension === '.json');
+}
+
+/**
+ * After an L2/L1 invoke, the table cell is `done` only when the planner produced.
+ * L2: `pool/l2/web/menu.json` and a `l2→l1` message. L1: `l1→l2` message or `backend.json`.
+ * No production → `no-output` (the loop fails the task with "<planId> ran without output").
+ */
+export async function plInvokeOutput(
+  side: 'l2' | 'l1',
+  moduleName: string,
+  thread: string,
+): Promise<'done' | 'no-output'> {
+  if (side === 'l2') {
+    const hasMenu = hasPoolWebJson(moduleName, 'l2', 'menu');
+    const needs = await findOldestBoxMessage(moduleName, 'l1', 'l2', thread);
+    return hasMenu && needs ? 'done' : 'no-output';
+  }
+  const reply = await findOldestBoxMessage(moduleName, 'l2', 'l1', thread);
+  const hasBackend = hasPoolWebJson(moduleName, 'l2', 'backend');
+  return reply || hasBackend ? 'done' : 'no-output';
+}
+
+export async function writePlOrchestration(
+  moduleName: string,
+  table: PlOrchestrationRow[],
+): Promise<void> {
+  const pipeline = await readPipeline(moduleName);
+  if (!pipeline) return;
+  await writeJson(pipelineFile(moduleName), {
+    ...pipeline,
+    plOrchestration: table,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export function formatMissingPlannerStatus(round: number, l2Available: boolean, l1Available: boolean): string {
@@ -548,15 +727,43 @@ export async function applyPlLoopDecision(moduleName: string, decision: PlLoopDe
   }
 }
 
-export async function gatherPlLoopDecision(moduleName: string): Promise<PlLoopDecision> {
+export function latestDeliveredThread(trace: PoolTraceLine[]): string {
+  for (let i = trace.length - 1; i >= 0; i -= 1) {
+    if (trace[i].outcome === 'delivered' && trace[i].from === 'l4') return trace[i].thread;
+  }
+  return trace[trace.length - 1]?.thread || '';
+}
+
+export async function gatherPlLoopDecision(moduleName: string, thread?: string): Promise<PlLoopDecision> {
   const trace = await readPoolTrace(moduleName);
-  const thread = trace[0]?.thread || '';
+  const current = thread || latestDeliveredThread(trace);
+  const l1 = (await loadPlBoxMessages(moduleName, 'l1')).filter(item => !current || item.message.thread === current);
+  const l2 = (await loadPlBoxMessages(moduleName, 'l2')).filter(item => !current || item.message.thread === current);
   return decidePlLoop({
-    thread,
+    thread: current,
     trace,
-    l1: await loadPlBoxMessages(moduleName, 'l1'),
-    l2: await loadPlBoxMessages(moduleName, 'l2'),
+    l1,
+    l2,
     l1Available: plannerAgentPresent(PL_L1_AGENT),
     l2Available: plannerAgentPresent(PL_L2_AGENT),
+  });
+}
+
+export function invokeSideOf(item: PlLoopInvoke): PlInvokeSide {
+  if (item.box === 'l1') return 'l1';
+  if (item.from === 'l1') return 'effort';
+  return 'l2';
+}
+
+export function createLoopInvokeStep(moduleName: string, item: PlLoopInvoke, dependsOn: string[] = []): mls.msg.AIAgentStep {
+  const side = invokeSideOf(item);
+  return createPlInvokeStep({
+    agentName: item.agentName,
+    moduleName,
+    thread: item.thread,
+    file: item.path,
+    planId: plRoundPlanId(side, item.round),
+    stepTitle: plRoundTitle(side, item.round),
+    dependsOn,
   });
 }

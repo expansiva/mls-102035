@@ -9,6 +9,7 @@ import {
   afterPlEntryPromptStep,
   beforePlEntryPromptStep,
 } from '/_102035_/l2/agentPlannerL4/steps/entry10/agentPlEntry.js';
+import { listPoolBox } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -36,6 +37,7 @@ function installHost(): Host {
       localStor: {
         setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
         listFolder: () => [],
+        deleteFile: (file: Stored) => { file.status = 'deleted'; },
       },
     },
   };
@@ -136,19 +138,36 @@ void test('entry10 completes and emits entry10-done when l5 already lists both p
   assert.equal(status?.status, 'completed');
 });
 
-void test('entry10 refuses a pending pool without emitting the done-anchor', async () => {
-  const { context, parent, step } = contextWith('mensalidadesAcademia', h => {
+void test('entry10 wipes a full pool and still emits entry10-done', async () => {
+  const message = {
+    from: 'l4', to: 'l2', thread: 'mensalidadesAcademia-20260918103000', round: 1, mode: 'implement',
+    subject: 'Changed artifacts of mensalidadesAcademia',
+    artifacts: ['module.defs.ts'],
+    body: 'Evaluate and dispatch. The recipient decides what to do with these artifacts.',
+  };
+  const { host, context, parent, step } = contextWith('mensalidadesAcademia', h => {
     seed(h, { level: 5, folder: '', shortName: 'config', extension: '.json' }, `${JSON.stringify(BOTH_CONFIG, null, 2)}\n`);
-    seed(h, { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918103000_t_1', extension: '.json' }, '{}');
+    seed(
+      h,
+      { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918103000_mensalidadesAcademia-20260918103000_1', extension: '.json' },
+      `${JSON.stringify(message, null, 2)}\n`,
+    );
+    seed(h, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
   });
   const intents = await beforePlEntryPromptStep(AGENT, context, parent, step, 1);
-  assert.equal(intents.some(intent => intent.type === 'add-step' && intent.step.planning?.planId === 'entry10-done'), false);
-  const shown = intents.find((intent): intent is mls.msg.AgentIntentAddStep =>
-    intent.type === 'add-step' && intent.step.planning?.planId === 'status');
-  assert.equal(shown?.step.stepTitle, 'Status');
-  assert.match(String((shown?.step as mls.msg.AIResultStep).result), /pending pool messages/);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 0);
+  const done = intents.find((intent): intent is mls.msg.AgentIntentAddStep =>
+    intent.type === 'add-step' && intent.step.planning?.planId === 'entry10-done');
+  assert.ok(done);
+  const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { poolWiped: string[] };
+  assert.equal(result.poolWiped.length >= 2, true);
+  const pipeline = host.files[keyOf({
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
+  })];
+  const state = JSON.parse(pipeline.content) as { poolWiped: string[] };
+  assert.deepEqual(state.poolWiped, result.poolWiped);
   const status = intents.find((intent): intent is mls.msg.AgentIntentUpdateStatus => intent.type === 'update-status' && intent.stepId === 10);
-  assert.match(String(status?.traceMsg), /pending pool messages/);
+  assert.match(String(status?.traceMsg), /wiped/);
 });
 
 void test('entry10 afterPrompt fails an LLM reply', async () => {
