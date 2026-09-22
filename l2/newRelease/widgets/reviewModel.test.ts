@@ -175,6 +175,32 @@ test('continue requires a current valid backend, accepts missing effort, and rej
   }
 });
 
+test('failed review offers explicit retry until the attempt limit is exhausted', () => {
+  const base = {
+    viewKind: 'pending' as const,
+    version: 'tobe' as const,
+    loading: false,
+    current: true,
+    resultCurrent: false,
+    backendKind: 'missing' as const,
+    effortKind: 'missing' as const,
+    busy: false,
+    connected: true,
+    retry: true,
+    error: '',
+  };
+  const retry = buildReviewActionPresentation({ ...base, retryAvailable: true });
+  assert.equal(retry.kind, 'retry');
+  assert.equal(retry.labelKey, 'review.retry');
+  assert.equal(retry.descriptionKey, 'review.actionRetryBody');
+  assert.equal(retry.disabled, false);
+
+  const exhausted = buildReviewActionPresentation({ ...base, retryAvailable: false });
+  assert.equal(exhausted.kind, 'unavailable');
+  assert.equal(exhausted.descriptionKey, 'review.actionRetryExhausted');
+  assert.equal(exhausted.disabled, true);
+});
+
 test('review action placements share one state, announce one error and deduplicate while busy', () => {
   const input = {
     viewKind: 'pending' as const,

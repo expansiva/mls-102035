@@ -3,7 +3,7 @@
 import { html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import { NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import { readModuleMenu, type MenuReadResult } from '/_102035_/l2/newRelease/helpers/menuReader.js';
@@ -11,6 +11,29 @@ import { readReviewArtifact, type ReviewArtifactRead } from '/_102035_/l2/newRel
 import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRelease/helpers/poolBoxes.js';
 import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.js';
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
+import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/newRelease/helpers/candidateGateway.js';
+import { originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { readSourceText } from '/_102035_/l2/solution/fs.js';
+import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import {
+  claimInputForRun,
+  publishedCandidateMatchesRunRevision,
+  REVIEW_RUN_MAX_ATTEMPTS,
+  reviewRunMatchesRevision,
+  type PlatformReviewRun,
+  type ReviewRunStartInput,
+  type ReviewWorkerIdentity,
+} from '/_102035_/l2/newRelease/helpers/reviewRunWorker.js';
+import {
+  createReviewStudioHost,
+  createReviewWorkerTransport,
+  driveReviewRunWorker,
+  observeReviewRun,
+  outputRevisionIdForRun,
+  readReviewRunLink,
+  saveReviewRunLink,
+  startReviewRun,
+} from '/_102035_/l2/newRelease/helpers/reviewRunStudioWorker.js';
 import {
   actorIdFromKey,
   beginReviewPrimaryAction,
@@ -42,6 +65,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @property({ type: String }) version: NewReleaseVersion = 'asis';
   @property({ attribute: false }) data: NewReleaseModuleData | null = null;
   @property({ attribute: false }) t: NewReleaseTranslate = key => key;
+  @property({ type: String }) request = '';
 
   @state() private menuRead: MenuReadResult = EMPTY_MENU;
   @state() private pool: ReviewPoolBoxView[] = [];
@@ -56,15 +80,24 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private actionError = '';
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
+  @state() private channelRun: PlatformReviewRun | null = null;
 
   private loadToken = 0;
   private readonly reviewRunStore = new IndexedDbReviewRunStore();
+  private readonly workerTransport = createReviewWorkerTransport();
+  private readonly workerHost = createReviewStudioHost();
+  private workerTimer?: number;
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
 
   createRenderRoot() { return this; }
 
+  disconnectedCallback() {
+    if (this.workerTimer) window.clearTimeout(this.workerTimer);
+    super.disconnectedCallback();
+  }
+
   updated(changed: PropertyValues) {
-    if (changed.has('project') || changed.has('moduleName') || changed.has('version') || changed.has('data')) {
+    if (changed.has('project') || changed.has('moduleName') || changed.has('version') || changed.has('data') || changed.has('request')) {
       this.selectedActor = '';
       this.selectedId = '';
       this.selectedScope = 'future';
@@ -73,6 +106,8 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.actionError = '';
       this.reviewRun = null;
       this.reviewRunLoadError = '';
+      this.channelRun = null;
+      if (this.workerTimer) window.clearTimeout(this.workerTimer);
       void this.load();
     }
   }
@@ -141,6 +176,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.pool = pool;
     this.reviewRun = persistedRun.run;
     this.reviewRunLoadError = persistedRun.errorCode;
+    await this.loadChannelRun(context, token);
+    if (token !== this.loadToken) return;
     this.loadedFor = context;
     this.loading = false;
   }
@@ -292,27 +329,274 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
-  /** Single integration point reserved for the official mr_04 channel. */
-  private runReviewPrimaryAction = () => {
+  private async prepareStartInput(): Promise<{ input: ReviewRunStartInput; userId: string }> {
+    const changeId = this.data?.changeId;
+    const revisionId = this.data?.revisionId;
+    const userId = getUserId();
+    if (this.version !== 'tobe' || !changeId || !revisionId || !userId || !this.request.trim()) {
+      throw new Error('review-run.invalid_request');
+    }
+    const sealed = await readSealedL4Candidate(this.project, this.moduleName, changeId, revisionId);
+    if (!sealed || sealed.request !== this.request || !sealed.manifest.requestHash) {
+      throw new Error('review-run.revision_mismatch');
+    }
+    const snapshot = await buildCandidateSnapshot({
+      baseId: sealed.manifest.baseId,
+      requestRevision: sealed.manifest.requestRevision,
+      request: sealed.request,
+      sources: sealed.sources,
+    });
+    const snapshotHash = `sha256:${snapshot.hash}` as const;
+    return {
+      userId,
+      input: {
+        userId,
+        project: this.project,
+        moduleName: this.moduleName,
+        changeId,
+        inputRevisionId: revisionId,
+        inputSnapshotHash: snapshotHash,
+        baseId: sealed.manifest.baseId,
+        requestRevision: sealed.manifest.requestRevision,
+        requestHash: sealed.manifest.requestHash as `sha256:${string}`,
+      },
+    };
+  }
+
+  private workerId(): string {
+    const key = 'collab-new-release-review-worker-id-v1';
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const created = `studio-${crypto.randomUUID()}`;
+    localStorage.setItem(key, created);
+    return created;
+  }
+
+  private async loadChannelRun(
+    context: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null },
+    token: number,
+  ): Promise<void> {
+    if (context.version !== 'tobe' || !context.data?.changeId || !context.data.revisionId) return;
+    const link = readReviewRunLink({
+      project: context.project,
+      moduleName: context.moduleName,
+      changeId: context.data.changeId,
+      inputRevisionId: context.data.revisionId,
+    });
+    if (!link) return;
+    try {
+      const run = await observeReviewRun(link);
+      if (token !== this.loadToken) return;
+      let revisionMatches = reviewRunMatchesRevision(run, context.data.revisionId);
+      if (!revisionMatches && run.candidateResult === null) {
+        const published = await candidateRead({ project: run.binding.project, moduleName: run.binding.moduleName });
+        if (token !== this.loadToken) return;
+        revisionMatches = publishedCandidateMatchesRunRevision(run, context.data.revisionId, published);
+      }
+      if (!revisionMatches) return;
+      this.channelRun = run;
+      if (!['ready', 'failed', 'disputed'].includes(run.status)) {
+        await this.driveWorker(run, link.userId, token);
+      } else if (run.status === 'ready') {
+        await this.loadCandidateArtifacts(run, link.userId, token);
+      }
+    } catch (error) {
+      if (token !== this.loadToken) return;
+      this.reviewRunLoadError = this.reviewRunErrorKey(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async driveWorker(run: PlatformReviewRun, userId: string, token = this.loadToken): Promise<void> {
+    const candidate = await this.readCandidateWorkerGate(run);
+    if (token !== this.loadToken) return;
+    const canonicalHash = await this.readCanonicalSnapshotHash(run);
+    if (token !== this.loadToken) return;
+    const result = await driveReviewRunWorker(
+      this.workerTransport,
+      this.workerHost,
+      claimInputForRun(run, userId, this.workerId(), canonicalHash, candidate),
+    );
+    const current = result.state === 'reported'
+      ? result.run
+      : await observeReviewRun(this.identityForRun(run, userId));
+    if (token !== this.loadToken) return;
+    this.channelRun = current;
+    this.saveOutputAlias(current, userId);
+    if (current.status === 'ready') {
+      await this.loadCandidateArtifacts(current, userId, token);
+      if (token !== this.loadToken) return;
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, {
+        detail: { project: this.project, moduleName: this.moduleName },
+      }));
+      return;
+    }
+    if (current.status === 'failed' || current.status === 'disputed') return;
+    if (this.workerTimer) window.clearTimeout(this.workerTimer);
+    this.workerTimer = window.setTimeout(() => {
+      this.workerTimer = undefined;
+      if (token !== this.loadToken) return;
+      void this.driveWorker(current, userId, token).catch(error => {
+        if (token !== this.loadToken) return;
+        this.actionError = this.reviewRunErrorKey(error instanceof Error ? error.message : String(error));
+      });
+    }, 1500);
+  }
+
+  private async readCanonicalSnapshotHash(run: PlatformReviewRun): Promise<`sha256:${string}`> {
+    const sealed = await readSealedL4Candidate(
+      run.binding.project, run.binding.moduleName, run.binding.changeId, run.binding.inputRevisionId,
+    );
+    if (!sealed) throw new Error('review-run.canonical_snapshot_unavailable');
+    const sources = await Promise.all(sealed.sources.map(async item => ({
+      path: item.path,
+      source: await readSourceText(originalL4FileInfo(
+        run.binding.project, run.binding.moduleName, run.binding.baseId, item.path,
+      )),
+    })));
+    const snapshot = await buildCandidateSnapshot({
+      baseId: run.binding.baseId,
+      requestRevision: run.binding.requestRevision,
+      request: sealed.request,
+      sources,
+    });
+    return `sha256:${snapshot.hash}`;
+  }
+
+  private async loadCandidateArtifacts(run: PlatformReviewRun, userId: string, token = this.loadToken): Promise<void> {
+    const revisionId = outputRevisionIdForRun(run);
+    if (!revisionId) throw new Error('review-run.candidate_binding_mismatch');
+    const root = `${run.binding.moduleName}/pipeline/changes/${run.binding.changeId}/revisions/${revisionId}/l4`;
+    const [menu, backend, effort] = await Promise.all([
+      readModuleMenu(run.binding.project, run.binding.moduleName, root),
+      readReviewArtifact(run.binding.project, run.binding.moduleName, 'backend', root),
+      readReviewArtifact(run.binding.project, run.binding.moduleName, 'effort', root),
+    ]);
+    if (token !== this.loadToken) return;
+    this.menuRead = menu;
+    this.backendRead = backend;
+    this.effortRead = effort;
+    this.pool = [];
+    this.saveOutputAlias(run, userId);
+  }
+
+  private saveOutputAlias(run: PlatformReviewRun, userId: string): void {
+    const revisionId = outputRevisionIdForRun(run);
+    if (!revisionId) return;
+    saveReviewRunLink(this.identityForRun(run, userId), undefined, {
+      project: run.binding.project,
+      moduleName: run.binding.moduleName,
+      changeId: run.binding.changeId,
+      inputRevisionId: revisionId,
+    });
+  }
+
+  private identityForRun(run: PlatformReviewRun, userId: string): ReviewWorkerIdentity {
+    return {
+      userId,
+      project: run.binding.project,
+      moduleName: run.binding.moduleName,
+      changeId: run.binding.changeId,
+      inputRevisionId: run.binding.inputRevisionId,
+      inputSnapshotHash: run.binding.inputSnapshotHash,
+      baseId: run.binding.baseId,
+      requestRevision: run.binding.requestRevision,
+      requestHash: run.binding.requestHash,
+      runId: run.runId,
+    };
+  }
+
+  private async readCandidateWorkerGate(run: PlatformReviewRun): Promise<{
+    snapshotHash?: `sha256:${string}`;
+    pipelineComplete?: boolean;
+    pipelineSnapshotHash?: `sha256:${string}`;
+  }> {
+    const result = run.candidateResult as Record<string, unknown> | null;
+    const manifest = result?.manifest as Record<string, unknown> | undefined;
+    const outputRevisionId = outputRevisionIdForRun(run);
+    if (!result || !manifest || !outputRevisionId || typeof manifest.outputSnapshotHash !== 'string') return {};
+    const snapshotHash = `sha256:${manifest.outputSnapshotHash.replace(/^sha256:/u, '')}` as `sha256:${string}`;
+    const info = {
+      project: run.binding.project,
+      level: 4,
+      folder: `${run.binding.moduleName}/pipeline/changes/${run.binding.changeId}/revisions/${outputRevisionId}/l4/pipeline`,
+      shortName: 'pipeline',
+      extension: '.json',
+    } as const;
+    let pipeline: Record<string, unknown>;
+    try {
+      pipeline = JSON.parse(await readSourceText(info)) as Record<string, unknown>;
+    } catch {
+      return { snapshotHash };
+    }
+    const revision = pipeline?.revision as Record<string, unknown> | undefined;
+    const reviewSeal = pipeline?.reviewSeal as Record<string, unknown> | undefined;
+    const sealRevision = reviewSeal?.revision as Record<string, unknown> | undefined;
+    const sealHash = reviewSeal ? await sha256Text(JSON.stringify(reviewSeal)) : '';
+    const validPipeline = pipeline?.schemaVersion === '2026-09-22-agent-review-planner-pipeline-v1'
+      && pipeline.flowId === 'agentReviewSolution' && pipeline.moduleName === run.binding.moduleName
+      && pipeline.status === 'complete' && revision?.changeId === run.binding.changeId
+      && revision.revisionId === outputRevisionId && revision.baseId === run.binding.baseId
+      && revision.manifestHash === manifest.outputSnapshotHash
+      && reviewSeal?.schemaVersion === '2026-09-22-agent-review-planner-seal-v1'
+      && reviewSeal.flowId === 'agentReviewSolution' && reviewSeal.moduleName === run.binding.moduleName
+      && sealRevision?.changeId === run.binding.changeId && sealRevision.revisionId === outputRevisionId
+      && sealRevision.baseId === run.binding.baseId && sealRevision.manifestHash === manifest.outputSnapshotHash
+      && pipeline.reviewSealHash === sealHash && sealHash === manifest.traceHash;
+    return {
+      snapshotHash,
+      pipelineComplete: validPipeline,
+      ...(validPipeline ? { pipelineSnapshotHash: `sha256:${sealHash}` as `sha256:${string}` } : {}),
+    };
+  }
+
+  private runReviewPrimaryAction = async () => {
     const action = this.actionPresentation(this.view(), this.isCurrentLoad());
     const start = beginReviewPrimaryAction(action);
-    if (!start.accepted) return;
+    if (!start.accepted || !['calculate', 'retry'].includes(action.kind)) return;
     this.actionBusy = start.busy;
+    this.actionError = '';
+    try {
+      const retry = this.channelRun?.status === 'failed' || this.channelRun?.status === 'disputed';
+      const userId = getUserId();
+      if (!userId) throw new Error('review-worker.user_unavailable');
+      const prepared = retry && this.channelRun
+        ? { input: this.retryStartInput(this.channelRun, userId), userId }
+        : await this.prepareStartInput();
+      const run = await startReviewRun({ ...prepared.input, ...(retry ? { retry: true } : {}) });
+      const identity: ReviewWorkerIdentity = { ...prepared.input, runId: run.runId };
+      saveReviewRunLink(identity);
+      this.channelRun = run;
+      await this.driveWorker(run, prepared.userId);
+    } catch (error) {
+      this.actionError = this.reviewRunErrorKey(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.actionBusy = false;
+    }
   };
+
+  private retryStartInput(run: PlatformReviewRun, userId: string): ReviewRunStartInput {
+    const identity = this.identityForRun(run, userId);
+    const { runId: _runId, ...input } = identity;
+    return input;
+  }
 
   private actionPresentation(view: ReviewView, current: boolean): ReviewPrimaryActionPresentation {
     const backend = buildBackendReview(this.backendRead, view.kind === 'pending', this.moduleName);
     const effort = parseEffortSummary(this.effortRead, this.moduleName);
+    const active = !!this.channelRun && !['ready', 'failed', 'disputed'].includes(this.channelRun.status);
+    const retry = this.channelRun?.status === 'failed' || this.channelRun?.status === 'disputed';
     return buildReviewActionPresentation({
-      viewKind: view.kind,
+      viewKind: retry ? 'pending' : view.kind,
       version: this.version,
       loading: this.loading,
       current,
-      resultCurrent: this.data?.resultCurrent === true,
+      resultCurrent: retry ? false : this.data?.resultCurrent === true,
       backendKind: backend.kind,
       effortKind: effort.kind,
       busy: this.actionBusy,
-      connected: false,
+      connected: !active && !!this.request.trim() && !!this.data?.changeId && !!this.data?.revisionId && !!this.data?.manifest?.baseId,
+      retry,
+      retryAvailable: !retry || this.channelRun!.attempt < REVIEW_RUN_MAX_ATTEMPTS,
       error: this.actionError ? this.t(this.actionError) : '',
     });
   }
@@ -330,6 +614,25 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (this.version !== 'tobe') return nothing;
     if (this.reviewRunLoadError) {
       return html`<section class="nr-review__run"><p role="alert">${this.t(this.reviewRunLoadError)}</p></section>`;
+    }
+    const channel = this.channelRun;
+    if (channel) {
+      const execution = channel.executions[channel.executions.length - 1];
+      const terminal = channel.status === 'ready' || channel.status === 'failed' || channel.status === 'disputed';
+      const stateKey = terminal ? `review.run.status.${channel.status}` : `review.run.phase.${channel.status}`;
+      return html`
+        <section class=${`nr-review__run is-${channel.status}`} aria-live="polite">
+          <header><div><span>${this.t('review.run.eyebrow')}</span><h3>${this.t('review.run.title')}</h3></div><strong>${this.t(stateKey)}</strong></header>
+          ${channel.errorCode ? html`<p role="alert">${this.t(this.reviewRunErrorKey(channel.errorCode))}</p>` : nothing}
+          <dl>
+            <div><dt>${this.t('review.run.runId')}</dt><dd><code>${channel.runId}</code></dd></div>
+            ${execution?.taskId ? html`<div><dt>${this.t('review.run.taskId')}</dt><dd><code>${execution.taskId}</code></dd></div>` : nothing}
+            ${execution?.threadId ? html`<div><dt>${this.t('review.run.threadId')}</dt><dd><code>${execution.threadId}</code></dd></div>` : nothing}
+            ${execution?.provider ? html`<div><dt>${this.t('review.run.provider')}</dt><dd><code>${execution.provider}</code></dd></div>` : nothing}
+            ${execution?.model ? html`<div><dt>${this.t('review.run.model')}</dt><dd><code>${execution.model}</code></dd></div>` : nothing}
+          </dl>
+        </section>
+      `;
     }
     const run = this.reviewRun;
     if (!run) return nothing;
@@ -517,4 +820,9 @@ export class NewReleaseReview102035 extends StateLitElement {
       </section>
     `;
   }
+}
+
+async function sha256Text(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }

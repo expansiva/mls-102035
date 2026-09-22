@@ -15,7 +15,7 @@ export type MenuOrganismKind = typeof MENU_ORGANISM_KINDS[number];
 export type MenuAction = typeof MENU_ACTIONS[number];
 export type ReviewScreenKind = 'pending' | 'empty' | 'invalid' | 'ready';
 export type ReviewNodeScope = 'future' | 'removed';
-export type ReviewPrimaryActionKind = 'calculate' | 'continue' | 'unavailable';
+export type ReviewPrimaryActionKind = 'calculate' | 'retry' | 'continue' | 'unavailable';
 
 export interface MenuOrganism {
   kind: MenuOrganismKind;
@@ -122,6 +122,8 @@ export interface ReviewPrimaryActionInput {
   effortKind: 'missing' | 'invalid' | 'counts';
   busy: boolean;
   connected: boolean;
+  retry?: boolean;
+  retryAvailable?: boolean;
   error: string;
 }
 
@@ -144,19 +146,23 @@ export interface ReviewPrimaryActionPresentation {
 export function buildReviewActionPresentation(input: ReviewPrimaryActionInput): ReviewPrimaryActionPresentation {
   let kind: ReviewPrimaryActionKind = 'unavailable';
   if (!input.loading && input.current && input.version === 'tobe') {
-    if (input.viewKind === 'pending') kind = 'calculate';
+    if (input.retry && input.retryAvailable) kind = 'retry';
+    else if (!input.retry && input.viewKind === 'pending') kind = 'calculate';
     else if (input.viewKind === 'ready' && input.resultCurrent
       && input.backendKind === 'ready' && input.effortKind !== 'invalid') kind = 'continue';
   }
   const labelKey = input.busy
     ? 'review.actionBusy'
-    : kind === 'calculate' ? 'review.calculate'
+    : kind === 'retry' ? 'review.retry'
+      : kind === 'calculate' ? 'review.calculate'
       : kind === 'continue' ? 'review.continue'
         : 'review.actionUnavailable';
   const expectsCurrentResult = input.viewKind === 'ready' && input.resultCurrent;
   const descriptionKey = input.loading || !input.current
     ? 'review.actionLoading'
-    : kind === 'calculate' ? 'review.actionCalculateBody'
+    : input.retry && !input.retryAvailable ? 'review.actionRetryExhausted'
+      : kind === 'retry' ? 'review.actionRetryBody'
+      : kind === 'calculate' ? 'review.actionCalculateBody'
       : kind === 'continue' ? 'review.actionContinueBody'
         : expectsCurrentResult && input.backendKind === 'missing' ? 'review.actionBackendMissing'
           : expectsCurrentResult && input.backendKind === 'invalid' ? 'review.actionBackendInvalid'

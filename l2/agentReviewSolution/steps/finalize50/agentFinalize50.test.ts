@@ -25,6 +25,7 @@ import {
   beforeFinalize50Step,
   createFinalize50Step,
   materializeFinalize50Sources,
+  reviewPlannerPipeline,
   splitDefsEnvelope,
   type Finalize50Runtime,
 } from './agentFinalize50.js';
@@ -41,6 +42,19 @@ const invocation = {
   request: 'Change the title.',
   expectedRevisionId: 'rev-1',
 };
+
+void test('review pipeline sidecar is complete and identifies the sealed revision', () => {
+  const value = reviewPlannerPipeline({
+    project: 102047, moduleName: 'agendaClinica', changeId: 'change-1', revisionId: 'review-1',
+    baseId: 'base-1', manifestHash: `sha256:${'a'.repeat(64)}`,
+    validationContextHash: `sha256:${'b'.repeat(64)}`, correctionAttemptsUsed: 1,
+    reviewSealHash: 'c'.repeat(64),
+  });
+  assert.equal(value.flowId, 'agentReviewSolution');
+  assert.equal(value.status, 'complete');
+  assert.equal(value.revision.revisionId, 'review-1');
+  assert.equal(value.reviewSealHash, 'c'.repeat(64));
+});
 
 function defs(path: string, value: Record<string, unknown>): string {
   const name = path.replace(/[^A-Za-z0-9]/gu, '_');
@@ -252,13 +266,18 @@ test('finalize50 confirms mark, publishes in order and serializes no snapshot by
         revisionNumber: 8,
       } };
     },
+    writePlannerPipeline: async input => {
+      events.push('pipeline');
+      assert.equal(input.revisionId.startsWith('review-'), true);
+      assert.equal(input.manifestHash, publishedSnapshot?.hash);
+    },
     validateDraft: publishableValidation,
   };
   const intents = await beforeFinalize50Step(context(snapshot, taskState, validate), parent(), step(), 50, runtime);
   assert.deepEqual(intents.map(intent => intent.type), ['add-step', 'update-status']);
   assert.equal(marked, 1);
   assert.deepEqual(markedArtifacts.map(item => item.path), [...paths].sort());
-  assert.deepEqual(events, ['replay-miss', 'read-input', 'mark', 'read-confirmed', 'publish']);
+  assert.deepEqual(events, ['replay-miss', 'read-input', 'mark', 'read-confirmed', 'publish', 'pipeline']);
   const serialized = ((intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result;
   assert.equal(serialized.includes('contentBase64'), false);
   assert.equal(serialized.includes('x'.repeat(100)), false);
