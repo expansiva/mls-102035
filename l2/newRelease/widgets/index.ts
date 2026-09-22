@@ -539,6 +539,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           .moduleName=${this.moduleName}
           .version=${this.version}
           .data=${this.data}
+          .request=${this.savedRequest}
           .t=${this.t}
         ></new-release--widgets--review-102035>
       `;

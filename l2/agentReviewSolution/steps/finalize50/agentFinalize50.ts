@@ -47,7 +47,7 @@ import {
   readSealedL4Candidate,
   type L4SealedCandidateSnapshot,
 } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import { readSourceText } from '/_102035_/l2/solution/fs.js';
+import { readSourceText, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 
 export const FINALIZE50_PRIVATE_RESULT_VERSION = '2026-09-21-finalize50-private-result-v3' as const;
 
@@ -77,7 +77,20 @@ export interface Finalize50Runtime {
   markResult(input: CandidateMarkResultInput): Promise<CandidateMarkResultResult>;
   replaySubmitted(scope: { project: number; moduleName: string }, input: StudioCandidateSubmittedReplayInput): Promise<CandidatePublishResult | null>;
   publishWithPermit(scope: { project: number; moduleName: string }, input: StudioCandidatePublishInput): Promise<CandidatePublishResult>;
+  writePlannerPipeline?(input: ReviewPlannerPipelineInput): Promise<void>;
   validateDraft: Validate40Runtime['validate'];
+}
+
+export interface ReviewPlannerPipelineInput {
+  project: number;
+  moduleName: string;
+  changeId: string;
+  revisionId: string;
+  baseId: string;
+  manifestHash: string;
+  validationContextHash: string;
+  correctionAttemptsUsed: number;
+  reviewSealHash: string;
 }
 
 const defaultRuntime: Finalize50Runtime = {
@@ -92,6 +105,7 @@ const defaultRuntime: Finalize50Runtime = {
   markResult: candidateMarkResult,
   replaySubmitted: (scope, input) => createStudioCandidateAdapter(scope).replaySubmitted(input),
   publishWithPermit: (scope, input) => createStudioCandidateAdapter(scope).publishWithPermit(input),
+  writePlannerPipeline: writeReviewPlannerPipeline,
   validateDraft: validate40Private,
 };
 
@@ -187,6 +201,9 @@ export async function beforeFinalize50Step(
     }));
     const resultId = `result-${publicationKey.slice(0, 32)}`;
     const outputRevisionId = `review-${publicationKey.slice(0, 32)}`;
+    const pipelineBase = plannerPipelineInput(frozen, outputRevisionId, outputSnapshot, validated);
+    const pipelineTraceHash = await sha256(JSON.stringify(reviewPlannerSeal(pipelineBase)));
+    const pipelineInput: ReviewPlannerPipelineInput = { ...pipelineBase, reviewSealHash: pipelineTraceHash };
     const scope = { project: frozen.project, moduleName: frozen.moduleName };
     const replayed = await runtime.replaySubmitted(scope, {
       changeId: frozen.changeId,
@@ -195,6 +212,7 @@ export async function beforeFinalize50Step(
     });
     if (replayed) {
       const pointer = exactCommittedPointer(replayed, frozen.changeId, outputRevisionId, outputSnapshot.hash);
+      await runtime.writePlannerPipeline?.(pipelineInput);
       return successfulFinalizeIntents(context, parentStep, step, hookSequential,
         privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources, validated));
     }
@@ -206,19 +224,14 @@ export async function beforeFinalize50Step(
       || authoritative.pointer.snapshotHash !== inputSnapshot.hash) {
       throw new Error('Authoritative candidate differs from the frozen finalize50 input.');
     }
-    const taskId = `task-${publicationKey.slice(0, 32)}`;
+    const taskId = realTaskId(context);
     const manifest: CandidateResultManifest = {
       runId: resultId,
       taskId,
       status: 'completed',
       artifacts: outputSnapshot.files.map(file => ({ path: file.path, sha256: file.sha256 }))
         .sort((left, right) => compareCodeUnit(left.path, right.path)),
-      traceHash: await sha256(JSON.stringify({
-        inputSnapshotHash: inputSnapshot.hash,
-        outputSnapshotHash: outputSnapshot.hash,
-        validationContextHash: validated.validationContextHash,
-        correctionState: validated.correctionState,
-      })),
+      traceHash: pipelineTraceHash,
       outputSnapshotHash: outputSnapshot.hash,
     };
     const markedInput = await runtime.buildResult({
@@ -241,11 +254,77 @@ export async function beforeFinalize50Step(
       { changeId: frozen.changeId, revisionId: outputRevisionId, snapshot: outputSnapshot, permit },
     );
     const pointer = exactCommittedPointer(published, frozen.changeId, outputRevisionId, outputSnapshot.hash);
+    await runtime.writePlannerPipeline?.(pipelineInput);
     return successfulFinalizeIntents(context, parentStep, step, hookSequential,
       privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources, validated));
   } catch (error) {
     return [status(context, parentStep, step, hookSequential, 'failed', errorMessage(error))];
   }
+}
+
+function realTaskId(context: mls.msg.ExecutionContext): string {
+  const taskId = String(context.task?.PK || '').replace(/^task(?:\/#?|#)/u, '');
+  if (!taskId) throw new Error('finalize50 requires the real Studio task id.');
+  return taskId;
+}
+
+function plannerPipelineInput(
+  frozen: ReviewEntrySnapshot,
+  revisionId: string,
+  outputSnapshot: CandidateSnapshot,
+  validated: Validate40PrivateState,
+): Omit<ReviewPlannerPipelineInput, 'reviewSealHash'> {
+  return {
+    project: frozen.project, moduleName: frozen.moduleName, changeId: frozen.changeId,
+    revisionId, baseId: frozen.baseId, manifestHash: outputSnapshot.hash,
+    validationContextHash: validated.validationContextHash,
+    correctionAttemptsUsed: validated.correctionState.correctionAttemptsUsed,
+  };
+}
+
+export function reviewPlannerPipeline(input: ReviewPlannerPipelineInput) {
+  const reviewSeal = reviewPlannerSeal(input);
+  return {
+    schemaVersion: '2026-09-22-agent-review-planner-pipeline-v1',
+    flowId: 'agentReviewSolution', moduleName: input.moduleName, status: 'complete',
+    revision: {
+      changeId: input.changeId, revisionId: input.revisionId,
+      baseId: input.baseId, manifestHash: input.manifestHash,
+    },
+    validation: {
+      status: 'complete', validationContextHash: input.validationContextHash,
+      correctionAttemptsUsed: input.correctionAttemptsUsed,
+    },
+    reviewSeal,
+    reviewSealHash: input.reviewSealHash,
+  } as const;
+}
+
+function reviewPlannerSeal(input: Omit<ReviewPlannerPipelineInput, 'reviewSealHash'>) {
+  return {
+    schemaVersion: '2026-09-22-agent-review-planner-seal-v1',
+    flowId: 'agentReviewSolution',
+    moduleName: input.moduleName,
+    revision: {
+      changeId: input.changeId,
+      revisionId: input.revisionId,
+      baseId: input.baseId,
+      manifestHash: input.manifestHash,
+    },
+    validation: {
+      validationContextHash: input.validationContextHash,
+      correctionAttemptsUsed: input.correctionAttemptsUsed,
+    },
+  } as const;
+}
+
+export async function writeReviewPlannerPipeline(input: ReviewPlannerPipelineInput): Promise<void> {
+  const info: Ns5FileInfo = {
+    project: input.project, level: 4,
+    folder: `${input.moduleName}/pipeline/changes/${input.changeId}/revisions/${input.revisionId}/l4/pipeline`,
+    shortName: 'pipeline', extension: '.json',
+  };
+  await writeJson(info, reviewPlannerPipeline(input));
 }
 
 export function createFinalize50Step(invocationPrompt: string): mls.msg.AIAgentStep {
