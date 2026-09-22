@@ -545,12 +545,15 @@ function normalizeTransitions(
       normalizations.push({ kind: 'systemByCollapsed', entityId, detail: `transitions.${transitionId}.by` });
     }
     const ruleRefs = list(raw.ruleRefs).map(text).filter(Boolean);
+    const hasPayload = Object.prototype.hasOwnProperty.call(raw, 'payload');
+    const payload = list(raw.payload).map(text).filter(Boolean);
     return {
       transitionId,
       from: list(raw.from).map(text).filter(Boolean),
       to: text(raw.to),
       by,
       description: text(raw.description),
+      ...(hasPayload ? { payload } : {}),
       ...(ruleRefs.length ? { ruleRefs } : {}),
     };
   }).filter(item => item.transitionId);

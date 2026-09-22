@@ -107,6 +107,7 @@
         "to": { "type": "string" },
         "by": { "type": "array", "items": { "type": "string" } },
         "description": { "type": "string" },
+        "payload": { "type": "array", "items": { "type": "string" } },
         "ruleRefs": { "type": "array", "items": { "type": "string" } }
       }
     },

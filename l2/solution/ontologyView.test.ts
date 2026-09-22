@@ -116,6 +116,15 @@ void test('a v3 table keeps its columns, its class and what the module writes', 
   assert.ok(derivedView.writtenFieldIds.includes('details.attendanceNote'));
 });
 
+void test('a v3 view preserves transition payload without adding it to legacy transitions', () => {
+  const consulta = clone(CONSULTA);
+  consulta.transitions = consulta.transitions!.map((transition, index) => index === 0
+    ? { ...transition, payload: [] }
+    : index === 1 ? { ...transition, payload: ['details.attendanceNote'] } : transition);
+  const transitions = ns5OntologyEntityView(consulta).transitions;
+  assert.deepEqual(transitions.map(item => item.payload), [[], ['details.attendanceNote'], undefined]);
+});
+
 /**
  * ns5_54 T2(b). A `ddm` is derived whole — `ontology30 contractsV3 markDerived` flags every field of the
  * record and every field inside its document — so it writes nothing, and finalize80 I10 has no writer to

@@ -977,6 +977,18 @@ void test('ns5_47: by collapses ["system"] to an empty list and keeps ["time"] f
   assert.deepEqual([...scalar.transitions![0].by], []);
 });
 
+void test('transition payload is optional and normalization preserves both explicit empty and populated lists', () => {
+  const plan = derivedPlan();
+  const built = buildMensalidade(plan, [], {
+    transitions: [
+      { transitionId: 'confirm', from: ['open'], to: 'paid', by: ['recepcao'], description: 'x', payload: [] },
+      { transitionId: 'settle', from: ['open'], to: 'paid', by: ['recepcao'], description: 'x', payload: ['details.attendanceNote'] },
+      { transitionId: 'legacy', from: ['open'], to: 'paid', by: ['recepcao'], description: 'x' },
+    ],
+  });
+  assert.deepEqual(built.transitions?.map(item => item.payload), [[], ['details.attendanceNote'], undefined]);
+});
+
 void test('ns5_47 probe: a transition that still names a state that became derived is named as such', () => {
   const plan = derivedPlan();
   const index = assembleNs5OntologyIndexV3(plan, 'x');

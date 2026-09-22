@@ -62,7 +62,8 @@ while in the state, a process fires, another entity's derived value changes) or 
 people ask about; a switch with no such consequence is a field, not a state. Each state is
 `{ state, reachedBy }` (`actor` or `command`); an entity with a lifecycle carries an indexed `status`
 column whose `values` cover the states, and `status` holds only what an actor or a command writes. Transitions are
-`{ transitionId, from, to, by, description, ruleRefs? }`; `by` is a list of actor ids of the module, and
+`{ transitionId, from, to, by, description, payload?, ruleRefs? }`; `payload` is the explicit list of
+record paths consumed by the transition command (empty when it consumes only identity); `by` is a list of actor ids of the module, and
 is **empty** when the move belongs to a process and to no person. Every `transitionRef` an `act` cites
 on this entity is required, with that journey's actor in `by`; a `decide` cited on this entity requires
 at least two transitions leaving the same state — one per outcome — with the deciding actor in `by`.

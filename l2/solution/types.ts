@@ -425,6 +425,8 @@ export interface Ns5OntologyEntityV3Base<Cap extends string = string, Rule exten
     /** Actor ids of the module; empty when a process owns the move. */
     by: readonly string[];
     description: string;
+    /** Record paths the transition command consumes; an explicit empty list means identity only. */
+    payload?: readonly string[];
     ruleRefs?: readonly string[];
   }[];
   relationships: Readonly<Record<string, Ns5OntologyRelationshipV3>>;
