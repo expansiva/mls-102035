@@ -26,8 +26,10 @@ The l4 pipeline records `{ round, l2, l1, effort }`.
 @@agentPlannerL4 <lowerCamel> /candidate pipeline/changes/<id>/revisions/<rev>/l4
 ```
 
-- Module must already exist in `l4/` with `pipeline.status: complete`.
-- `/candidate` alone points `moduleFolder` at `<mod>/tobe/plan`. A relative path is
+- Module must already exist in `l4/`. Canonical and manual roots need `pipeline.status: complete`.
+  A sealed revision root (`pipeline/changes/<changeId>/revisions/<revisionId>/l4`) is gated by
+  the revision manifest instead, and refused when `pipeline/releases/<baseId>/l4` is missing.
+- `/candidate` alone points `moduleFolder` at `<mod>/tobe/plan` (`revision: null`). A relative path is
   joined under the module. Without the flag the canonical l4 is byte-identical.
 - The pool is derived from l4: a new run wipes it and plans again. Pending messages do not refuse.
 - `/estimate` is refused (`not available yet`). There is no `/rebuild`.

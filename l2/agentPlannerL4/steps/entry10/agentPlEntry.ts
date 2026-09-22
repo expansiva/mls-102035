@@ -11,6 +11,7 @@ import {
   plEntryRefusal,
   unknownPipelineFlowId,
   wipeModulePool,
+  writePlRevision,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import {
   PL_STEP_HOOKS,
@@ -55,6 +56,7 @@ export async function beforePlEntryPromptStep(
   const existing = existingModuleName(invocation.module) || invocation.module;
   const wiped = await wipeModulePool(existing, new Date());
   const adjusted = await applyL5PlannerDeps(existing);
+  if (candidate) await writePlRevision(existing, facts.revision ?? null);
   const already = getAllSteps(context.task?.iaCompressed?.nextSteps).some(
     item => item.planning?.planId === 'entry10-done',
   );

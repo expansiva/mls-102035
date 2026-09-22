@@ -1,14 +1,18 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/helpers/plCore.ts" enhancement="_blank"/>
 
+import { readL4Revision } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { sha256Tobe } from '/_102035_/l2/newRelease/tobeDiff.js';
 import {
   diskFileInfo,
   displayPath,
+  fileExists,
   hostListFolder,
   listModuleFolders,
   moduleFile,
   moduleFolder,
   normalizeModuleName,
   pipelineFile,
+  readJson,
   readPipeline,
   writeJson,
   writePipeline,
@@ -32,7 +36,7 @@ import {
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
 
 export const PL_FLOW_ID = 'agentPlannerL4' as const;
-export const PL_FLOW_VERSION = '2026-09-21-pl-flow-v4' as const;
+export const PL_FLOW_VERSION = '2026-09-21-pl-flow-v5' as const;
 export const PL_AGENT_NAME = 'agentPlannerL4' as const;
 
 export const PL_STEP_IDS = ['entry10', 'diff20', 'dispatch20', 'loop30'] as const;
@@ -75,11 +79,24 @@ export interface PlParsedInvocation {
   candidate: string;
 }
 
+/** Identity of a sealed revision, recorded on the L4 pipeline and both l4diff files. */
+export interface PlRevisionIdentity {
+  changeId: string;
+  revisionId: string;
+  baseId: string;
+  /** `sha256:` of `manifest.files` JSON with keys sorted. Same digest as `sha256Tobe`. */
+  manifestHash: string;
+}
+
 export interface PlEntryFacts {
   moduleExists: boolean;
   pipelineStatus: string;
   pipelineFlowId: string;
   l5ConfigExists: boolean;
+  /** Verified identity. Null when the root is not a sealed revision, or the manifest did not verify. */
+  revision?: PlRevisionIdentity | null;
+  /** Declared `baseId` when that release folder is absent. Empty otherwise. */
+  releaseMissingBaseId?: string;
 }
 
 export type PlInvokeSide = 'l2' | 'l1' | 'effort';
@@ -114,6 +131,80 @@ export function resolveCandidateFolder(moduleName: string, relativePath = ''): s
   if (rel.includes('..')) return '';
   if (rel === mod || rel.startsWith(`${mod}/`)) return rel;
   return `${mod}/${rel}`;
+}
+
+const REVISION_ROOT_RE = /^([^/]+)\/pipeline\/changes\/([a-zA-Z0-9-]+)\/revisions\/([a-zA-Z0-9-]+)\/l4$/;
+
+/** Sealed revision copy (`…/revisions/<id>/l4`). Anything else, including `tobe/plan`, is null. */
+export function parseRevisionRoot(root: string): { changeId: string; revisionId: string } | null {
+  const match = REVISION_ROOT_RE.exec(String(root || '').trim());
+  if (!match) return null;
+  return { changeId: match[2], revisionId: match[3] };
+}
+
+export function revisionMissingRefusal(moduleName: string, changeId: string, revisionId: string): string {
+  return `Revision ${changeId}/${revisionId} of "${moduleName}" is missing or its files differ from manifest.json.`;
+}
+
+export function releaseMissingRefusal(moduleName: string, baseId: string): string {
+  return `Release ${baseId} of "${moduleName}" is missing.`;
+}
+
+function revisionSegment(value: string): boolean {
+  return /^[a-zA-Z0-9-]+$/.test(value);
+}
+
+/** Literal release folder, outside the `/candidate` override. Empty when `baseId` is not a path segment. */
+export function releaseL4Root(moduleName: string, baseId: string): string {
+  if (!revisionSegment(baseId)) return '';
+  return `${normalizeModuleName(moduleName)}/pipeline/releases/${baseId}/l4`;
+}
+
+export function releaseL4Present(moduleName: string, baseId: string): boolean {
+  const root = releaseL4Root(moduleName, baseId);
+  if (!root) return false;
+  return fileExists({
+    project: moduleFile(moduleName).project,
+    level: 4,
+    folder: root,
+    shortName: 'module',
+    extension: '.defs.ts',
+  });
+}
+
+function revisionManifestFile(moduleName: string, changeId: string, revisionId: string): Ns5FileInfo {
+  return {
+    project: moduleFile(moduleName).project,
+    level: 4,
+    folder: `${normalizeModuleName(moduleName)}/pipeline/changes/${changeId}/revisions/${revisionId}`,
+    shortName: 'manifest',
+    extension: '.json',
+  };
+}
+
+/** `baseId` declared by the revision manifest. Does not verify hashes — `readL4Revision` does that. */
+export async function declaredRevisionBaseId(moduleName: string): Promise<string> {
+  const canonical = normalizeModuleName(moduleName);
+  const rev = parseRevisionRoot(moduleFolder(canonical));
+  if (!rev) return '';
+  const manifest = await readJson<{ baseId?: unknown }>(revisionManifestFile(canonical, rev.changeId, rev.revisionId));
+  const baseId = typeof manifest?.baseId === 'string' ? manifest.baseId.trim() : '';
+  return baseId;
+}
+
+/** Verified revision identity, or null when the root is not a revision or `readL4Revision` rejects it. */
+export async function loadPlRevision(moduleName: string): Promise<PlRevisionIdentity | null> {
+  const canonical = normalizeModuleName(moduleName);
+  const rev = parseRevisionRoot(moduleFolder(canonical));
+  if (!rev) return null;
+  const manifest = await readL4Revision(moduleFile(canonical).project, canonical, rev.changeId, rev.revisionId);
+  if (!manifest) return null;
+  return {
+    changeId: manifest.changeId,
+    revisionId: manifest.revisionId,
+    baseId: manifest.baseId,
+    manifestHash: await sha256Tobe(manifest.files),
+  };
 }
 
 export function candidateRootOf(moduleName: string): string {
@@ -164,7 +255,12 @@ export function plEntryRefusal(invocation: PlParsedInvocation, facts: PlEntryFac
   if (!invocation.module) return 'Provide the module name after @@agentPlannerL4 (lowerCamel).';
   if (!moduleTokenOk(invocation.module)) return 'Module name must be lowerCamel (example: stockControl).';
   if (!facts.moduleExists) return `Module "${invocation.module}" does not exist in l4/.`;
-  if (facts.pipelineStatus !== 'complete') {
+  // A sealed revision has no pipeline.json. The manifest is the gate; the release folder must exist.
+  const rev = parseRevisionRoot(invocation.candidate);
+  if (rev) {
+    if (facts.releaseMissingBaseId) return releaseMissingRefusal(invocation.module, facts.releaseMissingBaseId);
+    if (!facts.revision) return revisionMissingRefusal(invocation.module, rev.changeId, rev.revisionId);
+  } else if (facts.pipelineStatus !== 'complete') {
     return `Module "${invocation.module}" pipeline is not complete.`;
   }
   if (!facts.l5ConfigExists) return 'l5/config.json is missing.';
@@ -175,12 +271,33 @@ export async function gatherPlEntryFacts(moduleName: string): Promise<PlEntryFac
   const existing = moduleName ? existingModuleName(moduleName) : '';
   const pipeline = existing ? await readPipeline(existing) : null;
   const config = await readL5Config();
-  return {
+  const facts: PlEntryFacts = {
     moduleExists: !!existing,
     pipelineStatus: pipeline?.status || '',
     pipelineFlowId: pipeline?.flowId || '',
     l5ConfigExists: config !== null,
+    revision: null,
+    releaseMissingBaseId: '',
   };
+  if (!existing || !parseRevisionRoot(moduleFolder(existing))) return facts;
+  const baseId = await declaredRevisionBaseId(existing);
+  if (baseId && !releaseL4Present(existing, baseId)) {
+    facts.releaseMissingBaseId = baseId;
+    return facts;
+  }
+  facts.revision = await loadPlRevision(existing);
+  return facts;
+}
+
+/** Records `revision` on the pipeline under the current module root. Creates the file when absent. */
+export async function writePlRevision(moduleName: string, revision: PlRevisionIdentity | null): Promise<void> {
+  const canonical = normalizeModuleName(moduleName);
+  const pipeline = await readPipeline(canonical);
+  await writeJson(pipelineFile(canonical), {
+    ...(pipeline ?? { moduleName: canonical }),
+    revision,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

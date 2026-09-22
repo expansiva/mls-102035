@@ -1,6 +1,6 @@
 {
   "flowId": "agentPlannerL4",
-  "schemaVersion": "2026-09-21-pl-flow-v4",
+  "schemaVersion": "2026-09-21-pl-flow-v5",
   "status": "entry10",
   "description": "L4 planner: optional /candidate override of the module root, wipe the module pool, emit l4diff.json (sealed base × candidate), list the artifacts, write pool/l1 and pool/l2, and orchestrate L2 → L1 → L2 by type:agent steps in the same task. No LLM. Does not read ontology to opine. Never add-message-ai from a step.",
   "canonicalReferences": [
@@ -26,8 +26,8 @@
     "fast": "@@agentPlannerL4 <lowerCamel> /fast",
     "candidate": "@@agentPlannerL4 <lowerCamel> /candidate",
     "candidatePath": "@@agentPlannerL4 <lowerCamel> /candidate <relativeRoot>",
-    "moduleRule": "The module name is the first lowerCamel token. The module must already exist in l4/ with pipeline.status complete.",
-    "candidateRule": "/candidate alone points moduleFolder at <mod>/tobe/plan. /candidate <relativeRoot> points it at that path under the module. Without the flag the canonical l4 is unchanged.",
+    "moduleRule": "The module name is the first lowerCamel token. The module must already exist in l4/. Canonical and manual roots require pipeline.status complete. A sealed revision root is gated by the revision manifest, not pipeline.status.",
+    "candidateRule": "/candidate alone points moduleFolder at <mod>/tobe/plan (manual root: revision is null; base is the sealed catalog, else canonical). /candidate pipeline/changes/<changeId>/revisions/<revisionId>/l4 is a sealed revision: entry requires readL4Revision, refuses a missing pipeline/releases/<baseId>/l4, and records revision on pipeline.json and both l4diff.json. The diff base is that release and never falls back to canonical. Without the flag the canonical l4 is unchanged.",
     "estimateRule": "/estimate is refused with 'not available yet'.",
     "rebuildRule": "There is no /rebuild. This flow does not create or wipe a module."
   },
@@ -47,7 +47,7 @@
       "dependsOn": [],
       "doneAnchor": "entry10-done",
       "artifact": "l5/config.json",
-      "goal": "Parse the invocation including /candidate, setModuleRoot, refuse deterministically, wipe the module pool (messages + web/*.json, poolWiped on the pipeline), append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline. Unknown pipeline flowId is recorded, not refused."
+      "goal": "Parse the invocation including /candidate, setModuleRoot, refuse deterministically, wipe the module pool (messages + web/*.json, poolWiped on the pipeline), append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline. A sealed revision root skips pipeline.status and requires a manifest that matches its copies; a missing release folder is refused by name. On any /candidate root, write revision (null when manual) on pipeline.json. Unknown pipeline flowId is recorded, not refused."
     },
     {
       "id": "diff20",
@@ -55,7 +55,7 @@
       "dependsOn": ["entry10-done"],
       "doneAnchor": "diff20-done",
       "artifact": "l4/{module}/pool/l2/web/l4diff.json",
-      "goal": "Diff the sealed release l4 against the /candidate root by artifact and write pool/l1/web/l4diff.json and pool/l2/web/l4diff.json. No candidate ⇒ items: []."
+      "goal": "Diff the base l4 against the /candidate root by artifact and write pool/l1/web/l4diff.json and pool/l2/web/l4diff.json. On a sealed revision the base is pipeline/releases/<manifest.baseId>/l4 and never canonical. Otherwise the sealed catalog, then canonical, then empty. revision is the verified identity, or null off a sealed revision. No candidate ⇒ items: [] and revision: null."
     },
     {
       "id": "dispatch20",
