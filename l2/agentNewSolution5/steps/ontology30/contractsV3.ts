@@ -776,6 +776,7 @@ function fromPlatform(field: MdmDefField | undefined): Ns5OntologyFieldV3 {
   if (field.unique) out.unique = true;
   if (field.indexed) out.indexed = true;
   if (field.derived) out.derived = true;
+  if (field.writePrecondition) out.writePrecondition = true;
   if (field.values?.length) out.values = field.values;
   if (field.pattern) out.pattern = field.pattern;
   if (field.maxLength !== undefined) out.maxLength = field.maxLength;
@@ -790,7 +791,7 @@ function fromPlatform(field: MdmDefField | undefined): Ns5OntologyFieldV3 {
 /**
  * What the module wrote about a field the platform owns, over what the platform says. The module may
  * only TIGHTEN: `required` false to true, a subset of `values`, a stricter `pattern` or `maxLength`.
- * Structure (`type`, `collection`, `of`, `derived`, `indexed`, `unique`) is the platform's and is
+ * Structure (`type`, `collection`, `of`, `derived`, `writePrecondition`, `indexed`, `unique`) is the platform's and is
  * restored whatever the model wrote — a module cannot make a derived field writable by omitting a flag.
  */
 function mergeWithPlatform(
