@@ -7,9 +7,15 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
+import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
+import {
+  ns5OntologyEdges,
+  ns5OntologyEntityIds,
+  ns5OntologyEntityViews,
+  type Ns5OntologyAnyIndex,
+} from '/_102035_/l2/solution/ontologyView.js';
 import {
   loadNs5Actors,
   loadNs5Defs,
@@ -19,9 +25,12 @@ import {
   loadNs5OntologyIndex,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type {
+  Ns5AccessActor,
   Ns5AccessArtifact,
   Ns5AccessGrant,
+  Ns5JourneyArtifact,
   Ns5ModuleActor,
+  Ns5OntologyAnyEntity,
 } from '/_102035_/l2/solution/types.js';
 import { buildNs5AccessHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
 import {
@@ -30,6 +39,7 @@ import {
   buildNs5AccessArtifact,
   buildNs5AccessTool,
   collectNs5AccessRefCatalog,
+  mergeNs5AccessActors,
   normalizeNs5AccessPayload,
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
@@ -160,7 +170,7 @@ function actorsOf(ids: readonly string[], kinds: Record<string, Ns5ModuleActor['
 function gateOf(
   payload: unknown,
   extras: Partial<{
-    actors: Ns5ModuleActor[];
+    actors: readonly Ns5AccessActor[];
     entities: Ns5AccessEntityView[];
     relationships: Ns5AccessRelationshipView[];
     journeys: typeof ORDEN_JOURNEYS;
@@ -478,8 +488,13 @@ void test('ownerStepId maps access60 repair planIds', () => {
 
 void test('afterPrompt applies form normalizations before the gate and records them on the draft', () => {
   const source = readFileSync(path.join(HERE, 'agentNs5Access.ts'), 'utf8');
-  assert.match(source, /applyNs5AccessFormNormalizations/);
-  assert.match(source, /normalizations/);
+  const body = source.slice(source.indexOf('export async function afterNs5AccessPromptStep'));
+  const mergeAt = body.indexOf('mergeNs5AccessActors');
+  const formAt = body.indexOf('applyNs5AccessFormNormalizations');
+  const gateAt = body.indexOf('validateNs5Access');
+  assert.ok(mergeAt >= 0 && formAt > mergeAt && gateAt > formAt);
+  assert.match(body, /actors: merged\.actors/);
+  assert.match(body, /persistArtifacts\(moduleName, merged\.actors/);
   const persist = source.slice(source.indexOf('async function persistArtifacts'));
   assert.match(persist, /normalizations/);
   assert.match(persist, /writeStepState/);
@@ -586,7 +601,11 @@ void test('access60 prompt has no domain examples and keeps structured disclosur
   assert.doesNotMatch(prompt, /## Authorities/);
   assert.doesNotMatch(prompt, /authorityRef|authorityId/);
   assert.match(prompt, /2026-09-12-ns5-access-v3/);
+  assert.match(prompt, /actorPersons/);
+  assert.doesNotMatch(prompt, /ns5-access-v3\.1/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto|recepcionista/i);
+  const required = loadSchema().required as string[];
+  assert.ok(required.includes('actorPersons'));
   const schema = JSON.stringify(loadSchema());
   assert.doesNotMatch(schema, /landingIntent|allowedInformation|deniedInformation|journeyStepRefs/);
 });
@@ -612,7 +631,7 @@ void test('live access of the three modules: fieldsOnly without restriction beco
   );
   for (const moduleName of LIVE_ACCESS_MODULES) {
     const artifact = liveAccess(moduleName);
-    const { grants, normalizations } = applyNs5AccessFormNormalizations(artifact.grants, views[moduleName]);
+    const { grants, normalizations } = applyNs5AccessFormNormalizations(artifact.grants, views[moduleName], artifact.actors);
     const droppedAnchors = normalizations.filter(item => item.kind === 'dropAnchorEntity');
     const promoted = normalizations.filter(item => item.kind === 'disclosureFullRecord');
     assert.ok(
@@ -660,6 +679,7 @@ void test('live access of the three modules: fieldsOnly without restriction beco
   const { grants: academiaGrants } = applyNs5AccessFormNormalizations(
     academia.grants,
     liveEntityViews('mensalidadesAcademia'),
+    academia.actors,
   );
   const own = academiaGrants.find(grant => grant.grantId === 'alunoCancelarPropriaMatricula');
   assert.equal(own?.disclosure.mode, 'fieldsOnly');
@@ -691,7 +711,7 @@ void test('fieldsOnly covering every resolvable field fails the gate unless norm
   const raw = validateNs5Access([grant], ctx);
   assert.equal(raw.ok, false);
   assert.ok(raw.issues.some(issue => issue.code === 'NS5_ACCESS_DISCLOSURE_FIELDS'));
-  const { grants, normalizations } = applyNs5AccessFormNormalizations([grant], entities);
+  const { grants, normalizations } = applyNs5AccessFormNormalizations([grant], entities, ctx.actors);
   assert.equal(grants[0].disclosure.mode, 'fullRecord');
   assert.equal(grants[0].disclosure.allowedFields, undefined);
   assert.ok(normalizations.some(item => item.kind === 'disclosureFullRecord'));
@@ -828,4 +848,251 @@ void test('custom that does not cite the actor stays custom when a person is rea
   });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_ACCESS_CUSTOM_HAS_ANCHOR'), false);
+});
+
+const AGENDA_BENCH = path.resolve(HERE, '../../../../../mls-102047/l4/agendaClinica');
+
+function readBench<T>(file: string): T {
+  const json = extractNs4ClassicJsonObject(readFileSync(file, 'utf8'));
+  if (!json) throw new Error(`no json in ${file}`);
+  return JSON.parse(json) as T;
+}
+
+function frozenAgendaAccess(): Ns5AccessArtifact {
+  return readBench<Ns5AccessArtifact>(path.join(HERE, 'fixtures/ns5_69-agendaClinica-access.defs.ts'));
+}
+
+function agendaBenchContext() {
+  const index = readBench<Ns5OntologyAnyIndex>(path.join(AGENDA_BENCH, 'ontology/index.defs.ts'));
+  const entityIds = ns5OntologyEntityIds(index);
+  const entities = ns5OntologyEntityViews(entityIds.map(entityId => (
+    readBench<Ns5OntologyAnyEntity>(path.join(AGENDA_BENCH, 'ontology', `${entityId}.defs.ts`))
+  )));
+  const journeyIndex = readBench<{ journeys: Array<{ journeyId: string }> }>(path.join(AGENDA_BENCH, 'journeys/index.defs.ts'));
+  const journeys = journeyIndex.journeys.map(entry => (
+    readBench<Ns5JourneyArtifact>(path.join(AGENDA_BENCH, 'journeys', `${entry.journeyId}.defs.ts`))
+  ));
+  return {
+    entities: entities.map(entity => ({
+      entityId: entity.entityId,
+      party: entity.party,
+      kind: entity.kind,
+      fields: entity.fields.map(field => ({ fieldId: field.fieldId })),
+      ...(entity.writer && entity.writer !== 'journey' ? { writer: entity.writer } : {}),
+      storage: { idField: entity.idField },
+      ...(entity.paths ? { paths: entity.paths } : {}),
+    })),
+    relationships: ns5OntologyEdges(index),
+    journeys: journeys.map(journey => ({
+      journeyId: journey.journeyId,
+      business: {
+        actorRef: journey.business.actorRef,
+        steps: journey.business.steps,
+      },
+    })),
+  };
+}
+
+void test('ns5_69: v3 without personEntity reads as empty string and an unknown actorRef is dropped', () => {
+  const parsed = normalizeNs5AccessPayload({
+    schemaVersion: '2026-09-12-ns5-access-v3',
+    grants: [],
+  });
+  assert.deepEqual(parsed.actorPersons, []);
+  const missing = mergeNs5AccessActors([actor('profissional')], parsed.actorPersons);
+  assert.equal(missing.actors[0].personEntity, '');
+  assert.equal(missing.normalizations[0]?.kind, 'personEntityMissing');
+
+  const declared = normalizeNs5AccessPayload({
+    actorPersons: [
+      { actorRef: 'profissional', personEntity: 'Profissional' },
+      { actorRef: 'ghost', personEntity: 'Paciente' },
+      { actorRef: 'recepcionista' },
+    ],
+    grants: [],
+  });
+  assert.equal(declared.actorPersons.find(item => item.actorRef === 'recepcionista')?.personEntity, '');
+  const merged = mergeNs5AccessActors(
+    [actor('profissional'), actor('recepcionista')],
+    declared.actorPersons,
+  );
+  assert.deepEqual(merged.actors.map(item => item.actorId), ['profissional', 'recepcionista']);
+  assert.equal(merged.actors[0].personEntity, 'Profissional');
+  assert.equal(merged.actors[1].personEntity, '');
+  assert.equal(merged.normalizations.some(item => item.kind === 'personEntityMissing'), false);
+});
+
+void test('ns5_69: agendaClinica own anchors move to the actor person; related and organization stay', () => {
+  const frozen = readFileSync(path.join(HERE, 'fixtures/ns5_69-agendaClinica-access.defs.ts'), 'utf8');
+  assert.match(frozen, /profissionalAgendaDiaria[\s\S]*?"anchorEntity": "Paciente"/);
+  assert.match(frozen, /profissionalPacientesDaAgenda[\s\S]*?"anchorEntity": "Paciente"/);
+  const artifact = frozenAgendaAccess();
+  const actors: Ns5AccessActor[] = [
+    ...artifact.actors.map(item => ({
+      ...item,
+      personEntity: item.actorId === 'recepcionista' ? 'Recepcionista' : 'Profissional',
+    })),
+    {
+      actorId: 'auditor',
+      kind: 'internal',
+      origin: 'named',
+      title: 'Auditor',
+      description: 'Reads the organization.',
+      personEntity: '',
+    },
+  ];
+  const related: Ns5AccessGrant = {
+    grantId: 'profissionalPacientesRelacionados',
+    actorRef: 'profissional',
+    title: 'Related patients',
+    description: 'Patients related to the professional, not the professional record.',
+    entityRefs: ['Paciente'],
+    dataScope: { mode: 'related', anchorEntity: 'Paciente', description: 'The other person.' },
+    disclosure: { mode: 'fullRecord', description: 'Patient record.' },
+  };
+  const organization: Ns5AccessGrant = {
+    grantId: 'auditorOrganizacao',
+    actorRef: 'auditor',
+    title: 'Organization',
+    description: 'The whole clinic.',
+    entityRefs: ['Consulta'],
+    dataScope: { mode: 'organization', description: 'Every appointment.' },
+    disclosure: { mode: 'fullRecord', description: 'Appointment record.' },
+  };
+  const { grants, normalizations } = applyNs5AccessFormNormalizations(
+    [...artifact.grants, related, organization],
+    [],
+    actors,
+  );
+  const moved = normalizations.filter(item => item.kind === 'anchorFromActor');
+  assert.deepEqual(moved.map(item => [item.grantId, item.from, item.to]), [
+    ['profissionalAgendaDiaria', 'Paciente', 'Profissional'],
+    ['profissionalPacientesDaAgenda', 'Paciente', 'Profissional'],
+  ]);
+  assert.equal(grants.find(item => item.grantId === 'profissionalAgendaDiaria')?.dataScope.anchorEntity, 'Profissional');
+  assert.equal(grants.find(item => item.grantId === 'profissionalPacientesDaAgenda')?.dataScope.anchorEntity, 'Profissional');
+  assert.equal(grants.find(item => item.grantId === 'profissionalProprioCadastro')?.dataScope.anchorEntity, 'Profissional');
+  assert.equal(grants.find(item => item.grantId === 'recepcionistaProprioCadastro')?.dataScope.anchorEntity, 'Recepcionista');
+  assert.deepEqual(grants.find(item => item.grantId === related.grantId), related);
+  assert.deepEqual(grants.find(item => item.grantId === organization.grantId), organization);
+  for (const grantId of ['recepcionistaCadastroPacientes', 'recepcionistaAgendaConsultas', 'recepcionistaLocalizarProfissionais']) {
+    assert.deepEqual(
+      grants.find(item => item.grantId === grantId),
+      artifact.grants.find(item => item.grantId === grantId),
+      grantId,
+    );
+  }
+});
+
+void test('ns5_69: NS5_ACCESS_PERSON_UNKNOWN', () => {
+  const gate = gateOf({
+    grants: [{
+      grantId: 'tecnicoProprio',
+      actorRef: 'tecnico',
+      title: 'Own',
+      description: 'Own work.',
+      entityRefs: ['ServiceOrder'],
+      dataScope: { mode: 'organization', description: 'The shop.' },
+      disclosure: { mode: 'fullRecord', description: 'The order.' },
+    }],
+  }, {
+    actors: [{ ...actor('tecnico'), personEntity: 'Ghost' }],
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_ACCESS_PERSON_UNKNOWN'));
+});
+
+void test('ns5_69: NS5_ACCESS_PERSON_NOT_PERSON', () => {
+  const gate = gateOf({
+    grants: [{
+      grantId: 'tecnicoProprio',
+      actorRef: 'tecnico',
+      title: 'Own',
+      description: 'Own work.',
+      entityRefs: ['ServiceOrder'],
+      dataScope: { mode: 'organization', description: 'The shop.' },
+      disclosure: { mode: 'fullRecord', description: 'The order.' },
+    }],
+  }, {
+    actors: [{ ...actor('tecnico'), personEntity: 'ServiceOrder' }],
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_ACCESS_PERSON_NOT_PERSON'));
+});
+
+void test('ns5_69: NS5_ACCESS_EXTERNAL_PERSON_REQUIRED', () => {
+  const without = gateOf({
+    grants: [{
+      grantId: 'clienteOwn',
+      actorRef: 'cliente',
+      title: 'Own',
+      description: 'Own orders.',
+      entityRefs: ['ServiceOrder'],
+      dataScope: { mode: 'own', anchorEntity: 'Customer', description: 'Own orders.' },
+      disclosure: { mode: 'fullRecord', description: 'The order.' },
+    }],
+  }, {
+    actors: [{ ...actor('cliente', 'external'), personEntity: '' }],
+    journeys: [{ journeyId: 'consultar', business: { actorRef: 'cliente' } }],
+  });
+  assert.equal(without.ok, false);
+  assert.ok(without.issues.some(issue => issue.code === 'NS5_ACCESS_EXTERNAL_PERSON_REQUIRED'));
+
+  const withPerson = gateOf({
+    grants: [{
+      grantId: 'clienteOwn',
+      actorRef: 'cliente',
+      title: 'Own',
+      description: 'Own orders.',
+      entityRefs: ['ServiceOrder'],
+      dataScope: { mode: 'own', anchorEntity: 'Customer', description: 'Own orders.' },
+      disclosure: { mode: 'fullRecord', description: 'The order.' },
+    }],
+  }, {
+    actors: [{ ...actor('cliente', 'external'), personEntity: 'Customer' }],
+    journeys: [{ journeyId: 'consultar', business: { actorRef: 'cliente' } }],
+  });
+  assert.equal(withPerson.ok, true, withPerson.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('ns5_69: NS5_ACCESS_OWN_WITHOUT_PERSON', () => {
+  const gate = gateOf({
+    grants: [{
+      grantId: 'tecnicoOwn',
+      actorRef: 'tecnico',
+      title: 'Own',
+      description: 'Own work.',
+      entityRefs: ['ServiceOrder'],
+      dataScope: { mode: 'own', anchorEntity: 'Customer', description: 'Own orders.' },
+      disclosure: { mode: 'fullRecord', description: 'The order.' },
+    }],
+  }, {
+    actors: [{ ...actor('tecnico'), personEntity: '' }],
+    journeys: [{ journeyId: 'reparar', business: { actorRef: 'tecnico' } }],
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_ACCESS_OWN_WITHOUT_PERSON'));
+});
+
+void test('ns5_69: Paciente reaches Profissional through Consulta on the real agenda fixture', () => {
+  const artifact = frozenAgendaAccess();
+  const actors: Ns5AccessActor[] = artifact.actors.map(item => ({
+    ...item,
+    personEntity: item.actorId === 'recepcionista' ? 'Recepcionista' : 'Profissional',
+  }));
+  const ctx = agendaBenchContext();
+  const { grants } = applyNs5AccessFormNormalizations(artifact.grants, ctx.entities, actors);
+  assert.equal(grants.find(item => item.grantId === 'profissionalPacientesDaAgenda')?.dataScope.anchorEntity, 'Profissional');
+  const walked = anchorPath('Paciente', 'Profissional', ctx.relationships);
+  assert.deepEqual(walked?.map(hop => hop.toEntity), ['Consulta', 'Profissional']);
+  const gate = validateNs5Access(grants, {
+    moduleName: 'agendaClinica',
+    actors,
+    entities: ctx.entities,
+    relationships: ctx.relationships,
+    journeys: ctx.journeys,
+  });
+  const unreachable = gate.issues.filter(issue => issue.code === 'NS5_ACCESS_ANCHOR_UNREACHABLE');
+  assert.deepEqual(unreachable, [], gate.issues.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
 });

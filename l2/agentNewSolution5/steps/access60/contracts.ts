@@ -4,6 +4,7 @@ import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import { resolvableFieldIds } from '/_102035_/l2/solution/lib.js';
 import {
   NS5_ACCESS_SCHEMA_VERSION,
+  type Ns5AccessActor,
   type Ns5AccessArtifact,
   type Ns5AccessDataScope,
   type Ns5AccessGrant,
@@ -29,17 +30,32 @@ export const NS5_ACCESS_LIMITED_DISCLOSURE_MODES = ['fieldsOnly', 'summaryOnly']
 export type Ns5AccessScopeMode = typeof NS5_ACCESS_SCOPE_MODES[number];
 export type Ns5AccessDisclosureMode = typeof NS5_ACCESS_DISCLOSURE_MODES[number];
 
-export interface Ns5AccessNormalization {
-  grants: Ns5AccessGrant[];
+export interface Ns5AccessActorPerson {
+  actorRef: string;
+  /** Role entity this actor is, or `''` when the module has no person record for them. */
+  personEntity: string;
 }
 
-export type Ns5AccessFormNormalizationKind = 'disclosureFullRecord' | 'dropAnchorEntity';
+export interface Ns5AccessNormalization {
+  grants: Ns5AccessGrant[];
+  actorPersons: Ns5AccessActorPerson[];
+}
 
-/** Deterministic form change recorded on the access60 draft, not on the artifact. */
+export type Ns5AccessFormNormalizationKind =
+  | 'disclosureFullRecord'
+  | 'dropAnchorEntity'
+  | 'anchorFromActor'
+  | 'personEntityMissing';
+
+/** Deterministic form change recorded on the access60 draft and on pipeline.json. */
 export interface Ns5AccessFormNormalization {
   kind: Ns5AccessFormNormalizationKind;
-  grantId: string;
   detail: string;
+  grantId?: string;
+  /** anchorFromActor: the anchor the model wrote. Empty when there was none. */
+  from?: string;
+  /** anchorFromActor: the actor's personEntity. */
+  to?: string;
 }
 
 export interface Ns5AccessEntityView {
@@ -87,7 +103,7 @@ export function buildNs5AccessTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Access',
-    'Submit grants by actorRef with title and description. Do not emit actors, profiles, authorities, hops, landing or realization. Disclosure names Entity.field; own/assigned/related name the person anchorEntity.',
+    'Submit grants by actorRef with title and description, plus actorPersons (one item per given actor; personEntity is the role entity they are, or ""). Do not emit actors, profiles, authorities, hops, landing or realization. Disclosure names Entity.field. own/assigned anchor on that personEntity; related anchors on the other person.',
     schema,
   );
 }
@@ -96,18 +112,50 @@ export function normalizeNs5AccessPayload(value: unknown): Ns5AccessNormalizatio
   const root = record(value);
   return {
     grants: list(root.grants).map(normalizeGrant).filter(grant => grant.grantId || grant.actorRef),
+    actorPersons: list(root.actorPersons).map(normalizeActorPerson).filter((item): item is Ns5AccessActorPerson => item !== null),
   };
 }
 
 /**
+ * Pipeline actors plus the tool's actorPersons. A pipeline actor missing from the map gets
+ * `personEntity: ''` and `personEntityMissing`. An actorRef that is not a pipeline actor is dropped.
+ */
+export function mergeNs5AccessActors(
+  actors: readonly Ns5ModuleActor[],
+  actorPersons: readonly Ns5AccessActorPerson[],
+): { actors: Ns5AccessActor[]; normalizations: Ns5AccessFormNormalization[] } {
+  const known = new Set(actors.map(actor => actor.actorId).filter(Boolean));
+  const declared = new Map<string, string>();
+  for (const item of actorPersons) {
+    if (!known.has(item.actorRef)) continue;
+    declared.set(item.actorRef, item.personEntity);
+  }
+  const normalizations: Ns5AccessFormNormalization[] = [];
+  const next = actors.map(actor => {
+    if (!declared.has(actor.actorId)) {
+      normalizations.push({
+        kind: 'personEntityMissing',
+        detail: `Actor ${actor.actorId} omitted from actorPersons; personEntity is ''.`,
+      });
+      return { ...actor, personEntity: '' };
+    }
+    return { ...actor, personEntity: declared.get(actor.actorId) ?? '' };
+  });
+  return { actors: next, normalizations };
+}
+
+/**
  * Post-LLM form cleanup: fieldsOnly with no real restriction becomes fullRecord;
- * anchorEntity is dropped unless the scope is own/assigned/related.
+ * anchorEntity is dropped unless the scope is own/assigned/related;
+ * own/assigned whose actor has a personEntity anchors on that person.
  */
 export function applyNs5AccessFormNormalizations(
   grants: Ns5AccessGrant[],
   entities: readonly Ns5AccessEntityView[],
+  actors: readonly Ns5AccessActor[],
 ): { grants: Ns5AccessGrant[]; normalizations: Ns5AccessFormNormalization[] } {
   const entityById = new Map(entities.map(entity => [entity.entityId, entity]));
+  const personByActor = new Map(actors.map(actor => [actor.actorId, actor.personEntity ?? '']));
   const normalizations: Ns5AccessFormNormalization[] = [];
   const next = grants.map(grant => {
     let current: Ns5AccessGrant = {
@@ -148,6 +196,21 @@ export function applyNs5AccessFormNormalizations(
         detail: `anchorEntity removed; ${current.dataScope.mode} is not own/assigned/related.`,
       });
     }
+    const person = personByActor.get(current.actorRef) ?? '';
+    if ((current.dataScope.mode === 'own' || current.dataScope.mode === 'assigned') && person && current.dataScope.anchorEntity !== person) {
+      const from = current.dataScope.anchorEntity || '';
+      current = {
+        ...current,
+        dataScope: { ...current.dataScope, anchorEntity: person },
+      };
+      normalizations.push({
+        kind: 'anchorFromActor',
+        grantId: current.grantId,
+        from,
+        to: person,
+        detail: `anchorEntity ${from || '(none)'} replaced by actor personEntity ${person}.`,
+      });
+    }
     return current;
   });
   return { grants: next, normalizations };
@@ -183,13 +246,13 @@ function coversAllResolvable(list: readonly string[], total: readonly string[]):
 
 export function buildNs5AccessArtifact(
   moduleName: string,
-  actors: Ns5ModuleActor[],
+  actors: readonly Ns5AccessActor[],
   grants: Ns5AccessGrant[],
 ): Ns5AccessArtifact {
   return {
     schemaVersion: NS5_ACCESS_SCHEMA_VERSION,
     moduleName,
-    actors,
+    actors: [...actors],
     grants,
   };
 }
@@ -342,6 +405,13 @@ function requiredEdges(relationships: readonly Ns5AccessRelationshipView[]): Map
     add(relationship.toEntity, relationship.fromEntity, relationship.relationshipId);
   }
   return edges;
+}
+
+function normalizeActorPerson(value: unknown): Ns5AccessActorPerson | null {
+  const source = record(value);
+  const actorRef = memberId(text(source.actorRef), '');
+  if (!actorRef) return null;
+  return { actorRef, personEntity: text(source.personEntity) };
 }
 
 function normalizeGrant(value: unknown): Ns5AccessGrant {

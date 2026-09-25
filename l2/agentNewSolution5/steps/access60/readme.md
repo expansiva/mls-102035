@@ -13,7 +13,7 @@ and has no screen; `/fast` auto-approves.
 
 ## Output
 
-`Ns5AccessArtifact`: `actors[]` (copied from the pipeline) and `grants[]`. A grant
+`Ns5AccessArtifact`: `actors[]` (pipeline actors plus `personEntity`) and `grants[]`. A grant
 carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + optional
 `anchorEntity` + description) and `disclosure` (`mode` + `allowedFields`/`deniedFields` as
 `Entity.field` + description). No authorities, profiles, landing intent, realization, hops,
@@ -26,6 +26,16 @@ carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + 
 - A resolved `crud` writer (`ns5ResolveEntityWriter`) is in `entityRefs` of ≥1 grant of an `internal`
   actor (`NS5_ACCESS_CRUD_WITHOUT_INTERNAL_GRANT`).
 - An `external` actor only receives `own` grants.
+- `actors[].personEntity` is the `kind: role` entity that actor is, or `''` when this module has no
+  person record for them. The tool sends `actorPersons` (one item per actor); access60 merges it
+  onto the pipeline actors before the gate and always writes the field. A missing actor is `''`
+  plus `personEntityMissing`. Schema stays `2026-09-12-ns5-access-v3` (the field is additive).
+- `own` / `assigned` anchor on that `personEntity`. A different anchor is rewritten
+  (`anchorFromActor`, `from` → `to`) before the gate. `related` keeps the other person.
+  `personEntity` that is not a `party: person` entity is `NS5_ACCESS_PERSON_UNKNOWN` /
+  `NS5_ACCESS_PERSON_NOT_PERSON`. An external actor with `''` is
+  `NS5_ACCESS_EXTERNAL_PERSON_REQUIRED`. `own` / `assigned` of an actor with `''` is
+  `NS5_ACCESS_OWN_WITHOUT_PERSON`. A file that omits the key is not `''` — those checks stay off.
 - `fieldsOnly` / `summaryOnly` name `allowedFields` or `deniedFields` as a proper restriction
   (non-empty and not the complete resolvable set). Unrestricted `fieldsOnly` is normalized to
   `fullRecord` before the gate. Every ref resolves (`fields[]` ∪ `storage.idField` ∪ `details.<name>`).

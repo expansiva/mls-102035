@@ -84,6 +84,7 @@ export interface Ns5OntologyEntityViewItem {
     to: string;
     by: string[] | 'system' | 'time';
     description: string;
+    payload?: string[];
     ruleRefs?: string[];
   }>;
   /**
@@ -293,6 +294,7 @@ function copyTransitions(
     to: transition.to,
     by: Array.isArray(transition.by) ? [...transition.by] : transition.by as 'system' | 'time',
     description: transition.description,
+    ...('payload' in transition && Array.isArray(transition.payload) ? { payload: [...transition.payload] } : {}),
     ...(transition.ruleRefs ? { ruleRefs: [...transition.ruleRefs] } : {}),
   }));
 }

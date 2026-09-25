@@ -428,6 +428,8 @@ void test('normalize builds the five branches and fills in the platform structur
   }, 'Paciente', { moduleName: 'agendaClinica', mdm, plan }, normalizations)!;
 
   assert.deepEqual(Object.keys(built.record.fields), ['id', 'version', 'details']);
+  assert.equal(built.record.fields.version.writePrecondition, true, 'MDM role restores the catalog write precondition when the draft omits it');
+  assert.equal(built.record.fields.id.writePrecondition, undefined);
   assert.deepEqual(
     Object.keys(built.record.fields.details!.fields!),
     ['identification', 'base', 'person', 'general', 'agendaClinica'],
@@ -466,6 +468,7 @@ void test('normalize indexes a foreign key and writes id and version of a table'
   }, 'Consulta', { moduleName: 'agendaClinica', mdm, plan }, normalizations)! as Ns5OntologyTableV3;
   assert.equal(built.record.fields.id.type, 'uuid');
   assert.equal(built.record.fields.version.derived, true);
+  assert.equal(built.record.fields.version.writePrecondition, undefined, 'a non-MDM version field is not marked by name');
   assert.equal(built.record.fields.pacienteId.indexed, true, 'a foreign key is indexed by derivation');
   assert.deepEqual(built.storage, { target: 'moduleDatabase', table: 'agendaClinica_consulta', kind: 'relational' });
   assert.ok(normalizations.some(item => item.detail.includes('foreign key')));
@@ -975,6 +978,18 @@ void test('ns5_47: by collapses ["system"] to an empty list and keeps ["time"] f
     transitions: [{ transitionId: 'settle', from: ['open'], to: 'paid', by: 'system', description: 'x' }],
   });
   assert.deepEqual([...scalar.transitions![0].by], []);
+});
+
+void test('transition payload is optional and normalization preserves both explicit empty and populated lists', () => {
+  const plan = derivedPlan();
+  const built = buildMensalidade(plan, [], {
+    transitions: [
+      { transitionId: 'confirm', from: ['open'], to: 'paid', by: ['recepcao'], description: 'x', payload: [] },
+      { transitionId: 'settle', from: ['open'], to: 'paid', by: ['recepcao'], description: 'x', payload: ['details.attendanceNote'] },
+      { transitionId: 'legacy', from: ['open'], to: 'paid', by: ['recepcao'], description: 'x' },
+    ],
+  });
+  assert.deepEqual(built.transitions?.map(item => item.payload), [[], ['details.attendanceNote'], undefined]);
 });
 
 void test('ns5_47 probe: a transition that still names a state that became derived is named as such', () => {

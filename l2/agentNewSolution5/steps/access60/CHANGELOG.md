@@ -1,5 +1,16 @@
 # access60
 
+## 2026-09-25 (ns5_69)
+
+- `submitNs5Access` requires `actorPersons` (`actorRef` + `personEntity`, `''` allowed). The LLM
+  still does not emit `actors`. access60 merges the map onto the pipeline actors before form
+  cleanup and the gate, and writes `personEntity` on every actor. Missing actor → `''` and
+  `personEntityMissing`; unknown `actorRef` is dropped.
+- `own` / `assigned` whose actor has a personEntity anchors on that person (`anchorFromActor`).
+  `related` is left alone. Schema stays `2026-09-12-ns5-access-v3`.
+- Gate, only when the key is present: `NS5_ACCESS_PERSON_UNKNOWN`, `NS5_ACCESS_PERSON_NOT_PERSON`,
+  `NS5_ACCESS_EXTERNAL_PERSON_REQUIRED`, `NS5_ACCESS_OWN_WITHOUT_PERSON`.
+
 ## 2026-09-16
 
 - ns5_43 T3: the generator now feeds the gate what ns5_40 designed — a v3 entity arrives

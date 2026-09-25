@@ -42,10 +42,10 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
+  Ns5AccessActor,
   Ns5AccessGrant,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
-  Ns5ModuleActor,
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
   Ns5PipelineState,
@@ -55,7 +55,9 @@ import {
   buildNs5AccessArtifact,
   buildNs5AccessTool,
   collectNs5AccessRefCatalog,
+  mergeNs5AccessActors,
   normalizeNs5AccessPayload,
+  type Ns5AccessFormNormalization,
 } from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
 import {
   formatNs5AccessGate,
@@ -188,14 +190,20 @@ export async function afterNs5AccessPromptStep(
       throw new Error(failure);
     }
 
-    const { grants: rawGrants } = normalizeNs5AccessPayload(payload);
+    const { grants: rawGrants, actorPersons } = normalizeNs5AccessPayload(payload);
     await readModule(moduleName);
-    const [journeys, ontology, actors] = await Promise.all([
+    const [journeys, ontology, pipelineActors] = await Promise.all([
       readJourneys(moduleName),
       readOntology(moduleName),
       readNs5Actors(moduleName),
     ]);
-    const { grants, normalizations } = applyNs5AccessFormNormalizations(rawGrants, ontology.entities);
+    const merged = mergeNs5AccessActors(pipelineActors, actorPersons);
+    const { grants, normalizations: formNormalizations } = applyNs5AccessFormNormalizations(
+      rawGrants,
+      ontology.entities,
+      merged.actors,
+    );
+    const normalizations = [...merged.normalizations, ...formNormalizations];
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
       status: 'running',
@@ -204,7 +212,7 @@ export async function afterNs5AccessPromptStep(
     const draftPath = await writeJson(draftFile(moduleName, 'access60'), { grants, normalizations });
     const gate = validateNs5Access(grants, {
       moduleName,
-      actors,
+      actors: merged.actors,
       entities: ontology.entities,
       relationships: ontology.relationships,
       journeys,
@@ -226,7 +234,7 @@ export async function afterNs5AccessPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, actors, grants, pipeline, normalizations);
+    const artifactPath = await persistArtifacts(moduleName, merged.actors, grants, pipeline, normalizations);
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `access60 approved: ${artifactPath}`),
@@ -243,10 +251,10 @@ export async function afterNs5AccessPromptStep(
 
 async function persistArtifacts(
   moduleName: string,
-  actors: Ns5ModuleActor[],
+  actors: readonly Ns5AccessActor[],
   grants: Ns5AccessGrant[],
   pipeline: Ns5PipelineState,
-  normalizations: { kind: string; detail: string; grantId?: string }[] = [],
+  normalizations: Ns5AccessFormNormalization[] = [],
 ): Promise<string> {
   const artifact = buildNs5AccessArtifact(moduleName, actors, grants);
   const artifactPath = await writeDefs(accessFile(moduleName), `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
