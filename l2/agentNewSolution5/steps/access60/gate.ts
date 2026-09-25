@@ -1,8 +1,8 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/access60/gate.ts" enhancement="_blank"/>
 
 import type {
+  Ns5AccessActor,
   Ns5AccessGrant,
-  Ns5ModuleActor,
 } from '/_102035_/l2/solution/types.js';
 import {
   anchorPath,
@@ -39,7 +39,7 @@ export interface Ns5AccessGateResult {
 
 export interface Ns5AccessGateContext {
   moduleName?: string;
-  actors: readonly Ns5ModuleActor[];
+  actors: readonly Ns5AccessActor[];
   entities: readonly Ns5AccessEntityView[];
   relationships: readonly Ns5AccessRelationshipView[];
   journeys: ReadonlyArray<{
@@ -81,6 +81,7 @@ export function validateNs5Access(
       error(issues, 'NS5_ACCESS_ACTOR_DUPLICATE', `Duplicate actorId ${actor.actorId}.`, `${path}.actorId`);
     }
     if (actor.actorId) seenActorIds.add(actor.actorId);
+    checkActorPerson(issues, actor, index, entityById);
   });
 
   grants.forEach((grant, index) => {
@@ -121,6 +122,19 @@ export function validateNs5Access(
     const actor = actorById.get(grant.actorRef);
     if (actor?.kind === 'external' && grant.dataScope.mode !== 'own') {
       error(issues, 'NS5_ACCESS_EXTERNAL_OWN', 'An external actor only receives own grants.', `${base}.dataScope.mode`);
+    }
+    if (
+      actor
+      && Object.prototype.hasOwnProperty.call(actor, 'personEntity')
+      && (typeof actor.personEntity === 'string' ? actor.personEntity.trim() : '') === ''
+      && (grant.dataScope.mode === 'own' || grant.dataScope.mode === 'assigned')
+    ) {
+      error(
+        issues,
+        'NS5_ACCESS_OWN_WITHOUT_PERSON',
+        `${grant.dataScope.mode} grant of ${grant.actorRef} needs that actor's personEntity.`,
+        `${base}.actorRef`,
+      );
     }
 
     if (isPersonScopeMode(grant.dataScope.mode)) {
@@ -275,6 +289,34 @@ export function formatNs5AccessGate(issues: Ns5AccessGateIssue[]): string {
     .join('\n');
 }
 
+/**
+ * The key must be present. v3 files written before personEntity omit it; that is not `''`.
+ */
+function checkActorPerson(
+  issues: Ns5AccessGateIssue[],
+  actor: Ns5AccessActor,
+  index: number,
+  entityById: Map<string, Ns5AccessEntityView>,
+): void {
+  if (!Object.prototype.hasOwnProperty.call(actor, 'personEntity')) return;
+  const person = typeof actor.personEntity === 'string' ? actor.personEntity.trim() : '';
+  const path = `actors[${index}].personEntity`;
+  if (person === '') {
+    if (actor.kind === 'external') {
+      error(issues, 'NS5_ACCESS_EXTERNAL_PERSON_REQUIRED', 'An external actor names the personEntity they are.', path);
+    }
+    return;
+  }
+  const entity = entityById.get(person);
+  if (!entity) {
+    error(issues, 'NS5_ACCESS_PERSON_UNKNOWN', `Unknown personEntity ${person}.`, path);
+    return;
+  }
+  if (entity.party !== 'person') {
+    error(issues, 'NS5_ACCESS_PERSON_NOT_PERSON', `personEntity ${person} is not party: person.`, path);
+  }
+}
+
 function checkFieldList(
   issues: Ns5AccessGateIssue[],
   refs: readonly string[],
@@ -350,7 +392,7 @@ function warning(issues: Ns5AccessGateIssue[], code: string, message: string, pa
 
 function descriptionCitesActor(
   grant: Ns5AccessGrant,
-  actor: Ns5ModuleActor | undefined,
+  actor: Ns5AccessActor | undefined,
 ): boolean {
   if (!actor) return false;
   const hay = `${grant.description}\n${grant.dataScope.description}`.toLowerCase();

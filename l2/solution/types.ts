@@ -58,6 +58,15 @@ export interface Ns5ModuleActor {
   description: string;
 }
 
+/**
+ * access60 actor. `personEntity` is the role record this login is; `''` means this module has
+ * none. Optional only so v3 files written before the field still satisfy the type. access60 always
+ * writes it. Readers use `personEntity ?? ''`. Absence is not `''` for the gate.
+ */
+export interface Ns5AccessActor extends Ns5ModuleActor {
+  personEntity?: string;
+}
+
 export interface Ns5ModuleArtifact {
   /** Gate of module10; later steps refuse a different version. */
   schemaVersion: typeof NS5_MODULE_SCHEMA_VERSION;
@@ -673,8 +682,8 @@ export interface Ns5AccessArtifact {
   schemaVersion: typeof NS5_ACCESS_SCHEMA_VERSION;
   /** Folder. */
   moduleName: string;
-  /** Copied from the pipeline (survivors of the journeys20 drop). The LLM does not rewrite this list. */
-  actors: Ns5ModuleActor[];
+  /** Pipeline actors plus personEntity. The LLM does not emit this list; access60 merges actorPersons onto it. */
+  actors: Ns5AccessActor[];
   /** The grant is the capability. Backend applies scope and disclosure from these rows. */
   grants: Ns5AccessGrant[];
 }
@@ -756,6 +765,10 @@ export interface Ns5PipelineNormalization {
   journeyId?: string;
   stepId?: string;
   inboundId?: string;
+  /** access60 `anchorFromActor`: the anchor the model wrote. */
+  from?: string;
+  /** access60 `anchorFromActor`: the actor's personEntity. */
+  to?: string;
 }
 
 export interface Ns5PipelineLiftedField {

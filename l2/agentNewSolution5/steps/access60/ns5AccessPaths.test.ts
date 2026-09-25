@@ -236,7 +236,7 @@ void test('T2 the repaired grants of T4 pass the gate with no ids-only warning',
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_ACCESS_DISCLOSURE_IDS_ONLY'), false);
   // `allowedFields: ['Consulta', …]` is a proper subset of the tree, so the form cleanup leaves it alone.
-  const { grants, normalizations } = applyNs5AccessFormNormalizations(repairedGrants(), AGENDA_ENTITIES);
+  const { grants, normalizations } = applyNs5AccessFormNormalizations(repairedGrants(), AGENDA_ENTITIES, AGENDA_ACTORS);
   assert.equal(normalizations.length, 0);
   assert.equal(grants[1].disclosure.mode, 'fieldsOnly');
 });

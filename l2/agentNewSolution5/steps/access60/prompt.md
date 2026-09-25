@@ -12,6 +12,11 @@ Call the tool `submitNs5Access` once. Do not write Markdown around the tool argu
 The actors are given. Copy none of them. Do not emit an `actors` list and do not invent a profile
 or authority layer. Grants are yours.
 
+Emit `actorPersons`: one item per given actor, `{ "actorRef", "personEntity" }`. `personEntity` is
+the `kind: role` entity that actor is, or `""` when this module has no person record for them.
+For `own` and `assigned`, `anchorEntity` is that `personEntity` (a different value is rewritten).
+`related` names the other person.
+
 ## Grants
 
 Each grant is one `actorRef` with the entities it covers. `grantId` is lowerCamel. `title` and
@@ -67,6 +72,7 @@ readable path of that record. Write the paths the actor reads, or `fullRecord` w
 Counter-example (placeholders — use only ids that exist in the module): an external grant with
 `dataScope.mode` other than `own` is invalid. A valid own grant is
 `{ "grantId": "<grantId>", "actorRef": "<actorId>", "title": "<title>", "description": "<description>", "entityRefs": ["<Entity>"], "dataScope": { "mode": "own", "anchorEntity": "<PersonEntity>", "description": "<description>" }, "disclosure": { "mode": "fieldsOnly", "deniedFields": ["<Entity>.<field>"], "description": "<description>" } }`.
+The same call includes `"actorPersons": [{ "actorRef": "<actorId>", "personEntity": "<PersonEntity>" }]`.
 
 ## Language
 

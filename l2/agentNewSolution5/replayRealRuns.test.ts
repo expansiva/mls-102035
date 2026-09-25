@@ -290,7 +290,7 @@ for (const moduleName of ns5ReplayModules()) {
     const { grants: rawGrants } = normalizeNs5AccessPayload(draft);
     const actors = loadNs5Actors(moduleName);
     const entities = loadNs5Entities(moduleName);
-    const { grants } = applyNs5AccessFormNormalizations(rawGrants, accessView(entities));
+    const { grants } = applyNs5AccessFormNormalizations(rawGrants, accessView(entities), actors);
     const index = loadNs5OntologyIndex(moduleName);
     const journeys = loadNs5Journeys(moduleName);
     const gate = validateNs5Access(grants, {
