@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/module10/gate.ts" enhancement="_blank"/>
 
-import { normalizeNs4Languages } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+import { normalizeNs4Languages } from '/_102035_/l2/solution/helpers/ns4Core.js';
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleActor, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;

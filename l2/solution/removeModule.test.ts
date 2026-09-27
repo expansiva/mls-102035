@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ns4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
-import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+import { ns4ClassicDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import { stripModuleFromJson, stripModuleFromRegistry } from '/_102035_/l2/solution/removeModule.js';
 
 type StorInfo = {

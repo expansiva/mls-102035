@@ -7,7 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
-import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
+import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';

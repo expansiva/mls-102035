@@ -1,10 +1,10 @@
 /// <mls fileReference="_102035_/l2/agentExportSolution/agentExportSolution.ts" enhancement="_102027_/l2/enhancementAgent"/>
 
 import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
-import { readAgentProvenance } from '/_102035_/l2/agentNewSolution/helpers/ns4BuildStamp.js';
+import { readAgentProvenance } from '/_102035_/l2/solution/helpers/ns4BuildStamp.js';
 import {
   ns4RegistryRoleSubtype,
-  ns4RegistryRoleTag, NS4_LEVEL1_SCHEMA_VERSION } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+  ns4RegistryRoleTag, NS4_LEVEL1_SCHEMA_VERSION } from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import {
   listNs4ModuleFolders,
   ns4FileExists,
@@ -12,7 +12,7 @@ import {
   readNs4Pipeline,
   readNs4SolutionRegistry,
   readNs4Text,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+} from '/_102035_/l2/solution/helpers/ns4Fs.js';
 import {
   packSolution,
   packSolutionZip,

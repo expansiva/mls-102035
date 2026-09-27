@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/finalize50/agentFinalize50.ts" enhancement="_blank" />
 
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
-import { scanNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
+import { scanNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import {
   assertReviewSnapshotMatches,
   reviewSnapshotFromContext,

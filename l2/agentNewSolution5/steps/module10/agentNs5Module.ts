@@ -2,7 +2,7 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
-import { formatNs4E1OrganizationContext } from '/_102035_/l2/agentNewSolution/helpers/organizationContext.js';
+import { formatNs4E1OrganizationContext } from '/_102035_/l2/solution/helpers/organizationContext.js';
 import { formatNs5Siblings, ns5SiblingsFromRegistry } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   NS5_AGENT_NAME,

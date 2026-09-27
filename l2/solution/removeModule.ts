@@ -1,15 +1,15 @@
 /// <mls fileReference="_102035_/l2/solution/removeModule.ts" enhancement="_blank"/>
 
-import { ns4Level1Subtypes } from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
+import { ns4Level1Subtypes } from '/_102035_/l2/solution/helpers/level1Catalog.js';
 import {
   readNs4L5Config,
   readNs4L5Project,
   writeNs4L5Config,
   writeNs4L5Project,
   writeNs4SolutionRegistry,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
-import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
-import { validateNs4SolutionRegistry } from '/_102035_/l2/agentNewSolution/helpers/registryGate.js';
+} from '/_102035_/l2/solution/helpers/ns4Fs.js';
+import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
+import { validateNs4SolutionRegistry } from '/_102035_/l2/solution/helpers/registryGate.js';
 import {
   collectExactModuleFiles,
   collectTobeIntegrationFilesCiting,

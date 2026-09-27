@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l4/ordenServicioEs/ontology/index.defs.ts" enhancement="_blank"/>
 
-import type { Ns4OntologyIndexArtifact } from '/_102035_/l2/agentNewSolution/types.js';
+import type { Ns4OntologyIndexArtifact } from '/_102035_/l2/solution/helpers/ns4Types.js';
 
 export const ordenServicioEsOntologyIndex = {
   "schemaVersion": "2026-09-08-ns4-ontology-v7",

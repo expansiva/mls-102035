@@ -3,13 +3,13 @@
 import {
   ns4RegistryRoleSubtype,
   ns4RegistryRoleTag,
-} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+} from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import type {
   Ns4SolutionRegistryArtifact,
   Ns4SolutionRegistryEntity,
   Ns4SolutionRegistryEvent,
   Ns4SolutionRegistryRole,
-} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+} from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import { level1PlatformCatalog } from '/_102035_/l2/solution/lib.js';
 import { readSolutionRegistry } from '/_102035_/l2/solution/fs.js';
 

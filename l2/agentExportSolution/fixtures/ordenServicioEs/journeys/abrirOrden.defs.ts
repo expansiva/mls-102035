@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l4/ordenServicioEs/journeys/abrirOrden.defs.ts" enhancement="_blank"/>
 
-import type { Ns4JourneyArtifact } from '/_102035_/l2/agentNewSolution/types.js';
+import type { Ns4JourneyArtifact } from '/_102035_/l2/solution/helpers/ns4Types.js';
 
 export const abrirOrdenJourney = {
   "schemaVersion": "2026-08-14-ns4-journey-v5",

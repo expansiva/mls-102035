@@ -1,14 +1,14 @@
 /// <mls fileReference="_102035_/l2/agentExportSolution/helpers/packSolution.ts" enhancement="_blank"/>
 
-import { extractNs4ClassicJsonObject, parseNs4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
-import { normalizeNs4ModuleName } from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+import { extractNs4ClassicJsonObject, parseNs4ClassicDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import { normalizeNs4ModuleName } from '/_102035_/l2/solution/helpers/ns4Core.js';
 import {
   extractI18n,
   injectI18n,
   TEXT_PATHS_VERSION,
   textPathsForArtifact,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4TextPaths.js';
-import { sha256Ns4 } from '/_102035_/l2/agentNewSolution/steps/e2/contracts.js';
+} from '/_102035_/l2/solution/helpers/ns4TextPaths.js';
+import { sha256Ns4 } from '/_102035_/l2/solution/helpers/e2/contracts.js';
 import { encodeStoredZip, type ZipEntry } from '/_102035_/l2/agentExportSolution/helpers/storedZip.js';
 
 export const SOLUTION_MANIFEST_SCHEMA = '2026-09-09-solution-v1' as const;

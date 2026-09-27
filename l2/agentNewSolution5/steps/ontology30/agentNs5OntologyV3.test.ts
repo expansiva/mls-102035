@@ -19,8 +19,8 @@ import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
 import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolveModuleEntity, resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
-import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
-import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
+import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
+import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5FixturePath, ns5ReplayModules } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import {
   buildNs5OntologyEntityHumanPrompt,

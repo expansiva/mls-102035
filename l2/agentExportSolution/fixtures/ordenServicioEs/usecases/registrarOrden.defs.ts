@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l4/ordenServicioEs/usecases/registrarOrden.defs.ts" enhancement="_blank"/>
 
-import type { Ns4UseCaseArtifactV3 } from '/_102035_/l2/agentNewSolution/types.js';
+import type { Ns4UseCaseArtifactV3 } from '/_102035_/l2/solution/helpers/ns4Types.js';
 
 export const registrarOrdenUseCase = {
   "schemaVersion": "2026-09-09-ns4-usecase-v4",

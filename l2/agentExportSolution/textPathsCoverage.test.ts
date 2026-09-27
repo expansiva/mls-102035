@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { parseNs4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
-import { textPathsForArtifact, uncoveredNonAscii } from '/_102035_/l2/agentNewSolution/helpers/ns4TextPaths.js';
+import { parseNs4ClassicDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import { textPathsForArtifact, uncoveredNonAscii } from '/_102035_/l2/solution/helpers/ns4TextPaths.js';
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/ordenServicioEs/', import.meta.url));
 
