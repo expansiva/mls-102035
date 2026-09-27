@@ -101,6 +101,13 @@ void test('journeys20 tool schema is provider-clean', () => {
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
 });
 
+void test('journey.schema.json step title carries a description', () => {
+  const schema = loadSchema() as { $defs: { step: { properties: { title: { description?: string } } } } };
+  const description = schema.$defs.step.properties.title.description;
+  assert.equal(typeof description, 'string');
+  assert.ok((description ?? '').trim().length > 0);
+});
+
 void test('real journeys20 drafts of both runs pass the gate', () => {
   const actorsByModule: Record<string, Ns5ModuleActor[]> = {
     comandaRestaurante5: ACTORS,
