@@ -15,11 +15,13 @@ import {
   PL_AGENT_NAME,
   PL_L2_AGENT,
   plInvokeOutput,
+  processPlEffortBox,
   plRoundPlanId,
   plRoundTitle,
   plannerAgentPresent,
   PL_L1_AGENT,
   writePlOrchestration,
+  type PlEffortResult,
   type PlLoopInvoke,
   type PlOrchestrationRow,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
@@ -29,7 +31,7 @@ import {
   PL_STEP_HOOKS,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
-import { listPoolBox, tracePool } from '/_102035_/l2/solution/pool.js';
+import { listPoolBox, POOL_MAX_ROUND, tracePool } from '/_102035_/l2/solution/pool.js';
 
 export async function beforePlLoopPromptStep(
   _agent: IAgentMeta,
@@ -47,6 +49,10 @@ export async function beforePlLoopPromptStep(
     || memoryString(context, 'moduleName')
     || moduleNameFromPrompt(step);
   const thread = threadFromDispatch(all);
+  const now = new Date();
+  // pool/l4 is L4's own mailbox: drain the l2→l4 "effort ready" reports every tick, regardless
+  // of what the rest of this run decides. A round-3 report stays as a disputed pendency.
+  const effortBox: PlEffortResult = await processPlEffortBox(moduleName, thread, now);
   const failed = failedInvoke(all);
   if (failed) {
     const message = `${failed} failed`;
@@ -61,7 +67,6 @@ export async function beforePlLoopPromptStep(
     ];
   }
 
-  const now = new Date();
   const l1 = await maybeL1Step(moduleName, thread, all, now);
   if (l1) {
     return [
@@ -105,9 +110,15 @@ export async function beforePlLoopPromptStep(
   await writePlOrchestration(moduleName, table);
   const l1Count = listPoolBox(moduleName, 'l1').length;
   const l2Count = listPoolBox(moduleName, 'l2').length;
-  const status = decision.status || `round ${decision.maxRound} complete.`;
+  const l4Pending = effortBox.disputed.length > 0;
+  // "defined" is l1 and l2 empty AND pool/l4 without a pendency — l1Count/l2Count already
+  // reflect the first half; l4Pending is the second half.
+  const baseStatus = decision.status || `round ${decision.maxRound} complete.`;
+  const status = l4Pending
+    ? `${baseStatus} pool/l4 disputed: effort round ${POOL_MAX_ROUND} pending.`
+    : baseStatus;
   return [
-    doneAnchor(context, parentStep, moduleName, status, decision.maxRound, l1Count, l2Count, table),
+    doneAnchor(context, parentStep, moduleName, status, decision.maxRound, l1Count, l2Count, table, l4Pending),
     updateStatus(context, parentStep, step, hookSequential, 'completed', status),
   ];
 }
@@ -132,6 +143,7 @@ function doneAnchor(
   l1Count: number,
   l2Count: number,
   table: PlOrchestrationRow[],
+  l4Pending: boolean,
 ): mls.msg.AgentIntentAddStep {
   return addPlStep(context, parentStep, {
     type: 'result',
@@ -141,7 +153,7 @@ function doneAnchor(
     status: 'completed',
     nextSteps: [],
     result: JSON.stringify({
-      moduleName, status, maxRound, l1Count, l2Count, table, completedStep: 'loop30', nextStep: '',
+      moduleName, status, maxRound, l1Count, l2Count, l4Pending, table, completedStep: 'loop30', nextStep: '',
     }),
     planning: { planId: 'loop30-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);

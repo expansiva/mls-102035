@@ -1,5 +1,19 @@
 # agentPlannerL4
 
+## 2026-09-27 (p4_14)
+
+- `dispatch20` tags both pool messages `mode: estimate` (was implicitly `implement`). This
+  planning loop never writes `mode: implement` — that is the newRelease accept, once a run
+  is `ready`.
+- `loop30` also drains `pool/l4`, the mailbox L4 itself owns: L2's `l2→l4` effort-ready report
+  is traced `processed` and deleted below round 3; at round 3 it is traced `disputed` and kept,
+  so the newRelease review run reads that outcome the same way it already does for l1/l2.
+  "Defined" is l1 and l2 with no fresh work and `pool/l4` with no pendency. No new pipeline
+  state is added for "awaiting accept" — the newRelease `ready` run owns that.
+- `entry10`'s wipe is unchanged in behavior; documented that it also invalidates an `implement`
+  message left unconsumed by a prior accept (a new plan invalidates an old accept, regardless
+  of `mode`).
+
 ## 2026-09-21 (p4_09)
 
 - `setModuleRoot` / `moduleFolder` override: `/candidate` (default `<mod>/tobe/plan`)

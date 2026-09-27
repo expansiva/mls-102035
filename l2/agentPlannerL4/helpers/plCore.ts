@@ -466,7 +466,7 @@ export function buildPlPoolMessage(
     to,
     thread,
     round: 1,
-    mode: 'implement',
+    mode: 'estimate',
     subject: plDispatchSubject(moduleName),
     artifacts: [...artifacts],
     body: PL_DISPATCH_BODY,
@@ -567,7 +567,7 @@ export async function runPlDispatch(moduleName: string, now: Date): Promise<PlDi
   const l1File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l1', thread, artifacts), now);
   const l2Path = displayPath(l2File);
   const l1Path = displayPath(l1File);
-  const base = { at, thread, round: 1 as const, mode: 'implement' as const, from: 'l4' as const, outcome: 'delivered' as const };
+  const base = { at, thread, round: 1 as const, mode: 'estimate' as const, from: 'l4' as const, outcome: 'delivered' as const };
   await tracePool(moduleName, { ...base, file: l2Path, to: 'l2' });
   await tracePool(moduleName, { ...base, file: l1Path, to: 'l1' });
   const invokeL2 = plannerAgentPresent(PL_L2_AGENT);
@@ -632,7 +632,9 @@ export function listPoolWebFiles(moduleName: string, box: PoolBox): Ns5FileInfo[
  * Wipes every mailbox of the module: pool messages (trace `processed` then
  * `deletePoolMessage`) and `web/*.json`. Records `poolWiped` on the l4 pipeline.
  * Trace outcome stays `processed` (the pool enum does not grow); the reason is
- * `pool wiped: l4 changed`.
+ * `pool wiped: l4 changed`. This also invalidates an `implement` message left
+ * unconsumed by a prior accept: a new plan invalidates an old accept, so nothing
+ * survives entry regardless of `mode`.
  */
 export async function wipeModulePool(moduleName: string, now: Date): Promise<string[]> {
   const wiped: string[] = [];
@@ -884,6 +886,47 @@ export function latestDeliveredThread(trace: PoolTraceLine[]): string {
     if (trace[i].outcome === 'delivered' && trace[i].from === 'l4') return trace[i].thread;
   }
   return trace[trace.length - 1]?.thread || '';
+}
+
+export interface PlEffortResult {
+  /** `l2→l4` effort messages traced `processed` and deleted (round < POOL_MAX_ROUND). */
+  processed: string[];
+  /** `l2→l4` effort messages that reached POOL_MAX_ROUND: traced `disputed`, kept in the box. */
+  disputed: string[];
+}
+
+/**
+ * `pool/l4` is the mailbox L4 itself owns: L2's `effort40` reports "effort ready" there
+ * (`from: 'l2', to: 'l4'`) once per round. Before POOL_MAX_ROUND this is bookkeeping — trace
+ * `processed`, then delete, same as any other owner draining its box. A message that reached
+ * POOL_MAX_ROUND is proof the rounds ran out without agreement (the same rule `decidePlLoop`
+ * applies to l1/l2): it is traced `disputed` and never deleted, so the newRelease review run
+ * reads that outcome off `pipeline.json.pool[]` the same way it already does for l1/l2.
+ * A second call over an already-disputed message does not re-trace it.
+ */
+export async function processPlEffortBox(moduleName: string, thread: string, now: Date): Promise<PlEffortResult> {
+  const at = now.toISOString();
+  const trace = await readPoolTrace(moduleName);
+  const current = thread || latestDeliveredThread(trace);
+  const alreadyDisputed = new Set(trace.filter(line => line.outcome === 'disputed').map(line => line.file));
+  const items = (await loadPlBoxMessages(moduleName, 'l4')).filter(item => !current || item.message.thread === current);
+  const processed: string[] = [];
+  const disputed: string[] = [];
+  for (const item of items) {
+    const base = {
+      at, file: item.path, from: item.message.from, to: item.message.to,
+      thread: item.message.thread, round: item.message.round, mode: item.message.mode,
+    };
+    if (item.message.round >= POOL_MAX_ROUND) {
+      if (!alreadyDisputed.has(item.path)) await tracePool(moduleName, { ...base, outcome: 'disputed' });
+      disputed.push(item.path);
+      continue;
+    }
+    await tracePool(moduleName, { ...base, outcome: 'processed' });
+    await deletePoolMessage(moduleName, item.file, item.path);
+    processed.push(item.path);
+  }
+  return { processed, disputed };
 }
 
 export async function gatherPlLoopDecision(moduleName: string, thread?: string): Promise<PlLoopDecision> {

@@ -164,10 +164,38 @@ void test('entry10 wipes a full pool and still emits entry10-done', async () => 
   const pipeline = host.files[keyOf({
     project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
   })];
-  const state = JSON.parse(pipeline.content) as { poolWiped: string[] };
+  const state = JSON.parse(pipeline.content) as { poolWiped: string[]; pool: Array<{ mode: string; outcome: string }> };
   assert.deepEqual(state.poolWiped, result.poolWiped);
   const status = intents.find((intent): intent is mls.msg.AgentIntentUpdateStatus => intent.type === 'update-status' && intent.stepId === 10);
   assert.match(String(status?.traceMsg), /wiped/);
+});
+
+void test('a new entry invalidates an implement message left unconsumed by a prior accept', async () => {
+  const unconsumedImplement = {
+    from: 'l4', to: 'l2', thread: 'mensalidadesAcademia-20260918103000', round: 1, mode: 'implement',
+    subject: 'Changed artifacts of mensalidadesAcademia',
+    artifacts: ['module.defs.ts'],
+    body: 'Evaluate and dispatch. The recipient decides what to do with these artifacts.',
+  };
+  const { host, context, parent, step } = contextWith('mensalidadesAcademia', h => {
+    seed(h, { level: 5, folder: '', shortName: 'config', extension: '.json' }, `${JSON.stringify(BOTH_CONFIG, null, 2)}\n`);
+    seed(
+      h,
+      { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918103000_mensalidadesAcademia-20260918103000_1', extension: '.json' },
+      `${JSON.stringify(unconsumedImplement, null, 2)}\n`,
+    );
+  });
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
+  await beforePlEntryPromptStep(AGENT, context, parent, step, 1);
+  // a new plan invalidates an old accept: mode does not save the message from the wipe.
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 0);
+  const pipeline = host.files[keyOf({
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
+  })];
+  const state = JSON.parse(pipeline.content) as { pool: Array<{ mode: string; outcome: string }> };
+  const traced = state.pool.find(line => line.mode === 'implement');
+  assert.ok(traced, 'the unconsumed implement message must still be traced before it is wiped');
+  assert.equal(traced?.outcome, 'processed');
 });
 
 void test('entry10 afterPrompt fails an LLM reply', async () => {

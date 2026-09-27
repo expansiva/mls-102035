@@ -23,6 +23,7 @@ import {
   plannerAgentPresent,
   plInvokeOutput,
   plStepPrompt,
+  processPlEffortBox,
   resolveCandidateFolder,
   wipeModulePool,
   PL_DISPATCH_BODY,
@@ -346,7 +347,7 @@ void test('decidePlLoop stops at round 3 without deleting and marks disputed', (
     file: round === 3 ? path : `l4/mensalidadesAcademia/pool/l2/other_${round}.json`,
     from: 'l4' as const, to: 'l2' as const,
     thread: 'mensalidadesAcademia-20260918103000',
-    round, mode: 'implement' as const, outcome: 'delivered' as const,
+    round, mode: 'estimate' as const, outcome: 'delivered' as const,
   }));
   const decision = decidePlLoop({
     thread: 'mensalidadesAcademia-20260918103000',
@@ -376,7 +377,7 @@ void test('L1 absent leaves the box pending with a readable status', () => {
     thread,
     trace: [{
       at: '2026-09-18T10:30:00.000Z', file: path, from: 'l4', to: 'l1',
-      thread, round: 1, mode: 'implement', outcome: 'delivered',
+      thread, round: 1, mode: 'estimate', outcome: 'delivered',
     }],
     l1: [{ file, path, message }],
     l2: [],
@@ -409,7 +410,9 @@ void test('runPlDispatch traces both deliveries and does not invoke a missing L1
   assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
 });
 
-const POOL_MSG = {
+// A leftover message from a prior accept, unconsumed. wipeModulePool wipes it regardless of
+// `mode` — a new plan invalidates an old accept.
+const POOL_MSG_UNCONSUMED_IMPLEMENT = {
   from: 'l4' as const, to: 'l2' as const, thread: 'mensalidadesAcademia-20260918103000', round: 1 as const,
   mode: 'implement' as const, subject: 'Changed artifacts of mensalidadesAcademia',
   artifacts: ['module.defs.ts'],
@@ -427,7 +430,7 @@ void test('wipeModulePool empties the boxes, removes web artifacts, and records 
   seed(
     host,
     { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918103000_mensalidadesAcademia-20260918103000_1', extension: '.json' },
-    `${JSON.stringify(POOL_MSG, null, 2)}\n`,
+    `${JSON.stringify(POOL_MSG_UNCONSUMED_IMPLEMENT, null, 2)}\n`,
   );
   seed(
     host,
@@ -510,7 +513,7 @@ void test('plInvokeOutput is done only when L2 wrote menu.json plus l2→l1, or 
   );
   assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'no-output');
   await writePoolMessage('mensalidadesAcademia', {
-    from: 'l2', to: 'l1', thread, round: 1, mode: 'implement',
+    from: 'l2', to: 'l1', thread, round: 1, mode: 'estimate',
     subject: 'needs', artifacts: ['pool/l1/web/needs.json'], body: 'needs',
   }, at);
   assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'done');
@@ -520,4 +523,76 @@ void test('plInvokeOutput is done only when L2 wrote menu.json plus l2→l1, or 
     '{}\n',
   );
   assert.equal(await plInvokeOutput('l1', 'mensalidadesAcademia', thread), 'done');
+});
+
+void test('runPlDispatch and buildPlPoolMessage always tag mode: estimate — L4 never writes implement', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const now = new Date(Date.UTC(2026, 8, 27, 10, 0, 0));
+  const built = buildPlPoolMessage('mensalidadesAcademia', 'l2', nextThread('mensalidadesAcademia', now), ['module.defs.ts']);
+  assert.equal(built.mode, 'estimate');
+  const run = await runPlDispatch('mensalidadesAcademia', now);
+  assert.equal((await readPoolMessage(run.l2File)).mode, 'estimate');
+  assert.equal((await readPoolMessage(run.l1File)).mode, 'estimate');
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.mode), ['estimate', 'estimate']);
+});
+
+const EFFORT_THREAD = 'mensalidadesAcademia-20260918103000';
+
+function effortMessage(round: number) {
+  return {
+    from: 'l2', to: 'l4', thread: EFFORT_THREAD, round, mode: 'estimate',
+    subject: 'Effort ready for review', artifacts: ['pool/l4/web/effort.json'], body: 'Effort ready for review.',
+  };
+}
+
+void test('processPlEffortBox processes and deletes a fresh l2→l4 effort message below round 3', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const at = new Date(Date.UTC(2026, 8, 27, 10, 0, 0));
+  await writePoolMessage('mensalidadesAcademia', effortMessage(1), at);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+
+  const result = await processPlEffortBox('mensalidadesAcademia', EFFORT_THREAD, at);
+  assert.deepEqual(result.disputed, []);
+  assert.equal(result.processed.length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 0);
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.outcome), ['processed']);
+});
+
+void test('processPlEffortBox at round 3 disputes and keeps the message; a second call does not re-trace it', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const at = new Date(Date.UTC(2026, 8, 27, 10, 0, 0));
+  await writePoolMessage('mensalidadesAcademia', effortMessage(3), at);
+
+  const first = await processPlEffortBox('mensalidadesAcademia', EFFORT_THREAD, at);
+  assert.equal(first.processed.length, 0);
+  assert.equal(first.disputed.length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.outcome), ['disputed']);
+
+  const second = await processPlEffortBox('mensalidadesAcademia', EFFORT_THREAD, new Date(at.getTime() + 1000));
+  assert.equal(second.disputed.length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+  const traceAfter = await readPoolTrace('mensalidadesAcademia');
+  assert.equal(traceAfter.length, 1, 'an already-disputed message is not re-traced');
 });

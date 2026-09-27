@@ -1,5 +1,11 @@
 # entry10
 
+## 2026-09-27 (p4_14)
+
+- Documented (no behavior change): the pool wipe on accept also invalidates an `implement`
+  message left unconsumed by a prior accept — a new plan invalidates an old accept, regardless
+  of `mode`.
+
 ## 2026-09-21 (p4_09)
 
 - Parses `/candidate` (optional relative root). Calls `setModuleRoot`. Stores

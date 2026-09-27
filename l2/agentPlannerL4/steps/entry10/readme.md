@@ -7,7 +7,9 @@ Deterministic. No LLM call.
 `@@agentPlannerL4 <lowerCamel> [/candidate [<relativeRoot>]]` on a module that
 already exists in `l4/` with `pipeline.status: complete`. `/candidate` alone
 points `moduleFolder` at `<mod>/tobe/plan`. The pool is wiped on accept (it is
-derived from l4). Unknown `pipeline.flowId` is recorded, not refused.
+derived from l4) — including an `implement` message left unconsumed by a prior
+accept: a new plan invalidates an old accept, regardless of `mode`. Unknown
+`pipeline.flowId` is recorded, not refused.
 
 ## Output
 

@@ -16,9 +16,10 @@
     "Pipeline state of the module lives on disk at l4/{module}/pipeline/pipeline.json. The planner records l5Adjusted there; it does not own the NS5 status.",
     "Each owner traces only on its own pipeline.json (L4 on l4, L2 on l2). One file, one writer.",
     "workspaceDependencies of the current project's l5/config.json must list 102020 and 102021 so the platform finds the planners by name. Missing ids are appended at the end.",
-    "On accept, entry10 wipes l4/<mod>/pool/{l1,l2,l4}/ (messages and web/*.json). The pool is derived from l4 — if l4 changed, planning is redone.",
-    "dispatch20 writes the two pool messages then creates the L2 r1 type:agent step in the same task. loop30 creates L1 r1 with the real l2→l1 file when that message is in the box (dependsOn of an agent step waits for scheduling, not the artifact), then L2 effort r1 with the real l1→l2 file. Further rounds only when a new message with round>1 is in the box, up to 3. Round 3 with a non-empty box is disputed.",
-    "A missing planner is a readable status (L2/L1 not available). A failed planner step fails the task with the step name. A completed planner that produced no output fails the task with '<planId> ran without output'. /estimate is not available yet. There is no /rebuild.",
+    "On accept, entry10 wipes l4/<mod>/pool/{l1,l2,l4}/ (messages and web/*.json). The pool is derived from l4 — if l4 changed, planning is redone, including an implement message left unconsumed by a prior accept (a new plan invalidates an old accept, regardless of mode).",
+    "dispatch20 writes the two pool messages, tagged mode: estimate, then creates the L2 r1 type:agent step in the same task. loop30 creates L1 r1 with the real l2→l1 file when that message is in the box (dependsOn of an agent step waits for scheduling, not the artifact), then L2 effort r1 with the real l1→l2 file. Further rounds only when a new message with round>1 is in the box, up to 3. Round 3 with a non-empty box is disputed.",
+    "loop30 also drains pool/l4, the mailbox L4 itself owns: L2's l2→l4 effort-ready report is traced processed and deleted below round 3; at round 3 it is traced disputed and kept, so the newRelease review run reads that outcome the same way it already does for l1/l2. 'Defined' is l1 and l2 with no fresh work and pool/l4 with no pendency.",
+    "A missing planner is a readable status (L2/L1 not available). A failed planner step fails the task with the step name. A completed planner that produced no output fails the task with '<planId> ran without output'. There is no /rebuild. This flow never writes mode: implement — that is the newRelease accept, once the run is ready.",
     "Deterministic user text is English. Internal messages stay English literals."
   ],
   "invocation": {
@@ -28,7 +29,7 @@
     "candidatePath": "@@agentPlannerL4 <lowerCamel> /candidate <relativeRoot>",
     "moduleRule": "The module name is the first lowerCamel token. The module must already exist in l4/. Canonical and manual roots require pipeline.status complete. A sealed revision root is gated by the revision manifest, not pipeline.status.",
     "candidateRule": "/candidate alone points moduleFolder at <mod>/tobe/plan (manual root: revision is null; base is the sealed catalog, else canonical). /candidate pipeline/changes/<changeId>/revisions/<revisionId>/l4 is a sealed revision: entry requires readL4Revision, refuses a missing pipeline/releases/<baseId>/l4, and records revision on pipeline.json and both l4diff.json. The diff base is that release and never falls back to canonical. Without the flag the canonical l4 is unchanged.",
-    "estimateRule": "/estimate is refused with 'not available yet'.",
+    "estimateRule": "/estimate as an invocation flag is refused ('not available yet') — there is nothing to opt into: dispatch20 and loop30 already tag every pool message mode: estimate, the only mode this planning loop reads or writes. mode: implement is written elsewhere, by the newRelease accept once a run is ready.",
     "rebuildRule": "There is no /rebuild. This flow does not create or wipe a module."
   },
   "artifacts": {
@@ -47,7 +48,7 @@
       "dependsOn": [],
       "doneAnchor": "entry10-done",
       "artifact": "l5/config.json",
-      "goal": "Parse the invocation including /candidate, setModuleRoot, refuse deterministically, wipe the module pool (messages + web/*.json, poolWiped on the pipeline), append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline. A sealed revision root skips pipeline.status and requires a manifest that matches its copies; a missing release folder is refused by name. On any /candidate root, write revision (null when manual) on pipeline.json. Unknown pipeline flowId is recorded, not refused."
+      "goal": "Parse the invocation including /candidate, setModuleRoot, refuse deterministically, wipe the module pool (messages + web/*.json, poolWiped on the pipeline) — including an implement message left unconsumed by a prior accept, since a new plan invalidates an old accept regardless of mode — append planner projects to l5/config.json when missing, record l5Adjusted on the module pipeline. A sealed revision root skips pipeline.status and requires a manifest that matches its copies; a missing release folder is refused by name. On any /candidate root, write revision (null when manual) on pipeline.json. Unknown pipeline flowId is recorded, not refused."
     },
     {
       "id": "diff20",
@@ -63,7 +64,7 @@
       "dependsOn": ["diff20-done"],
       "doneAnchor": "dispatch20-done",
       "artifact": "l4/{module}/pool/l2/{stamp}_{thread}_{round}.json",
-      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), cite pool/*/web/l4diff.json, write the two pool messages, record delivered, create the L2 r1 type:agent step. Prompt is {moduleName, thread, file, candidate}. L1 r1 is created by loop30 when the l2→l1 message exists."
+      "goal": "List l4 artifacts (excluding pipeline/, tobe/, pool/), cite pool/*/web/l4diff.json, write the two pool messages tagged mode: estimate, record delivered, create the L2 r1 type:agent step. Prompt is {moduleName, thread, file, candidate}. L1 r1 is created by loop30 when the l2→l1 message exists."
     },
     {
       "id": "loop30",
@@ -71,7 +72,7 @@
       "dependsOn": ["dispatch20-done"],
       "doneAnchor": "loop30-done",
       "artifact": "l4/{module}/pipeline/pipeline.json",
-      "goal": "After L2 r1, create L1 r1 with the real l2→l1 filename when that message is in the box, then L2 effort r1 with the real l1→l2 filename. A completed planner without output fails the task. Further rounds only when a new message with round>1 is in the box, up to 3 (disputed at 3). Write {round, l2, l1, effort} on the l4 pipeline and complete."
+      "goal": "After L2 r1, create L1 r1 with the real l2→l1 filename when that message is in the box, then L2 effort r1 with the real l1→l2 filename. A completed planner without output fails the task. Further rounds only when a new message with round>1 is in the box, up to 3 (disputed at 3). Also drains pool/l4 every tick: the l2→l4 effort-ready report is processed and deleted below round 3, disputed and kept at round 3. Write {round, l2, l1, effort} on the l4 pipeline and complete."
     }
   ]
 }

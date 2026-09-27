@@ -169,7 +169,7 @@ void test('loop30 stops when L1 is absent and leaves the message in the box', as
   const step = createPlAgentStep('loop30', 'mensalidadesAcademia');
   const { host, context, parent } = contextWith(step);
   const msg = {
-    from: 'l4', to: 'l1', thread: THREAD, round: 1, mode: 'implement',
+    from: 'l4', to: 'l1', thread: THREAD, round: 1, mode: 'estimate',
     subject: 'Changed artifacts of mensalidadesAcademia',
     artifacts: ['module.defs.ts'],
     body: 'Evaluate and dispatch. The recipient decides what to do with these artifacts.',
@@ -181,7 +181,7 @@ void test('loop30 stops when L1 is absent and leaves the message in the box', as
   const state = JSON.parse(pipeline.content) as { pool?: unknown[] };
   state.pool = [{
     at: AT.toISOString(), file: displayPath(written), from: 'l4', to: 'l1',
-    thread: THREAD, round: 1, mode: 'implement', outcome: 'delivered',
+    thread: THREAD, round: 1, mode: 'estimate', outcome: 'delivered',
   }];
   pipeline.content = `${JSON.stringify(state, null, 2)}\n`;
 
@@ -199,7 +199,7 @@ void test('loop30 at round 3 records disputed and does not delete', async () => 
   const step = createPlLoopWaitStep('mensalidadesAcademia', ['pool-l2-x-3'], 3);
   const { host, context, parent } = contextWith(step);
   const msg = {
-    from: 'l4', to: 'l2', thread: THREAD, round: 3, mode: 'implement',
+    from: 'l4', to: 'l2', thread: THREAD, round: 3, mode: 'estimate',
     subject: 'Changed artifacts of mensalidadesAcademia',
     artifacts: ['module.defs.ts'],
     body: 'Evaluate and dispatch. The recipient decides what to do with these artifacts.',
@@ -213,7 +213,7 @@ void test('loop30 at round 3 records disputed and does not delete', async () => 
   state.pool = [1, 2, 3].map(round => ({
     at: AT.toISOString(),
     file: round === 3 ? path : `l4/mensalidadesAcademia/pool/l2/prior_${round}.json`,
-    from: 'l4', to: 'l2', thread: THREAD, round, mode: 'implement', outcome: 'delivered',
+    from: 'l4', to: 'l2', thread: THREAD, round, mode: 'estimate', outcome: 'delivered',
   }));
   pipeline.content = `${JSON.stringify(state, null, 2)}\n`;
 
@@ -253,7 +253,7 @@ void test('loop30 does not create L1 r1 until the l2→l1 message exists, then u
   seed(host2, { level: 2, folder: 'agentPlannerL1', shortName: PL_L1_AGENT, extension: '.ts' }, '');
   seed(host2, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
   const written = await writePoolMessage('mensalidadesAcademia', {
-    from: 'l2', to: 'l1', thread: THREAD, round: 1, mode: 'implement',
+    from: 'l2', to: 'l1', thread: THREAD, round: 1, mode: 'estimate',
     subject: 'needs.json for the module',
     artifacts: ['pool/l1/web/needs.json'],
     body: 'Needs from the L2 menu.',
@@ -311,7 +311,7 @@ void test('loop30 after L1 r1 creates L2 effort r1 with the real l1→l2 file (r
   seed(host, { level: 2, folder: 'agentPlannerL2', shortName: PL_L2_AGENT, extension: '.ts' }, '');
   seed(host, { level: 2, folder: 'agentPlannerL1', shortName: PL_L1_AGENT, extension: '.ts' }, '');
   const msg = {
-    from: 'l1', to: 'l2', thread: THREAD, round: 1, mode: 'implement',
+    from: 'l1', to: 'l2', thread: THREAD, round: 1, mode: 'estimate',
     subject: 'backend.json for the module',
     artifacts: ['pool/l2/web/backend.json'],
     body: 'Effort from the backend plan.',
@@ -358,7 +358,7 @@ void test('loop30 with no new round-2 message completes with the orchestration t
   seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
   seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'backend', extension: '.json' }, '{}\n');
   const needs = await writePoolMessage('mensalidadesAcademia', {
-    from: 'l2', to: 'l1', thread: THREAD, round: 1, mode: 'implement',
+    from: 'l2', to: 'l1', thread: THREAD, round: 1, mode: 'estimate',
     subject: 'needs', artifacts: ['pool/l1/web/needs.json'], body: 'needs',
   }, AT);
   const pipelineTrace = host.files[keyOf({
@@ -367,7 +367,7 @@ void test('loop30 with no new round-2 message completes with the orchestration t
   const traced = JSON.parse(pipelineTrace.content) as { pool?: unknown[] };
   traced.pool = [{
     at: AT.toISOString(), file: displayPath(needs), from: 'l2', to: 'l1',
-    thread: THREAD, round: 1, mode: 'implement', outcome: 'delivered',
+    thread: THREAD, round: 1, mode: 'estimate', outcome: 'delivered',
   }];
   pipelineTrace.content = `${JSON.stringify(traced, null, 2)}\n`;
 
@@ -384,6 +384,117 @@ void test('loop30 with no new round-2 message completes with the orchestration t
   })];
   const state = JSON.parse(pipeline.content) as { plOrchestration: unknown };
   assert.deepEqual(state.plOrchestration, result.table);
+});
+
+void test('loop30 reads pool/l4 and deletes a fresh l2→l4 effort message after tracing processed', async () => {
+  const wait = createPlLoopWaitStep('mensalidadesAcademia', [plRoundPlanId('effort', 1)], 2);
+  const l2 = createPlInvokeStep({
+    agentName: PL_L2_AGENT, moduleName: 'mensalidadesAcademia', thread: THREAD, file: 'x',
+    planId: plRoundPlanId('l2', 1),
+  });
+  l2.status = 'completed';
+  const l1 = createPlInvokeStep({
+    agentName: PL_L1_AGENT, moduleName: 'mensalidadesAcademia', thread: THREAD, file: '',
+    planId: plRoundPlanId('l1', 1),
+  });
+  l1.status = 'completed';
+  const effort = createPlInvokeStep({
+    agentName: PL_L2_AGENT, moduleName: 'mensalidadesAcademia', thread: THREAD, file: 'y',
+    planId: plRoundPlanId('effort', 1),
+  });
+  effort.status = 'completed';
+  const { host, context, parent } = contextWith(wait, [dispatchDone(), l2, l1, effort]);
+  seed(host, { level: 2, folder: 'agentPlannerL2', shortName: PL_L2_AGENT, extension: '.ts' }, '');
+  seed(host, { level: 2, folder: 'agentPlannerL1', shortName: PL_L1_AGENT, extension: '.ts' }, '');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'backend', extension: '.json' }, '{}\n');
+  const needs = await writePoolMessage('mensalidadesAcademia', {
+    from: 'l2', to: 'l1', thread: THREAD, round: 1, mode: 'estimate',
+    subject: 'needs', artifacts: ['pool/l1/web/needs.json'], body: 'needs',
+  }, AT);
+  await writePoolMessage('mensalidadesAcademia', {
+    from: 'l2', to: 'l4', thread: THREAD, round: 1, mode: 'estimate',
+    subject: 'Effort ready', artifacts: ['pool/l4/web/effort.json'], body: 'Effort ready for review.',
+  }, AT);
+  const pipelineTrace = host.files[keyOf({
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
+  })];
+  const traced = JSON.parse(pipelineTrace.content) as { pool?: unknown[] };
+  traced.pool = [{
+    at: AT.toISOString(), file: displayPath(needs), from: 'l2', to: 'l1',
+    thread: THREAD, round: 1, mode: 'estimate', outcome: 'delivered',
+  }];
+  pipelineTrace.content = `${JSON.stringify(traced, null, 2)}\n`;
+
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+  const intents = await beforePlLoopPromptStep(AGENT, context, parent, wait, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 0);
+  const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+  const done = added.find(intent => intent.step.planning?.planId === 'loop30-done');
+  const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { l4Pending: boolean; status: string };
+  assert.equal(result.l4Pending, false);
+  assert.doesNotMatch(result.status, /disputed/);
+  const pipeline = host.files[keyOf({
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
+  })];
+  const state = JSON.parse(pipeline.content) as { pool: Array<{ to: string; outcome: string }> };
+  assert.equal(state.pool.some(line => line.to === 'l4' && line.outcome === 'processed'), true);
+});
+
+void test('loop30 is only "defined" once pool/l4 has no pendency — a round-3 effort report keeps it disputed', async () => {
+  const wait = createPlLoopWaitStep('mensalidadesAcademia', [plRoundPlanId('effort', 1)], 2);
+  const l2 = createPlInvokeStep({
+    agentName: PL_L2_AGENT, moduleName: 'mensalidadesAcademia', thread: THREAD, file: 'x',
+    planId: plRoundPlanId('l2', 1),
+  });
+  l2.status = 'completed';
+  const l1 = createPlInvokeStep({
+    agentName: PL_L1_AGENT, moduleName: 'mensalidadesAcademia', thread: THREAD, file: '',
+    planId: plRoundPlanId('l1', 1),
+  });
+  l1.status = 'completed';
+  const effort = createPlInvokeStep({
+    agentName: PL_L2_AGENT, moduleName: 'mensalidadesAcademia', thread: THREAD, file: 'y',
+    planId: plRoundPlanId('effort', 1),
+  });
+  effort.status = 'completed';
+  const { host, context, parent } = contextWith(wait, [dispatchDone(), l2, l1, effort]);
+  seed(host, { level: 2, folder: 'agentPlannerL2', shortName: PL_L2_AGENT, extension: '.ts' }, '');
+  seed(host, { level: 2, folder: 'agentPlannerL1', shortName: PL_L1_AGENT, extension: '.ts' }, '');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'backend', extension: '.json' }, '{}\n');
+  const needs = await writePoolMessage('mensalidadesAcademia', {
+    from: 'l2', to: 'l1', thread: THREAD, round: 1, mode: 'estimate',
+    subject: 'needs', artifacts: ['pool/l1/web/needs.json'], body: 'needs',
+  }, AT);
+  await writePoolMessage('mensalidadesAcademia', {
+    from: 'l2', to: 'l4', thread: THREAD, round: 3, mode: 'estimate',
+    subject: 'Effort ready', artifacts: ['pool/l4/web/effort.json'], body: 'Effort ready for review.',
+  }, AT);
+  const pipelineTrace = host.files[keyOf({
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
+  })];
+  const traced = JSON.parse(pipelineTrace.content) as { pool?: unknown[] };
+  traced.pool = [{
+    at: AT.toISOString(), file: displayPath(needs), from: 'l2', to: 'l1',
+    thread: THREAD, round: 1, mode: 'estimate', outcome: 'delivered',
+  }];
+  pipelineTrace.content = `${JSON.stringify(traced, null, 2)}\n`;
+
+  const intents = await beforePlLoopPromptStep(AGENT, context, parent, wait, 1);
+  // round 3 without agreement is not deleted — L1/L2 boxes may already look empty of fresh
+  // work, but pool/l4 still carries a pendency, so this run is not "defined" yet.
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+  const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+  const done = added.find(intent => intent.step.planning?.planId === 'loop30-done');
+  const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { l4Pending: boolean; status: string };
+  assert.equal(result.l4Pending, true);
+  assert.match(result.status, /disputed/);
+  const pipeline = host.files[keyOf({
+    project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json',
+  })];
+  const state = JSON.parse(pipeline.content) as { pool: Array<{ to: string; outcome: string }> };
+  assert.equal(state.pool.some(line => line.to === 'l4' && line.outcome === 'disputed'), true);
 });
 
 void test('loop30 fails the task when a planner step failed', async () => {
