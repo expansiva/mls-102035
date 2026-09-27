@@ -850,7 +850,7 @@ void test('custom that does not cite the actor stays custom when a person is rea
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_ACCESS_CUSTOM_HAS_ANCHOR'), false);
 });
 
-const AGENDA_BENCH = path.resolve(HERE, '../../../../../mls-102047/l4/agendaClinica');
+const AGENDA_FIXTURE = path.join(HERE, 'fixtures/ns5_69-agendaClinica');
 
 function readBench<T>(file: string): T {
   const json = extractNs4ClassicJsonObject(readFileSync(file, 'utf8'));
@@ -863,14 +863,14 @@ function frozenAgendaAccess(): Ns5AccessArtifact {
 }
 
 function agendaBenchContext() {
-  const index = readBench<Ns5OntologyAnyIndex>(path.join(AGENDA_BENCH, 'ontology/index.defs.ts'));
+  const index = readBench<Ns5OntologyAnyIndex>(path.join(AGENDA_FIXTURE, 'ontology/index.defs.ts'));
   const entityIds = ns5OntologyEntityIds(index);
   const entities = ns5OntologyEntityViews(entityIds.map(entityId => (
-    readBench<Ns5OntologyAnyEntity>(path.join(AGENDA_BENCH, 'ontology', `${entityId}.defs.ts`))
+    readBench<Ns5OntologyAnyEntity>(path.join(AGENDA_FIXTURE, 'ontology', `${entityId}.defs.ts`))
   )));
-  const journeyIndex = readBench<{ journeys: Array<{ journeyId: string }> }>(path.join(AGENDA_BENCH, 'journeys/index.defs.ts'));
+  const journeyIndex = readBench<{ journeys: Array<{ journeyId: string }> }>(path.join(AGENDA_FIXTURE, 'journeys/index.defs.ts'));
   const journeys = journeyIndex.journeys.map(entry => (
-    readBench<Ns5JourneyArtifact>(path.join(AGENDA_BENCH, 'journeys', `${entry.journeyId}.defs.ts`))
+    readBench<Ns5JourneyArtifact>(path.join(AGENDA_FIXTURE, 'journeys', `${entry.journeyId}.defs.ts`))
   ));
   return {
     entities: entities.map(entity => ({
