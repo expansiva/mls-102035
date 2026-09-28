@@ -3,7 +3,7 @@
 /**
  * E9 is a transpiler. It takes no screen decision: every workspace, call, section and operation was
  * already decided by E8. What lives here is the shape the consumers read — the classic L4 format
- * that agentChangeBackend and agentChangeFrontend already parse today.
+ * that agentChangeBackend and agentMaterializeL2 already parse today.
  *
  * The one thing that must be exactly right is the `from` path of a projected field,
  * `"<operationId>.<inputId>"`, because both consumers trace an input's origin and an enumerated

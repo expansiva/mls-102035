@@ -1979,7 +1979,7 @@ export function resolveNs4ExistingAction(
  * The whole folder, not a list of known artifacts — that is the point. A previous run leaves drafts,
  * pipeline traces (`pipeline/msgtask*.json`) and per-entity defs whose names came from ITS ontology; a
  * selective delete keeps whatever the new run happens not to overwrite, and the module ends up a mix of
- * two generations. l2 is NOT touched: it belongs to agentChangeFrontend, which has its own rebuild.
+ * two generations. l2 is NOT touched: it belongs to agentMaterializeL2, which has its own rebuild.
  *
  * PURE over a `mls.stor.files`-shaped map so the selection is testable without the platform.
  */

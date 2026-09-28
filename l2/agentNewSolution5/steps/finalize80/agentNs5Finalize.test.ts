@@ -1372,7 +1372,7 @@ void test('finalize80 is hooked and never mentions a CB/CF handoff', () => {
   assert.equal(typeof NS5_STEP_HOOKS.finalize80?.beforePromptStep, 'function');
   assert.equal(typeof NS5_STEP_HOOKS.finalize80?.afterPromptStep, 'function');
   const source = readFileSync(path.join(HERE, 'agentNs5Finalize.ts'), 'utf8');
-  assert.doesNotMatch(source, /dispatchChangeBackendHandoff|agentChangeBackend|agentChangeFrontend|\/nochain/);
+  assert.doesNotMatch(source, /dispatchChangeBackendHandoff|agentChangeBackend|agentMaterializeL2|\/nochain/);
 });
 
 void test('afterPromptStep fails because finalize80 is deterministic', async () => {

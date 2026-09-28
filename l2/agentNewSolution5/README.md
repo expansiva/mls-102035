@@ -2,7 +2,7 @@
 
 L4 v5 source compiler. Writes the six business sources of a module and a deterministic
 finalize. Does not emit derived copies (operations, workspaces, usecases, landings) and
-never dispatches agentChangeFrontend (`agentChangeBackend` was deleted, p4_15, 27/09).
+never dispatches agentMaterializeL2 (`agentChangeBackend` was deleted, p4_15, 27/09).
 
 `module10`, `journeys20`, `ontology30`, `judge35`, `rules40`, `workflows50`, `access60`, `integration70`
 and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle I1–I13,

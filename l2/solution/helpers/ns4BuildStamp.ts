@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/helpers/ns4BuildStamp.ts" enhancement="_blank"/>
 
 /**
- * A per-agent COPY of the same ~60 pure lines that live in agentChangeBackend and agentChangeFrontend.
+ * A per-agent COPY of the same ~60 pure lines that live in agentChangeBackend and agentMaterializeL2.
  * Deliberate: importing one agent's helper from another inside 102020 would couple two independent
  * pipelines, and the previous round already decided against promoting this to a shared project.
  *

@@ -3,7 +3,7 @@
 Deterministic. No LLM call. Writes `pipeline/finalize-report.json`, upserts the organization
 registry, fills `l5/config.json` and `l5/project.json` with the same E10 publishable helpers
 (re-exported from `solution/lib.ts`), marks `pipeline.status: complete`, and writes
-`pipeline/runNN_newsolution5.json`. Never dispatches agentChangeBackend or agentChangeFrontend.
+`pipeline/runNN_newsolution5.json`. Never dispatches agentChangeBackend or agentMaterializeL2.
 
 ## Input
 
