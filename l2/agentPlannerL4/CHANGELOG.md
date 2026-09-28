@@ -1,5 +1,12 @@
 # agentPlannerL4
 
+## 2026-09-28 (p4_16)
+
+- `plInvokeOutput` also treats a side as produced when `pool/<side>/pipeline.json` exists with
+  the matching `thread` and `status: 'complete'` (L2 still requires `menu.json` too). Fixes a
+  false "ran without output": the L1 contract of 2026-09-27 deletes the `l2→l1`/`l1→l2` message
+  once processed, so the old message-only check could miss a side that had genuinely finished.
+
 ## 2026-09-27 (p4_14)
 
 - `dispatch20` tags both pool messages `mode: estimate` (was implicitly `implement`). This

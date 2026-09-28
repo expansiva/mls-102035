@@ -525,6 +525,58 @@ void test('plInvokeOutput is done only when L2 wrote menu.json plus l2→l1, or 
   assert.equal(await plInvokeOutput('l1', 'mensalidadesAcademia', thread), 'done');
 });
 
+void test('plInvokeOutput also treats a side as done via pool/<side>/pipeline.json complete on thread (p4_16)', async () => {
+  const host = installHost();
+  const moduleName = 'fixturePlannerP416';
+  seed(host, { level: 4, folder: moduleName, shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pipeline`, shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const thread = `${moduleName}-20260928100000`;
+  const otherThread = `${moduleName}-20260928090000`;
+
+  // L2: menu.json + pool/l2/pipeline.json complete on thread, no l2→l1 message left → done.
+  seed(host, { level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' }, '{}\n');
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l2`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'complete' }),
+  );
+  assert.equal(await plInvokeOutput('l2', moduleName, thread), 'done');
+
+  // Pipeline on a different thread does not count.
+  assert.equal(await plInvokeOutput('l2', moduleName, otherThread), 'no-output');
+
+  // Pipeline present but not complete does not count.
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l2`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'inProgress' }),
+  );
+  assert.equal(await plInvokeOutput('l2', moduleName, thread), 'no-output');
+
+  // L1: pool/l1/pipeline.json complete on thread, no reply message, no backend.json → done.
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l1`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'complete' }),
+  );
+  assert.equal(await plInvokeOutput('l1', moduleName, thread), 'done');
+
+  // Pipeline on a different thread does not count.
+  assert.equal(await plInvokeOutput('l1', moduleName, otherThread), 'no-output');
+
+  // Pipeline present but not complete does not count.
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l1`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'draft' }),
+  );
+  assert.equal(await plInvokeOutput('l1', moduleName, thread), 'no-output');
+});
+
 void test('runPlDispatch and buildPlPoolMessage always tag mode: estimate — L4 never writes implement', async () => {
   const host = installHost();
   seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');

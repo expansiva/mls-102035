@@ -695,8 +695,26 @@ function hasPoolWebJson(moduleName: string, box: PoolBox, shortName: string): bo
 }
 
 /**
+ * `l4/<mod>/pool/<side>/pipeline.json` — the planner's own trace of the run (contract of
+ * 2026-09-27). `true` only when the file is on the same `thread` and `status === 'complete'`.
+ */
+async function hasCompleteSidePipeline(moduleName: string, side: PoolBox, thread: string): Promise<boolean> {
+  const file: Ns5FileInfo = {
+    project: moduleFile(moduleName).project,
+    level: 4,
+    folder: `${moduleFolder(moduleName)}/pool/${side}`,
+    shortName: 'pipeline',
+    extension: '.json',
+  };
+  const pipeline = await readJson<{ thread?: unknown; status?: unknown }>(file);
+  return !!pipeline && pipeline.thread === thread && pipeline.status === 'complete';
+}
+
+/**
  * After an L2/L1 invoke, the table cell is `done` only when the planner produced.
- * L2: `pool/l2/web/menu.json` and a `l2→l1` message. L1: `l1→l2` message or `backend.json`.
+ * L2: `pool/l2/web/menu.json` and (a `l2→l1` message, or `pool/l2/pipeline.json` complete on
+ * `thread` — the L1 contract of 2026-09-27 deletes the message once processed).
+ * L1: `l1→l2` message, or `backend.json`, or `pool/l1/pipeline.json` complete on `thread`.
  * No production → `no-output` (the loop fails the task with "<planId> ran without output").
  */
 export async function plInvokeOutput(
@@ -704,14 +722,15 @@ export async function plInvokeOutput(
   moduleName: string,
   thread: string,
 ): Promise<'done' | 'no-output'> {
+  const pipelineComplete = await hasCompleteSidePipeline(moduleName, side, thread);
   if (side === 'l2') {
     const hasMenu = hasPoolWebJson(moduleName, 'l2', 'menu');
     const needs = await findOldestBoxMessage(moduleName, 'l1', 'l2', thread);
-    return hasMenu && needs ? 'done' : 'no-output';
+    return hasMenu && (needs || pipelineComplete) ? 'done' : 'no-output';
   }
   const reply = await findOldestBoxMessage(moduleName, 'l2', 'l1', thread);
   const hasBackend = hasPoolWebJson(moduleName, 'l2', 'backend');
-  return reply || hasBackend ? 'done' : 'no-output';
+  return reply || hasBackend || pipelineComplete ? 'done' : 'no-output';
 }
 
 export async function writePlOrchestration(
