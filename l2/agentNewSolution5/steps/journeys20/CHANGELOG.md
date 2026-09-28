@@ -1,5 +1,9 @@
 # journeys20
 
+## 2026-09-28 (p4_16)
+
+- title wording no longer says verb + object: in controleEstoque it split the register step into a `decide` (finalize I2, 2/2 runs); without it the run passed (A/B).
+
 ## 2026-09-27 (ns5_71)
 
 - Prompt §Steps now says what a step's `title` is (short on-screen label) and `journey.schema.json`

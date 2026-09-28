@@ -15,8 +15,7 @@ A journey is what a person does to reach an outcome. It is not a screen and not 
 
 ## Steps
 
-- Every step has a `title`, the short label the person reads on screen (2 to 6 words, verb + object,
-  in the module `userLanguage`); `description` explains the step in one sentence.
+- Every step has a `title`: the short name the person reads on screen for that same step (2 to 6 words, in the module `userLanguage`). A title never adds a step; `description` explains the step in one sentence.
 - `kind` is exactly one of `locate`, `inspect`, `act`, `decide`, `handoff`.
 - `entity` is the business object in UpperCamel. Later steps will declare it; here it is a name.
 - A step names **one** business object, in `entity`. When the request says an action also changes something else, say it in the `description` — a journey is what the person does, not which tables get written. Which records an action touches is read later from the ontology, where the entities actually exist.

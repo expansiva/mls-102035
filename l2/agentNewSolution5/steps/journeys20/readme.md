@@ -28,7 +28,7 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
   `effect: 'transition'` without `transitionRef` is `NS5_JOURNEY_TRANSITION_REF_REQUIRED`.
   Either field on a non-act is `NS5_JOURNEY_ACT_EFFECT_KIND`.
 - `handoffTo` is an actor id and only on `handoff`.
-- A step's `title` is the short on-screen label (2 to 6 words, verb + object); `description` explains
+- A step's `title` is the short on-screen name (2 to 6 words); `description` explains
   the step in a sentence. Both are prompted and schema-described (ns5_71).
 - Twin journeys (same actor, same set of `kind:entity`) fail the gate.
 - After the gate: inferred `external` actor without an exclusive step is dropped from

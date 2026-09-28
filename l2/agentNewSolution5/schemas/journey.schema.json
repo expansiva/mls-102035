@@ -75,7 +75,7 @@
         "title": {
           "type": "string",
           "minLength": 1,
-          "description": "The short label the person reads on screen (2 to 6 words, verb + object)."
+          "description": "The short on-screen name of this same step (2 to 6 words)."
         },
         "description": { "type": "string", "minLength": 1 },
         "handoffTo": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
