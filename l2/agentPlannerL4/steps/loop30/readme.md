@@ -9,14 +9,23 @@ accept `file: ''` as a step prompt). A completed planner without output fails th
 task. Further rounds only when a new message with `round > 1` is in the box, up to
 3. Round 3 with a non-empty box is `disputed` (message stays).
 
+Every tick this step also drains `pool/l4` — the mailbox L4 itself owns. L2's
+`l2→l4` effort-ready report (`from: l2, to: l4`) is traced `processed` and deleted
+below round 3; at round 3 it is traced `disputed` and kept, the same rule as l1/l2.
+"Defined" is l1 and l2 with no fresh work and `pool/l4` with no pendency. No new
+pipeline state is added for "awaiting accept" — that belongs to the newRelease
+`ready` run.
+
 ## Input
 
 The L4 pool trace (`l4/<mod>/pipeline/pipeline.json.pool[]`) and the boxes on disk
-(`listPoolBox`). Never `l2/<mod>/pipeline/` or `l1/`.
+(`listPoolBox`, including `pool/l4`). Never `l2/<mod>/pipeline/` or `l1/`.
 
 ## Output
 
 - `l2-effort-r1` (and later rounds when needed) plus wait ticks `loop30-wait-N`.
-- `loop30-done` result with `l1Count` / `l2Count` and the `{ round, l2, l1, effort }` table.
+- `loop30-done` result with `l1Count` / `l2Count` / `l4Pending` and the
+  `{ round, l2, l1, effort }` table. `l4Pending` is `true` while a round-3
+  `pool/l4` report is still disputed.
 - The same table on the l4 `pipeline.json` as `plOrchestration`.
 - A failed planner step fails this step with that planId.

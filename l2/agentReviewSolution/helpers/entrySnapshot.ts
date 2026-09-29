@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/entrySnapshot.ts" enhancement="_blank" />
 
-import { parseNs4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
+import { parseNs4ClassicDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { fileExists, readSourceText } from '/_102035_/l2/solution/fs.js';
 import { readActiveL4Change, readL4Release, readL4Revision, originalL4FileInfo, type L4CandidateManifest, type L4ChangeRecord, type L4HashMap, type L4ReleaseManifest } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import { readChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';

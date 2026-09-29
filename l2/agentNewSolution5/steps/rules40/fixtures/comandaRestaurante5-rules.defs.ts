@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/comandaRestaurante5/rules.defs.ts" enhancement="_blank"/>
 
-import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5RulesArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Rules = {
   "schemaVersion": "2026-09-10-ns5-rules-v1",
@@ -39,7 +39,7 @@ export const comandaRestaurante5Rules = {
       "description": "O garçom só pode cancelar um item lançado por engano enquanto a comanda permanece aberta."
     }
   ]
-} as const satisfies Ns5RulesArtifact;
+} as const satisfies Ns5Readonly<Ns5RulesArtifact>;
 
 export type ComandaRestaurante5RulesType = typeof comandaRestaurante5Rules;
 

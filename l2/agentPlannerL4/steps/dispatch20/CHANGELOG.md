@@ -1,5 +1,10 @@
 # dispatch20
 
+## 2026-09-27 (p4_14)
+
+- Both pool messages are tagged `mode: estimate` (was implicitly `implement`). Never writes
+  `mode: implement`.
+
 ## 2026-09-21 (p4_09)
 
 - Depends on `diff20-done`. Pool messages cite `pool/l1/web/l4diff.json` and

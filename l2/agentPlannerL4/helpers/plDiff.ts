@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/helpers/plDiff.ts" enhancement="_blank"/>
 
-import { parseNs4ClassicDefsSource as parseDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
+import { parseNs4ClassicDefsSource as parseDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import {
   declaredRevisionBaseId,
   loadPlRevision,

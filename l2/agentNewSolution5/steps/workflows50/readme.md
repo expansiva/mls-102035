@@ -67,6 +67,7 @@ No signal and no phrase ⇒ `processes: []`, cost 0, `noProcessSignal: true`.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `workflows50-done` result. `integration70` still waits for `rules40-done` and
   `access60-done`.
+- p4_20: after writing, `workflows.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.workflows50.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean. The noProcessSignal artifact has no LLM to repair it: a compile error there fails the step.
 
 ## Known traps
 

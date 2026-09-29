@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/mensalidadesAcademia/journeys/atualizarPlano.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const atualizarPlanoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -45,7 +45,7 @@ export const atualizarPlanoJourney = {
     }
   },
   "businessHash": "sha256:8313981a46af047a3194325af6ac1397da277ed16690686c4adbbaeb99b00e4a"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AtualizarPlanoJourneyType = typeof atualizarPlanoJourney;
 

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { buildNs4RulesArtifact } from '/_102035_/l2/agentNewSolution/steps/e5/contracts.js';
+import { buildNs4RulesArtifact } from '/_102035_/l2/solution/helpers/e5/contracts.js';
 import {
   isPipelinePath,
   packSolution,
@@ -18,7 +18,7 @@ import {
   stripRecomputableHashes,
 } from '/_102035_/l2/agentExportSolution/helpers/packSolution.js';
 import { decodeStoredZip } from '/_102035_/l2/agentExportSolution/helpers/storedZip.js';
-import { extractI18n, injectI18n, textPathsForArtifact } from '/_102035_/l2/agentNewSolution/helpers/ns4TextPaths.js';
+import { extractI18n, injectI18n, textPathsForArtifact } from '/_102035_/l2/solution/helpers/ns4TextPaths.js';
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/ordenServicioEs/', import.meta.url));
 
@@ -65,7 +65,7 @@ test('pack omits pipeline, strips hashes, normalizes l4 headers and extracts i18
   assert.ok(rules && typeof rules.content === 'string');
   assert.match(rules.content, /fileReference="_\{\s*project\s*\}_\/l4\//);
   assert.equal(rules.content.includes('_102035_/l4/'), false);
-  assert.match(rules.content, /\/_102035_\/l2\/agentNewSolution\/types\.js/);
+  assert.match(rules.content, /\/_102035_\/l2\/solution\/helpers\/ns4Types\.js/);
   const artifact = parseArtifact(rules.content);
   assert.ok(artifact);
   assert.equal('rulesHash' in artifact, false);

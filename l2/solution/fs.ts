@@ -1,8 +1,8 @@
 /// <mls fileReference="_102035_/l2/solution/fs.ts" enhancement="_blank"/>
 
 import { createStorFile } from '/_102027_/l2/libStor.js';
-import { extractNs4ClassicJsonObject } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
-import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import type { Ns5OntologyAnyEntity, Ns5PipelineState, Ns5StepId } from '/_102035_/l2/solution/types.js';
 
 export type Ns5FileInfo = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
@@ -119,31 +119,16 @@ export function collectTobeIntegrationFilesCiting(moduleName: string): mls.stor.
   const project = currentProject();
   const collected: mls.stor.IFileInfo[] = [];
   const seen = new Set<string>();
-  const consider = (file: Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>) => {
-    if (file.project !== project || Number(file.level) !== 4) return;
-    const folder = String(file.folder || '');
-    if (!folder.endsWith('/tobe/integration') && folder !== 'organization/tobe/integration') return;
-    const shortName = String(file.shortName || '');
-    if (!shortName.startsWith(prefix)) return;
-    const info = diskFileInfo(file);
-    const key = mls.stor.getKeyToFile(info);
-    if (seen.has(key)) return;
-    seen.add(key);
-    collected.push(info);
-  };
   for (const file of Object.values(mls.stor.files)) {
-    if (file) consider(file);
-  }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    const folders = new Set<string>(['organization/tobe/integration']);
-    for (const file of Object.values(mls.stor.files)) {
-      const folder = String(file?.folder || '');
-      if (folder.endsWith('/tobe/integration')) folders.add(folder);
-    }
-    for (const folder of folders) {
-      for (const info of listFolder(project, 4, folder)) consider(info);
-    }
+    if (!file || file.project !== project || Number(file.level) !== 4) continue;
+    const folder = String(file.folder || '');
+    if (!folder.endsWith('/tobe/integration') && folder !== 'organization/tobe/integration') continue;
+    const shortName = String(file.shortName || '');
+    if (!shortName.startsWith(prefix)) continue;
+    const key = mls.stor.getKeyToFile(file);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    collected.push(file);
   }
   return collected;
 }
@@ -267,13 +252,12 @@ export function listModuleL4Keys(
   return keys;
 }
 
-/** Index ∪ host disk of exact `l<level>/<mod>/**`. Never prefix; never protected paths. */
+/** Index (`mls.stor.files`) of exact `l<level>/<mod>/**`. Never prefix; never protected paths; never host disk. */
 export function collectExactModuleFiles(
   moduleName: string,
   levels: readonly number[] = MODULE_TREE_LEVELS,
 ): mls.stor.IFileInfo[] {
   const project = currentProject();
-  const folder = moduleFolder(moduleName);
   const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
   const levelSet = new Set(levels);
   const keys = new Set<string>();
@@ -283,18 +267,6 @@ export function collectExactModuleFiles(
     if (!isExactModuleFolder(file.folder, moduleName)) continue;
     if (isProtectedModuleFile(file)) continue;
     keys.add(key);
-  }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const level of levels) {
-      for (const info of listFolder(project, level, folder)) {
-        if (isProtectedModuleFile(info)) continue;
-        if (!isExactModuleFolder(String(info.folder || ''), moduleName)) continue;
-        const key = mls.stor.getKeyToFile(info);
-        keys.add(key);
-        if (!files[key]) files[key] = diskFileInfo(info);
-      }
-    }
   }
   const collected: mls.stor.IFileInfo[] = [];
   for (const key of keys) {
@@ -308,13 +280,27 @@ export type Ns5DefsKind = 'journeys' | 'ontology';
 
 type ListedStorFile = Pick<mls.stor.IFileInfo, 'project' | 'level' | 'folder' | 'shortName' | 'extension'>;
 
-/** Host disk listing (`mls.stor.localStor.listFolder`); undefined outside the host. */
+/**
+ * The `mls.stor.files` entry for `info`, or undefined. The index is the only source the l4 lists,
+ * deletes and judges by — it is what the Studio (browser) has; host disk never decides (p4_19).
+ */
+export function indexedFile(info: ListedStorFile): mls.stor.IFileInfo | undefined {
+  return mls.stor.files[mls.stor.getKeyToFile(info)] || undefined;
+}
+
+/**
+ * Host disk listing (`mls.stor.localStor.listFolder`); undefined outside the host.
+ * The l4 no longer reads it (p4_19); still exported for the L1/L2 callers outside this spec.
+ */
 export function hostListFolder(): ((project: number, level: number, folder: string) => ListedStorFile[]) | undefined {
   const fn = (mls.stor.localStor as { listFolder?: unknown } | undefined)?.listFolder;
   return typeof fn === 'function' ? fn as ((project: number, level: number, folder: string) => ListedStorFile[]) : undefined;
 }
 
-/** An `mls.stor.files` entry for a file seen on host disk but absent from the index. */
+/**
+ * An `mls.stor.files` entry for a file seen on host disk but absent from the index.
+ * The l4 no longer calls it (p4_19); still exported for the L1/L2 callers outside this spec.
+ */
 export function diskFileInfo(info: ListedStorFile): mls.stor.IFileInfo {
   const key = mls.stor.getKeyToFile(info);
   const existing = mls.stor.files[key];
@@ -328,7 +314,7 @@ export function diskFileInfo(info: ListedStorFile): mls.stor.IFileInfo {
   } as mls.stor.IFileInfo;
 }
 
-/** shortNames of `.defs.ts` in `l4/<mod>/<kind>/`, including status=deleted and host disk. */
+/** shortNames of `.defs.ts` in `l4/<mod>/<kind>/` from the index, including status=deleted; never host disk. */
 export function listModuleDefsShortNames(moduleName: string, kind: Ns5DefsKind): string[] {
   const project = currentProject();
   const folder = `${moduleFolder(moduleName)}/${kind}`;
@@ -337,12 +323,6 @@ export function listModuleDefsShortNames(moduleName: string, kind: Ns5DefsKind):
     if (!file || file.project !== project || file.level !== 4) continue;
     if (String(file.folder || '') !== folder || file.extension !== '.defs.ts') continue;
     if (file.shortName) names.add(file.shortName);
-  }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(project, 4, folder)) {
-      if (info.extension === '.defs.ts' && info.shortName) names.add(info.shortName);
-    }
   }
   return [...names].sort();
 }
@@ -371,7 +351,12 @@ export async function reconcileModuleDefs(
   const removed: string[] = [];
   for (const shortName of orphans) {
     const info = kind === 'journeys' ? journeyFile(moduleName, shortName) : ontologyEntityFile(moduleName, shortName);
-    await deleteFile(diskFileInfo(info));
+    const file = indexedFile(info);
+    if (!file) {
+      console.warn(`[agentNewSolution5] reconcileModuleDefs: ${displayPath(info)} is not in the index — not deleted`);
+      continue;
+    }
+    await deleteFile(file);
     removed.push(shortName);
   }
   return removed;
@@ -411,8 +396,10 @@ export function renderDefsSource(
   const safeExportName = normalizeModuleName(exportName);
   const exactTypeName = `${safeExportName.slice(0, 1).toUpperCase()}${safeExportName.slice(1)}Type`;
   return `/// <mls fileReference="_${fileInfo.project}_/l${fileInfo.level}/${fileInfo.folder}/${fileInfo.shortName}${fileInfo.extension}" enhancement="_blank"/>\n\n`
-    + `import type { ${typeName} } from '${TYPES_IMPORT}';\n\n`
-    + `export const ${safeExportName} = ${JSON.stringify(value, null, 2)} as const satisfies ${typeName};\n\n`
+    + `import type { ${typeName}, Ns5Readonly } from '${TYPES_IMPORT}';\n\n`
+    // p4_20: checked against the read-only view of the type. The Studio compiler (TypeScript 5.0.2)
+    // refuses an `as const` literal against a mutable array (TS1360); 5.9.3 accepts. Same value type.
+    + `export const ${safeExportName} = ${JSON.stringify(value, null, 2)} as const satisfies Ns5Readonly<${typeName}>;\n\n`
     + `export type ${exactTypeName} = typeof ${safeExportName};\n\n`
     + `export default ${safeExportName};\n`;
 }

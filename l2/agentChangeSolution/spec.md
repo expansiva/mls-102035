@@ -5,7 +5,7 @@ Documento auto-contido (não depende de outros arquivos).
 
 ## Propósito
 
-Porta de entrada de **manutenção** de um módulo que **já existe**. Interpreta o pedido do usuário, decide o que muda no modelo de negócio (Workflow / Operation / Rule / Ontology), **calcula o impacto**, opcionalmente apresenta um **clarification**, aplica o patch no `l4` e **marca os status de reconciliação** (`statusFrontend` e/ou `statusBackend`) de cada item afetado. No fim, **chama** os workers (`agentChangeFrontend` / `agentChangeBackend`). Criação de módulo novo NÃO é aqui (é o `agentNewSolution2`).
+Porta de entrada de **manutenção** de um módulo que **já existe**. Interpreta o pedido do usuário, decide o que muda no modelo de negócio (Workflow / Operation / Rule / Ontology), **calcula o impacto**, opcionalmente apresenta um **clarification**, aplica o patch no `l4` e **marca os status de reconciliação** (`statusFrontend` e/ou `statusBackend`) de cada item afetado. No fim, **chama** os workers (`agentMaterializeL2` / `agentChangeBackend`). Criação de módulo novo NÃO é aqui (é o `agentNewSolution2`).
 
 ## Modelo compartilhado (contexto auto-contido)
 
@@ -27,7 +27,7 @@ Porta de entrada de **manutenção** de um módulo que **já existe**. Interpret
 
 **Status de reconciliação (DOIS campos independentes no próprio item de Workflow/Operation):**
 `statusFrontend` e `statusBackend`, cada um com o enum `toCreate | toUpdate | toRemove | inProgress | done`.
-`agentChangeFrontend` cuida do `statusFrontend`; `agentChangeBackend` cuida do `statusBackend`.
+`agentMaterializeL2` cuida do `statusFrontend`; `agentChangeBackend` cuida do `statusBackend`.
 
 **Guardrails (lições analise10/11/12):** ontologia só com dados; refs por id de ontologia; concerns de plataforma (auth/audit/monitoring/notifications) fora do escopo; determinístico é duro, opinião de LLM é suave (não derruba o fluxo); finalizar a task cedo (resumo opcional).
 
@@ -41,7 +41,7 @@ Porta de entrada de **manutenção** de um módulo que **já existe**. Interpret
    - mudança que afeta persistência/implementação → `statusBackend = toCreate|toUpdate|toRemove`;
    - mudança que afeta as duas → setar **ambos**.
    Propagar o status apropriado para os itens impactados (blast-radius).
-5. **Despachar:** abrir as tasks dos workers (`agentChangeFrontend` e/ou `agentChangeBackend`) conforme quais status ficaram pendentes — rodam depois, lendo só o `l4`, e cada um vira **só o seu** status para `done`.
+5. **Despachar:** abrir as tasks dos workers (`agentMaterializeL2` e/ou `agentChangeBackend`) conforme quais status ficaram pendentes — rodam depois, lendo só o `l4`, e cada um vira **só o seu** status para `done`.
 
 ## Steps (alto nível, sem implementação)
 
@@ -49,7 +49,7 @@ Porta de entrada de **manutenção** de um módulo que **já existe**. Interpret
 - `impact-scan` (1+ steps) — calcula o blast-radius determinístico.
 - `clarify-change` (opcional) — confirma escopo/impacto.
 - `apply-patch` — escreve/atualiza/marca os itens em `l4` e seta `statusFrontend`/`statusBackend` por camada.
-- `dispatch-workers` — dispara `agentChangeFrontend`/`agentChangeBackend` conforme os status pendentes.
+- `dispatch-workers` — dispara `agentMaterializeL2`/`agentChangeBackend` conforme os status pendentes.
 
 ## Entrada / Saída
 
@@ -67,4 +67,4 @@ Porta de entrada de **manutenção** de um módulo que **já existe**. Interpret
 
 ## Referências de artefato
 - Lê/escreve: `l4/{module}/ontology/*`, `l4/workflows/*`, `l4/operations/*`, `l4/rules/*`, `l4/{module}/module.defs.ts`.
-- Dispara: `agentChangeFrontend` (102020), `agentChangeBackend` (102021).
+- Dispara: `agentMaterializeL2` (102020), `agentChangeBackend` (102021).

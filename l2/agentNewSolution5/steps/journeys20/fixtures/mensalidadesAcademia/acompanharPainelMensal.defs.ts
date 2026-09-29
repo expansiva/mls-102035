@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/mensalidadesAcademia/journeys/acompanharPainelMensal.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const acompanharPainelMensalJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -37,7 +37,7 @@ export const acompanharPainelMensalJourney = {
     }
   },
   "businessHash": "sha256:f9b4a2236e888151d79cbf36f579d54667335a98842128b28f2fdcfee51fe1f3"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AcompanharPainelMensalJourneyType = typeof acompanharPainelMensalJourney;
 

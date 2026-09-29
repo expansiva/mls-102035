@@ -1,5 +1,9 @@
 # rules40
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: `rules.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.rules40.compile` records the result for finalize80.
+
 ## 2026-09-21 (ns5_67)
 
 - Platform rules (`mdm.rules`, same import ontology30 uses) are not restated. `citedRules` is

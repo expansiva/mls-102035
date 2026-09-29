@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-09-29 (p4_20): `assertSafeWrapper` aceita o wrapper novo do emissor NS5
+  (`import type { T, Ns5Readonly }` e `as const satisfies Ns5Readonly<T>`); a forma antiga continua aceita.
 - 2026-09-21: materialização byte-preserving, `CandidateSnapshot` exato, marca autoritativa
   `candidateMarkResult` e resultado privado com permit consumível.
 - 2026-09-21: publicação condicional integrada no mesmo step por `publishWithPermit`; snapshot fica

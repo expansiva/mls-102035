@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l4/ordenServicioEs/composition/additional-capabilities.defs.ts" enhancement="_blank"/>
 
-import type { Ns4CompositionArtifact } from '/_102035_/l2/agentNewSolution/types.js';
+import type { Ns4CompositionArtifact } from '/_102035_/l2/solution/helpers/ns4Types.js';
 
 export const ordenServicioEsAdditionalCapabilities = {
   "schemaVersion": "2026-08-09-ns4-composition-v1",

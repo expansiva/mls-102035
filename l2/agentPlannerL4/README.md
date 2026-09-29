@@ -2,20 +2,30 @@
 
 L4 planner. On accept it **wipes** the module pool, diffs the sealed release against
 the `/candidate` root, lists the artifacts of an existing complete module, writes
-`pool/l1` and `pool/l2`, and orchestrates L2 → L1 → L2 by `type: 'agent'` steps
+`pool/l2`, and orchestrates L2 → L1 → L2 by `type: 'agent'` steps
 **in the same task**. No LLM. Does not read ontology to opine. A step never emits
 `add-message-ai`.
 
 `entry10` parses (including `/candidate`), sets `moduleFolder`, refuses, wipes
 `l4/<mod>/pool/{l1,l2,l4}/` (messages + `web/*.json`), adjusts `l5/config.json`.
+Wiping is unconditional: an `implement` message left unconsumed by a prior accept
+is wiped too — a new plan invalidates an old accept, regardless of `mode`.
 `diff20` writes `pool/l1/web/l4diff.json` and `pool/l2/web/l4diff.json`.
-`dispatch20` lists artifacts, cites the two `l4diff.json` files, writes the two
-messages, traces `delivered`, and creates `L2 r1`. `loop30` creates `L1 r1` with
-the real `l2→l1` filename when that message is in the box, then `L2 effort r1`
-with the real `l1→l2` filename (L2 does not accept `file: ''` as a step prompt).
-A completed planner without output fails the task. Rounds 2 and 3 only when a new
-message with `round > 1` is in the box. Round 3 with a non-empty box is `disputed`.
-The l4 pipeline records `{ round, l2, l1, effort }`.
+`dispatch20` lists artifacts, cites the two `l4diff.json` files, writes only the
+`l4→l2` message tagged `mode: estimate`, traces `delivered`, and creates `L2 r1`.
+`pool/l1` gets no message at dispatch time — L1 has no reader for a direct `l4→l1`
+pointer (it reads `l4diff.json` off disk and otherwise waits for L2's own message).
+`loop30`
+creates `L1 r1` with the real `l2→l1` filename when that message is in the box,
+then `L2 effort r1` with the real `l1→l2` filename (L2 does not accept `file: ''`
+as a step prompt). A completed planner without output fails the task. Rounds 2 and
+3 only when a new message with `round > 1` is in the box. Round 3 with a non-empty
+box is `disputed`. `loop30` also drains `pool/l4` — the mailbox L4 itself owns —
+every tick: L2's `l2→l4` effort-ready report is traced `processed` and deleted
+below round 3, and traced `disputed` and kept at round 3 (the newRelease review
+run reads that outcome the same way it already does for l1/l2). "Defined" is l1
+and l2 with no fresh work and `pool/l4` with no pendency. The l4 pipeline records
+`{ round, l2, l1, effort }`.
 
 ## Invocation
 
@@ -32,8 +42,10 @@ The l4 pipeline records `{ round, l2, l1, effort }`.
 - `/candidate` alone points `moduleFolder` at `<mod>/tobe/plan` (`revision: null`). A relative path is
   joined under the module. Without the flag the canonical l4 is byte-identical.
 - The pool is derived from l4: a new run wipes it and plans again. Pending messages do not refuse.
-- `/estimate` is refused (`not available yet`). There is no `/rebuild`.
-- Mode is implicit `implement`.
+- `/estimate` as a flag is refused (`not available yet`) — there is nothing to opt into: every pool
+  message this planner writes or reads is already tagged `mode: estimate`. There is no `/rebuild`.
+- The planning loop only ever writes and reads `mode: estimate`. `mode: implement` is written
+  elsewhere, by the newRelease accept once a run is `ready` — this planner never writes it.
 - Unknown `pipeline.flowId` (not NS5 / review / this planner) is recorded, not refused.
 
 ## What entry10 writes

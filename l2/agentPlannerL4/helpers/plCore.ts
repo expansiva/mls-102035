@@ -3,10 +3,9 @@
 import { readL4Revision } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import { sha256Tobe } from '/_102035_/l2/newRelease/tobeDiff.js';
 import {
-  diskFileInfo,
   displayPath,
   fileExists,
-  hostListFolder,
+  indexedFile,
   listModuleFolders,
   moduleFile,
   moduleFolder,
@@ -441,17 +440,6 @@ export function listPlArtifacts(moduleName: string): string[] {
     consider(file);
   }
 
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(project, 4, root)) {
-      const key = mls.stor.getKeyToFile(info);
-      const indexed = files[key];
-      if (indexed?.status === 'deleted') continue;
-      if (!indexed) files[key] = diskFileInfo(info);
-      consider(indexed || info);
-    }
-  }
-
   return [...found.keys()].sort();
 }
 
@@ -466,7 +454,7 @@ export function buildPlPoolMessage(
     to,
     thread,
     round: 1,
-    mode: 'implement',
+    mode: 'estimate',
     subject: plDispatchSubject(moduleName),
     artifacts: [...artifacts],
     body: PL_DISPATCH_BODY,
@@ -551,28 +539,24 @@ export interface PlDispatchRun {
   artifacts: string[];
   thread: string;
   l2File: Ns5FileInfo;
-  l1File: Ns5FileInfo;
   l2Path: string;
-  l1Path: string;
   invokeL2: boolean;
-  invokeL1: boolean;
   status: string;
 }
 
 export async function runPlDispatch(moduleName: string, now: Date): Promise<PlDispatchRun> {
+  // Only pool/l2 is a despacho — the L1 mailbox is fed later by L2's own l2→l1 message
+  // (maybeL1Step in loop30). pool/l1/web/l4diff.json keeps being written by diff20; that is
+  // the diff artifact, not a despacho, and L1 reads it straight off disk.
   const artifacts = [...listPlArtifacts(moduleName), ...PL_L4DIFF_REL];
   const thread = nextThread(moduleName, now);
   const at = now.toISOString();
   const l2File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l2', thread, artifacts), now);
-  const l1File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l1', thread, artifacts), now);
   const l2Path = displayPath(l2File);
-  const l1Path = displayPath(l1File);
-  const base = { at, thread, round: 1 as const, mode: 'implement' as const, from: 'l4' as const, outcome: 'delivered' as const };
+  const base = { at, thread, round: 1 as const, mode: 'estimate' as const, from: 'l4' as const, outcome: 'delivered' as const };
   await tracePool(moduleName, { ...base, file: l2Path, to: 'l2' });
-  await tracePool(moduleName, { ...base, file: l1Path, to: 'l1' });
   const invokeL2 = plannerAgentPresent(PL_L2_AGENT);
-  const invokeL1 = plannerAgentPresent(PL_L1_AGENT);
-  return { artifacts, thread, l2File, l1File, l2Path, l1Path, invokeL2, invokeL1, status: formatMissingPlannerStatus(1, invokeL2, invokeL1) };
+  return { artifacts, thread, l2File, l2Path, invokeL2, status: formatMissingPlannerStatus(1, invokeL2) };
 }
 
 export function createRound1InvokeSteps(moduleName: string, run: PlDispatchRun): mls.msg.AIAgentStep[] {
@@ -607,16 +591,6 @@ function listIndexedPoolFiles(moduleName: string, folder: string): Ns5FileInfo[]
     if (!file || file.project !== project || Number(file.level) !== 4) continue;
     consider(file);
   }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(project, 4, folder)) {
-      const key = mls.stor.getKeyToFile(info);
-      const indexed = files[key];
-      if (indexed?.status === 'deleted') continue;
-      if (!indexed) files[key] = diskFileInfo(info);
-      consider(indexed || info);
-    }
-  }
   return [...found.values()];
 }
 
@@ -632,7 +606,9 @@ export function listPoolWebFiles(moduleName: string, box: PoolBox): Ns5FileInfo[
  * Wipes every mailbox of the module: pool messages (trace `processed` then
  * `deletePoolMessage`) and `web/*.json`. Records `poolWiped` on the l4 pipeline.
  * Trace outcome stays `processed` (the pool enum does not grow); the reason is
- * `pool wiped: l4 changed`.
+ * `pool wiped: l4 changed`. This also invalidates an `implement` message left
+ * unconsumed by a prior accept: a new plan invalidates an old accept, so nothing
+ * survives entry regardless of `mode`.
  */
 export async function wipeModulePool(moduleName: string, now: Date): Promise<string[]> {
   const wiped: string[] = [];
@@ -665,8 +641,10 @@ export async function wipeModulePool(moduleName: string, now: Date): Promise<str
     }
     for (const file of listPoolWebFiles(moduleName, box)) {
       const path = displayPath(file);
+      const indexed = indexedFile(file);
+      if (!indexed) continue;
       const { deleteFile } = await import('/_102027_/l2/libStor.js');
-      await deleteFile(diskFileInfo(file));
+      await deleteFile(indexed);
       wiped.push(path);
     }
   }
@@ -693,8 +671,26 @@ function hasPoolWebJson(moduleName: string, box: PoolBox, shortName: string): bo
 }
 
 /**
+ * `l4/<mod>/pool/<side>/pipeline.json` — the planner's own trace of the run (contract of
+ * 2026-09-27). `true` only when the file is on the same `thread` and `status === 'complete'`.
+ */
+async function hasCompleteSidePipeline(moduleName: string, side: PoolBox, thread: string): Promise<boolean> {
+  const file: Ns5FileInfo = {
+    project: moduleFile(moduleName).project,
+    level: 4,
+    folder: `${moduleFolder(moduleName)}/pool/${side}`,
+    shortName: 'pipeline',
+    extension: '.json',
+  };
+  const pipeline = await readJson<{ thread?: unknown; status?: unknown }>(file);
+  return !!pipeline && pipeline.thread === thread && pipeline.status === 'complete';
+}
+
+/**
  * After an L2/L1 invoke, the table cell is `done` only when the planner produced.
- * L2: `pool/l2/web/menu.json` and a `l2→l1` message. L1: `l1→l2` message or `backend.json`.
+ * L2: `pool/l2/web/menu.json` and (a `l2→l1` message, or `pool/l2/pipeline.json` complete on
+ * `thread` — the L1 contract of 2026-09-27 deletes the message once processed).
+ * L1: `l1→l2` message, or `backend.json`, or `pool/l1/pipeline.json` complete on `thread`.
  * No production → `no-output` (the loop fails the task with "<planId> ran without output").
  */
 export async function plInvokeOutput(
@@ -702,14 +698,15 @@ export async function plInvokeOutput(
   moduleName: string,
   thread: string,
 ): Promise<'done' | 'no-output'> {
+  const pipelineComplete = await hasCompleteSidePipeline(moduleName, side, thread);
   if (side === 'l2') {
     const hasMenu = hasPoolWebJson(moduleName, 'l2', 'menu');
     const needs = await findOldestBoxMessage(moduleName, 'l1', 'l2', thread);
-    return hasMenu && needs ? 'done' : 'no-output';
+    return hasMenu && (needs || pipelineComplete) ? 'done' : 'no-output';
   }
   const reply = await findOldestBoxMessage(moduleName, 'l2', 'l1', thread);
   const hasBackend = hasPoolWebJson(moduleName, 'l2', 'backend');
-  return reply || hasBackend ? 'done' : 'no-output';
+  return reply || hasBackend || pipelineComplete ? 'done' : 'no-output';
 }
 
 export async function writePlOrchestration(
@@ -725,12 +722,9 @@ export async function writePlOrchestration(
   });
 }
 
-export function formatMissingPlannerStatus(round: number, l2Available: boolean, l1Available: boolean): string {
-  const missing: string[] = [];
-  if (!l2Available) missing.push('l2 pending (agentPlannerL2 not available)');
-  if (!l1Available) missing.push('l1 pending (agentPlannerL1 not available)');
-  if (!missing.length) return '';
-  return `round ${round}/${POOL_MAX_ROUND} · ${missing.join('; ')}. Requests stayed in the box.`;
+export function formatMissingPlannerStatus(round: number, l2Available: boolean): string {
+  if (l2Available) return '';
+  return `round ${round}/${POOL_MAX_ROUND} · l2 pending (agentPlannerL2 not available). Requests stayed in the box.`;
 }
 
 export interface PlBoxMessage {
@@ -884,6 +878,47 @@ export function latestDeliveredThread(trace: PoolTraceLine[]): string {
     if (trace[i].outcome === 'delivered' && trace[i].from === 'l4') return trace[i].thread;
   }
   return trace[trace.length - 1]?.thread || '';
+}
+
+export interface PlEffortResult {
+  /** `l2→l4` effort messages traced `processed` and deleted (round < POOL_MAX_ROUND). */
+  processed: string[];
+  /** `l2→l4` effort messages that reached POOL_MAX_ROUND: traced `disputed`, kept in the box. */
+  disputed: string[];
+}
+
+/**
+ * `pool/l4` is the mailbox L4 itself owns: L2's `effort40` reports "effort ready" there
+ * (`from: 'l2', to: 'l4'`) once per round. Before POOL_MAX_ROUND this is bookkeeping — trace
+ * `processed`, then delete, same as any other owner draining its box. A message that reached
+ * POOL_MAX_ROUND is proof the rounds ran out without agreement (the same rule `decidePlLoop`
+ * applies to l1/l2): it is traced `disputed` and never deleted, so the newRelease review run
+ * reads that outcome off `pipeline.json.pool[]` the same way it already does for l1/l2.
+ * A second call over an already-disputed message does not re-trace it.
+ */
+export async function processPlEffortBox(moduleName: string, thread: string, now: Date): Promise<PlEffortResult> {
+  const at = now.toISOString();
+  const trace = await readPoolTrace(moduleName);
+  const current = thread || latestDeliveredThread(trace);
+  const alreadyDisputed = new Set(trace.filter(line => line.outcome === 'disputed').map(line => line.file));
+  const items = (await loadPlBoxMessages(moduleName, 'l4')).filter(item => !current || item.message.thread === current);
+  const processed: string[] = [];
+  const disputed: string[] = [];
+  for (const item of items) {
+    const base = {
+      at, file: item.path, from: item.message.from, to: item.message.to,
+      thread: item.message.thread, round: item.message.round, mode: item.message.mode,
+    };
+    if (item.message.round >= POOL_MAX_ROUND) {
+      if (!alreadyDisputed.has(item.path)) await tracePool(moduleName, { ...base, outcome: 'disputed' });
+      disputed.push(item.path);
+      continue;
+    }
+    await tracePool(moduleName, { ...base, outcome: 'processed' });
+    await deletePoolMessage(moduleName, item.file, item.path);
+    processed.push(item.path);
+  }
+  return { processed, disputed };
 }
 
 export async function gatherPlLoopDecision(moduleName: string, thread?: string): Promise<PlLoopDecision> {

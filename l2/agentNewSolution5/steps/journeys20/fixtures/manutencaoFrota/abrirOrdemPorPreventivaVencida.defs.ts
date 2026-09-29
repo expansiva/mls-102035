@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/manutencaoFrota/journeys/abrirOrdemPorPreventivaVencida.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const abrirOrdemPorPreventivaVencidaJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -45,7 +45,7 @@ export const abrirOrdemPorPreventivaVencidaJourney = {
     }
   },
   "businessHash": "sha256:123797b5034fd54ac2eead98bf75c1e1f2207abe1c71502c6c81c3073c579124"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AbrirOrdemPorPreventivaVencidaJourneyType = typeof abrirOrdemPorPreventivaVencidaJourney;
 

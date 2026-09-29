@@ -28,10 +28,13 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
   `effect: 'transition'` without `transitionRef` is `NS5_JOURNEY_TRANSITION_REF_REQUIRED`.
   Either field on a non-act is `NS5_JOURNEY_ACT_EFFECT_KIND`.
 - `handoffTo` is an actor id and only on `handoff`.
+- A step's `title` is the short on-screen name (2 to 6 words); `description` explains
+  the step in a sentence. Both are prompted and schema-described (ns5_71).
 - Twin journeys (same actor, same set of `kind:entity`) fail the gate.
 - After the gate: inferred `external` actor without an exclusive step is dropped from
   `module.defs.ts` and recorded as `dropInferredActor<Actor>`. `kind: system` stays.
 - A module with no `decide` step is valid; the count is stored on the pipeline step.
+- p4_20: after writing, every `journeys/<journeyId>.defs.ts` and `journeys/index.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.journeys20.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean.
 
 ## Known traps
 

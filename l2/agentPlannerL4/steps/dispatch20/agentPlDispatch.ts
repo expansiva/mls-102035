@@ -26,7 +26,7 @@ export async function beforePlDispatchPromptStep(
   const invoke = createRound1InvokeSteps(moduleName, result);
   const missing = result.status;
   const status = missing
-    || `pool/l1 and pool/l2 pending for the planners (${result.artifacts.length} artifacts).`;
+    || `pool/l2 pending for the planner (${result.artifacts.length} artifacts).`;
   return [
     ...invoke.map(child => addPlStep(context, parentStep, child)),
     doneAnchor(context, parentStep, moduleName, result.thread, result.artifacts.length, status, invoke.length),
@@ -37,7 +37,7 @@ export async function beforePlDispatchPromptStep(
       hookSequential,
       'completed',
       missing
-        || `dispatch20 wrote pool/l2 and pool/l1 and created ${invoke.length} planner step(s).`,
+        || `dispatch20 wrote pool/l2 and created ${invoke.length} planner step(s).`,
     ),
   ];
 }

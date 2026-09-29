@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/inscricaoEvento/journeys/realizarInscricaoPublica.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const realizarInscricaoPublicaJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -49,7 +49,7 @@ export const realizarInscricaoPublicaJourney = {
     }
   },
   "businessHash": "sha256:f7d82574aa448748791f2dee1f03840ef499e60b3570d0ded4b73c99851d1719"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type RealizarInscricaoPublicaJourneyType = typeof realizarInscricaoPublicaJourney;
 

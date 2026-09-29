@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/hiringPipeline/journeys/rejectApplication.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const rejectApplicationJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -39,7 +39,7 @@ export const rejectApplicationJourney = {
     }
   },
   "businessHash": "sha256:b5dac1ac03246dda1f2974ce96106dc3e432c4bcb466d558014ef566ff5d25f4"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type RejectApplicationJourneyType = typeof rejectApplicationJourney;
 

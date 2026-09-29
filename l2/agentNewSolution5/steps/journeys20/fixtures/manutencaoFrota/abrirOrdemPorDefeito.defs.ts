@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/manutencaoFrota/journeys/abrirOrdemPorDefeito.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const abrirOrdemPorDefeitoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -45,7 +45,7 @@ export const abrirOrdemPorDefeitoJourney = {
     }
   },
   "businessHash": "sha256:e93874ab548268f7476f982a0d0d16fd575cd0630807d586d4ae860e07b1e08a"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AbrirOrdemPorDefeitoJourneyType = typeof abrirOrdemPorDefeitoJourney;
 

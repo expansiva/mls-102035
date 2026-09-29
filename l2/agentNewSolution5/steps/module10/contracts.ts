@@ -4,7 +4,7 @@ import {
   foldNs4Text,
   normalizeNs4Languages,
   ns4LanguageMentioned,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4Core.js';
+} from '/_102035_/l2/solution/helpers/ns4Core.js';
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import {
   NS5_MODULE_SCHEMA_VERSION,

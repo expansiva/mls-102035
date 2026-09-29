@@ -1,5 +1,12 @@
 # loop30
 
+## 2026-09-27 (p4_14)
+
+- Every tick also drains `pool/l4`: the `l2→l4` effort-ready report is traced `processed` and
+  deleted below round 3, `disputed` and kept at round 3. `loop30-done` gains `l4Pending`.
+  "Defined" is l1 and l2 with no fresh work and `pool/l4` with no pendency. No new pipeline
+  state for "awaiting accept" (the newRelease `ready` run owns that).
+
 ## 2026-09-20 (p4_08 rodada 2)
 
 - Creates L1 r1 with the real `l2→l1` file when that message is in the box (same

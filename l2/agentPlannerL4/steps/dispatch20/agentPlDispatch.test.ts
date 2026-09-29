@@ -134,7 +134,7 @@ void test('dispatch20 hook is registered as deterministic', () => {
   assert.equal(PL_STEP_HOOKS.dispatch20?.afterPromptStep, afterPlDispatchPromptStep);
 });
 
-void test('dispatch20 writes the boxes and creates only L2 r1 — L1 waits for the box', async () => {
+void test('dispatch20 writes only pool/l2 and creates only L2 r1 — L1 waits for the box', async () => {
   const { context, parent, step } = contextWith({ l2Agent: true, l1Agent: true });
   const intents = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
   const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
@@ -158,21 +158,23 @@ void test('dispatch20 writes the boxes and creates only L2 r1 — L1 waits for t
   assert.ok(result.thread);
   assert.equal(result.artifactCount, 3);
   assert.equal(result.invokeCount, 1);
-  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 0);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
   const trace = await readPoolTrace('mensalidadesAcademia');
-  assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
-  assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
+  assert.deepEqual(trace.map(line => line.outcome), ['delivered']);
+  assert.deepEqual(trace.map(line => line.to), ['l2']);
 });
 
-void test('dispatch20 without planners writes the boxes and creates no agent steps', async () => {
+void test('dispatch20 without planners writes only pool/l2 and creates no agent steps', async () => {
   const { context, parent, step } = contextWith();
   const intents = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
   const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
   assert.equal(added.some(intent => intent.step.type === 'agent'), false);
   const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
   const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { status: string };
-  assert.match(result.status, /not available/);
+  assert.match(result.status, /l2 pending \(agentPlannerL2 not available\)/);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 0);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
 });
 
 void test('dispatch20 afterPrompt fails an LLM reply', async () => {

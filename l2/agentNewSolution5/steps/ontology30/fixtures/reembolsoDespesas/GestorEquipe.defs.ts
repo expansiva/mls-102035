@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/reembolsoDespesas/ontology/GestorEquipe.defs.ts" enhancement="_blank"/>
 
-import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyEntityArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const reembolsoDespesasEntityGestorEquipe = {
   "schemaVersion": "2026-09-11-ns5-ontology-v2",
@@ -25,7 +25,7 @@ export const reembolsoDespesasEntityGestorEquipe = {
     "mdmType": "reembolsoDespesas.GestorEquipe"
   },
   "writer": "crud"
-} as const satisfies Ns5OntologyEntityArtifact;
+} as const satisfies Ns5Readonly<Ns5OntologyEntityArtifact>;
 
 export type ReembolsoDespesasEntityGestorEquipeType = typeof reembolsoDespesasEntityGestorEquipe;
 

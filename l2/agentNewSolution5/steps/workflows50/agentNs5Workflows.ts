@@ -12,6 +12,7 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import {
   draftFile,
   journeyFile,
@@ -37,6 +38,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
+  Ns5CompileRecord,
   Ns5JourneyArtifact,
   Ns5JourneyDecision,
   Ns5JourneyIndexArtifact,
@@ -145,7 +147,7 @@ export async function beforeNs5WorkflowsPromptStep(
     const phrases = collectNs5TimeEventPhrases(sourcePrompt);
     if (!ns5WorkflowsNeedsLlm(signals, phrases)) {
       const pipeline = await requirePipeline(moduleName);
-      const artifactPath = await persistArtifacts(
+      const { artifactPath, compile } = await persistArtifacts(
         moduleName,
         [],
         idleJourneyDecisions(journeys),
@@ -153,6 +155,8 @@ export async function beforeNs5WorkflowsPromptStep(
         pipeline,
         true,
       );
+      // Deterministic artifact, no LLM to repair it: a compile error here is a generator defect.
+      if (compile.status === 'errors') throw new Error(formatNs5CompileFeedback(compile));
       return [
         doneAnchor(context, findMutableParent(context, parentStep), moduleName, [artifactPath]),
         updateStatus(context, parentStep, step, hookSequential, 'completed', `workflows50 approved with noProcessSignal: ${artifactPath}`),
@@ -250,7 +254,7 @@ export async function afterNs5WorkflowsPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(
+    const { artifactPath, compile } = await persistArtifacts(
       moduleName,
       processes,
       journeyDecisions,
@@ -258,6 +262,16 @@ export async function afterNs5WorkflowsPromptStep(
       pipeline,
       false,
     );
+    if (compile.status === 'errors') {
+      const feedback = formatNs5CompileFeedback(compile);
+      if (parsed.repairAttempt < MAX_REPAIRS) {
+        return [
+          addStep(context, mutationParent, createNs5RetryStep('workflows50', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
+          updateStatus(context, mutationParent, step, hookSequential, 'completed', `workflows50 compile scheduled repair ${parsed.repairAttempt + 1}.`),
+        ];
+      }
+      throw new Error(feedback);
+    }
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `workflows50 approved: ${artifactPath}`),
@@ -279,18 +293,21 @@ async function persistArtifacts(
   systemDecisions: Ns5SystemDecision[],
   pipeline: Ns5PipelineState,
   noProcessSignal: boolean,
-): Promise<string> {
+): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
   const artifact = buildNs5WorkflowsArtifactV3(moduleName, processes, journeyDecisions, systemDecisions);
   const artifactPath = await writeDefs(workflowsFile(moduleName), `${moduleName}Workflows`, artifact, 'Ns5WorkflowsArtifact');
   await writeJson(draftFile(moduleName, 'workflows50'), artifact);
+  // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
+  const compile = await compileNs5Defs([workflowsFile(moduleName)]);
   await writeStepState(pipeline, {
-    status: 'approved',
+    status: compile.status === 'errors' ? 'running' : 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    compile,
     ...(noProcessSignal ? { noProcessSignal: true } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPath;
+  return { artifactPath, compile };
 }
 
 function idleJourneyDecisions(journeys: readonly Ns5JourneyArtifact[]): Ns5JourneyDecision[] {

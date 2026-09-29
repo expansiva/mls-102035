@@ -13,7 +13,8 @@ whose `diff20` already wrote `l4diff.json`.
 
 ## Output
 
-- `l4/<mod>/pool/l2/<stamp>_<thread>_1.json` and `pool/l1/...` — two equal messages except `to`.
+- `l4/<mod>/pool/l2/<stamp>_<thread>_1.json` and `pool/l1/...` — two equal messages except `to`,
+  both tagged `mode: estimate`. This step never writes `mode: implement`.
 - `pipeline.json` pool trace: two `delivered` lines.
 - Step `l2-r1`. Prompt `{ moduleName, thread, file, candidate }`.
 - `dispatch20-done` result: module, thread, artifact count, invoke count.

@@ -1,5 +1,9 @@
 # module10
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: `module.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.module10.compile` records the result for finalize80. A compile repair may rewrite the `module.defs.ts` this same run wrote (not a pre-existing module).
+
 ## 2026-09-18 (ns5_55)
 
 - `/rebuild all` deletes **after** the intent verdict, not at the entry hook. The verdict lost its

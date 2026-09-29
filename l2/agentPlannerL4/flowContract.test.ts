@@ -35,6 +35,7 @@ interface FlowDoc {
   schemaVersion: string;
   description: string;
   principles: string[];
+  invocation: Record<string, string>;
   artifacts: Record<string, string>;
   steps: FlowStep[];
 }
@@ -100,6 +101,33 @@ void test('flow records that L4 orchestrates L2 then L1 then L2 in the same task
   assert.match(dispatch?.goal || '', /L2 r1/i);
   assert.match(loop?.goal || '', /L1 r1/i);
   assert.match(loop?.goal || '', /effort/i);
+});
+
+void test('the loop always dispatches mode: estimate — estimateRule describes the loop mode, not just the old refusal', () => {
+  const flow = loadFlow();
+  assert.notEqual(flow.invocation.estimateRule, "/estimate is refused with 'not available yet'.");
+  assert.match(flow.invocation.estimateRule, /estimate/i);
+  assert.match(flow.invocation.estimateRule, /implement/i);
+  const dispatch = flow.steps.find(step => step.id === 'dispatch20');
+  assert.match(dispatch?.goal || '', /mode: estimate/i);
+});
+
+void test('loop30 also drains pool/l4 and never writes mode: implement', () => {
+  const flow = loadFlow();
+  const loop = flow.steps.find(step => step.id === 'loop30');
+  assert.match(loop?.goal || '', /pool\/l4/i);
+  assert.equal(flow.principles.some(line => /pool\/l4/i.test(line) && /disputed/i.test(line)), true);
+  assert.equal(flow.principles.some(line => /never writes mode: implement/i.test(line)), true);
+});
+
+void test('entry10 wipe also invalidates an unconsumed implement message', () => {
+  const flow = loadFlow();
+  const entry = flow.steps.find(step => step.id === 'entry10');
+  assert.match(entry?.goal || '', /implement/i);
+  assert.equal(
+    flow.principles.some(line => /wipes l4\/<mod>\/pool/i.test(line) && /implement/i.test(line)),
+    true,
+  );
 });
 
 void test('each step folder that exists implements beforePromptStep and is on the dispatch table', async () => {

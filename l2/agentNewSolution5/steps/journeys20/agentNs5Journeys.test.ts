@@ -7,7 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
-import { createNs4FlexibleWorkerTool } from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
+import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
@@ -99,6 +99,13 @@ void test('journeys20 tool schema is provider-clean', () => {
   const tool = buildNs5JourneysTool(loadSchema(), createNs4FlexibleWorkerTool);
   assert.equal(tool.function.name, 'submitNs5Journeys');
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
+});
+
+void test('journey.schema.json step title carries a description', () => {
+  const schema = loadSchema() as { $defs: { step: { properties: { title: { description?: string } } } } };
+  const description = schema.$defs.step.properties.title.description;
+  assert.equal(typeof description, 'string');
+  assert.ok((description ?? '').trim().length > 0);
 });
 
 void test('real journeys20 drafts of both runs pass the gate', () => {

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/reembolsoDespesas/journeys/corrigirEreenviarDespesa.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const corrigirEreenviarDespesaJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -54,7 +54,7 @@ export const corrigirEreenviarDespesaJourney = {
     }
   },
   "businessHash": "sha256:a3c9941d07ee020be411d93eea38945ee977e001b220250419718babf79b7685"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type CorrigirEreenviarDespesaJourneyType = typeof corrigirEreenviarDespesaJourney;
 

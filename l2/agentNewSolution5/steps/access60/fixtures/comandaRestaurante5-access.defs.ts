@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/comandaRestaurante5/access.defs.ts" enhancement="_blank"/>
 
-import type { Ns5AccessArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5AccessArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Access = {
   "schemaVersion": "2026-09-12-ns5-access-v3",
@@ -134,7 +134,7 @@ export const comandaRestaurante5Access = {
       }
     }
   ]
-} as const satisfies Ns5AccessArtifact;
+} as const satisfies Ns5Readonly<Ns5AccessArtifact>;
 
 export type ComandaRestaurante5AccessType = typeof comandaRestaurante5Access;
 

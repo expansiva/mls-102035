@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l4/ordenServicioEs/usecases/index.defs.ts" enhancement="_blank"/>
 
-import type { Ns4UseCaseIndexArtifactV3 } from '/_102035_/l2/agentNewSolution/types.js';
+import type { Ns4UseCaseIndexArtifactV3 } from '/_102035_/l2/solution/helpers/ns4Types.js';
 
 export const ordenServicioEsUseCaseIndex = {
   "schemaVersion": "2026-09-09-ns4-usecase-index-v4",

@@ -1,5 +1,35 @@
 # agentPlannerL4
 
+## 2026-09-29 (p4_17)
+
+- `runPlDispatch` writes only the `l4→l2` pool message and its `delivered` trace. `pool/l1` is
+  no longer written at dispatch time — it has no reader there (L1 accepts a message only from
+  L2, with `needs.json`; the `l4diff.json` it reads comes straight off disk, written by `diff20`).
+  A direct `l4→l1` message used to sit in `pool/l1` forever, and its `delivered` trace inflated
+  the round count `decidePlLoop` reads for box `l1` before L2 ever wrote the real `l2→l1` message.
+  `pool/l1/web/l4diff.json` keeps being written by `diff20`, unchanged.
+
+## 2026-09-28 (p4_16)
+
+- `plInvokeOutput` also treats a side as produced when `pool/<side>/pipeline.json` exists with
+  the matching `thread` and `status: 'complete'` (L2 still requires `menu.json` too). Fixes a
+  false "ran without output": the L1 contract of 2026-09-27 deletes the `l2→l1`/`l1→l2` message
+  once processed, so the old message-only check could miss a side that had genuinely finished.
+
+## 2026-09-27 (p4_14)
+
+- `dispatch20` tags both pool messages `mode: estimate` (was implicitly `implement`). This
+  planning loop never writes `mode: implement` — that is the newRelease accept, once a run
+  is `ready`.
+- `loop30` also drains `pool/l4`, the mailbox L4 itself owns: L2's `l2→l4` effort-ready report
+  is traced `processed` and deleted below round 3; at round 3 it is traced `disputed` and kept,
+  so the newRelease review run reads that outcome the same way it already does for l1/l2.
+  "Defined" is l1 and l2 with no fresh work and `pool/l4` with no pendency. No new pipeline
+  state is added for "awaiting accept" — the newRelease `ready` run owns that.
+- `entry10`'s wipe is unchanged in behavior; documented that it also invalidates an `implement`
+  message left unconsumed by a prior accept (a new plan invalidates an old accept, regardless
+  of `mode`).
+
 ## 2026-09-21 (p4_09)
 
 - `setModuleRoot` / `moduleFolder` override: `/candidate` (default `<mod>/tobe/plan`)

@@ -72,7 +72,11 @@
         "entity": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "effect": { "type": "string", "enum": ["create", "update", "transition"] },
         "transitionRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "title": { "type": "string", "minLength": 1 },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The short on-screen name of this same step (2 to 6 words)."
+        },
         "description": { "type": "string", "minLength": 1 },
         "handoffTo": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
       }

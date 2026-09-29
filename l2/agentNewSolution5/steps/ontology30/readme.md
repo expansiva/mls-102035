@@ -105,6 +105,7 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
   warning, not an error.
 - Gate repair is bounded (2) per LLM call. Entity fan-out repairs missing/invalid entities in the
   finalizer (2 rounds). A run then continues to `rules40`.
+- p4_20: after writing, every `ontology/<Entity>.defs.ts`, `ontology/index.defs.ts` and, after a lift, `module.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.ontology30.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean. An entity file's diagnostic goes to that entity's targeted repair; an error outside the entity files fails the step.
 
 ## Known traps
 

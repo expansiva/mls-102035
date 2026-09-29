@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/comandaRestaurante5/ontology/ItemCardapio.defs.ts" enhancement="_blank"/>
 
-import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyEntityArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5EntityItemCardapio = {
   "schemaVersion": "2026-09-11-ns5-ontology-v2",
@@ -29,7 +29,7 @@ export const comandaRestaurante5EntityItemCardapio = {
     "idField": "id",
     "mdmType": "comandaRestaurante5.ItemCardapio"
   }
-} as const satisfies Ns5OntologyEntityArtifact;
+} as const satisfies Ns5Readonly<Ns5OntologyEntityArtifact>;
 
 export type ComandaRestaurante5EntityItemCardapioType = typeof comandaRestaurante5EntityItemCardapio;
 

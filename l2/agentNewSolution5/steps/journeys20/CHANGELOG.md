@@ -1,5 +1,19 @@
 # journeys20
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: every `journeys/<journeyId>.defs.ts` and `journeys/index.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.journeys20.compile` records the result for finalize80.
+
+## 2026-09-28 (p4_16)
+
+- title wording no longer says verb + object: in controleEstoque it split the register step into a `decide` (finalize I2, 2/2 runs); without it the run passed (A/B).
+
+## 2026-09-27 (ns5_71)
+
+- Prompt §Steps now says what a step's `title` is (short on-screen label) and `journey.schema.json`
+  `$defs.step.title` gets a matching `description`; the model was filling the required field with
+  a placeholder ("x") because neither named it.
+
 ## 2026-09-19 (ns5_62)
 
 - Nested repair from `judge35` does not emit a second `journeys20-done` when that planId already

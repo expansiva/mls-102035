@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/ordenServicio5/ontology/Reparacion.defs.ts" enhancement="_blank"/>
 
-import type { Ns5OntologyEntityArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyEntityArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5EntityReparacion = {
   "schemaVersion": "2026-09-11-ns5-ontology-v2",
@@ -35,7 +35,7 @@ export const ordenServicio5EntityReparacion = {
     "idField": "id"
   },
   "mutability": "appendOnly"
-} as const satisfies Ns5OntologyEntityArtifact;
+} as const satisfies Ns5Readonly<Ns5OntologyEntityArtifact>;
 
 export type OrdenServicio5EntityReparacionType = typeof ordenServicio5EntityReparacion;
 

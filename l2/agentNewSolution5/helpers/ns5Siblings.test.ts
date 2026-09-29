@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { emptyNs4SolutionRegistry, upsertNs4SolutionRegistryModule, buildNs4SolutionRegistryModuleBlock } from '/_102035_/l2/agentNewSolution/helpers/organizationRegistry.js';
+import { emptyNs4SolutionRegistry, upsertNs4SolutionRegistryModule, buildNs4SolutionRegistryModuleBlock } from '/_102035_/l2/solution/helpers/organizationRegistry.js';
 import { formatNs5Siblings, ns5SiblingsFromRegistry } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 
 void test('ns5SiblingsFromRegistry skips the current module and lists entities/events', () => {

@@ -11,8 +11,8 @@ export {
   ns4EntityIdField as entityIdField,
   ns4BindingPromptEntity as bindingPromptEntity,
   NS4_IDENTITY_FIELD_DESCRIPTION as IDENTITY_FIELD_DESCRIPTION,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
-export type { Ns4EntityFieldsSource as EntityFieldsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4EntityFields.js';
+} from '/_102035_/l2/solution/helpers/ns4EntityFields.js';
+export type { Ns4EntityFieldsSource as EntityFieldsSource } from '/_102035_/l2/solution/helpers/ns4EntityFields.js';
 
 export {
   ns4Level1Catalog as level1Catalog,
@@ -22,13 +22,13 @@ export {
   ns4Level1Entity as level1Entity,
   ns4Level1FieldIds as level1FieldIds,
   ns4Level1FieldSlot as level1FieldSlot,
-} from '/_102035_/l2/agentNewSolution/helpers/level1Catalog.js';
+} from '/_102035_/l2/solution/helpers/level1Catalog.js';
 
 export {
   NS4_LEVEL1_SCHEMA_VERSION as LEVEL1_SCHEMA_VERSION,
   NS4_SOLUTION_REGISTRY_SCHEMA_VERSION as SOLUTION_REGISTRY_SCHEMA_VERSION,
   NS4_LEVEL1_SUBTYPE_VALUES as LEVEL1_SUBTYPE_VALUES,
-} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+} from '/_102035_/l2/solution/helpers/organizationTypes.js';
 export type {
   Ns4Level1Subtype as Level1Subtype,
   Ns4Level1Field as Level1Field,
@@ -41,7 +41,7 @@ export type {
   Ns4SolutionRegistryEvent as SolutionRegistryEvent,
   Ns4SolutionRegistryModule as SolutionRegistryModule,
   Ns4SolutionRegistryArtifact as SolutionRegistryArtifact,
-} from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+} from '/_102035_/l2/solution/helpers/organizationTypes.js';
 
 export {
   NS4_REGISTRY_LEVEL1_SCHEMA_VERSION as REGISTRY_LEVEL1_SCHEMA_VERSION,
@@ -50,15 +50,15 @@ export {
   inferNs4RegistryMdmSubtype as inferRegistryMdmSubtype,
   buildNs4SolutionRegistryModuleBlock as buildSolutionRegistryModuleBlock,
   serializeNs4SolutionRegistry as serializeSolutionRegistry,
-} from '/_102035_/l2/agentNewSolution/helpers/organizationRegistry.js';
+} from '/_102035_/l2/solution/helpers/organizationRegistry.js';
 
 export {
   validateNs4SolutionRegistry as validateSolutionRegistry,
-} from '/_102035_/l2/agentNewSolution/helpers/registryGate.js';
+} from '/_102035_/l2/solution/helpers/registryGate.js';
 export type {
   Ns4RegistryGateIssue as SolutionRegistryGateIssue,
   Ns4RegistryGateResult as SolutionRegistryGateResult,
-} from '/_102035_/l2/agentNewSolution/helpers/registryGate.js';
+} from '/_102035_/l2/solution/helpers/registryGate.js';
 
 export {
   NS4_PHRASES as phrases,
@@ -68,17 +68,17 @@ export {
   ns4WidgetLabels as widgetLabels,
   normalizeNs4Phrases as normalizePhrases,
   ns4PlannerPhrasesAppendix as plannerPhrasesAppendix,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+} from '/_102035_/l2/solution/helpers/ns4Text.js';
 export type {
   Ns4PhraseKey as PhraseKey,
   Ns4PhraseHolder as PhraseHolder,
   Ns4PhrasesNormalization as PhrasesNormalization,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4Text.js';
+} from '/_102035_/l2/solution/helpers/ns4Text.js';
 
 export {
   createNs4FlexibleWorkerTool as createStrictArtifactTool,
   unwrapNs4FlexibleWorkerPayload as unwrapArtifactPayload,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4WorkerTools.js';
+} from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 
 export {
   readNs4L5Config as readL5Config,
@@ -86,7 +86,7 @@ export {
   readNs4L5Project as readL5Project,
   writeNs4L5Project as writeL5Project,
   writeNs4SolutionRegistry as writeSolutionRegistry,
-} from '/_102035_/l2/agentNewSolution/helpers/ns4Fs.js';
+} from '/_102035_/l2/solution/helpers/ns4Fs.js';
 
 export {
   applyPlatformBlockDefaults,
@@ -98,8 +98,8 @@ export {
   ensureProjectModule,
   ensureProjectType,
   readProjectTypeFromProjectJson,
-} from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
-export type { PublishableIssue, PublishableProjectType } from '/_102035_/l2/agentNewSolution/steps/e10/publishable.js';
+} from '/_102035_/l2/solution/helpers/e10/publishable.js';
+export type { PublishableIssue, PublishableProjectType } from '/_102035_/l2/solution/helpers/e10/publishable.js';
 
 export { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
 

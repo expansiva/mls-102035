@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/ordenServicio/journeys/entregarYfinalizarOrden.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const entregarYfinalizarOrdenJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -46,7 +46,7 @@ export const entregarYfinalizarOrdenJourney = {
     }
   },
   "businessHash": "sha256:3dd46694fdd743bc9f207e4cbb543331ad4c171104417108d4f45b86e8694b7b"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type EntregarYfinalizarOrdenJourneyType = typeof entregarYfinalizarOrdenJourney;
 

@@ -2,12 +2,12 @@
 
 L4 v5 source compiler. Writes the six business sources of a module and a deterministic
 finalize. Does not emit derived copies (operations, workspaces, usecases, landings) and
-never dispatches agentChangeBackend or agentChangeFrontend.
+never dispatches agentMaterializeL2 (`agentChangeBackend` was deleted, p4_15, 27/09).
 
 `module10`, `journeys20`, `ontology30`, `judge35`, `rules40`, `workflows50`, `access60`, `integration70`
 and `finalize80` are implemented. `finalize80` is deterministic: integrity oracle I1–I13,
 organization registry, l5 config/project.json, `pipeline.status: complete`. It never
-dispatches CB or CF. Gate tests run on the seed-run fixtures plus live access of
+dispatches CF (CB was deleted). Gate tests run on the seed-run fixtures plus live access of
 the measured modules; `replayRealRuns.test.ts` replays `normalize → gate → writeDefs`
 against the recorded defs of `comandaRestaurante5`, `ordenServicio5` and the 11 complete
 modules of the final leva (`NS5_LEVA_MODULES` minus `financeiro`, which failed on content).
@@ -45,13 +45,14 @@ modules of the final leva (`NS5_LEVA_MODULES` minus `financeiro`, which failed o
 | pipeline | `l4/<mod>/pipeline/pipeline.json` | pipeline-v1 |
 
 Types live in `/_102035_/l2/solution/types.ts`. Shared pure helpers are re-exported from
-`/_102035_/l2/solution/lib.ts` without moving the NS4 files.
+`/_102035_/l2/solution/lib.ts`. The NS4 agent was deleted (p4_15, 27/09); its used files
+live now in `/_102035_/l2/solution/helpers/` (`ns4Types.ts` etc).
 
 ## Pipeline
 
 `docs/flow.json` is the contract: `module10 → journeys20 → workflows50 → ontology30 → judge35 → {rules40, access60} → integration70 → finalize80`.
 `finalize80` writes `pipeline/finalize-report.json` and `pipeline/runNN_newsolution5.json`.
-Oracle errors fail the run; warnings do not. The step never dispatches CB or CF.
+Oracle errors fail the run; warnings do not. The step never dispatches CF (CB was deleted).
 
 `pt` → `pt-BR` (`en` stays `en`). An `act` declares `effect: 'create' | 'update' | 'transition'`;
 lifecycle is required only for `transition` or a `decide`. `writer` is `'journey' | 'crud' |

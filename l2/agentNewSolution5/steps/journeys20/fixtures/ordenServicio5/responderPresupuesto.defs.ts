@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/ordenServicio5/journeys/responderPresupuesto.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const responderPresupuestoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -56,7 +56,7 @@ export const responderPresupuestoJourney = {
     }
   },
   "businessHash": "sha256:1aa4d61d7234c3de19562c798d6e86fa7727dd4251041967c3917c8706988d57"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type ResponderPresupuestoJourneyType = typeof responderPresupuestoJourney;
 

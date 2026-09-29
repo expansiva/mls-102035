@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l4/ordenServicioEs/access/access-matrix.defs.ts" enhancement="_blank"/>
 
-import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/agentNewSolution/types.js';
+import type { Ns4AccessMatrixArtifact } from '/_102035_/l2/solution/helpers/ns4Types.js';
 
 export const ordenServicioEsAccessMatrix = {
   "schemaVersion": "2026-08-09-ns4-access-matrix-v2",

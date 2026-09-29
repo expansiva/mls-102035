@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ns4ClassicDefsSource } from '/_102035_/l2/agentNewSolution/helpers/ns4ClassicDefs.js';
-import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/agentNewSolution/helpers/organizationTypes.js';
+import { ns4ClassicDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import { stripModuleFromJson, stripModuleFromRegistry } from '/_102035_/l2/solution/removeModule.js';
 
 type StorInfo = {
@@ -258,8 +258,9 @@ void test('removeModule deletes one module tree and leaves the other byte-identi
       displayOf(VENDA_L2),
       displayOf(VENDA_L4),
       displayOf(VENDA_L5),
-      displayOf(diskOrphan),
     ].sort());
+    // p4_19: what only exists on host disk is neither listed nor deleted.
+    assert.ok(!harness.deletedCalls.includes(displayOf(diskOrphan)));
     assert.deepEqual(result.edited, [
       'l4/organization/registry.defs.ts',
       'l5/config.json',
@@ -283,10 +284,8 @@ void test('removeModule deletes one module tree and leaves the other byte-identi
       file.folder === 'venda' || String(file.folder || '').startsWith('venda/'),
     );
     assert.equal(remainingVenda.length, 0);
-    assert.equal(harness.liveDisk.filter(file => file.folder === 'venda' || String(file.folder || '').startsWith('venda/')).length, 0);
-    assert.equal(remainingVenda.length, harness.liveDisk.filter(file =>
-      file.folder === 'venda' || String(file.folder || '').startsWith('venda/'),
-    ).length);
+    assert.deepEqual(harness.liveDisk.filter(file => file.folder === 'venda' || String(file.folder || '').startsWith('venda/')), [diskOrphan]);
+    assert.equal(files[keyOf(diskOrphan)], undefined);
 
     const writtenProject = JSON.parse(harness.written[keyOf(projectInfo)]) as typeof projectJson;
     assert.deepEqual((writtenProject.modules as Array<{ moduleName: string }>).map(item => item.moduleName), ['vendaExterna']);

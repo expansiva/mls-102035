@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/compras/module.defs.ts" enhancement="_blank"/>
 
-import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5ModuleArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comprasModule = {
   "schemaVersion": "2026-09-10-ns5-module-v2",
@@ -26,7 +26,7 @@ export const comprasModule = {
       "description": "Totais calculados de compras do mês agrupados por fornecedor."
     }
   }
-} as const satisfies Ns5ModuleArtifact;
+} as const satisfies Ns5Readonly<Ns5ModuleArtifact>;
 
 export type ComprasModuleType = typeof comprasModule;
 

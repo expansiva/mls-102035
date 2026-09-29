@@ -1,5 +1,9 @@
 # access60
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: `access.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.access60.compile` records the result for finalize80.
+
 ## 2026-09-25 (ns5_69)
 
 - `submitNs5Access` requires `actorPersons` (`actorRef` + `personEntity`, `''` allowed). The LLM

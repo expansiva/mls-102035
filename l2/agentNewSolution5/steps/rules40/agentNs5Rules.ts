@@ -6,6 +6,7 @@ import {
   createNs5RetryStep,
   markNs5Step,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import {
   NS5_STEP_HOOKS,
   drainWaitingSiblings,
@@ -38,6 +39,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
+  Ns5CompileRecord,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
@@ -210,7 +212,17 @@ export async function afterNs5RulesPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, rules, pipeline, normalizations);
+    const { artifactPath, compile } = await persistArtifacts(moduleName, rules, pipeline, normalizations);
+    if (compile.status === 'errors') {
+      const feedback = formatNs5CompileFeedback(compile);
+      if (parsed.repairAttempt < MAX_REPAIRS) {
+        return [
+          addStep(context, mutationParent, createNs5RetryStep('rules40', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
+          updateStatus(context, mutationParent, step, hookSequential, 'completed', `rules40 compile scheduled repair ${parsed.repairAttempt + 1}.`),
+        ];
+      }
+      throw new Error(feedback);
+    }
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `rules40 approved: ${artifactPath}`),
@@ -230,18 +242,21 @@ async function persistArtifacts(
   rules: Record<string, string>,
   pipeline: Ns5PipelineState,
   normalizations: readonly Ns5PipelineNormalization[],
-): Promise<string> {
+): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
   const artifact = buildNs5RulesArtifactV2(moduleName, rules);
   const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifactV2');
   await writeJson(draftFile(moduleName, 'rules40'), artifact);
+  // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
+  const compile = await compileNs5Defs([rulesFile(moduleName)]);
   await writeStepState(pipeline, {
-    status: 'approved',
+    status: compile.status === 'errors' ? 'running' : 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    compile,
     ...(normalizations.length ? { normalizations: [...normalizations] } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPath;
+  return { artifactPath, compile };
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {

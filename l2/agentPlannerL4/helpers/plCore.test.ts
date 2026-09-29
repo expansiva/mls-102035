@@ -12,6 +12,7 @@ import {
   buildPlPoolMessage,
   createRound1InvokeSteps,
   decidePlLoop,
+  formatMissingPlannerStatus,
   listPlArtifacts,
   listPoolWebFiles,
   moduleTokenOk,
@@ -23,6 +24,7 @@ import {
   plannerAgentPresent,
   plInvokeOutput,
   plStepPrompt,
+  processPlEffortBox,
   resolveCandidateFolder,
   wipeModulePool,
   PL_DISPATCH_BODY,
@@ -291,7 +293,7 @@ void test('listPlArtifacts under /candidate lists the override root and leaves c
   }
 });
 
-void test('the two pool messages are equal byte for byte except to', async () => {
+void test('dispatch writes only the l4→l2 message — l4diff cites both boxes, pool/l1 stays empty', async () => {
   const host = installHost();
   seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
   seed(host, { level: 4, folder: 'mensalidadesAcademia/journeys', shortName: 'index', extension: '.defs.ts' }, '');
@@ -304,24 +306,21 @@ void test('the two pool messages are equal byte for byte except to', async () =>
   const artifacts = [...listPlArtifacts('mensalidadesAcademia'), ...PL_L4DIFF_REL];
   const thread = nextThread('mensalidadesAcademia', now);
   const expectedL2 = buildPlPoolMessage('mensalidadesAcademia', 'l2', thread, artifacts);
-  const expectedL1 = buildPlPoolMessage('mensalidadesAcademia', 'l1', thread, artifacts);
   assert.equal(expectedL2.subject, plDispatchSubject('mensalidadesAcademia'));
   assert.equal(expectedL2.subject, 'Changed artifacts of mensalidadesAcademia');
   assert.equal(expectedL2.body, PL_DISPATCH_BODY);
   assert.match(expectedL2.body, /evaluate and dispatch/i);
-  assert.deepEqual({ ...expectedL1, to: 'l2' }, expectedL2);
+  // Cites both l4diff.json files (l1 and l2) even though the despacho itself is l2-only.
+  assert.deepEqual(expectedL2.artifacts.filter(item => item.endsWith('l4diff.json')), [...PL_L4DIFF_REL]);
 
   const run = await runPlDispatch('mensalidadesAcademia', now);
   assert.deepEqual(run.artifacts, artifacts);
   assert.equal(run.thread, thread);
   assert.deepEqual(await readPoolMessage(run.l2File), expectedL2);
-  assert.deepEqual(await readPoolMessage(run.l1File), expectedL1);
   const l2Key = keyOf(run.l2File);
-  const l1Key = keyOf(run.l1File);
   assert.equal(host.files[l2Key]?.content, `${JSON.stringify(expectedL2, null, 2)}\n`);
-  assert.equal(host.files[l1Key]?.content, `${JSON.stringify(expectedL1, null, 2)}\n`);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
-  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 0);
 });
 
 void test('plannerAgentPresent is the stor.files shortName lookup', () => {
@@ -346,7 +345,7 @@ void test('decidePlLoop stops at round 3 without deleting and marks disputed', (
     file: round === 3 ? path : `l4/mensalidadesAcademia/pool/l2/other_${round}.json`,
     from: 'l4' as const, to: 'l2' as const,
     thread: 'mensalidadesAcademia-20260918103000',
-    round, mode: 'implement' as const, outcome: 'delivered' as const,
+    round, mode: 'estimate' as const, outcome: 'delivered' as const,
   }));
   const decision = decidePlLoop({
     thread: 'mensalidadesAcademia-20260918103000',
@@ -376,7 +375,7 @@ void test('L1 absent leaves the box pending with a readable status', () => {
     thread,
     trace: [{
       at: '2026-09-18T10:30:00.000Z', file: path, from: 'l4', to: 'l1',
-      thread, round: 1, mode: 'implement', outcome: 'delivered',
+      thread, round: 1, mode: 'estimate', outcome: 'delivered',
     }],
     l1: [{ file, path, message }],
     l2: [],
@@ -389,7 +388,7 @@ void test('L1 absent leaves the box pending with a readable status', () => {
   assert.match(decision.status, /Requests stayed in the box/);
 });
 
-void test('runPlDispatch traces both deliveries and does not invoke a missing L1', async () => {
+void test('runPlDispatch traces a single l2 delivery and reports L2 availability only', async () => {
   const host = installHost();
   seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
   seed(
@@ -401,15 +400,24 @@ void test('runPlDispatch traces both deliveries and does not invoke a missing L1
   const now = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
   const run = await runPlDispatch('mensalidadesAcademia', now);
   assert.equal(run.invokeL2, true);
-  assert.equal(run.invokeL1, false);
-  assert.match(run.status, /l1 pending \(agentPlannerL1 not available\)/);
+  assert.equal(run.status, '');
   const trace = await readPoolTrace('mensalidadesAcademia');
-  assert.equal(trace.length, 2);
-  assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
-  assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
+  assert.equal(trace.length, 1);
+  assert.deepEqual(trace.map(line => line.outcome), ['delivered']);
+  assert.deepEqual(trace.map(line => line.to), ['l2']);
 });
 
-const POOL_MSG = {
+void test('formatMissingPlannerStatus reports l2 pending when L2 is not available', () => {
+  assert.equal(formatMissingPlannerStatus(1, true), '');
+  assert.match(
+    formatMissingPlannerStatus(1, false),
+    /l2 pending \(agentPlannerL2 not available\)\. Requests stayed in the box\./,
+  );
+});
+
+// A leftover message from a prior accept, unconsumed. wipeModulePool wipes it regardless of
+// `mode` — a new plan invalidates an old accept.
+const POOL_MSG_UNCONSUMED_IMPLEMENT = {
   from: 'l4' as const, to: 'l2' as const, thread: 'mensalidadesAcademia-20260918103000', round: 1 as const,
   mode: 'implement' as const, subject: 'Changed artifacts of mensalidadesAcademia',
   artifacts: ['module.defs.ts'],
@@ -427,7 +435,7 @@ void test('wipeModulePool empties the boxes, removes web artifacts, and records 
   seed(
     host,
     { level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918103000_mensalidadesAcademia-20260918103000_1', extension: '.json' },
-    `${JSON.stringify(POOL_MSG, null, 2)}\n`,
+    `${JSON.stringify(POOL_MSG_UNCONSUMED_IMPLEMENT, null, 2)}\n`,
   );
   seed(
     host,
@@ -452,6 +460,45 @@ void test('wipeModulePool empties the boxes, removes web artifacts, and records 
   assert.equal(state.poolWiped.some(path => path.endsWith('/menu.json')), true);
   assert.equal(state.poolWiped.some(path => path.endsWith('/needs.json')), true);
   assert.equal(state.pool.some(line => line.outcome === 'processed'), true);
+});
+
+// p4_19: host-disk-only files stay out of artifacts, the box, the web files and the wipe; the index
+// gains no entry. Positive control: the same kind of file in the index shows up.
+void test('listPlArtifacts, runPlDispatch artifacts, pool listings and wipe ignore host-disk-only files', async () => {
+  const host = installHost();
+  const unlinked: string[] = [];
+  const disk = [
+    { project: PROJECT, level: 4, folder: 'mensalidadesAcademia', shortName: 'diskOnly', extension: '.defs.ts' },
+    { project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918090000_mensalidadesAcademia-20260918090000_1', extension: '.json' },
+    { project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'diskMenu', extension: '.json' },
+  ];
+  const stor = (globalThis as unknown as { mls: { stor: { localStor: Record<string, unknown> } } }).mls.stor;
+  stor.localStor.listFolder = (project: number, level: number, folder: string) =>
+    disk.filter(item => item.project === project && item.level === level
+      && (item.folder === folder || item.folder.startsWith(`${folder}/`)));
+  const deleteInIndex = stor.localStor.deleteFile as (file: Stored) => void;
+  stor.localStor.deleteFile = (file: Stored) => { unlinked.push(`${file.folder}/${file.shortName}`); deleteInIndex(file); };
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
+  const keysBefore = Object.keys(host.files).sort();
+
+  assert.deepEqual(listPlArtifacts('mensalidadesAcademia'), ['module.defs.ts']);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 0);
+  assert.deepEqual(listPoolWebFiles('mensalidadesAcademia', 'l2').map(file => file.shortName), ['menu']);
+  assert.deepEqual(Object.keys(host.files).sort(), keysBefore);
+
+  const wiped = await wipeModulePool('mensalidadesAcademia', new Date(Date.UTC(2026, 8, 20, 12, 0, 0)));
+  assert.deepEqual(wiped, ['l4/mensalidadesAcademia/pool/l2/web/menu.json']);
+  assert.deepEqual(unlinked, ['mensalidadesAcademia/pool/l2/web/menu']);
+
+  const run = await runPlDispatch('mensalidadesAcademia', new Date(Date.UTC(2026, 8, 20, 12, 5, 0)));
+  assert.equal(run.artifacts.includes('diskOnly.defs.ts'), false);
+  assert.equal(run.artifacts.includes('module.defs.ts'), true);
 });
 
 void test('L2 and L1 step prompts require a non-empty file — empty file is not kind:step (ramification B)', () => {
@@ -510,7 +557,7 @@ void test('plInvokeOutput is done only when L2 wrote menu.json plus l2→l1, or 
   );
   assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'no-output');
   await writePoolMessage('mensalidadesAcademia', {
-    from: 'l2', to: 'l1', thread, round: 1, mode: 'implement',
+    from: 'l2', to: 'l1', thread, round: 1, mode: 'estimate',
     subject: 'needs', artifacts: ['pool/l1/web/needs.json'], body: 'needs',
   }, at);
   assert.equal(await plInvokeOutput('l2', 'mensalidadesAcademia', thread), 'done');
@@ -520,4 +567,127 @@ void test('plInvokeOutput is done only when L2 wrote menu.json plus l2→l1, or 
     '{}\n',
   );
   assert.equal(await plInvokeOutput('l1', 'mensalidadesAcademia', thread), 'done');
+});
+
+void test('plInvokeOutput also treats a side as done via pool/<side>/pipeline.json complete on thread (p4_16)', async () => {
+  const host = installHost();
+  const moduleName = 'fixturePlannerP416';
+  seed(host, { level: 4, folder: moduleName, shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pipeline`, shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const thread = `${moduleName}-20260928100000`;
+  const otherThread = `${moduleName}-20260928090000`;
+
+  // L2: menu.json + pool/l2/pipeline.json complete on thread, no l2→l1 message left → done.
+  seed(host, { level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' }, '{}\n');
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l2`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'complete' }),
+  );
+  assert.equal(await plInvokeOutput('l2', moduleName, thread), 'done');
+
+  // Pipeline on a different thread does not count.
+  assert.equal(await plInvokeOutput('l2', moduleName, otherThread), 'no-output');
+
+  // Pipeline present but not complete does not count.
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l2`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'inProgress' }),
+  );
+  assert.equal(await plInvokeOutput('l2', moduleName, thread), 'no-output');
+
+  // L1: pool/l1/pipeline.json complete on thread, no reply message, no backend.json → done.
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l1`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'complete' }),
+  );
+  assert.equal(await plInvokeOutput('l1', moduleName, thread), 'done');
+
+  // Pipeline on a different thread does not count.
+  assert.equal(await plInvokeOutput('l1', moduleName, otherThread), 'no-output');
+
+  // Pipeline present but not complete does not count.
+  seed(
+    host,
+    { level: 4, folder: `${moduleName}/pool/l1`, shortName: 'pipeline', extension: '.json' },
+    JSON.stringify({ thread, status: 'draft' }),
+  );
+  assert.equal(await plInvokeOutput('l1', moduleName, thread), 'no-output');
+});
+
+void test('runPlDispatch and buildPlPoolMessage always tag mode: estimate — L4 never writes implement', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const now = new Date(Date.UTC(2026, 8, 27, 10, 0, 0));
+  const built = buildPlPoolMessage('mensalidadesAcademia', 'l2', nextThread('mensalidadesAcademia', now), ['module.defs.ts']);
+  assert.equal(built.mode, 'estimate');
+  const run = await runPlDispatch('mensalidadesAcademia', now);
+  assert.equal((await readPoolMessage(run.l2File)).mode, 'estimate');
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.mode), ['estimate']);
+});
+
+const EFFORT_THREAD = 'mensalidadesAcademia-20260918103000';
+
+function effortMessage(round: number) {
+  return {
+    from: 'l2', to: 'l4', thread: EFFORT_THREAD, round, mode: 'estimate',
+    subject: 'Effort ready for review', artifacts: ['pool/l4/web/effort.json'], body: 'Effort ready for review.',
+  };
+}
+
+void test('processPlEffortBox processes and deletes a fresh l2→l4 effort message below round 3', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const at = new Date(Date.UTC(2026, 8, 27, 10, 0, 0));
+  await writePoolMessage('mensalidadesAcademia', effortMessage(1), at);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+
+  const result = await processPlEffortBox('mensalidadesAcademia', EFFORT_THREAD, at);
+  assert.deepEqual(result.disputed, []);
+  assert.equal(result.processed.length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 0);
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.outcome), ['processed']);
+});
+
+void test('processPlEffortBox at round 3 disputes and keeps the message; a second call does not re-trace it', async () => {
+  const host = installHost();
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  const at = new Date(Date.UTC(2026, 8, 27, 10, 0, 0));
+  await writePoolMessage('mensalidadesAcademia', effortMessage(3), at);
+
+  const first = await processPlEffortBox('mensalidadesAcademia', EFFORT_THREAD, at);
+  assert.equal(first.processed.length, 0);
+  assert.equal(first.disputed.length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+  const trace = await readPoolTrace('mensalidadesAcademia');
+  assert.deepEqual(trace.map(line => line.outcome), ['disputed']);
+
+  const second = await processPlEffortBox('mensalidadesAcademia', EFFORT_THREAD, new Date(at.getTime() + 1000));
+  assert.equal(second.disputed.length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l4').length, 1);
+  const traceAfter = await readPoolTrace('mensalidadesAcademia');
+  assert.equal(traceAfter.length, 1, 'an already-disputed message is not re-traced');
 });

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/hiringPipeline/journeys/startApplicationScreening.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const startApplicationScreeningJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -45,7 +45,7 @@ export const startApplicationScreeningJourney = {
     }
   },
   "businessHash": "sha256:e3b29d46b4de044aaba2fae8ad2b8a046ebaef5cfaf6256c436f67652ee2cf4a"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type StartApplicationScreeningJourneyType = typeof startApplicationScreeningJourney;
 

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/agendaClinica/journeys/consultarAgendaDiaria.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const consultarAgendaDiariaJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -36,7 +36,7 @@ export const consultarAgendaDiariaJourney = {
     }
   },
   "businessHash": "sha256:e508a925562d83d7e68262e702cfd6943b2ea74dd135a4c892547a926a8cf68e"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type ConsultarAgendaDiariaJourneyType = typeof consultarAgendaDiariaJourney;
 

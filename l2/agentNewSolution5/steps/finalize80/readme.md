@@ -3,7 +3,7 @@
 Deterministic. No LLM call. Writes `pipeline/finalize-report.json`, upserts the organization
 registry, fills `l5/config.json` and `l5/project.json` with the same E10 publishable helpers
 (re-exported from `solution/lib.ts`), marks `pipeline.status: complete`, and writes
-`pipeline/runNN_newsolution5.json`. Never dispatches agentChangeBackend or agentChangeFrontend.
+`pipeline/runNN_newsolution5.json`. Never dispatches agentChangeBackend or agentMaterializeL2.
 
 ## Input
 
@@ -58,3 +58,4 @@ fails a `decide` without a branching origin if that shape reaches here; an `upda
   with no warnings when disk matches the index. I10 counts `affects` as a writer
   (`ItemCardapio`, `Presupuesto`); I8 does too — `Cliente` in `capturarDatosRecepcion.affects`
   is an internal-actor write.
+- p4_20: before the oracle, every writing step must have recorded a clean Studio compile (`steps.<step>.compile.status === 'clean'`); `unavailable` (no compile capability) or no record fails the step. `runNN_newsolution5.json` `counts.compile` holds the status and file count per step.
