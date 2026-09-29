@@ -1,5 +1,14 @@
 # agentPlannerL4
 
+## 2026-09-29 (p4_17)
+
+- `runPlDispatch` writes only the `l4→l2` pool message and its `delivered` trace. `pool/l1` is
+  no longer written at dispatch time — it has no reader there (L1 accepts a message only from
+  L2, with `needs.json`; the `l4diff.json` it reads comes straight off disk, written by `diff20`).
+  A direct `l4→l1` message used to sit in `pool/l1` forever, and its `delivered` trace inflated
+  the round count `decidePlLoop` reads for box `l1` before L2 ever wrote the real `l2→l1` message.
+  `pool/l1/web/l4diff.json` keeps being written by `diff20`, unchanged.
+
 ## 2026-09-28 (p4_16)
 
 - `plInvokeOutput` also treats a side as produced when `pool/<side>/pipeline.json` exists with

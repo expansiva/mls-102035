@@ -12,6 +12,7 @@ import {
   buildPlPoolMessage,
   createRound1InvokeSteps,
   decidePlLoop,
+  formatMissingPlannerStatus,
   listPlArtifacts,
   listPoolWebFiles,
   moduleTokenOk,
@@ -292,7 +293,7 @@ void test('listPlArtifacts under /candidate lists the override root and leaves c
   }
 });
 
-void test('the two pool messages are equal byte for byte except to', async () => {
+void test('dispatch writes only the l4→l2 message — l4diff cites both boxes, pool/l1 stays empty', async () => {
   const host = installHost();
   seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
   seed(host, { level: 4, folder: 'mensalidadesAcademia/journeys', shortName: 'index', extension: '.defs.ts' }, '');
@@ -305,24 +306,21 @@ void test('the two pool messages are equal byte for byte except to', async () =>
   const artifacts = [...listPlArtifacts('mensalidadesAcademia'), ...PL_L4DIFF_REL];
   const thread = nextThread('mensalidadesAcademia', now);
   const expectedL2 = buildPlPoolMessage('mensalidadesAcademia', 'l2', thread, artifacts);
-  const expectedL1 = buildPlPoolMessage('mensalidadesAcademia', 'l1', thread, artifacts);
   assert.equal(expectedL2.subject, plDispatchSubject('mensalidadesAcademia'));
   assert.equal(expectedL2.subject, 'Changed artifacts of mensalidadesAcademia');
   assert.equal(expectedL2.body, PL_DISPATCH_BODY);
   assert.match(expectedL2.body, /evaluate and dispatch/i);
-  assert.deepEqual({ ...expectedL1, to: 'l2' }, expectedL2);
+  // Cites both l4diff.json files (l1 and l2) even though the despacho itself is l2-only.
+  assert.deepEqual(expectedL2.artifacts.filter(item => item.endsWith('l4diff.json')), [...PL_L4DIFF_REL]);
 
   const run = await runPlDispatch('mensalidadesAcademia', now);
   assert.deepEqual(run.artifacts, artifacts);
   assert.equal(run.thread, thread);
   assert.deepEqual(await readPoolMessage(run.l2File), expectedL2);
-  assert.deepEqual(await readPoolMessage(run.l1File), expectedL1);
   const l2Key = keyOf(run.l2File);
-  const l1Key = keyOf(run.l1File);
   assert.equal(host.files[l2Key]?.content, `${JSON.stringify(expectedL2, null, 2)}\n`);
-  assert.equal(host.files[l1Key]?.content, `${JSON.stringify(expectedL1, null, 2)}\n`);
   assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 1);
-  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 1);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l1').length, 0);
 });
 
 void test('plannerAgentPresent is the stor.files shortName lookup', () => {
@@ -390,7 +388,7 @@ void test('L1 absent leaves the box pending with a readable status', () => {
   assert.match(decision.status, /Requests stayed in the box/);
 });
 
-void test('runPlDispatch traces both deliveries and does not invoke a missing L1', async () => {
+void test('runPlDispatch traces a single l2 delivery and reports L2 availability only', async () => {
   const host = installHost();
   seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
   seed(
@@ -402,12 +400,19 @@ void test('runPlDispatch traces both deliveries and does not invoke a missing L1
   const now = new Date(Date.UTC(2026, 8, 18, 10, 30, 0));
   const run = await runPlDispatch('mensalidadesAcademia', now);
   assert.equal(run.invokeL2, true);
-  assert.equal(run.invokeL1, false);
-  assert.match(run.status, /l1 pending \(agentPlannerL1 not available\)/);
+  assert.equal(run.status, '');
   const trace = await readPoolTrace('mensalidadesAcademia');
-  assert.equal(trace.length, 2);
-  assert.deepEqual(trace.map(line => line.outcome), ['delivered', 'delivered']);
-  assert.deepEqual(trace.map(line => line.to), ['l2', 'l1']);
+  assert.equal(trace.length, 1);
+  assert.deepEqual(trace.map(line => line.outcome), ['delivered']);
+  assert.deepEqual(trace.map(line => line.to), ['l2']);
+});
+
+void test('formatMissingPlannerStatus reports l2 pending when L2 is not available', () => {
+  assert.equal(formatMissingPlannerStatus(1, true), '');
+  assert.match(
+    formatMissingPlannerStatus(1, false),
+    /l2 pending \(agentPlannerL2 not available\)\. Requests stayed in the box\./,
+  );
 });
 
 // A leftover message from a prior accept, unconsumed. wipeModulePool wipes it regardless of
@@ -590,9 +595,8 @@ void test('runPlDispatch and buildPlPoolMessage always tag mode: estimate — L4
   assert.equal(built.mode, 'estimate');
   const run = await runPlDispatch('mensalidadesAcademia', now);
   assert.equal((await readPoolMessage(run.l2File)).mode, 'estimate');
-  assert.equal((await readPoolMessage(run.l1File)).mode, 'estimate');
   const trace = await readPoolTrace('mensalidadesAcademia');
-  assert.deepEqual(trace.map(line => line.mode), ['estimate', 'estimate']);
+  assert.deepEqual(trace.map(line => line.mode), ['estimate']);
 });
 
 const EFFORT_THREAD = 'mensalidadesAcademia-20260918103000';

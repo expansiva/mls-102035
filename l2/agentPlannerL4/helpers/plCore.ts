@@ -551,28 +551,24 @@ export interface PlDispatchRun {
   artifacts: string[];
   thread: string;
   l2File: Ns5FileInfo;
-  l1File: Ns5FileInfo;
   l2Path: string;
-  l1Path: string;
   invokeL2: boolean;
-  invokeL1: boolean;
   status: string;
 }
 
 export async function runPlDispatch(moduleName: string, now: Date): Promise<PlDispatchRun> {
+  // Only pool/l2 is a despacho — the L1 mailbox is fed later by L2's own l2→l1 message
+  // (maybeL1Step in loop30). pool/l1/web/l4diff.json keeps being written by diff20; that is
+  // the diff artifact, not a despacho, and L1 reads it straight off disk.
   const artifacts = [...listPlArtifacts(moduleName), ...PL_L4DIFF_REL];
   const thread = nextThread(moduleName, now);
   const at = now.toISOString();
   const l2File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l2', thread, artifacts), now);
-  const l1File = await writePoolMessage(moduleName, buildPlPoolMessage(moduleName, 'l1', thread, artifacts), now);
   const l2Path = displayPath(l2File);
-  const l1Path = displayPath(l1File);
   const base = { at, thread, round: 1 as const, mode: 'estimate' as const, from: 'l4' as const, outcome: 'delivered' as const };
   await tracePool(moduleName, { ...base, file: l2Path, to: 'l2' });
-  await tracePool(moduleName, { ...base, file: l1Path, to: 'l1' });
   const invokeL2 = plannerAgentPresent(PL_L2_AGENT);
-  const invokeL1 = plannerAgentPresent(PL_L1_AGENT);
-  return { artifacts, thread, l2File, l1File, l2Path, l1Path, invokeL2, invokeL1, status: formatMissingPlannerStatus(1, invokeL2, invokeL1) };
+  return { artifacts, thread, l2File, l2Path, invokeL2, status: formatMissingPlannerStatus(1, invokeL2) };
 }
 
 export function createRound1InvokeSteps(moduleName: string, run: PlDispatchRun): mls.msg.AIAgentStep[] {
@@ -746,12 +742,9 @@ export async function writePlOrchestration(
   });
 }
 
-export function formatMissingPlannerStatus(round: number, l2Available: boolean, l1Available: boolean): string {
-  const missing: string[] = [];
-  if (!l2Available) missing.push('l2 pending (agentPlannerL2 not available)');
-  if (!l1Available) missing.push('l1 pending (agentPlannerL1 not available)');
-  if (!missing.length) return '';
-  return `round ${round}/${POOL_MAX_ROUND} · ${missing.join('; ')}. Requests stayed in the box.`;
+export function formatMissingPlannerStatus(round: number, l2Available: boolean): string {
+  if (l2Available) return '';
+  return `round ${round}/${POOL_MAX_ROUND} · l2 pending (agentPlannerL2 not available). Requests stayed in the box.`;
 }
 
 export interface PlBoxMessage {

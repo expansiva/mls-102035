@@ -2,7 +2,7 @@
 
 L4 planner. On accept it **wipes** the module pool, diffs the sealed release against
 the `/candidate` root, lists the artifacts of an existing complete module, writes
-`pool/l1` and `pool/l2`, and orchestrates L2 → L1 → L2 by `type: 'agent'` steps
+`pool/l2`, and orchestrates L2 → L1 → L2 by `type: 'agent'` steps
 **in the same task**. No LLM. Does not read ontology to opine. A step never emits
 `add-message-ai`.
 
@@ -11,8 +11,11 @@ the `/candidate` root, lists the artifacts of an existing complete module, write
 Wiping is unconditional: an `implement` message left unconsumed by a prior accept
 is wiped too — a new plan invalidates an old accept, regardless of `mode`.
 `diff20` writes `pool/l1/web/l4diff.json` and `pool/l2/web/l4diff.json`.
-`dispatch20` lists artifacts, cites the two `l4diff.json` files, writes the two
-messages tagged `mode: estimate`, traces `delivered`, and creates `L2 r1`. `loop30`
+`dispatch20` lists artifacts, cites the two `l4diff.json` files, writes only the
+`l4→l2` message tagged `mode: estimate`, traces `delivered`, and creates `L2 r1`.
+`pool/l1` gets no message at dispatch time — L1 has no reader for a direct `l4→l1`
+pointer (it reads `l4diff.json` off disk and otherwise waits for L2's own message).
+`loop30`
 creates `L1 r1` with the real `l2→l1` filename when that message is in the box,
 then `L2 effort r1` with the real `l1→l2` filename (L2 does not accept `file: ''`
 as a step prompt). A completed planner without output fails the task. Rounds 2 and

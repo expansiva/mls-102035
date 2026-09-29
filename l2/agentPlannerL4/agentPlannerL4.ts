@@ -28,7 +28,7 @@ export function createAgent(): IAgentAsync {
     agentName: PL_AGENT_NAME,
     agentProject: 102035,
     agentFolder: 'agentPlannerL4',
-    agentDescription: 'L4 planner — wipes the module pool, lists artifacts, writes pool/l1 and pool/l2, and orchestrates L2 → L1 → L2 by steps in the same task.',
+    agentDescription: 'L4 planner — wipes the module pool, lists artifacts, writes pool/l2, and orchestrates L2 → L1 → L2 by steps in the same task.',
     visibility: 'public',
     beforePromptImplicit,
     beforePromptStep,
