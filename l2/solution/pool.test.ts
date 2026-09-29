@@ -98,7 +98,9 @@ void test('listPoolBoxForProject lists the selected project, not actualProject',
   assert.equal(pool.listPoolBoxForProject(102035, 'agendaClinica', 'l4').length, 0);
 });
 
-void test('listPoolBox is oldest first by name and sees the host disk', async () => {
+// p4_19: only the Studio index decides. A message only on host disk is not listed and the index gains
+// no entry; the same message in the index (positive control) shows up.
+void test('listPoolBox is oldest first by name and never sees a host-disk-only message', async () => {
   const host = installHost();
   const pool = await loadPool();
   const folder = 'mensalidadesAcademia/pool/l4';
@@ -107,7 +109,14 @@ void test('listPoolBox is oldest first by name and sees the host disk', async ()
   host.listed[`${PROJECT}_4_${folder}`] = [
     { project: PROJECT, level: 4, folder, shortName: '20260918110000_m-20260918100000_1', extension: '.json' },
   ];
+  const keysBefore = Object.keys(host.files).sort();
 
+  assert.deepEqual(pool.listPoolBox('mensalidadesAcademia', 'l4').map(file => file.shortName), [
+    '20260918090000_m-20260918090000_1',
+    '20260918120000_m-20260918100000_2',
+  ]);
+  assert.deepEqual(Object.keys(host.files).sort(), keysBefore);
+  seed(host, folder, '20260918110000_m-20260918100000_1');
   assert.deepEqual(pool.listPoolBox('mensalidadesAcademia', 'l4').map(file => file.shortName), [
     '20260918090000_m-20260918090000_1',
     '20260918110000_m-20260918100000_1',
@@ -178,6 +187,25 @@ void test('tracePool appends to pipeline.json and deletePoolMessage demands the 
 
   assert.equal(await pool.deletePoolMessage('mensalidadesAcademia', file, path), path);
   assert.deepEqual(host.deleted, [`${folder}/${file.shortName}`]);
+});
+
+void test('deletePoolMessage refuses a host-disk-only message and never unlinks it (p4_19)', async () => {
+  const host = installHost();
+  const pool = await loadPool();
+  const folder = 'mensalidadesAcademia/pool/l2';
+  const file = { project: PROJECT, level: 4, folder, shortName: '20260918103000_m-20260918103000_1', extension: '.json' };
+  host.listed[`${PROJECT}_4_${folder}`] = [file];
+  seed(host, 'mensalidadesAcademia/pipeline', 'pipeline', JSON.stringify({ pool: [] }));
+  const path = 'l4/mensalidadesAcademia/pool/l2/20260918103000_m-20260918103000_1.json';
+  await pool.tracePool('mensalidadesAcademia', {
+    at: AT.toISOString(), file: path, from: 'l4', to: 'l2',
+    thread: MESSAGE.thread, round: 1, mode: 'implement', outcome: 'processed',
+  });
+  const keysBefore = Object.keys(host.files).sort();
+
+  await assert.rejects(pool.deletePoolMessage('mensalidadesAcademia', file, path), /not in the index/);
+  assert.deepEqual(host.deleted, []);
+  assert.deepEqual(Object.keys(host.files).sort(), keysBefore);
 });
 
 void test('tracePool refuses a module without pipeline.json', async () => {
@@ -265,7 +293,7 @@ void test('deletePoolMessageAt checks the pointed pipeline, not the l4 one', asy
 
 // p2_09: o L2 guarda um `menu.json` dentro da própria caixa. Nome fixo, sem `_<thread>_<round>`, não é
 // mensagem do pool — a caixa é do dono e ele pode guardar o que quiser lá. Ignorar, não recusar.
-void test('listPoolBox ignores a .json that is not a pool message name, from index and from disk', async () => {
+void test('listPoolBox ignores a .json that is not a pool message name, and never lists host disk', async () => {
   const host = installHost();
   const pool = await loadPool();
   const folder = 'mensalidadesAcademia/pool/l2';
@@ -279,7 +307,6 @@ void test('listPoolBox ignores a .json that is not a pool message name, from ind
 
   assert.deepEqual(pool.listPoolBox('mensalidadesAcademia', 'l2').map(file => file.shortName), [
     '20260918090000_m-20260918090000_1',
-    '20260918110000_m-20260918100000_1',
   ]);
 });
 

@@ -8,9 +8,8 @@
  */
 
 import {
-  diskFileInfo,
   displayPath,
-  hostListFolder,
+  indexedFile,
   moduleFile,
   moduleFileForProject,
   normalizeModuleName,
@@ -149,7 +148,7 @@ export function isPoolMessageShortName(shortName: string): boolean {
   return /^\d{14}_.+_\d+$/u.test(shortName);
 }
 
-/** Oldest first, by name. Index ∪ host disk, so a message written by another process is seen. */
+/** Oldest first, by name. Index only (`mls.stor.files`) — what the Studio sees; host disk never adds a message. */
 export function listPoolBoxForProject(project: number, moduleName: string, box: PoolBox): Ns5FileInfo[] {
   const base = moduleFileForProject(project, moduleName);
   const folder = `${base.folder}/pool/${box}`;
@@ -160,18 +159,6 @@ export function listPoolBoxForProject(project: number, moduleName: string, box: 
     if (String(file.folder || '') !== folder || file.extension !== '.json' || !file.shortName) continue;
     if (!isPoolMessageShortName(String(file.shortName))) continue;
     found.set(String(file.shortName), { project: base.project, level: 4, folder, shortName: String(file.shortName), extension: '.json' });
-  }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(base.project, 4, folder)) {
-      if (info.extension !== '.json' || !info.shortName) continue;
-      if (!isPoolMessageShortName(String(info.shortName))) continue;
-      const key = mls.stor.getKeyToFile(info);
-      const indexed = files[key];
-      if (indexed?.status === 'deleted') continue;
-      if (!indexed) files[key] = diskFileInfo(info);
-      found.set(String(info.shortName), { project: base.project, level: 4, folder, shortName: String(info.shortName), extension: '.json' });
-    }
   }
   return [...found.keys()].sort().map(shortName => found.get(shortName) as Ns5FileInfo);
 }
@@ -269,8 +256,10 @@ export async function deletePoolMessageAt(fileInfo: Ns5FileInfo, file: Ns5FileIn
     refuse(`refusing to delete ${path}: no trace line '${id}' in pipeline.json`);
   }
   if (id !== path) refuse(`refusing to delete ${path}: traceId '${id}' is another message`);
+  const indexed = indexedFile(file);
+  if (!indexed) refuse(`refusing to delete ${path}: not in the index (mls.stor.files)`);
   const { deleteFile } = await import('/_102027_/l2/libStor.js');
-  await deleteFile(diskFileInfo(file));
+  await deleteFile(indexed);
   return path;
 }
 

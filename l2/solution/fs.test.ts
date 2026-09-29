@@ -95,7 +95,7 @@ void test('ns5DefsOrphans drops index plus the ids and keeps the rest', async ()
   assert.deepEqual(fs.ns5DefsOrphans(['index', 'Comanda'], ['Comanda']), []);
 });
 
-void test('collectExactModuleFiles unions index and host disk across levels, never prefix', async () => {
+void test('collectExactModuleFiles reads only the index across levels, never host disk, never prefix', async () => {
   const g = globalThis as unknown as { mls?: unknown };
   const prev = g.mls;
   const files: Record<string, { project: number; level: number; folder: string; shortName: string; extension: string; status: string }> = {
@@ -138,13 +138,13 @@ void test('collectExactModuleFiles unions index and host disk across levels, nev
       },
     };
     const fs = await loadFs();
+    const keysBefore = Object.keys(files).sort();
     const collected = fs.collectExactModuleFiles('teste5').map(file => `${file.level}:${file.folder}/${file.shortName}${file.extension}`).sort();
     assert.deepEqual(collected, [
       '1:teste5/router.ts',
-      '2:teste5/web/page.ts',
-      '4:teste5/journeys/orphan.defs.ts',
       '4:teste5/module.defs.ts',
     ]);
+    assert.deepEqual(Object.keys(files).sort(), keysBefore);
     assert.equal(fs.isProtectedModuleFile({ level: 4, folder: 'organization', shortName: 'registry' }), true);
     assert.equal(fs.isProtectedModuleFile({ level: 4, folder: 'organization/tobe/integration', shortName: 'financeiro--comandaFechada' }), false);
     assert.equal(fs.isProtectedModuleFile({ level: 2, folder: '', shortName: 'designSystem' }), true);
@@ -158,13 +158,13 @@ void test('reconcileModuleDefs removes defs whose id is not in the index', async
   const prev = g.mls;
   const deleted: string[] = [];
   const files: Record<string, { project: number; level: number; folder: string; shortName: string; extension: string; status: string }> = {
-    keep: {
+    '102047_4_teste5/journeys/keepMe.defs.ts': {
       project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'keepMe', extension: '.defs.ts', status: 'changed',
     },
-    orphan: {
+    '102047_4_teste5/journeys/oldName.defs.ts': {
       project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'oldName', extension: '.defs.ts', status: 'changed',
     },
-    index: {
+    '102047_4_teste5/journeys/index.defs.ts': {
       project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'index', extension: '.defs.ts', status: 'changed',
     },
   };
@@ -185,6 +185,70 @@ void test('reconcileModuleDefs removes defs whose id is not in the index', async
     const removed = await fs.reconcileModuleDefs('teste5', 'journeys', ['keepMe']);
     assert.deepEqual(removed, ['oldName']);
     assert.deepEqual(deleted, ['oldName']);
+  } finally {
+    g.mls = prev;
+  }
+});
+
+// p4_19: host with `listFolder` and a file only on disk. No listing sees it, nothing deletes it, the
+// index gains no entry; the same file in the index (positive control) shows up.
+function installDiskOnlyHost(files: Record<string, Record<string, unknown>>, disk: Array<Record<string, unknown>>, deleted: string[]): void {
+  (globalThis as unknown as { mls?: unknown }).mls = {
+    actualProject: 102047,
+    events: { addEventListener() {}, removeEventListener() {}, dispatch() {} },
+    stor: {
+      files,
+      getKeyToFile: (info: { project: number; level: number; folder: string; shortName: string; extension: string }) =>
+        `${info.project}_${info.level}_${info.folder}/${info.shortName}${info.extension}`,
+      localStor: {
+        listFolder: (project: number, level: number, folder: string) =>
+          disk.filter(item => item.project === project && item.level === level && item.folder === folder),
+        deleteFile: (file: { shortName: string }) => { deleted.push(file.shortName); },
+      },
+    },
+  };
+}
+
+void test('listModuleDefsShortNames and reconcileModuleDefs ignore a host-disk-only defs (p4_19)', async () => {
+  const g = globalThis as unknown as { mls?: unknown };
+  const prev = g.mls;
+  const deleted: string[] = [];
+  const keep = { project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'keepMe', extension: '.defs.ts', status: 'changed' };
+  const diskOnly = { project: 102047, level: 4, folder: 'teste5/journeys', shortName: 'diskOnly', extension: '.defs.ts' };
+  const files: Record<string, Record<string, unknown>> = { '102047_4_teste5/journeys/keepMe.defs.ts': keep };
+  try {
+    installDiskOnlyHost(files, [diskOnly, keep], deleted);
+    const fs = await loadFs();
+    const keysBefore = Object.keys(files).sort();
+    assert.deepEqual(fs.listModuleDefsShortNames('teste5', 'journeys'), ['keepMe']);
+    assert.deepEqual(fs.ns5DefsOrphans(fs.listModuleDefsShortNames('teste5', 'journeys'), ['keepMe']), []);
+    assert.deepEqual(await fs.reconcileModuleDefs('teste5', 'journeys', ['keepMe']), []);
+    assert.deepEqual(deleted, []);
+    assert.deepEqual(Object.keys(files).sort(), keysBefore);
+
+    files['102047_4_teste5/journeys/diskOnly.defs.ts'] = { ...diskOnly, status: 'changed' };
+    assert.deepEqual(fs.listModuleDefsShortNames('teste5', 'journeys'), ['diskOnly', 'keepMe']);
+    assert.deepEqual(await fs.reconcileModuleDefs('teste5', 'journeys', ['keepMe']), ['diskOnly']);
+    assert.deepEqual(deleted, ['diskOnly']);
+  } finally {
+    g.mls = prev;
+  }
+});
+
+void test('collectTobeIntegrationFilesCiting ignores a host-disk-only request (p4_19)', async () => {
+  const g = globalThis as unknown as { mls?: unknown };
+  const prev = g.mls;
+  const folder = 'financeiro/tobe/integration';
+  const indexed = { project: 102047, level: 4, folder, shortName: 'teste5--pago', extension: '.defs.ts', status: 'changed' };
+  const diskOnly = { project: 102047, level: 4, folder, shortName: 'teste5--estornado', extension: '.defs.ts' };
+  const files: Record<string, Record<string, unknown>> = { [`102047_4_${folder}/teste5--pago.defs.ts`]: indexed };
+  try {
+    installDiskOnlyHost(files, [diskOnly, indexed], []);
+    const fs = await loadFs();
+    const keysBefore = Object.keys(files).sort();
+    assert.deepEqual(fs.collectTobeIntegrationFilesCiting('teste5').map(file => file.shortName), ['teste5--pago']);
+    assert.equal(fs.collectTobeIntegrationFilesCiting('teste5')[0], indexed);
+    assert.deepEqual(Object.keys(files).sort(), keysBefore);
   } finally {
     g.mls = prev;
   }

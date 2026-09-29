@@ -3,10 +3,9 @@
 import { readL4Revision } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import { sha256Tobe } from '/_102035_/l2/newRelease/tobeDiff.js';
 import {
-  diskFileInfo,
   displayPath,
   fileExists,
-  hostListFolder,
+  indexedFile,
   listModuleFolders,
   moduleFile,
   moduleFolder,
@@ -441,17 +440,6 @@ export function listPlArtifacts(moduleName: string): string[] {
     consider(file);
   }
 
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(project, 4, root)) {
-      const key = mls.stor.getKeyToFile(info);
-      const indexed = files[key];
-      if (indexed?.status === 'deleted') continue;
-      if (!indexed) files[key] = diskFileInfo(info);
-      consider(indexed || info);
-    }
-  }
-
   return [...found.keys()].sort();
 }
 
@@ -603,16 +591,6 @@ function listIndexedPoolFiles(moduleName: string, folder: string): Ns5FileInfo[]
     if (!file || file.project !== project || Number(file.level) !== 4) continue;
     consider(file);
   }
-  const listFolder = hostListFolder();
-  if (listFolder) {
-    for (const info of listFolder(project, 4, folder)) {
-      const key = mls.stor.getKeyToFile(info);
-      const indexed = files[key];
-      if (indexed?.status === 'deleted') continue;
-      if (!indexed) files[key] = diskFileInfo(info);
-      consider(indexed || info);
-    }
-  }
   return [...found.values()];
 }
 
@@ -663,8 +641,10 @@ export async function wipeModulePool(moduleName: string, now: Date): Promise<str
     }
     for (const file of listPoolWebFiles(moduleName, box)) {
       const path = displayPath(file);
+      const indexed = indexedFile(file);
+      if (!indexed) continue;
       const { deleteFile } = await import('/_102027_/l2/libStor.js');
-      await deleteFile(diskFileInfo(file));
+      await deleteFile(indexed);
       wiped.push(path);
     }
   }

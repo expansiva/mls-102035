@@ -462,6 +462,45 @@ void test('wipeModulePool empties the boxes, removes web artifacts, and records 
   assert.equal(state.pool.some(line => line.outcome === 'processed'), true);
 });
 
+// p4_19: host-disk-only files stay out of artifacts, the box, the web files and the wipe; the index
+// gains no entry. Positive control: the same kind of file in the index shows up.
+void test('listPlArtifacts, runPlDispatch artifacts, pool listings and wipe ignore host-disk-only files', async () => {
+  const host = installHost();
+  const unlinked: string[] = [];
+  const disk = [
+    { project: PROJECT, level: 4, folder: 'mensalidadesAcademia', shortName: 'diskOnly', extension: '.defs.ts' },
+    { project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pool/l2', shortName: '20260918090000_mensalidadesAcademia-20260918090000_1', extension: '.json' },
+    { project: PROJECT, level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'diskMenu', extension: '.json' },
+  ];
+  const stor = (globalThis as unknown as { mls: { stor: { localStor: Record<string, unknown> } } }).mls.stor;
+  stor.localStor.listFolder = (project: number, level: number, folder: string) =>
+    disk.filter(item => item.project === project && item.level === level
+      && (item.folder === folder || item.folder.startsWith(`${folder}/`)));
+  const deleteInIndex = stor.localStor.deleteFile as (file: Stored) => void;
+  stor.localStor.deleteFile = (file: Stored) => { unlinked.push(`${file.folder}/${file.shortName}`); deleteInIndex(file); };
+  seed(host, { level: 4, folder: 'mensalidadesAcademia', shortName: 'module', extension: '.defs.ts' }, '');
+  seed(
+    host,
+    { level: 4, folder: 'mensalidadesAcademia/pipeline', shortName: 'pipeline', extension: '.json' },
+    `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+  );
+  seed(host, { level: 4, folder: 'mensalidadesAcademia/pool/l2/web', shortName: 'menu', extension: '.json' }, '{}\n');
+  const keysBefore = Object.keys(host.files).sort();
+
+  assert.deepEqual(listPlArtifacts('mensalidadesAcademia'), ['module.defs.ts']);
+  assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 0);
+  assert.deepEqual(listPoolWebFiles('mensalidadesAcademia', 'l2').map(file => file.shortName), ['menu']);
+  assert.deepEqual(Object.keys(host.files).sort(), keysBefore);
+
+  const wiped = await wipeModulePool('mensalidadesAcademia', new Date(Date.UTC(2026, 8, 20, 12, 0, 0)));
+  assert.deepEqual(wiped, ['l4/mensalidadesAcademia/pool/l2/web/menu.json']);
+  assert.deepEqual(unlinked, ['mensalidadesAcademia/pool/l2/web/menu']);
+
+  const run = await runPlDispatch('mensalidadesAcademia', new Date(Date.UTC(2026, 8, 20, 12, 5, 0)));
+  assert.equal(run.artifacts.includes('diskOnly.defs.ts'), false);
+  assert.equal(run.artifacts.includes('module.defs.ts'), true);
+});
+
 void test('L2 and L1 step prompts require a non-empty file — empty file is not kind:step (ramification B)', () => {
   const empty = plStepPrompt('mensalidadesAcademia', 'mensalidadesAcademia-20260918103000', '');
   assert.equal(parseP2StepPrompt(empty).kind, 'entry');
