@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/agendaClinica/journeys/cadastrarPaciente.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const cadastrarPacienteJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -37,7 +37,7 @@ export const cadastrarPacienteJourney = {
     }
   },
   "businessHash": "sha256:5eb5e8ae725c989c7e48287ea2c80d60e51e59fd834cc2b1228ad6784bcbd2db"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type CadastrarPacienteJourneyType = typeof cadastrarPacienteJourney;
 

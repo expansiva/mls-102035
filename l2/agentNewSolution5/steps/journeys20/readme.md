@@ -34,6 +34,7 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
 - After the gate: inferred `external` actor without an exclusive step is dropped from
   `module.defs.ts` and recorded as `dropInferredActor<Actor>`. `kind: system` stays.
 - A module with no `decide` step is valid; the count is stored on the pipeline step.
+- p4_20: after writing, every `journeys/<journeyId>.defs.ts` and `journeys/index.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.journeys20.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean.
 
 ## Known traps
 

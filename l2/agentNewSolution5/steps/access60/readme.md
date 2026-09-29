@@ -50,6 +50,7 @@ carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + 
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `access60-done` result. `integration70` still waits for `rules40-done` and
   `workflows50-done`. A run then stops at the first unimplemented step (`finalize80`).
+- p4_20: after writing, `access.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.access60.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean.
 
 ## Known traps
 

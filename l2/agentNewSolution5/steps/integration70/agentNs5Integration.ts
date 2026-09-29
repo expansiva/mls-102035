@@ -12,6 +12,7 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import { readNs5Siblings, formatNs5Siblings, ns5PlatformEventIds } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   draftFile,
@@ -39,6 +40,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
+  Ns5CompileRecord,
   Ns5IntegrationItem,
   Ns5IntegrationPlugin,
   Ns5JourneyArtifact,
@@ -173,7 +175,9 @@ export async function beforeNs5IntegrationPromptStep(
     const signals = collectNs5IntegrationSignals(actors, sourcePrompt, siblings);
     if (!signals.length) {
       const pipeline = await requirePipeline(moduleName);
-      const artifactPath = await persistArtifacts(moduleName, [], [], [], pipeline, true);
+      const { artifactPath, compile } = await persistArtifacts(moduleName, [], [], [], pipeline, true);
+      // Deterministic artifact, no LLM to repair it: a compile error here is a generator defect.
+      if (compile.status === 'errors') throw new Error(formatNs5CompileFeedback(compile));
       return [
         doneAnchor(context, findMutableParent(context, parentStep), moduleName, [artifactPath]),
         updateStatus(context, parentStep, step, hookSequential, 'completed', `integration70 approved with noIntegrationSignal: ${artifactPath}`),
@@ -290,7 +294,17 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations);
+    const { artifactPath, compile } = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations);
+    if (compile.status === 'errors') {
+      const feedback = formatNs5CompileFeedback(compile);
+      if (parsed.repairAttempt < MAX_REPAIRS) {
+        return [
+          addStep(context, mutationParent, createNs5RetryStep('integration70', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
+          updateStatus(context, mutationParent, step, hookSequential, 'completed', `integration70 compile scheduled repair ${parsed.repairAttempt + 1}.`),
+        ];
+      }
+      throw new Error(feedback);
+    }
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `integration70 approved: ${artifactPath}`),
@@ -313,22 +327,25 @@ async function persistArtifacts(
   pipeline: Ns5PipelineState,
   noIntegrationSignal: boolean,
   normalizations: Array<{ kind: string; inboundId?: string; detail: string }> = [],
-): Promise<string> {
+): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
   const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins);
   const artifactPath = await writeDefs(integrationFile(moduleName), `${moduleName}Integration`, artifact, 'Ns5IntegrationArtifact');
   await writeJson(draftFile(moduleName, 'integration70'), {
     ...artifact,
     ...(normalizations.length ? { normalizations } : {}),
   });
+  // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
+  const compile = await compileNs5Defs([integrationFile(moduleName)]);
   await writeStepState(pipeline, {
-    status: 'approved',
+    status: compile.status === 'errors' ? 'running' : 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    compile,
     ...(noIntegrationSignal ? { noIntegrationSignal: true } : {}),
     ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPath;
+  return { artifactPath, compile };
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {

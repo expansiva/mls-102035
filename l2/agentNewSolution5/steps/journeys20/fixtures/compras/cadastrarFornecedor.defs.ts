@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/compras/journeys/cadastrarFornecedor.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const cadastrarFornecedorJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -30,7 +30,7 @@ export const cadastrarFornecedorJourney = {
     }
   },
   "businessHash": "sha256:44edbdbaec2bd9cdadf04866fce22d2b96f3ecfecaeaf5c4e9e3263a632962b7"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type CadastrarFornecedorJourneyType = typeof cadastrarFornecedorJourney;
 

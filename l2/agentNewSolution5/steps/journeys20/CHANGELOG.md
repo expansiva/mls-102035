@@ -1,5 +1,9 @@
 # journeys20
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: every `journeys/<journeyId>.defs.ts` and `journeys/index.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.journeys20.compile` records the result for finalize80.
+
 ## 2026-09-28 (p4_16)
 
 - title wording no longer says verb + object: in controleEstoque it split the register step into a `decide` (finalize I2, 2/2 runs); without it the run passed (A/B).

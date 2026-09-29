@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/mensalidadesAcademia/journeys/matricularAluno.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const matricularAlunoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -54,7 +54,7 @@ export const matricularAlunoJourney = {
     }
   },
   "businessHash": "sha256:36fdee31e6f23bfad309d5675974b21d3b4d9744957798f91772451359b41887"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type MatricularAlunoJourneyType = typeof matricularAlunoJourney;
 

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/reembolsoDespesas/journeys/avaliarDespesaDaEquipe.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const avaliarDespesaDaEquipeJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -62,7 +62,7 @@ export const avaliarDespesaDaEquipeJourney = {
     }
   },
   "businessHash": "sha256:edd9fbf41940eb8b331606377d32248e65b72ce698a6edf05a5319d23ff57ec3"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AvaliarDespesaDaEquipeJourneyType = typeof avaliarDespesaDaEquipeJourney;
 

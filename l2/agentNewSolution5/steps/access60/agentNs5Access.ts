@@ -12,6 +12,7 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
 import {
   accessFile,
@@ -42,6 +43,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
+  Ns5CompileRecord,
   Ns5AccessActor,
   Ns5AccessGrant,
   Ns5JourneyArtifact,
@@ -234,7 +236,17 @@ export async function afterNs5AccessPromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifacts(moduleName, merged.actors, grants, pipeline, normalizations);
+    const { artifactPath, compile } = await persistArtifacts(moduleName, merged.actors, grants, pipeline, normalizations);
+    if (compile.status === 'errors') {
+      const feedback = formatNs5CompileFeedback(compile);
+      if (parsed.repairAttempt < MAX_REPAIRS) {
+        return [
+          addStep(context, mutationParent, createNs5RetryStep('access60', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
+          updateStatus(context, mutationParent, step, hookSequential, 'completed', `access60 compile scheduled repair ${parsed.repairAttempt + 1}.`),
+        ];
+      }
+      throw new Error(feedback);
+    }
     return [
       doneAnchor(context, mutationParent, moduleName, [artifactPath]),
       updateStatus(context, mutationParent, step, hookSequential, 'completed', `access60 approved: ${artifactPath}`),
@@ -255,21 +267,24 @@ async function persistArtifacts(
   grants: Ns5AccessGrant[],
   pipeline: Ns5PipelineState,
   normalizations: Ns5AccessFormNormalization[] = [],
-): Promise<string> {
+): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
   const artifact = buildNs5AccessArtifact(moduleName, actors, grants);
   const artifactPath = await writeDefs(accessFile(moduleName), `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
   await writeJson(draftFile(moduleName, 'access60'), {
     ...artifact,
     ...(normalizations.length ? { normalizations } : {}),
   });
+  // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
+  const compile = await compileNs5Defs([accessFile(moduleName)]);
   await writeStepState(pipeline, {
-    status: 'approved',
+    status: compile.status === 'errors' ? 'running' : 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    compile,
     ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPath;
+  return { artifactPath, compile };
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {

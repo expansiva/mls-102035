@@ -13,6 +13,7 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { NS5_DEFS_WRITING_STEPS, ns5CompileBlockers } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import { ns5PlatformEventIds, readNs5Siblings } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
 import {
   collectNs5InboundPending,
@@ -111,6 +112,22 @@ export async function beforeNs5FinalizePromptStep(
     const parsed = resolveArgs(context, args || step.prompt);
     moduleName = parsed.moduleName;
     const sources = await loadSources(moduleName);
+    // p4_20: the oracle runs only after a clean Studio compile of every step that wrote a .defs.ts;
+    // "no compile capability" is not clean.
+    const compileBlockers = ns5CompileBlockers(await requirePipeline(moduleName));
+    if (compileBlockers.length) {
+      const message = `finalize80 refused: the oracle runs only after a clean Studio compile. ${compileBlockers.join('; ')}`;
+      await writeStepState(await requirePipeline(moduleName), {
+        status: 'failed',
+        updatedAt: new Date().toISOString(),
+        error: message,
+      });
+      await persistRunSummary(context, moduleName, 'failed', message, null, []);
+      return [
+        ...drainWaitingSiblings(context, step, hookSequential, `stopped: ${message}`),
+        updateStatus(context, parentStep, step, hookSequential, 'failed', message),
+      ];
+    }
     const report = runNs5Oracle(sources);
     reportPath = await writeJson(finalizeReportFile(moduleName), report);
     let pipeline = await requirePipeline(moduleName);
@@ -407,12 +424,22 @@ async function persistRunSummary(
       verdict,
       reason,
       cost: { total: roundCost(cost.total), byStep: cost.byStep },
-      counts: { steps: stepCounts, oracle: report?.counts || null },
+      counts: { steps: stepCounts, oracle: report?.counts || null, compile: compileCounts(pipeline) },
       checks: report?.checks || [],
       handoff: 'never',
       degradations,
     });
   } catch { /* the run summary must never fail finalize80 */ }
+}
+
+/** p4_20: per writing step, the Studio compile status and how many `.defs.ts` it compiled. */
+function compileCounts(pipeline: Ns5PipelineState | null): Record<string, { status: string; files: number }> {
+  const counts: Record<string, { status: string; files: number }> = {};
+  for (const stepId of NS5_DEFS_WRITING_STEPS) {
+    const compile = pipeline?.steps[stepId]?.compile;
+    counts[stepId] = compile ? { status: compile.status, files: compile.files } : { status: 'none', files: 0 };
+  }
+  return counts;
 }
 
 function sumInteractionCost(context: mls.msg.ExecutionContext): { total: number; byStep: Record<string, number> } {

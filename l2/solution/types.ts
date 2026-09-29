@@ -2,6 +2,17 @@
 
 import type { MdmDefField, MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 
+/**
+ * p4_20: the read-only view of an artifact type, read only by the `.defs.ts` emitter
+ * (`fs.ts` `renderDefsSource`: `as const satisfies Ns5Readonly<T>`). An `as const` literal is
+ * read-only all the way down; the Studio compiler (TypeScript 5.0.2) refuses it against a mutable
+ * array of `T` (TS1360), 5.9.3 accepts. The value keeps its own `as const` type, so readers of the
+ * exported const see no change. The `Ns5*` types themselves stay as they are.
+ */
+export type Ns5Readonly<T> = T extends readonly (infer U)[]
+  ? readonly Ns5Readonly<U>[]
+  : T extends object ? { readonly [K in keyof T]: Ns5Readonly<T[K]> } : T;
+
 /** Schema ids for NS5 source artifacts. Bumped when a field is added or removed. */
 export const NS5_MODULE_SCHEMA_VERSION = '2026-09-10-ns5-module-v2' as const;
 export const NS5_JOURNEY_SCHEMA_VERSION = '2026-09-10-ns5-journey-v1' as const;
@@ -776,6 +787,22 @@ export interface Ns5PipelineLiftedField {
   detail: string;
 }
 
+/**
+ * p4_20: the Studio compile of the `.defs.ts` a step wrote, recorded on `steps.<step>.compile`.
+ * `unavailable` is the absence of `mls.l2.typescript` (or of a model/dependency to compile): a state,
+ * never a clean compile. Reader: finalize80 (`ns5CompileBlockers`), which runs the oracle only when
+ * every writing step recorded `clean`.
+ */
+export interface Ns5CompileRecord {
+  status: 'clean' | 'errors' | 'unavailable';
+  /** How many `.defs.ts` the step asked the compiler about. */
+  files: number;
+  /** `errors`: one line per diagnostic, prefixed by the display path of the file. */
+  errors?: string[];
+  /** `unavailable`: why nothing was compiled. */
+  reason?: string;
+}
+
 export interface Ns5PipelineStepState {
   /** Monotonic: approved is never overwritten by running/failed. */
   status: 'running' | 'approved' | 'failed';
@@ -830,6 +857,8 @@ export interface Ns5PipelineStepState {
   noJudgeSignal?: boolean;
   /** judge35: `transitionUnjustified` verdicts recorded for the human; the transition is not deleted. */
   warnings?: string[];
+  /** p4_20: Studio compile of the `.defs.ts` this step wrote. Reader: finalize80. */
+  compile?: Ns5CompileRecord;
 }
 
 export interface Ns5Invocation {

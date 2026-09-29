@@ -417,12 +417,13 @@ function assertSafeWrapper(
   const exportName = assignment?.[1] || '';
   const safePrefix = new RegExp(
     `^/// <mls fileReference="_[0-9]+_/l4/[A-Za-z0-9_/-]+/${escapeRegExp(path)}" enhancement="_blank"/>\\n\\n`
-      + `(?:import type \\{ [A-Za-z_$][A-Za-z0-9_$]* \\} from '/_102035_/l2/solution/types\\.js';\\n\\n)?`
+      // p4_20: the NS5 emitter also imports `Ns5Readonly` and checks against it (`solution/fs.ts` renderDefsSource).
+      + `(?:import type \\{ [A-Za-z_$][A-Za-z0-9_$]*(?:, Ns5Readonly)? \\} from '/_102035_/l2/solution/types\\.js';\\n\\n)?`
       + 'export\\s+const\\s+[A-Za-z_$][A-Za-z0-9_$]*\\s*=\\s*$',
     'u',
   ).test(candidate.prefix);
   const safeSuffix = !!exportName && new RegExp(
-    `^ as const(?: satisfies [A-Za-z_$][A-Za-z0-9_$]*)?;\\n\\n(?:export type [A-Za-z_$][A-Za-z0-9_$]* = typeof ${exportName};\\n\\n)?export default ${exportName};\\n$`,
+    `^ as const(?: satisfies (?:[A-Za-z_$][A-Za-z0-9_$]*|Ns5Readonly<[A-Za-z_$][A-Za-z0-9_$]*>))?;\\n\\n(?:export type [A-Za-z_$][A-Za-z0-9_$]* = typeof ${exportName};\\n\\n)?export default ${exportName};\\n$`,
     'u',
   ).test(candidate.suffix);
   if (!safePrefix || !safeSuffix) throw new Error(`finalize50 refuses a divergent or unsafe defs wrapper: ${path}`);

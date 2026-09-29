@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/locacaoEquipamentos/journeys/criarContratoLocacao.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const criarContratoLocacaoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -56,7 +56,7 @@ export const criarContratoLocacaoJourney = {
     }
   },
   "businessHash": "sha256:a8e12be4223a6ab77910233bdd0520e657517fb2a1cc1731da2e415481cd13b9"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type CriarContratoLocacaoJourneyType = typeof criarContratoLocacaoJourney;
 

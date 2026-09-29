@@ -51,6 +51,7 @@ not a signal and is not an integration item.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
   the registry and l5, and marks the pipeline complete.
+- p4_20: after writing, `integration.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.integration70.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean. The noIntegrationSignal artifact has no LLM to repair it: a compile error there fails the step.
 
 ## Known traps
 

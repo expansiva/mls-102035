@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/compras/rules.defs.ts" enhancement="_blank"/>
 
-import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5RulesArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comprasRules = {
   "schemaVersion": "2026-09-10-ns5-rules-v1",
@@ -39,7 +39,7 @@ export const comprasRules = {
       "description": "O total comprado mensal por fornecedor deve ser calculado pela soma dos valores dos pedidos de compra do fornecedor no mês."
     }
   ]
-} as const satisfies Ns5RulesArtifact;
+} as const satisfies Ns5Readonly<Ns5RulesArtifact>;
 
 export type ComprasRulesType = typeof comprasRules;
 

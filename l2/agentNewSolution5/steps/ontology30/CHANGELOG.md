@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: every `ontology/<Entity>.defs.ts`, `ontology/index.defs.ts` and, after a lift, `module.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.ontology30.compile` records the result for finalize80. An entity file's diagnostic goes to that entity's targeted repair; an error outside the entity files fails the step.
+
 ## 2026-09-20 (ns5_65)
 
 - `promptEntity.md`: a lifecycle is for what somebody moves AND the system reacts to (a rule, a

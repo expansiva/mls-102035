@@ -26,6 +26,7 @@ state (`readNs5Actors`). No features, no strategy, no `scope`.
   exclusive step.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `module10-done` result that unlocks `journeys20`.
+- p4_20: after writing, `module.defs.ts` go through the Studio compiler (`helpers/ns5Compile.ts`, never a disk tsc). Diagnostics go to this step's repair as `gateFeedback`, same budget as the gate; past it the step is `failed` with the error. `steps.module10.compile` records `clean`/`errors`/`unavailable` and the file count; `unavailable` (no `mls.l2.typescript`) is a state, never clean. A compile repair may rewrite the `module.defs.ts` this same run wrote (not a pre-existing module).
 
 ## Known traps
 

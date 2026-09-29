@@ -19,6 +19,7 @@ import {
   ns5StatusMessage,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
 import {
   draftFile,
@@ -35,6 +36,7 @@ import {
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import type {
+  Ns5CompileRecord,
   Ns5Invocation,
   Ns5ModuleActor,
   Ns5ModuleArtifact,
@@ -182,8 +184,14 @@ export async function afterNs5ModulePromptStep(
     // ns5_55: the rebuild starts here, past the verdict and before the first write — remove the old
     // module and open a new pipeline stamped with `rebuildAll.at`. `ensurePipeline` below then finds
     // that fresh pipeline instead of creating one.
+    // p4_20: a repair may find the module.defs.ts an earlier attempt of this same run wrote (compile
+    // repair); it is not a module that already existed, so the refusal below does not apply to it.
+    const ownCompileRepair = ns5Module10OwnsExistingDefs(
+      parsed.repairAttempt,
+      parsed.repairAttempt > 0 ? await readPipeline(moduleName) : null,
+    );
     if (invocation.rebuildAll) await startNs5Pipeline(moduleName, sourcePrompt, invocation, true);
-    await assertModuleWritable(moduleName, invocation.rebuildAll);
+    await assertModuleWritable(moduleName, invocation.rebuildAll || ownCompileRepair);
 
     let pipeline = await ensurePipeline(moduleName, sourcePrompt, invocation);
     pipeline = await writeStepState(pipeline, 'module10', {
@@ -219,7 +227,17 @@ export async function afterNs5ModulePromptStep(
       throw new Error(feedback);
     }
 
-    const artifactPath = await persistArtifact(moduleName, artifact, actors, invocation, normalizations, systemDecisions);
+    const { artifactPath, compile } = await persistArtifact(moduleName, artifact, actors, invocation, normalizations, systemDecisions, ownCompileRepair);
+    if (compile.status === 'errors') {
+      const feedback = formatNs5CompileFeedback(compile);
+      if (parsed.repairAttempt < MAX_REPAIRS) {
+        return [
+          addStep(context, mutationParent, createNs5RetryStep('module10', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
+          updateStatus(context, mutationParent, step, hookSequential, 'completed', `module10 compile scheduled repair ${parsed.repairAttempt + 1}.`),
+        ];
+      }
+      throw new Error(feedback);
+    }
     const warningNote = i18nWarnings.map(item => `\nwarning: ${item}`).join('');
     return [
       doneAnchor(context, mutationParent, moduleName, artifactPath),
@@ -235,6 +253,16 @@ export async function afterNs5ModulePromptStep(
   }
 }
 
+/**
+ * p4_20. Attempt 0 already refused a module that existed (`assertModuleWritable` runs before any gate),
+ * and a gate repair never writes defs; so in a repair attempt, a module10 that is not approved and
+ * a `module.defs.ts` on disk can only come from an earlier attempt of this run. Keyed on the step
+ * status, not on `compile`, because each attempt resets the step state to `running`.
+ */
+export function ns5Module10OwnsExistingDefs(repairAttempt: number, pipeline: Ns5PipelineState | null): boolean {
+  return repairAttempt > 0 && pipeline !== null && pipeline.steps.module10?.status !== 'approved';
+}
+
 async function persistArtifact(
   moduleName: string,
   artifact: Ns5ModuleArtifact,
@@ -242,20 +270,24 @@ async function persistArtifact(
   invocation: Ns5Invocation,
   normalizations: { kind: string; detail: string }[],
   systemDecisions: Ns5SystemDecision[],
-): Promise<string> {
-  await assertModuleWritable(moduleName, invocation.rebuildAll);
+  ownCompileRepair = false,
+): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
+  await assertModuleWritable(moduleName, invocation.rebuildAll || ownCompileRepair);
   const artifactPath = await writeDefs(moduleFile(moduleName), `${moduleName}Module`, artifact, 'Ns5ModuleArtifact');
   const pipeline = await ensurePipeline(moduleName, artifact.sourcePrompt, invocation);
+  // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
+  const compile = await compileNs5Defs([moduleFile(moduleName)]);
   await writeStepState(pipeline, 'module10', {
-    status: 'approved',
+    status: compile.status === 'errors' ? 'running' : 'approved',
     updatedAt: new Date().toISOString(),
     artifactPaths: [artifactPath],
+    compile,
     actors,
     ...(normalizations.length ? { normalizations } : {}),
     ...(systemDecisions.length ? { systemDecisions } : {}),
     ...(invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPath;
+  return { artifactPath, compile };
 }
 
 async function assertModuleWritable(moduleName: string, rebuildAll: boolean): Promise<void> {

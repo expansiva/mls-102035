@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/ordenServicio/journeys/index.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyIndexArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyIndexArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicioJourneyIndex = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -43,7 +43,7 @@ export const ordenServicioJourneyIndex = {
     }
   ],
   "systemDecisions": []
-} as const satisfies Ns5JourneyIndexArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyIndexArtifact>;
 
 export type OrdenServicioJourneyIndexType = typeof ordenServicioJourneyIndex;
 

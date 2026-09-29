@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/mensalidadesAcademia/module.defs.ts" enhancement="_blank"/>
 
-import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5ModuleArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const mensalidadesAcademiaModule = {
   "schemaVersion": "2026-09-10-ns5-module-v2",
@@ -34,7 +34,7 @@ export const mensalidadesAcademiaModule = {
       "description": "Quantidade de alunos com ao menos uma mensalidade vencida."
     }
   }
-} as const satisfies Ns5ModuleArtifact;
+} as const satisfies Ns5Readonly<Ns5ModuleArtifact>;
 
 export type MensalidadesAcademiaModuleType = typeof mensalidadesAcademiaModule;
 

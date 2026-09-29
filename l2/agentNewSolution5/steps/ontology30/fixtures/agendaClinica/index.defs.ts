@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/agendaClinica/ontology/index.defs.ts" enhancement="_blank"/>
 
-import type { Ns5OntologyIndexArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyIndexArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const agendaClinicaOntologyIndex = {
   "schemaVersion": "2026-09-11-ns5-ontology-v2",
@@ -67,7 +67,7 @@ export const agendaClinicaOntologyIndex = {
       }
     }
   ]
-} as const satisfies Ns5OntologyIndexArtifact;
+} as const satisfies Ns5Readonly<Ns5OntologyIndexArtifact>;
 
 export type AgendaClinicaOntologyIndexType = typeof agendaClinicaOntologyIndex;
 

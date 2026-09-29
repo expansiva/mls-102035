@@ -25,10 +25,12 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import {
   draftFile,
   journeyFile,
   journeyIndexFile,
+  displayPath,
   moduleFile,
   ontologyEntityFile,
   ontologyIndexFile,
@@ -48,6 +50,7 @@ import {
   unwrapArtifactPayload,
 } from '/_102035_/l2/solution/lib.js';
 import type {
+  Ns5CompileRecord,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleActor,
@@ -538,7 +541,7 @@ async function finalizeOntology(
     );
   }
   const pipeline = await requirePipeline(parsed.moduleName);
-  const artifactPaths = await persistArtifacts(
+  const { artifactPaths, compile } = await persistArtifacts(
     parsed.moduleName,
     lift.plan,
     index,
@@ -548,6 +551,28 @@ async function finalizeOntology(
     journeys,
     lift.liftedEntityIds,
   );
+  if (compile.status === 'errors') {
+    // p4_20: a compile error of an entity file goes to that entity's targeted repair, same budget as
+    // the gate. An error outside the entity files (index, lifted module) has no LLM to repair it.
+    const errors = compile.errors || [];
+    const compileFeedback: Record<string, string> = {};
+    for (const entity of lift.entities) {
+      const prefix = `${displayPath(ontologyEntityFile(parsed.moduleName, entity.entityId))}: `;
+      const lines = errors.filter(line => line.startsWith(prefix));
+      if (lines.length) compileFeedback[entity.entityId] = formatNs5CompileFeedback({ ...compile, errors: lines });
+    }
+    const failedIds = Object.keys(compileFeedback);
+    const attributed = errors.filter(line => failedIds.some(id => line.startsWith(`${displayPath(ontologyEntityFile(parsed.moduleName, id))}: `)));
+    if (failedIds.length && attributed.length === errors.length && parsed.entityRepairRound < MAX_ENTITY_REPAIR_ROUNDS) {
+      const parallel = parallelEntityStep(context, step, NS5_AGENT_NAME, lift.plan, parsed.entityRepairRound + 1, failedIds, compileFeedback);
+      return [
+        parallel,
+        addStep(context, mutationParent, createFinalizeStep(parsed.moduleName, parsed.entityRepairRound + 1, [String(parallel.step.planning?.planId || '')])),
+        updateStatus(context, mutationParent, step, hookSequential, 'completed', `${failedIds.length} entities failed the Studio compile; targeted parallel repair started: ${failedIds.join(', ')}.`),
+      ];
+    }
+    throw new Error(formatNs5CompileFeedback(compile));
+  }
   const intents: mls.msg.AgentIntent[] = [];
   if (!hasPlanId(context, 'ontology30-done')) {
     intents.push(doneAnchor(context, mutationParent, parsed.moduleName, artifactPaths));
@@ -569,7 +594,7 @@ async function persistArtifacts(
   pipeline: Ns5PipelineState,
   journeys: Ns5JourneyArtifact[],
   liftedAggregateEntities: string[] = [],
-): Promise<string[]> {
+): Promise<{ artifactPaths: string[]; compile: Ns5CompileRecord }> {
   const artifactPaths: string[] = [];
   for (const entity of entities) {
     artifactPaths.push(
@@ -584,6 +609,16 @@ async function persistArtifacts(
   artifactPaths.push(
     await writeDefs(ontologyIndexFile(moduleName), `${moduleName}OntologyIndex`, index, 'Ns5OntologyIndexV3'),
   );
+  // p4_20: the compiler is the last gate; errors go back to the entity repair, never approved.
+  const compile = await compileNs5Defs([
+    ...entities.map(entity => ontologyEntityFile(moduleName, entity.entityId)),
+    ontologyIndexFile(moduleName),
+    ...(liftedAggregateEntities.length ? [moduleFile(moduleName)] : []),
+  ]);
+  if (compile.status === 'errors') {
+    await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString(), artifactPaths, compile });
+    return { artifactPaths, compile };
+  }
   const removedOrphans = await reconcileModuleDefs(moduleName, 'ontology', entities.map(entity => entity.entityId));
   const normalizations = [...(plan.normalizations || []), ...entityNormalizations];
   const citedRules = collectNs5CitedRulesV3(entities);
@@ -604,12 +639,13 @@ async function persistArtifacts(
     artifactPaths,
     uncitedEntities,
     liftedAggregateEntities,
+    compile,
     ...(normalizations.length ? { normalizations } : {}),
     ...(citedRules.length ? { citedRules } : {}),
     ...(citedCapabilities.length ? { citedCapabilities } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPaths;
+  return { artifactPaths, compile };
 }
 
 export function parallelEntityStep(

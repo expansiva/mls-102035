@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: `integration.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.integration70.compile` records the result for finalize80. The noIntegrationSignal artifact has no LLM to repair it: a compile error there fails the step.
+
 ## 2026-09-16
 
 - ns5_43 T4: reads the ontology through `solution/ontologyView.ts`, so a v3 index does not

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/manutencaoFrota/journeys/cadastrarPlanoPreventivo.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const cadastrarPlanoPreventivoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -45,7 +45,7 @@ export const cadastrarPlanoPreventivoJourney = {
     }
   },
   "businessHash": "sha256:417d8c129b6a0c3a8b42c45023031852431d8f0f83d04bfd867a7c6d45ab4a02"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type CadastrarPlanoPreventivoJourneyType = typeof cadastrarPlanoPreventivoJourney;
 

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/reembolsoDespesas/rules.defs.ts" enhancement="_blank"/>
 
-import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5RulesArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const reembolsoDespesasRules = {
   "schemaVersion": "2026-09-10-ns5-rules-v1",
@@ -23,7 +23,7 @@ export const reembolsoDespesasRules = {
       "description": "O pagamento só pode ser registrado para uma despesa aprovada."
     }
   ]
-} as const satisfies Ns5RulesArtifact;
+} as const satisfies Ns5Readonly<Ns5RulesArtifact>;
 
 export type ReembolsoDespesasRulesType = typeof reembolsoDespesasRules;
 

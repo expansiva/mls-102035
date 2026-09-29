@@ -67,8 +67,9 @@ void test('writeDefs emits the mls header and as const satisfies', async () => {
     'Ns5ModuleArtifact',
   );
   assert.match(source, /fileReference="_102047_\/l4\/teste5\/module.defs.ts"/);
-  assert.match(source, /import type \{ Ns5ModuleArtifact \} from '\/_102035_\/l2\/solution\/types.js'/);
-  assert.match(source, /as const satisfies Ns5ModuleArtifact/);
+  assert.match(source, /import type \{ Ns5ModuleArtifact, Ns5Readonly \} from '\/_102035_\/l2\/solution\/types.js'/);
+  // p4_20: the read-only view, so the Studio compiler (TS 5.0.2) accepts arrays in the type.
+  assert.match(source, /\} as const satisfies Ns5Readonly<Ns5ModuleArtifact>;\n/);
 });
 
 void test('listModuleL4Keys is exact-folder and l4-only', async () => {

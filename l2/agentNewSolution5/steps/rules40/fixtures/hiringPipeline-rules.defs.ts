@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/hiringPipeline/rules.defs.ts" enhancement="_blank"/>
 
-import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5RulesArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const hiringPipelineRules = {
   "schemaVersion": "2026-09-10-ns5-rules-v1",
@@ -51,7 +51,7 @@ export const hiringPipelineRules = {
       "description": "A job position closes automatically when its filled headcount reaches its required headcount."
     }
   ]
-} as const satisfies Ns5RulesArtifact;
+} as const satisfies Ns5Readonly<Ns5RulesArtifact>;
 
 export type HiringPipelineRulesType = typeof hiringPipelineRules;
 

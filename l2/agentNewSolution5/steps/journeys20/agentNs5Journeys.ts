@@ -12,6 +12,7 @@ import {
   drainWaitingSiblings,
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
+import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
 import { composeNs5SystemPrompt, readNs5MdmSkill } from '/_102035_/l2/agentNewSolution5/helpers/ns5Skills.js';
 import {
   draftFile,
@@ -30,6 +31,7 @@ import {
 } from '/_102035_/l2/solution/fs.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import type {
+  Ns5CompileRecord,
   Ns5JourneyArtifact,
   Ns5ModuleActor,
   Ns5ModuleArtifact,
@@ -178,7 +180,17 @@ export async function afterNs5JourneysPromptStep(
     }
 
     const dropped = applyNs5InferredActorDrop(journeys, actors);
-    const artifactPaths = await persistArtifacts(moduleName, dropped, pipeline, normalizations);
+    const { artifactPaths, compile } = await persistArtifacts(moduleName, dropped, pipeline, normalizations);
+    if (compile.status === 'errors') {
+      const feedback = formatNs5CompileFeedback(compile);
+      if (parsed.repairAttempt < MAX_REPAIRS) {
+        return [
+          addStep(context, mutationParent, createNs5RetryStep('journeys20', moduleName, 'repair', parsed.repairAttempt + 1, { gateFeedback: feedback })),
+          updateStatus(context, mutationParent, step, hookSequential, 'completed', `journeys20 compile scheduled repair ${parsed.repairAttempt + 1}.`),
+        ];
+      }
+      throw new Error(feedback);
+    }
     // Nested repair from judge35 must not emit a second journeys20-done: planIds are unique in the task.
     const intents: mls.msg.AgentIntent[] = [];
     if (!hasPlanId(context, 'journeys20-done')) {
@@ -206,7 +218,7 @@ async function persistArtifacts(
   },
   pipeline: Ns5PipelineState,
   normalizations: { kind: string; detail: string; journeyId?: string; stepId?: string }[] = [],
-): Promise<string[]> {
+): Promise<{ artifactPaths: string[]; compile: Ns5CompileRecord }> {
   const artifacts: Ns5JourneyArtifact[] = [];
   for (const draft of dropped.journeys) artifacts.push(await hashNs5Journey(draft));
   const artifactPaths: string[] = [];
@@ -219,6 +231,15 @@ async function persistArtifacts(
   artifactPaths.push(
     await writeDefs(journeyIndexFile(moduleName), `${moduleName}JourneyIndex`, index, 'Ns5JourneyIndexArtifact'),
   );
+  // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
+  const compile = await compileNs5Defs([
+    ...artifacts.map(artifact => journeyFile(moduleName, artifact.journeyId)),
+    journeyIndexFile(moduleName),
+  ]);
+  if (compile.status === 'errors') {
+    await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString(), artifactPaths, compile });
+    return { artifactPaths, compile };
+  }
   const removedOrphans = await reconcileModuleDefs(
     moduleName,
     'journeys',
@@ -237,10 +258,11 @@ async function persistArtifacts(
     artifactPaths,
     decideStepCount: countNs5DecideSteps(dropped.journeys),
     droppedActors: dropped.droppedActorIds,
+    compile,
     ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
-  return artifactPaths;
+  return { artifactPaths, compile };
 }
 
 async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {

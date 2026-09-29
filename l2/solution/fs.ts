@@ -396,8 +396,10 @@ export function renderDefsSource(
   const safeExportName = normalizeModuleName(exportName);
   const exactTypeName = `${safeExportName.slice(0, 1).toUpperCase()}${safeExportName.slice(1)}Type`;
   return `/// <mls fileReference="_${fileInfo.project}_/l${fileInfo.level}/${fileInfo.folder}/${fileInfo.shortName}${fileInfo.extension}" enhancement="_blank"/>\n\n`
-    + `import type { ${typeName} } from '${TYPES_IMPORT}';\n\n`
-    + `export const ${safeExportName} = ${JSON.stringify(value, null, 2)} as const satisfies ${typeName};\n\n`
+    + `import type { ${typeName}, Ns5Readonly } from '${TYPES_IMPORT}';\n\n`
+    // p4_20: checked against the read-only view of the type. The Studio compiler (TypeScript 5.0.2)
+    // refuses an `as const` literal against a mutable array (TS1360); 5.9.3 accepts. Same value type.
+    + `export const ${safeExportName} = ${JSON.stringify(value, null, 2)} as const satisfies Ns5Readonly<${typeName}>;\n\n`
     + `export type ${exactTypeName} = typeof ${safeExportName};\n\n`
     + `export default ${safeExportName};\n`;
 }

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/comandaRestaurante/journeys/index.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyIndexArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyIndexArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestauranteJourneyIndex = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -28,7 +28,7 @@ export const comandaRestauranteJourneyIndex = {
     }
   ],
   "systemDecisions": []
-} as const satisfies Ns5JourneyIndexArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyIndexArtifact>;
 
 export type ComandaRestauranteJourneyIndexType = typeof comandaRestauranteJourneyIndex;
 

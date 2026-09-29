@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/agendaClinica/rules.defs.ts" enhancement="_blank"/>
 
-import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5RulesArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const agendaClinicaRules = {
   "schemaVersion": "2026-09-10-ns5-rules-v1",
@@ -15,7 +15,7 @@ export const agendaClinicaRules = {
       "description": "O registro de atendimento deve incluir uma anotação do atendimento."
     }
   ]
-} as const satisfies Ns5RulesArtifact;
+} as const satisfies Ns5Readonly<Ns5RulesArtifact>;
 
 export type AgendaClinicaRulesType = typeof agendaClinicaRules;
 

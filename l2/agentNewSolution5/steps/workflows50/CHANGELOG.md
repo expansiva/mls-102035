@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-09-29 (p4_20)
+
+- The Studio compiler is the last gate: `workflows.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.workflows50.compile` records the result for finalize80. The noProcessSignal artifact has no LLM to repair it: a compile error there fails the step.
+
 ## 2026-09-18 (ns5_56)
 
 - `trigger.event` of the form `Entity.transitionId` is now checked against the transitions the

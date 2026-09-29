@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/ordenServicio5/rules.defs.ts" enhancement="_blank"/>
 
-import type { Ns5RulesArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5RulesArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const ordenServicio5Rules = {
   "schemaVersion": "2026-09-10-ns5-rules-v1",
@@ -35,7 +35,7 @@ export const ordenServicio5Rules = {
       "description": "El cliente ve y responde solamente sus propias órdenes, con estado, diagnóstico y valor del presupuesto, y nunca el costo interno de las piezas ni las anotaciones del técnico."
     }
   ]
-} as const satisfies Ns5RulesArtifact;
+} as const satisfies Ns5Readonly<Ns5RulesArtifact>;
 
 export type OrdenServicio5RulesType = typeof ordenServicio5Rules;
 

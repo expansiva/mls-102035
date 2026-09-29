@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/inscricaoEvento/journeys/acompanharEexportarInscricoes.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const acompanharEexportarInscricoesJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -60,7 +60,7 @@ export const acompanharEexportarInscricoesJourney = {
     }
   },
   "businessHash": "sha256:9de9b6e68351130801df0fd393b16a71f2c54c8574193ddaa3683414e90ce87e"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AcompanharEexportarInscricoesJourneyType = typeof acompanharEexportarInscricoesJourney;
 

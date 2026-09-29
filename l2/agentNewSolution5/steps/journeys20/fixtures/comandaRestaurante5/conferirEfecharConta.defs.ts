@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/comandaRestaurante5/journeys/conferirEfecharConta.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const conferirEfecharContaJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -68,7 +68,7 @@ export const conferirEfecharContaJourney = {
     }
   },
   "businessHash": "sha256:3b416594f01c4f89fce9a6030d28fb2c7b97ef5af6f433989f69bc87f1e3f6e3"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type ConferirEfecharContaJourneyType = typeof conferirEfecharContaJourney;
 

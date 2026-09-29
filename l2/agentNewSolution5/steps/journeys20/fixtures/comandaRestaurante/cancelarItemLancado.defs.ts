@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/comandaRestaurante/journeys/cancelarItemLancado.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const cancelarItemLancadoJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -49,7 +49,7 @@ export const cancelarItemLancadoJourney = {
     }
   },
   "businessHash": "sha256:b9b486a4dd4639f4b6b019d2e416c3348e522f64576e37ca888a796dd0dae71e"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type CancelarItemLancadoJourneyType = typeof cancelarItemLancadoJourney;
 

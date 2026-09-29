@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/compras/journeys/decidirPedidoAcimaDoLimite.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const decidirPedidoAcimaDoLimiteJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -52,7 +52,7 @@ export const decidirPedidoAcimaDoLimiteJourney = {
     }
   },
   "businessHash": "sha256:3b1a3bd7a18697437c74576d4a49775533aed317544715e1be1d99d4bece4dd9"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type DecidirPedidoAcimaDoLimiteJourneyType = typeof decidirPedidoAcimaDoLimiteJourney;
 

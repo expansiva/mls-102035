@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/controleEstoque/journeys/atualizarQuantidadeMinima.defs.ts" enhancement="_blank"/>
 
-import type { Ns5JourneyArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5JourneyArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const atualizarQuantidadeMinimaJourney = {
   "schemaVersion": "2026-09-10-ns5-journey-v1",
@@ -44,7 +44,7 @@ export const atualizarQuantidadeMinimaJourney = {
     }
   },
   "businessHash": "sha256:d9e38677f4d28bb4d907b665ef878c2c102fa730413c0cd2d9147edb189c02d6"
-} as const satisfies Ns5JourneyArtifact;
+} as const satisfies Ns5Readonly<Ns5JourneyArtifact>;
 
 export type AtualizarQuantidadeMinimaJourneyType = typeof atualizarQuantidadeMinimaJourney;
 

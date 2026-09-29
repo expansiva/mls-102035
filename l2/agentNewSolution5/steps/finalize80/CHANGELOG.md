@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-09-29 (p4_20)
+
+- The oracle runs only when every step that writes a `.defs.ts` recorded `compile.status: clean` (`ns5CompileBlockers`); `unavailable` or a missing record fails finalize80 before the oracle. The run summary carries `counts.compile` (status and file count per step).
+
 ## 2026-09-18 (ns5_53)
 
 - I8 gains a fifth form of registration (e): the login person is registered when her entity resolves

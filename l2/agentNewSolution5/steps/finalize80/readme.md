@@ -58,3 +58,4 @@ fails a `decide` without a branching origin if that shape reaches here; an `upda
   with no warnings when disk matches the index. I10 counts `affects` as a writer
   (`ItemCardapio`, `Presupuesto`); I8 does too — `Cliente` in `capturarDatosRecepcion.affects`
   is an internal-actor write.
+- p4_20: before the oracle, every writing step must have recorded a clean Studio compile (`steps.<step>.compile.status === 'clean'`); `unavailable` (no compile capability) or no record fails the step. `runNN_newsolution5.json` `counts.compile` holds the status and file count per step.

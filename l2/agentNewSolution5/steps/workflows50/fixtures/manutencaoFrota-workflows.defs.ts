@@ -1,6 +1,6 @@
 /// <mls fileReference="_102047_/l4/manutencaoFrota/workflows.defs.ts" enhancement="_blank"/>
 
-import type { Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5WorkflowsArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const manutencaoFrotaWorkflows = {
   "schemaVersion": "2026-09-12-ns5-workflows-v2",
@@ -63,7 +63,7 @@ export const manutencaoFrotaWorkflows = {
       "inProcess": false
     }
   ]
-} as const satisfies Ns5WorkflowsArtifact;
+} as const satisfies Ns5Readonly<Ns5WorkflowsArtifact>;
 
 export type ManutencaoFrotaWorkflowsType = typeof manutencaoFrotaWorkflows;
 
