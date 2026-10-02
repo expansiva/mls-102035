@@ -16,49 +16,49 @@ import {
   ns5ReplayModules,
   stripNs5Hashes,
   stripNs5HashSource,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
   applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
   normalizeNs5AccessPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
-import { validateNs5Access } from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+} from '/_102035_/l2/solution/gates/access60/contracts.js';
+import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import {
   buildNs5IntegrationArtifact,
   normalizeNs5IntegrationPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
-import { validateNs5Integration } from '/_102035_/l2/agentNewSolution5/steps/integration70/gate.js';
+} from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 import {
   applyNs5InferredActorDrop,
   validateNs5Journeys,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js';
+} from '/_102035_/l2/solution/gates/journeys20/gate.js';
 import {
   buildNs5JourneyIndex,
   hashNs5Journey,
   normalizeNs5JourneysPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/contracts.js';
+} from '/_102035_/l2/solution/gates/journeys20/contracts.js';
 import { normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
-import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
+import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
 import {
   assembleNs5Ontology,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
   normalizeNs5OntologyPlan,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
-import { validateNs5OntologyBindings } from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+} from '/_102035_/l2/solution/gates/ontology30/contracts.js';
+import { validateNs5OntologyBindings } from '/_102035_/l2/solution/gates/ontology30/gate.js';
 import { ns5RuleEntries } from '/_102035_/l2/solution/rulesView.js';
 import {
   buildNs5RulesArtifact,
   buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
-import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
+import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
 import {
   buildNs5WorkflowsArtifact,
   normalizeNs5WorkflowsPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
-import { validateNs5Workflows } from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
+} from '/_102035_/l2/solution/gates/workflows50/contracts.js';
+import { validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
 import { renderDefsSource, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {
@@ -121,14 +121,14 @@ function workflowJourneyView(journeys: Ns5JourneyArtifact[]) {
 
 for (const moduleName of ns5ReplayModules()) {
   void test(`${moduleName} module10 draft replays to module.defs.ts`, () => {
-    const draft = loadNs5FixtureJson<Ns5ModuleArtifact & { actors: unknown[] }>('steps/module10/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<Ns5ModuleArtifact & { actors: unknown[] }>('fixtures/module10', `${moduleName}-draft.json`);
     const { artifact, actors } = normalizeNs5ModuleArtifact(draft, {
       sourcePrompt: draft.sourcePrompt,
       fixedModuleName: moduleName,
     });
     const gate = validateNs5ModuleArtifact(artifact, { fixedModuleName: moduleName, actors });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
-    const recordedText = loadNs5FixtureText('steps/module10/fixtures', `${moduleName}-module.defs.ts`);
+    const recordedText = loadNs5FixtureText('fixtures/module10', `${moduleName}-module.defs.ts`);
     const recorded = parseNs4ClassicDefsSource<Ns5ModuleArtifact>(recordedText);
     // ontology30 may later write lifted `details` onto the same path; module10 does not.
     const { details: _lifted, ...recordedModule10 } = recorded as Ns5ModuleArtifact & { details?: unknown };
@@ -141,7 +141,7 @@ for (const moduleName of ns5ReplayModules()) {
 
   void test(`${moduleName} journeys20 draft replays to journeys/*.defs.ts`, async () => {
     const draft = loadNs5FixtureJson<{ journeys: unknown[]; systemDecisions?: unknown[] }>(
-      'steps/journeys20/fixtures',
+      'fixtures/journeys20',
       `${moduleName}-draft.json`,
     );
     const actors = loadNs5Actors(moduleName);
@@ -162,7 +162,7 @@ for (const moduleName of ns5ReplayModules()) {
       );
       assertDefsMatch(
         rendered,
-        loadNs5FixtureText('steps/journeys20/fixtures', moduleName, `${artifact.journeyId}.defs.ts`),
+        loadNs5FixtureText('fixtures/journeys20', moduleName, `${artifact.journeyId}.defs.ts`),
         artifact.journeyId,
       );
     }
@@ -175,7 +175,7 @@ for (const moduleName of ns5ReplayModules()) {
     );
     assertDefsMatch(
       indexRendered,
-      loadNs5FixtureText('steps/journeys20/fixtures', moduleName, 'index.defs.ts'),
+      loadNs5FixtureText('fixtures/journeys20', moduleName, 'index.defs.ts'),
       'journey index',
     );
   });
@@ -185,15 +185,15 @@ for (const moduleName of ns5ReplayModules()) {
    * modules were produced by the v2 normalize and gate, which `contracts.ts` / `gate.ts` keep
    * unchanged next to `contractsV3.ts` / `gateV3.ts`. They stay v2 until ns5_44 regenerates them;
    * the v3 form is proved against the four hand-written `agendaClinica` files in
-   * `steps/ontology30/fixtures/agendaClinica-v3/` by `agentNs5OntologyV3.test.ts`.
+   * `fixtures/ontology30/agendaClinica-v3/` by `agentNs5OntologyV3.test.ts`.
    */
   void test(`${moduleName} ontology30 drafts replay to ontology/*.defs.ts`, () => {
-    const planDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-plan-draft.json`);
-    const bindingsDraft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', `${moduleName}-bindings-draft.json`);
+    const planDraft = loadNs5FixtureJson<unknown>('fixtures/ontology30', `${moduleName}-plan-draft.json`);
+    const bindingsDraft = loadNs5FixtureJson<unknown>('fixtures/ontology30', `${moduleName}-bindings-draft.json`);
     const journeys = loadNs5Journeys(moduleName);
     const plan = normalizeNs5OntologyPlan(planDraft, moduleName, journeys);
     const details = plan.entities.map(entity => {
-      const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', moduleName, `${entity.entityId}-draft.json`);
+      const raw = loadNs5FixtureJson<unknown>('fixtures/ontology30', moduleName, `${entity.entityId}-draft.json`);
       return normalizeNs5OntologyEntity(raw, entity.entityId, journeys, {
         idField: entity.storage.idField,
         kind: entity.kind,
@@ -215,7 +215,7 @@ for (const moduleName of ns5ReplayModules()) {
         entity,
         'Ns5OntologyEntityArtifact',
       );
-      const recordedText = loadNs5FixtureText('steps/ontology30/fixtures', moduleName, `${entity.entityId}.defs.ts`);
+      const recordedText = loadNs5FixtureText('fixtures/ontology30', moduleName, `${entity.entityId}.defs.ts`);
       const recordedJson = parseNs4ClassicDefsSource<Ns5OntologyEntityArtifact & { fieldsBase?: unknown }>(recordedText);
       // ns5_36: fieldsBase is a hand-authored level-1 field selection overlay (mdm only, ns5_35a type),
       // not yet produced by ontology30 normalize/render — that lands with ns5_35. The replay still
@@ -235,7 +235,7 @@ for (const moduleName of ns5ReplayModules()) {
     );
     assertDefsMatch(
       indexRendered,
-      loadNs5FixtureText('steps/ontology30/fixtures', moduleName, 'index.defs.ts'),
+      loadNs5FixtureText('fixtures/ontology30', moduleName, 'index.defs.ts'),
       'ontology index',
     );
   });
@@ -247,18 +247,18 @@ for (const moduleName of ns5ReplayModules()) {
    * still proves the whole round trip array -> map -> array.
    */
   void test(`${moduleName} rules40 draft replays to rules.defs.ts`, () => {
-    const draft = loadNs5FixtureJson<unknown>('steps/rules40/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<unknown>('fixtures/rules40', `${moduleName}-draft.json`);
     const { rules, duplicateRuleIds } = normalizeNs5RulesPayload(draft);
     const gate = validateNs5Rules(rules, { moduleName, duplicateRuleIds });
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
     const artifact = buildNs5RulesArtifact(moduleName, ns5RuleEntries(buildNs5RulesArtifactV2(moduleName, rules)));
     const rendered = render(moduleName, 'rules', `${moduleName}Rules`, artifact, 'Ns5RulesArtifact');
-    assertDefsMatch(rendered, loadNs5FixtureText('steps/rules40/fixtures', `${moduleName}-rules.defs.ts`), 'rules');
+    assertDefsMatch(rendered, loadNs5FixtureText('fixtures/rules40', `${moduleName}-rules.defs.ts`), 'rules');
   });
 
   void test(`${moduleName} workflows50 draft replays to workflows.defs.ts`, () => {
     const draft = loadNs5FixtureJson<{ systemDecisions?: Ns5SystemDecision[] }>(
-      'steps/workflows50/fixtures',
+      'fixtures/workflows50',
       `${moduleName}-draft.json`,
     );
     const normalized = normalizeNs5WorkflowsPayload(draft);
@@ -282,11 +282,11 @@ for (const moduleName of ns5ReplayModules()) {
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
     const artifact = buildNs5WorkflowsArtifact(moduleName, processes, journeyDecisions, systemDecisions);
     const rendered = render(moduleName, 'workflows', `${moduleName}Workflows`, artifact, 'Ns5WorkflowsArtifact');
-    assertDefsMatch(rendered, loadNs5FixtureText('steps/workflows50/fixtures', `${moduleName}-workflows.defs.ts`), 'workflows');
+    assertDefsMatch(rendered, loadNs5FixtureText('fixtures/workflows50', `${moduleName}-workflows.defs.ts`), 'workflows');
   });
 
   void test(`${moduleName} access60 draft replays to access.defs.ts`, () => {
-    const draft = loadNs5FixtureJson<unknown>('steps/access60/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<unknown>('fixtures/access60', `${moduleName}-draft.json`);
     const { grants: rawGrants } = normalizeNs5AccessPayload(draft);
     const actors = loadNs5Actors(moduleName);
     const entities = loadNs5Entities(moduleName);
@@ -306,11 +306,11 @@ for (const moduleName of ns5ReplayModules()) {
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
     const artifact = buildNs5AccessArtifact(moduleName, actors, grants);
     const rendered = render(moduleName, 'access', `${moduleName}Access`, artifact, 'Ns5AccessArtifact');
-    assertDefsMatch(rendered, loadNs5FixtureText('steps/access60/fixtures', `${moduleName}-access.defs.ts`), 'access');
+    assertDefsMatch(rendered, loadNs5FixtureText('fixtures/access60', `${moduleName}-access.defs.ts`), 'access');
   });
 
   void test(`${moduleName} integration70 draft replays to integration.defs.ts`, () => {
-    const draft = loadNs5FixtureJson<unknown>('steps/integration70/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<unknown>('fixtures/integration70', `${moduleName}-draft.json`);
     const { inbound, outbound, plugins } = normalizeNs5IntegrationPayload(draft);
     const moduleArtifact = loadNs5Module(moduleName);
     const entities = loadNs5Entities(moduleName);
@@ -326,7 +326,7 @@ for (const moduleName of ns5ReplayModules()) {
     const rendered = render(moduleName, 'integration', `${moduleName}Integration`, artifact, 'Ns5IntegrationArtifact');
     assertDefsMatch(
       rendered,
-      loadNs5FixtureText('steps/integration70/fixtures', `${moduleName}-integration.defs.ts`),
+      loadNs5FixtureText('fixtures/integration70', `${moduleName}-integration.defs.ts`),
       'integration',
     );
   });
@@ -335,7 +335,7 @@ for (const moduleName of ns5ReplayModules()) {
     const sources = loadNs5OracleSources(moduleName);
     const report = runNs5Oracle(sources);
     const recorded = loadNs5FixtureJson<{ finalStatus: string; errors: unknown[]; warnings: unknown[] }>(
-      'steps/finalize80/fixtures',
+      'fixtures/finalize80',
       `${moduleName}-finalize-report.json`,
     );
     assert.equal(
@@ -357,10 +357,10 @@ for (const moduleName of ns5ReplayModules()) {
  */
 void test('the v2 replay pack and the v3 form fixture of agendaClinica are distinct', () => {
   const v2 = parseNs4ClassicDefsSource<{ schemaVersion: string }>(
-    loadNs5FixtureText('steps/ontology30/fixtures', 'agendaClinica', 'Paciente.defs.ts'),
+    loadNs5FixtureText('fixtures/ontology30', 'agendaClinica', 'Paciente.defs.ts'),
   );
   const v3 = parseNs4ClassicDefsSource<{ schemaVersion: string; kind: string }>(
-    loadNs5FixtureText('steps/ontology30/fixtures', 'agendaClinica-v3', 'Paciente.defs.ts'),
+    loadNs5FixtureText('fixtures/ontology30', 'agendaClinica-v3', 'Paciente.defs.ts'),
   );
   assert.equal(v2.schemaVersion, '2026-09-11-ns5-ontology-v2');
   assert.equal(v3.schemaVersion, '2026-09-15-ns5-ontology-v3');

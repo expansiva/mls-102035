@@ -13,19 +13,18 @@ import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import {
   loadNs5FixtureJson,
   NS5_REAL_MODULES,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
-import { buildNs5RulesHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
+import { buildNs5RulesHumanPrompt, buildNs5RulesTool } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import {
   buildNs5RulesArtifactV2,
-  buildNs5RulesTool,
   normalizeNs5RulesPayload,
   partitionCitedRules,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
 import {
   formatNs5RulesGate,
   validateNs5Rules,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -61,17 +60,17 @@ void test('rules40 tool schema is provider-clean', () => {
 
 void test('real rules40 drafts of both runs pass the gate', () => {
   for (const moduleName of NS5_REAL_MODULES) {
-    const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('fixtures/rules40', `${moduleName}-draft.json`);
     const { rules, gate } = gateOf(draft, moduleName);
     assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
     // The map form keeps the sentence and nothing else: title/appliesTo have no place to live.
     assert.equal(Object.values(rules).every(text => typeof text === 'string' && text.length > 0), true, moduleName);
     assert.equal(Object.keys(rules).length, draft.rules.length, moduleName);
   }
-  const comanda = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', 'comandaRestaurante5-draft.json');
+  const comanda = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('fixtures/rules40', 'comandaRestaurante5-draft.json');
   assert.equal(comanda.rules.length, 8);
   assert.ok(comanda.rules.some(rule => rule.ruleId === 'fecharComandaAposQuitacao'));
-  const orden = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', 'ordenServicio5-draft.json');
+  const orden = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('fixtures/rules40', 'ordenServicio5-draft.json');
   assert.equal(orden.rules.length, 7);
   assert.ok(orden.rules.some(rule => rule.ruleId === 'visibilidadPortalCliente'));
 });
@@ -445,7 +444,7 @@ void test('ns5_67: the human prompt labels platform ids as given, not as rules t
 
 void test('ns5_67: recorded v2 rule drafts do not restate a platform rule', () => {
   for (const moduleName of NS5_REAL_MODULES) {
-    const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('steps/rules40/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<{ rules: Ns5Rule[] }>('fixtures/rules40', `${moduleName}-draft.json`);
     const { normalizations } = normalizeNs5RulesPayload(draft);
     assert.equal(
       normalizations.filter(item => item.kind === 'platformRuleNotRestated').length,

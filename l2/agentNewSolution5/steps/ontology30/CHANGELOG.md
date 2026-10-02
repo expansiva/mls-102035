@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-10-02 (p4_21)
+
+- p4_21: `gate.ts`, `contracts.ts`, `gateV3.ts`, `contractsV3.ts` moved to `solution/gates/ontology30/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5Ontology{Plan,Entity,Bindings}Tool, buildNs5Ontology{Plan,Entity}V3Tool) stayed in the agent: it moved, body unchanged, to `agentNs5Ontology.ts`. Dated reexport left at the old path of `gate.ts`, `gateV3.ts`, `contractsV3.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
+
 ## 2026-09-29 (p4_20)
 
 - The Studio compiler is the last gate: every `ontology/<Entity>.defs.ts`, `ontology/index.defs.ts` and, after a lift, `module.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.ontology30.compile` records the result for finalize80. An entity file's diagnostic goes to that entity's targeted repair; an error outside the entity files fails the step.

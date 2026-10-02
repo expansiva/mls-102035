@@ -33,3 +33,4 @@ state (`readNs5Actors`). No features, no strategy, no `scope`.
 - A persona in the prose is not an actor. The model still infers one; do not add prompt examples
   to fight that — the later mechanical drop is the fix.
 - Do not invent product languages. `/fast` never asks.
+- p4_21: `gate.ts` moved to `solution/gates/module10/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

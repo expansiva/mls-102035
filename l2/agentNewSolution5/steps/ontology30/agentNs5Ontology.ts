@@ -8,7 +8,7 @@ import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import type { MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
-import { formatNs5Siblings, readNs5Siblings } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import { formatNs5Siblings, readNs5Siblings } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   NS5_AGENT_NAME,
   createNs5RetryStep,
@@ -65,12 +65,10 @@ import {
   collectNs5CitedTransitions,
   collectNs5PersonalScopeActors,
   formatNs5PersonalScopeActors,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+} from '/_102035_/l2/solution/gates/ontology30/contracts.js';
 import {
   NS5_ONTOLOGY_V3_MAX_PARALLEL,
   assembleNs5OntologyIndexV3,
-  buildNs5OntologyEntityV3Tool,
-  buildNs5OntologyPlanV3Tool,
   collectNs5CitedCapabilitiesV3,
   collectNs5CitedEntitiesV3,
   collectNs5CitedRulesV3,
@@ -83,13 +81,71 @@ import {
   ns5FamilyOfV3,
   type Ns5OntologyV3Normalization,
   type Ns5OntologyV3PlanDraft,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+} from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   formatNs5OntologyV3Gate,
   validateNs5OntologyAssemblyV3,
   validateNs5OntologyEntityV3,
   validateNs5OntologyPlanV3,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gateV3.js';
+} from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
+
+export function buildNs5OntologyPlanTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5OntologyPlan',
+    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, mutability, writer, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
+    schema,
+  );
+}
+
+export function buildNs5OntologyEntityTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Entity',
+    'Submit fields, uniqueKeys, calculated details, lifecycle states, allowed transitions and writer (journey, crud or inbound) for one frozen entity.',
+    schema,
+  );
+}
+
+export function buildNs5OntologyBindingsTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5RelationshipBindings',
+    'Bind every frozen relationship to existing fields. mdm endpoints use exactly the identity field.',
+    schema,
+  );
+}
+
+export function buildNs5OntologyPlanV3Tool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5OntologyPlan',
+    'Submit the frozen ontology overview: entities (role over an MDM subtype, or a table of the module), '
+    + 'each with its family and where its rows live, and the relationships between them. '
+    + 'Never roleTag, source, or the target and the name of the table: those are derived.',
+    schema,
+  );
+}
+
+export function buildNs5OntologyEntityV3Tool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Entity',
+    'Submit one entity: the record tree (columns and details), the links it reads, the capabilities '
+    + 'with the sentence of this module, and the rule ids it obeys.',
+    schema,
+  );
+}
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

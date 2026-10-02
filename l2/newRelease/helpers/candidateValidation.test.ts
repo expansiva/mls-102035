@@ -8,7 +8,7 @@ import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import {
   loadNs5Access, loadNs5Defs, loadNs5Integration, loadNs5JourneyIndex, loadNs5Journeys,
   loadNs5Module, loadNs5Rules, loadNs5Workflows,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5OntologyAnyEntity, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
 import { candidateCanPublish, validateV3Candidate } from './candidateValidation.js';
@@ -21,10 +21,10 @@ function actualV3(): NewReleaseOverlaySources {
   const module = artifact('module.defs.ts', loadNs5Module('agendaClinica'));
   const journeyIndex = artifact('journeys/index.defs.ts', loadNs5JourneyIndex('agendaClinica'));
   const journeys = loadNs5Journeys('agendaClinica').map(row => artifact(`journeys/${row.journeyId}.defs.ts`, row));
-  const index = loadNs5Defs<Ns5OntologyIndexV3>('steps/ontology30/fixtures', 'agendaClinica-v3', 'index.defs.ts');
+  const index = loadNs5Defs<Ns5OntologyIndexV3>('fixtures/ontology30', 'agendaClinica-v3', 'index.defs.ts');
   const ontologyIndex = artifact('ontology/index.defs.ts', index);
   const entities = index.entities.map(row => artifact(`ontology/${row.entityId}.defs.ts`,
-    loadNs5Defs<Ns5OntologyAnyEntity>('steps/ontology30/fixtures', 'agendaClinica-v3', `${row.entityId}.defs.ts`)));
+    loadNs5Defs<Ns5OntologyAnyEntity>('fixtures/ontology30', 'agendaClinica-v3', `${row.entityId}.defs.ts`)));
   const rules = artifact('rules.defs.ts', loadNs5Rules('agendaClinica'));
   const workflows = artifact('workflows.defs.ts', loadNs5Workflows('agendaClinica'));
   const access = artifact('access.defs.ts', loadNs5Access('agendaClinica'));

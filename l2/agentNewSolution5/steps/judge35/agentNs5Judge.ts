@@ -69,7 +69,7 @@ import {
   type Ns5JudgeEntityView,
   type Ns5JudgeRelationshipView,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/contracts.js';
-import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   partitionNs5JudgeVerdicts,
 } from '/_102035_/l2/agentNewSolution5/steps/judge35/gate.js';

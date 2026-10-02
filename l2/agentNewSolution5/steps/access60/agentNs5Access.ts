@@ -55,16 +55,26 @@ import type {
 import {
   applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
-  buildNs5AccessTool,
   collectNs5AccessRefCatalog,
   mergeNs5AccessActors,
   normalizeNs5AccessPayload,
   type Ns5AccessFormNormalization,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
+} from '/_102035_/l2/solution/gates/access60/contracts.js';
 import {
   formatNs5AccessGate,
   validateNs5Access,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
+} from '/_102035_/l2/solution/gates/access60/gate.js';
+
+export function buildNs5AccessTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Access',
+    'Submit grants by actorRef with title and description, plus actorPersons (one item per given actor; personEntity is the role entity they are, or ""). Do not emit actors, profiles, authorities, hops, landing or realization. Disclosure names Entity.field. own/assigned anchor on that personEntity; related anchors on the other person.',
+    schema,
+  );
+}
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

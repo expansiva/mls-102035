@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/agentNewSolution5/steps/ontology30/contracts.ts" enhancement="_blank"/>
+/// <mls fileReference="_102035_/l2/solution/gates/ontology30/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import {
@@ -98,7 +98,6 @@ export type Ns5OntologyFormNormalizationKind =
 
 /** Cited `transitionRef` exists but `by` omitted the journey actor; normalize adds it. */
 export const NS5_ONTOLOGY_TRANSITION_BY_ADDED = 'addTransitionBy' as const;
-
 
 /** Child written inside the parent's act, or MDM attached by a create act. */
 export const NS5_ONTOLOGY_WRITER_DERIVED = 'writerDerived' as const;
@@ -324,39 +323,6 @@ export function recordNs5DerivedWriters(
     });
   }
   return extra;
-}
-
-export function buildNs5OntologyPlanTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5OntologyPlan',
-    'Submit the frozen ontology overview: entities (kind, party, mdmSubtype, displayField, mutability, writer, storage), relationships without realization, and moduleDetails for organization-wide aggregates.',
-    schema,
-  );
-}
-
-export function buildNs5OntologyEntityTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5Entity',
-    'Submit fields, uniqueKeys, calculated details, lifecycle states, allowed transitions and writer (journey, crud or inbound) for one frozen entity.',
-    schema,
-  );
-}
-
-export function buildNs5OntologyBindingsTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5RelationshipBindings',
-    'Bind every frozen relationship to existing fields. mdm endpoints use exactly the identity field.',
-    schema,
-  );
 }
 
 export function normalizeNs5OntologyPlan(

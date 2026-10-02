@@ -10,24 +10,23 @@ import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import type { Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
-import { buildNs5IntegrationHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
+import { buildNs5IntegrationHumanPrompt, buildNs5IntegrationTool } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
 import {
   NS5_INTEGRATION_DROP_TRANSITION_REF,
   NS5_PLUGIN_CATALOG,
   NS5_PLUGIN_IDS,
   buildNs5IntegrationArtifact,
-  buildNs5IntegrationTool,
   collectNs5InboundPending,
   collectNs5IntegrationSignals,
   normalizeNs5IntegrationPayload,
   promptMentionsTerm,
   type Ns5IntegrationActorView,
   type Ns5IntegrationEntityView,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
+} from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import {
   formatNs5IntegrationGate,
   validateNs5Integration,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/gate.js';
+} from '/_102035_/l2/solution/gates/integration70/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -143,7 +142,7 @@ void test('plugin catalog is the closed E6 platform set', () => {
 void test('real integration70 drafts of both runs are empty and pass the gate', () => {
   for (const moduleName of ['comandaRestaurante5', 'ordenServicio5'] as const) {
     const draft = JSON.parse(
-      readFileSync(path.join(HERE, 'fixtures', `${moduleName}-draft.json`), 'utf8'),
+      readFileSync(path.join(HERE, '../../../solution/fixtures/integration70', `${moduleName}-draft.json`), 'utf8'),
     ) as { inbound: unknown[]; outbound: unknown[]; plugins: unknown[] };
     assert.deepEqual(draft.inbound, []);
     assert.deepEqual(draft.outbound, []);

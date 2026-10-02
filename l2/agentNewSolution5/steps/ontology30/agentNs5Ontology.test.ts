@@ -15,15 +15,15 @@ import {
   ns5EntityGateFeedback,
   ns5OntologyChildArgs,
   parallelEntityStep,
+  buildNs5OntologyPlanTool,
+  buildNs5OntologyEntityTool,
+  buildNs5OntologyBindingsTool,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
-import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5JourneyArtifact, Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
 import {
   assembleNs5Ontology,
-  buildNs5OntologyBindingsTool,
-  buildNs5OntologyEntityTool,
-  buildNs5OntologyPlanTool,
   collectNs5LifecycleSignal,
   collectNs5PersonalScopeActors,
   formatNs5PersonalScopeActors,
@@ -38,7 +38,7 @@ import {
   type Ns5OntologyEntityDraft,
   type Ns5OntologyPlanDraft,
   type Ns5OntologyPlanEntity,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+} from '/_102035_/l2/solution/gates/ontology30/contracts.js';
 import {
   applyNs5PlatformServiceCandidateDecisions,
   NS5_PLATFORM_SERVICE_KEEP,
@@ -48,7 +48,7 @@ import {
   validateNs5OntologyEntity,
   validateNs5OntologyPlan,
   type Ns5OntologyGateContext,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+} from '/_102035_/l2/solution/gates/ontology30/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,15 +57,15 @@ function loadSchema(name: string): Record<string, unknown> {
 }
 
 function realPlan(moduleName: 'comandaRestaurante5' | 'ordenServicio5'): Ns5OntologyPlanDraft {
-  return loadNs5FixtureJson<Ns5OntologyPlanDraft>('steps/ontology30/fixtures', `${moduleName}-plan-draft.json`);
+  return loadNs5FixtureJson<Ns5OntologyPlanDraft>('fixtures/ontology30', `${moduleName}-plan-draft.json`);
 }
 
 function realDetail(moduleName: 'comandaRestaurante5' | 'ordenServicio5', entityId: string): Ns5OntologyEntityDraft {
-  return loadNs5FixtureJson<Ns5OntologyEntityDraft>('steps/ontology30/fixtures', moduleName, `${entityId}-draft.json`);
+  return loadNs5FixtureJson<Ns5OntologyEntityDraft>('fixtures/ontology30', moduleName, `${entityId}-draft.json`);
 }
 
 function realBindings(moduleName: 'comandaRestaurante5' | 'ordenServicio5'): Ns5OntologyBindingsDraft {
-  return loadNs5FixtureJson<Ns5OntologyBindingsDraft>('steps/ontology30/fixtures', `${moduleName}-bindings-draft.json`);
+  return loadNs5FixtureJson<Ns5OntologyBindingsDraft>('fixtures/ontology30', `${moduleName}-bindings-draft.json`);
 }
 
 function planEntity(moduleName: 'comandaRestaurante5' | 'ordenServicio5', entityId: string): Ns5OntologyPlanEntity {
@@ -370,7 +370,7 @@ void test('manutencaoFrota relote2 OrdemManutencao create+update without lifecyc
     plan: Ns5OntologyPlanEntity;
     detail: Ns5OntologyEntityDraft;
     journeys: ReturnType<typeof journey>[];
-  }>('steps/ontology30/fixtures', 'manutencaoFrota-relote2-ordem.json');
+  }>('fixtures/ontology30', 'manutencaoFrota-relote2-ordem.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Fleet',
     entities: [fixture.plan],
@@ -1079,11 +1079,11 @@ void test('entityId matching a platform service name is not a gate', () => {
 
 void test('live serviceOrderPhotos id→id fails; FK on many or fieldCollection on one passes', () => {
   const orden = loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/ontology30/fixtures/live',
+    'fixtures/ontology30/live',
     'OrdenServicio.defs.ts',
   );
   const foto = loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/ontology30/fixtures/live',
+    'fixtures/ontology30/live',
     'FotoOrdenServicio.defs.ts',
   );
   const actors: Ns5ModuleActor[] = [
@@ -1320,7 +1320,7 @@ void test('lift moves PainelGerencial and PainelMensalidades into module.details
     step('inspectPanel', 'inspect', 'PainelGerencial'),
   ]);
   const painelGerencial = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
-    'steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'PainelGerencial-draft.json',
+    'fixtures/ontology30', 'mensalidadesAcademia-ns5_13', 'PainelGerencial-draft.json',
   );
   const gerencialPlan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1379,7 +1379,7 @@ void test('lift moves PainelGerencial and PainelMensalidades into module.details
   )));
 
   const painelMensalidades = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
-    'steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'PainelMensalidades-draft.json',
+    'fixtures/ontology30', 'mensalidadesAcademia-ns5_13', 'PainelMensalidades-draft.json',
   );
   const mensalidadesPlan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1450,7 +1450,7 @@ void test('aggregate-only entity with a relationship is not lifted; gate stays t
     step('inspectPanel', 'inspect', 'PainelGerencial'),
   ]);
   const painelGerencial = loadNs5FixtureJson<Ns5OntologyEntityDraft>(
-    'steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'PainelGerencial-draft.json',
+    'fixtures/ontology30', 'mensalidadesAcademia-ns5_13', 'PainelGerencial-draft.json',
   );
   const plan: Ns5OntologyPlanDraft = {
     moduleName: 'mensalidadesAcademia',
@@ -1784,7 +1784,7 @@ void test('real ItemCardapio has no crud; an act that affects it is the writer',
 });
 
 void test('live mensalidadesAcademia plan with crud on every entity: normalize drops five, gate passes', () => {
-  const draft = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13-plan-draft.json');
+  const draft = loadNs5FixtureJson<unknown>('fixtures/ontology30', 'mensalidadesAcademia-ns5_13-plan-draft.json');
   const journeys = [
     journey('recepcao', [step('registrarAluno', 'act', 'Aluno')]),
     journey('recepcao', [step('registrarPlano', 'act', 'Plano')]),
@@ -1812,7 +1812,7 @@ void test('live mensalidadesAcademia plan with crud on every entity: normalize d
 });
 
 void test('real Pagamento draft: normalize drops unique on idField; gate passes', () => {
-  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'Pagamento-draft.json');
+  const raw = loadNs5FixtureJson<unknown>('fixtures/ontology30', 'mensalidadesAcademia-ns5_13', 'Pagamento-draft.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Gym fees',
     entities: [{
@@ -1841,7 +1841,7 @@ void test('real Pagamento draft: normalize drops unique on idField; gate passes'
 });
 
 void test('real Matricula draft: cycle lifecycle is reachable as written', () => {
-  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'Matricula-draft.json');
+  const raw = loadNs5FixtureJson<unknown>('fixtures/ontology30', 'mensalidadesAcademia-ns5_13', 'Matricula-draft.json');
   const plan = normalizeNs5OntologyPlan({
     businessDomain: 'Gym fees',
     entities: [{
@@ -1871,7 +1871,7 @@ void test('real Matricula draft: cycle lifecycle is reachable as written', () =>
 });
 
 void test('real IndicadorAcademia draft: a period field is not a panel so it is not lifted', () => {
-  const raw = loadNs5FixtureJson<unknown>('steps/ontology30/fixtures', 'mensalidadesAcademia-ns5_13', 'IndicadorAcademia-draft.json');
+  const raw = loadNs5FixtureJson<unknown>('fixtures/ontology30', 'mensalidadesAcademia-ns5_13', 'IndicadorAcademia-draft.json');
   const generate = journey('recepcao', [step('gerar', 'act', 'Mensalidade')]);
   const inspect = journey('gerencia', [step('inspecionarIndicadores', 'inspect', 'IndicadorAcademia')]);
   const plan = normalizeNs5OntologyPlan({

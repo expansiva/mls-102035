@@ -14,10 +14,10 @@ import {
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { NS5_DEFS_WRITING_STEPS, ns5CompileBlockers } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
-import { ns5PlatformEventIds, readNs5Siblings } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import { ns5PlatformEventIds, readNs5Siblings } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   collectNs5InboundPending,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
+} from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import {
   accessFile,
   finalizeReportFile,
@@ -88,8 +88,8 @@ import {
   formatNs5Oracle,
   type Ns5FinalizeReport,
   type Ns5OracleSources,
-} from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+} from '/_102035_/l2/solution/gates/finalize80/contracts.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 
 const REQUIRED_STEP = 'integration70' as const;
 

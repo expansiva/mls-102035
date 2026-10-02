@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   loadNs5Access, loadNs5Defs, loadNs5Entities, loadNs5Integration, loadNs5JourneyIndex, loadNs5Journeys,
   loadNs5Module, loadNs5OntologyIndex, loadNs5Rules, loadNs5Workflows,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5AccessArtifact, Ns5OntologyAnyEntity, Ns5OntologyIndexV3, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 import { reconcile30Private } from './reconcile30.js';
 
@@ -30,11 +30,11 @@ const context = { v2: { registryModuleNames: ['agendaClinica'] } };
 
 function v3Inventory(): Record<string, unknown> {
   const result = inventory();
-  const index = loadNs5Defs<Ns5OntologyIndexV3>('steps/ontology30/fixtures', 'agendaClinica-v3', 'index.defs.ts');
+  const index = loadNs5Defs<Ns5OntologyIndexV3>('fixtures/ontology30', 'agendaClinica-v3', 'index.defs.ts');
   result['ontology/index.defs.ts'] = index;
   for (const path of Object.keys(result)) if (path.startsWith('ontology/') && path !== 'ontology/index.defs.ts') delete result[path];
   for (const row of index.entities) result[`ontology/${row.entityId}.defs.ts`] =
-    loadNs5Defs<Ns5OntologyAnyEntity>('steps/ontology30/fixtures', 'agendaClinica-v3', `${row.entityId}.defs.ts`);
+    loadNs5Defs<Ns5OntologyAnyEntity>('fixtures/ontology30', 'agendaClinica-v3', `${row.entityId}.defs.ts`);
   return result;
 }
 

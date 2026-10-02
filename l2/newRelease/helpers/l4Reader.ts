@@ -16,7 +16,7 @@ import type {
   Ns5StepId,
 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
-import { readActiveL4Change, readL4Release, type L4ReleaseManifest } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { readActiveL4Change, readL4Release, type L4ReleaseManifest, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import {
   readNs5Overlay,
   type NewReleaseOverlaySources,
@@ -66,6 +66,7 @@ export interface NewReleaseModuleData {
   tobeChanges: number;
   artifacts: NewReleaseOverlaySources;
   manifest: Ns5TobeManifest | null;
+  sealedRevision: L4SealedCandidateSnapshot | null;
   changeId: string | null;
   revisionId: string | null;
   baseProvenance: L4ReleaseManifest['provenance'] | null;
@@ -254,6 +255,7 @@ export async function readNs5Module(
     tobeChanges: overlay.manifest?.changes.length ?? 0,
     artifacts: overlay.sources,
     manifest: overlay.manifest,
+    sealedRevision: overlay.sealedRevision,
     changeId: overlay.changeId,
     revisionId: overlay.revisionId,
     baseProvenance,

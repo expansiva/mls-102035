@@ -288,32 +288,6 @@ export function indexedFile(info: ListedStorFile): mls.stor.IFileInfo | undefine
   return mls.stor.files[mls.stor.getKeyToFile(info)] || undefined;
 }
 
-/**
- * Host disk listing (`mls.stor.localStor.listFolder`); undefined outside the host.
- * The l4 no longer reads it (p4_19); still exported for the L1/L2 callers outside this spec.
- */
-export function hostListFolder(): ((project: number, level: number, folder: string) => ListedStorFile[]) | undefined {
-  const fn = (mls.stor.localStor as { listFolder?: unknown } | undefined)?.listFolder;
-  return typeof fn === 'function' ? fn as ((project: number, level: number, folder: string) => ListedStorFile[]) : undefined;
-}
-
-/**
- * An `mls.stor.files` entry for a file seen on host disk but absent from the index.
- * The l4 no longer calls it (p4_19); still exported for the L1/L2 callers outside this spec.
- */
-export function diskFileInfo(info: ListedStorFile): mls.stor.IFileInfo {
-  const key = mls.stor.getKeyToFile(info);
-  const existing = mls.stor.files[key];
-  if (existing) return existing;
-  return {
-    ...info,
-    versionRef: '0',
-    inLocalStorage: true,
-    status: 'changed',
-    hasError: false,
-  } as mls.stor.IFileInfo;
-}
-
 /** shortNames of `.defs.ts` in `l4/<mod>/<kind>/` from the index, including status=deleted; never host disk. */
 export function listModuleDefsShortNames(moduleName: string, kind: Ns5DefsKind): string[] {
   const project = currentProject();

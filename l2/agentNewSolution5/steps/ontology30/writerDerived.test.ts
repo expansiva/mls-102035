@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5AccessArtifact,
@@ -18,17 +18,17 @@ import {
   ns5ResolveEntityWriter,
   type Ns5OntologyEntityDraft,
   type Ns5OntologyPlanDraft,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
-import { validateNs5OntologyEntity } from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
-import { NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
+} from '/_102035_/l2/solution/gates/ontology30/contracts.js';
+import { validateNs5OntologyEntity } from '/_102035_/l2/solution/gates/ontology30/gate.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
+import { NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import {
   NS5_INTEGRATION_DROP_TRANSITION_REF,
   normalizeNs5IntegrationPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
-import { validateNs5Integration } from '/_102035_/l2/agentNewSolution5/steps/integration70/gate.js';
+} from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 
-const LEVA = ['steps/ontology30/fixtures/leva-final'] as const;
+const LEVA = ['fixtures/ontology30/leva-final'] as const;
 
 function loadLeva<T>(moduleName: string, file: string): T {
   return loadNs5FixtureJson<T>(...LEVA, moduleName, file);

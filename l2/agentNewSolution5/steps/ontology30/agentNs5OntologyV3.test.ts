@@ -21,16 +21,16 @@ import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolveModuleEntity, resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
-import { ns5FixturePath, ns5ReplayModules } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { ns5FixturePath, ns5ReplayModules } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
   buildNs5OntologyEntityHumanPrompt,
   buildNs5OntologyPlanHumanPrompt,
+  buildNs5OntologyPlanV3Tool,
+  buildNs5OntologyEntityV3Tool,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import {
   NS5_NAMESPACE_EMPTY_DESCRIPTION,
   assembleNs5OntologyIndexV3,
-  buildNs5OntologyEntityV3Tool,
-  buildNs5OntologyPlanV3Tool,
   collectNs5CitedCapabilitiesV3,
   collectNs5CitedRulesV3,
   collectNs5ModuleRuleIdsV3,
@@ -44,14 +44,14 @@ import {
   ns5ResolvableFieldIdsV3,
   type Ns5OntologyV3Normalization,
   type Ns5OntologyV3PlanDraft,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+} from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   nearestCapabilityId,
   validateNs5OntologyAssemblyV3,
   validateNs5OntologyEntityV3,
   validateNs5OntologyPlanV3,
   type Ns5OntologyV3Issue,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gateV3.js';
+} from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
 import { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION_V3,
@@ -63,7 +63,7 @@ import {
 } from '/_102035_/l2/solution/types.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const FORM = path.join(HERE, 'fixtures', 'agendaClinica-v3');
+const FORM = path.join(HERE, '../../../solution/fixtures/ontology30/agendaClinica-v3');
 
 function loadSchema(name: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path.join(HERE, '../../schemas', name), 'utf8')) as Record<string, unknown>;
@@ -481,7 +481,7 @@ void test('no v3 check fires on any recorded v2 module artifact', () => {
   let checked = 0;
   let fired = 0;
   for (const moduleName of ns5ReplayModules()) {
-    const folder = ns5FixturePath('steps/ontology30/fixtures', moduleName);
+    const folder = ns5FixturePath('fixtures/ontology30', moduleName);
     let index: { entities?: string[] };
     try {
       index = JSON.parse(extractNs4ClassicJsonObject(readFileSync(path.join(folder, 'index.defs.ts'), 'utf8')));
@@ -634,7 +634,7 @@ void test('a panel entity nobody writes is lifted into module.details and leaves
 void test('the namespace trace is silent on the gabarito and folds accents on both sides', () => {
   const plan = formPlan();
   const sourcePrompt = (JSON.parse(readFileSync(
-    path.join(HERE, '../module10/fixtures/agendaClinica-draft.json'),
+    path.join(HERE, '../../../solution/fixtures/module10/agendaClinica-draft.json'),
     'utf8',
   )) as { sourcePrompt: string }).sourcePrompt;
   // The one namespace field of the gabarito, against the request that produced it.

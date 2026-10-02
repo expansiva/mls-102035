@@ -15,7 +15,7 @@ import { beforeCorrection45Step } from '/_102035_/l2/agentReviewSolution/steps/c
 import {
   loadNs5Access, loadNs5Entities, loadNs5Integration, loadNs5JourneyIndex, loadNs5Journeys,
   loadNs5Module, loadNs5OntologyIndex, loadNs5Rules, loadNs5Workflows,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { L4_REVISION_SCHEMA, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import { buildCandidateSnapshot, type CandidateReadResult } from '/_102035_/l2/newRelease/helpers/candidateGateway.js';
 import { unavailableCandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';

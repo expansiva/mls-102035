@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/agentNewSolution5/steps/rules40/contracts.ts" enhancement="_blank"/>
+/// <mls fileReference="_102035_/l2/solution/gates/rules40/contracts.ts" enhancement="_blank"/>
 
 import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
@@ -46,17 +46,6 @@ export interface Ns5RulesEntityView {
   details?: Record<string, string>;
   storage?: { idField: string };
   transitions: ReadonlyArray<{ transitionId: string; by: string[] | 'system' | 'time' }>;
-}
-
-export function buildNs5RulesTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5Rules',
-    'Submit the module business-rule catalog: ruleId and description.',
-    schema,
-  );
 }
 
 /**

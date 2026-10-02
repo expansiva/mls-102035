@@ -49,15 +49,25 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5RulesArtifactV2,
-  buildNs5RulesTool,
   normalizeNs5RulesPayload,
   ns5RulesToolPayload,
   partitionCitedRules,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
 import {
   formatNs5RulesGate,
   validateNs5Rules,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/gate.js';
+
+export function buildNs5RulesTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Rules',
+    'Submit the module business-rule catalog: ruleId and description.',
+    schema,
+  );
+}
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

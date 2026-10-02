@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.ts" enhancement="_blank"/>
+/// <mls fileReference="_102035_/l2/solution/testing/ns5RealFixtures.test.ts" enhancement="_blank"/>
 
 import assert from 'node:assert/strict';
 import {
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { NS5_RULES_SCHEMA_VERSION_V2 } from '/_102035_/l2/solution/types.js';
-import type { Ns5OracleSources } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
+import type { Ns5OracleSources } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
@@ -59,16 +59,16 @@ export const NS5_LEVA_REPLAY_EXCLUDED: Readonly<Record<string, string>> = {
 };
 
 const REPLAY_PACK = [
-  ['steps/module10/fixtures', '-draft.json'],
-  ['steps/module10/fixtures', '-module.defs.ts'],
-  ['steps/journeys20/fixtures', '-draft.json'],
-  ['steps/ontology30/fixtures', '-plan-draft.json'],
-  ['steps/ontology30/fixtures', '-bindings-draft.json'],
-  ['steps/rules40/fixtures', '-draft.json'],
-  ['steps/workflows50/fixtures', '-draft.json'],
-  ['steps/access60/fixtures', '-draft.json'],
-  ['steps/integration70/fixtures', '-draft.json'],
-  ['steps/finalize80/fixtures', '-finalize-report.json'],
+  ['fixtures/module10', '-draft.json'],
+  ['fixtures/module10', '-module.defs.ts'],
+  ['fixtures/journeys20', '-draft.json'],
+  ['fixtures/ontology30', '-plan-draft.json'],
+  ['fixtures/ontology30', '-bindings-draft.json'],
+  ['fixtures/rules40', '-draft.json'],
+  ['fixtures/workflows50', '-draft.json'],
+  ['fixtures/access60', '-draft.json'],
+  ['fixtures/integration70', '-draft.json'],
+  ['fixtures/finalize80', '-finalize-report.json'],
 ] as const;
 
 export function hasNs5ReplayFixtures(moduleName: string): boolean {
@@ -110,27 +110,27 @@ export function loadNs5Defs<T>(...parts: string[]): T {
 }
 
 export function listNs5DefsFiles(step: string, moduleName: string): string[] {
-  const folder = ns5FixturePath('steps', step, 'fixtures', moduleName);
+  const folder = ns5FixturePath('fixtures', step, moduleName);
   return readdirSync(folder).filter((name: string) => name.endsWith('.defs.ts')).sort();
 }
 
 export function loadNs5Module(moduleName: string): Ns5ModuleArtifact {
-  return loadNs5Defs<Ns5ModuleArtifact>('steps/module10/fixtures', `${moduleName}-module.defs.ts`);
+  return loadNs5Defs<Ns5ModuleArtifact>('fixtures/module10', `${moduleName}-module.defs.ts`);
 }
 
 /** Actors born by module10 (pipeline state). Fixtures keep them on the module10 draft. */
 export function loadNs5Actors(moduleName: string): Ns5ModuleActor[] {
-  return loadNs5FixtureJson<{ actors: Ns5ModuleActor[] }>('steps/module10/fixtures', `${moduleName}-draft.json`).actors;
+  return loadNs5FixtureJson<{ actors: Ns5ModuleActor[] }>('fixtures/module10', `${moduleName}-draft.json`).actors;
 }
 
 export function loadNs5Journeys(moduleName: string): Ns5JourneyArtifact[] {
   return listNs5DefsFiles('journeys20', moduleName)
     .filter((name: string) => name !== 'index.defs.ts')
-    .map((name: string) => loadNs5Defs<Ns5JourneyArtifact>('steps/journeys20/fixtures', moduleName, name));
+    .map((name: string) => loadNs5Defs<Ns5JourneyArtifact>('fixtures/journeys20', moduleName, name));
 }
 
 export function loadNs5JourneyIndex(moduleName: string): Ns5JourneyIndexArtifact {
-  return loadNs5Defs<Ns5JourneyIndexArtifact>('steps/journeys20/fixtures', moduleName, 'index.defs.ts');
+  return loadNs5Defs<Ns5JourneyIndexArtifact>('fixtures/journeys20', moduleName, 'index.defs.ts');
 }
 
 /**
@@ -141,17 +141,17 @@ export function loadNs5JourneyIndex(moduleName: string): Ns5JourneyIndexArtifact
 export function loadNs5Entities(moduleName: string): Ns5OntologyAnyEntity[] {
   const index = loadNs5OntologyIndex(moduleName);
   return ns5OntologyEntityIds(index).map(entityId =>
-    loadNs5Defs<Ns5OntologyAnyEntity>('steps/ontology30/fixtures', moduleName, `${entityId}.defs.ts`),
+    loadNs5Defs<Ns5OntologyAnyEntity>('fixtures/ontology30', moduleName, `${entityId}.defs.ts`),
   );
 }
 
 export function loadNs5OntologyIndex(moduleName: string): Ns5OntologyAnyIndex {
-  return loadNs5Defs<Ns5OntologyAnyIndex>('steps/ontology30/fixtures', moduleName, 'index.defs.ts');
+  return loadNs5Defs<Ns5OntologyAnyIndex>('fixtures/ontology30', moduleName, 'index.defs.ts');
 }
 
 /** The thirteen recorded catalogs are v1 arrays; `Ns5OracleSources.rules` takes either form (ns5_45). */
 export function loadNs5Rules(moduleName: string): Ns5RulesArtifact {
-  return loadNs5Defs<Ns5RulesArtifact>('steps/rules40/fixtures', `${moduleName}-rules.defs.ts`);
+  return loadNs5Defs<Ns5RulesArtifact>('fixtures/rules40', `${moduleName}-rules.defs.ts`);
 }
 
 /** The same catalog in the v2 map form, for a reader that must answer for both. */
@@ -162,15 +162,15 @@ export function asNs5RulesV2(artifact: Ns5RulesArtifact): Ns5RulesAny {
 }
 
 export function loadNs5Workflows(moduleName: string): Ns5WorkflowsArtifact {
-  return loadNs5Defs<Ns5WorkflowsArtifact>('steps/workflows50/fixtures', `${moduleName}-workflows.defs.ts`);
+  return loadNs5Defs<Ns5WorkflowsArtifact>('fixtures/workflows50', `${moduleName}-workflows.defs.ts`);
 }
 
 export function loadNs5Access(moduleName: string): Ns5AccessArtifact {
-  return loadNs5Defs<Ns5AccessArtifact>('steps/access60/fixtures', `${moduleName}-access.defs.ts`);
+  return loadNs5Defs<Ns5AccessArtifact>('fixtures/access60', `${moduleName}-access.defs.ts`);
 }
 
 export function loadNs5Integration(moduleName: string): Ns5IntegrationArtifact {
-  return loadNs5Defs<Ns5IntegrationArtifact>('steps/integration70/fixtures', `${moduleName}-integration.defs.ts`);
+  return loadNs5Defs<Ns5IntegrationArtifact>('fixtures/integration70', `${moduleName}-integration.defs.ts`);
 }
 
 export function loadNs5OracleSources(moduleName: string): Ns5OracleSources {

@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-10-02 (p4_21)
+
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/finalize80/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
+
 ## 2026-09-29 (p4_20)
 
 - The oracle runs only when every step that writes a `.defs.ts` recorded `compile.status: clean` (`ns5CompileBlockers`); `unavailable` or a missing record fails finalize80 before the oracle. The run summary carries `counts.compile` (status and file count per step).

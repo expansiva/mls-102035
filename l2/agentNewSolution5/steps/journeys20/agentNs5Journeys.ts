@@ -40,17 +40,27 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5JourneyIndex,
-  buildNs5JourneysTool,
   countNs5DecideSteps,
   hashNs5Journey,
   normalizeNs5JourneysPayload,
   type Ns5JourneyDraft,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/contracts.js';
+} from '/_102035_/l2/solution/gates/journeys20/contracts.js';
 import {
   applyNs5InferredActorDrop,
   formatNs5JourneyGate,
   validateNs5Journeys,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js';
+} from '/_102035_/l2/solution/gates/journeys20/gate.js';
+
+export function buildNs5JourneysTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Journeys',
+    'Submit every business journey: actor, entry, steps with affects, decide, outcome.',
+    schema,
+  );
+}
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

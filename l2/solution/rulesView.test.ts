@@ -15,18 +15,18 @@ import type { Ns5RulesArtifact, Ns5RulesArtifactV2 } from '/_102035_/l2/solution
 import {
   buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
-import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
+import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import {
   asNs5RulesV2,
   loadNs5FixtureText,
   loadNs5OracleSources,
   loadNs5Rules,
   ns5ReplayModules,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
-import { agendaClinicaRulesV2 } from '/_102035_/l2/agentNewSolution5/steps/rules40/fixtures/agendaClinica-rules-v2.defs.js';
-import { agendaClinicaRules } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/rules.defs.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
+import { agendaClinicaRulesV2 } from '/_102035_/l2/solution/fixtures/rules40/agendaClinica-rules-v2.defs.js';
+import { agendaClinicaRules } from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/rules.defs.js';
 
 const V1: Ns5RulesArtifact = agendaClinicaRules as unknown as Ns5RulesArtifact;
 const V2: Ns5RulesArtifactV2 = agendaClinicaRulesV2;
@@ -67,7 +67,7 @@ void test('a v2 catalog renders byte for byte to its rules.defs.ts', () => {
   );
   assert.equal(
     rendered,
-    loadNs5FixtureText('steps/rules40/fixtures', 'agendaClinica-rules-v2.defs.ts'),
+    loadNs5FixtureText('fixtures/rules40', 'agendaClinica-rules-v2.defs.ts'),
   );
 });
 

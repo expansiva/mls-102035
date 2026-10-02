@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { loadNs5Access, loadNs5Entities, ns5ReplayModules } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Access, loadNs5Entities, ns5ReplayModules } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5AccessGrant, Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
 import { resolvableFieldPaths } from '/_102035_/l2/solution/lib.js';
 import {
@@ -22,11 +22,11 @@ import {
   ns5AccessResolvableFieldRefs,
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
-import { validateNs5Access } from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
-import { agendaClinicaEntityConsulta } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
-import { agendaClinicaEntityPaciente } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Paciente.defs.js';
-import { agendaClinicaEntityProfissional } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Profissional.defs.js';
+} from '/_102035_/l2/solution/gates/access60/contracts.js';
+import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
+import { agendaClinicaEntityConsulta } from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Consulta.defs.js';
+import { agendaClinicaEntityPaciente } from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Paciente.defs.js';
+import { agendaClinicaEntityProfissional } from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Profissional.defs.js';
 
 // ---------------------------------------------------------------------------
 // T1 — what `resolvableFieldPaths` enumerates

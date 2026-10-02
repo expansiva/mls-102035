@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/agentNewSolution5/steps/workflows50/contracts.ts" enhancement="_blank"/>
+/// <mls fileReference="_102035_/l2/solution/gates/workflows50/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import { splitNs5EntityRef } from '/_102035_/l2/solution/ontologyView.js';
@@ -62,17 +62,6 @@ export interface Ns5HandoffRef {
   journeyId: string;
   stepId: string;
   handoffTo: string;
-}
-
-export function buildNs5WorkflowsTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5Workflows',
-    'Submit orchestrated processes: trigger plus human/mechanical/llm/wait/alert stages, and one inProcess decision per journey. Not the entity lifecycle.',
-    schema,
-  );
 }
 
 export function normalizeNs5WorkflowsPayload(

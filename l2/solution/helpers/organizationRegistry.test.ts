@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import mdm from '/_102034_/l4/ontology/mdm.defs.js';
-import agendaClinicaPaciente from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Paciente.defs.js';
+import agendaClinicaPaciente from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Paciente.defs.js';
 import { ns5OntologyEntityView } from '/_102035_/l2/solution/ontologyView.js';
 import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';
 import {
