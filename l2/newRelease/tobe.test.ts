@@ -313,6 +313,12 @@ test('text-only request survives reload, invalidates result, and stale save is r
   const moduleName = 'ordenServicio5';
   const fixture = installStorFixture(project, moduleName);
   const first = await saveChangeRequest(project, moduleName, 'Change the welcome text', null, null);
+  const textOnly = await readNs5Overlay(project, moduleName, 'tobe');
+  assert.equal(textOnly.manifest, null);
+  assert.equal(textOnly.sealedRevision?.request, 'Change the welcome text');
+  assert.equal(textOnly.sealedRevision?.manifest.changeId, first.changeId);
+  assert.equal(textOnly.sealedRevision?.manifest.revisionId, first.revisionId);
+  assert.match(textOnly.sealedRevision?.manifest.requestHash || '', /^sha256:[a-f0-9]{64}$/u);
   assert.equal((await readChangeRequest(project, moduleName))?.text, 'Change the welcome text');
   assert.equal((await readChangeRequest(project, moduleName))?.resultCurrent, false);
   assert.equal(fixture.source.module.sourcePrompt, (await readNs5Overlay(project, moduleName, 'asis')).sources.module.value?.sourcePrompt);
@@ -399,6 +405,13 @@ test('sealed migration boundary rejects a tampered request and a legacy manifest
       (error: unknown) => error instanceof L4SealedCandidateError
         && error.code === 'candidate.request_integrity_failed',
     );
+    const overlay = await readNs5Overlay(project, moduleName, 'tobe');
+    assert.equal(overlay.sealedRevision, null);
+    assert.equal(overlay.changeId, revision.changeId);
+    assert.equal(overlay.revisionId, revision.revisionId);
+    assert.ok(overlay.sources.module.value);
+    assert.ok(overlay.errors.some(error => error.message === 'candidate.request_integrity_failed'));
+    assert.equal((await readChangeRequest(project, moduleName))?.text, 'Tampered request');
   });
 
   await t.test('legacy manifest', async () => {
@@ -418,6 +431,12 @@ test('sealed migration boundary rejects a tampered request and a legacy manifest
       (error: unknown) => error instanceof L4SealedCandidateError
         && error.code === 'candidate.legacy_request_hash_missing',
     );
+    const overlay = await readNs5Overlay(project, moduleName, 'tobe');
+    assert.equal(overlay.sealedRevision, null);
+    assert.equal(overlay.changeId, first.changeId);
+    assert.equal(overlay.revisionId, first.revisionId);
+    assert.ok(overlay.sources.module.value);
+    assert.ok(overlay.errors.some(error => error.message === 'candidate.legacy_request_hash_missing'));
   });
 });
 

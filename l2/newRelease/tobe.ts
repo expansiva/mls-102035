@@ -31,7 +31,7 @@ import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { isNewReleaseOntologyV3Version } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
-import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, revertL4CandidatePath } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import type { CandidateArea, CandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
 
@@ -153,6 +153,7 @@ export interface NewReleaseTobeDiff {
 export interface NewReleaseOverlayResult {
   sources: NewReleaseOverlaySources;
   manifest: Ns5TobeManifest | null;
+  sealedRevision: L4SealedCandidateSnapshot | null;
   changeId: string | null;
   revisionId: string | null;
   stalePaths: Ns5TobeArtifactPath[];
@@ -660,9 +661,19 @@ export async function readNs5Overlay(
     : null;
   const storedManifest = historicalId ? null : await readManifest(project, moduleName);
   const manifest = storedManifest && active ? { ...storedManifest, changeId: active.changeId, revisionId: active.activeRevisionId ?? undefined, baseId: active.baseId } : storedManifest;
+  let sealedRevision: L4SealedCandidateSnapshot | null = null;
+  if (version === 'tobe' && active?.activeRevisionId) {
+    const path = `l4/${moduleName}/pipeline/changes/${active.changeId}/revisions/${active.activeRevisionId}`;
+    try {
+      sealedRevision = await readSealedL4Candidate(project, moduleName, active.changeId, active.activeRevisionId);
+      if (!sealedRevision) errors.push({ path, message: 'The sealed revision failed its integrity check.' });
+    } catch (error) {
+      errors.push({ path, message: error instanceof Error ? error.message : String(error) });
+    }
+  }
   const [stalePaths, diffs] = await Promise.all([
     staleManifestPaths(project, moduleName, manifest),
     overlayDiffs(project, moduleName, sources, baseId),
   ]);
-  return { sources, manifest, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }), errors };
+  return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }), errors };
 }

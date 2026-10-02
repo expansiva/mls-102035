@@ -143,6 +143,75 @@ export interface ReviewPrimaryActionPresentation {
   error: string;
 }
 
+export interface ReviewStartSealedRevision {
+  request: string;
+  sources: readonly { path: string; source: string }[];
+  manifest: {
+    project: number;
+    moduleName: string;
+    changeId: string;
+    revisionId: string;
+    baseId: string;
+    requestRevision: number;
+    requestHash?: string;
+    files: Readonly<Record<string, string>>;
+  };
+}
+
+export interface ReviewStartPreflightInput {
+  project: number;
+  moduleName: string;
+  changeId: string | null;
+  revisionId: string | null;
+  request: string;
+  userId: string | null;
+  hasRun: boolean;
+  sealedRevision: ReviewStartSealedRevision | null;
+}
+
+function sortedEntries(record: Readonly<Record<string, string>>): Array<readonly [string, string]> {
+  return Object.entries(record).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+}
+
+/** Full fence between the snapshot rendered by preflight and the authoritative click reread. */
+export function sameReviewStartSnapshot(
+  loaded: ReviewStartSealedRevision | null,
+  fresh: ReviewStartSealedRevision | null,
+): boolean {
+  if (!loaded || !fresh) return false;
+  const left = loaded.manifest;
+  const right = fresh.manifest;
+  if (loaded.request !== fresh.request
+    || left.project !== right.project || left.moduleName !== right.moduleName
+    || left.changeId !== right.changeId || left.revisionId !== right.revisionId
+    || left.baseId !== right.baseId || left.requestRevision !== right.requestRevision
+    || left.requestHash !== right.requestHash
+    || JSON.stringify(sortedEntries(left.files)) !== JSON.stringify(sortedEntries(right.files))) return false;
+  const normalize = (sources: ReviewStartSealedRevision['sources']) => [...sources]
+    .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+    .map(item => [item.path, item.source] as const);
+  return JSON.stringify(normalize(loaded.sources)) === JSON.stringify(normalize(fresh.sources));
+}
+
+/** Synchronous presentation gate; the click repeats the authoritative sealed read before start. */
+export function canStartReviewRun(input: ReviewStartPreflightInput): boolean {
+  const sealed = input.sealedRevision;
+  const manifest = sealed?.manifest;
+  return !input.hasRun
+    && !!input.userId
+    && !!input.request.trim()
+    && input.request === input.request.trim()
+    && sealed?.request === input.request
+    && !!sealed.sources.length
+    && manifest?.project === input.project
+    && manifest.moduleName === input.moduleName
+    && manifest.changeId === input.changeId
+    && manifest.revisionId === input.revisionId
+    && /^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/u.test(manifest.baseId)
+    && Number.isSafeInteger(manifest.requestRevision) && manifest.requestRevision > 0
+    && /^sha256:[a-f0-9]{64}$/u.test(manifest.requestHash || '');
+}
+
 export function buildReviewActionPresentation(input: ReviewPrimaryActionInput): ReviewPrimaryActionPresentation {
   let kind: ReviewPrimaryActionKind = 'unavailable';
   if (!input.loading && input.current && input.version === 'tobe') {

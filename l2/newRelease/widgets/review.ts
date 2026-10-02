@@ -13,6 +13,7 @@ import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/newRelease/helpers/candidateGateway.js';
 import { originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import {
@@ -40,6 +41,7 @@ import {
   buildReviewActionPresentation,
   buildReviewActionPlacements,
   buildReviewView,
+  canStartReviewRun,
   MENU_ACTIONS,
   openReviewExpansionKeys,
   REVIEW_ALL_ACTORS,
@@ -330,37 +332,16 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private async prepareStartInput(): Promise<{ input: ReviewRunStartInput; userId: string }> {
-    const changeId = this.data?.changeId;
-    const revisionId = this.data?.revisionId;
-    const userId = getUserId();
-    if (this.version !== 'tobe' || !changeId || !revisionId || !userId || !this.request.trim()) {
-      throw new Error('review-run.invalid_request');
-    }
-    const sealed = await readSealedL4Candidate(this.project, this.moduleName, changeId, revisionId);
-    if (!sealed || sealed.request !== this.request || !sealed.manifest.requestHash) {
-      throw new Error('review-run.revision_mismatch');
-    }
-    const snapshot = await buildCandidateSnapshot({
-      baseId: sealed.manifest.baseId,
-      requestRevision: sealed.manifest.requestRevision,
-      request: sealed.request,
-      sources: sealed.sources,
+    if (this.version !== 'tobe') throw new Error('review-run.invalid_request');
+    return prepareReviewStartInput({
+      project: this.project,
+      moduleName: this.moduleName,
+      changeId: this.data?.changeId ?? null,
+      revisionId: this.data?.revisionId ?? null,
+      request: this.request,
+      userId: getUserId(),
+      loaded: this.data?.sealedRevision ?? null,
     });
-    const snapshotHash = `sha256:${snapshot.hash}` as const;
-    return {
-      userId,
-      input: {
-        userId,
-        project: this.project,
-        moduleName: this.moduleName,
-        changeId,
-        inputRevisionId: revisionId,
-        inputSnapshotHash: snapshotHash,
-        baseId: sealed.manifest.baseId,
-        requestRevision: sealed.manifest.requestRevision,
-        requestHash: sealed.manifest.requestHash as `sha256:${string}`,
-      },
-    };
   }
 
   private workerId(): string {
@@ -559,10 +540,17 @@ export class NewReleaseReview102035 extends StateLitElement {
       const retry = this.channelRun?.status === 'failed' || this.channelRun?.status === 'disputed';
       const userId = getUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
-      const prepared = retry && this.channelRun
-        ? { input: this.retryStartInput(this.channelRun, userId), userId }
-        : await this.prepareStartInput();
-      const run = await startReviewRun({ ...prepared.input, ...(retry ? { retry: true } : {}) });
+      let started: Awaited<ReturnType<typeof executePreparedReviewStart<PlatformReviewRun>>>;
+      if (retry && this.channelRun) {
+        const input = this.retryStartInput(this.channelRun, userId);
+        started = {
+          prepared: { input, userId },
+          run: await startReviewRun({ ...input, retry: true }),
+        };
+      } else {
+        started = await executePreparedReviewStart(() => this.prepareStartInput(), startReviewRun);
+      }
+      const { prepared, run } = started;
       const identity: ReviewWorkerIdentity = { ...prepared.input, runId: run.runId };
       saveReviewRunLink(identity);
       this.channelRun = run;
@@ -594,7 +582,16 @@ export class NewReleaseReview102035 extends StateLitElement {
       backendKind: backend.kind,
       effortKind: effort.kind,
       busy: this.actionBusy,
-      connected: !active && !!this.request.trim() && !!this.data?.changeId && !!this.data?.revisionId && !!this.data?.manifest?.baseId,
+      connected: retry ? !active && !!getUserId() : canStartReviewRun({
+        project: this.project,
+        moduleName: this.moduleName,
+        changeId: this.data?.changeId ?? null,
+        revisionId: this.data?.revisionId ?? null,
+        request: this.request,
+        userId: getUserId(),
+        hasRun: !!this.channelRun,
+        sealedRevision: this.data?.sealedRevision ?? null,
+      }),
       retry,
       retryAvailable: !retry || this.channelRun!.attempt < REVIEW_RUN_MAX_ATTEMPTS,
       error: this.actionError ? this.t(this.actionError) : '',

@@ -10,6 +10,7 @@ import {
   buildReviewActionPresentation,
   buildReviewActionPlacements,
   buildReviewView,
+  canStartReviewRun,
   MENU_ACTIONS,
   MENU_SCHEMA_VERSION,
   menuTreeForActor,
@@ -18,6 +19,7 @@ import {
   resolveSelectedActor,
   REVIEW_ALL_ACTORS,
   reviewExpansionKey,
+  sameReviewStartSnapshot,
   toggleReviewExpansion,
   toggleReviewSelection,
   type MenuNode,
@@ -27,6 +29,67 @@ import {
 } from './reviewModel.js';
 
 const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', import.meta.url), 'utf8'));
+
+const sealedPreflight = {
+  request: 'Add one field',
+  sources: [{ path: 'module.defs.ts', source: 'export const module = {}' }],
+  manifest: {
+    project: 102047,
+    moduleName: 'agendaClinica',
+    changeId: 'change-one',
+    revisionId: 'revision-one',
+    baseId: 'base-one',
+    requestRevision: 1,
+    requestHash: `sha256:${'a'.repeat(64)}`,
+    files: { 'module.defs.ts': `sha256:${'b'.repeat(64)}` },
+  },
+};
+
+test('review start preflight accepts a sealed text-only request and rejects incomplete identities', () => {
+  const input = {
+    project: 102047,
+    moduleName: 'agendaClinica',
+    changeId: 'change-one',
+    revisionId: 'revision-one',
+    request: 'Add one field',
+    userId: 'user-one',
+    hasRun: false,
+    sealedRevision: sealedPreflight,
+  };
+  assert.equal(canStartReviewRun(input), true);
+  assert.equal(canStartReviewRun({ ...input, userId: null }), false);
+  assert.equal(canStartReviewRun({ ...input, hasRun: true }), false);
+  assert.equal(canStartReviewRun({ ...input, request: 'Changed after seal' }), false);
+  assert.equal(canStartReviewRun({ ...input, revisionId: 'revision-two' }), false);
+  assert.equal(canStartReviewRun({ ...input, sealedRevision: {
+    ...sealedPreflight,
+    manifest: { ...sealedPreflight.manifest, requestHash: 'sha256:invalid' },
+  } }), false);
+  assert.equal(canStartReviewRun({ ...input, sealedRevision: {
+    ...sealedPreflight,
+    sources: [],
+  } }), false);
+});
+
+test('review click fence rejects identity, manifest hash and source byte races after preflight', () => {
+  assert.equal(sameReviewStartSnapshot(sealedPreflight, structuredClone(sealedPreflight)), true);
+  assert.equal(sameReviewStartSnapshot(sealedPreflight, {
+    ...structuredClone(sealedPreflight),
+    manifest: { ...sealedPreflight.manifest, baseId: 'base-two' },
+  }), false);
+  assert.equal(sameReviewStartSnapshot(sealedPreflight, {
+    ...structuredClone(sealedPreflight),
+    manifest: { ...sealedPreflight.manifest, requestRevision: 2 },
+  }), false);
+  assert.equal(sameReviewStartSnapshot(sealedPreflight, {
+    ...structuredClone(sealedPreflight),
+    manifest: { ...sealedPreflight.manifest, files: { 'module.defs.ts': `sha256:${'c'.repeat(64)}` } },
+  }), false);
+  assert.equal(sameReviewStartSnapshot(sealedPreflight, {
+    ...structuredClone(sealedPreflight),
+    sources: [{ ...sealedPreflight.sources[0], source: 'export const module = { changed: true }' }],
+  }), false);
+});
 
 function view(patch: Partial<ReviewInput> = {}) {
   return buildReviewView({
