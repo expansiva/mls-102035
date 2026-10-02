@@ -2,7 +2,28 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { installQaMutationGuard, QA_PROTECTED_BUTTONS, waitForQaProtectedButtons } from './qaPreviewGuard.js';
+import { installQaMutationGuard, QA_PROTECTED_BUTTONS, waitForQaCondition, waitForQaProtectedButtons } from './qaPreviewGuard.js';
+
+test('DOM condition wait observes a later render and fails closed on timeout', async () => {
+  let rendered = false;
+  const waiting = waitForQaCondition(() => rendered, 'qa.renderTimeout', 500);
+  setTimeout(() => { rendered = true; }, 0);
+  await waiting;
+  await assert.rejects(waitForQaCondition(() => false, 'qa.renderTimeout', 1), /qa\.renderTimeout/u);
+});
+
+test('authority wait cannot pass from select assignment while the old tree remains rendered', async () => {
+  const dom = { selectedActor: 'actor:scheduler', rows: ['QA agenda', 'Appointments'] };
+  await assert.rejects(
+    waitForQaCondition(
+      () => dom.selectedActor === 'actor:scheduler' && dom.rows.length === 1
+        && dom.rows[0] === 'QA home' && !dom.rows.includes('QA agenda'),
+      'qa.authorityFilterIneffective',
+      1,
+    ),
+    /qa\.authorityFilterIneffective/u,
+  );
+});
 
 test('protected CTA wait observes the MutationObserver result instead of passing early', async () => {
   const buttons = [
