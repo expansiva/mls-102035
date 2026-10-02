@@ -2,6 +2,7 @@
 
 import {
   buildNewReleaseQaFixture,
+  buildNewReleaseQaMenuFixture,
   canAnnounceQaReady,
   newReleaseQaScenarios,
   parseNewReleaseQaParams,
@@ -42,21 +43,6 @@ declare global {
     collabMiniCfeReady?: boolean;
   }
 }
-
-const QA_MENU = {
-  schemaVersion: '2026-09-20-p2-menu-v2.2',
-  moduleName: 'agendaClinica',
-  userLanguage: 'en-US',
-  device: 'web',
-  tree: [
-    { id: 'qa-home', kind: 'page', label: 'QA home', organisms: [{ kind: 'summary', text: 'Stable summary.' }], action: 'keep' },
-    { id: 'qa-hub', kind: 'hub', label: 'QA agenda', context: 'Professional', text: 'Stable hub.', action: 'change', children: [
-      { id: 'qa-list', kind: 'page', label: 'Appointments', organisms: [{ kind: 'list', text: 'Stable list.' }], action: 'new' },
-    ] },
-  ],
-  authorities: { 'actor:professional': ['qa-hub'] },
-  meta: { journeys: {}, processes: {}, entities: {}, removed: [] },
-};
 
 function waitFor(check: () => boolean, timeoutMs = 20000): Promise<void> {
   const started = performance.now();
@@ -153,7 +139,7 @@ async function mountFixture(
     container.appendChild(element);
     await waitFor(() => element.querySelector('.nr-index')?.getAttribute('aria-busy') === 'false');
   } else {
-    cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify({ ...QA_MENU, moduleName: config.moduleName })));
+    cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify(buildNewReleaseQaMenuFixture(config.moduleName))));
     element.project = config.project;
     element.moduleName = '';
     container.appendChild(element);
@@ -222,21 +208,24 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   if (scenario.fixture !== 'ready') return;
   const select = review.querySelector<HTMLSelectElement>('.nr-review__toolbar select');
   if (!select || select.options.length < 2) throw new Error('qa.inconclusive.authorityFilterMissing');
-  const rowsBefore = review.querySelectorAll('.nr-review__row').length;
-  select.value = select.options[1].value;
-  select.dispatchEvent(new Event('change', { bubbles: true }));
-  if (review.updateComplete) await review.updateComplete;
-  const rowsAfter = review.querySelectorAll('.nr-review__row').length;
-  if (select.value !== select.options[1].value || rowsAfter <= 0 || rowsAfter >= rowsBefore) throw new Error('qa.authorityFilterIneffective');
+  if (select.value !== 'actor:professional') throw new Error(`qa.unexpectedInitialAuthority:${select.value}`);
   const treeButton = review.querySelector<HTMLButtonElement>('.nr-review__toggle[aria-expanded="false"]');
   if (!treeButton) throw new Error('qa.inconclusive.treeToggleMissing');
   treeButton.click();
   if (review.updateComplete) await review.updateComplete;
   const opened = review.querySelector<HTMLButtonElement>('.nr-review__toggle[aria-expanded="true"]');
   if (!opened) throw new Error('qa.treeDidNotOpen');
+  const rowsBefore = review.querySelectorAll('.nr-review__row').length;
   opened.click();
   if (review.updateComplete) await review.updateComplete;
   if (review.querySelector('.nr-review__toggle[aria-expanded="true"]')) throw new Error('qa.treeDidNotClose');
+  const target = [...select.options].find(option => option.value === 'actor:scheduler');
+  if (!target) throw new Error('qa.inconclusive.distinctAuthorityMissing');
+  select.value = target.value;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  if (review.updateComplete) await review.updateComplete;
+  const rowsAfter = review.querySelectorAll('.nr-review__row').length;
+  if (select.value !== target.value || rowsAfter <= 0 || rowsAfter >= rowsBefore) throw new Error('qa.authorityFilterIneffective');
 }
 
 class NewReleaseQaPreview102035 extends HTMLElement {

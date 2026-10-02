@@ -14,6 +14,26 @@ export type NewReleaseQaFixture = typeof QA_FIXTURES[number];
 export type NewReleaseQaLanguage = typeof QA_LANGUAGES[number];
 export type NewReleaseQaTheme = typeof QA_THEMES[number];
 
+export function buildNewReleaseQaMenuFixture(moduleName: string) {
+  return {
+    schemaVersion: '2026-09-20-p2-menu-v2.2',
+    moduleName,
+    userLanguage: 'en-US',
+    device: 'web',
+    tree: [
+      { id: 'qa-home', kind: 'page', label: 'QA home', organisms: [{ kind: 'summary', text: 'Stable summary.' }], action: 'keep' },
+      { id: 'qa-hub', kind: 'hub', label: 'QA agenda', context: 'Professional', text: 'Stable hub.', action: 'change', children: [
+        { id: 'qa-list', kind: 'page', label: 'Appointments', organisms: [{ kind: 'list', text: 'Stable list.' }], action: 'new' },
+      ] },
+    ],
+    authorities: {
+      'actor:professional': ['qa-hub'],
+      'actor:scheduler': ['qa-home'],
+    },
+    meta: { journeys: {}, processes: {}, entities: {}, removed: [] },
+  };
+}
+
 export interface NewReleaseQaConfig {
   project: number;
   moduleName: string;
