@@ -142,7 +142,7 @@ void test('plugin catalog is the closed E6 platform set', () => {
 void test('real integration70 drafts of both runs are empty and pass the gate', () => {
   for (const moduleName of ['comandaRestaurante5', 'ordenServicio5'] as const) {
     const draft = JSON.parse(
-      readFileSync(path.join(HERE, 'fixtures', `${moduleName}-draft.json`), 'utf8'),
+      readFileSync(path.join(HERE, '../../../solution/fixtures/integration70', `${moduleName}-draft.json`), 'utf8'),
     ) as { inbound: unknown[]; outbound: unknown[]; plugins: unknown[] };
     assert.deepEqual(draft.inbound, []);
     assert.deepEqual(draft.outbound, []);

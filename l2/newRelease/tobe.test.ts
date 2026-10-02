@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadNs5Entities, loadNs5OracleSources } from '../agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Entities, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
   isNs5OntologyV3,
   NS5_TOBE_MANIFEST_SCHEMA_VERSION,

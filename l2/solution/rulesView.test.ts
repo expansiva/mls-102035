@@ -24,9 +24,9 @@ import {
   loadNs5OracleSources,
   loadNs5Rules,
   ns5ReplayModules,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
-import { agendaClinicaRulesV2 } from '/_102035_/l2/agentNewSolution5/steps/rules40/fixtures/agendaClinica-rules-v2.defs.js';
-import { agendaClinicaRules } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/rules.defs.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
+import { agendaClinicaRulesV2 } from '/_102035_/l2/solution/fixtures/rules40/agendaClinica-rules-v2.defs.js';
+import { agendaClinicaRules } from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/rules.defs.js';
 
 const V1: Ns5RulesArtifact = agendaClinicaRules as unknown as Ns5RulesArtifact;
 const V2: Ns5RulesArtifactV2 = agendaClinicaRulesV2;
@@ -67,7 +67,7 @@ void test('a v2 catalog renders byte for byte to its rules.defs.ts', () => {
   );
   assert.equal(
     rendered,
-    loadNs5FixtureText('steps/rules40/fixtures', 'agendaClinica-rules-v2.defs.ts'),
+    loadNs5FixtureText('fixtures/rules40', 'agendaClinica-rules-v2.defs.ts'),
   );
 });
 

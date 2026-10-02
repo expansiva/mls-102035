@@ -23,7 +23,7 @@ import {
   loadNs5FixtureJson,
   loadNs5Journeys,
   loadNs5OntologyIndex,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type {
   Ns5AccessActor,
   Ns5AccessArtifact,
@@ -59,7 +59,7 @@ function loadSchema(): Record<string, unknown> {
 function realOrdenDraft() {
   return loadNs5FixtureJson<{
     grants: Ns5AccessGrant[];
-  }>('steps/access60/fixtures', 'ordenServicio5-draft.json');
+  }>('fixtures/access60', 'ordenServicio5-draft.json');
 }
 
 function actor(actorId: string, kind: Ns5ModuleActor['kind'] = 'internal'): Ns5ModuleActor {
@@ -612,12 +612,12 @@ void test('access60 prompt has no domain examples and keeps structured disclosur
 const LIVE_ACCESS_MODULES = ['comandaRestaurante5', 'ordenServicio5', 'mensalidadesAcademia'] as const;
 
 function liveAccess(moduleName: typeof LIVE_ACCESS_MODULES[number]): Ns5AccessArtifact {
-  return loadNs5Defs<Ns5AccessArtifact>('steps/access60/fixtures/live', `${moduleName}-access.defs.ts`);
+  return loadNs5Defs<Ns5AccessArtifact>('fixtures/access60/live', `${moduleName}-access.defs.ts`);
 }
 
 function liveEntityViews(moduleName: typeof LIVE_ACCESS_MODULES[number]): Ns5AccessEntityView[] {
   const all = loadNs5FixtureJson<Record<string, Ns5AccessEntityView[]>>(
-    'steps/access60/fixtures/live',
+    'fixtures/access60/live',
     'entity-views.json',
   );
   return all[moduleName];
@@ -625,7 +625,7 @@ function liveEntityViews(moduleName: typeof LIVE_ACCESS_MODULES[number]): Ns5Acc
 
 void test('live access of the three modules: fieldsOnly without restriction becomes fullRecord and stray anchors drop', () => {
   const views = loadNs5FixtureJson<Record<string, Ns5AccessEntityView[]>>(
-    'steps/access60/fixtures/live',
+    'fixtures/access60/live',
     'entity-views.json',
   );
   for (const moduleName of LIVE_ACCESS_MODULES) {
@@ -655,7 +655,7 @@ void test('live access of the three modules: fieldsOnly without restriction beco
       }
     }
     const relationships = loadNs5FixtureJson<Record<string, Ns5AccessRelationshipView[]>>(
-      'steps/access60/fixtures/live',
+      'fixtures/access60/live',
       'relationships.json',
     )[moduleName];
     const actors = artifact.actors;

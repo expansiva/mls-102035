@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
 import { buildNs5JourneysHumanPrompt, buildNs5JourneysTool } from '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
 import {
@@ -117,15 +117,15 @@ void test('real journeys20 drafts of both runs pass the gate', () => {
     ],
   };
   for (const moduleName of NS5_REAL_MODULES) {
-    const draft = loadNs5FixtureJson<{ journeys: unknown[] }>('steps/journeys20/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<{ journeys: unknown[] }>('fixtures/journeys20', `${moduleName}-draft.json`);
     const journeys = drafts(draft);
     const gate = validateNs5Journeys(journeys, { actors: actorsByModule[moduleName], moduleName });
     assert.equal(gate.ok, true, `${moduleName}: ${gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n')}`);
     assert.equal(journeys.every(journey => !('useRules' in journey.business)), true, moduleName);
   }
-  const comanda = drafts(loadNs5FixtureJson('steps/journeys20/fixtures', 'comandaRestaurante5-draft.json'));
+  const comanda = drafts(loadNs5FixtureJson('fixtures/journeys20', 'comandaRestaurante5-draft.json'));
   assert.equal(countNs5DecideSteps(comanda), 0);
-  const orden = drafts(loadNs5FixtureJson('steps/journeys20/fixtures', 'ordenServicio5-draft.json'));
+  const orden = drafts(loadNs5FixtureJson('fixtures/journeys20', 'ordenServicio5-draft.json'));
   assert.equal(countNs5DecideSteps(orden), 1);
   const decide = orden.flatMap(journey => journey.business.steps).find(step => step.kind === 'decide');
   assert.equal(decide?.stepId, 'decidirRespuestaPresupuesto');
@@ -294,7 +294,7 @@ void test('kind system stays even with no exclusive step', () => {
 });
 
 void test('named external with exclusive decide is kept', () => {
-  const orden = loadNs5FixtureJson<{ journeys: unknown[] }>('steps/journeys20/fixtures', 'ordenServicio5-draft.json');
+  const orden = loadNs5FixtureJson<{ journeys: unknown[] }>('fixtures/journeys20', 'ordenServicio5-draft.json');
   const clienteJourney = drafts(orden).find(journey => journey.business.actorRef === 'cliente');
   assert.ok(clienteJourney);
   const journeys = drafts({

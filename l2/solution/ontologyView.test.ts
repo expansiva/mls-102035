@@ -4,17 +4,17 @@
  * ns5_43 T1–T5. The steps after `ontology30` read the module ontology through `ontologyView.ts`; this is
  * the proof that the reading is the same on both forms and that nothing about the eleven v2 modules moved.
  *
- * The v3 side uses the hand-written `agendaClinica` of ns5_42 (`steps/ontology30/fixtures/agendaClinica-v3`),
+ * The v3 side uses the hand-written `agendaClinica` of ns5_42 (`fixtures/ontology30/agendaClinica-v3`),
  * the v2 side `comandaRestaurante5` — the same files the replay uses, so a fixture that drifts is red here.
  */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import agendaClinicaIndexV3 from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/index.defs.js';
-import agendaClinicaPaciente from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Paciente.defs.js';
-import agendaClinicaConsulta from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
-import { loadNs5Entities, loadNs5OntologyIndex } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import agendaClinicaIndexV3 from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/index.defs.js';
+import agendaClinicaPaciente from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Paciente.defs.js';
+import agendaClinicaConsulta from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Consulta.defs.js';
+import { loadNs5Entities, loadNs5OntologyIndex } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
 import {
   isNs5OntologyV3Entity,

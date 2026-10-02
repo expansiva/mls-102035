@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { NS5_MODULE_SCHEMA_VERSION, type Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { buildNs5ModuleHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/module10/agentNs5Module.js';
 import {
@@ -70,7 +70,7 @@ void test('module10 tool schema is provider-clean', () => {
 
 void test('real module10 drafts of both runs pass the gate', () => {
   for (const moduleName of NS5_REAL_MODULES) {
-    const draft = loadNs5FixtureJson<Ns5ModuleArtifact>('steps/module10/fixtures', `${moduleName}-draft.json`);
+    const draft = loadNs5FixtureJson<Ns5ModuleArtifact>('fixtures/module10', `${moduleName}-draft.json`);
     const { artifact, actors } = normalizeNs5ModuleArtifact(draft, {
       sourcePrompt: draft.sourcePrompt,
       fixedModuleName: moduleName,

@@ -10,7 +10,7 @@ import type { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { createAgent } from '/_102035_/l2/agentNewSolution5/agentNewSolution5.js';
 import { markNs5Complete, nextNs5RunNn } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { NS5_STEP_HOOKS } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
-import { loadNs5Defs, loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5Defs, loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { buildSolutionRegistryModuleBlock } from '/_102035_/l2/solution/lib.js';
 import type {
   Ns5AccessArtifact,
@@ -31,7 +31,7 @@ import {
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
 import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
-import agendaClinicaConsulta from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
+import agendaClinicaConsulta from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Consulta.defs.js';
 import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';
 import { ns5DefsOrphans } from '/_102035_/l2/solution/fs.js';
 
@@ -47,15 +47,15 @@ function clone<T>(value: T): T {
 
 function withLiftedPainel(sources: Ns5OracleSources): Ns5OracleSources {
   const journey = clone(loadNs5Defs<Ns5JourneyArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'acompanharIndicadoresDaAcademia.defs.ts',
   ));
   const pipeline = loadNs5FixtureJson<{ liftedAggregateEntities: string[] }>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'mensalidadesAcademia-ontology30-pipeline.json',
   );
   const details = loadNs5FixtureJson<Record<string, string>>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'mensalidadesAcademia-module.details.json',
   );
   journey.business.actorRef = sources.access.actors[0].actorId;
@@ -75,11 +75,11 @@ function withAcademiaEnrollment(
   personStep: 'locate' | 'act',
 ): Ns5OracleSources {
   const aluno = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'Aluno.defs.ts',
   ));
   const journey = clone(loadNs5Defs<Ns5JourneyArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'matricularAlunoEmPlano.defs.ts',
   ));
   const mesa = sources.entities.find(entity => entity.entityId === 'Mesa')!;
@@ -128,15 +128,15 @@ function withRealMatricularAluno(
   affects?: string[],
 ): Ns5OracleSources {
   const aluno = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'Aluno.defs.ts',
   ));
   const journey = clone(loadNs5Defs<Ns5JourneyArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'matricularAluno.defs.ts',
   ));
   const access = clone(loadNs5Defs<Ns5AccessArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'mensalidadesAcademia-access.defs.ts',
   ));
   const mesa = sources.entities.find(entity => entity.entityId === 'Mesa')!;
@@ -178,11 +178,11 @@ function withRealMatricularAluno(
 /** Live clinic: `Profissional` crud + grant `recepcionistaGerirProfissionais` (I8 form b). */
 function withAgendaClinicaProfissional(sources: Ns5OracleSources): Ns5OracleSources {
   const profissional = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'Profissional.defs.ts',
   ));
   const access = clone(loadNs5Defs<Ns5AccessArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'agendaClinica-access.defs.ts',
   ));
   const internal = sources.access.actors.find(item => item.kind === 'internal')!;
@@ -203,16 +203,16 @@ function withInscricaoEventoParticipant(
   opts?: { crud?: boolean; publicAffects?: string[]; attach?: boolean },
 ): Ns5OracleSources {
   const participant = clone(loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'Participant.defs.ts',
   ));
   if (opts?.crud === false) delete participant.writer;
   const access = clone(loadNs5Defs<Ns5AccessArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'inscricaoEvento-access.defs.ts',
   ));
   const journey = clone(loadNs5Defs<Ns5JourneyArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'realizarInscricaoNoEvento.defs.ts',
   ));
   const internal = sources.access.actors.find(item => item.kind === 'internal')!;
@@ -423,7 +423,7 @@ void test('I2 fails a decide without two transitions from the same origin (task_
 
 void test('I2 does not apply to consultarMisOrdenes when it is locate then inspect', () => {
   const sources = clone(loadSources('ordenServicio.json'));
-  const consult = loadNs5Defs<Ns5JourneyArtifact>('steps/finalize80/fixtures', 'consultarMisOrdenes.defs.ts');
+  const consult = loadNs5Defs<Ns5JourneyArtifact>('fixtures/finalize80', 'consultarMisOrdenes.defs.ts');
   assert.equal(consult.business.steps.some(step => step.kind === 'act' || step.kind === 'decide'), false);
   sources.journeys.push(consult);
   sources.journeyIndex.journeys.push({
@@ -436,7 +436,7 @@ void test('I2 does not apply to consultarMisOrdenes when it is locate then inspe
 });
 
 function levaDefs<T>(name: string): T {
-  return loadNs5Defs<T>('steps/finalize80/fixtures/leva', name);
+  return loadNs5Defs<T>('fixtures/finalize80/leva', name);
 }
 
 function withStepIntent(
@@ -628,11 +628,11 @@ void test('I4 ignores an uncited rule and fails an unknown ruleRef on a transiti
 
 void test('I8 passes live matricularAluno + access (registrarMatricula affects Aluno)', () => {
   const journey = loadNs5Defs<Ns5JourneyArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'matricularAluno.defs.ts',
   );
   const access = loadNs5Defs<Ns5AccessArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'mensalidadesAcademia-access.defs.ts',
   );
   assert.equal(journey.business.actorRef, 'recepcao');
@@ -789,11 +789,11 @@ void test('I8 on ordenServicio5 passes when the reception act is on Cliente', ()
 
 void test('I8 passes live agendaClinica Profissional (crud + recepcionistaGerirProfissionais)', () => {
   const profissional = loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'Profissional.defs.ts',
   );
   const access = loadNs5Defs<Ns5AccessArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'agendaClinica-access.defs.ts',
   );
   assert.equal(profissional.writer, 'crud');
@@ -817,15 +817,15 @@ void test('I8 passes live agendaClinica Profissional (crud + recepcionistaGerirP
 
 void test('I8 passes live inscricaoEvento Participant (crud + organizador grant)', () => {
   const participant = loadNs5Defs<Ns5OntologyEntityArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'Participant.defs.ts',
   );
   const access = loadNs5Defs<Ns5AccessArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'inscricaoEvento-access.defs.ts',
   );
   const journey = loadNs5Defs<Ns5JourneyArtifact>(
-    'steps/finalize80/fixtures',
+    'fixtures/finalize80',
     'realizarInscricaoNoEvento.defs.ts',
   );
   assert.equal(participant.writer, 'crud');

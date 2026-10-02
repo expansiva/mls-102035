@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+import { loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5AccessArtifact,
@@ -28,7 +28,7 @@ import {
 } from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 
-const LEVA = ['steps/ontology30/fixtures/leva-final'] as const;
+const LEVA = ['fixtures/ontology30/leva-final'] as const;
 
 function loadLeva<T>(moduleName: string, file: string): T {
   return loadNs5FixtureJson<T>(...LEVA, moduleName, file);

@@ -8,7 +8,7 @@ import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import {
   loadNs5Access, loadNs5Defs, loadNs5Entities, loadNs5Integration, loadNs5JourneyIndex,
   loadNs5Journeys, loadNs5Module, loadNs5OntologyIndex, loadNs5Rules, loadNs5Workflows,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5AccessArtifact, Ns5OntologyAnyEntity, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import { validate40Private } from './validate40.js';
 
@@ -31,11 +31,11 @@ function commonInventory(moduleName = 'agendaClinica'): Record<string, unknown> 
 
 function v3Inventory(): Record<string, unknown> {
   const inventory = commonInventory();
-  const index = loadNs5Defs<Ns5OntologyIndexV3>('steps/ontology30/fixtures', 'agendaClinica-v3', 'index.defs.ts');
+  const index = loadNs5Defs<Ns5OntologyIndexV3>('fixtures/ontology30', 'agendaClinica-v3', 'index.defs.ts');
   inventory['ontology/index.defs.ts'] = index;
   for (const path of Object.keys(inventory)) if (path.startsWith('ontology/') && path !== 'ontology/index.defs.ts') delete inventory[path];
   for (const row of index.entities) inventory[`ontology/${row.entityId}.defs.ts`] =
-    loadNs5Defs<Ns5OntologyAnyEntity>('steps/ontology30/fixtures', 'agendaClinica-v3', `${row.entityId}.defs.ts`);
+    loadNs5Defs<Ns5OntologyAnyEntity>('fixtures/ontology30', 'agendaClinica-v3', `${row.entityId}.defs.ts`);
   // The recorded access fixture predates v3 record paths. Full-record disclosure is valid and avoids
   // repairing the unrelated fixture inside production validation code.
   const access = clone(inventory['access.defs.ts'] as Ns5AccessArtifact);

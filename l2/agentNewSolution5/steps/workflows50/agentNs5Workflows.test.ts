@@ -14,7 +14,7 @@ import {
   loadNs5Entities,
   loadNs5FixtureJson,
   loadNs5Journeys,
-} from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
+} from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type {
   Ns5JourneyArtifact,
   Ns5OntologyEntityArtifact,
@@ -159,7 +159,7 @@ void test('workflows50 tool schema is provider-clean', () => {
 });
 
 void test('real ordenServicio5 workflows draft is one process of human stages per journey, no locate/inspect', () => {
-  const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('steps/workflows50/fixtures', 'ordenServicio5-draft.json');
+  const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('fixtures/workflows50', 'ordenServicio5-draft.json');
   assert.equal(draft.processes.length, 1);
   const process = draft.processes[0];
   assert.equal(process.processId, 'gestionarOrdenServicio');
@@ -196,7 +196,7 @@ void test('real ordenServicio5 workflows draft is one process of human stages pe
 });
 
 void test('real comandaRestaurante5 workflows draft is empty and has no process signal', () => {
-  const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('steps/workflows50/fixtures', 'comandaRestaurante5-draft.json');
+  const draft = loadNs5FixtureJson<{ processes: Ns5WorkflowProcess[] }>('fixtures/workflows50', 'comandaRestaurante5-draft.json');
   assert.deepEqual(draft.processes, []);
 });
 
