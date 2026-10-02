@@ -32,28 +32,39 @@ export interface QaProtectedButton {
   dataset: { qaProtected?: string };
 }
 
-export async function waitForQaProtectedButtons<T extends QaProtectedButton>(
-  read: () => T[],
-  expectedCount: number,
+export function waitForQaCondition(
+  check: () => boolean,
+  errorCode: string,
   timeoutMs = 20000,
-): Promise<T[]> {
+): Promise<void> {
   const started = performance.now();
   return new Promise((resolve, reject) => {
     const tick = () => {
-      const buttons = read();
-      if (buttons.length === expectedCount
-        && buttons.every(button => button.disabled && button.dataset.qaProtected === 'true')) {
-        resolve(buttons);
+      if (check()) {
+        resolve();
         return;
       }
       if (performance.now() - started >= timeoutMs) {
-        reject(new Error(`qa.protectedButtonsTimeout:${buttons.length}/${expectedCount}`));
+        reject(new Error(errorCode));
         return;
       }
       setTimeout(tick, 25);
     };
     tick();
   });
+}
+
+export async function waitForQaProtectedButtons<T extends QaProtectedButton>(
+  read: () => T[],
+  expectedCount: number,
+  timeoutMs = 20000,
+): Promise<T[]> {
+  await waitForQaCondition(() => {
+    const buttons = read();
+    return buttons.length === expectedCount
+      && buttons.every(button => button.disabled && button.dataset.qaProtected === 'true');
+  }, 'qa.protectedButtonsTimeout', timeoutMs);
+  return read();
 }
 
 export function installQaMutationGuard(

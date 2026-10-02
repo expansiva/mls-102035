@@ -11,7 +11,7 @@ import {
   type NewReleaseQaFixture,
   type NewReleaseQaScenario,
 } from '/_102035_/l2/newRelease/qaPreviewModel.js';
-import { guardQaMutations, waitForQaProtectedButtons } from '/_102035_/l2/newRelease/qaPreviewGuard.js';
+import { guardQaMutations, waitForQaCondition, waitForQaProtectedButtons } from '/_102035_/l2/newRelease/qaPreviewGuard.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 
 type NewReleaseElement = HTMLElement & {
@@ -211,21 +211,41 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   if (select.value !== 'actor:professional') throw new Error(`qa.unexpectedInitialAuthority:${select.value}`);
   const treeButton = review.querySelector<HTMLButtonElement>('.nr-review__toggle[aria-expanded="false"]');
   if (!treeButton) throw new Error('qa.inconclusive.treeToggleMissing');
+  const collapsedRows = review.querySelectorAll('.nr-review__row').length;
   treeButton.click();
-  if (review.updateComplete) await review.updateComplete;
+  await waitForQaCondition(
+    () => !!review.querySelector('.nr-review__toggle[aria-expanded="true"]')
+      && review.querySelectorAll('.nr-review__row').length > collapsedRows,
+    'qa.treeDidNotOpen',
+  );
   const opened = review.querySelector<HTMLButtonElement>('.nr-review__toggle[aria-expanded="true"]');
   if (!opened) throw new Error('qa.treeDidNotOpen');
   const rowsBefore = review.querySelectorAll('.nr-review__row').length;
   opened.click();
-  if (review.updateComplete) await review.updateComplete;
-  if (review.querySelector('.nr-review__toggle[aria-expanded="true"]')) throw new Error('qa.treeDidNotClose');
+  await waitForQaCondition(
+    () => !review.querySelector('.nr-review__toggle[aria-expanded="true"]')
+      && review.querySelectorAll('.nr-review__row').length === collapsedRows,
+    'qa.treeDidNotClose',
+  );
+  const reopen = review.querySelector<HTMLButtonElement>('.nr-review__toggle[aria-expanded="false"]');
+  if (!reopen) throw new Error('qa.inconclusive.treeReopenMissing');
+  reopen.click();
+  await waitForQaCondition(
+    () => !!review.querySelector('.nr-review__toggle[aria-expanded="true"]')
+      && review.querySelectorAll('.nr-review__row').length === rowsBefore,
+    'qa.treeDidNotReopen',
+  );
   const target = [...select.options].find(option => option.value === 'actor:scheduler');
   if (!target) throw new Error('qa.inconclusive.distinctAuthorityMissing');
   select.value = target.value;
   select.dispatchEvent(new Event('change', { bubbles: true }));
-  if (review.updateComplete) await review.updateComplete;
-  const rowsAfter = review.querySelectorAll('.nr-review__row').length;
-  if (select.value !== target.value || rowsAfter <= 0 || rowsAfter >= rowsBefore) throw new Error('qa.authorityFilterIneffective');
+  await waitForQaCondition(() => {
+    const rowsAfter = review.querySelectorAll('.nr-review__row').length;
+    const links = [...review.querySelectorAll<HTMLElement>('.nr-review__link')]
+      .map(link => link.textContent?.trim() ?? '');
+    return select.value === target.value && rowsAfter === 1 && rowsAfter < rowsBefore
+      && links.length === 1 && links[0] === 'QA home' && !review.textContent?.includes('QA agenda');
+  }, 'qa.authorityFilterIneffective');
 }
 
 class NewReleaseQaPreview102035 extends HTMLElement {
