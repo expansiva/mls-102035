@@ -10,7 +10,7 @@ import {
   type NewReleaseQaFixture,
   type NewReleaseQaScenario,
 } from '/_102035_/l2/newRelease/qaPreviewModel.js';
-import { guardQaMutations } from '/_102035_/l2/newRelease/qaPreviewGuard.js';
+import { guardQaMutations, waitForQaProtectedButtons } from '/_102035_/l2/newRelease/qaPreviewGuard.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 
 type NewReleaseElement = HTMLElement & {
@@ -205,9 +205,10 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   if (!qaScenarioRequiresReview(scenario)) return;
   const review = element.querySelector<HTMLElement & { updateComplete?: Promise<unknown> }>('new-release--widgets--review-102035');
   if (!review) throw new Error('qa.inconclusive.reviewMissing');
-  const actions = [...review.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button')];
-  if (actions.length !== 2) throw new Error(`qa.inconclusive.ctaCount:${actions.length}`);
-  if (actions.some(button => !button.disabled || button.dataset.qaProtected !== 'true')) throw new Error('qa.ctaNotProtected');
+  const actions = await waitForQaProtectedButtons(
+    () => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button')],
+    2,
+  );
   if (actions[0].textContent?.trim() !== actions[1].textContent?.trim()) throw new Error('qa.ctaPlacementsDiverged');
   const busyBefore = [...review.querySelectorAll<HTMLElement>('.nr-review__primary-action')].map(item => item.getAttribute('aria-busy'));
   actions[0].click();

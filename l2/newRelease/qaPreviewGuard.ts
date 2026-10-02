@@ -27,6 +27,35 @@ export interface QaMutationGuardDependencies {
   origin: string;
 }
 
+export interface QaProtectedButton {
+  disabled: boolean;
+  dataset: { qaProtected?: string };
+}
+
+export async function waitForQaProtectedButtons<T extends QaProtectedButton>(
+  read: () => T[],
+  expectedCount: number,
+  timeoutMs = 20000,
+): Promise<T[]> {
+  const started = performance.now();
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      const buttons = read();
+      if (buttons.length === expectedCount
+        && buttons.every(button => button.disabled && button.dataset.qaProtected === 'true')) {
+        resolve(buttons);
+        return;
+      }
+      if (performance.now() - started >= timeoutMs) {
+        reject(new Error(`qa.protectedButtonsTimeout:${buttons.length}/${expectedCount}`));
+        return;
+      }
+      setTimeout(tick, 25);
+    };
+    tick();
+  });
+}
+
 export function installQaMutationGuard(
   root: QaGuardRoot,
   blocked: string[],
