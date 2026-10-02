@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { NS5_RULES_SCHEMA_VERSION_V2 } from '/_102035_/l2/solution/types.js';
-import type { Ns5OracleSources } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
+import type { Ns5OracleSources } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,

@@ -15,17 +15,16 @@ import {
   NS5_REAL_MODULES,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
-import { buildNs5RulesHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
+import { buildNs5RulesHumanPrompt, buildNs5RulesTool } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
 import {
   buildNs5RulesArtifactV2,
-  buildNs5RulesTool,
   normalizeNs5RulesPayload,
   partitionCitedRules,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
 import {
   formatNs5RulesGate,
   validateNs5Rules,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

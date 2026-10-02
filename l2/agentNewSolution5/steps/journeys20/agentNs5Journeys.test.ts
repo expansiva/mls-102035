@@ -11,23 +11,22 @@ import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4Wo
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
 import { loadNs5FixtureJson, NS5_REAL_MODULES } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5ModuleActor } from '/_102035_/l2/solution/types.js';
-import { buildNs5JourneysHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
+import { buildNs5JourneysHumanPrompt, buildNs5JourneysTool } from '/_102035_/l2/agentNewSolution5/steps/journeys20/agentNs5Journeys.js';
 import {
   buildNs5JourneyIndex,
-  buildNs5JourneysTool,
   countNs5DecideSteps,
   hashNs5Journey,
   normalizeNs5JourneysPayload,
   NS5_JOURNEY_DROP_TRANSITION_REF,
   type Ns5JourneyDraft,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/contracts.js';
+} from '/_102035_/l2/solution/gates/journeys20/contracts.js';
 import {
   applyNs5InferredActorDrop,
   formatNs5JourneyGate,
   ns5DropInferredActorDecisionId,
   NS5_JOURNEY_DROP_CHOICE,
   validateNs5Journeys,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js';
+} from '/_102035_/l2/solution/gates/journeys20/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

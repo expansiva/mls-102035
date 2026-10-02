@@ -13,7 +13,7 @@ import {
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
-import { readNs5Siblings, formatNs5Siblings, ns5PlatformEventIds } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import { readNs5Siblings, formatNs5Siblings, ns5PlatformEventIds } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   draftFile,
   integrationFile,
@@ -50,18 +50,28 @@ import type {
   Ns5PipelineState,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
-import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   NS5_PLUGIN_CATALOG,
   buildNs5IntegrationArtifact,
-  buildNs5IntegrationTool,
   collectNs5IntegrationSignals,
   normalizeNs5IntegrationPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
+} from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import {
   formatNs5IntegrationGate,
   validateNs5Integration,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/gate.js';
+} from '/_102035_/l2/solution/gates/integration70/gate.js';
+
+export function buildNs5IntegrationTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Integration',
+    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, and platform plugins used by a journey step or process task. Empty lists are valid only when no structural signal exists.',
+    schema,
+  );
+}
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

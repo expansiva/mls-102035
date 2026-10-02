@@ -25,12 +25,12 @@ import { ns5FixturePath, ns5ReplayModules } from '/_102035_/l2/agentNewSolution5
 import {
   buildNs5OntologyEntityHumanPrompt,
   buildNs5OntologyPlanHumanPrompt,
+  buildNs5OntologyPlanV3Tool,
+  buildNs5OntologyEntityV3Tool,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import {
   NS5_NAMESPACE_EMPTY_DESCRIPTION,
   assembleNs5OntologyIndexV3,
-  buildNs5OntologyEntityV3Tool,
-  buildNs5OntologyPlanV3Tool,
   collectNs5CitedCapabilitiesV3,
   collectNs5CitedRulesV3,
   collectNs5ModuleRuleIdsV3,
@@ -44,14 +44,14 @@ import {
   ns5ResolvableFieldIdsV3,
   type Ns5OntologyV3Normalization,
   type Ns5OntologyV3PlanDraft,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+} from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   nearestCapabilityId,
   validateNs5OntologyAssemblyV3,
   validateNs5OntologyEntityV3,
   validateNs5OntologyPlanV3,
   type Ns5OntologyV3Issue,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gateV3.js';
+} from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
 import { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION_V3,

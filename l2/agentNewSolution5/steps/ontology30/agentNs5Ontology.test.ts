@@ -15,15 +15,15 @@ import {
   ns5EntityGateFeedback,
   ns5OntologyChildArgs,
   parallelEntityStep,
+  buildNs5OntologyPlanTool,
+  buildNs5OntologyEntityTool,
+  buildNs5OntologyBindingsTool,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
 import { NS5_STEP_HOOKS, hooksFor } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { loadNs5Actors, loadNs5Defs, loadNs5FixtureJson, loadNs5Journeys } from '/_102035_/l2/agentNewSolution5/helpers/ns5RealFixtures.test.js';
 import type { Ns5JourneyArtifact, Ns5ModuleActor, Ns5OntologyEntityArtifact, Ns5OntologyRelationship } from '/_102035_/l2/solution/types.js';
 import {
   assembleNs5Ontology,
-  buildNs5OntologyBindingsTool,
-  buildNs5OntologyEntityTool,
-  buildNs5OntologyPlanTool,
   collectNs5LifecycleSignal,
   collectNs5PersonalScopeActors,
   formatNs5PersonalScopeActors,
@@ -38,7 +38,7 @@ import {
   type Ns5OntologyEntityDraft,
   type Ns5OntologyPlanDraft,
   type Ns5OntologyPlanEntity,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+} from '/_102035_/l2/solution/gates/ontology30/contracts.js';
 import {
   applyNs5PlatformServiceCandidateDecisions,
   NS5_PLATFORM_SERVICE_KEEP,
@@ -48,7 +48,7 @@ import {
   validateNs5OntologyEntity,
   validateNs5OntologyPlan,
   type Ns5OntologyGateContext,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+} from '/_102035_/l2/solution/gates/ontology30/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

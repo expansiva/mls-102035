@@ -50,17 +50,27 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5WorkflowsArtifactV3,
-  buildNs5WorkflowsTool,
   collectNs5ProcessSignals,
   collectNs5TimeEventPhrases,
   collectNs5WorkflowsRefCatalog,
   normalizeNs5WorkflowsPayload,
   ns5WorkflowsNeedsLlm,
-} from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
+} from '/_102035_/l2/solution/gates/workflows50/contracts.js';
 import {
   formatNs5WorkflowsGate,
   validateNs5Workflows,
-} from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
+} from '/_102035_/l2/solution/gates/workflows50/gate.js';
+
+export function buildNs5WorkflowsTool(
+  schema: Record<string, unknown>,
+  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
+): mls.msg.LLMTool {
+  return createTool(
+    'submitNs5Workflows',
+    'Submit orchestrated processes: trigger plus human/mechanical/llm/wait/alert stages, and one inProcess decision per journey. Not the entity lifecycle.',
+    schema,
+  );
+}
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

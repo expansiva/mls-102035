@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-10-02 (p4_21)
+
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/workflows50/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5WorkflowsTool) stayed in the agent: it moved, body unchanged, to `agentNs5Workflows.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
+
 ## 2026-09-29 (p4_20)
 
 - The Studio compiler is the last gate: `workflows.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.workflows50.compile` records the result for finalize80. The noProcessSignal artifact has no LLM to repair it: a compile error there fails the step.

@@ -22,8 +22,8 @@ import {
   ns5AccessResolvableFieldRefs,
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
-import { validateNs5Access } from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
+} from '/_102035_/l2/solution/gates/access60/contracts.js';
+import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
 import { agendaClinicaEntityConsulta } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
 import { agendaClinicaEntityPaciente } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Paciente.defs.js';
 import { agendaClinicaEntityProfissional } from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Profissional.defs.js';

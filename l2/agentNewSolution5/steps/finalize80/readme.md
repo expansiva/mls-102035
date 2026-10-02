@@ -59,3 +59,4 @@ fails a `decide` without a branching origin if that shape reaches here; an `upda
   (`ItemCardapio`, `Presupuesto`); I8 does too — `Cliente` in `capturarDatosRecepcion.affects`
   is an internal-actor write.
 - p4_20: before the oracle, every writing step must have recorded a clean Studio compile (`steps.<step>.compile.status === 'clean'`); `unavailable` (no compile capability) or no record fails the step. `runNN_newsolution5.json` `counts.compile` holds the status and file count per step.
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/finalize80/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

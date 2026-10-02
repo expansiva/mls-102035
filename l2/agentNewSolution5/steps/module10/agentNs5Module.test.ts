@@ -20,7 +20,7 @@ import {
   ns5DropSystemActorDecisionId,
   ns5ModuleRequestKind,
 } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
-import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
+import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

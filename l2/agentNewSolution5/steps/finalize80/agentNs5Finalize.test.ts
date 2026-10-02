@@ -17,7 +17,7 @@ import type {
   Ns5JourneyArtifact,
   Ns5OntologyEntityArtifact,
 } from '/_102035_/l2/solution/types.js';
-import { collectNs5LifecycleSignal } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
+import { collectNs5LifecycleSignal } from '/_102035_/l2/solution/gates/ontology30/contracts.js';
 import {
   ensureConfigListsModule,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
@@ -27,9 +27,9 @@ import {
   NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION,
   NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING,
   type Ns5OracleSources,
-} from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
+} from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import agendaClinicaConsulta from '/_102035_/l2/agentNewSolution5/steps/ontology30/fixtures/agendaClinica-v3/Consulta.defs.js';
 import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';

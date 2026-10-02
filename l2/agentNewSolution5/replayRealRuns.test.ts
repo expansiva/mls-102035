@@ -21,44 +21,44 @@ import {
   applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
   normalizeNs5AccessPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
-import { validateNs5Access } from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+} from '/_102035_/l2/solution/gates/access60/contracts.js';
+import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import {
   buildNs5IntegrationArtifact,
   normalizeNs5IntegrationPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/integration70/contracts.js';
-import { validateNs5Integration } from '/_102035_/l2/agentNewSolution5/steps/integration70/gate.js';
+} from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 import {
   applyNs5InferredActorDrop,
   validateNs5Journeys,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js';
+} from '/_102035_/l2/solution/gates/journeys20/gate.js';
 import {
   buildNs5JourneyIndex,
   hashNs5Journey,
   normalizeNs5JourneysPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/journeys20/contracts.js';
+} from '/_102035_/l2/solution/gates/journeys20/contracts.js';
 import { normalizeNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
-import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
+import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
 import {
   assembleNs5Ontology,
   normalizeNs5OntologyBindings,
   normalizeNs5OntologyEntity,
   normalizeNs5OntologyPlan,
-} from '/_102035_/l2/agentNewSolution5/steps/ontology30/contracts.js';
-import { validateNs5OntologyBindings } from '/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js';
+} from '/_102035_/l2/solution/gates/ontology30/contracts.js';
+import { validateNs5OntologyBindings } from '/_102035_/l2/solution/gates/ontology30/gate.js';
 import { ns5RuleEntries } from '/_102035_/l2/solution/rulesView.js';
 import {
   buildNs5RulesArtifact,
   buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
-import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
+import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
 import {
   buildNs5WorkflowsArtifact,
   normalizeNs5WorkflowsPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
-import { validateNs5Workflows } from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
+} from '/_102035_/l2/solution/gates/workflows50/contracts.js';
+import { validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
 import { renderDefsSource, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type {

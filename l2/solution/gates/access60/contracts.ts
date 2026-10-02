@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/agentNewSolution5/steps/access60/contracts.ts" enhancement="_blank"/>
+/// <mls fileReference="_102035_/l2/solution/gates/access60/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import { resolvableFieldIds } from '/_102035_/l2/solution/lib.js';
@@ -95,17 +95,6 @@ export interface Ns5AccessRefCatalog {
   fieldRefs: string[];
   personEntityIds: string[];
   journeyActorIds: string[];
-}
-
-export function buildNs5AccessTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5Access',
-    'Submit grants by actorRef with title and description, plus actorPersons (one item per given actor; personEntity is the role entity they are, or ""). Do not emit actors, profiles, authorities, hops, landing or realization. Disclosure names Entity.field. own/assigned anchor on that personEntity; related anchors on the other person.',
-    schema,
-  );
 }
 
 export function normalizeNs5AccessPayload(value: unknown): Ns5AccessNormalization {

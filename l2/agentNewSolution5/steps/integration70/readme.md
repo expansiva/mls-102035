@@ -60,3 +60,4 @@ not a signal and is not an integration item.
 - Do not add prompt examples of a domain. Placeholders (`<id>`, `<moduleName>`, `<Entity>`) are
   context.
 - The catalog is platform, not domain. Do not grow it from a module prompt.
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/integration70/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5IntegrationTool) stayed in the agent: it moved, body unchanged, to `agentNs5Integration.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

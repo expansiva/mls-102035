@@ -20,11 +20,10 @@ import type {
   Ns5OntologyEntityArtifact,
   Ns5WorkflowProcess,
 } from '/_102035_/l2/solution/types.js';
-import { buildNs5WorkflowsHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.js';
+import { buildNs5WorkflowsHumanPrompt, buildNs5WorkflowsTool } from '/_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.js';
 import {
   buildNs5WorkflowsArtifact,
   buildNs5WorkflowsArtifactV3,
-  buildNs5WorkflowsTool,
   collectNs5ProcessSignals,
   collectNs5TimeEventPhrases,
   collectNs5WorkflowsRefCatalog,
@@ -32,11 +31,11 @@ import {
   ns5WorkflowsNeedsLlm,
   type Ns5WorkflowsEntityView,
   type Ns5WorkflowsJourneyView,
-} from '/_102035_/l2/agentNewSolution5/steps/workflows50/contracts.js';
+} from '/_102035_/l2/solution/gates/workflows50/contracts.js';
 import {
   formatNs5WorkflowsGate,
   validateNs5Workflows,
-} from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
+} from '/_102035_/l2/solution/gates/workflows50/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

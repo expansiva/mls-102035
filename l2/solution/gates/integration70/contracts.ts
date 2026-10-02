@@ -1,7 +1,7 @@
-/// <mls fileReference="_102035_/l2/agentNewSolution5/steps/integration70/contracts.ts" enhancement="_blank"/>
+/// <mls fileReference="_102035_/l2/solution/gates/integration70/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
-import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   type Ns5IntegrationArtifact,
@@ -84,17 +84,6 @@ export interface Ns5InboundPendingRequest {
   entityRefs: string[];
   description: string;
   to?: string;
-}
-
-export function buildNs5IntegrationTool(
-  schema: Record<string, unknown>,
-  createTool: (name: string, description: string, artifactSchema: Record<string, unknown>) => mls.msg.LLMTool,
-): mls.msg.LLMTool {
-  return createTool(
-    'submitNs5Integration',
-    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, and platform plugins used by a journey step or process task. Empty lists are valid only when no structural signal exists.',
-    schema,
-  );
 }
 
 export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNormalization {

@@ -131,3 +131,4 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - Normalize also drops `appendOnly` when `collectNs5LifecycleSignal` is on (`effect: 'transition'`
   or a `decide`). Prompt plus gate feedback did not stop the model from keeping the label. The gate
   still fails if someone skips normalize.
+- p4_21: `gate.ts`, `contracts.ts`, `gateV3.ts`, `contractsV3.ts` moved to `solution/gates/ontology30/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5Ontology{Plan,Entity,Bindings}Tool, buildNs5Ontology{Plan,Entity}V3Tool) stayed in the agent: it moved, body unchanged, to `agentNs5Ontology.ts`. Dated reexport left at the old path of `gate.ts`, `gateV3.ts`, `contractsV3.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

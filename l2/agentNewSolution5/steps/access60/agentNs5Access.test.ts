@@ -32,22 +32,21 @@ import type {
   Ns5ModuleActor,
   Ns5OntologyAnyEntity,
 } from '/_102035_/l2/solution/types.js';
-import { buildNs5AccessHumanPrompt } from '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
+import { buildNs5AccessHumanPrompt, buildNs5AccessTool } from '/_102035_/l2/agentNewSolution5/steps/access60/agentNs5Access.js';
 import {
   anchorPath,
   applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
-  buildNs5AccessTool,
   collectNs5AccessRefCatalog,
   mergeNs5AccessActors,
   normalizeNs5AccessPayload,
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/contracts.js';
+} from '/_102035_/l2/solution/gates/access60/contracts.js';
 import {
   formatNs5AccessGate,
   validateNs5Access,
-} from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
+} from '/_102035_/l2/solution/gates/access60/gate.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

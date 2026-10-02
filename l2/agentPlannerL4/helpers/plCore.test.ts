@@ -3,8 +3,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseP2StepPrompt } from '/_102020_/l2/agentPlannerL2/helpers/p2Core.js';
-import { parseP1StepPrompt } from '/_102021_/l2/agentPlannerL1/helpers/p1Core.js';
 import {
   adjustL5PlannerDeps,
   applyL5PlannerDeps,
@@ -502,15 +500,22 @@ void test('listPlArtifacts, runPlDispatch artifacts, pool listings and wipe igno
 });
 
 void test('L2 and L1 step prompts require a non-empty file — empty file is not kind:step (ramification B)', () => {
+  // Step prompt contract read by the L2/L1 planners: a step needs non-empty `moduleName`, `thread` and `file`;
+  // `moduleName` alone is an entry. Checked here on the JSON itself (p4_21: no import of another agent).
+  const isStep = (prompt: string): boolean => {
+    const raw = JSON.parse(prompt) as Record<string, unknown>;
+    const text = (key: string): string => (typeof raw[key] === 'string' ? (raw[key] as string).trim() : '');
+    return Boolean(text('moduleName') && text('thread') && text('file'));
+  };
   const empty = plStepPrompt('mensalidadesAcademia', 'mensalidadesAcademia-20260918103000', '');
-  assert.equal(parseP2StepPrompt(empty).kind, 'entry');
-  assert.equal(parseP1StepPrompt(empty).kind, 'entry');
+  assert.equal(isStep(empty), false);
+  assert.equal((JSON.parse(empty) as { moduleName: string }).moduleName, 'mensalidadesAcademia');
   const filled = plStepPrompt(
     'mensalidadesAcademia',
     'mensalidadesAcademia-20260918103000',
     'l4/mensalidadesAcademia/pool/l2/20260918103000_mensalidadesAcademia-20260918103000_1.json',
   );
-  assert.equal(parseP2StepPrompt(filled).kind, 'step');
+  assert.equal(isStep(filled), true);
 });
 
 void test('round-1 invoke steps are only L2 r1 with the step prompt shape — L1 waits for the box', async () => {

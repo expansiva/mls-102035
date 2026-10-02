@@ -1,5 +1,9 @@
 # journeys20
 
+## 2026-10-02 (p4_21)
+
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/journeys20/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5JourneysTool) stayed in the agent: it moved, body unchanged, to `agentNs5Journeys.ts`. Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
+
 ## 2026-09-29 (p4_20)
 
 - The Studio compiler is the last gate: every `journeys/<journeyId>.defs.ts` and `journeys/index.defs.ts` are compiled after writing; errors go to the repair (same budget), never approved; `steps.journeys20.compile` records the result for finalize80.

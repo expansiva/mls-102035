@@ -61,3 +61,4 @@ carries `actorRef`, `title`, `description`, `entityRefs`, `dataScope` (`mode` + 
   from `anchorEntity` and the ontology.
 - Do not add prompt examples of a domain. Placeholders (`<profileId>`, `<Entity>`, `<field>`) are
   context.
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/access60/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5AccessTool) stayed in the agent: it moved, body unchanged, to `agentNs5Access.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

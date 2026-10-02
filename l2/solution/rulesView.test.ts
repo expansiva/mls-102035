@@ -15,9 +15,9 @@ import type { Ns5RulesArtifact, Ns5RulesArtifactV2 } from '/_102035_/l2/solution
 import {
   buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
-} from '/_102035_/l2/agentNewSolution5/steps/rules40/contracts.js';
-import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
-import { runNs5Oracle } from '/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js';
+} from '/_102035_/l2/solution/gates/rules40/contracts.js';
+import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
+import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import {
   asNs5RulesV2,
   loadNs5FixtureText,

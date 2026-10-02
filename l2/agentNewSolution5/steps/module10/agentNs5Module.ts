@@ -3,7 +3,7 @@
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { formatNs4E1OrganizationContext } from '/_102035_/l2/solution/helpers/organizationContext.js';
-import { formatNs5Siblings, ns5SiblingsFromRegistry } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import { formatNs5Siblings, ns5SiblingsFromRegistry } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   NS5_AGENT_NAME,
   createEmptyPipeline,
@@ -50,7 +50,7 @@ import {
   normalizeNs5ModuleArtifact,
   ns5ModuleRequestKind,
 } from '/_102035_/l2/agentNewSolution5/steps/module10/contracts.js';
-import { formatNs5ModuleGate, validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
+import { formatNs5ModuleGate, validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
 
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;

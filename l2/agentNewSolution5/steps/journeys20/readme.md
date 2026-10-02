@@ -48,3 +48,4 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
   `if/then` was not used: `x-tool-strict` would reject the whole tool call and leave the
   repair path. The gate still fails a `handoff` step that lacks `handoffTo` or names an unknown
   actor.
+- p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/journeys20/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5JourneysTool) stayed in the agent: it moved, body unchanged, to `agentNs5Journeys.ts`. Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
