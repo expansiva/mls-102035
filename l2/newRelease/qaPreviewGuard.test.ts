@@ -2,7 +2,26 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { installQaMutationGuard, QA_PROTECTED_BUTTONS } from './qaPreviewGuard.js';
+import { installQaMutationGuard, QA_PROTECTED_BUTTONS, waitForQaProtectedButtons } from './qaPreviewGuard.js';
+
+test('protected CTA wait observes the MutationObserver result instead of passing early', async () => {
+  const buttons = [
+    { disabled: false, dataset: {} as DOMStringMap },
+    { disabled: false, dataset: {} as DOMStringMap },
+  ];
+  const waiting = waitForQaProtectedButtons(() => buttons, 2, 500);
+  setTimeout(() => {
+    buttons.forEach(button => {
+      button.disabled = true;
+      button.dataset.qaProtected = 'true';
+    });
+  }, 0);
+  assert.equal(await waiting, buttons);
+  await assert.rejects(
+    waitForQaProtectedButtons(() => [{ disabled: false, dataset: {} }], 2, 1),
+    /qa\.protectedButtonsTimeout/u,
+  );
+});
 
 test('mutation guard mounts on a DOM host, disables protected buttons and blocks protected transports', async () => {
   const buttons: Array<{ disabled: boolean; title: string; dataset: DOMStringMap }> = [];
