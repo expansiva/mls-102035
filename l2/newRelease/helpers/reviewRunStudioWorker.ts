@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/reviewRunStudioWorker.ts" enhancement="_blank" />
 
 import { environment } from '/_102036_/l2/environmentContract.js';
-import { post, msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
+import { getPostError, post, msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
 import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
@@ -20,12 +20,26 @@ import {
   type ReviewWorkerProgress,
   type ReviewWorkerTransport,
 } from './reviewRunWorker.js';
+import { postReviewMessage } from './reviewRunMessageTransport.js';
 
 interface ReviewRunResponse { statusCode: number; msg?: string; run?: PlatformReviewRun; work?: ReviewWorkerClaim | null; }
 type MsgPost = <T>(args: Record<string, unknown>) => Promise<T>;
 
+function defaultReviewPost<T>(args: Record<string, unknown>): Promise<T> {
+  return postReviewMessage<T>(args, {
+    origin: window.location.origin,
+    hostname: window.location.hostname,
+    configuredUrl: environment.config.getApiUrl(),
+    configuredCredentials: environment.config.getApiCredentials(),
+  }, {
+    configuredPost: value => post(value as never),
+    fetchImpl: fetch,
+    errorFromResponse: (response, value) => getPostError(response, value as never),
+  });
+}
+
 export function createReviewWorkerTransport(
-  postMessage: MsgPost = args => post(args as never),
+  postMessage: MsgPost = defaultReviewPost,
 ): ReviewWorkerTransport<PlatformReviewRun> {
   return {
     async claim(input) {
@@ -47,7 +61,7 @@ export function createReviewWorkerTransport(
 
 export async function startReviewRun(
   input: ReviewRunStartInput,
-  postMessage: MsgPost = args => post(args as never),
+  postMessage: MsgPost = defaultReviewPost,
 ): Promise<PlatformReviewRun> {
   const response = await postMessage<ReviewRunResponse>({ action: 'startReviewRun', ...input });
   if (!response.run) throw new Error(response.msg || 'review-run.invalid_start_response');
@@ -56,7 +70,7 @@ export async function startReviewRun(
 
 export async function observeReviewRun(
   input: ReviewWorkerIdentity,
-  postMessage: MsgPost = args => post(args as never),
+  postMessage: MsgPost = defaultReviewPost,
 ): Promise<PlatformReviewRun> {
   const response = await postMessage<ReviewRunResponse>({ action: 'observeReviewRun', ...input });
   if (!response.run) throw new Error(response.msg || 'review-run.invalid_observe_response');
