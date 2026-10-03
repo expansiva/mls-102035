@@ -1,63 +1,29 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/reviewModel.ts" enhancement="_blank" />
 
 import type { MenuReadStatus } from '/_102035_/l2/newRelease/helpers/menuReader.js';
+import {
+  MENU_ACTIONS,
+  MENU_ORGANISM_KINDS,
+  MENU_SCHEMA_VERSION,
+  type MenuAction,
+  type MenuNodeKind,
+  type MenuOrganism,
+  type MenuOrganismKind,
+  type MenuStampedNode,
+} from '/_102035_/l2/solution/poolPlan.js';
 
-export const MENU_SCHEMA_VERSION = '2026-09-20-p2-menu-v2.2' as const;
 export const REVIEW_ALL_ACTORS = 'all';
-export const MENU_NODE_KINDS = ['hub', 'page', 'group'] as const;
-export const MENU_ORGANISM_KINDS = [
-  'list', 'detail', 'form', 'summary', 'highlights', 'timeline', 'actions', 'inbox', 'alerts',
-] as const;
-export const MENU_ACTIONS = ['new', 'change', 'keep', 'remove'] as const;
-
-export type MenuNodeKind = typeof MENU_NODE_KINDS[number];
-export type MenuOrganismKind = typeof MENU_ORGANISM_KINDS[number];
-export type MenuAction = typeof MENU_ACTIONS[number];
 export type ReviewScreenKind = 'pending' | 'empty' | 'invalid' | 'ready';
 export type ReviewNodeScope = 'future' | 'removed';
 export type ReviewPrimaryActionKind = 'calculate' | 'retry' | 'continue' | 'unavailable';
-
-export interface MenuOrganism {
-  kind: MenuOrganismKind;
-  text: string;
-}
-
-export interface MenuPageNode {
-  id: string;
-  kind: 'page';
-  label: string;
-  action: MenuAction;
-  organisms: MenuOrganism[];
-}
-
-export interface MenuHubNode {
-  id: string;
-  kind: 'hub';
-  label: string;
-  action: MenuAction;
-  context: string;
-  text: string;
-  children: MenuNode[];
-}
-
-export interface MenuGroupNode {
-  id: string;
-  kind: 'group';
-  label: string;
-  action: MenuAction;
-  text: string;
-  children: MenuNode[];
-}
-
-export type MenuNode = MenuHubNode | MenuPageNode | MenuGroupNode;
 
 export interface ReviewMenu {
   schemaVersion: typeof MENU_SCHEMA_VERSION;
   moduleName: string;
   device: string;
-  tree: MenuNode[];
+  tree: MenuStampedNode[];
   authorities: Record<string, string[]>;
-  removed: MenuNode[];
+  removed: MenuStampedNode[];
 }
 
 export interface ReviewActorOption {
@@ -280,7 +246,7 @@ function parseOrganism(value: unknown): MenuOrganism | null {
   return { kind: kind as MenuOrganismKind, text };
 }
 
-function parseNode(value: unknown): MenuNode | null {
+function parseNode(value: unknown): MenuStampedNode | null {
   if (!isRecord(value)) return null;
   const id = asNonEmpty(value.id);
   const label = asNonEmpty(value.label);
@@ -298,7 +264,7 @@ function parseNode(value: unknown): MenuNode | null {
   }
   if (value.kind !== 'hub' && value.kind !== 'group') return null;
   if (!Array.isArray(value.children)) return null;
-  const children: MenuNode[] = [];
+  const children: MenuStampedNode[] = [];
   for (const item of value.children) {
     const child = parseNode(item);
     if (!child) return null;
@@ -324,9 +290,9 @@ function parseAuthorities(value: unknown): Record<string, string[]> | null {
   return authorities;
 }
 
-function parseForest(value: unknown): MenuNode[] | null {
+function parseForest(value: unknown): MenuStampedNode[] | null {
   if (!Array.isArray(value)) return null;
-  const nodes: MenuNode[] = [];
+  const nodes: MenuStampedNode[] = [];
   for (const item of value) {
     const node = parseNode(item);
     if (!node) return null;
@@ -360,7 +326,7 @@ export function resolveSelectedActor(actors: ReviewActorOption[], selected: stri
   return actors[0]?.key || REVIEW_ALL_ACTORS;
 }
 
-function toTree(nodes: MenuNode[]): ReviewTreeNode[] {
+function toTree(nodes: MenuStampedNode[]): ReviewTreeNode[] {
   return nodes.map(node => ({
     id: node.id,
     kind: node.kind,
@@ -370,14 +336,14 @@ function toTree(nodes: MenuNode[]): ReviewTreeNode[] {
   }));
 }
 
-function walk(nodes: MenuNode[], visit: (node: MenuNode, ancestors: MenuNode[]) => void, ancestors: MenuNode[] = []): void {
+function walk(nodes: MenuStampedNode[], visit: (node: MenuStampedNode, ancestors: MenuStampedNode[]) => void, ancestors: MenuStampedNode[] = []): void {
   for (const node of nodes) {
     visit(node, ancestors);
     if (node.kind !== 'page') walk(node.children, visit, [...ancestors, node]);
   }
 }
 
-function addDescendants(node: MenuNode, visible: Set<string>): void {
+function addDescendants(node: MenuStampedNode, visible: Set<string>): void {
   if (node.kind === 'page') return;
   for (const child of node.children) {
     visible.add(child.id);
@@ -385,8 +351,8 @@ function addDescendants(node: MenuNode, visible: Set<string>): void {
   }
 }
 
-function filterVisible(nodes: MenuNode[], visible: Set<string>): MenuNode[] {
-  const out: MenuNode[] = [];
+function filterVisible(nodes: MenuStampedNode[], visible: Set<string>): MenuStampedNode[] {
+  const out: MenuStampedNode[] = [];
   for (const node of nodes) {
     if (!visible.has(node.id)) {
       if (node.kind !== 'page') out.push(...filterVisible(node.children, visible));
@@ -401,7 +367,7 @@ function filterVisible(nodes: MenuNode[], visible: Set<string>): MenuNode[] {
   return out;
 }
 
-export function menuTreeForActor(menu: ReviewMenu, actorKey: string): MenuNode[] {
+export function menuTreeForActor(menu: ReviewMenu, actorKey: string): MenuStampedNode[] {
   if (actorKey === REVIEW_ALL_ACTORS) return menu.tree;
   const explicit = menu.authorities[actorKey] || [];
   const visible = new Set(explicit);
@@ -413,8 +379,8 @@ export function menuTreeForActor(menu: ReviewMenu, actorKey: string): MenuNode[]
   return [...filtered].sort((left, right) => (order.get(left.id) ?? Number.POSITIVE_INFINITY) - (order.get(right.id) ?? Number.POSITIVE_INFINITY));
 }
 
-function indexNodes(nodes: MenuNode[]): Map<string, MenuNode> {
-  const found = new Map<string, MenuNode>();
+function indexNodes(nodes: MenuStampedNode[]): Map<string, MenuStampedNode> {
+  const found = new Map<string, MenuStampedNode>();
   walk(nodes, node => {
     if (!found.has(node.id)) found.set(node.id, node);
   });
@@ -479,7 +445,7 @@ export function toggleReviewExpansion(
   };
 }
 
-function detailOf(node: MenuNode, scope: ReviewNodeScope): ReviewNodeDetail {
+function detailOf(node: MenuStampedNode, scope: ReviewNodeScope): ReviewNodeDetail {
   return {
     id: node.id,
     kind: node.kind,
@@ -546,7 +512,7 @@ export function buildReviewView(input: ReviewInput): ReviewView {
   const tree = toTree(future);
   const removed = selectedActor === REVIEW_ALL_ACTORS ? toTree(parsed.menu.removed) : [];
   const futureIndex = indexNodes(future);
-  const removedIndex = selectedActor === REVIEW_ALL_ACTORS ? indexNodes(parsed.menu.removed) : new Map<string, MenuNode>();
+  const removedIndex = selectedActor === REVIEW_ALL_ACTORS ? indexNodes(parsed.menu.removed) : new Map<string, MenuStampedNode>();
   let selectedScope = input.selectedScope;
   let selectedId = input.selectedId;
   if (selectedScope === 'removed' && !containsId(removed, selectedId)) {

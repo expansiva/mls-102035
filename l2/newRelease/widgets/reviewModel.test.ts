@@ -11,8 +11,6 @@ import {
   buildReviewActionPlacements,
   buildReviewView,
   canStartReviewRun,
-  MENU_ACTIONS,
-  MENU_SCHEMA_VERSION,
   menuTreeForActor,
   openReviewExpansionKeys,
   parseReviewMenu,
@@ -22,11 +20,11 @@ import {
   sameReviewStartSnapshot,
   toggleReviewExpansion,
   toggleReviewSelection,
-  type MenuNode,
   type ReviewInput,
   type ReviewTreeNode,
   type ReviewView,
 } from './reviewModel.js';
+import { MENU_ACTIONS, MENU_SCHEMA_VERSION, type MenuStampedNode } from '/_102035_/l2/solution/poolPlan.js';
 
 const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', import.meta.url), 'utf8'));
 
@@ -107,7 +105,7 @@ function labels(nodes: { label: string; children: { label: string }[] }[]): stri
   return nodes.map(node => node.label);
 }
 
-function find(nodes: MenuNode[], id: string): MenuNode | undefined {
+function find(nodes: MenuStampedNode[], id: string): MenuStampedNode | undefined {
   for (const node of nodes) {
     if (node.id === id) return node;
     if (node.kind !== 'page') {
@@ -134,7 +132,7 @@ test('frozen fixture parses as menu v2.2 with the four actions', () => {
   if (!parsed.ok) return;
   assert.equal(parsed.menu.schemaVersion, MENU_SCHEMA_VERSION);
   const seen = new Set<string>();
-  const walk = (nodes: MenuNode[]) => {
+  const walk = (nodes: MenuStampedNode[]) => {
     for (const node of nodes) {
       seen.add(node.action);
       if (node.kind !== 'page') walk(node.children);
