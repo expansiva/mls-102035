@@ -42,7 +42,6 @@ import {
   buildReviewActionPlacements,
   buildReviewView,
   canStartReviewRun,
-  MENU_ACTIONS,
   openReviewExpansionKeys,
   REVIEW_ALL_ACTORS,
   reviewExpansionKey,
@@ -55,6 +54,7 @@ import {
   type ReviewView,
   toggleReviewSelection,
 } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { MENU_ACTIONS } from '/_102035_/l2/solution/poolPlan.js';
 import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
 
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
