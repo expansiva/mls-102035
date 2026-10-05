@@ -185,7 +185,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   private async saveEdit() {
     if (!this.draft || !this.dirty) return;
     try {
-      const gate = await import('/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js');
+      const gate = await import('/_102035_/l2/solution/gates/workflows50/gate.js');
       const result = gate.validateNs5Workflows(this.draft.processes, {
         moduleName: this.moduleName,
         actorIds: this.actors().map(actor => actor.actorId),

@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/reviewTaskState.ts" enhancement="_blank" />
 
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
-import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   pipelineJsonFileForProject,
   readDefsJson,
