@@ -3,7 +3,7 @@
 import { html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   type Ns5IntegrationArtifact,
   type Ns5IntegrationItem,
@@ -169,7 +169,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
   private async saveEdit() {
     if (!this.draft || !this.dirty) return;
     try {
-      const gate = await import('/_102035_/l2/agentNewSolution5/steps/integration70/gate.js');
+      const gate = await import('/_102035_/l2/solution/gates/integration70/gate.js');
       const result = gate.validateNs5Integration(this.draft.inbound, this.draft.outbound, this.draft.plugins, {
         moduleName: this.moduleName,
         actors: this.actors(),

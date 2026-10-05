@@ -256,8 +256,8 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     if (!this.journeyDraft || !this.indexDraft || !this.dirty) return;
     try {
       const [gate, contracts] = await Promise.all([
-        import('/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js'),
-        import('/_102035_/l2/agentNewSolution5/steps/journeys20/contracts.js'),
+        import('/_102035_/l2/solution/gates/journeys20/gate.js'),
+        import('/_102035_/l2/solution/gates/journeys20/contracts.js'),
       ]);
       const journeys = this.journeys();
       const result = gate.validateNs5Journeys(
