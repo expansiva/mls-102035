@@ -326,15 +326,6 @@ function listedPlanFiles(project: number, moduleName: string): mls.stor.IFileInf
     if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted') continue;
     if (file.folder === folder || file.folder?.startsWith(`${folder}/`)) keys.add(key);
   }
-  const listFolder = (mls.stor.localStor as { listFolder?: (project: number, level: number, folder: string) => mls.stor.IFileInfo[] }).listFolder;
-  if (typeof listFolder === 'function') {
-    for (const info of listFolder(project, 4, folder) || []) {
-      if (info.folder !== folder && !String(info.folder || '').startsWith(`${folder}/`)) continue;
-      const key = mls.stor.getKeyToFile(info);
-      keys.add(key);
-      if (!files[key]) files[key] = { ...info, versionRef: '0', inLocalStorage: true, status: 'changed', hasError: false } as mls.stor.IFileInfo;
-    }
-  }
   return [...keys].map(key => files[key]).filter((file): file is mls.stor.IFileInfo => !!file && file.status !== 'deleted');
 }
 

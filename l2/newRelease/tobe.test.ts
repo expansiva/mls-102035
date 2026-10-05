@@ -166,6 +166,30 @@ function installStorFixture(project: number, moduleName: string) {
   return { source, files, contents, keyOf, add };
 }
 
+test('ui_maint_01', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const diskOnly = {
+    project,
+    level: 4,
+    folder: `${moduleName}/tobe/plan`,
+    shortName: 'diskOnly',
+    extension: '.defs.ts',
+    status: 'changed',
+  };
+  const localStor = (globalThis as any).mls.stor.localStor;
+  const previous = localStor.listFolder;
+  localStor.listFolder = (wantedProject: number, level: number, folder: string) => {
+    const listed = previous(wantedProject, level, folder);
+    const inPlan = diskOnly.folder === folder || diskOnly.folder.startsWith(`${folder}/`);
+    return wantedProject === project && level === 4 && inPlan ? [...listed, diskOnly] : listed;
+  };
+  const discarded = await discardTobe(project, moduleName);
+  assert.equal(discarded.deleted.some(path => path.includes('diskOnly')), false);
+  assert.equal(Object.values(fixture.files).some((file: any) => file.shortName === 'diskOnly'), false);
+});
+
 test('runtime overlay saves one artifact, detects stale base, and discards with inventory', async () => {
   const project = 102047;
   const moduleName = 'ordenServicio5';

@@ -20,6 +20,11 @@ const RULES: { forbidden: string; scope: string; allowed: string }[] = [
     scope: 'mls-102035/l2',
     allowed: 'l2/agentNewSolution5/',
   },
+  {
+    forbidden: ['list', 'Folder'].join(''),
+    scope: 'newRelease/,agentReviewSolution/,agentPlannerL4/,solution/',
+    allowed: '*.test.ts',
+  },
 ];
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -35,10 +40,15 @@ function walk(dir: string, out: string[] = []): string[] {
 void test('agent-private paths stay inside the agent that owns them', () => {
   const offenders: string[] = [];
   for (const rule of RULES) {
+    const scopes = rule.scope === 'mls-102035/l2' ? [''] : rule.scope.split(',');
     const allowedRel = rule.allowed.replace(/^l2\//, '');
     for (const file of walk(L2)) {
       const rel = relative(L2, file).split('\\').join('/');
-      if (rel === allowedRel.slice(0, -1) || rel.startsWith(allowedRel)) continue;
+      if (!scopes.some(prefix => rel.startsWith(prefix))) continue;
+      const allowed = rule.allowed.startsWith('*')
+        ? rel.endsWith(rule.allowed.slice(1))
+        : rel === allowedRel.slice(0, -1) || rel.startsWith(allowedRel);
+      if (allowed) continue;
       const source = readFileSync(file, 'utf8');
       let from = 0;
       while (from < source.length) {
