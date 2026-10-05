@@ -256,7 +256,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   private async saveEdit() {
     if (!this.accessDraft || !this.dirty) return;
     try {
-      const gate = await import('/_102035_/l2/agentNewSolution5/steps/access60/gate.js');
+      const gate = await import('/_102035_/l2/solution/gates/access60/gate.js');
       const result = gate.validateNs5Access(this.accessDraft.grants, {
         moduleName: this.moduleName,
         actors: this.accessDraft.actors,

@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/integrationRequests.ts" enhancement="_blank" />
 
 import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
-import type { Ns5SiblingModule } from '/_102035_/l2/agentNewSolution5/helpers/ns5Siblings.js';
+import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import type { Ns5IntegrationRequestArtifact } from '/_102035_/l2/solution/types.js';
 import {
   normalizeModuleName,

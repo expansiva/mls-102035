@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/tobe.ts" enhancement="_blank" />
 
 import { getSessionUser } from '/_102033_/l2/shared/sessionUser.js';
-import type { Ns5FinalizeReport, Ns5OracleSources } from '/_102035_/l2/agentNewSolution5/steps/finalize80/contracts.js';
+import type { Ns5FinalizeReport, Ns5OracleSources } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import {
   fileExists,
   pipelineJsonFileForProject,
@@ -33,21 +33,21 @@ import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/new
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import type { CandidateArea, CandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
-import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
 // The complete gates depend on the backend-only level-1 catalog. Keep that graph out of the
 // browser bundle: the review UI enforces its own edit invariants and the full validation still
 // runs in Node/worker flows before apply or execute.
 const validationRuntimePromise = typeof window === 'undefined'
   ? Promise.all([
-    import('/_102035_/l2/agentNewSolution5/steps/module10/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/rules40/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/access60/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/integration70/gate.js'),
-    import('/_102035_/l2/agentNewSolution5/steps/finalize80/gate.js'),
+    import('/_102035_/l2/solution/gates/module10/gate.js'),
+    import('/_102035_/l2/solution/gates/journeys20/gate.js'),
+    import('/_102035_/l2/solution/gates/ontology30/gate.js'),
+    import('/_102035_/l2/solution/gates/rules40/gate.js'),
+    import('/_102035_/l2/solution/gates/workflows50/gate.js'),
+    import('/_102035_/l2/solution/gates/access60/gate.js'),
+    import('/_102035_/l2/solution/gates/integration70/gate.js'),
+    import('/_102035_/l2/solution/gates/finalize80/gate.js'),
   ] as const)
   : null;
 
@@ -325,15 +325,6 @@ function listedPlanFiles(project: number, moduleName: string): mls.stor.IFileInf
   for (const [key, file] of Object.entries(files)) {
     if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted') continue;
     if (file.folder === folder || file.folder?.startsWith(`${folder}/`)) keys.add(key);
-  }
-  const listFolder = (mls.stor.localStor as { listFolder?: (project: number, level: number, folder: string) => mls.stor.IFileInfo[] }).listFolder;
-  if (typeof listFolder === 'function') {
-    for (const info of listFolder(project, 4, folder) || []) {
-      if (info.folder !== folder && !String(info.folder || '').startsWith(`${folder}/`)) continue;
-      const key = mls.stor.getKeyToFile(info);
-      keys.add(key);
-      if (!files[key]) files[key] = { ...info, versionRef: '0', inLocalStorage: true, status: 'changed', hasError: false } as mls.stor.IFileInfo;
-    }
   }
   return [...keys].map(key => files[key]).filter((file): file is mls.stor.IFileInfo => !!file && file.status !== 'deleted');
 }

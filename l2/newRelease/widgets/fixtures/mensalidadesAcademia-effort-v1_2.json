@@ -1,0 +1,623 @@
+{
+  "schemaVersion": "2026-09-21-p2-effort-v1.2",
+  "moduleName": "mensalidadesAcademia",
+  "device": "web",
+  "totals": {
+    "screens": {
+      "toCreate": 5,
+      "toUpdate": 0,
+      "toRemove": 0,
+      "done": 0
+    },
+    "endpoints": {
+      "toCreate": 21,
+      "toUpdate": 0,
+      "toRemove": 0,
+      "done": 0
+    },
+    "usecases": {
+      "toCreate": 12,
+      "toUpdate": 0,
+      "toRemove": 0,
+      "done": 0
+    },
+    "tables": {
+      "toCreate": 5,
+      "toUpdate": 0,
+      "toRemove": 0,
+      "done": 0
+    }
+  },
+  "screens": [
+    {
+      "pageId": "painel_gerencia",
+      "label": "Painel da academia",
+      "actors": [
+        "gerencia"
+      ],
+      "status": "toCreate",
+      "endpoints": [
+        "mensalidadesAcademia.painel_gerencia.cmdCreateMensalidade",
+        "mensalidadesAcademia.painel_gerencia.qryListIndicadoresAcademia",
+        "mensalidadesAcademia.painel_gerencia.qryListMatricula",
+        "mensalidadesAcademia.painel_gerencia.qryListMensalidade",
+        "mensalidadesAcademia.painel_gerencia.qryListPlano"
+      ]
+    },
+    {
+      "pageId": "mensalidades_pagamentos",
+      "label": "Mensalidades e pagamentos",
+      "actors": [
+        "recepcao"
+      ],
+      "status": "toCreate",
+      "endpoints": [
+        "mensalidadesAcademia.mensalidades_pagamentos.cmdCreatePagamento",
+        "mensalidadesAcademia.mensalidades_pagamentos.qryListAluno",
+        "mensalidadesAcademia.mensalidades_pagamentos.qryListMatricula",
+        "mensalidadesAcademia.mensalidades_pagamentos.qryListMensalidade",
+        "mensalidadesAcademia.mensalidades_pagamentos.qryListPagamento",
+        "mensalidadesAcademia.mensalidades_pagamentos.qryListPlano"
+      ]
+    },
+    {
+      "pageId": "matriculas",
+      "label": "Matrículas",
+      "actors": [
+        "recepcao"
+      ],
+      "status": "toCreate",
+      "endpoints": [
+        "mensalidadesAcademia.matriculas.cmdCreateMatricula",
+        "mensalidadesAcademia.matriculas.qryListAluno",
+        "mensalidadesAcademia.matriculas.qryListMatricula",
+        "mensalidadesAcademia.matriculas.qryListMensalidade",
+        "mensalidadesAcademia.matriculas.qryListPlano"
+      ]
+    },
+    {
+      "pageId": "planos",
+      "label": "Planos",
+      "actors": [
+        "recepcao"
+      ],
+      "status": "toCreate",
+      "endpoints": [
+        "mensalidadesAcademia.planos.cmdCreatePlano",
+        "mensalidadesAcademia.planos.cmdUpdatePlano",
+        "mensalidadesAcademia.planos.qryListPlano"
+      ]
+    },
+    {
+      "pageId": "minha_matricula",
+      "label": "Minha matrícula",
+      "actors": [
+        "aluno"
+      ],
+      "status": "toCreate",
+      "endpoints": [
+        "mensalidadesAcademia.minha_matricula.cmdCancelarMatricula",
+        "mensalidadesAcademia.minha_matricula.qryListMatricula"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "route": "mensalidadesAcademia.matriculas.cmdCreateMatricula",
+      "page": "matriculas",
+      "kind": "cmd",
+      "usecaseRef": "createMatricula",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.matriculas.qryListAluno",
+      "page": "matriculas",
+      "kind": "qry",
+      "usecaseRef": "listAluno",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.matriculas.qryListMatricula",
+      "page": "matriculas",
+      "kind": "qry",
+      "usecaseRef": "listMatricula",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.matriculas.qryListMensalidade",
+      "page": "matriculas",
+      "kind": "qry",
+      "usecaseRef": "listMensalidade",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.matriculas.qryListPlano",
+      "page": "matriculas",
+      "kind": "qry",
+      "usecaseRef": "listPlano",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.mensalidades_pagamentos.cmdCreatePagamento",
+      "page": "mensalidades_pagamentos",
+      "kind": "cmd",
+      "usecaseRef": "createPagamento",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.mensalidades_pagamentos.qryListAluno",
+      "page": "mensalidades_pagamentos",
+      "kind": "qry",
+      "usecaseRef": "listAluno",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.mensalidades_pagamentos.qryListMatricula",
+      "page": "mensalidades_pagamentos",
+      "kind": "qry",
+      "usecaseRef": "listMatricula",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.mensalidades_pagamentos.qryListMensalidade",
+      "page": "mensalidades_pagamentos",
+      "kind": "qry",
+      "usecaseRef": "listMensalidade",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.mensalidades_pagamentos.qryListPagamento",
+      "page": "mensalidades_pagamentos",
+      "kind": "qry",
+      "usecaseRef": "listPagamento",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.mensalidades_pagamentos.qryListPlano",
+      "page": "mensalidades_pagamentos",
+      "kind": "qry",
+      "usecaseRef": "listPlano",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.minha_matricula.cmdCancelarMatricula",
+      "page": "minha_matricula",
+      "kind": "cmd",
+      "usecaseRef": "cancelarMatricula",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.minha_matricula.qryListMatricula",
+      "page": "minha_matricula",
+      "kind": "qry",
+      "usecaseRef": "listMatricula",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.painel_gerencia.cmdCreateMensalidade",
+      "page": "painel_gerencia",
+      "kind": "cmd",
+      "usecaseRef": "createMensalidade",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.painel_gerencia.qryListIndicadoresAcademia",
+      "page": "painel_gerencia",
+      "kind": "qry",
+      "usecaseRef": "listIndicadoresAcademia",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.painel_gerencia.qryListMatricula",
+      "page": "painel_gerencia",
+      "kind": "qry",
+      "usecaseRef": "listMatricula",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.painel_gerencia.qryListMensalidade",
+      "page": "painel_gerencia",
+      "kind": "qry",
+      "usecaseRef": "listMensalidade",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.painel_gerencia.qryListPlano",
+      "page": "painel_gerencia",
+      "kind": "qry",
+      "usecaseRef": "listPlano",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.planos.cmdCreatePlano",
+      "page": "planos",
+      "kind": "cmd",
+      "usecaseRef": "createPlano",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.planos.cmdUpdatePlano",
+      "page": "planos",
+      "kind": "cmd",
+      "usecaseRef": "updatePlano",
+      "status": "toCreate"
+    },
+    {
+      "route": "mensalidadesAcademia.planos.qryListPlano",
+      "page": "planos",
+      "kind": "qry",
+      "usecaseRef": "listPlano",
+      "status": "toCreate"
+    }
+  ],
+  "usecases": [
+    {
+      "usecaseId": "cancelarMatricula",
+      "entity": "Matricula",
+      "operation": "transition",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "createMatricula",
+      "entity": "Matricula",
+      "operation": "create",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "createMensalidade",
+      "entity": "Mensalidade",
+      "operation": "create",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "createPagamento",
+      "entity": "Pagamento",
+      "operation": "create",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "createPlano",
+      "entity": "Plano",
+      "operation": "create",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "listAluno",
+      "entity": "Aluno",
+      "operation": "list",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "listIndicadoresAcademia",
+      "entity": "IndicadoresAcademia",
+      "operation": "list",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "listMatricula",
+      "entity": "Matricula",
+      "operation": "list",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "listMensalidade",
+      "entity": "Mensalidade",
+      "operation": "list",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "listPagamento",
+      "entity": "Pagamento",
+      "operation": "list",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "listPlano",
+      "entity": "Plano",
+      "operation": "list",
+      "status": "toCreate",
+      "existing": ""
+    },
+    {
+      "usecaseId": "updatePlano",
+      "entity": "Plano",
+      "operation": "update",
+      "status": "toCreate",
+      "existing": ""
+    }
+  ],
+  "tables": [
+    {
+      "tableId": "indicadoresAcademia",
+      "entity": "IndicadoresAcademia",
+      "status": "toCreate"
+    },
+    {
+      "tableId": "matricula",
+      "entity": "Matricula",
+      "status": "toCreate"
+    },
+    {
+      "tableId": "mensalidade",
+      "entity": "Mensalidade",
+      "status": "toCreate"
+    },
+    {
+      "tableId": "pagamento",
+      "entity": "Pagamento",
+      "status": "toCreate"
+    },
+    {
+      "tableId": "plano",
+      "entity": "Plano",
+      "status": "toCreate"
+    }
+  ],
+  "removed": [],
+  "testSupport": [
+    {
+      "id": "data:IndicadoresAcademia",
+      "actorRefs": [
+        "gerencia"
+      ],
+      "entityRefs": [
+        "IndicadoresAcademia"
+      ],
+      "sourceRefs": [
+        "grant:gerenciaAcompanharIndicadores",
+        "organism:summary"
+      ],
+      "status": "toCreate",
+      "owner": "L1",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes indicadoresAcademia rows by execution id"
+    },
+    {
+      "id": "data:Matricula",
+      "actorRefs": [
+        "aluno",
+        "gerencia",
+        "recepcao"
+      ],
+      "entityRefs": [
+        "Aluno",
+        "Matricula",
+        "Plano"
+      ],
+      "sourceRefs": [
+        "grant:alunoCancelarPropriaMatricula",
+        "grant:gerenciaGerarMensalidades",
+        "grant:recepcaoGerenciarCadastrosEcobrancas",
+        "journey:acompanharIndicadoresAcademia/inspecionarIndicadores",
+        "journey:cancelarPropriaMatricula/cancelarMatricula",
+        "journey:cancelarPropriaMatricula/inspecionarPropriaMatricula",
+        "journey:cancelarPropriaMatricula/localizarPropriaMatricula",
+        "journey:gerarMensalidadesDoMes/criarMensalidades",
+        "journey:matricularAluno/criarMatricula",
+        "journey:matricularAluno/localizarAluno",
+        "journey:matricularAluno/localizarPlano",
+        "journey:registrarPagamentoMensalidade/inspecionarMensalidade",
+        "journey:registrarPagamentoMensalidade/localizarMensalidade",
+        "journey:registrarPagamentoMensalidade/registrarPagamento",
+        "ontology:Matricula/lifecycleStates/active",
+        "relationship:Aluno/matriculaAluno",
+        "relationship:Matricula/matriculaAluno",
+        "relationship:Matricula/matriculaPlano",
+        "relationship:Matricula/mensalidadeMatricula",
+        "relationship:Mensalidade/mensalidadeMatricula",
+        "relationship:Plano/matriculaPlano"
+      ],
+      "status": "toCreate",
+      "owner": "L1",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes matricula rows by execution id"
+    },
+    {
+      "id": "data:Mensalidade",
+      "actorRefs": [
+        "gerencia",
+        "recepcao"
+      ],
+      "entityRefs": [
+        "Matricula",
+        "Mensalidade"
+      ],
+      "sourceRefs": [
+        "grant:gerenciaGerarMensalidades",
+        "grant:recepcaoGerenciarCadastrosEcobrancas",
+        "journey:acompanharIndicadoresAcademia/inspecionarIndicadores",
+        "journey:gerarMensalidadesDoMes/criarMensalidades",
+        "journey:matricularAluno/criarMatricula",
+        "journey:matricularAluno/localizarAluno",
+        "journey:matricularAluno/localizarPlano",
+        "journey:registrarPagamentoMensalidade/inspecionarMensalidade",
+        "journey:registrarPagamentoMensalidade/localizarMensalidade",
+        "journey:registrarPagamentoMensalidade/registrarPagamento",
+        "relationship:Matricula/mensalidadeMatricula",
+        "relationship:Mensalidade/mensalidadeMatricula",
+        "relationship:Mensalidade/pagamentoMensalidade",
+        "relationship:Pagamento/pagamentoMensalidade"
+      ],
+      "status": "toCreate",
+      "owner": "L1",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes mensalidade rows by execution id"
+    },
+    {
+      "id": "data:Pagamento",
+      "actorRefs": [
+        "recepcao"
+      ],
+      "entityRefs": [
+        "Mensalidade",
+        "Pagamento"
+      ],
+      "sourceRefs": [
+        "grant:recepcaoGerenciarCadastrosEcobrancas",
+        "journey:registrarPagamentoMensalidade/inspecionarMensalidade",
+        "journey:registrarPagamentoMensalidade/localizarMensalidade",
+        "journey:registrarPagamentoMensalidade/registrarPagamento",
+        "relationship:Mensalidade/pagamentoMensalidade",
+        "relationship:Pagamento/pagamentoMensalidade"
+      ],
+      "status": "toCreate",
+      "owner": "L1",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes pagamento rows by execution id"
+    },
+    {
+      "id": "data:Plano",
+      "actorRefs": [
+        "gerencia",
+        "recepcao"
+      ],
+      "entityRefs": [
+        "Plano"
+      ],
+      "sourceRefs": [
+        "grant:gerenciaGerarMensalidades",
+        "grant:recepcaoGerenciarCadastrosEcobrancas",
+        "journey:acompanharIndicadoresAcademia/inspecionarIndicadores",
+        "journey:gerarMensalidadesDoMes/criarMensalidades",
+        "journey:matricularAluno/criarMatricula",
+        "journey:matricularAluno/localizarAluno",
+        "journey:matricularAluno/localizarPlano",
+        "journey:registrarPagamentoMensalidade/inspecionarMensalidade",
+        "journey:registrarPagamentoMensalidade/localizarMensalidade",
+        "journey:registrarPagamentoMensalidade/registrarPagamento",
+        "organism:form",
+        "relationship:Matricula/matriculaPlano",
+        "relationship:Matricula/mensalidadeMatricula",
+        "relationship:Plano/matriculaPlano"
+      ],
+      "status": "toCreate",
+      "owner": "L1",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes plano rows by execution id"
+    },
+    {
+      "id": "identity:aluno",
+      "actorRefs": [
+        "aluno"
+      ],
+      "entityRefs": [],
+      "sourceRefs": [
+        "access:actors/aluno",
+        "grant:alunoCancelarPropriaMatricula",
+        "journey:cancelarPropriaMatricula/cancelarMatricula",
+        "journey:cancelarPropriaMatricula/inspecionarPropriaMatricula",
+        "journey:cancelarPropriaMatricula/localizarPropriaMatricula"
+      ],
+      "status": "toCreate",
+      "owner": "runtime",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "PERSON_ENTITY_UNDECLARED: actor aluno declares no personEntity; the test identity cannot be bound"
+    },
+    {
+      "id": "identity:gerencia",
+      "actorRefs": [
+        "gerencia"
+      ],
+      "entityRefs": [],
+      "sourceRefs": [
+        "access:actors/gerencia",
+        "grant:gerenciaAcompanharIndicadores",
+        "grant:gerenciaGerarMensalidades",
+        "journey:acompanharIndicadoresAcademia/inspecionarIndicadores",
+        "journey:gerarMensalidadesDoMes/criarMensalidades",
+        "organism:summary",
+        "relationship:Matricula/matriculaPlano",
+        "relationship:Matricula/mensalidadeMatricula",
+        "relationship:Mensalidade/mensalidadeMatricula",
+        "relationship:Plano/matriculaPlano"
+      ],
+      "status": "toCreate",
+      "owner": "runtime",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "PERSON_ENTITY_UNDECLARED: actor gerencia declares no personEntity; the test identity cannot be bound"
+    },
+    {
+      "id": "identity:recepcao",
+      "actorRefs": [
+        "recepcao"
+      ],
+      "entityRefs": [],
+      "sourceRefs": [
+        "access:actors/recepcao",
+        "grant:recepcaoGerenciarCadastrosEcobrancas",
+        "grant:recepcaoLocalizarAluno",
+        "journey:matricularAluno/criarMatricula",
+        "journey:matricularAluno/localizarAluno",
+        "journey:matricularAluno/localizarPlano",
+        "journey:registrarPagamentoMensalidade/inspecionarMensalidade",
+        "journey:registrarPagamentoMensalidade/localizarMensalidade",
+        "journey:registrarPagamentoMensalidade/registrarPagamento",
+        "organism:form",
+        "relationship:Aluno/matriculaAluno",
+        "relationship:Matricula/matriculaAluno",
+        "relationship:Matricula/matriculaPlano",
+        "relationship:Matricula/mensalidadeMatricula",
+        "relationship:Mensalidade/mensalidadeMatricula",
+        "relationship:Mensalidade/pagamentoMensalidade",
+        "relationship:Pagamento/pagamentoMensalidade",
+        "relationship:Plano/matriculaPlano"
+      ],
+      "status": "toCreate",
+      "owner": "runtime",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "PERSON_ENTITY_UNDECLARED: actor recepcao declares no personEntity; the test identity cannot be bound"
+    },
+    {
+      "id": "mdm:Aluno",
+      "actorRefs": [
+        "recepcao"
+      ],
+      "entityRefs": [
+        "Aluno"
+      ],
+      "sourceRefs": [
+        "grant:recepcaoLocalizarAluno",
+        "journey:matricularAluno/criarMatricula",
+        "journey:matricularAluno/localizarAluno",
+        "journey:matricularAluno/localizarPlano",
+        "journey:registrarPagamentoMensalidade/inspecionarMensalidade",
+        "journey:registrarPagamentoMensalidade/localizarMensalidade",
+        "journey:registrarPagamentoMensalidade/registrarPagamento",
+        "ontology:Matricula/relationships",
+        "relationship:Aluno/matriculaAluno",
+        "relationship:Matricula/matriculaAluno",
+        "relationship:Matricula/mensalidadeMatricula"
+      ],
+      "status": "toCreate",
+      "owner": "runtime",
+      "executorRef": "",
+      "cleanupRef": "",
+      "gap": "RUNTIME_MDM_FIXTURE_UNREFERENCED: no verified runtime capability provisions and removes Aluno records by execution id"
+    }
+  ],
+  "unattributed": [],
+  "meta": {
+    "sourceMenu": "pool/l2/web/menu.json",
+    "sourceBackend": "pool/l2/web/backend.json",
+    "sourceVersion": "2026-09-21-p1-backend-v1.2",
+    "generatedAt": "2026-10-02T16:14:06.699Z"
+  }
+}

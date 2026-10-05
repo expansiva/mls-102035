@@ -272,7 +272,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   private async saveEdit() {
     if (!this.entityDraft || !this.indexDraft || !this.dirty) return;
     try {
-      const gate = await import('/_102035_/l2/agentNewSolution5/steps/ontology30/gate.js');
+      const gate = await import('/_102035_/l2/solution/gates/ontology30/gate.js');
       const allEntities = this.currentEntities();
       const plan = {
         moduleName: this.moduleName,
