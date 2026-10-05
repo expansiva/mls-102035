@@ -2,14 +2,14 @@
 
 /** Pure validation of an already assembled L4 candidate. No NS5 hooks or writes. */
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
-import { validateNs5ModuleArtifact } from '/_102035_/l2/agentNewSolution5/steps/module10/gate.js';
-import { validateNs5Journeys } from '/_102035_/l2/agentNewSolution5/steps/journeys20/gate.js';
-import { validateNs5OntologyAssemblyV3, validateNs5OntologyEntityV3 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/gateV3.js';
-import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/agentNewSolution5/steps/ontology30/contractsV3.js';
-import { validateNs5Rules } from '/_102035_/l2/agentNewSolution5/steps/rules40/gate.js';
-import { validateNs5Workflows } from '/_102035_/l2/agentNewSolution5/steps/workflows50/gate.js';
-import { validateNs5Access } from '/_102035_/l2/agentNewSolution5/steps/access60/gate.js';
-import { validateNs5Integration } from '/_102035_/l2/agentNewSolution5/steps/integration70/gate.js';
+import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
+import { validateNs5Journeys } from '/_102035_/l2/solution/gates/journeys20/gate.js';
+import { validateNs5OntologyAssemblyV3, validateNs5OntologyEntityV3 } from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
+import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
+import { validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
+import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
+import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { isNs5OntologyV3Version, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
