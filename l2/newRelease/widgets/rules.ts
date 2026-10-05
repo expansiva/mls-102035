@@ -174,7 +174,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
   private async saveEdit() {
     if (!this.rulesDraft || !this.dirty) return;
     try {
-      const gate = await import('/_102035_/l2/agentNewSolution5/steps/rules40/gate.js');
+      const gate = await import('/_102035_/l2/solution/gates/rules40/gate.js');
       const result = gate.validateNs5Rules(ns5RuleRecord(this.rulesDraft), { moduleName: this.moduleName });
       this.gateIssues = result.issues.map(issue => ({ severity: issue.severity, code: issue.code, message: issue.message }));
       if (!result.ok) {
