@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/reviewRunStudioWorker.test.ts" enhancement="_blank" />
 
-const assert = require('node:assert/strict');
-const test = require('node:test');
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
 const documentStub = globalThis.document as Document & {
   createTreeWalker?: () => { nextNode(): null; currentNode: null };
@@ -24,7 +24,6 @@ if (!globalThis.HTMLElement) {
   (globalThis as typeof globalThis & { HTMLElement: typeof Function }).HTMLElement = class HTMLElement {};
 }
 
-const { createReviewStudioHost } = require('./reviewRunStudioWorker.ts') as typeof import('./reviewRunStudioWorker.ts');
 import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import type { KeyValueStorage, ReviewWorkerClaim } from './reviewRunWorker.js';
 
@@ -32,6 +31,20 @@ const THREAD_ID = 'thread-mr15';
 const ORDER_AT = '20261006181434.9967';
 const PROVISIONAL = `${THREAD_ID}/${ORDER_AT}`;
 const CANONICAL = `${THREAD_ID}/20261006181434.1000`;
+
+const Module = require('node:module') as typeof import('node:module');
+const path = require('node:path') as typeof import('node:path');
+const fs = require('node:fs') as typeof import('node:fs');
+const os = require('node:os') as typeof import('node:os');
+const taskInfoStub = path.join(os.tmpdir(), 'mr15-collabMessagesTaskInfo.cjs');
+fs.writeFileSync(taskInfoStub, 'exports.buildTaskStatistics = () => ({ models: [], fallbackCount: 0, errors: [] });\n');
+const resolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request, parent, isMain, options) {
+  if (String(request).includes('collabMessagesTaskInfo')) return taskInfoStub;
+  return resolveFilename.call(this, request, parent, isMain, options);
+};
+
+const { createReviewStudioHost } = require('./reviewRunStudioWorker.ts') as typeof import('./reviewRunStudioWorker.ts');
 
 function memoryStorage(): KeyValueStorage & { raw(): string } {
   const items = new Map<string, string>();
