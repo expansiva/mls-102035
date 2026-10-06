@@ -1,8 +1,9 @@
 /// <mls fileReference="_102035_/l2/newRelease/newReleaseI18n.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   createNewReleaseTranslator,
   loadNewReleaseMessages,
@@ -94,6 +95,45 @@ test('every widget keeps visible copy in external message bundles', () => {
   const pt = JSON.parse(readFileSync(new URL('i18n/pt-BR.json', import.meta.url), 'utf8'));
   const en = JSON.parse(readFileSync(new URL('i18n/en-US.json', import.meta.url), 'utf8'));
   assert.deepEqual(Object.keys(pt).sort(), Object.keys(en).sort());
+});
+
+function sourceFiles(dir: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) files.push(...sourceFiles(full));
+    else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) files.push(full);
+  }
+  return files;
+}
+
+test('every literal t() key exists in both bundles', () => {
+  const root = fileURLToPath(new URL('.', import.meta.url));
+  const pt = JSON.parse(readFileSync(new URL('i18n/pt-BR.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+  const en = JSON.parse(readFileSync(new URL('i18n/en-US.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+  const missing: string[] = [];
+  const seen = new Set<string>();
+  const pattern = /\bt\(\s*'([A-Za-z0-9_.-]+)'/g;
+  for (const file of sourceFiles(root)) {
+    const name = file.slice(file.lastIndexOf('/') + 1);
+    for (const match of readFileSync(file, 'utf8').matchAll(pattern)) {
+      const key = match[1];
+      const cite = `${name}: ${key}`;
+      if (seen.has(cite)) continue;
+      seen.add(cite);
+      if (!(key in pt) || !(key in en)) missing.push(cite);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+test('gapCount interpolates through the real translator in both bundles', () => {
+  for (const file of ['i18n/pt-BR.json', 'i18n/en-US.json']) {
+    const messages = JSON.parse(readFileSync(new URL(file, import.meta.url), 'utf8')) as Record<string, string>;
+    const text = createNewReleaseTranslator([messages])('review.backend.testSupport.gapCount', { count: 2 });
+    assert.notEqual(text, 'review.backend.testSupport.gapCount');
+    assert.match(String(text), /2/);
+  }
 });
 
 test('candidate URL maps to the Studio stor file of the same catalog', () => {

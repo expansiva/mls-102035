@@ -736,19 +736,6 @@ export class NewReleaseReview102035 extends StateLitElement {
               }).join(' · ')}</span>
             </div>
           `)}</div>
-          <div class="nr-review__effort-totals">${(['screens', 'endpoints', 'usecases', 'tables'] as const).map(category => {
-            const bucket = summary.totals[category];
-            return html`
-              <div><strong>${this.t(`review.backend.count.${category}`)}</strong>
-                <span>${this.t('review.backend.totalsLabel')}: ${[
-                  ['toCreate', 'new'],
-                  ['toUpdate', 'change'],
-                  ['toRemove', 'remove'],
-                  ['done', 'keep'],
-                ].map(([field, tone]) => `${this.t(`review.backend.status.${tone}`)}: ${bucket[field as 'toCreate' | 'toUpdate' | 'toRemove' | 'done']}`).join(' · ')}</span>
-              </div>
-            `;
-          })}</div>
         ` : nothing}
       </section>
     `;
@@ -817,24 +804,38 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
+  private gapCount(items: readonly { gap: string }[]) {
+    return items.filter(item => item.gap !== '').length;
+  }
+
+  private gapCountMark(count: number) {
+    return count > 0
+      ? html`<small class="nr-review__test-gap">${this.t('review.backend.testSupport.gapCount', { count })}</small>`
+      : nothing;
+  }
+
   private renderTestSupport(groups: BackendTestSupportOwnerGroup[]) {
+    const allItems = groups.flatMap(owner => owner.groups.flatMap(status => status.items));
     return html`
       <details class="nr-review__backend-group nr-review__test-support">
-        <summary><span><strong>${this.t('review.backend.testSupport')}</strong></span><small>${this.t('review.backend.itemCount', { count: groups.reduce((count, owner) => count + owner.groups.reduce((inner, status) => inner + status.items.length, 0), 0) })}</small></summary>
+        <summary><span><strong>${this.t('review.backend.testSupport')}</strong></span><small>${this.t('review.backend.itemCount', { count: allItems.length })}</small>${this.gapCountMark(this.gapCount(allItems))}</summary>
         <div>
-          ${groups.length ? groups.map(owner => html`
+          ${groups.length ? groups.map(owner => {
+            const ownerItems = owner.groups.flatMap(status => status.items);
+            return html`
             <details class="nr-review__backend-group">
-              <summary><span><strong>${this.t('review.backend.testSupport.owner')}</strong><code>${owner.owner}</code></span><small>${this.t('review.backend.itemCount', { count: owner.groups.reduce((count, status) => count + status.items.length, 0) })}</small></summary>
+              <summary><span><strong>${this.t('review.backend.testSupport.owner')}</strong><code>${owner.owner}</code></span><small>${this.t('review.backend.itemCount', { count: ownerItems.length })}</small>${this.gapCountMark(this.gapCount(ownerItems))}</summary>
               <div>
                 ${owner.groups.map(status => html`
                   <details class="nr-review__backend-group">
-                    <summary><span><strong>${this.t(`review.backend.status.${backendTone(status.status)}`)}</strong><code>${status.status}</code></span><small>${this.t('review.backend.itemCount', { count: status.items.length })}</small></summary>
+                    <summary><span><strong>${this.t(`review.backend.status.${backendTone(status.status)}`)}</strong><code>${status.status}</code></span><small>${this.t('review.backend.itemCount', { count: status.items.length })}</small>${this.gapCountMark(this.gapCount(status.items))}</summary>
                     <div>${status.items.map(item => this.renderTestSupportItem(item))}</div>
                   </details>
                 `)}
               </div>
             </details>
-          `) : html`<p class="nr-review__backend-empty">${this.t('review.backend.testSupport.empty')}</p>`}
+          `;
+          }) : html`<p class="nr-review__backend-empty">${this.t('review.backend.testSupport.empty')}</p>`}
         </div>
       </details>
     `;
@@ -888,37 +889,6 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 }
-
-/// **collab_i18n_start**
-// pt-BR
-// "review.backend.testSupport": "Suporte de teste"
-// "review.backend.testSupport.item": "Suporte de teste"
-// "review.backend.testSupport.empty": "Nenhum suporte de teste neste artefato."
-// "review.backend.testSupport.id": "Id:"
-// "review.backend.testSupport.actorRefs": "Atores:"
-// "review.backend.testSupport.entityRefs": "Entidades:"
-// "review.backend.testSupport.sourceRefs": "Fontes:"
-// "review.backend.testSupport.status": "Estado:"
-// "review.backend.testSupport.owner": "Dono:"
-// "review.backend.testSupport.executorRef": "Executor:"
-// "review.backend.testSupport.cleanupRef": "Limpeza:"
-// "review.backend.testSupport.gap": "Lacuna"
-// "review.backend.totalsLabel": "Totais"
-// en-US
-// "review.backend.testSupport": "Test support"
-// "review.backend.testSupport.item": "Test support"
-// "review.backend.testSupport.empty": "No test support in this artifact."
-// "review.backend.testSupport.id": "Id:"
-// "review.backend.testSupport.actorRefs": "Actors:"
-// "review.backend.testSupport.entityRefs": "Entities:"
-// "review.backend.testSupport.sourceRefs": "Sources:"
-// "review.backend.testSupport.status": "Status:"
-// "review.backend.testSupport.owner": "Owner:"
-// "review.backend.testSupport.executorRef": "Executor:"
-// "review.backend.testSupport.cleanupRef": "Cleanup:"
-// "review.backend.testSupport.gap": "Gap"
-// "review.backend.totalsLabel": "Totals"
-/// **collab_i18n_end**
 
 async function sha256Text(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
