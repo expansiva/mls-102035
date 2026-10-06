@@ -1,6 +1,14 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/reviewStart.ts" enhancement="_blank" />
 
-import { buildCandidateSnapshot, type CandidateSnapshot } from './candidateGateway.js';
+import {
+  buildCandidateSnapshot,
+  candidatePublish,
+  candidateRead,
+  type CandidatePointer,
+  type CandidatePublishInput,
+  type CandidateSnapshot,
+  type CandidateScope,
+} from './candidateGateway.js';
 import { readActiveSealedL4Candidate, type L4SealedCandidateSnapshot } from './moduleRevision.js';
 import type { ReviewRunStartInput } from './reviewRunWorker.js';
 import { sameReviewStartSnapshot } from '../widgets/reviewModel.js';
@@ -23,6 +31,11 @@ export interface PreparedReviewStart {
 export interface ReviewStartDependencies {
   readActive?: (project: number, moduleName: string) => Promise<L4SealedCandidateSnapshot | null>;
   buildSnapshot?: (input: Parameters<typeof buildCandidateSnapshot>[0]) => Promise<CandidateSnapshot>;
+  readCandidate?: (scope: CandidateScope) => Promise<{ pointer: CandidatePointer | null }>;
+  publishCandidate?: (input: CandidatePublishInput) => Promise<{
+    status: 'committed' | 'conflict';
+    pointer: CandidatePointer | null;
+  }>;
 }
 
 export async function prepareReviewStartInput(
@@ -43,6 +56,27 @@ export async function prepareReviewStartInput(
     request: sealed.request,
     sources: sealed.sources,
   });
+  const candidate = await (dependencies.readCandidate ?? candidateRead)({ project, moduleName });
+  const pointer = candidate.pointer;
+  if (!pointer) {
+    const published = await (dependencies.publishCandidate ?? candidatePublish)({
+      project,
+      moduleName,
+      expectedRevisionId: null,
+      requestId: `review-start-${revisionId}`,
+      changeId,
+      revisionId,
+      snapshot,
+    });
+    if (published.status === 'conflict') throw new Error('review-run.hub_publish_conflict');
+    if (published.status !== 'committed' || published.pointer?.revisionId !== revisionId
+      || published.pointer.snapshotHash !== snapshot.hash) {
+      throw new Error('review-run.hub_publish_conflict');
+    }
+  } else if (pointer.changeId !== changeId || pointer.revisionId !== revisionId
+    || pointer.snapshotHash !== snapshot.hash) {
+    throw new Error('review-run.hub_revision_differs');
+  }
   return {
     userId,
     input: {
