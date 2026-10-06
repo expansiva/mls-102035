@@ -285,3 +285,96 @@ void test('setModuleRoot points moduleFolder and every derived path at the candi
     assert.equal(fs.moduleFolder('teste5'), 'teste5');
   }
 });
+
+void test('readSourceText preserves getValueInfo errors and does not retry getContent', async () => {
+  const g = globalThis as unknown as { mls?: unknown };
+  const prev = g.mls;
+  const fileInfo = {
+    project: 102047,
+    level: 4,
+    folder: 'teste5',
+    shortName: 'module',
+    extension: '.defs.ts',
+  };
+  const key = 'k-read-source';
+  try {
+    const fs = await loadFs();
+    const install = (entry: Record<string, unknown>) => {
+      g.mls = {
+        actualProject: 102047,
+        events: { addEventListener() {}, removeEventListener() {}, dispatch() {} },
+        stor: {
+          files: { [key]: entry },
+          getKeyToFile: () => key,
+        },
+      };
+    };
+
+    const readErr = new Error('stor read failed');
+    let getContentCalls = 0;
+    install({
+      status: 'changed',
+      getValueInfo: async () => {
+        throw readErr;
+      },
+      getContent: async () => {
+        getContentCalls += 1;
+        return 'should-not-run';
+      },
+    });
+    await assert.rejects(() => fs.readSourceText(fileInfo), (err: unknown) => err === readErr);
+    assert.equal(getContentCalls, 0);
+
+    getContentCalls = 0;
+    install({
+      status: 'changed',
+      getValueInfo: async () => ({ content: 'local-source' }),
+      getContent: async () => {
+        getContentCalls += 1;
+        return 'remote';
+      },
+    });
+    assert.equal(await fs.readSourceText(fileInfo), 'local-source');
+    assert.equal(getContentCalls, 0);
+
+    getContentCalls = 0;
+    install({
+      status: 'changed',
+      getValueInfo: async () => ({ content: null }),
+      getContent: async () => {
+        getContentCalls += 1;
+        return 'from-lib';
+      },
+    });
+    assert.equal(await fs.readSourceText(fileInfo), 'from-lib');
+    assert.equal(getContentCalls, 1);
+
+    const contentErr = new Error('getContent failed');
+    getContentCalls = 0;
+    install({
+      status: 'changed',
+      getValueInfo: async () => ({ content: null }),
+      getContent: async () => {
+        getContentCalls += 1;
+        throw contentErr;
+      },
+    });
+    await assert.rejects(() => fs.readSourceText(fileInfo), (err: unknown) => err === contentErr);
+    assert.equal(getContentCalls, 1);
+
+    getContentCalls = 0;
+    install({
+      status: 'new',
+      versionRef: '0',
+      getValueInfo: async () => ({ content: null }),
+      getContent: async () => {
+        getContentCalls += 1;
+        return 'should-not-run';
+      },
+    });
+    await assert.rejects(() => fs.readSourceText(fileInfo));
+    assert.equal(getContentCalls, 0);
+  } finally {
+    g.mls = prev;
+  }
+});
