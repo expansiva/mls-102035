@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/agentReviewSolution.ts" enhancement="_102027_/l2/enhancementAgent" />
 
 import type { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
-import { parseReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
+import { parseReviewInvocation, serializeReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 import { readReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
 import { captureReviewTaskState } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
 import { beforeReviewEntryStep } from '/_102035_/l2/agentReviewSolution/steps/entry10/entry10.js';
@@ -58,7 +58,7 @@ export async function beforePromptImplicit(
       type: 'add-step', messageId: '', threadId: context.message.threadId, taskId: '', parentStepId: 1,
       step: {
         type: 'agent', stepId: 0, interaction: null, nextSteps: [], status: 'waiting_human_input',
-        agentName: REVIEW_AGENT_NAME, stepTitle: 'Verify review input', prompt: JSON.stringify(invocation), rags: [],
+        agentName: REVIEW_AGENT_NAME, stepTitle: 'Verify review input', prompt: serializeReviewInvocation(invocation), rags: [],
         planning: { planId: 'entry10', dependsOn: [], executionMode: 'sequential', executionHost: 'client' },
       } as mls.msg.AIAgentStep,
     }];

@@ -59,3 +59,14 @@ export function parseReviewInvocation(value: string | unknown, project: number):
     ...('expectedRevisionId' in raw ? { expectedRevisionId: expected as string | null } : {}),
   };
 }
+
+/** External prompt shape shared by every review-step producer. Omits project and baseId. */
+export function serializeReviewInvocation(invocation: ReviewInvocation): string {
+  return JSON.stringify({
+    moduleName: invocation.moduleName,
+    originalL4Path: invocation.originalL4Path,
+    temporaryL4Path: invocation.temporaryL4Path,
+    request: invocation.request,
+    ...(invocation.expectedRevisionId !== undefined ? { expectedRevisionId: invocation.expectedRevisionId } : {}),
+  });
+}
