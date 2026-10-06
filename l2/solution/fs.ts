@@ -205,6 +205,34 @@ export function fileExists(fileInfo: Ns5FileInfo): boolean {
   return !!file && file.status !== 'deleted';
 }
 
+export type Ns5LiveFileRecord = Record<string, {
+  project?: number;
+  level?: number;
+  folder?: string;
+  shortName?: string;
+  extension?: string;
+  status?: string;
+  getContent?: () => Promise<unknown>;
+} | undefined>;
+
+export function liveFiles(files: Ns5LiveFileRecord): NonNullable<Ns5LiveFileRecord[string]>[] {
+  return Object.values(files).filter((file): file is NonNullable<Ns5LiveFileRecord[string]> => !!file && file.status !== 'deleted');
+}
+
+export function listNs5ModulesFromFiles(files: Ns5LiveFileRecord, project: number): string[] {
+  const modules = new Set<string>();
+  for (const file of liveFiles(files)) {
+    if (file.project !== project || file.level !== 4 || file.shortName !== 'module' || file.extension !== '.defs.ts') continue;
+    if (!file.folder || file.folder.includes('/') || file.folder === 'organization') continue;
+    modules.add(file.folder);
+  }
+  return [...modules].sort((a, b) => a.localeCompare(b));
+}
+
+export function listNs5Modules(project: number): string[] {
+  return listNs5ModulesFromFiles(mls.stor.files as Ns5LiveFileRecord, project);
+}
+
 export function listModuleFolders(): Set<string> {
   const project = currentProject();
   const modules = new Set<string>();

@@ -3,12 +3,12 @@
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
+  listNs5Modules,
   pipelineJsonFileForProject,
   readDefsJson,
   readJson,
   readPipelineForProject,
 } from '/_102035_/l2/solution/fs.js';
-import { listNs5Modules } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type {
   Validate40Context,
   Validate40CorrectionState,

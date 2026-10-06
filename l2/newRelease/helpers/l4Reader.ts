@@ -7,7 +7,10 @@ import {
   readDefsJson,
   readJson,
   readPipelineForProject,
+  listNs5Modules,
+  liveFiles,
   type Ns5FileInfo,
+  type Ns5LiveFileRecord,
 } from '/_102035_/l2/solution/fs.js';
 import type {
   Ns5ModuleArtifact,
@@ -71,15 +74,7 @@ export interface NewReleaseModuleData {
   errors: NewReleaseReadError[];
 }
 
-type FileRecord = Record<string, {
-  project?: number;
-  level?: number;
-  folder?: string;
-  shortName?: string;
-  extension?: string;
-  status?: string;
-  getContent?: () => Promise<unknown>;
-} | undefined>;
+type FileRecord = Ns5LiveFileRecord;
 
 export interface NewReleaseModuleSummary {
   name: string;
@@ -88,10 +83,6 @@ export interface NewReleaseModuleSummary {
   failedStep: Ns5StepId | null;
   tobeChanges: number;
   module: Ns5ModuleArtifact | null;
-}
-
-function liveFiles(files: FileRecord): NonNullable<FileRecord[string]>[] {
-  return Object.values(files).filter((file): file is NonNullable<FileRecord[string]> => !!file && file.status !== 'deleted');
 }
 
 export function listReadableProjectsFromFiles(files: FileRecord): number[] {
@@ -104,22 +95,8 @@ export function listReadableProjectsFromFiles(files: FileRecord): number[] {
   return [...projects].sort((a, b) => a - b);
 }
 
-export function listNs5ModulesFromFiles(files: FileRecord, project: number): string[] {
-  const modules = new Set<string>();
-  for (const file of liveFiles(files)) {
-    if (file.project !== project || file.level !== 4 || file.shortName !== 'module' || file.extension !== '.defs.ts') continue;
-    if (!file.folder || file.folder.includes('/') || file.folder === 'organization') continue;
-    modules.add(file.folder);
-  }
-  return [...modules].sort((a, b) => a.localeCompare(b));
-}
-
 export function listReadableProjects(): number[] {
   return listReadableProjectsFromFiles(mls.stor.files as FileRecord);
-}
-
-export function listNs5Modules(project: number): string[] {
-  return listNs5ModulesFromFiles(mls.stor.files as FileRecord, project);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
