@@ -605,6 +605,8 @@ export class NewReleaseReview102035 extends StateLitElement {
       return 'review.run.error.channel';
     }
     if (code === 'review-run.invalid_terminal_result') return 'review.run.error.invalidResult';
+    if (code === 'review-run.hub_publish_conflict') return 'review.run.error.hubConflict';
+    if (code === 'review-run.hub_revision_differs') return 'review.run.error.hubRevisionDiffers';
     return code ? 'review.run.error.generic' : '';
   }
 
