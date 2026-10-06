@@ -711,6 +711,8 @@
   "review.run.error.resultPending": "The task finished, but the linked candidate result is still pending.",
   "review.run.error.channel": "The Studio execution channel is unavailable. The saved run can be reattached without a duplicate submission.",
   "review.run.error.invalidResult": "The returned candidate result is invalid for this revision.",
+  "review.run.error.hubConflict": "Another session published a revision of this module. Reload before calculating.",
+  "review.run.error.hubRevisionDiffers": "The hub already has another revision of this module; this one cannot be published without an agent result.",
   "review.run.error.generic": "The review run ended with an error.",
   "review.pendingTitle": "Prepared changes are waiting",
   "review.pendingBody": "The current menu is hidden while tobe/plan requests exist for this module. Calculate the screen changes after those requests are applied.",
