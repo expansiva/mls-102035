@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
 import { buildReviewTaskState, type ReviewTaskState } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
-import { unavailableCandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
+import { unavailableCandidateCoverage } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import type { NewReleaseOverlayValidation } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   RECONCILE30_PRIVATE_STATE_VERSION,

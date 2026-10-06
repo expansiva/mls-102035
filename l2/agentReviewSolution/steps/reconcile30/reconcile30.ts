@@ -4,9 +4,9 @@ import {
   unavailableCandidateCoverage,
   validateV3Candidate,
   type CandidateArea,
-} from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
+} from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
-import { validateNs5Overlay } from '/_102035_/l2/newRelease/tobe.js';
+import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
 import type { NewReleaseOverlayValidation, NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { NS5_ONTOLOGY_SCHEMA_VERSION, isNs5OntologyV3Version } from '/_102035_/l2/solution/types.js';
 import { validate40AffectedAreas, validate40Sources, type Validate40Context } from '../validate40/validate40.js';

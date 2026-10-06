@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateValidation.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/candidateValidation.ts" enhancement="_blank" />
 
 /** Pure validation of an already assembled L4 candidate. No NS5 hooks or writes. */
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';

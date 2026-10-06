@@ -18,7 +18,7 @@ import {
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import { L4_REVISION_SCHEMA, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { buildCandidateSnapshot, type CandidateReadResult } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { unavailableCandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
+import { unavailableCandidateCoverage } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import { normalizeTobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { renderDefsSource } from '/_102035_/l2/solution/fs.js';
 import {

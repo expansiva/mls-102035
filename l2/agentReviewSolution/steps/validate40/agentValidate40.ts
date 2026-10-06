@@ -22,7 +22,7 @@ import {
   type Validate40Input,
   type Validate40Result,
 } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
-import type { CandidateArea } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
+import type { CandidateArea } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import type { NewReleaseOverlayValidation } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   correct45Directed,

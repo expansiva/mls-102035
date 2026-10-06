@@ -14,7 +14,7 @@ import type {
   Ns5RulesArtifact,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
-import type { CandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
+import type { CandidateCoverage } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import { isNewReleaseOntologyV3Version } from '/_102035_/l2/solution/candidate/ontologyV3Contract.js';
 
 export const NS5_TOBE_MANIFEST_SCHEMA_VERSION = '2026-09-13-ns5-tobe-plan-v1' as const;

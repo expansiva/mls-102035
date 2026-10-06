@@ -10,8 +10,8 @@ import {
   recordTobeSave,
   saveTobeArtifact,
   tobeManifestFileInfo,
-  validateNs5Overlay,
 } from './tobe.js';
+import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
 import {
   isNs5OntologyV3,
   NS5_TOBE_MANIFEST_SCHEMA_VERSION,
