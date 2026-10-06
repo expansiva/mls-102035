@@ -18,6 +18,7 @@
 // This guard checks the IMPORT, not the number. `102047` as a project id inside inline test data is
 // fine and common — what is banned is reaching across the repo boundary to read another project's
 // generated output.
+// 2026-10-05: `backendReviewModel.test.ts` lia `mls-102047` por `readFileSync`, e o import da guarda não via isso.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,6 +32,9 @@ const SELF = fileURLToPath(import.meta.url);
 
 /** An import specifier that leaves this project for a generated client project. */
 const BENCH_IMPORT = /(?:import|require)[^\n]*['"][^'"\n]*(?:mls-1020\d\d|\/_1020\d\d_)[^'"\n]*['"]/g;
+
+/** A file read whose path names a generated client project. The number alone is not a path. */
+const BENCH_FILE_READ = /(?:readFileSync|new\s+URL)\s*\([\s\S]{0,400}?(?:mls-1020\d\d|\/_1020\d\d_)/g;
 
 /** The libraries this project legitimately builds on. Everything else under mls-1020xx is a bancada. */
 const ALLOWED = new Set(['102020', '102021', '102025', '102027', '102029', '102033', '102034', '102035', '102036']);
@@ -49,10 +53,14 @@ void test('no test imports from a bancada — a frozen fixture carries the artif
   const offenders: string[] = [];
   for (const file of walk(L2)) {
     const source = readFileSync(file, 'utf8');
-    for (const hit of source.match(BENCH_IMPORT) || []) {
+    const hits = [
+      ...(source.match(BENCH_IMPORT) || []),
+      ...(source.match(BENCH_FILE_READ) || []),
+    ];
+    for (const hit of hits) {
       const project = /1020\d\d/u.exec(hit)?.[0] || '';
       if (ALLOWED.has(project)) continue;
-      offenders.push(`${relative(L2, file)}: ${hit.trim()}`);
+      offenders.push(`${relative(L2, file)}: ${hit.replace(/\s+/g, ' ').trim()}`);
     }
   }
   assert.deepEqual(

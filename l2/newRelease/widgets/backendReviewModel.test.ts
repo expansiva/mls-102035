@@ -4,16 +4,27 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { reviewArtifactFile, type ReviewArtifactRead } from '../helpers/backendReader.js';
-import { BACKEND_SCHEMA_V1, BACKEND_SCHEMA_V11, EFFORT_SCHEMA_V1, EFFORT_SCHEMA_V11, backendTone, buildBackendReview, parseEffortSummary } from './backendReviewModel.js';
+import {
+  POOL_BACKEND_SCHEMA_VERSION,
+  POOL_EFFORT_SCHEMA_VERSION,
+  type PoolBackendFile,
+  type PoolEffortFile,
+  type PoolTestSupportItem,
+} from '/_102035_/l2/solution/poolPlan.js';
+import { backendTone, buildBackendReview, parseEffortSummary } from './backendReviewModel.js';
 import { buildReviewView } from './reviewModel.js';
 
 function read(value: unknown): ReviewArtifactRead {
   return { status: 'ok', path: 'l4/agendaClinica/pool/l2/web/backend.json', value };
 }
 
+function loadFixture(name: string): unknown {
+  return JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'));
+}
+
 function fixture() {
   return {
-    schemaVersion: BACKEND_SCHEMA_V11, moduleName: 'agendaClinica', device: 'web',
+    schemaVersion: POOL_BACKEND_SCHEMA_VERSION, moduleName: 'agendaClinica', device: 'web',
     tables: [
       { tableId: 'consulta', entity: 'Consulta', status: 'toCreate', tableRefs: ['consulta'], noTable: 'ok' },
       { tableId: 'paciente', entity: 'Paciente', status: 'done', tableRefs: ['paciente'], noTable: 'ok' },
@@ -30,7 +41,16 @@ function fixture() {
       { changeId: 'grant:shared', kind: 'grant', op: 'added', entity: '', tableRefs: ['consulta', 'paciente'], noTable: 'ok', usecaseRefs: [], reason: 'Shared grant', source: 'access.defs.ts' },
       { changeId: 'rule:global', kind: 'rule', op: 'removed', entity: '', tableRefs: [], noTable: 'none', usecaseRefs: [], reason: 'Global rule removed', source: 'rules.defs.ts' },
     ],
+    testSupport: [] as PoolTestSupportItem[],
     meta: { unmappedChanges: [{ changeId: 'unknown:source', kind: 'unknown', source: 'extra.defs.ts' }] },
+  };
+}
+
+function supportItem(patch: Partial<PoolTestSupportItem> = {}): PoolTestSupportItem {
+  return {
+    id: 'data:Consulta', actorRefs: ['recepcao'], entityRefs: ['Consulta'], sourceRefs: ['grant:agendar'],
+    status: 'toCreate', owner: 'L1', executorRef: '', cleanupRef: '', gap: '',
+    ...patch,
   };
 }
 
@@ -40,34 +60,32 @@ test('reader resolves the selected project and module, not Studio globals', () =
   });
 });
 
-test('real v1.1 backend artifact is consumed without inventing changes', () => {
-  const real = JSON.parse(readFileSync(new URL('../../../../mls-102047/l4/mensalidadesAcademia/pool/l2/web/backend.json', import.meta.url), 'utf8'));
+test('ui_06 fixture v1.2 completa is consumed without inventing changes', () => {
+  const real = loadFixture('mensalidadesAcademia-backend-v1_2.json') as PoolBackendFile;
   const view = buildBackendReview(read(real));
   assert.equal(view.kind, 'ready');
-  assert.equal(view.schemaVersion, BACKEND_SCHEMA_V11);
+  assert.equal(view.schemaVersion, POOL_BACKEND_SCHEMA_VERSION);
   assert.ok(view.groups.length > 0);
-  assert.equal(view.itemCount, real.tables.length + real.usecases.length + real.ports.length + real.endpoints.length + real.removed.length + real.changes.length + (real.meta?.unmappedChanges?.length ?? 0));
+  assert.equal(view.itemCount, real.tables.length + real.usecases.length + real.ports.length + real.endpoints.length + real.removed.length + real.changes.length + real.meta.unmappedChanges.length);
   assert.ok(view.unassociated.some(item => item.noTable === 'mdm'));
+  assert.deepEqual(view.testSupport.map(group => group.owner), ['L1', 'runtime']);
+  const shown = view.testSupport.flatMap(group => group.groups.flatMap(status => status.items));
+  assert.equal(shown.length, real.testSupport.length);
+  assert.ok(shown.some(item => item.gap.length > 0));
+  assert.deepEqual(shown.find(item => item.id === real.testSupport[0].id), real.testSupport[0]);
 });
 
-test('current candidate keeps the measured backend roots and producer associations', () => {
-  const real = JSON.parse(readFileSync(new URL('../../../../mls-102047/l4/mensalidadesAcademia/tobe/plan/pool/l2/web/backend.json', import.meta.url), 'utf8'));
-  const view = buildBackendReview(read(real), false, 'mensalidadesAcademia');
-  assert.equal(view.kind, 'ready');
-  assert.equal(view.groups.length, 5);
-  assert.equal(real.tables.length, 5);
-  assert.equal(real.usecases.length, 12);
-  assert.equal(real.ports.length, 5);
-  assert.equal(real.endpoints.length, 15);
-  assert.equal(real.changes.length, 2);
-  assert.ok(view.groups.find(group => group.tableId === 'mensalidade')?.items.some(item => item.id === 'change:rule:situacaoMensalidadeDerivada'));
-  assert.ok(view.unassociated.some(item => item.id === 'change:rule:alunoBloqueadoPorDuasMensalidadesVencidas'));
+test('ui_06 v1.1 recusada gives invalid without reading a bench file', () => {
+  const v11 = { ...fixture(), schemaVersion: '2026-09-21-p1-backend-v1.1' };
+  const view = buildBackendReview(read(v11));
+  assert.equal(view.kind, 'invalid');
+  assert.equal(view.errorCode, 'review.backend.schema');
+  assert.equal(view.itemCount, 0);
 });
 
 test('two real menu authorities do not filter the module-wide backend', () => {
-  const base = new URL('../../../../mls-102047/l4/mensalidadesAcademia/pool/l2/web/', import.meta.url);
-  const menu = JSON.parse(readFileSync(new URL('menu.json', base), 'utf8'));
-  const backend = JSON.parse(readFileSync(new URL('backend.json', base), 'utf8'));
+  const menu = loadFixture('mensalidadesAcademia-menu-v2_2.json') as { authorities: Record<string, unknown> };
+  const backend = loadFixture('mensalidadesAcademia-backend-v1_2.json');
   const actors = Object.keys(menu.authorities);
   assert.ok(actors.length >= 2);
   const menuView = (selectedActor: string) => buildReviewView({ pendingCount: 0, readStatus: 'ok', raw: menu, selectedActor, selectedId: '', selectedScope: 'future' });
@@ -81,7 +99,7 @@ test('two real menu authorities do not filter the module-wide backend', () => {
   assert.ok(moduleBackend.itemCount > 0);
 });
 
-test('v1.1 explicit associations make one shared item and keep all no-table items visible', () => {
+test('v1.2 explicit associations make one shared item and keep all no-table items visible', () => {
   const view = buildBackendReview(read(fixture()));
   assert.equal(view.kind, 'ready');
   assert.equal(view.itemCount, 11);
@@ -101,30 +119,28 @@ test('v1.1 explicit associations make one shared item and keep all no-table item
   assert.ok(buildBackendReview(read(removedTable)).groups.find(group => group.tableId === 'oldAudit')?.items.some(item => item.id === 'removed:oldAudit'));
 });
 
-test('legacy v1 never infers table association from entity or endpoint usecaseRef', () => {
-  const legacy = fixture() as any;
-  legacy.schemaVersion = BACKEND_SCHEMA_V1;
-  legacy.changes = undefined;
-  legacy.meta = {};
-  for (const list of [legacy.tables, legacy.usecases, legacy.ports, legacy.endpoints, legacy.removed]) {
-    for (const item of list) { delete item.tableRefs; delete item.noTable; }
-  }
-  const view = buildBackendReview(read(legacy));
+test('ui_06 testSupport vazio is a ready view with an empty group', () => {
+  const view = buildBackendReview(read(fixture()));
   assert.equal(view.kind, 'ready');
-  assert.ok(view.groups.every(group => group.items.length === 0));
-  assert.ok(view.unassociated.some(item => item.id === 'table:consulta' && item.noTable === 'legacy'));
-  assert.ok(view.unassociated.some(item => item.id === 'usecase:agendarConsulta' && item.noTable === 'legacy'));
-  assert.ok(view.unassociated.some(item => item.id === 'endpoint:/consultas' && item.noTable === 'legacy'));
-  assert.ok(view.unassociated.some(item => item.id === 'removed:legacy' && item.noTable === 'legacy'));
+  assert.deepEqual(view.testSupport, []);
+});
 
-  const explicit = fixture() as any;
-  explicit.schemaVersion = BACKEND_SCHEMA_V1;
-  explicit.changes = undefined;
-  explicit.meta = {};
-  const withProducerRefs = buildBackendReview(read(explicit));
-  assert.equal(withProducerRefs.kind, 'ready');
-  assert.ok(withProducerRefs.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.id === 'usecase:agendarConsulta'));
-  assert.ok(withProducerRefs.groups.find(group => group.tableId === 'consulta')?.items.some(item => item.id === 'endpoint:/consultas'));
+test('ui_06 item com gap stays on the item and groups by owner then status', () => {
+  const body = fixture();
+  body.testSupport = [
+    supportItem({ id: 'data:runtime', owner: 'runtime', status: 'done', gap: 'cleanup missing' }),
+    supportItem({ id: 'data:l1', owner: 'L1', status: 'toCreate', gap: 'executor missing' }),
+    supportItem({ id: 'data:l1-done', owner: 'L1', status: 'done', gap: '' }),
+  ];
+  const view = buildBackendReview(read(body));
+  assert.equal(view.kind, 'ready');
+  assert.deepEqual(view.testSupport.map(group => group.owner), ['L1', 'runtime']);
+  assert.deepEqual(view.testSupport[0].groups.map(group => group.status), ['toCreate', 'done']);
+  const l1 = view.testSupport[0].groups[0].items[0];
+  assert.equal(l1.id, 'data:l1');
+  assert.equal(l1.gap, 'executor missing');
+  assert.deepEqual(l1.actorRefs, ['recepcao']);
+  assert.equal(view.testSupport[1].groups[0].items[0].gap, 'cleanup missing');
 });
 
 test('unknown status stays explicit, duplicate change IDs fail, and stale revision hides all rows', () => {
@@ -142,17 +158,21 @@ test('unknown status stays explicit, duplicate change IDs fail, and stale revisi
   assert.equal(stale.kind, 'stale');
   assert.equal(stale.itemCount, 0);
   assert.deepEqual(stale.groups, []);
+  assert.deepEqual(stale.testSupport, []);
   assert.equal(buildBackendReview(read(fixture()), false, 'financeiro').errorCode, 'review.backend.context');
 });
 
-test('effort v1 and v1.1 keep strict emitted counts and never derive hours', () => {
-  const effort = JSON.parse(readFileSync(new URL('../../../../mls-102047/l4/mensalidadesAcademia/tobe/plan/pool/l2/web/effort.json', import.meta.url), 'utf8'));
+test('ui_06 effort v1.2 shows totals without a calculated cost and v1.1 is refused', () => {
+  const effort = loadFixture('mensalidadesAcademia-effort-v1_2.json') as PoolEffortFile;
   const summary = parseEffortSummary(read(effort));
-  assert.equal(effort.schemaVersion, EFFORT_SCHEMA_V11);
+  assert.equal(effort.schemaVersion, POOL_EFFORT_SCHEMA_VERSION);
   assert.equal(summary.kind, 'counts');
   assert.deepEqual(summary.counts.map(count => count.category), ['screens', 'endpoints', 'usecases', 'tables']);
   assert.equal(summary.counts.find(count => count.category === 'tables')?.statuses.find(value => value.status === 'toCreate')?.count, effort.totals.tables.toCreate);
-  assert.equal(parseEffortSummary(read({ ...effort, schemaVersion: EFFORT_SCHEMA_V1 })).kind, 'counts');
+  assert.deepEqual(summary.totals, effort.totals);
+  assert.equal(JSON.stringify(summary).includes('hour'), false);
+  assert.equal(parseEffortSummary(read({ ...effort, schemaVersion: '2026-09-21-p2-effort-v1.1' })).kind, 'invalid');
+  assert.equal(parseEffortSummary(read({ ...effort, schemaVersion: '2026-09-21-p2-effort-v1' })).kind, 'invalid');
   assert.equal(parseEffortSummary({ status: 'missing', path: '' }).kind, 'missing');
   assert.equal(parseEffortSummary(read(effort), 'outroModulo').kind, 'invalid');
   assert.equal(parseEffortSummary(read({ ...effort, schemaVersion: '2026-09-21-p2-effort-v2' })).kind, 'invalid');
@@ -160,4 +180,34 @@ test('effort v1 and v1.1 keep strict emitted counts and never derive hours', () 
   assert.equal(parseEffortSummary(read({ ...effort, totals: { ...effort.totals, extra: {} } })).kind, 'invalid');
   assert.equal(parseEffortSummary(read({ ...effort, totals: { ...effort.totals, tables: { ...effort.totals.tables, toCreate: -1 } } })).kind, 'invalid');
   assert.equal(parseEffortSummary(read({ ...effort, totals: { ...effort.totals, tables: { ...effort.totals.tables, surprise: 1 } } })).kind, 'invalid');
+});
+
+test('ui_06 campo de identidade', () => {
+  const pairs = [
+    ['tables', 'tableId'],
+    ['usecases', 'usecaseId'],
+    ['ports', 'portId'],
+    ['endpoints', 'route'],
+    ['removed', 'id'],
+    ['changes', 'changeId'],
+    ['testSupport', 'id'],
+  ] as const;
+  const real = loadFixture('mensalidadesAcademia-backend-v1_2.json') as Record<string, unknown>;
+  for (const [list, field] of pairs) {
+    const copy = structuredClone(real) as Record<string, Array<Record<string, unknown>>>;
+    const rows = copy[list];
+    if (rows.length === 0) {
+      const tableId = String(copy.tables[0].tableId);
+      rows.push(list === 'removed'
+        ? { kind: 'usecase', id: 'legacy', status: 'toRemove', reason: 'r', tableRefs: [], noTable: 'none' }
+        : { changeId: 'c1', kind: 'field', op: 'changed', entity: 'E', tableRefs: [tableId], noTable: 'ok', usecaseRefs: [], reason: 'r', source: 's' });
+    }
+    rows[0][field] = 42;
+    assert.equal(buildBackendReview(read(copy)).kind, 'invalid', `${list}.${field}`);
+  }
+  const effort = structuredClone(loadFixture('mensalidadesAcademia-effort-v1_2.json')) as {
+    totals: { screens: { toCreate: unknown } };
+  };
+  effort.totals.screens.toCreate = '1';
+  assert.equal(parseEffortSummary(read(effort)).kind, 'invalid');
 });
