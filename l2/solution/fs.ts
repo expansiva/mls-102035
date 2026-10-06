@@ -478,11 +478,9 @@ async function readText(fileInfo: Ns5FileInfo, required: boolean): Promise<strin
     return '';
   }
   if (file.getValueInfo) {
-    try {
-      const local = await file.getValueInfo();
-      const text = contentText(local?.content, fileInfo.extension);
-      if (text !== null) return text;
-    } catch { /* fall through */ }
+    const local = await file.getValueInfo();
+    const text = contentText(local?.content, fileInfo.extension);
+    if (text !== null) return text;
   }
   if (String(file.versionRef || '').trim() === '0') {
     if (required) throw new Error(`[agentNewSolution5] local content unavailable for new file: ${displayPath(fileInfo)}`);
