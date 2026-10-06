@@ -190,7 +190,15 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
       await execute(agentName, context);
       if (!context.task?.PK || !context.message?.threadId) throw new Error('review-worker.task_not_created');
       const execution = executionFromTask(agentName, claim.attempt, context.task, context.message.threadId, now());
-      save(claim, { claimId: claim.claimId, agentName, threadId: thread.threadId, messageOrder, messageId, execution });
+      const canonicalMessageId = context.task.messageid_created || '';
+      save(claim, {
+        claimId: claim.claimId,
+        agentName,
+        threadId: thread.threadId,
+        messageOrder,
+        messageId: canonicalMessageId || messageId,
+        execution,
+      });
       return execution;
     },
     async observe(claim, execution) {
