@@ -55,7 +55,8 @@ import {
   toggleReviewSelection,
 } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
 import { MENU_ACTIONS } from '/_102035_/l2/solution/poolPlan.js';
-import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
+import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView, type BackendTestSupportOwnerGroup } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
+import type { PoolTestSupportItem } from '/_102035_/l2/solution/poolPlan.js';
 
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
 const EMPTY_ARTIFACT: ReviewArtifactRead = { status: 'missing', path: '' };
@@ -765,8 +766,78 @@ export class NewReleaseReview102035 extends StateLitElement {
             ${backend.shared.length ? this.renderBackendGroup(this.t('review.backend.shared'), '', backend.shared, knownTables) : nothing}
             ${backend.unassociated.length ? this.renderBackendGroup(this.t('review.backend.unassociated'), '', backend.unassociated, knownTables) : nothing}
           </div>
+          ${this.renderTestSupport(backend.testSupport)}
         ` : nothing}
       </section>
+    `;
+  }
+
+  private renderTestSupportField(labelKey: string, value: string) {
+    return value ? html`<p><span>${this.t(labelKey)}</span> ${value}</p>` : nothing;
+  }
+
+  private renderTestSupportItem(item: PoolTestSupportItem) {
+    const tone = backendTone(item.status);
+    const status = `${this.t(`review.backend.status.${tone}`)}${tone === 'unknown' ? ` (${item.status})` : ''}`;
+    return html`
+      <details class=${`nr-review__backend-item is-${tone}`}>
+        <summary>
+          <div>
+            <span>${this.t('review.backend.testSupport.item')}</span>
+            <strong>${item.id}</strong>
+            ${item.gap ? html`<small class="nr-review__test-gap">${this.t('review.backend.testSupport.gap')}: ${item.gap}</small>` : nothing}
+          </div>
+          <small class=${`nr-review__badge is-${tone}`}>${status}</small>
+        </summary>
+        <div class="nr-review__backend-item-detail">
+          ${this.renderTestSupportField('review.backend.testSupport.id', item.id)}
+          ${this.renderTestSupportField('review.backend.testSupport.actorRefs', item.actorRefs.join(', '))}
+          ${this.renderTestSupportField('review.backend.testSupport.entityRefs', item.entityRefs.join(', '))}
+          ${this.renderTestSupportField('review.backend.testSupport.sourceRefs', item.sourceRefs.join(', '))}
+          ${this.renderTestSupportField('review.backend.testSupport.status', status)}
+          ${this.renderTestSupportField('review.backend.testSupport.owner', item.owner)}
+          ${this.renderTestSupportField('review.backend.testSupport.executorRef', item.executorRef)}
+          ${this.renderTestSupportField('review.backend.testSupport.cleanupRef', item.cleanupRef)}
+          ${this.renderTestSupportField('review.backend.testSupport.gap', item.gap)}
+        </div>
+      </details>
+    `;
+  }
+
+  private gapCount(items: readonly { gap: string }[]) {
+    return items.filter(item => item.gap !== '').length;
+  }
+
+  private gapCountMark(count: number) {
+    return count > 0
+      ? html`<small class="nr-review__test-gap">${this.t('review.backend.testSupport.gapCount', { count })}</small>`
+      : nothing;
+  }
+
+  private renderTestSupport(groups: BackendTestSupportOwnerGroup[]) {
+    const allItems = groups.flatMap(owner => owner.groups.flatMap(status => status.items));
+    return html`
+      <details class="nr-review__backend-group nr-review__test-support">
+        <summary><span><strong>${this.t('review.backend.testSupport')}</strong></span><small>${this.t('review.backend.itemCount', { count: allItems.length })}</small>${this.gapCountMark(this.gapCount(allItems))}</summary>
+        <div>
+          ${groups.length ? groups.map(owner => {
+            const ownerItems = owner.groups.flatMap(status => status.items);
+            return html`
+            <details class="nr-review__backend-group">
+              <summary><span><strong>${this.t('review.backend.testSupport.owner')}</strong><code>${owner.owner}</code></span><small>${this.t('review.backend.itemCount', { count: ownerItems.length })}</small>${this.gapCountMark(this.gapCount(ownerItems))}</summary>
+              <div>
+                ${owner.groups.map(status => html`
+                  <details class="nr-review__backend-group">
+                    <summary><span><strong>${this.t(`review.backend.status.${backendTone(status.status)}`)}</strong><code>${status.status}</code></span><small>${this.t('review.backend.itemCount', { count: status.items.length })}</small>${this.gapCountMark(this.gapCount(status.items))}</summary>
+                    <div>${status.items.map(item => this.renderTestSupportItem(item))}</div>
+                  </details>
+                `)}
+              </div>
+            </details>
+          `;
+          }) : html`<p class="nr-review__backend-empty">${this.t('review.backend.testSupport.empty')}</p>`}
+        </div>
+      </details>
     `;
   }
 
