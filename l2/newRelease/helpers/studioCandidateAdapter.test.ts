@@ -7,7 +7,7 @@ import {
   CandidateGatewayError,
   type CandidatePublishInput,
   type CandidateReadResult,
-} from './candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
   CandidateRepositoryError,
   type CandidateDraftStore,

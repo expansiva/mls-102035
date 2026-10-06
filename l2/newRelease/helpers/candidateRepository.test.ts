@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   buildCandidateSnapshot, CandidateGatewayError,
   type CandidatePointer, type CandidatePublishInput, type CandidateReadResult,
-} from './candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
   CandidateRepository, CandidateRepositoryError, candidateDraftKey, candidateDraftPrefix,
   type CandidateDraftIdentity, type CandidateDraftStore, type CandidateRepositoryOptions,

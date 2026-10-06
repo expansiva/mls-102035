@@ -7,7 +7,7 @@ import {
   type CandidatePublishResult,
   type CandidateScope,
   type CandidateSnapshot,
-} from './candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { IndexedDbCandidateDraftStore } from './candidateDraftStore.js';
 import {
   CandidateRepository,

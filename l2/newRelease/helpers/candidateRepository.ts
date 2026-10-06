@@ -12,7 +12,7 @@ import {
   type CandidateScope,
   type CandidateSnapshot,
   verifyCandidateSnapshot,
-} from './candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 
 const DRAFT_SCHEMA = '2026-09-21-candidate-draft-v2' as const;
 const TOKEN = /^[A-Za-z0-9_-]{1,100}$/u;

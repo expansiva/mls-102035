@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCandidateResult, buildCandidateSnapshot, type CandidateResultRef } from './candidateGateway.js';
+import { buildCandidateResult, buildCandidateSnapshot, type CandidateResultRef } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
   applyReviewObservation,
   createReviewRun,

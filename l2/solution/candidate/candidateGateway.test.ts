@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateGateway.test.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/candidateGateway.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -11,7 +11,7 @@ import {
   CandidateGatewayError,
   verifyCandidateSnapshot,
   type CandidatePointer,
-} from './candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 
 const scope = { project: 102047, moduleName: 'agendaClinica' };
 const sourcePaths = [

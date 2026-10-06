@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/reviewRun.ts" enhancement="_blank" />
 
 import type { Finalize50PrivateResult } from '/_102035_/l2/agentReviewSolution/steps/finalize50/agentFinalize50.js';
-import type { CandidateResultRef } from './candidateGateway.js';
+import type { CandidateResultRef } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 
 export const REVIEW_RUN_SCHEMA = '2026-09-21-review-run-v4' as const;
 export type CanonicalSha256 = `sha256:${string}`;

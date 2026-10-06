@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCandidateSnapshot } from './candidateGateway.js';
+import { buildCandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { CandidateRepositoryError, type StoredCandidateDraft } from './candidateRepository.js';
 import { IndexedDbCandidateDraftStore } from './candidateDraftStore.js';
 

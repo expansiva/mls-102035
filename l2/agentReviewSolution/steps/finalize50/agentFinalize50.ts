@@ -32,7 +32,7 @@ import {
   type CandidateReadResult,
   type CandidateResultManifest,
   type CandidateSnapshot,
-} from '/_102035_/l2/newRelease/helpers/candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
   createStudioCandidateAdapter,
   type StudioCandidateSubmittedReplayInput,
