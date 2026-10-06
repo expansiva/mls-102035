@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/editContract.ts" enhancement="_blank" />
 
-import type { NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type NewReleaseEditMode = 'view' | 'edit';
 export type NewReleaseTabId = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration';

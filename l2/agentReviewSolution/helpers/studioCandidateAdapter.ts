@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/studioCandidateAdapter.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/studioCandidateAdapter.ts" enhancement="_blank" />
 
 import {
   buildCandidateSnapshot,
@@ -7,7 +7,7 @@ import {
   type CandidatePublishResult,
   type CandidateScope,
   type CandidateSnapshot,
-} from './candidateGateway.js';
+} from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { IndexedDbCandidateDraftStore } from './candidateDraftStore.js';
 import {
   CandidateRepository,
@@ -24,7 +24,7 @@ import {
   readActiveSealedL4Candidate,
   withModuleWriter,
   type L4SealedCandidateSnapshot,
-} from './moduleRevision.js';
+} from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 export type StudioCandidateChecks = Pick<CandidateRepositoryOptions, 'inventory' | 'validate'>;
 

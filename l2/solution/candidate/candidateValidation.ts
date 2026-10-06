@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateValidation.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/candidateValidation.ts" enhancement="_blank" />
 
 /** Pure validation of an already assembled L4 candidate. No NS5 hooks or writes. */
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
@@ -13,7 +13,7 @@ import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration7
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { isNs5OntologyV3Version, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
-import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type CandidateArea = 'module' | 'journeys' | 'ontologyAssembly' | 'ontologyEntities' | 'rules' | 'workflows' | 'access' | 'integration' | 'oracle';
 export type CandidateCoverageStatus = 'checked' | 'unsupported' | 'error';

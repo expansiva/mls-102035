@@ -1,8 +1,8 @@
-/// <mls fileReference="_102035_/l2/newRelease/tobeDiff.test.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/tobeDiff.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sha256Tobe, tobeDiff } from './tobeDiff.js';
+import { sha256Tobe, tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 
 test('diff compares identified array members by id and ignores reorder', () => {
   const asis = { rules: [{ ruleId: 'first', description: 'A' }, { ruleId: 'second', description: 'B' }] };

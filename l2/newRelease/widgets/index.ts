@@ -20,13 +20,10 @@ import {
   observeNewReleaseLanguage,
   type NewReleaseTranslate,
 } from '/_102035_/l2/newRelease/helpers/i18n.js';
-import { ChangeRequestDrafts, contextStillCurrent, readChangeRequest, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
-import {
-  discardTobe,
-  saveTobeArtifact,
-  type NewReleaseValidationIssue,
-  type Ns5TobeArtifactPath,
-} from '/_102035_/l2/newRelease/tobe.js';
+import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
+import { discardTobe, saveTobeArtifact } from '/_102035_/l2/newRelease/tobe.js';
+import { type NewReleaseValidationIssue, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   NEW_RELEASE_CHANGED_EVENT,
   tabForArtifactPath,

@@ -7,7 +7,7 @@ import type {
   Ns5OntologyEntityArtifact,
   Ns5OntologyIndexArtifact,
 } from '../../solution/types.js';
-import type { NewReleaseValidationIssue } from '../tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 const SCOPE_RANK: Record<Ns5AccessGrant['dataScope']['mode'], number> = {
   own: 1,

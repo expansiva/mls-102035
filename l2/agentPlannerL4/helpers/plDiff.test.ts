@@ -7,8 +7,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { prepareL4Change, sealL4Revision } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import { sha256Tobe } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { prepareL4Change, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import {
   gatherPlEntryFacts,

@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateValidation.test.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/candidateValidation.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -10,8 +10,8 @@ import {
   loadNs5Module, loadNs5Rules, loadNs5Workflows,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5OntologyAnyEntity, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
-import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
-import { candidateCanPublish, validateV3Candidate } from './candidateValidation.js';
+import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
+import { candidateCanPublish, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 
 function artifact<T>(relative: Ns5TobeArtifactPath, value: T): NewReleaseArtifact<T> {
   return { path: relative, source: 'asis', value };

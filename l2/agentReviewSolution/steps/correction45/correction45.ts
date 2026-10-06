@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/correction45/correction45.ts" enhancement="_blank" />
 
-import type { NewReleaseOverlayValidation } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseOverlayValidation } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   VALIDATE40_MAX_ATTEMPTS,
   type Validate40CorrectionState,

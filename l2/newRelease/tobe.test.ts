@@ -4,26 +4,28 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadNs5Entities, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
-  isNs5OntologyV3,
-  NS5_TOBE_MANIFEST_SCHEMA_VERSION,
-  ns5OntologyEntityIds,
-  normalizeTobeArtifactPath,
   discardTobe,
   readNs5Overlay,
   recordTobeDiscard,
   recordTobeSave,
   saveTobeArtifact,
-  tobeArtifactFileInfo,
   tobeManifestFileInfo,
-  validateNs5Overlay,
+} from './tobe.js';
+import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
+import {
+  isNs5OntologyV3,
+  NS5_TOBE_MANIFEST_SCHEMA_VERSION,
+  ns5OntologyEntityIds,
+  normalizeTobeArtifactPath,
+  tobeArtifactFileInfo,
   type NewReleaseArtifact,
   type NewReleaseOverlaySources,
-} from './tobe.js';
+} from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { tabForArtifactPath } from './editContract.js';
-import { sha256Tobe } from './tobeDiff.js';
-import { L4SealedCandidateError, markL4Result, readActiveL4Change, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from './helpers/moduleRevision.js';
+import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
+import { L4SealedCandidateError, markL4Result, readActiveL4Change, readChangeRequest, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { historicalReleaseId } from './helpers/context.js';
-import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, readChangeRequest, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
+import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
 
 test('v3 ontology index resolves descriptor rows to entity file ids without changing v2 ids', () => {
   const v3 = {

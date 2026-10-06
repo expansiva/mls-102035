@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateGateway.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/candidateGateway.ts" enhancement="_blank" />
 
 /** Wire contract of the authenticated candidate endpoint. No local-store fallback. */
 export interface CandidatePointer {

@@ -14,7 +14,7 @@ import {
   type NewReleaseEditMode,
   type NewReleaseTabId,
 } from '/_102035_/l2/newRelease/editContract.js';
-import type { NewReleaseValidationIssue } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   GENERAL_DETAIL_NAME,
   GENERAL_DETAIL_TYPES,

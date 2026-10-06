@@ -7,7 +7,7 @@ import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMe
 import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { buildTaskStatistics } from '/_102025_/l2/collabMessagesTaskInfo.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
-import { candidateRead } from '/_102035_/l2/newRelease/helpers/candidateGateway.js';
+import { candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
   outputRevisionIdForRun,
   type KeyValueStorage,

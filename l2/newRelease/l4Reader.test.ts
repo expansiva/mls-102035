@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   failedStepOf,
-  listNs5ModulesFromFiles,
   listReadableProjectsFromFiles,
   runtimeConfigHasModules,
 } from './helpers/l4Reader.js';
+import { listNs5ModulesFromFiles } from '../solution/fs.js';
 import type { Ns5PipelineState } from '../solution/types.js';
 
 const files = {

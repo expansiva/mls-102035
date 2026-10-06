@@ -1,10 +1,10 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateDraftStore.test.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/candidateDraftStore.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCandidateSnapshot } from './candidateGateway.js';
-import { CandidateRepositoryError, type StoredCandidateDraft } from './candidateRepository.js';
-import { IndexedDbCandidateDraftStore } from './candidateDraftStore.js';
+import { buildCandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
+import { CandidateRepositoryError, type StoredCandidateDraft } from '/_102035_/l2/agentReviewSolution/helpers/candidateRepository.js';
+import { IndexedDbCandidateDraftStore } from '/_102035_/l2/agentReviewSolution/helpers/candidateDraftStore.js';
 
 type Handler = ((event?: unknown) => void) | null;
 

@@ -12,8 +12,8 @@ import {
   sealL4Revision,
   type L4ReleaseCatalog,
   type L4ReleaseManifest,
-} from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import { normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeManifest } from '/_102035_/l2/newRelease/tobe.js';
+} from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export interface ReleaseChoice {
   version: `release:${string}`;
@@ -80,22 +80,6 @@ export async function listReleaseChoices(project: number, moduleName: string): P
   }));
   return valid.filter((release): release is ReleaseChoice => release !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.baseId.localeCompare(b.baseId));
-}
-
-export async function readChangeRequest(project: number, moduleName: string): Promise<{ changeId: string; revisionId: string | null; text: string; resultCurrent: boolean } | null> {
-  const change = await readActiveL4Change(project, moduleName);
-  if (!change) return null;
-  const stored = change.requestRevision ? await readJson<{ request: string }>({
-    project, level: 4, folder: `${moduleName}/pipeline/changes/${change.changeId}/requests`,
-    shortName: `request-${change.requestRevision}`, extension: '.json',
-  }) : null;
-  if (change.requestRevision && typeof stored?.request !== 'string') throw new Error('Change request is incomplete.');
-  return {
-    changeId: change.changeId,
-    revisionId: change.activeRevisionId,
-    text: stored?.request ?? '',
-    resultCurrent: change.resultRevisionId !== null && change.resultRevisionId === change.activeRevisionId,
-  };
 }
 
 export async function saveChangeRequest(

@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executePreparedReviewStart, prepareReviewStartInput } from './reviewStart.js';
-import type { L4SealedCandidateSnapshot } from './moduleRevision.js';
-import type { CandidatePointer, CandidatePublishInput, CandidateSnapshot } from './candidateGateway.js';
+import type { L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import type { CandidatePointer, CandidatePublishInput, CandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { canStartReviewRun } from '../widgets/reviewModel.js';
 
 const hash = `sha256:${'a'.repeat(64)}`;

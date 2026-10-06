@@ -6,15 +6,10 @@ import {
   validateV3Candidate,
   type CandidateArea,
   type CandidateV3Context,
-} from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
-import { stableStringifyTobe } from '/_102035_/l2/newRelease/tobeDiff.js';
-import {
-  validateNs5Overlay,
-  type NewReleaseArtifact,
-  type NewReleaseOverlaySources,
-  type NewReleaseOverlayValidation,
-  type Ns5TobeArtifactPath,
-} from '/_102035_/l2/newRelease/tobe.js';
+} from '/_102035_/l2/solution/candidate/candidateValidation.js';
+import { stableStringifyTobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
+import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
+import type { NewReleaseArtifact, NewReleaseOverlaySources, NewReleaseOverlayValidation, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION,
   isNs5OntologyV3Version,

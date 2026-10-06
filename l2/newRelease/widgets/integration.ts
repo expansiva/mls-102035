@@ -23,7 +23,7 @@ import {
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
-import type { NewReleaseValidationIssue } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { nextMemberId } from '/_102035_/l2/newRelease/widgets/workflowsModel.js';
 import {
   integrationOracleIssues,

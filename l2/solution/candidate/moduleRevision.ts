@@ -1,8 +1,8 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/moduleRevision.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/moduleRevision.ts" enhancement="_blank" />
 
 import { fileExists, readDefsJson, readJson, readSourceText, writeJson, writeSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type { Ns5ModuleArtifact, Ns5JourneyIndexArtifact, Ns5OntologyIndexArtifact, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
-import { ns5OntologyEntityIds, normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeArtifactPath, type Ns5TobeManifest } from '/_102035_/l2/newRelease/tobe.js';
+import { ns5OntologyEntityIds, normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeArtifactPath, type Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export const L4_REVISION_SCHEMA = '2026-09-20-nr-module-revision-v1' as const;
 export type L4HashMap = Record<string, string>;
@@ -304,7 +304,7 @@ export async function prepareL4Change(project: number, moduleName: string, oldMa
     if (oldManifest) {
       for (const [path, expected] of Object.entries(oldManifest.base)) {
         const value = await readDefsJson<unknown>(artifactInfo(project, moduleName, normalizeTobeArtifactPath(path), 'asis'));
-        if (value === null || !expected || await import('/_102035_/l2/newRelease/tobeDiff.js').then(({ sha256Tobe }) => sha256Tobe(value)) !== expected) {
+        if (value === null || !expected || await import('/_102035_/l2/solution/candidate/tobeDiff.js').then(({ sha256Tobe }) => sha256Tobe(value)) !== expected) {
           throw new Error(`Prepared change has a stale base: ${path}`);
         }
       }
@@ -519,4 +519,20 @@ export async function readActiveSealedL4Candidate(
   const sealed = await readSealedL4Candidate(project, moduleName, active.changeId, active.activeRevisionId);
   if (!sealed) throw new Error('Active sealed L4 candidate is incomplete.');
   return sealed;
+}
+
+export async function readChangeRequest(project: number, moduleName: string): Promise<{ changeId: string; revisionId: string | null; text: string; resultCurrent: boolean } | null> {
+  const change = await readActiveL4Change(project, moduleName);
+  if (!change) return null;
+  const stored = change.requestRevision ? await readJson<{ request: string }>({
+    project, level: 4, folder: `${moduleName}/pipeline/changes/${change.changeId}/requests`,
+    shortName: `request-${change.requestRevision}`, extension: '.json',
+  }) : null;
+  if (change.requestRevision && typeof stored?.request !== 'string') throw new Error('Change request is incomplete.');
+  return {
+    changeId: change.changeId,
+    revisionId: change.activeRevisionId,
+    text: stored?.request ?? '',
+    resultCurrent: change.resultRevisionId !== null && change.resultRevisionId === change.activeRevisionId,
+  };
 }

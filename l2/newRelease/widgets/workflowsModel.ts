@@ -7,7 +7,7 @@ import type {
   Ns5WorkflowTrigger,
   Ns5WorkflowsArtifact,
 } from '../../solution/types.js';
-import type { NewReleaseValidationIssue } from '../tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type WorkflowSchemaKind = 'v1' | 'v2' | 'v3' | 'unknown';
 export type WorkflowTaskView = Omit<Ns5WorkflowTask, 'kind'> & { kind: Ns5WorkflowTask['kind'] | 'system' };
