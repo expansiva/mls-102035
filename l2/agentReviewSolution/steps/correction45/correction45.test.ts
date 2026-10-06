@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { unavailableCandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
-import type { NewReleaseOverlayValidation } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseOverlayValidation } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { correct45Directed } from './correction45.js';
 
 const requestKey = 'change-1/request-3';

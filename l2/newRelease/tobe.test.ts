@@ -4,21 +4,23 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadNs5Entities, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
-  isNs5OntologyV3,
-  NS5_TOBE_MANIFEST_SCHEMA_VERSION,
-  ns5OntologyEntityIds,
-  normalizeTobeArtifactPath,
   discardTobe,
   readNs5Overlay,
   recordTobeDiscard,
   recordTobeSave,
   saveTobeArtifact,
-  tobeArtifactFileInfo,
   tobeManifestFileInfo,
   validateNs5Overlay,
+} from './tobe.js';
+import {
+  isNs5OntologyV3,
+  NS5_TOBE_MANIFEST_SCHEMA_VERSION,
+  ns5OntologyEntityIds,
+  normalizeTobeArtifactPath,
+  tobeArtifactFileInfo,
   type NewReleaseArtifact,
   type NewReleaseOverlaySources,
-} from './tobe.js';
+} from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { tabForArtifactPath } from './editContract.js';
 import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { L4SealedCandidateError, markL4Result, readActiveL4Change, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from './helpers/moduleRevision.js';

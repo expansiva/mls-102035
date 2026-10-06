@@ -2,7 +2,7 @@
 
 import { fileExists, readDefsJson, readJson, readSourceText, writeJson, writeSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type { Ns5ModuleArtifact, Ns5JourneyIndexArtifact, Ns5OntologyIndexArtifact, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
-import { ns5OntologyEntityIds, normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeArtifactPath, type Ns5TobeManifest } from '/_102035_/l2/newRelease/tobe.js';
+import { ns5OntologyEntityIds, normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeArtifactPath, type Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export const L4_REVISION_SCHEMA = '2026-09-20-nr-module-revision-v1' as const;
 export type L4HashMap = Record<string, string>;

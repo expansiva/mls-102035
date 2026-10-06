@@ -5,7 +5,7 @@ import type {
   Ns5JourneyIndexArtifact,
   Ns5OntologyEntityArtifact,
 } from '../../solution/types.js';
-import type { NewReleaseValidationIssue } from '../tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export const JOURNEY_ENTRY_MODES: Ns5JourneyArtifact['business']['entry']['mode'][] = [
   'coldStart', 'contextOrLookup', 'fromNotification',

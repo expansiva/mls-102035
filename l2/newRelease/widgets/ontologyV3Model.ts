@@ -4,7 +4,7 @@ import type {
   Ns5OntologyEntityV3,
   Ns5OntologyIndexV3,
 } from '/_102035_/l2/solution/types.js';
-import { isNewReleaseOntologyV3Version } from '/_102035_/l2/newRelease/ontologyV3Contract.js';
+import { isNewReleaseOntologyV3Version } from '/_102035_/l2/solution/candidate/ontologyV3Contract.js';
 import type { Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type {
   OntologyNode,

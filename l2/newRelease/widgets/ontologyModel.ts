@@ -7,7 +7,7 @@ import type {
   Ns5OntologyIndexArtifact,
   Ns5OntologyRelationship,
 } from '../../solution/types.js';
-import type { NewReleaseValidationIssue } from '../tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export const ONTOLOGY_FIELD_TYPES: Ns5OntologyField['type'][] = [
   'uuid', 'string', 'text', 'number', 'integer', 'boolean', 'money', 'date', 'datetime', 'json',

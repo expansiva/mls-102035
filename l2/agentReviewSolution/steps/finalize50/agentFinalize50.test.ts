@@ -19,7 +19,7 @@ import {
 import { L4_REVISION_SCHEMA, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
 import { buildCandidateSnapshot, type CandidateReadResult } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { unavailableCandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
-import { normalizeTobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
+import { normalizeTobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { renderDefsSource } from '/_102035_/l2/solution/fs.js';
 import {
   beforeFinalize50Step,

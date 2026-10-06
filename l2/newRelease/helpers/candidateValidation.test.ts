@@ -10,7 +10,7 @@ import {
   loadNs5Module, loadNs5Rules, loadNs5Workflows,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5OntologyAnyEntity, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
-import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { candidateCanPublish, validateV3Candidate } from './candidateValidation.js';
 
 function artifact<T>(relative: Ns5TobeArtifactPath, value: T): NewReleaseArtifact<T> {

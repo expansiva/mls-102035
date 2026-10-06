@@ -6,7 +6,7 @@ import type {
   Ns5IntegrationPlugin,
   Ns5IntegrationRequestArtifact,
 } from '../../solution/types.js';
-import type { NewReleaseValidationIssue } from '../tobe.js';
+import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type IntegrationSchemaKind = 'v1' | 'v2' | 'unknown';
 

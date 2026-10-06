@@ -17,14 +17,8 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import { readActiveL4Change, readL4Release, type L4ReleaseManifest, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import {
-  readNs5Overlay,
-  type NewReleaseOverlaySources,
-  type NewReleaseOverlayValidation,
-  type NewReleaseTobeDiff,
-  type Ns5TobeArtifactPath,
-  type Ns5TobeManifest,
-} from '/_102035_/l2/newRelease/tobe.js';
+import { readNs5Overlay, type NewReleaseTobeDiff } from '/_102035_/l2/newRelease/tobe.js';
+import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, Ns5TobeArtifactPath, Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 

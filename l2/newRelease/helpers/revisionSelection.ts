@@ -13,7 +13,7 @@ import {
   type L4ReleaseCatalog,
   type L4ReleaseManifest,
 } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import { normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeManifest } from '/_102035_/l2/newRelease/tobe.js';
+import { normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export interface ReleaseChoice {
   version: `release:${string}`;
