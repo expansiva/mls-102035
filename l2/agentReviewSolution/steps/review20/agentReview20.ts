@@ -2,7 +2,7 @@
 
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
-import { parseReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
+import { parseReviewInvocation, serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 import {
   assertReviewSnapshotMatches,
   readReviewInventories,
@@ -163,16 +163,9 @@ export async function afterReview20PromptStep(
 }
 
 export function createReview20Step(invocation: ReviewInvocation): mls.msg.AIAgentStep {
-  const prompt = JSON.stringify({
-    moduleName: invocation.moduleName,
-    originalL4Path: invocation.originalL4Path,
-    temporaryL4Path: invocation.temporaryL4Path,
-    request: invocation.request,
-    ...(invocation.expectedRevisionId !== undefined ? { expectedRevisionId: invocation.expectedRevisionId } : {}),
-  });
   return {
     type: 'agent', stepId: 0, interaction: null, nextSteps: [], status: 'waiting_dependency',
-    agentName: 'agentReviewSolution', stepTitle: 'Prepare private review proposal', prompt, rags: [],
+    agentName: 'agentReviewSolution', stepTitle: 'Prepare private review proposal', prompt: serializeReviewInvocation(invocation), rags: [],
     planning: { planId: 'review20', dependsOn: ['entry10-done'], executionMode: 'sequential', executionHost: 'client' },
   };
 }

@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseReviewInvocation } from './invocation.js';
+import { parseReviewInvocation, serializeReviewInvocation } from './invocation.js';
 
 const valid = {
   moduleName: 'agendaClinica',
@@ -31,4 +31,22 @@ test('parser rejects invalid JSON, wrong module, equal/escaped paths and unknown
   assert.throws(() => parseReviewInvocation({ ...valid, temporaryL4Path: '/tmp/plan' }, 102047), /must match/);
   assert.throws(() => parseReviewInvocation({ ...valid, command: 'echo hi' }, 102047), /Unexpected review field/);
   assert.throws(() => parseReviewInvocation({ ...valid, expectedRevisionId: 'rev/other' }, 102047), /Invalid expectedRevisionId/);
+});
+
+const serviceWithRevision = '@@agentReviewSolution {"moduleName":"comandaRestaurante","originalL4Path":"l4/comandaRestaurante/pipeline/releases/base-0123456789abcdef/l4","temporaryL4Path":"l4/comandaRestaurante/tobe/plan","request":"…","expectedRevisionId":"rev-1"}';
+const serviceWithoutRevision = '@@agentReviewSolution {"moduleName":"comandaRestaurante","originalL4Path":"l4/comandaRestaurante/pipeline/releases/base-0123456789abcdef/l4","temporaryL4Path":"l4/comandaRestaurante/tobe/plan","request":"…"}';
+
+test('mr_16 ida e volta', () => {
+  for (const cmd of [serviceWithRevision, serviceWithoutRevision]) {
+    const first = parseReviewInvocation(cmd, 102047);
+    const serialized = serializeReviewInvocation(first);
+    assert.equal(serialized.includes('"project"'), false);
+    assert.equal(serialized.includes('"baseId"'), false);
+    assert.deepEqual(parseReviewInvocation(serialized, 102047), first);
+  }
+  const parsed = parseReviewInvocation(serviceWithRevision, 102047);
+  assert.throws(
+    () => parseReviewInvocation(JSON.stringify(parsed), 102047),
+    /Unexpected review field: project\./,
+  );
 });
