@@ -1,11 +1,13 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/reviewTaskState.ts" enhancement="_blank" />
 
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
+import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
+import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
+import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   listNs5Modules,
   pipelineJsonFileForProject,
-  readDefsJson,
   readJson,
   readPipelineForProject,
 } from '/_102035_/l2/solution/fs.js';
@@ -109,19 +111,16 @@ function parseReviewTaskState(value: unknown): ReviewTaskState {
 }
 
 async function readRealValidationContext(project: number, moduleName: string): Promise<Validate40Context> {
-  const [mdm, tdm, ddm, pipeline, ontologyPlan] = await Promise.all([
-    readDefsJson<MdmOntology>({ project: 102034, level: 4, folder: 'ontology', shortName: 'mdm', extension: '.defs.ts' }),
-    readDefsJson<DataFamilyOntology>({ project: 102034, level: 4, folder: 'ontology', shortName: 'tdm', extension: '.defs.ts' }),
-    readDefsJson<DataFamilyOntology>({ project: 102034, level: 4, folder: 'ontology', shortName: 'ddm', extension: '.defs.ts' }),
+  const [pipeline, ontologyPlan] = await Promise.all([
     readPipelineForProject(project, moduleName),
     readJson<Ns5OntologyV3PlanDraft>(pipelineJsonFileForProject(project, moduleName, 'ontology30-plan-draft')),
   ]);
   const registryModuleNames = listNs5Modules(project);
   return {
     v3: {
-      ...(mdm ? { mdm } : {}),
-      ...(tdm ? { tdm } : {}),
-      ...(ddm ? { ddm } : {}),
+      ...(mdm ? { mdm: mdm as MdmOntology } : {}),
+      ...(tdm ? { tdm: tdm as DataFamilyOntology } : {}),
+      ...(ddm ? { ddm: ddm as DataFamilyOntology } : {}),
       ontologyPlan,
       registryModuleNames,
     },
