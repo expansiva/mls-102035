@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/invocation.ts" enhancement="_blank" />
 
-import { resolveL4Folders } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { resolveL4Folders } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 export interface ReviewInvocation {
   project: number;

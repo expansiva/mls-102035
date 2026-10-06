@@ -46,7 +46,7 @@ import {
   readL4Release,
   readSealedL4Candidate,
   type L4SealedCandidateSnapshot,
-} from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+} from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { readSourceText, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 
 export const FINALIZE50_PRIVATE_RESULT_VERSION = '2026-09-21-finalize50-private-result-v3' as const;

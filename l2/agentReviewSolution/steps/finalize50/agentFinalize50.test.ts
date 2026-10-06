@@ -16,7 +16,7 @@ import {
   loadNs5Access, loadNs5Entities, loadNs5Integration, loadNs5JourneyIndex, loadNs5Journeys,
   loadNs5Module, loadNs5OntologyIndex, loadNs5Rules, loadNs5Workflows,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
-import { L4_REVISION_SCHEMA, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { L4_REVISION_SCHEMA, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { buildCandidateSnapshot, type CandidateReadResult } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { unavailableCandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
 import { normalizeTobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';

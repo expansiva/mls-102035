@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { L4_REVISION_SCHEMA, type L4CandidateManifest, type L4ChangeRecord, type L4ReleaseManifest } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { L4_REVISION_SCHEMA, type L4CandidateManifest, type L4ChangeRecord, type L4ReleaseManifest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import {
   freezeReviewEntry,
   readReviewInventories,

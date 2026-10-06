@@ -18,7 +18,7 @@ import {
   createStudioCandidateAdapter,
   type StudioLegacyCandidateReader,
 } from './studioCandidateAdapter.js';
-import { L4SealedCandidateError, type L4SealedCandidateSnapshot } from './moduleRevision.js';
+import { L4SealedCandidateError, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 const scope = { project: 102047, moduleName: 'agendaClinica' };
 const paths = [

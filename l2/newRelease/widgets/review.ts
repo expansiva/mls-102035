@@ -12,7 +12,7 @@ import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRel
 import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.js';
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';

@@ -24,7 +24,7 @@ import {
   readActiveSealedL4Candidate,
   withModuleWriter,
   type L4SealedCandidateSnapshot,
-} from './moduleRevision.js';
+} from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 export type StudioCandidateChecks = Pick<CandidateRepositoryOptions, 'inventory' | 'validate'>;
 

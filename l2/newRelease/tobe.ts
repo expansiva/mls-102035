@@ -45,7 +45,7 @@ import {
   type Ns5TobeManifest,
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
-import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, type L4SealedCandidateSnapshot } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
+import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import type { CandidateArea, CandidateCoverage } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 

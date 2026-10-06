@@ -9,7 +9,7 @@ import {
   type CandidateSnapshot,
   type CandidateScope,
 } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { readActiveSealedL4Candidate, type L4SealedCandidateSnapshot } from './moduleRevision.js';
+import { readActiveSealedL4Candidate, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import type { ReviewRunStartInput } from './reviewRunWorker.js';
 import { sameReviewStartSnapshot } from '../widgets/reviewModel.js';
 

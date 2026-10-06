@@ -23,9 +23,9 @@ import {
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { tabForArtifactPath } from './editContract.js';
 import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
-import { L4SealedCandidateError, markL4Result, readActiveL4Change, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from './helpers/moduleRevision.js';
+import { L4SealedCandidateError, markL4Result, readActiveL4Change, readChangeRequest, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { historicalReleaseId } from './helpers/context.js';
-import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, readChangeRequest, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
+import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
 
 test('v3 ontology index resolves descriptor rows to entity file ids without changing v2 ids', () => {
   const v3 = {
