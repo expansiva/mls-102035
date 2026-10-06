@@ -25,6 +25,16 @@ const RULES: { forbidden: string; scope: string; allowed: string }[] = [
     scope: 'newRelease/,agentReviewSolution/,agentPlannerL4/,solution/',
     allowed: '*.test.ts',
   },
+  {
+    forbidden: ['/_102035_/l2/', 'newRelease/'].join(''),
+    scope: 'agent',
+    allowed: '(nenhum)',
+  },
+  {
+    forbidden: ['/_102035_/l2/', 'newRelease/'].join(''),
+    scope: 'solution/',
+    allowed: '(nenhum)',
+  },
 ];
 
 function walk(dir: string, out: string[] = []): string[] {
