@@ -7,7 +7,7 @@ import {
   type CandidateArea,
   type CandidateV3Context,
 } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
-import { stableStringifyTobe } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { stableStringifyTobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import {
   validateNs5Overlay,
   type NewReleaseArtifact,

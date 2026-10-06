@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/helpers/plCore.ts" enhancement="_blank"/>
 
 import { readL4Revision } from '/_102035_/l2/newRelease/helpers/moduleRevision.js';
-import { sha256Tobe } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import {
   displayPath,
   fileExists,

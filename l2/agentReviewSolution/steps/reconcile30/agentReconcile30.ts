@@ -12,7 +12,7 @@ import {
   type ReviewTaskState,
 } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
 import type { Validate40CorrectionState } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
-import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import {
   parseReview20PrivateState,
   REVIEW20_PRIVATE_STATE_VERSION,

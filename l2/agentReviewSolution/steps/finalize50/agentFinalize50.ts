@@ -38,7 +38,7 @@ import {
   type StudioCandidateSubmittedReplayInput,
   type StudioCandidatePublishInput,
 } from '/_102035_/l2/newRelease/helpers/studioCandidateAdapter.js';
-import { stableStringifyTobe } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { stableStringifyTobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { normalizeTobeArtifactPath } from '/_102035_/l2/newRelease/tobe.js';
 import {
   originalL4FileInfo,

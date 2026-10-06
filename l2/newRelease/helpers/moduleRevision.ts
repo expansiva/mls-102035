@@ -304,7 +304,7 @@ export async function prepareL4Change(project: number, moduleName: string, oldMa
     if (oldManifest) {
       for (const [path, expected] of Object.entries(oldManifest.base)) {
         const value = await readDefsJson<unknown>(artifactInfo(project, moduleName, normalizeTobeArtifactPath(path), 'asis'));
-        if (value === null || !expected || await import('/_102035_/l2/newRelease/tobeDiff.js').then(({ sha256Tobe }) => sha256Tobe(value)) !== expected) {
+        if (value === null || !expected || await import('/_102035_/l2/solution/candidate/tobeDiff.js').then(({ sha256Tobe }) => sha256Tobe(value)) !== expected) {
           throw new Error(`Prepared change has a stale base: ${path}`);
         }
       }

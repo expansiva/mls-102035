@@ -5,7 +5,7 @@ import {
   validateV3Candidate,
   type CandidateArea,
 } from '/_102035_/l2/newRelease/helpers/candidateValidation.js';
-import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { validateNs5Overlay, type NewReleaseOverlayValidation, type NewReleaseValidationIssue } from '/_102035_/l2/newRelease/tobe.js';
 import { NS5_ONTOLOGY_SCHEMA_VERSION, isNs5OntologyV3Version } from '/_102035_/l2/solution/types.js';
 import { validate40AffectedAreas, validate40Sources, type Validate40Context } from '../validate40/validate40.js';

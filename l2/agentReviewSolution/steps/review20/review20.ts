@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/review20/review20.ts" enhancement="_blank" />
 
-import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import type { ReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
 
 export const REVIEW20_SCHEMA_VERSION = '2026-09-21-review20-v1' as const;

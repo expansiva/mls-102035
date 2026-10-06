@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/tobeDiff.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/solution/candidate/tobeDiff.ts" enhancement="_blank" />
 
 export interface NewReleaseDiffEntry {
   jsonPath: string;

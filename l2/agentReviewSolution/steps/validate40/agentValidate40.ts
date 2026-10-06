@@ -8,7 +8,7 @@ import {
   reviewTaskStateFromContext,
   type ReviewTaskState,
 } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
-import { stableStringifyTobe } from '/_102035_/l2/newRelease/tobeDiff.js';
+import { stableStringifyTobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { createFinalize50Step } from '/_102035_/l2/agentReviewSolution/steps/finalize50/agentFinalize50.js';
 import {
   parseReconcile30PrivateState,
