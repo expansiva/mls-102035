@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/candidateRepository.test.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/candidateRepository.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -11,7 +11,7 @@ import {
   type CandidateDraftIdentity, type CandidateDraftStore, type CandidateRepositoryOptions,
   type CandidateRepositoryPermittedPublishInput, type CandidateRepositoryPublishInput,
   type CandidateRepositoryTransport, type StoredCandidateDraft,
-} from './candidateRepository.js';
+} from '/_102035_/l2/agentReviewSolution/helpers/candidateRepository.js';
 
 const scope = { project: 102047, moduleName: 'agendaClinica' };
 const sourcePaths = [

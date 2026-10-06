@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/studioCandidateAdapter.test.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/studioCandidateAdapter.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -13,11 +13,11 @@ import {
   type CandidateDraftStore,
   type CandidateRepositoryTransport,
   type StoredCandidateDraft,
-} from './candidateRepository.js';
+} from '/_102035_/l2/agentReviewSolution/helpers/candidateRepository.js';
 import {
   createStudioCandidateAdapter,
   type StudioLegacyCandidateReader,
-} from './studioCandidateAdapter.js';
+} from '/_102035_/l2/agentReviewSolution/helpers/studioCandidateAdapter.js';
 import { L4SealedCandidateError, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 const scope = { project: 102047, moduleName: 'agendaClinica' };

@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/newRelease/helpers/studioCandidateAdapter.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/agentReviewSolution/helpers/studioCandidateAdapter.ts" enhancement="_blank" />
 
 import {
   buildCandidateSnapshot,
