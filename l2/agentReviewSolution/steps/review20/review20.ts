@@ -66,6 +66,11 @@ function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function normalizeOperationArtifactPath(path: string, moduleName: string): string {
+  const prefix = `l4/${moduleName}/`;
+  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
+}
+
 function assertArtifactPath(path: string): void {
   const core = /^(?:module|rules|workflows|access|integration|workspace-model)\.defs\.ts$|^(?:journeys|ontology)\/index\.defs\.ts$/u;
   const child = /^(?:journeys\/[a-z][A-Za-z0-9]*|ontology\/[A-Z][A-Za-z0-9]*|workspaces\/[a-z][A-Za-z0-9]*)\.defs\.ts$/u;
@@ -187,16 +192,17 @@ export function stageReview20(
   }
   const touched = new Set<string>();
   for (const operation of response.operations) {
-    assertArtifactPath(operation.artifactPath);
-    if (!Object.hasOwn(candidate, operation.artifactPath) || !Object.hasOwn(base, operation.artifactPath)) {
+    const artifactPath = normalizeOperationArtifactPath(operation.artifactPath, moduleName);
+    assertArtifactPath(artifactPath);
+    if (!Object.hasOwn(candidate, artifactPath) || !Object.hasOwn(base, artifactPath)) {
       throw new Error('operation artifact is not in both snapshots');
     }
-    const identity = `${operation.artifactPath}\u0000${operation.pointer}`;
+    const identity = `${artifactPath}\u0000${operation.pointer}`;
     if (touched.has(identity)) throw new Error('duplicate operation target');
     touched.add(identity);
     const segments = pointerSegments(operation.pointer);
-    const current = atPointer(candidate[operation.artifactPath], segments).value;
-    const original = atPointer(base[operation.artifactPath], segments).value;
+    const current = atPointer(candidate[artifactPath], segments).value;
+    const original = atPointer(base[artifactPath], segments).value;
     const expected = parseScalar(operation.expectedJson);
     const replacement = parseScalar(operation.valueJson);
     if (typeof current !== typeof expected || !Object.is(current, expected)) throw new Error('operation expected value is stale');
@@ -209,7 +215,7 @@ export function stageReview20(
       throw new Error('manual candidate edit conflict: explicit refine policy is required');
     }
     if (typeof replacement !== typeof current || Object.is(replacement, current)) throw new Error('replacement changes type or is a no-op');
-    const target = atPointer(proposal[operation.artifactPath], segments);
+    const target = atPointer(proposal[artifactPath], segments);
     (target.parent as Record<string, unknown>)[target.key] = replacement;
   }
   return { status: 'staged', clarification: '', proposal, explicitDiff,
