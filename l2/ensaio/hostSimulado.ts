@@ -64,8 +64,10 @@ export async function runUntilDone(
   agentEntry: AgentEntry,
   context: mls.msg.ExecutionContext,
   answers: RecordedAnswers,
+  entries: AgentEntry[] = [],
 ) {
   const agent = agentEntry.createAgent();
+  const agents = new Map([agent, ...entries.map(entry => entry.createAgent())].map(item => [item.agentName, item]));
   if (!agent.beforePromptImplicit || !agent.beforePromptStep || !agent.afterPromptStep) {
     throw new Error('The replay requires the three public prompt lifecycle hooks.');
   }
@@ -148,14 +150,16 @@ export async function runUntilDone(
     const planId = step.planning?.planId ?? String(step.stepId);
     activeStep = step;
     executedPlans.push(planId);
-    apply(await agent.beforePromptStep(agent, context, parent, step, ++hookSequential));
+    const stepAgent = agents.get(step.agentName);
+    if (!stepAgent?.beforePromptStep || !stepAgent.afterPromptStep) throw new Error(`Missing public entry for ${step.agentName}`);
+    apply(await stepAgent.beforePromptStep(stepAgent, context, parent, step, ++hookSequential));
     if (step.status !== 'completed' && step.status !== 'failed') {
       if (!step.interaction?.input.length) throw new Error(`Step ${planId} neither completed nor prepared a prompt.`);
       const answer = answers[planId];
       if (!answer) throw new Error(`Missing recorded answer for ${planId}`);
       step.interaction.payload = structuredClone(Array.isArray(answer) ? answer : [answer]);
       step.status = 'waiting_after_prompt';
-      apply(await agent.afterPromptStep(agent, context, parent, step, ++hookSequential));
+      apply(await stepAgent.afterPromptStep(stepAgent, context, parent, step, ++hookSequential));
     }
   }
   throw new Error('Replay exceeded 100 hook iterations.');

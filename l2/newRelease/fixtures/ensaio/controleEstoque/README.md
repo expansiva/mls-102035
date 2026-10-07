@@ -12,3 +12,5 @@ Commit de procedência do L4 (HEAD observado do 102047, metadado, 07/10): `3851e
 | `answers/menu20/menu-1.json` | não existia em `3851e9a93f1cc6a575e231cd4f8803590c30338f` | `20261007201518.1001` (`mls.stor.files` / `getContent`, verdict accepted) |
 
 Gravação isolada sem ferramentas `20261007201905.1001` foi rejeitada e não integra estas fixtures.
+
+`answers/plan20/plan-1.json`: cópia byte a byte de `/tmp/ui_mr21_source/answers/plan20/plan-1.json`, task isolada `20261007220558.1001` (done). Resposta bruta `submitP1BackendResolution`, aliases/merges vazios; schema da ferramenta aceito, gate de domínio ainda não alcançado pelo replay. Prompt original obtido pelo hook público L1 e `mls.stor.files` da bancada do run `20261007201518.1001`; nenhum arquivo aplicado pela resposta. SHA256 `9f6b7f0ba3ee850ee9d37f4e17909df993e16b4b8d64f3aba32c4a6e7cfd3c68` (294 bytes).

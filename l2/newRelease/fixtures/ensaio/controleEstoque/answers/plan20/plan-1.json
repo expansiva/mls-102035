@@ -1,0 +1,17 @@
+{
+  "type": "flexible",
+  "result": {
+    "toolName": "submitP1BackendResolution",
+    "arguments": {
+      "type": "flexible",
+      "result": {
+        "aliases": [],
+        "merges": []
+      }
+    }
+  },
+  "status": "completed",
+  "stepId": 3,
+  "interaction": null,
+  "nextSteps": null
+}
