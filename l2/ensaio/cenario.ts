@@ -74,7 +74,7 @@ function installStorFixture() {
   return sources;
 }
 
-export async function withReviewScenario(installStub: () => void, run: (scenario: { sources: Map<string, string>; selection: Awaited<ReturnType<typeof saveChangeRequest>>; prepared: Awaited<ReturnType<typeof prepareReviewStartInput>>; before: Awaited<ReturnType<typeof candidateRead>>; command: string; context: mls.msg.ExecutionContext; replay: Awaited<ReturnType<typeof runUntilDone>>; fetchCalls: () => number; progress: ReviewWorkerProgress }) => Promise<void>) {
+export async function withReviewScenario(installStub: () => void, run: (scenario: { sources: Map<string, string>; selection: Awaited<ReturnType<typeof saveChangeRequest>>; prepared: Awaited<ReturnType<typeof prepareReviewStartInput>>; before: Awaited<ReturnType<typeof candidateRead>>; command: string; context: mls.msg.ExecutionContext; replay: Awaited<ReturnType<typeof runUntilDone>>; fetchCalls: () => number; progress: ReviewWorkerProgress }) => Promise<void>, prepareSources?: (sources: Map<string, string>) => void) {
   const priorMls = globalThis.mls;
   const priorFetch = globalThis.fetch;
   const browserKeys = ['document', 'window', 'customElements', 'HTMLElement'] as const;
@@ -94,6 +94,15 @@ export async function withReviewScenario(installStub: () => void, run: (scenario
   try {
     installStub();
     const sources = installStorFixture();
+    if (prepareSources) {
+      prepareSources(sources);
+      for (const [path, content] of sources) {
+        const file = Object.values(mls.stor.files).find(file => file.project === PROJECT
+          && `${file.folder}/${file.shortName}${file.extension}` === `${MODULE}/${path}`);
+        assert.ok(file, `Missing replay source ${path}`);
+        await mls.stor.localStor.setContent(file, { content });
+      }
+    }
     const request = readFileSync(new URL('request.txt', FIXTURE), 'utf8').trim();
     const selection = await saveChangeRequest(PROJECT, MODULE, request, null, null);
     const loaded = await readActiveSealedL4Candidate(PROJECT, MODULE);

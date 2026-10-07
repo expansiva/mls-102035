@@ -136,7 +136,12 @@ export async function runUntilDone(
   apply(await agent.beforePromptImplicit(agent, context, context.message.content));
   for (let iteration = 0; iteration < 100; iteration++) {
     const failed = steps.find(step => step.status === 'failed');
-    if (failed) throw new Error(`Step ${failed.planning?.planId} failed: ${failed.interaction?.trace.join('; ')}`);
+    if (failed) {
+      if (!context.task) throw new Error('The agent did not create a task.');
+      context.task.status = 'failed';
+      context.task.last_update_log = `Task failed at ${new Date().toISOString()} | reason: ${failed.interaction?.trace.at(-1) ?? ''}`;
+      return { context, steps, executedPlans, intents };
+    }
     const pending = steps.filter(step => step.status !== 'completed');
     if (!pending.length) {
       if (!context.task) throw new Error('The agent did not create a task.');

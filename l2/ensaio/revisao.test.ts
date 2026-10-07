@@ -1,8 +1,9 @@
 /// <mls fileReference="_102035_/l2/ensaio/revisao.test.ts" enhancement="_blank" />
 
 import test from 'node:test';
+import NodeModule from 'node:module';
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readModuleMenu } from '../newRelease/helpers/menuReader.js';
 import { readReviewArtifact } from '../newRelease/helpers/backendReader.js';
 import { buildReviewView } from '../newRelease/widgets/reviewModel.js';
@@ -135,5 +136,78 @@ test('real review and planner evidence reaches ledger ready and the Review model
       writeFileSync(new URL('ledger/evidence.json', FIXTURE), JSON.stringify(evidence, null, 2) + '\n');
     }
     assert.equal(fetchCalls(), 0);
+  });
+});
+
+
+test('mr_24 s3: base with an empty transition by fails publicly without publishing', async () => {
+  const originalSources = new Map<string, string>();
+  await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async ({ before, context, replay, progress, fetchCalls }) => {
+    const errorCode = 'review.not_publishable:invalid:NS5_WORKFLOWS_TRANSITION_BY';
+    assert.equal(context.task?.status, 'failed');
+    const terminalLog = context.task?.last_update_log;
+    assert.match(terminalLog ?? '', /^Task failed at \d{4}-\d{2}-\d{2}T[\d:.]+Z \| reason: /);
+    assert.equal(terminalLog?.split(' | reason: ')[1], errorCode);
+    assert.deepEqual(replay.executedPlans, ['entry10', 'review20', 'reconcile30', 'validate40', 'correction45-attempt-1']);
+    assert.ok(!replay.executedPlans.includes('finalize50'));
+    const after = await candidateRead({ project: PROJECT, moduleName: MODULE });
+    assert.deepEqual(after.pointer, before.pointer);
+    assert.deepEqual(after.snapshot, before.snapshot);
+    assert.equal(progress.status, 'failed');
+    assert.equal(progress.errorCode, terminalLog);
+    assert.equal(fetchCalls(), 0);
+    for (const [path, source] of originalSources) {
+      assert.equal(readFileSync(new URL(`l4/${path}`, FIXTURE), 'utf8'), source, path);
+    }
+    // This assertion calls the real presentation method without mounting the Lit component.
+    const loader = NodeModule as unknown as { _load: (request: string, ...args: unknown[]) => unknown };
+    const previousLoad = loader._load;
+    try {
+      loader._load = function (request, ...args) {
+        if (request === 'lit/decorators.js') return { customElement: () => () => undefined,
+          property: () => () => undefined, state: () => () => undefined, query: () => () => undefined };
+        return previousLoad.call(this, request, ...args);
+      };
+      const { NewReleaseReview102035 } = await import('../newRelease/widgets/review.js');
+      const review = NewReleaseReview102035.prototype as unknown as {
+        reviewRunErrorKey(code: string): string;
+        tReviewRunError(code: string): string;
+      };
+      const presentation = Object.create(review);
+      presentation.t = (key: string, params?: { status: string; codes: string }) => JSON.stringify({ key, ...params });
+      for (const status of ['invalid', 'unsupported']) {
+        const codes = 'NS5_WORKFLOWS_TRANSITION_BY,NS5_GATE_TWO';
+        const direct = `review.not_publishable:${status}:${codes}`;
+        for (const code of [direct, `Task failed at 2026-10-07T22:52:33.100Z | reason: ${direct}`]) {
+          assert.equal(review.reviewRunErrorKey(code), 'review.run.error.notPublishable');
+          assert.deepEqual(JSON.parse(presentation.tReviewRunError(code)), {
+            key: 'review.run.error.notPublishable', status, codes,
+          });
+        }
+      }
+      assert.equal(review.reviewRunErrorKey(progress.errorCode!), 'review.run.error.notPublishable');
+      assert.deepEqual(JSON.parse(presentation.tReviewRunError(progress.errorCode!)), {
+        key: 'review.run.error.notPublishable', status: 'invalid', codes: 'NS5_WORKFLOWS_TRANSITION_BY',
+      });
+      for (const code of [errorCode + ':texto livre', errorCode + ',texto livre',
+        'review.not_publishable:invalid:A,B,C,D,E,F']) {
+        assert.deepEqual(JSON.parse(presentation.tReviewRunError(code)), { key: 'review.run.error.generic' });
+      }
+    } finally { loader._load = previousLoad; }
+  }, sources => {
+    for (const entry of sources) originalSources.set(...entry);
+    // The captured base has no process or transition. Add a coherent pair in memory,
+    // then empty only the ontology transition's by to reproduce the measured defect.
+    const transition = { transitionId: 'inativarProduto', from: ['Active'], to: 'Inactive',
+      by: ['system'], description: 'Inativa o produto pelo processo.', payload: [] };
+    transition.by = [];
+    sources.set('ontology/Produto.defs.ts', sources.get('ontology/Produto.defs.ts')!.replace(
+      '"relationships": {', `"transitions": ${JSON.stringify([transition])},\n  "relationships": {`));
+    const process = { processId: 'inativarProduto', title: 'Inativar produto', description: 'Inativa um produto agendado.',
+      trigger: { kind: 'scheduled', schedule: 'Diariamente' }, tasks: [{ taskId: 'inativar', kind: 'mechanical',
+        entityRef: 'Produto', effect: 'transition', transitionRef: 'inativarProduto', next: [],
+        description: 'Inativa o produto.' }] };
+    sources.set('workflows.defs.ts', sources.get('workflows.defs.ts')!.replace(
+      '"processes": []', `"processes": ${JSON.stringify([process])}`));
   });
 });
