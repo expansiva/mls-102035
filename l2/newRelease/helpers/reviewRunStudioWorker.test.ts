@@ -212,6 +212,65 @@ test('mr_18 s3 estágio fallback marca fallbackUsed', async () => {
   assert.equal(progress.fallbackUsed, true);
 });
 
+const sourcePaths = [
+  'module.defs.ts', 'journeys/index.defs.ts', 'ontology/index.defs.ts',
+  'rules.defs.ts', 'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts',
+] as const;
+
+test('mr_22 s2 pointer de saída com source da rev 1 abre planning com o permit dessa revisão', async () => {
+  const { buildCandidateResult, buildCandidateSnapshot } = await import('/_102035_/l2/solution/candidate/candidateGateway.js');
+  const scope = { project: 102035, moduleName: 'comandaRestaurante' };
+  const snap = await buildCandidateSnapshot({
+    baseId: 'base-one', requestRevision: 1, request: 'Review the title',
+    sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title: 'in' })};\n` })),
+  });
+  const output = await buildCandidateSnapshot({
+    baseId: 'base-one', requestRevision: 1, request: 'Review the title',
+    sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title: 'out' })};\n` })),
+  });
+  const result = await buildCandidateResult({
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+    result: {
+      runId: 'run-mr15', taskId: '20261006181434.1001', status: 'completed', traceHash: 'c'.repeat(64),
+      outputSnapshotHash: output.hash,
+      artifacts: output.files.map(({ path, sha256 }) => ({ path, sha256 })),
+    },
+  });
+  const host = createReviewStudioHost({
+    storage: memoryStorage(),
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => context(),
+    execute: async () => undefined,
+    task: async () => ({ PK: 'task/20261006181434.1001', status: 'done' }) as TaskData,
+    now: () => '2026-10-06T18:14:31.000Z',
+    candidateTransport: {
+      fetchImpl: async () => new Response(JSON.stringify({
+        statusCode: 200,
+        status: 'read',
+        pointer: {
+          changeId: 'change-one', revisionId: 'rev-two', snapshotHash: output.hash, revisionNumber: 2,
+          source: {
+            resultId: result.resultId, resultHash: result.resultHash,
+            revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
+          },
+        },
+        snapshot: output,
+        result: {
+          resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
+          resultId: result.resultId, resultHash: result.resultHash, manifest: result.result,
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    },
+  });
+  const started = await host.startOrGet(claim());
+  const progress = await host.observe(claim(), started);
+  const permit = (progress.candidateResult as { permit?: { inputRevisionId?: string } } | undefined)?.permit;
+  assert.equal(progress.status, 'planning');
+  assert.equal(permit?.inputRevisionId, 'rev-one');
+});
+
 test('mr_20 s2 com openai e outro o reportado é o primeiro observado', async () => {
   fs.writeFileSync(taskInfoStats, JSON.stringify({
     models: [

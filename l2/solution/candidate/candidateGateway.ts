@@ -429,7 +429,7 @@ export async function buildCandidateResult(input: Omit<CandidateMarkResultInput,
 export async function verifyCandidateResult(value: unknown, pointer: CandidatePointer): Promise<CandidateResultRef> {
   const result = record(value);
   const viaMarked = !!result && !!pointer.resultRevisionId && !!pointer.resultSnapshotHash
-    && pointer.resultRevisionNumber !== undefined && !!pointer.resultId && !!pointer.resultHash
+    && !!pointer.resultRevisionNumber && !!pointer.resultId && !!pointer.resultHash
     && result.resultRevisionId === pointer.resultRevisionId && result.resultId === pointer.resultId
     && result.resultSnapshotHash === pointer.resultSnapshotHash
     && result.resultRevisionNumber === pointer.resultRevisionNumber

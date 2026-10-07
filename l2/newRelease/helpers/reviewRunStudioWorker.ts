@@ -7,7 +7,7 @@ import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMe
 import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { buildTaskStatistics } from '/_102025_/l2/collabMessagesTaskInfo.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
-import { candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
+import { candidateRead, type CandidateGatewayOptions } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
   outputRevisionIdForRun,
   type KeyValueStorage,
@@ -96,6 +96,7 @@ export interface ReviewStudioHostDependencies {
   message?: (userId: string, threadId: string, messageId: string) => Promise<Message | null>;
   findMessage?: (threadId: string, taskId: string) => Promise<Message | null>;
   artifacts?: (claim: ReviewWorkerClaim, taskId: string) => Promise<ReviewPlannerArtifact[]>;
+  candidateTransport?: CandidateGatewayOptions;
   now?: () => string;
 }
 
@@ -214,7 +215,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
       if (!userId) throw new Error('review-worker.user_unavailable');
       const task = await readTask(userId, execution.taskId, saved.messageId);
       const observed = executionFromTask(execution.agentName, claim.attempt, task, execution.threadId, now());
-      const progress = await progressFromTask(claim, task, observed, readArtifacts);
+      const progress = await progressFromTask(claim, task, observed, readArtifacts, dependencies.candidateTransport);
       save(claim, { ...saved, claimId: claim.claimId, execution: progress.executions[0] ?? observed });
       return progress;
     },
@@ -255,6 +256,7 @@ async function progressFromTask(
   task: TaskData,
   execution: ReviewWorkerExecution,
   readArtifacts: (claim: ReviewWorkerClaim, taskId: string) => Promise<ReviewPlannerArtifact[]>,
+  candidateTransport?: CandidateGatewayOptions,
 ): Promise<ReviewWorkerProgress> {
   const statistics = buildTaskStatistics(task);
   const fallbackUsed = statistics.fallbackCount > 0 || statistics.models.some(model =>
@@ -276,7 +278,10 @@ async function progressFromTask(
     return { status: claim.phase === 'review' ? 'reviewing' : 'planning', executions: [execution], fallbackUsed };
   }
   if (claim.phase === 'review') {
-    const authoritative = await candidateRead({ project: claim.project, moduleName: claim.moduleName });
+    const authoritative = await candidateRead(
+      { project: claim.project, moduleName: claim.moduleName },
+      candidateTransport,
+    );
     const candidateRef = authoritative?.status === 'read' && authoritative.pointer ? authoritative.result : undefined;
     const candidateResult = candidateRef ? {
       ...candidateRef,

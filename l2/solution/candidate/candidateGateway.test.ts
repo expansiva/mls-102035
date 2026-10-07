@@ -392,16 +392,15 @@ test('mr_22 s1 reads result through pointer source of a prior revision', async (
       outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
     },
   });
-  const outSnap = await snapshot('published');
   const current = {
-    ...pointer(outSnap.hash, 'rev-two'), revisionNumber: 2,
+    ...pointer(output.hash, 'rev-two'), revisionNumber: 2,
     source: {
       resultId: result.resultId, resultHash: result.resultHash,
       revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
     },
   };
   const read = await candidateRead(scope, { fetchImpl: async () => answer(200, {
-    status: 'read', pointer: current, snapshot: outSnap,
+    status: 'read', pointer: current, snapshot: output,
     result: {
       resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
       resultId: result.resultId, resultHash: result.resultHash, manifest: result.result,
@@ -434,15 +433,14 @@ test('mr_22 s1 rejects a result whose hash does not match source', async () => {
       outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
     },
   });
-  const outSnap = await snapshot('published');
   await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
     status: 'read', pointer: {
-      ...pointer(outSnap.hash, 'rev-two'), revisionNumber: 2,
+      ...pointer(output.hash, 'rev-two'), revisionNumber: 2,
       source: {
         resultId: result.resultId, resultHash: result.resultHash,
         revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
       },
-    }, snapshot: outSnap,
+    }, snapshot: output,
     result: {
       resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
       resultId: result.resultId, resultHash: 'f'.repeat(64), manifest: result.result,
