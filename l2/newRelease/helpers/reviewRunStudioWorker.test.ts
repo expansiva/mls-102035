@@ -232,14 +232,10 @@ test('mr_22 s2 pointer de saída com source da rev 1 abre planning com o permit 
     ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
     expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
     result: {
-      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
+      runId: 'run-mr15', taskId: '20261006181434.1001', status: 'completed', traceHash: 'c'.repeat(64),
       outputSnapshotHash: output.hash,
       artifacts: output.files.map(({ path, sha256 }) => ({ path, sha256 })),
     },
-  });
-  const published = await buildCandidateSnapshot({
-    baseId: 'base-one', requestRevision: 1, request: 'Review the title',
-    sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title: 'published' })};\n` })),
   });
   const host = createReviewStudioHost({
     storage: memoryStorage(),
@@ -254,13 +250,13 @@ test('mr_22 s2 pointer de saída com source da rev 1 abre planning com o permit 
         statusCode: 200,
         status: 'read',
         pointer: {
-          changeId: 'change-one', revisionId: 'rev-two', snapshotHash: published.hash, revisionNumber: 2,
+          changeId: 'change-one', revisionId: 'rev-two', snapshotHash: output.hash, revisionNumber: 2,
           source: {
             resultId: result.resultId, resultHash: result.resultHash,
             revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
           },
         },
-        snapshot: published,
+        snapshot: output,
         result: {
           resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
           resultId: result.resultId, resultHash: result.resultHash, manifest: result.result,
