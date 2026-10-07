@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/validate40/agentValidate40.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
+import { beforeCorrection45Step } from '/_102035_/l2/agentReviewSolution/steps/correction45/agentCorrection45.js';
 import test from 'node:test';
 import type { ReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
 import { buildReviewTaskState, type ReviewTaskState } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
@@ -308,3 +309,43 @@ test('validate40 resumes from the persisted correction chain without resetting t
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
+
+for (const scenario of ['invalid', 'unsupported', 'ready', 'correctable'] as const) {
+  test(`mr_24 s1 validate40 terminal status: ${scenario}`, async () => withProject(async () => {
+    const task = await taskState();
+    const value = result(task, scenario === 'ready' ? 'publishable' : 'draft',
+      scenario === 'ready' ? 'checked' : scenario === 'unsupported' ? 'unsupported' : 'error');
+    value.mayCorrect = scenario === 'correctable';
+    value.reasons = ['module: error — private detail', ...Array.from({ length: 6 }, (_, i) => `GATE_${i} $.title: private detail`)];
+    const intents = await beforeValidate40Step(context(task), parent(), step(), 50, runtime(value));
+    const terminal = intents.at(-1) as mls.msg.AgentIntentUpdateStatus;
+    assert.equal(terminal.type, 'update-status');
+    const failed = scenario === 'invalid' || scenario === 'unsupported';
+    assert.equal(terminal.status, failed ? 'failed' : 'completed');
+    if (failed) assert.equal(terminal.traceMsg, `review.not_publishable:${scenario}:GATE_0,GATE_1,GATE_2,GATE_3,GATE_4`);
+    const saved = parseValidate40PrivateState(((intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result);
+    assert.deepEqual(saved.draft, draft);
+    assert.equal(saved.correctionState.correctionAttemptsUsed, 0);
+  }));
+}
+
+test('mr_24 s1 correction45 without safe correction fails with the last gate code', async () => withProject(async () => {
+  const task = await taskState();
+  const value = result(task, 'draft', 'error');
+  value.validation!.issues[0].artifact = 'workflows.defs.ts';
+  value.validation!.issues[0].code = 'NS5_WORKFLOWS_TRANSITION_BY';
+  value.reasons = ['NS5_WORKFLOWS_TRANSITION_BY $.transitions[0].by: private detail'];
+  const validated = await beforeValidate40Step(context(task), parent(), step(), 51, runtime(value));
+  const diagnostic = (validated[0] as mls.msg.AgentIntentAddStep).step;
+  const correction = (validated[1] as mls.msg.AgentIntentAddStep).step as mls.msg.AIAgentStep;
+  const intents = await beforeCorrection45Step(context(task, reconcile(task), [diagnostic]), parent(), correction, 52);
+  const terminal = intents.at(-1) as mls.msg.AgentIntentUpdateStatus;
+  assert.equal(terminal.type, 'update-status');
+  assert.equal(terminal.status, 'failed');
+  assert.equal(terminal.traceMsg, 'review.not_publishable:invalid:NS5_WORKFLOWS_TRANSITION_BY');
+  const saved = JSON.parse(((intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result);
+  assert.equal(saved.attempted, false);
+  assert.equal(saved.state.correctionAttemptsUsed, 0);
+  assert.deepEqual(saved.draft, draft);
+  assert.equal(intents.length, 2);
+}));

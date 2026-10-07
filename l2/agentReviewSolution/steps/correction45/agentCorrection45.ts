@@ -17,6 +17,7 @@ import {
   createValidate40RetryStep,
   parseValidate40PrivateState,
   readPrivateReconcileResult,
+  reviewNotPublishableCode,
   resolveValidate40Draft,
   validate40TerminalPlanId,
 } from '/_102035_/l2/agentReviewSolution/steps/validate40/agentValidate40.js';
@@ -80,10 +81,10 @@ export async function beforeCorrection45Step(
       parentStep,
       step,
       hookSequential,
-      'completed',
+      corrected.attempted ? 'completed' : 'failed',
       corrected.attempted
         ? `correction45 applied ${corrected.mutations.length} directed mutation(s); attempt ${attempt}/3 persisted.`
-        : 'correction45 found no safe directed mutation; draft and correction counter preserved.',
+        : reviewNotPublishableCode(validation),
     ));
     return intents;
   } catch (error) {

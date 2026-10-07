@@ -138,13 +138,15 @@ export async function beforeValidate40Step(
         planning: { planId: 'validate40-clarification', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
       } as mls.msg.AIClarificationStep));
     }
+    const notPublishable = privateState.status === 'unsupported'
+      || (privateState.status === 'invalid' && !privateState.mayCorrect);
     intents.push(status(
       context,
       parentStep,
       step,
       hookSequential,
-      'completed',
-      ready
+      notPublishable ? 'failed' : 'completed',
+      notPublishable ? reviewNotPublishableCode(privateState) : ready
         ? 'validate40 passed all affected gates; finalize50 scheduled to mark and conditionally publish exact output bytes.'
         : `validate40 ended as ${privateState.status}; draft and correction counter preserved.`,
     ));
@@ -152,6 +154,14 @@ export async function beforeValidate40Step(
   } catch (error) {
     return [status(context, parentStep, step, hookSequential, 'failed', errorMessage(error))];
   }
+}
+
+export function reviewNotPublishableCode(state: Pick<Validate40PrivateState, 'status' | 'reasons'>): string {
+  const codes = state.reasons.flatMap(reason => {
+    const code = /^([A-Z][A-Z0-9_]*)(?:\s|$)/u.exec(reason)?.[1];
+    return code ? [code] : [];
+  }).slice(0, 5);
+  return `review.not_publishable:${state.status}:${codes.join(',')}`;
 }
 
 export function createValidate40Step(invocationPrompt: string): mls.msg.AIAgentStep {
