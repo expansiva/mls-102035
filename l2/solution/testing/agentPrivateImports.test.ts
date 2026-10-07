@@ -15,6 +15,7 @@ const L2 = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
 /** `{ string proibida, onde vale, quem pode }`. Later tasks append rows. */
 const RULES: { forbidden: string; scope: string; allowed: string }[] = [
+  { forbidden: ['/_102035_/l2/', 'ensaio/'].join(''), scope: 'mls-102035/l2', allowed: 'l2/ensaio/' },
   {
     forbidden: ['/_102035_/l2/', 'agentNewSolution5/'].join(''),
     scope: 'mls-102035/l2',
@@ -78,4 +79,27 @@ void test('agent-private paths stay inside the agent that owns them', () => {
     }
   }
   assert.deepEqual(offenders, [], offenders.join('\n'));
+});
+
+function privateReplayImports(source: string): string[] {
+  const prefix = ['/_102035_/l2/', 'agent'].join('');
+  return [...source.matchAll(/(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s*)['"]([^'"\n]+)['"]/gu)]
+    .map(match => match[1]).filter(path => {
+      if (!path.startsWith(prefix)) return false;
+      const [agent, ...rest] = path.slice('/_102035_/l2/'.length).split('/');
+      return rest.join('/') !== `${agent}.js`;
+    });
+}
+
+test('replay imports only the public agent entry', () => {
+  const offenders = walk(join(L2, 'ensaio')).flatMap(file =>
+    privateReplayImports(readFileSync(file, 'utf8')).map(path => `${relative(L2, file)}: ${path}`));
+  assert.deepEqual(offenders, []);
+});
+
+test('replay guard detects private steps and accepts the public entry', () => {
+  const prefix = ['/_102035_/l2/', 'agentReviewSolution/'].join('');
+  assert.deepEqual(privateReplayImports(`import { hook } from '${prefix}steps/review20/agentReview20.js';`),
+    [`${prefix}steps/review20/agentReview20.js`]);
+  assert.deepEqual(privateReplayImports(`import * as entry from '${prefix}agentReviewSolution.js';`), []);
 });
