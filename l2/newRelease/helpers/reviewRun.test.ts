@@ -207,17 +207,17 @@ test('task completion or finalize50 alone stays explicitly pending; exact real c
     candidateResult: { result: foreignEvidence.result, snapshotArtifacts: foreignEvidence.snapshotArtifacts },
   })).status, 'failed');
 
-  const wrongManifestIdentity = await evidence(draft, `task-${'e'.repeat(32)}`);
+  const realTaskId = await evidence(draft, '20261007053809.1001');
   assert.equal((await evaluateReviewTerminality(draft, {
     currentRevisionId: 'revision-one', taskStatus: 'completed', phase: 'finalizing',
     channelTaskId: 'studio-task-one', channelThreadId: 'thread-one',
-    resultRunId: wrongManifestIdentity.result.resultId,
-    finalize50: wrongManifestIdentity.finalize50,
+    resultRunId: realTaskId.result.resultId,
+    finalize50: realTaskId.finalize50,
     candidateResult: {
-      result: wrongManifestIdentity.result,
-      snapshotArtifacts: wrongManifestIdentity.snapshotArtifacts,
+      result: realTaskId.result,
+      snapshotArtifacts: realTaskId.snapshotArtifacts,
     },
-  })).status, 'failed');
+  })).status, 'ready');
 
   const divergentFinalize = structuredClone(real);
   divergentFinalize.finalize50.outputRevisionId = `review-${'e'.repeat(32)}`;
@@ -232,6 +232,19 @@ test('task completion or finalize50 alone stays explicitly pending; exact real c
       snapshotArtifacts: divergentFinalize.snapshotArtifacts,
     },
   })).status, 'failed');
+});
+
+test('mr_19 s2: terminal evidence accepts the real platform taskId', async () => {
+  const draft = await run();
+  const real = await evidence(draft, '20261007053809.1001');
+  const ready = await evaluateReviewTerminality(draft, {
+    currentRevisionId: 'revision-one', taskStatus: 'completed', phase: 'finalizing',
+    channelTaskId: 'studio-task-one', channelThreadId: 'thread-one', resultRunId: real.result.resultId,
+    finalize50: real.finalize50,
+    candidateResult: { result: real.result, snapshotArtifacts: real.snapshotArtifacts },
+  });
+  assert.equal(ready.status, 'ready');
+  assert.equal(ready.output?.result.manifest.taskId, '20261007053809.1001');
 });
 
 test('late valid output keeps its terminal status and is stamped superseded without promotion', async () => {

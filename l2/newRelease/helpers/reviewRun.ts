@@ -112,6 +112,7 @@ export interface ReviewTerminalDecision {
 }
 
 const TOKEN = /^[A-Za-z0-9_-]{1,120}$/u;
+const TASK_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}$/u;
 const MODULE = /^[a-z][A-Za-z0-9]{0,59}$/u;
 const BARE_HASH = /^[a-f0-9]{64}$/u;
 const CANONICAL_HASH = /^sha256:[a-f0-9]{64}$/u;
@@ -127,6 +128,10 @@ const PHASES = new Set<ReviewRunPhase>(['reviewing', 'planning', 'finalizing']);
 
 function isToken(value: unknown): value is string {
   return typeof value === 'string' && TOKEN.test(value);
+}
+
+function isTaskId(value: unknown): value is string {
+  return typeof value === 'string' && TASK_ID.test(value);
 }
 
 function isBareHash(value: unknown): value is string {
@@ -356,13 +361,12 @@ async function validateTerminalEvidence(
     || result.resultSnapshotHash !== bareFromCanonical(run.binding.inputSnapshotHash)
     || result.resultRevisionNumber !== run.binding.inputRevisionNumber
     || manifest.runId !== refs.resultRunId || !resultIdentity
-    || manifest.taskId !== `task-${resultIdentity[1]}`
     || finalize.outputRevisionId !== `review-${resultIdentity[1]}`
     || result.resultId !== manifest.runId || result.resultHash !== await candidateManifestBareHash(result)
     || manifest.status !== 'completed' || manifest.outputSnapshotHash !== finalize.outputSnapshotHash
     || !isBareHash(result.resultSnapshotHash) || !isBareHash(result.resultHash)
     || !isBareHash(manifest.outputSnapshotHash) || !isBareHash(manifest.traceHash)
-    || !isToken(result.resultId) || !isToken(manifest.runId) || !isToken(manifest.taskId)
+    || !isToken(result.resultId) || !isToken(manifest.runId) || !isTaskId(manifest.taskId)
     || !Number.isSafeInteger(finalize.summary.fileCount) || finalize.summary.fileCount < 0
     || finalize.summary.fileCount !== snapshotArtifacts.length
     || !stableEqual(snapshotArtifacts, manifestArtifacts)
