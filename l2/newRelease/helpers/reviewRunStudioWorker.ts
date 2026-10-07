@@ -258,9 +258,7 @@ async function progressFromTask(
 ): Promise<ReviewWorkerProgress> {
   const statistics = buildTaskStatistics(task);
   const fallbackUsed = statistics.fallbackCount > 0 || statistics.models.some(model =>
-    model.stage.toLowerCase().includes('fallback')
-    || (model.provider !== '-' && model.provider !== 'openai')
-    || /grok/iu.test(model.model),
+    model.stage.toLowerCase().includes('fallback'),
   );
   if (task.status === 'failed') {
     return { status: 'failed', executions: [execution], errorCode: task.last_update_log || 'review-worker.agent_failed', fallbackUsed };

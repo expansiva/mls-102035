@@ -37,7 +37,8 @@ const path = require('node:path') as typeof import('node:path');
 const fs = require('node:fs') as typeof import('node:fs');
 const os = require('node:os') as typeof import('node:os');
 const taskInfoStub = path.join(os.tmpdir(), 'mr15-collabMessagesTaskInfo.cjs');
-fs.writeFileSync(taskInfoStub, 'exports.buildTaskStatistics = () => ({ models: [], fallbackCount: 0, errors: [] });\n');
+const taskInfoStats = path.join(os.tmpdir(), 'mr15-collabMessagesTaskInfo-stats.json');
+fs.writeFileSync(taskInfoStub, `const fs = require('node:fs');\nexports.buildTaskStatistics = () => {\n  try { return JSON.parse(fs.readFileSync(${JSON.stringify(taskInfoStats)}, 'utf8')); }\n  catch { return { models: [], fallbackCount: 0, errors: [] }; }\n};\n`);
 const resolveFilename = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (String(request).includes('collabMessagesTaskInfo')) return taskInfoStub;
@@ -170,4 +171,43 @@ test('mr_17 s2 task in progress continua reviewing', async () => {
   const progress = await host.observe(claim(), started);
   assert.equal(progress.status, 'reviewing');
   assert.equal(progress.executions[0]?.status, 'running');
+});
+
+function hostForTask(task: TaskData) {
+  const storage = memoryStorage();
+  return createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => context(),
+    execute: async () => undefined,
+    task: async () => task,
+    now: () => '2026-10-06T18:14:31.000Z',
+  });
+}
+
+test('mr_18 s3 openrouter com openai/gpt-5.6-terra-pro sem estágio de fallback não é fallback', async () => {
+  fs.writeFileSync(taskInfoStats, JSON.stringify({
+    models: [{ stage: 'review', provider: 'openrouter', model: 'openai/gpt-5.6-terra-pro' }],
+    fallbackCount: 0,
+    errors: [],
+  }));
+  const host = hostForTask({ PK: 'task/20261006181434.1001', status: 'in progress' } as TaskData);
+  const started = await host.startOrGet(claim());
+  const progress = await host.observe(claim(), started);
+  assert.equal(progress.fallbackUsed, false);
+  assert.equal(progress.executions[0]?.provider, 'openrouter');
+  assert.equal(progress.executions[0]?.model, 'openai/gpt-5.6-terra-pro');
+});
+
+test('mr_18 s3 estágio fallback marca fallbackUsed', async () => {
+  fs.writeFileSync(taskInfoStats, JSON.stringify({
+    models: [{ stage: 'fallback', provider: 'openrouter', model: 'openai/gpt-5.6-terra-pro' }],
+    fallbackCount: 0,
+    errors: [],
+  }));
+  const host = hostForTask({ PK: 'task/20261006181434.1001', status: 'in progress' } as TaskData);
+  const started = await host.startOrGet(claim());
+  const progress = await host.observe(claim(), started);
+  assert.equal(progress.fallbackUsed, true);
 });
