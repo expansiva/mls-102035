@@ -12,7 +12,7 @@ import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRel
 import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.js';
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { adoptL4ReviewResult, originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
@@ -86,6 +86,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private channelRun: PlatformReviewRun | null = null;
 
   private loadToken = 0;
+  private readonly adoptedRuns = new Set<string>();
   private readonly reviewRunStore = new IndexedDbReviewRunStore();
   private readonly workerTransport = createReviewWorkerTransport();
   private readonly workerHost = createReviewStudioHost();
@@ -406,10 +407,6 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.saveOutputAlias(current, userId);
     if (current.status === 'ready') {
       await this.loadCandidateArtifacts(current, userId, token);
-      if (token !== this.loadToken) return;
-      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, {
-        detail: { project: this.project, moduleName: this.moduleName },
-      }));
       return;
     }
     if (current.status === 'failed' || current.status === 'disputed') return;
@@ -459,6 +456,24 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.effortRead = effort;
     this.pool = [];
     this.saveOutputAlias(run, userId);
+    if (run.status !== 'ready' || this.adoptedRuns.has(run.runId)
+      || (this.data?.revisionId === revisionId && this.data.resultCurrent)) return;
+    const gate = await this.readCandidateWorkerGate(run);
+    if (token !== this.loadToken || !gate.pipelineComplete || this.adoptedRuns.has(run.runId)) return;
+    this.adoptedRuns.add(run.runId);
+    try {
+      await adoptL4ReviewResult(run.binding.project, run.binding.moduleName, {
+        inputRevisionId: run.binding.inputRevisionId,
+        outputRevisionId: revisionId,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'l4.result_stale') return;
+      this.adoptedRuns.delete(run.runId);
+      throw error;
+    }
+    window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, {
+      detail: { project: run.binding.project, moduleName: run.binding.moduleName },
+    }));
   }
 
   private saveOutputAlias(run: PlatformReviewRun, userId: string): void {
