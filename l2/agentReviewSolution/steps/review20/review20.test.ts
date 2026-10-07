@@ -113,6 +113,36 @@ test('review20 rejects stale values, identity edits, invalid or blank output', (
   assert.throws(() => stageReview20(snapshot, persisted, base, candidate, withOperation({ artifactPath: 'other/module.defs.ts' })), /invalid artifact path/);
 });
 
+test('mr_18 s1 strips the owning module root and applies the relative artifact path', () => {
+  const snap = { moduleName: 'controleEstoque', request: snapshot.request, requestRevision: 2 };
+  const rulesBase = { 'rules.defs.ts': { moduleName: 'controleEstoque', title: 'Estoque' } };
+  const rulesCandidate = { 'rules.defs.ts': { ...rulesBase['rules.defs.ts'], title: 'Controle' } };
+  const response = applyResponse({ operations: [{
+    artifactPath: 'l4/controleEstoque/rules.defs.ts', op: 'replace', pointer: '/title',
+    basis: 'refine-candidate-edit',
+    expectedJson: '"Controle"', valueJson: '"Inventário"', reason: 'Use the requested label.',
+  }] });
+  const result = stageReview20(snap, persisted, rulesBase, rulesCandidate, response);
+  assert.equal(result.status, 'staged');
+  assert.equal((result.proposal['rules.defs.ts'] as { title: string }).title, 'Inventário');
+});
+
+test('mr_18 s1 rejects another module root and a path that escapes after the prefix', () => {
+  const snap = { moduleName: 'controleEstoque', request: snapshot.request, requestRevision: 2 };
+  const rulesBase = { 'rules.defs.ts': { moduleName: 'controleEstoque', title: 'Estoque' } };
+  const rulesCandidate = { 'rules.defs.ts': { ...rulesBase['rules.defs.ts'], title: 'Controle' } };
+  const operation = {
+    artifactPath: 'rules.defs.ts', op: 'replace', pointer: '/title', basis: 'refine-candidate-edit',
+    expectedJson: '"Controle"', valueJson: '"Inventário"', reason: 'Use the requested label.',
+  };
+  assert.throws(() => stageReview20(snap, persisted, rulesBase, rulesCandidate, applyResponse({
+    operations: [{ ...operation, artifactPath: 'l4/outroModulo/rules.defs.ts' }],
+  })), /invalid artifact path/);
+  assert.throws(() => stageReview20(snap, persisted, rulesBase, rulesCandidate, applyResponse({
+    operations: [{ ...operation, artifactPath: 'l4/controleEstoque/../x.defs.ts' }],
+  })), /invalid artifact path/);
+});
+
 test('review20 rejects unknown response fields, malformed JSON pointers, duplicate operations and other module', () => {
   assert.throws(() => stageReview20(snapshot, persisted, base, candidate, applyResponse({ approved: true })), /unexpected fields/);
   const operation = applyResponse().operations[0];
