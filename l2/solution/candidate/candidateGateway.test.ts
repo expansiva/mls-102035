@@ -381,6 +381,75 @@ test('authentication, authorization, storage and transport failures never become
   }), 503, 'candidate.transport_unavailable');
 });
 
+test('mr_22 s1 reads result through pointer source of a prior revision', async () => {
+  const snap = await snapshot();
+  const output = await snapshot('output');
+  const result = await buildCandidateResult({
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+    result: {
+      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
+      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+    },
+  });
+  const outSnap = await snapshot('published');
+  const current = {
+    ...pointer(outSnap.hash, 'rev-two'), revisionNumber: 2,
+    source: {
+      resultId: result.resultId, resultHash: result.resultHash,
+      revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
+    },
+  };
+  const read = await candidateRead(scope, { fetchImpl: async () => answer(200, {
+    status: 'read', pointer: current, snapshot: outSnap,
+    result: {
+      resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
+      resultId: result.resultId, resultHash: result.resultHash, manifest: result.result,
+    },
+  }) });
+  assert.equal('result' in read ? read.result?.resultRevisionId : undefined, 'rev-one');
+});
+
+test('mr_22 s1 rejects source bound to the current revision', async () => {
+  const snap = await snapshot();
+  await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
+    status: 'read', pointer: {
+      ...pointer(snap.hash, 'rev-two'), revisionNumber: 2,
+      source: {
+        resultId: 'result-one', resultHash: 'a'.repeat(64),
+        revisionId: 'rev-two', snapshotHash: 'b'.repeat(64), revisionNumber: 1,
+      },
+    }, snapshot: snap,
+  }) }), 502, 'candidate.invalid_pointer');
+});
+
+test('mr_22 s1 rejects a result whose hash does not match source', async () => {
+  const snap = await snapshot();
+  const output = await snapshot('output');
+  const result = await buildCandidateResult({
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+    result: {
+      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
+      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+    },
+  });
+  const outSnap = await snapshot('published');
+  await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
+    status: 'read', pointer: {
+      ...pointer(outSnap.hash, 'rev-two'), revisionNumber: 2,
+      source: {
+        resultId: result.resultId, resultHash: result.resultHash,
+        revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
+      },
+    }, snapshot: outSnap,
+    result: {
+      resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
+      resultId: result.resultId, resultHash: 'f'.repeat(64), manifest: result.result,
+    },
+  }) }), 502, 'candidate.invalid_result');
+});
+
 test('mr_19 s1 accepts a real platform taskId and rejects path and empty ids', async () => {
   const output = await snapshot('output');
   const base = {
