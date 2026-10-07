@@ -581,3 +581,29 @@ export async function writeL4OutputRevision(project: number, moduleName: string,
     return revision;
   });
 }
+
+/** Adopt an immutable review output only while its input is still active. */
+export async function adoptL4ReviewResult(project: number, moduleName: string, input: {
+  inputRevisionId: string;
+  outputRevisionId: string;
+}): Promise<L4ChangeRecord> {
+  return withModuleWriter(project, moduleName, async () => {
+    const change = await readActiveL4Change(project, moduleName);
+    if (change?.activeRevisionId === input.outputRevisionId && change.resultRevisionId === input.outputRevisionId) return change;
+    if (!change || change.activeRevisionId !== input.inputRevisionId) throw new Error('l4.result_stale');
+    const output = await readL4Revision(project, moduleName, change.changeId, input.outputRevisionId);
+    if (!output) throw new Error('l4.result_unreadable');
+    const paths = Object.keys(output.files).map(normalizeTobeArtifactPath);
+    for (const path of paths) {
+      await writeSourceText(artifactInfo(project, moduleName, path, 'tobe'),
+        await readSourceText(artifactInfo(project, moduleName, path, 'revision', change.changeId, input.outputRevisionId)));
+    }
+    if (!sameHashes(await mapHash(paths, project, moduleName, 'tobe'), output.files)) throw new Error('l4.result_unreadable');
+    const updated = {
+      ...change, activeRevisionId: input.outputRevisionId, resultRevisionId: input.outputRevisionId,
+      updatedAt: new Date().toISOString(),
+    } satisfies L4ChangeRecord;
+    await writeJson(changeInfo(project, moduleName, change.changeId), updated);
+    return updated;
+  });
+}
