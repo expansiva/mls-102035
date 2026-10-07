@@ -113,6 +113,7 @@ interface CandidateIoCapability {
 
 const DEFAULT_ENDPOINT = '/exec/candidate';
 const TOKEN = /^[A-Za-z0-9_-]{1,100}$/u;
+const TASK_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}$/u;
 const MODULE = /^[a-z][A-Za-z0-9]{0,59}$/u;
 const HASH = /^[a-f0-9]{64}$/u;
 const CORE_PATHS = [
@@ -323,7 +324,7 @@ async function normalizeResultManifest(value: unknown, failureStatus: 400 | 502)
   const raw = record(value);
   const fail = (code: string): never => { throw new CandidateGatewayError(failureStatus, code); };
   if (!raw || typeof raw.runId !== 'string' || !TOKEN.test(raw.runId)
-    || typeof raw.taskId !== 'string' || !TOKEN.test(raw.taskId)
+    || typeof raw.taskId !== 'string' || !TASK_ID.test(raw.taskId)
     || (raw.status !== 'completed' && raw.status !== 'failed' && raw.status !== 'disputed')
     || typeof raw.traceHash !== 'string' || !HASH.test(raw.traceHash)
     || typeof raw.outputSnapshotHash !== 'string' || !HASH.test(raw.outputSnapshotHash)

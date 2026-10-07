@@ -381,6 +381,27 @@ test('authentication, authorization, storage and transport failures never become
   }), 503, 'candidate.transport_unavailable');
 });
 
+test('mr_19 s1 accepts a real platform taskId and rejects path and empty ids', async () => {
+  const output = await snapshot('output');
+  const base = {
+    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
+    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+  };
+  const manifest = {
+    runId: 'run-one', taskId: '20261007053809.1001', status: 'completed' as const, traceHash: 'c'.repeat(64),
+    outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
+  };
+  const built = await buildCandidateResult({ ...base, result: manifest });
+  assert.equal(built.result.taskId, '20261007053809.1001');
+  for (const taskId of ['../x', '']) {
+    await rejectsCode(
+      () => buildCandidateResult({ ...base, result: { ...manifest, taskId } }),
+      400,
+      'candidate.invalid_result',
+    );
+  }
+});
+
 test('malformed success and mismatched pointer/snapshot are rejected', async () => {
   const snap = await snapshot();
   await rejectsCode(() => candidateRead(scope, {
