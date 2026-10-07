@@ -132,3 +132,42 @@ test('mr_15 s1 mantém o id provisório quando messageid_created vem vazio', asy
   await host.observe(claim(), started);
   assert.equal(observedMessageId, PROVISIONAL);
 });
+
+test('mr_17 s2 task paused vira failed com agent_paused e o motivo', async () => {
+  const storage = memoryStorage();
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => context(),
+    execute: async () => undefined,
+    task: async () => ({
+      PK: 'task/20261006181434.1001',
+      status: 'paused',
+      last_update_log: 'llm.model.alias_not_found',
+    }) as TaskData,
+    now: () => '2026-10-06T18:14:31.000Z',
+  });
+  const started = await host.startOrGet(claim());
+  const progress = await host.observe(claim(), started);
+  assert.equal(progress.status, 'failed');
+  assert.equal(progress.errorCode, 'review-worker.agent_paused:llm.model.alias_not_found');
+  assert.equal(progress.executions[0]?.status, 'failed');
+});
+
+test('mr_17 s2 task in progress continua reviewing', async () => {
+  const storage = memoryStorage();
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => context(),
+    execute: async () => undefined,
+    task: async () => ({ PK: 'task/20261006181434.1001', status: 'in progress' }) as TaskData,
+    now: () => '2026-10-06T18:14:31.000Z',
+  });
+  const started = await host.startOrGet(claim());
+  const progress = await host.observe(claim(), started);
+  assert.equal(progress.status, 'reviewing');
+  assert.equal(progress.executions[0]?.status, 'running');
+});

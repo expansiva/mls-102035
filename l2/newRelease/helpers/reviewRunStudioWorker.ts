@@ -239,7 +239,7 @@ function executionFromTask(
     agentName,
     taskId: normalizeTaskId(task.PK),
     threadId,
-    status: task.status === 'done' ? 'completed' : task.status === 'failed' ? 'failed' : 'running',
+    status: task.status === 'done' ? 'completed' : task.status === 'failed' || task.status === 'paused' ? 'failed' : 'running',
     attempt,
     provider: observedModel?.provider && observedModel.provider !== '-' ? observedModel.provider : null,
     model: observedModel?.model && observedModel.model !== '-' ? observedModel.model : null,
@@ -264,6 +264,15 @@ async function progressFromTask(
   );
   if (task.status === 'failed') {
     return { status: 'failed', executions: [execution], errorCode: task.last_update_log || 'review-worker.agent_failed', fallbackUsed };
+  }
+  if (task.status === 'paused') {
+    const reason = task.last_update_log?.trim();
+    return {
+      status: 'failed',
+      executions: [execution],
+      errorCode: reason ? `review-worker.agent_paused:${reason}` : 'review-worker.agent_paused',
+      fallbackUsed,
+    };
   }
   if (task.status !== 'done') {
     return { status: claim.phase === 'review' ? 'reviewing' : 'planning', executions: [execution], fallbackUsed };
