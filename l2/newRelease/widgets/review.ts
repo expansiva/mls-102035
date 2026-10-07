@@ -600,6 +600,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private reviewRunErrorKey(code: string | null): string {
+    if (code?.startsWith('review.not_publishable:')) return 'review.run.error.notPublishable';
     if (code?.startsWith('review-worker.agent_paused')) return 'review.run.error.agentPaused';
     if (code === 'review.run.error.agentPaused') return code;
     if (code === 'review-run.planner_result_contract_pending') return 'review.run.error.resultPending';
@@ -614,6 +615,10 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private tReviewRunError(code: string | null): string {
     const key = this.reviewRunErrorKey(code);
+    if (key === 'review.run.error.notPublishable') {
+      const [, status = '', codes = ''] = code!.split(':');
+      return this.t(key, { status, codes });
+    }
     if (key !== 'review.run.error.agentPaused') return this.t(key);
     const prefix = 'review-worker.agent_paused';
     const motivo = code?.startsWith(prefix) ? code.slice(prefix.length).replace(/^:/, '') : '';

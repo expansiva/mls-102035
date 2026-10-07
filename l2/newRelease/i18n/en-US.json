@@ -714,6 +714,7 @@
   "review.run.error.hubConflict": "Another session published a revision of this module. Reload before calculating.",
   "review.run.error.hubRevisionDiffers": "The hub already has another revision of this module; this one cannot be published without an agent result.",
   "review.run.error.generic": "The review run ended with an error.",
+  "review.run.error.notPublishable": "The review could not publish L4 ({{status}}): {{codes}}. Nothing was changed in the module.",
   "review.run.error.agentPaused": "The agent stopped ({{motivo}}). No change was applied; a new attempt uses one of the run's attempts.",
   "review.pendingTitle": "Prepared changes are waiting",
   "review.pendingBody": "The current menu is hidden while tobe/plan requests exist for this module. Calculate the screen changes after those requests are applied.",
