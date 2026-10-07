@@ -198,7 +198,7 @@ test('materialization accepts a canonical generated wrapper when it differs from
   assert.equal(output.find(item => item.path === 'module.defs.ts')?.outputSource, candidateSources['module.defs.ts']);
 });
 
-test('finalize50 confirms mark, publishes in order and serializes no snapshot bytes', async () => withProject(async () => {
+test('mr_23 s2 finalize50 confirms mark, publishes in order and serializes no snapshot bytes', async () => withProject(async () => {
   const current = inventory();
   const draft = structuredClone(current);
   draft['module.defs.ts'].title = `New title ${'x'.repeat(120_000)}`;
@@ -215,6 +215,7 @@ test('finalize50 confirms mark, publishes in order and serializes no snapshot by
   let markedArtifacts: Array<{ path: string; sha256: string }> = [];
   let markedResultId = '';
   let publishedSnapshot: Awaited<ReturnType<typeof buildCandidateSnapshot>> | null = null;
+  let writtenRevision: Parameters<NonNullable<Finalize50Runtime['writeOutputRevision']>>[0] | undefined;
   const events: string[] = [];
   const initial: CandidateReadResult = { status: 'read', pointer: {
     changeId: snapshot.changeId, revisionId: snapshot.revisionId, snapshotHash: inputSnapshot.hash, revisionNumber: 7,
@@ -258,6 +259,7 @@ test('finalize50 confirms mark, publishes in order and serializes no snapshot by
     },
     publishWithPermit: async (_scope, input) => {
       events.push('publish');
+      assert.deepEqual(input.snapshot, writtenRevision?.outputSnapshot);
       publishedSnapshot = structuredClone(input.snapshot);
       return { status: 'committed', pointer: {
         changeId: input.changeId,
@@ -265,6 +267,18 @@ test('finalize50 confirms mark, publishes in order and serializes no snapshot by
         snapshotHash: input.snapshot.hash,
         revisionNumber: 8,
       } };
+    },
+    writeOutputRevision: async input => {
+      events.push('writeOutputRevision');
+      writtenRevision = structuredClone(input);
+      assert.equal(input.project, snapshot.project);
+      assert.equal(input.moduleName, snapshot.moduleName);
+      assert.equal(input.changeId, snapshot.changeId);
+      assert.equal(input.baseId, snapshot.baseId);
+      assert.equal(input.requestRevision, snapshot.requestRevision);
+      assert.equal(input.requestHash, sealed(snapshot, sources).manifest.requestHash);
+      assert.deepEqual(input.changedPaths, ['module.defs.ts']);
+      assert.equal(input.revisionId.startsWith('review-'), true);
     },
     writePlannerPipeline: async input => {
       events.push('pipeline');
@@ -277,7 +291,7 @@ test('finalize50 confirms mark, publishes in order and serializes no snapshot by
   assert.deepEqual(intents.map(intent => intent.type), ['add-step', 'update-status']);
   assert.equal(marked, 1);
   assert.deepEqual(markedArtifacts.map(item => item.path), [...paths].sort());
-  assert.deepEqual(events, ['replay-miss', 'read-input', 'mark', 'read-confirmed', 'publish', 'pipeline']);
+  assert.deepEqual(events, ['replay-miss', 'read-input', 'mark', 'read-confirmed', 'writeOutputRevision', 'publish', 'pipeline']);
   const serialized = ((intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result;
   assert.equal(serialized.includes('contentBase64'), false);
   assert.equal(serialized.includes('x'.repeat(100)), false);
@@ -344,7 +358,7 @@ test('finalize50 rejects byte tamper before mark and preserves the private draft
   assert.equal(marks, 0);
 }));
 
-test('finalize50 replays a durable committed submission after ack loss without a second mark', async () => withProject(async () => {
+test('mr_23 s2 finalize50 replays a durable committed submission after ack loss without a second mark', async () => withProject(async () => {
   const current = inventory();
   const draft = structuredClone(current);
   draft['module.defs.ts'].title = 'New title';
@@ -402,6 +416,7 @@ test('finalize50 replays a durable committed submission after ack loss without a
       } as never };
       return { status: 'marked', pointer: confirmed.pointer!, permit };
     },
+    writeOutputRevision: async () => { events.push('writeOutputRevision'); },
     publishWithPermit: async () => {
       throw new Error('unreachable');
     },
@@ -425,7 +440,7 @@ test('finalize50 replays a durable committed submission after ack loss without a
     readyContext,
     parent(), step(), 52, runtime,
   );
-  assert.deepEqual(events, ['replay-miss', 'read-input', 'mark', 'read-confirmed', 'publish-crash']);
+  assert.deepEqual(events, ['replay-miss', 'read-input', 'mark', 'read-confirmed', 'writeOutputRevision', 'publish-crash']);
   assert.equal(first.length, 1);
   assert.equal((first[0] as mls.msg.AgentIntentUpdateStatus).status, 'failed');
   assert.match(String((first[0] as mls.msg.AgentIntentUpdateStatus).traceMsg), /transport_ack_lost/u);
@@ -436,7 +451,7 @@ test('finalize50 replays a durable committed submission after ack loss without a
     readyContext,
     parent(), step(), 53, runtime,
   );
-  assert.deepEqual(events, ['replay-hit']);
+  assert.deepEqual(events, ['replay-hit', 'writeOutputRevision']);
   assert.deepEqual(second.map(intent => intent.type), ['add-step', 'update-status']);
   assert.equal(marks, 1);
   const replayResult = JSON.parse(((second[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result) as {

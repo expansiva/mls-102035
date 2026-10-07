@@ -45,6 +45,7 @@ import {
   readActiveL4Change,
   readL4Release,
   readSealedL4Candidate,
+  writeL4OutputRevision,
   type L4SealedCandidateSnapshot,
 } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { readSourceText, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
@@ -77,8 +78,21 @@ export interface Finalize50Runtime {
   markResult(input: CandidateMarkResultInput): Promise<CandidateMarkResultResult>;
   replaySubmitted(scope: { project: number; moduleName: string }, input: StudioCandidateSubmittedReplayInput): Promise<CandidatePublishResult | null>;
   publishWithPermit(scope: { project: number; moduleName: string }, input: StudioCandidatePublishInput): Promise<CandidatePublishResult>;
+  writeOutputRevision?(input: ReviewOutputRevisionInput): Promise<void>;
   writePlannerPipeline?(input: ReviewPlannerPipelineInput): Promise<void>;
   validateDraft: Validate40Runtime['validate'];
+}
+
+export interface ReviewOutputRevisionInput {
+  project: number;
+  moduleName: string;
+  changeId: string;
+  revisionId: string;
+  baseId: string;
+  requestRevision: number;
+  requestHash: string;
+  changedPaths: string[];
+  outputSnapshot: CandidateSnapshot;
 }
 
 export interface ReviewPlannerPipelineInput {
@@ -105,6 +119,15 @@ const defaultRuntime: Finalize50Runtime = {
   markResult: candidateMarkResult,
   replaySubmitted: (scope, input) => createStudioCandidateAdapter(scope).replaySubmitted(input),
   publishWithPermit: (scope, input) => createStudioCandidateAdapter(scope).publishWithPermit(input),
+  writeOutputRevision: async ({ project, moduleName, outputSnapshot, ...input }) => {
+    await writeL4OutputRevision(project, moduleName, {
+      ...input,
+      sources: outputSnapshot.files.map(file => ({
+        path: file.path,
+        source: new TextDecoder().decode(Uint8Array.from(atob(file.contentBase64), char => char.charCodeAt(0))),
+      })),
+    });
+  },
   writePlannerPipeline: writeReviewPlannerPipeline,
   validateDraft: validate40Private,
 };
@@ -201,6 +224,14 @@ export async function beforeFinalize50Step(
     }));
     const resultId = `result-${publicationKey.slice(0, 32)}`;
     const outputRevisionId = `review-${publicationKey.slice(0, 32)}`;
+    if (!sealed.manifest.requestHash) throw new Error('finalize50 requires the sealed request hash.');
+    const outputRevisionInput: ReviewOutputRevisionInput = {
+      project: frozen.project, moduleName: frozen.moduleName, changeId: frozen.changeId,
+      revisionId: outputRevisionId, baseId: frozen.baseId, requestRevision: frozen.requestRevision,
+      requestHash: sealed.manifest.requestHash,
+      changedPaths: sources.filter(item => item.changed).map(item => item.path).sort(),
+      outputSnapshot,
+    };
     const pipelineBase = plannerPipelineInput(frozen, outputRevisionId, outputSnapshot, validated);
     const pipelineTraceHash = await sha256(JSON.stringify(reviewPlannerSeal(pipelineBase)));
     const pipelineInput: ReviewPlannerPipelineInput = { ...pipelineBase, reviewSealHash: pipelineTraceHash };
@@ -212,6 +243,7 @@ export async function beforeFinalize50Step(
     });
     if (replayed) {
       const pointer = exactCommittedPointer(replayed, frozen.changeId, outputRevisionId, outputSnapshot.hash);
+      await runtime.writeOutputRevision?.(outputRevisionInput);
       await runtime.writePlannerPipeline?.(pipelineInput);
       return successfulFinalizeIntents(context, parentStep, step, hookSequential,
         privateFinalizeResult(frozen, outputRevisionId, outputSnapshot, pointer, sources, validated));
@@ -249,6 +281,7 @@ export async function beforeFinalize50Step(
     if (marked.status !== 'marked') throw new Error('finalize50 lost the candidate race; the private draft was preserved.');
     const confirmed = await runtime.readAuthoritative(scope);
     const permit = authoritativePermit(confirmed, markedInput, marked.permit, outputSnapshot);
+    await runtime.writeOutputRevision?.(outputRevisionInput);
     const published = await runtime.publishWithPermit(
       scope,
       { changeId: frozen.changeId, revisionId: outputRevisionId, snapshot: outputSnapshot, permit },
