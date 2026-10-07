@@ -11,6 +11,13 @@ export interface CandidatePointer {
   resultRevisionNumber?: number;
   resultId?: string;
   resultHash?: string;
+  source?: {
+    resultId: string;
+    resultHash: string;
+    revisionId: string;
+    snapshotHash: string;
+    revisionNumber: number;
+  };
 }
 
 export interface CandidateFile {
@@ -254,6 +261,17 @@ function parsePointer(value: unknown): CandidatePointer | null {
     || Number(pointer.resultRevisionNumber) !== Number(pointer.revisionNumber))) {
     throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
   }
+  const sourceRaw = pointer.source === undefined ? undefined : record(pointer.source);
+  if (pointer.source !== undefined && (!sourceRaw
+    || typeof sourceRaw.resultId !== 'string' || !TOKEN.test(sourceRaw.resultId)
+    || typeof sourceRaw.resultHash !== 'string' || !HASH.test(sourceRaw.resultHash)
+    || typeof sourceRaw.revisionId !== 'string' || !TOKEN.test(sourceRaw.revisionId)
+    || typeof sourceRaw.snapshotHash !== 'string' || !HASH.test(sourceRaw.snapshotHash)
+    || !Number.isSafeInteger(sourceRaw.revisionNumber) || Number(sourceRaw.revisionNumber) < 1
+    || sourceRaw.revisionId === pointer.revisionId
+    || Number(sourceRaw.revisionNumber) >= Number(pointer.revisionNumber))) {
+    throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
+  }
   return {
     changeId: pointer.changeId,
     revisionId: pointer.revisionId,
@@ -265,6 +283,15 @@ function parsePointer(value: unknown): CandidatePointer | null {
       resultRevisionNumber: Number(pointer.resultRevisionNumber),
       resultId: pointer.resultId as string,
       resultHash: pointer.resultHash as string,
+    } : {}),
+    ...(sourceRaw ? {
+      source: {
+        resultId: sourceRaw.resultId as string,
+        resultHash: sourceRaw.resultHash as string,
+        revisionId: sourceRaw.revisionId as string,
+        snapshotHash: sourceRaw.snapshotHash as string,
+        revisionNumber: Number(sourceRaw.revisionNumber),
+      },
     } : {}),
   };
 }
@@ -401,21 +428,39 @@ export async function buildCandidateResult(input: Omit<CandidateMarkResultInput,
 
 export async function verifyCandidateResult(value: unknown, pointer: CandidatePointer): Promise<CandidateResultRef> {
   const result = record(value);
-  if (!pointer.resultRevisionId || !pointer.resultSnapshotHash || !pointer.resultRevisionNumber
-    || !pointer.resultId || !pointer.resultHash || !result
-    || result.resultRevisionId !== pointer.resultRevisionId || result.resultId !== pointer.resultId
-    || result.resultSnapshotHash !== pointer.resultSnapshotHash
-    || result.resultRevisionNumber !== pointer.resultRevisionNumber
-    || result.resultHash !== pointer.resultHash) {
+  const viaMarked = !!result && !!pointer.resultRevisionId && !!pointer.resultSnapshotHash
+    && pointer.resultRevisionNumber !== undefined && !!pointer.resultId && !!pointer.resultHash
+    && result.resultRevisionId === pointer.resultRevisionId && result.resultId === pointer.resultId
+    && result.resultSnapshotHash === pointer.resultSnapshotHash
+    && result.resultRevisionNumber === pointer.resultRevisionNumber
+    && result.resultHash === pointer.resultHash;
+  const source = pointer.source;
+  const viaSource = !!result && !!source
+    && result.resultRevisionId === source.revisionId && result.resultId === source.resultId
+    && result.resultSnapshotHash === source.snapshotHash
+    && result.resultRevisionNumber === source.revisionNumber
+    && result.resultHash === source.resultHash;
+  if (!viaMarked && !viaSource) {
     throw new CandidateGatewayError(502, 'candidate.invalid_result');
   }
-  const normalized = await normalizeResultManifest(result.manifest, 502);
-  if (normalized.hash !== pointer.resultHash) throw new CandidateGatewayError(502, 'candidate.invalid_result_hash');
-  return {
-    resultRevisionId: pointer.resultRevisionId, resultSnapshotHash: pointer.resultSnapshotHash,
-    resultRevisionNumber: pointer.resultRevisionNumber, resultId: pointer.resultId,
-    resultHash: pointer.resultHash, manifest: normalized.manifest,
-  };
+  const bound = viaMarked
+    ? {
+      resultRevisionId: pointer.resultRevisionId as string,
+      resultSnapshotHash: pointer.resultSnapshotHash as string,
+      resultRevisionNumber: pointer.resultRevisionNumber as number,
+      resultId: pointer.resultId as string,
+      resultHash: pointer.resultHash as string,
+    }
+    : {
+      resultRevisionId: source!.revisionId,
+      resultSnapshotHash: source!.snapshotHash,
+      resultRevisionNumber: source!.revisionNumber,
+      resultId: source!.resultId,
+      resultHash: source!.resultHash,
+    };
+  const normalized = await normalizeResultManifest(result!.manifest, 502);
+  if (normalized.hash !== bound.resultHash) throw new CandidateGatewayError(502, 'candidate.invalid_result_hash');
+  return { ...bound, manifest: normalized.manifest };
 }
 
 /** Builds immutable wire bytes from complete L4 sources, never from a mutable shared path. */
@@ -496,7 +541,7 @@ export async function candidateRead(scope: CandidateScope, options: CandidateGat
   }
   const snapshot = await verifyCandidateSnapshot(payload.snapshot);
   if (pointer.snapshotHash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot_hash');
-  if (pointer.resultId) {
+  if (pointer.resultId || pointer.source) {
     return { status: 'read', pointer, snapshot, result: await verifyCandidateResult(payload.result, pointer) };
   }
   if (payload.result !== undefined && payload.result !== null) throw new CandidateGatewayError(502, 'candidate.invalid_response');
