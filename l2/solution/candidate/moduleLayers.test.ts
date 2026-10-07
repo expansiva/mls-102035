@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { sealModuleLayers } from './moduleLayers.js';
+import { diffModuleLayers, sealModuleLayers } from './moduleLayers.js';
 
 function installStorFixture() {
   const files: Record<string, any> = {};
@@ -72,4 +72,30 @@ test('mr_14 s1: seal_conflict preserves the original JSON', async () => {
   fixture.add(1, 'sample/item.defs.ts', 'changed');
   await assert.rejects(sealModuleLayers(102047, 'sample', 'base-1'), /module-layers.seal_conflict/);
   assert.equal(fixture.contents.get(key), original);
+});
+
+test('mr_14 s2: unchanged contents have no diff regardless of Studio status', async () => {
+  const fixture = installStorFixture();
+  const file = fixture.add(1, 'sample/item.defs.ts', 'original');
+  await sealModuleLayers(102047, 'sample', 'base-1');
+  file.status = 'changed';
+  assert.deepEqual(await diffModuleLayers(102047, 'sample', 'base-1'), []);
+});
+
+test('mr_14 s2: changed, added and removed compare hashes by level and path', async () => {
+  const fixture = installStorFixture();
+  fixture.add(1, 'sample/web/item.defs.ts', 'original L1');
+  const removed = fixture.add(2, 'sample/web/item.defs.ts', 'original L2');
+  await sealModuleLayers(102047, 'sample', 'base-1');
+  fixture.add(1, 'sample/web/item.defs.ts', 'changed L1');
+  removed.status = 'deleted';
+  fixture.add(2, 'sample/web/added.defs.ts', 'added L2');
+  fixture.add(1, 'sample/materialization/generated.defs.ts');
+  fixture.add(2, 'sample/web/plain.ts');
+  const hash = (text: string) => `sha256:${createHash('sha256').update(text).digest('hex')}`;
+  assert.deepEqual(await diffModuleLayers(102047, 'sample', 'base-1'), [
+    { level: 1, path: 'web/item.defs.ts', status: 'changed', sealedSha256: hash('original L1'), currentSha256: hash('changed L1') },
+    { level: 2, path: 'web/added.defs.ts', status: 'added', currentSha256: hash('added L2') },
+    { level: 2, path: 'web/item.defs.ts', status: 'removed', sealedSha256: hash('original L2') },
+  ]);
 });

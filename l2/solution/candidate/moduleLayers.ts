@@ -22,6 +22,41 @@ export interface ModuleLayersSeal {
   files: ModuleLayerFile[];
 }
 
+export interface ModuleLayerDiff {
+  level: 1 | 2;
+  path: string;
+  status: 'changed' | 'added' | 'removed';
+  sealedSha256?: string;
+  currentSha256?: string;
+}
+
+export async function diffModuleLayers(project: number, moduleName: string, baseId: string): Promise<ModuleLayerDiff[]> {
+  resolveL4Folders(project, moduleName, baseId);
+  const seal = await readJson<ModuleLayersSeal>({ project, level: 4,
+    folder: `${moduleName}/pipeline/releases/${baseId}`, shortName: 'layers', extension: '.json' });
+  if (!seal || seal.schemaVersion !== MODULE_LAYERS_SCHEMA || seal.project !== project
+    || seal.moduleName !== moduleName || seal.baseId !== baseId || !Array.isArray(seal.files)) {
+    throw new Error('module-layers.invalid_seal');
+  }
+  const key = (file: ModuleLayerFile) => `${file.level}:${file.path}`;
+  const current = new Map((await enumerateModuleLayers(project, moduleName)).map(file => [key(file), file]));
+  const diff: ModuleLayerDiff[] = [];
+  for (const sealed of seal.files) {
+    const file = current.get(key(sealed));
+    if (!file) {
+      diff.push({ level: sealed.level, path: sealed.path, status: 'removed', sealedSha256: sealed.sha256 });
+    } else if (file.sha256 !== sealed.sha256) {
+      diff.push({ level: sealed.level, path: sealed.path, status: 'changed',
+        sealedSha256: sealed.sha256, currentSha256: file.sha256 });
+    }
+    current.delete(key(sealed));
+  }
+  for (const file of current.values()) {
+    diff.push({ level: file.level, path: file.path, status: 'added', currentSha256: file.sha256 });
+  }
+  return diff.sort((a, b) => a.level - b.level || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
 export async function enumerateModuleLayers(project: number, moduleName: string): Promise<ModuleLayerFile[]> {
   resolveL4Folders(project, moduleName, 'inventory');
   const files: ModuleLayerFile[] = [];
