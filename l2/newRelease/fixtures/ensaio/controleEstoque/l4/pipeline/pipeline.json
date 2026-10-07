@@ -1,0 +1,361 @@
+{
+  "schemaVersion": "2026-09-10-ns5-pipeline-v1",
+  "flowId": "agentNewSolution5",
+  "moduleName": "controleEstoque",
+  "status": "complete",
+  "steps": {
+    "module10": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:32:06.390Z",
+      "artifactPaths": [
+        "l4/controleEstoque/module.defs.ts"
+      ],
+      "actors": [
+        {
+          "actorId": "estoquista",
+          "kind": "internal",
+          "origin": "named",
+          "title": "Estoquista",
+          "description": "Registra e acompanha as movimentações e os saldos do estoque."
+        }
+      ],
+      "autoReason": "fast"
+    },
+    "journeys20": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:33:15.823Z",
+      "artifactPaths": [
+        "l4/controleEstoque/journeys/cadastrarProduto.defs.ts",
+        "l4/controleEstoque/journeys/registrarMovimentacaoEstoque.defs.ts",
+        "l4/controleEstoque/journeys/acompanharSaldos.defs.ts",
+        "l4/controleEstoque/journeys/tratarAvisoSaldoBaixo.defs.ts",
+        "l4/controleEstoque/journeys/index.defs.ts"
+      ],
+      "decideStepCount": 0,
+      "droppedActors": [],
+      "normalizations": [
+        {
+          "kind": "dropTransitionRef",
+          "journeyId": "cadastrarProduto",
+          "stepId": "informarProduto",
+          "detail": "transitionRef x dropped; effect is create."
+        },
+        {
+          "kind": "dropTransitionRef",
+          "journeyId": "registrarMovimentacaoEstoque",
+          "stepId": "registrarMovimentacao",
+          "detail": "transitionRef x dropped; effect is create."
+        }
+      ],
+      "autoReason": "fast"
+    },
+    "workflows50": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:33:26.702Z",
+      "artifactPaths": [
+        "l4/controleEstoque/workflows.defs.ts"
+      ],
+      "autoReason": "fast"
+    },
+    "ontology30": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:35:18.617Z",
+      "artifactPaths": [
+        "l4/controleEstoque/ontology/Produto.defs.ts",
+        "l4/controleEstoque/ontology/MovimentacaoEstoque.defs.ts",
+        "l4/controleEstoque/ontology/index.defs.ts"
+      ],
+      "uncitedEntities": [],
+      "liftedAggregateEntities": [],
+      "normalizations": [
+        {
+          "kind": "derivedFromPlatform",
+          "entityId": "Produto",
+          "detail": "roleTag controleEstoque.Produto; source /_102034_/l4/ontology/mdm.defs.ts"
+        },
+        {
+          "kind": "derivedFromPlatform",
+          "entityId": "MovimentacaoEstoque",
+          "detail": "storage.table controleEstoque_movimentacaoestoque"
+        },
+        {
+          "kind": "derivedFromPlatform",
+          "entityId": "Produto",
+          "detail": "record.fields.id, record.fields.version"
+        },
+        {
+          "kind": "tightened",
+          "entityId": "Produto",
+          "detail": "Produto.details.identification.subtype.values"
+        },
+        {
+          "kind": "tightened",
+          "entityId": "Produto",
+          "detail": "Produto.details.product.unitOfMeasure.required"
+        },
+        {
+          "kind": "derivedFromPlatform",
+          "entityId": "Produto",
+          "detail": "record.fields.details.controleEstoque.fields.saldoAtual.derived (derived[])"
+        },
+        {
+          "kind": "derivedFromPlatform",
+          "entityId": "Produto",
+          "detail": "record.fields.details.controleEstoque.fields.saldoAbaixoDoMinimo.derived (derived[])"
+        },
+        {
+          "kind": "derivedFromPlatform",
+          "entityId": "MovimentacaoEstoque",
+          "detail": "record.fields.id, record.fields.version"
+        }
+      ],
+      "citedRules": [
+        "rule-foreign-namespace-refused",
+        "rule-document-shape-validated",
+        "rule-identity-never-in-namespace",
+        "quantidadeMinimaValida",
+        "saldoAtualProduto",
+        "avisoSaldoMinimoProduto",
+        "movimentacaoEstoqueImutavel",
+        "quantidadeMovimentadaPositiva",
+        "registroMovimentacaoAtualizaSaldo"
+      ],
+      "citedCapabilities": [
+        "read.byId",
+        "locate.byName",
+        "register.createOrAttach",
+        "edit.platformFields",
+        "edit.moduleNamespace",
+        "inactivate",
+        "statusHistory.read",
+        "audit",
+        "locate.byColumn",
+        "count",
+        "listByForeignKey",
+        "create",
+        "transaction",
+        "read.mdmRecord"
+      ],
+      "autoReason": "fast"
+    },
+    "judge35": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:36:08.175Z",
+      "artifactPaths": [
+        "l4/controleEstoque/pipeline/judge35-draft.json"
+      ],
+      "normalizations": [
+        {
+          "kind": "judgeComment",
+          "detail": "NS5_JUDGE_ORPHAN_PERSISTS switch:MovimentacaoEstoque.tipo: judge35: written switches still need a lifecycle after ontology repair: MovimentacaoEstoque.tipo."
+        }
+      ],
+      "autoReason": "fast"
+    },
+    "access60": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:36:19.501Z",
+      "artifactPaths": [
+        "l4/controleEstoque/access.defs.ts"
+      ],
+      "normalizations": [
+        {
+          "kind": "dropAnchorEntity",
+          "grantId": "gerenciarEstoque",
+          "detail": "anchorEntity removed; organization is not own/assigned/related."
+        }
+      ],
+      "autoReason": "fast"
+    },
+    "rules40": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:36:19.676Z",
+      "artifactPaths": [
+        "l4/controleEstoque/rules.defs.ts"
+      ],
+      "autoReason": "fast"
+    },
+    "integration70": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:36:35.851Z",
+      "artifactPaths": [
+        "l4/controleEstoque/integration.defs.ts"
+      ],
+      "normalizations": [
+        {
+          "kind": "dropTransitionRef",
+          "inboundId": "recebimentoRegistrado",
+          "detail": "transitionRef create dropped; effect is create."
+        }
+      ],
+      "autoReason": "fast"
+    },
+    "finalize80": {
+      "status": "approved",
+      "updatedAt": "2026-09-28T17:36:36.024Z",
+      "artifactPaths": [
+        "l4/controleEstoque/pipeline/finalize-report.json",
+        "l4/organization/registry.defs.ts",
+        "l5/config.json",
+        "l5/project.json"
+      ],
+      "autoReason": "fast"
+    }
+  },
+  "sourcePrompt": "controle de estoque: produtos, entradas e saídas, saldo atual por produto e aviso quando o saldo ficar abaixo do mínimo. movimentação não pode ser alterada depois de registrada. um perfil: estoquista.",
+  "invocation": {
+    "fast": true,
+    "module": "controleEstoque",
+    "rebuildAll": true
+  },
+  "updatedAt": "2026-09-28T17:39:17.006Z",
+  "rebuildAll": {
+    "deleted": [
+      "l1/controleEstoque/pipeline/pipeline.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts30/drafts/controle_estoque_inicio.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts30/drafts/movimentacoes_estoque.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts30/drafts/produtos.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts30/results/controle_estoque_inicio.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts30/results/movimentacoes_estoque.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/contracts30/results/produtos.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/finalize60/ownership.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/finalize60/report.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/input.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/inputReport.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/pages.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/pages50/results/controle_estoque_inicio.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/pages50/results/movimentacoes_estoque.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/pages50/results/produtos.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/pipeline.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/shared.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/shared40/results/controle_estoque_inicio.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/shared40/results/movimentacoes_estoque.json",
+      "l2/controleEstoque/pipeline/agentDefsL2/shared40/results/produtos.json",
+      "l2/controleEstoque/pipeline/menu20-draft.json",
+      "l2/controleEstoque/pipeline/pipeline.json",
+      "l2/controleEstoque/web/contracts/controle_estoque_inicio.defs.ts",
+      "l2/controleEstoque/web/contracts/movimentacoes_estoque.defs.ts",
+      "l2/controleEstoque/web/contracts/produtos.defs.ts",
+      "l2/controleEstoque/web/desktop/page11/controle_estoque_inicio.defs.ts",
+      "l2/controleEstoque/web/desktop/page11/movimentacoes_estoque.defs.ts",
+      "l2/controleEstoque/web/desktop/page11/produtos.defs.ts",
+      "l2/controleEstoque/web/mobile/page11/controle_estoque_inicio.defs.ts",
+      "l2/controleEstoque/web/mobile/page11/movimentacoes_estoque.defs.ts",
+      "l2/controleEstoque/web/mobile/page11/produtos.defs.ts",
+      "l2/controleEstoque/web/shared/controle_estoque_inicio.defs.ts",
+      "l2/controleEstoque/web/shared/movimentacoes_estoque.defs.ts",
+      "l2/controleEstoque/web/shared/produtos.defs.ts",
+      "l4/controleEstoque/access.defs.ts",
+      "l4/controleEstoque/integration.defs.ts",
+      "l4/controleEstoque/journeys/acompanharSaldoProdutos.defs.ts",
+      "l4/controleEstoque/journeys/cadastrarProduto.defs.ts",
+      "l4/controleEstoque/journeys/index.defs.ts",
+      "l4/controleEstoque/journeys/registrarMovimentacaoEstoque.defs.ts",
+      "l4/controleEstoque/journeys/tratarAvisoSaldoBaixo.defs.ts",
+      "l4/controleEstoque/module.defs.ts",
+      "l4/controleEstoque/ontology/MovimentacaoEstoque.defs.ts",
+      "l4/controleEstoque/ontology/Produto.defs.ts",
+      "l4/controleEstoque/ontology/index.defs.ts",
+      "l4/controleEstoque/pipeline/access60-draft.json",
+      "l4/controleEstoque/pipeline/finalize-report.json",
+      "l4/controleEstoque/pipeline/integration70-draft.json",
+      "l4/controleEstoque/pipeline/journeys20-draft.json",
+      "l4/controleEstoque/pipeline/module10-draft.json",
+      "l4/controleEstoque/pipeline/ontology30-draft.json",
+      "l4/controleEstoque/pipeline/ontology30-entity-MovimentacaoEstoque-draft.json",
+      "l4/controleEstoque/pipeline/ontology30-entity-Produto-draft.json",
+      "l4/controleEstoque/pipeline/ontology30-plan-draft.json",
+      "l4/controleEstoque/pipeline/pipeline.json",
+      "l4/controleEstoque/pipeline/rules40-draft.json",
+      "l4/controleEstoque/pipeline/run01_newsolution5.json",
+      "l4/controleEstoque/pipeline/workflows50-draft.json",
+      "l4/controleEstoque/pool/l1/20260921173937_controleEstoque-20260921173937_1.json",
+      "l4/controleEstoque/pool/l1/20260921174015_controleEstoque-20260921173937_1.json",
+      "l4/controleEstoque/pool/l1/web/l4diff.json",
+      "l4/controleEstoque/pool/l1/web/needs.json",
+      "l4/controleEstoque/pool/l2/20260921173937_controleEstoque-20260921173937_1.json",
+      "l4/controleEstoque/pool/l2/20260921174016_controleEstoque-20260921173937_1.json",
+      "l4/controleEstoque/pool/l2/web/backend.json",
+      "l4/controleEstoque/pool/l2/web/effort.json",
+      "l4/controleEstoque/pool/l2/web/l4diff.json",
+      "l4/controleEstoque/pool/l2/web/menu.json",
+      "l4/controleEstoque/pool/l4/20260921174016_controleEstoque-20260921173937_1.json",
+      "l4/controleEstoque/rules.defs.ts",
+      "l4/controleEstoque/workflows.defs.ts"
+    ],
+    "edited": [
+      "l4/organization/registry.defs.ts",
+      "l5/config.json",
+      "l5/project.json"
+    ],
+    "at": "2026-09-28T17:32:06.381Z"
+  },
+  "poolWiped": [],
+  "pool": [
+    {
+      "at": "2026-09-28T17:36:57.256Z",
+      "file": "l4/controleEstoque/pool/l2/20260928173657_controleEstoque-20260928173657_1.json",
+      "from": "l4",
+      "to": "l2",
+      "thread": "controleEstoque-20260928173657",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    },
+    {
+      "at": "2026-09-28T17:36:57.256Z",
+      "file": "l4/controleEstoque/pool/l1/20260928173657_controleEstoque-20260928173657_1.json",
+      "from": "l4",
+      "to": "l1",
+      "thread": "controleEstoque-20260928173657",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    },
+    {
+      "at": "2026-09-28T17:39:15.853Z",
+      "file": "l4/controleEstoque/pool/l1/20260928173915_controleEstoque-20260928173657_1.json",
+      "from": "l2",
+      "to": "l1",
+      "thread": "controleEstoque-20260928173657",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    },
+    {
+      "at": "2026-09-28T17:39:16.424Z",
+      "file": "l4/controleEstoque/pool/l2/20260928173916_controleEstoque-20260928173657_1.json",
+      "from": "l1",
+      "to": "l2",
+      "thread": "controleEstoque-20260928173657",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    },
+    {
+      "at": "2026-09-28T17:39:16.970Z",
+      "file": "l4/controleEstoque/pool/l4/20260928173916_controleEstoque-20260928173657_1.json",
+      "from": "l2",
+      "to": "l4",
+      "thread": "controleEstoque-20260928173657",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "processed"
+    }
+  ],
+  "plOrchestration": [
+    {
+      "round": 1,
+      "l2": "done",
+      "l1": "done",
+      "effort": "done"
+    },
+    {
+      "round": 2,
+      "l2": "skipped",
+      "l1": "skipped",
+      "effort": "skipped"
+    }
+  ]
+}

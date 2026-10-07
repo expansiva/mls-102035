@@ -1,0 +1,1 @@
+Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.
