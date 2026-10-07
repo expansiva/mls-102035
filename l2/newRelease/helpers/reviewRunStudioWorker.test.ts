@@ -211,3 +211,19 @@ test('mr_18 s3 estágio fallback marca fallbackUsed', async () => {
   const progress = await host.observe(claim(), started);
   assert.equal(progress.fallbackUsed, true);
 });
+
+test('mr_20 s2 com openai e outro o reportado é o primeiro observado', async () => {
+  fs.writeFileSync(taskInfoStats, JSON.stringify({
+    models: [
+      { stage: 'review', provider: 'openai', model: 'gpt-5' },
+      { stage: 'review', provider: 'openrouter', model: 'x-ai/grok-4' },
+    ],
+    fallbackCount: 0,
+    errors: [],
+  }));
+  const host = hostForTask({ PK: 'task/20261006181434.1001', status: 'in progress' } as TaskData);
+  const started = await host.startOrGet(claim());
+  const progress = await host.observe(claim(), started);
+  assert.equal(progress.executions[0]?.provider, 'openai');
+  assert.equal(progress.executions[0]?.model, 'gpt-5');
+});

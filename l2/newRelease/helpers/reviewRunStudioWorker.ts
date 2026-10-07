@@ -233,7 +233,7 @@ function executionFromTask(
   now: string,
 ): ReviewWorkerExecution {
   const statistics = buildTaskStatistics(task);
-  const observedModel = statistics.models.find(model => model.provider !== '-' && model.provider !== 'openai')
+  const observedModel = statistics.models.find(model => model.provider !== '-')
     ?? statistics.models.find(model => model.provider !== '-' || model.model !== '-');
   return {
     agentName,
