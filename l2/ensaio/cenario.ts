@@ -1,5 +1,9 @@
 /// <mls fileReference="_102035_/l2/ensaio/cenario.ts" enhancement="_blank" />
 
+import * as plannerL4 from '/_102035_/l2/agentPlannerL4/agentPlannerL4.js';
+import * as plannerL2 from '/_102020_/l2/agentPlannerL2/agentPlannerL2.js';
+import * as plannerL1 from '/_102021_/l2/agentPlannerL1/agentPlannerL1.js';
+import { writeJson } from '../solution/fs.js';
 import NodeModule from 'node:module';
 import type { ReviewWorkerClaim } from '../newRelease/helpers/reviewRunWorker.js';
 import type { ReviewWorkerProgress } from '../newRelease/helpers/reviewRunWorker.js';
@@ -155,4 +159,31 @@ export async function withReviewScenario(installStub: () => void, run: (scenario
       else Reflect.deleteProperty(globalThis, key);
     }
   }
+}
+
+export async function runPlannerScenario(context: mls.msg.ExecutionContext) {
+  await writeJson({ project: 102047, level: 5, folder: '', shortName: 'config', extension: '.json' }, { workspaceDependencies: ['102047', '102020', '102035', '102021'], projects: { '102020': { root: '../mls-102020', type: 'lib' }, '102021': { root: '../mls-102021', type: 'lib' } } });
+  for (const [project, path] of [
+    [102020, 'agentPlannerL2/agentPlannerL2.ts'],
+    [102021, 'agentPlannerL1/agentPlannerL1.ts'],
+    [102020, 'agentPlannerL2/skills/menu.md'],
+    [102020, 'agentPlannerL2/steps/menu20/prompt.md'],
+    [102020, 'agentPlannerL2/schemas/menu.schema.json'],
+  ] as const) {
+    const slash = path.lastIndexOf('/');
+    const dot = path.lastIndexOf('.');
+    const file = await mls.stor.addOrUpdateFile({ project, level: 2, folder: path.slice(0, slash),
+      shortName: path.slice(slash + 1, dot), extension: path.slice(dot) } as mls.stor.IFileInfo);
+    assert.ok(file, `Failed to install planner resource ${project}/${path}`);
+    await mls.stor.localStor.setContent(file, { content: readFileSync(new URL(`../../../mls-${project}/l2/${path}`, import.meta.url), 'utf8') });
+  }
+  const reviewed = await candidateRead({ project: 102047, moduleName: MODULE });
+  assert.ok(reviewed.pointer);
+  const candidate = `${MODULE}/pipeline/changes/${reviewed.pointer.changeId}/revisions/${reviewed.pointer.revisionId}/l4`;
+  const command = `@@agentPlannerL4 ${MODULE} /candidate ${candidate}`;
+  const menu = JSON.parse(readFileSync(new URL('answers/menu20/menu-1.json', FIXTURE), 'utf8')).raw;
+  const plan = JSON.parse(readFileSync(new URL('answers/plan20/plan-1.json', FIXTURE), 'utf8'));
+  const plannerContext: mls.msg.ExecutionContext = { ...context, task: undefined, message: { ...context.message, content: command } };
+  const replay = await runUntilDone(plannerL4, plannerContext, { menu20: menu, plan20: plan }, [plannerL2, plannerL1]);
+  return { reviewed, candidate, command, replay, context: plannerContext };
 }

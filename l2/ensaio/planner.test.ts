@@ -3,39 +3,11 @@
 import test from 'node:test';
 import { installMlsStub } from '../../../test/mlsStub.js';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import * as plannerL4 from '/_102035_/l2/agentPlannerL4/agentPlannerL4.js';
-import * as plannerL2 from '/_102020_/l2/agentPlannerL2/agentPlannerL2.js';
-import * as plannerL1 from '/_102021_/l2/agentPlannerL1/agentPlannerL1.js';
-import { withReviewScenario, FIXTURE, MODULE } from './cenario.js';
-import { candidateRead } from '../solution/candidate/candidateGateway.js';
-import { writeJson } from '../solution/fs.js';
-import { runUntilDone } from './hostSimulado.js';
+import { withReviewScenario, runPlannerScenario, MODULE } from './cenario.js';
 
 test('recorded planners keep their artifacts under the reviewed candidate', async () => {
   await withReviewScenario(() => installMlsStub({ actualProject: 102047 }), async ({ context, fetchCalls }) => {
-    await writeJson({ project: 102047, level: 5, folder: '', shortName: 'config', extension: '.json' }, { workspaceDependencies: ['102047', '102020', '102035', '102021'], projects: { '102020': { root: '../mls-102020', type: 'lib' }, '102021': { root: '../mls-102021', type: 'lib' } } });
-    for (const [project, path] of [
-      [102020, 'agentPlannerL2/agentPlannerL2.ts'],
-      [102021, 'agentPlannerL1/agentPlannerL1.ts'],
-      [102020, 'agentPlannerL2/skills/menu.md'],
-      [102020, 'agentPlannerL2/steps/menu20/prompt.md'],
-      [102020, 'agentPlannerL2/schemas/menu.schema.json'],
-    ] as const) {
-      const slash = path.lastIndexOf('/');
-      const dot = path.lastIndexOf('.');
-      const file = await mls.stor.addOrUpdateFile({ project, level: 2, folder: path.slice(0, slash),
-        shortName: path.slice(slash + 1, dot), extension: path.slice(dot) } as mls.stor.IFileInfo);
-      await mls.stor.localStor.setContent(file, { content: readFileSync(new URL(`../../../mls-${project}/l2/${path}`, import.meta.url), 'utf8') });
-    }
-    const reviewed = await candidateRead({ project: 102047, moduleName: MODULE });
-    assert.ok(reviewed.pointer);
-    const candidate = `${MODULE}/pipeline/changes/${reviewed.pointer.changeId}/revisions/${reviewed.pointer.revisionId}/l4`;
-    const command = `@@agentPlannerL4 ${MODULE} /candidate ${candidate}`;
-    const menu = JSON.parse(readFileSync(new URL('answers/menu20/menu-1.json', FIXTURE), 'utf8')).raw;
-    const plan = JSON.parse(readFileSync(new URL('answers/plan20/plan-1.json', FIXTURE), 'utf8'));
-    const replay = await runUntilDone(plannerL4, { ...context, task: undefined,
-      message: { ...context.message, content: command } }, { menu20: menu, plan20: plan }, [plannerL2, plannerL1]);
+    const { reviewed, candidate, replay } = await runPlannerScenario(context);
     assert.ok(replay.executedPlans.includes('entry10'),
       replay.steps.filter(step => step.type === 'result').map(step => step.result).join('\n'));
     assert.equal(replay.intents.filter(intent => intent.type === 'add-message-ai').length, 1);
