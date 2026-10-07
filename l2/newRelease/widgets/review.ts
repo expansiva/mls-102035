@@ -595,11 +595,13 @@ export class NewReleaseReview102035 extends StateLitElement {
       }),
       retry,
       retryAvailable: !retry || this.channelRun!.attempt < REVIEW_RUN_MAX_ATTEMPTS,
-      error: this.actionError ? this.t(this.actionError) : '',
+      error: this.actionError ? this.tStoredReviewError(this.actionError) : '',
     });
   }
 
   private reviewRunErrorKey(code: string | null): string {
+    if (code?.startsWith('review-worker.agent_paused')) return 'review.run.error.agentPaused';
+    if (code === 'review.run.error.agentPaused') return code;
     if (code === 'review-run.planner_result_contract_pending') return 'review.run.error.resultPending';
     if (code === 'review-run.channel_failed' || code === 'review-run.channel_ended_without_terminal') {
       return 'review.run.error.channel';
@@ -610,10 +612,25 @@ export class NewReleaseReview102035 extends StateLitElement {
     return code ? 'review.run.error.generic' : '';
   }
 
+  private tReviewRunError(code: string | null): string {
+    const key = this.reviewRunErrorKey(code);
+    if (key !== 'review.run.error.agentPaused') return this.t(key);
+    const prefix = 'review-worker.agent_paused';
+    const motivo = code?.startsWith(prefix) ? code.slice(prefix.length).replace(/^:/, '') : '';
+    return this.t(key, { motivo });
+  }
+
+  private tStoredReviewError(stored: string): string {
+    if (stored.startsWith('review-worker.agent_paused') || stored === 'review.run.error.agentPaused') {
+      return this.tReviewRunError(stored);
+    }
+    return this.t(stored);
+  }
+
   private renderReviewRun() {
     if (this.version !== 'tobe') return nothing;
     if (this.reviewRunLoadError) {
-      return html`<section class="nr-review__run"><p role="alert">${this.t(this.reviewRunLoadError)}</p></section>`;
+      return html`<section class="nr-review__run"><p role="alert">${this.tStoredReviewError(this.reviewRunLoadError)}</p></section>`;
     }
     const channel = this.channelRun;
     if (channel) {
@@ -623,7 +640,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       return html`
         <section class=${`nr-review__run is-${channel.status}`} aria-live="polite">
           <header><div><span>${this.t('review.run.eyebrow')}</span><h3>${this.t('review.run.title')}</h3></div><strong>${this.t(stateKey)}</strong></header>
-          ${channel.errorCode ? html`<p role="alert">${this.t(this.reviewRunErrorKey(channel.errorCode))}</p>` : nothing}
+          ${channel.errorCode ? html`<p role="alert">${this.tReviewRunError(channel.errorCode)}</p>` : nothing}
           <dl>
             <div><dt>${this.t('review.run.runId')}</dt><dd><code>${channel.runId}</code></dd></div>
             ${execution?.taskId ? html`<div><dt>${this.t('review.run.taskId')}</dt><dd><code>${execution.taskId}</code></dd></div>` : nothing}
@@ -646,7 +663,7 @@ export class NewReleaseReview102035 extends StateLitElement {
           <strong>${this.t(stateKey)}</strong>
         </header>
         ${run.superseded ? html`<p>${this.t('review.run.superseded')}</p>` : nothing}
-        ${errorKey ? html`<p role="alert">${this.t(errorKey)}</p>` : nothing}
+        ${errorKey ? html`<p role="alert">${this.tReviewRunError(run.errorCode)}</p>` : nothing}
         <dl>
           <div><dt>${this.t('review.run.runId')}</dt><dd><code>${run.runId}</code></dd></div>
           ${run.taskId ? html`<div><dt>${this.t('review.run.taskId')}</dt><dd><code>${run.taskId}</code></dd></div>` : nothing}
