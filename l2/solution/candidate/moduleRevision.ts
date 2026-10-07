@@ -536,3 +536,48 @@ export async function readChangeRequest(project: number, moduleName: string): Pr
     resultCurrent: change.resultRevisionId !== null && change.resultRevisionId === change.activeRevisionId,
   };
 }
+
+/** Persist a complete immutable output revision from already decided sources. */
+export async function writeL4OutputRevision(project: number, moduleName: string, input: {
+  changeId: string;
+  revisionId: string;
+  baseId: string;
+  requestRevision: number;
+  requestHash: string;
+  changedPaths: string[];
+  sources: Array<{ path: string; source: string }>;
+}): Promise<L4CandidateManifest> {
+  return withModuleWriter(project, moduleName, async () => {
+    const release = await readL4Release(project, moduleName, input.baseId);
+    const paths = input.sources.map(item => item.path);
+    if (!release || paths.length !== Object.keys(release.files).length
+      || new Set(paths).size !== paths.length || paths.some(path => !Object.hasOwn(release.files, path))) {
+      throw new Error('l4.output_revision_paths');
+    }
+    const files: L4HashMap = {};
+    for (const item of input.sources) files[item.path] = await sourceHash(item.source);
+    const info = revisionInfo(project, moduleName, input.changeId, input.revisionId);
+    const existing = await readJson<L4CandidateManifest>(info);
+    if (existing) {
+      if (!sameHashes(existing.files, files)) throw new Error('l4.output_revision_conflict');
+      return existing;
+    }
+    // A previous interrupted write may have left sources without a manifest.
+    for (const item of input.sources) {
+      const target = artifactInfo(project, moduleName, normalizeTobeArtifactPath(item.path), 'revision', input.changeId, input.revisionId);
+      if (fileExists(target) && await readSourceText(target) !== item.source) throw new Error('l4.output_revision_conflict');
+    }
+    for (const item of input.sources) {
+      await writeSourceText(artifactInfo(project, moduleName, normalizeTobeArtifactPath(item.path), 'revision', input.changeId, input.revisionId), item.source);
+    }
+    await writeJson(info, {
+      schemaVersion: L4_REVISION_SCHEMA, project, moduleName,
+      changeId: input.changeId, revisionId: input.revisionId, baseId: input.baseId,
+      createdAt: new Date().toISOString(), files, changedPaths: input.changedPaths,
+      requestRevision: input.requestRevision, requestHash: input.requestHash,
+    } satisfies L4CandidateManifest);
+    const revision = await readL4Revision(project, moduleName, input.changeId, input.revisionId);
+    if (!revision) throw new Error('l4.output_revision_unreadable');
+    return revision;
+  });
+}
