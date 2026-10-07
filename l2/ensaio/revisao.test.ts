@@ -41,7 +41,8 @@ test('recorded review goes through public hooks and publishes only quantidadeMin
 });
 
 
-test('real review and planner evidence reaches ledger ready and the Review models read that run', async () => {
+for (const editedAfterClick of [false, true]) {
+test(`mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited after the click' : 'becomes current in the module reader'}`, async () => {
   await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async (scenario) => {
     const { prepared, before, progress, command, fetchCalls } = scenario;
     // Load the platform ledger itself: the fake runner supplies evidence, never a fabricated ready record.
@@ -135,9 +136,45 @@ test('real review and planner evidence reaches ledger ready and the Review model
       const evidence = { binding, common, reviewProgress: progress, plannerClaimInput, plannerProgress, artifactSources, ready };
       writeFileSync(new URL('ledger/evidence.json', FIXTURE), JSON.stringify(evidence, null, 2) + '\n');
     }
+    const { readNs5Module } = await import('../newRelease/helpers/l4Reader.js');
+    const { adoptL4ReviewResult } = await import('../solution/candidate/moduleRevision.js');
+    const { saveChangeRequest } = await import('../newRelease/helpers/revisionSelection.js');
+    const beforeAdoption = await readNs5Module(PROJECT, MODULE, 'tobe');
+    assert.equal(beforeAdoption.resultCurrent, false);
+    const pendingCount = (data: typeof beforeAdoption) => data.changeId && !data.resultCurrent ? 1 : 0;
+    assert.equal(pendingCount(beforeAdoption), 1);
+    const adoption = { inputRevisionId: ready.binding.inputRevisionId,
+      outputRevisionId: ready.executions.find((item: any) => item.agentName === 'agentPlannerL4').candidateRevisionId };
+    if (editedAfterClick) {
+      const edited = await saveChangeRequest(PROJECT, MODULE, `${binding.request}\nPedido editado após o clique.`,
+        beforeAdoption.changeId, beforeAdoption.revisionId);
+      assert.notEqual(edited.revisionId, adoption.inputRevisionId);
+      await assert.rejects(adoptL4ReviewResult(PROJECT, MODULE, adoption), /^Error: l4.result_stale$/);
+      const stale = await readNs5Module(PROJECT, MODULE, 'tobe');
+      assert.equal(stale.resultCurrent, false);
+      assert.equal(stale.revisionId, edited.revisionId);
+      assert.equal(pendingCount(stale), 1);
+    } else {
+      await adoptL4ReviewResult(PROJECT, MODULE, adoption);
+      const current = await readNs5Module(PROJECT, MODULE, 'tobe');
+      assert.equal(current.resultCurrent, true);
+      assert.equal(current.revisionId, adoption.outputRevisionId);
+      assert.equal(pendingCount(current), 0);
+      assert.deepEqual(current.errors, []);
+      const rulesSource = current.sealedRevision?.sources.find(file => file.path === 'rules.defs.ts')?.source;
+      assert.equal(rulesSource, scenario.sources.get('rules.defs.ts')!.replace(
+        'A quantidade mínima definida para um produto deve ser maior ou igual a zero.',
+        'A quantidade mínima definida para um produto deve ser maior que zero.'));
+      assert.match(JSON.stringify(current.artifacts.rules.value), /quantidadeMinimaValida/);
+      assert.match(JSON.stringify(current.artifacts.rules.value), /maior que zero/);
+      assert.equal(buildReviewView({ pendingCount: pendingCount(current), readStatus: menu.status, raw: menu.value,
+        selectedActor: 'all', selectedId: '', selectedScope: 'future' }).kind, 'ready');
+      assert.equal(buildBackendReview(backend, pendingCount(current) > 0, MODULE).kind, 'ready');
+    }
     assert.equal(fetchCalls(), 0);
   });
 });
+}
 
 
 test('mr_24 s3: base with an empty transition by fails publicly without publishing', async () => {
