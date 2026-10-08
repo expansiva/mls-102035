@@ -83,6 +83,7 @@ interface SavedExecution {
   threadId: string;
   messageOrder: string;
   messageId: string;
+  savedAt?: string;
   execution: ReviewWorkerExecution | null;
 }
 
@@ -98,6 +99,7 @@ export interface ReviewStudioHostDependencies {
   artifacts?: (claim: ReviewWorkerClaim, taskId: string) => Promise<ReviewPlannerArtifact[]>;
   candidateTransport?: CandidateGatewayOptions;
   now?: () => string;
+  onTaskChange?: (listener: (context: ExecutionContext) => void) => () => void;
 }
 
 interface ReviewPlannerArtifact {
@@ -139,6 +141,16 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
   });
   const readArtifacts = dependencies.artifacts ?? readPlannerArtifacts;
   const now = dependencies.now ?? (() => new Date().toISOString());
+  const subscribeTaskChange = dependencies.onTaskChange ?? ((listener: (context: ExecutionContext) => void) => {
+    const target = typeof window === 'undefined' ? undefined : window.top ?? window;
+    if (!target?.addEventListener) return () => undefined;
+    const handler = (event: Event) => {
+      const changed = (event as CustomEvent<{ context: ExecutionContext }>).detail?.context;
+      if (changed) listener(changed);
+    };
+    target.addEventListener('task-change', handler);
+    return () => target.removeEventListener('task-change', handler);
+  });
 
   function key(claim: ReviewWorkerClaim): string { return `${EXECUTION_KEY}${claim.runId}/${claim.attempt}/${claim.phase}`; }
   function read(claim: ReviewWorkerClaim): SavedExecution | null {
@@ -187,20 +199,44 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
       const agentName = claim.phase === 'review' ? 'agentReviewSolution' : 'agentPlannerL4';
       const messageOrder = context.message.orderAt || context.message.createAt;
       const messageId = `${context.message.threadId}/${messageOrder}`;
-      save(claim, { claimId: claim.claimId, agentName, threadId: thread.threadId, messageOrder, messageId, execution: null });
-      await execute(agentName, context);
-      if (!context.task?.PK || !context.message?.threadId) throw new Error('review-worker.task_not_created');
-      const execution = executionFromTask(agentName, claim.attempt, context.task, context.message.threadId, now());
-      const canonicalMessageId = context.task.messageid_created || '';
-      save(claim, {
-        claimId: claim.claimId,
-        agentName,
-        threadId: thread.threadId,
-        messageOrder,
-        messageId: canonicalMessageId || messageId,
-        execution,
+      const savedAt = now();
+      save(claim, { claimId: claim.claimId, agentName, threadId: thread.threadId, messageOrder, messageId, savedAt, execution: null });
+      let captured = false;
+      const unsubscribe = subscribeTaskChange(changed => {
+        if (captured || changed !== context || !context.task?.PK) return;
+        captured = true;
+        try {
+          const canonicalMessageId = context.task.messageid_created || '';
+          save(claim, {
+            claimId: claim.claimId,
+            agentName,
+            threadId: thread.threadId,
+            messageOrder,
+            messageId: canonicalMessageId || messageId,
+            savedAt,
+            execution: executionFromTask(agentName, claim.attempt, context.task, context.message.threadId, now()),
+          });
+        } catch (error) {
+          console.error(error);
+        }
       });
-      return execution;
+      try {
+        await execute(agentName, context);
+        if (!context.task?.PK || !context.message?.threadId) throw new Error('review-worker.task_not_created');
+        const execution = executionFromTask(agentName, claim.attempt, context.task, context.message.threadId, now());
+        const canonicalMessageId = context.task.messageid_created || '';
+        save(claim, {
+          claimId: claim.claimId,
+          agentName,
+          threadId: thread.threadId,
+          messageOrder,
+          messageId: canonicalMessageId || messageId,
+          execution,
+        });
+        return execution;
+      } finally {
+        unsubscribe();
+      }
     },
     async observe(claim, execution) {
       let saved = read(claim);

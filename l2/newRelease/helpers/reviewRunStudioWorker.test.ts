@@ -82,6 +82,41 @@ function context(): ExecutionContext {
   } as ExecutionContext;
 }
 
+test('mr_30 s2 grava taskId e messageId canônicos no task-change enquanto execute não resolve', async () => {
+  const storage = memoryStorage();
+  const current = context();
+  let emit: ((changed: ExecutionContext) => void) | undefined;
+  let startedExecute: () => void = () => undefined;
+  const executeStarted = new Promise<void>(resolve => { startedExecute = resolve; });
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => current,
+    onTaskChange: listener => {
+      emit = listener;
+      return () => { emit = undefined; };
+    },
+    execute: async (_agentName, executionContext) => {
+      executionContext.task = {
+        PK: 'task/20261006181434.1001',
+        messageid_created: CANONICAL,
+        status: 'in progress',
+      } as TaskData;
+      emit?.(executionContext);
+      startedExecute();
+      await new Promise(() => undefined);
+    },
+    now: () => '2026-10-06T18:14:31.000Z',
+  });
+  void host.startOrGet(claim());
+  await executeStarted;
+  const saved = JSON.parse(storage.raw()) as { messageId: string; execution: { taskId: string } | null; savedAt: string };
+  assert.equal(saved.messageId, CANONICAL);
+  assert.equal(saved.execution?.taskId, '20261006181434.1001');
+  assert.equal(saved.savedAt, '2026-10-06T18:14:31.000Z');
+});
+
 test('mr_15 s1 grava o messageid_created depois do execute e o observe usa esse id', async () => {
   const storage = memoryStorage();
   let savedBeforeExecute = '';
