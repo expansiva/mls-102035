@@ -35,6 +35,7 @@ type QaReviewElement = NewReleaseElement & {
     retryPhase(project: number, moduleName: string, phase: string): Promise<L4ImplementationRecord>;
   };
   implementationDiff: ModuleLayerDiff[] | null;
+  implementationTimer?: number;
   loadImplementationDiff(): Promise<void>;
 };
 type NewReleaseElement = HTMLElement & {
@@ -296,13 +297,16 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
       const panels = [...review.querySelectorAll('.nr-review__implementation')];
       return panels.length === 2 && panels.every(panel => {
         const phases = panel.querySelectorAll(':scope > ol > li');
-        return phases.length === expected.length && expected.every((phase, index) => phases[index].classList.contains(`is-${phase.status}`));
+        const listed = [...panel.querySelectorAll('.nr-review__implementation-materialize li')].map(item => item.textContent?.trim());
+        return phases.length === expected.length && expected.every((phase, index) => phases[index].classList.contains(`is-${phase.status}`))
+          && JSON.stringify(listed) === JSON.stringify(record.merged.materialize.map(unit => unit.path));
       });
     }, 'qa.implementationStateMismatch');
+    if (record.merged.materialize.length && review.implementationTimer !== undefined) throw new Error('qa.materializationTimerRunning');
     if (review.querySelector('.nr-review__primary-action')) throw new Error('qa.implementationCtaVisible');
     const retryCount = expected.filter(phase => phase.podeTentarDeNovo).length * 2;
     await waitForQaProtectedButtons(() => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__implementation-retry')], retryCount);
-    const completed = expected.every(phase => phase.status === 'concluido');
+    const completed = !record.merged.materialize.length && expected.every(phase => phase.status === 'concluido');
     const buttons = await waitForQaProtectedButtons(() => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__implementation-refuse')], completed ? 2 : 0);
     buttons.forEach(button => button.click());
     if (completed) {

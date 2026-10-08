@@ -58,6 +58,13 @@ test('mr_12: absent phases follow accepted runAgents order', () => {
   assert.deepEqual(implementationProgress(progressRecord(), 'change-one'), expected);
 });
 
+test('materialization keeps agents waiting for the team without claiming completion', () => {
+  const record = progressRecord();
+  record.merged.materialize = structuredClone(changeEffort.merged.materialize);
+  assert.deepEqual(implementationProgress(record, 'change-one').map(phase => phase.status),
+    ['depoisDaMaterializacao', 'depoisDaMaterializacao']);
+});
+
 test('mr_12: running phase exposes its attempt and never offers retry', () => {
   const result = implementationProgress(progressRecord([progressPhase({ name: 'runAgents:1', attempt: 2 })]), 'change-one');
   assert.equal(result[0].status, 'aguardando');

@@ -1,4 +1,93 @@
 {
+  "implementation-materialize": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "merged": {
+      "regenerateDefs": [],
+      "materialize": [
+        {
+          "project": "102020",
+          "kind": "page",
+          "id": "agenda_diaria",
+          "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts"
+        },
+        {
+          "project": "102021",
+          "kind": "entity",
+          "id": "consulta",
+          "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts"
+        },
+        {
+          "project": "102021",
+          "kind": "request",
+          "id": "agenda_diaria",
+          "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts"
+        },
+        {
+          "project": "102021",
+          "kind": "usecase",
+          "id": "registrarAtendimento",
+          "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts"
+        }
+      ],
+      "runAgents": [],
+      "abend": []
+    },
+    "phases": []
+  },
+  "implementation-materialize-agent": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "merged": {
+      "regenerateDefs": [],
+      "materialize": [
+        {
+          "project": "102020",
+          "kind": "page",
+          "id": "agenda_diaria",
+          "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts"
+        },
+        {
+          "project": "102021",
+          "kind": "entity",
+          "id": "consulta",
+          "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts"
+        },
+        {
+          "project": "102021",
+          "kind": "request",
+          "id": "agenda_diaria",
+          "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts"
+        },
+        {
+          "project": "102021",
+          "kind": "usecase",
+          "id": "registrarAtendimento",
+          "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts"
+        }
+      ],
+      "runAgents": [
+        {
+          "agent": "agentAddLanguage",
+          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+        }
+      ],
+      "abend": []
+    },
+    "phases": []
+  },
   "implementation-waiting": {
     "schemaVersion": "2026-10-08-nr-module-implementation-v1",
     "changeId": "qa-implementation-change",

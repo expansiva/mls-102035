@@ -9,6 +9,7 @@ export const QA_TABS = ['general', 'journeys', 'ontology', 'access', 'rules', 'w
 export const QA_IMPLEMENTATION_FIXTURES = [
   'implementation-waiting', 'implementation-running', 'implementation-retry',
   'implementation-failed', 'implementation-success', 'implementation-stale',
+  'implementation-materialize', 'implementation-materialize-agent',
 ] as const;
 export type QaImplementationFixture = typeof QA_IMPLEMENTATION_FIXTURES[number];
 export function isQaImplementationFixture(fixture: string): fixture is QaImplementationFixture {

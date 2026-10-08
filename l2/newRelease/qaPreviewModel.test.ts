@@ -55,7 +55,7 @@ test('fixtures map to deterministic states without mutation capabilities', () =>
 
 test('automatic matrix is non-empty and covers all required dimensions', () => {
   const scenarios = newReleaseQaScenarios();
-  assert.equal(scenarios.length, 228);
+  assert.equal(scenarios.length, 252);
   assert.deepEqual(new Set(scenarios.map(item => item.width)), new Set([390, 800, 1280]));
   assert.deepEqual(new Set(scenarios.map(item => item.tab)), new Set(['general', 'review']));
   assert.deepEqual(new Set(scenarios.map(item => item.language)), new Set(['pt-BR', 'en-US']));
@@ -131,7 +131,7 @@ test('ready is emitted only after component, translation, theme and data resolve
   assert.equal(canAnnounceQaReady({ component: true, translation: true, theme: true, data: true }), true);
 });
 
-test('mr_12: all six implementation states are included in every review presentation', () => {
+test('mr_12: all eight implementation states are included in every review presentation', () => {
   for (const fixture of QA_IMPLEMENTATION_FIXTURES) {
     assert.equal(isQaImplementationFixture(fixture), true);
     assert.equal(parseNewReleaseQaParams(`fixture=${fixture}&tab=review`).ok, true);
@@ -155,4 +155,9 @@ test('mr_12: rehearsal JSON renders the accepted phase, retry limit and stale re
   assert.deepEqual(view('success').map(phase => phase.status), ['concluido']);
   assert.deepEqual(view('success')[0].changedDefs, []);
   assert.deepEqual(view('stale').map(phase => phase.status), []);
+  assert.deepEqual(view('materialize'), []);
+  assert.deepEqual(view('materialize-agent').map(phase => phase.status), ['depoisDaMaterializacao']);
+  const golden = JSON.parse(readFileSync(new URL('../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
+  assert.deepEqual(records['implementation-materialize'].merged.materialize, golden.merged.materialize);
+  assert.deepEqual(records['implementation-materialize-agent'].merged.materialize, golden.merged.materialize);
 });

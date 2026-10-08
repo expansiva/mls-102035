@@ -16,15 +16,15 @@ const languageCommand = '@@agentAddLanguage ' + JSON.stringify([{
   languages: [{ code: 'pt-BR', name: 'pt-BR' }], projectId: PROJECT, moduleName: MODULE,
 }]);
 
-async function withEffort<T>(mode: 'rule' | 'agent', run: () => Promise<T>): Promise<T> {
+async function withEffort<T>(mode: 'rule' | 'agent' | 'both', run: () => Promise<T>): Promise<T> {
   const golden = JSON.parse(readFileSync(new URL(
     '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
   const previous = { ...effortRegistry };
   for (const original of golden.perItem[0].answers) {
     effortRegistry[original.master.project] = { describeEffort: input => {
       const answer = { ...structuredClone(original), item: input.item.changeId } as EffortAnswer;
-      if (mode === 'agent') {
-        answer.materialize = [];
+      if (mode !== 'rule') {
+        if (mode === 'agent') answer.materialize = [];
         answer.runAgents = original.master.kind === 'l2' ? [{ agent: 'agentAddLanguage', command: languageCommand }] : [];
       }
       return answer;
@@ -51,7 +51,7 @@ function captureQa(name: string, record: L4ImplementationRecord) {
   qaRecords[name] = copy;
 }
 
-async function acceptedScenario(mode: 'rule' | 'agent', run: (record: L4ImplementationRecord) => Promise<void>) {
+async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L4ImplementationRecord) => Promise<void>) {
   await withEffort(mode, () => withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async scenario => {
     const planner = await runPlannerScenario(scenario.context);
     assert.equal(planner.context.task?.status, 'done');
@@ -91,13 +91,27 @@ async function acceptedScenario(mode: 'rule' | 'agent', run: (record: L4Implemen
 
 test('accepted rule keeps materialization list and dispatches no phase', async () => {
   await acceptedScenario('rule', async accepted => {
-    assert.equal(accepted.merged.materialize.length, 4);
+    const golden = JSON.parse(readFileSync(new URL('../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
+    assert.deepEqual(accepted.merged.materialize, golden.merged.materialize);
     assert.deepEqual(accepted.merged.runAgents, []);
     const host = createSimulatedDefsHost();
     const record = await createImplementationRunner(host.dependencies).runNext(PROJECT, MODULE);
     assert.deepEqual(record.phases, []);
     assert.deepEqual(host.dispatched, []);
+    captureQa('implementation-materialize', record);
     assert.deepEqual(await readL4Implementation(PROJECT, MODULE), record);
+  });
+});
+
+test('accepted materialization and language instruction wait without dispatch', async () => {
+  await acceptedScenario('both', async accepted => {
+    assert.equal(accepted.merged.materialize.length, 4);
+    assert.deepEqual(accepted.merged.runAgents, [{ agent: 'agentAddLanguage', command: languageCommand }]);
+    const host = createSimulatedDefsHost();
+    const record = await createImplementationRunner(host.dependencies).runNext(PROJECT, MODULE);
+    assert.deepEqual(record.phases, []);
+    assert.deepEqual(host.dispatched, []);
+    captureQa('implementation-materialize-agent', record);
   });
 });
 
@@ -162,7 +176,7 @@ test('simulated host rejects commands outside the accepted language command', as
 });
 
 test('exported QA JSON matches simulated implementation states', () => {
-  assert.equal(Object.keys(qaRecords).length, 6);
+  assert.equal(Object.keys(qaRecords).length, 8);
   const fixture = new URL('../newRelease/fixtures/implementation.json', import.meta.url);
   if (process.env.UPDATE_IMPLEMENTATION_QA === '1') writeFileSync(fixture, JSON.stringify(qaRecords, null, 2) + '\n');
   assert.deepEqual(JSON.parse(readFileSync(fixture, 'utf8')), qaRecords);

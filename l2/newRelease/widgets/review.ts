@@ -757,14 +757,20 @@ export class NewReleaseReview102035 extends StateLitElement {
   private renderImplementation(placement: 'top' | 'bottom') {
     if (!this.hasImplementation()) return nothing;
     const phases = implementationProgress(this.implementation, this.data?.changeId ?? null);
+    const materialize = this.implementation!.merged.materialize;
     return html`
       <section class=${`nr-review__run nr-review__implementation is-${placement}`} aria-live=${placement === 'top' ? 'polite' : 'off'}>
         <h3>${this.t('review.implementation.progress')}</h3>
+        ${materialize.length ? html`<section class="nr-review__implementation-materialize">
+          <h4>${this.t('review.implementation.materialize')}</h4>
+          <ul>${materialize.map(unit => html`<li><code>${unit.path}</code></li>`)}</ul>
+        </section>` : nothing}
+        ${phases.length ? html`
         <ol>
           ${phases.map(phase => html`
             <li class=${`is-${phase.status}`}>
               <div class="nr-review__phase-heading">
-                <strong>${this.t(`review.implementation.phase.${phase.name}`)}</strong>
+                <strong>${this.implementation!.merged.runAgents[Number(phase.name.split(':')[1])]?.agent}</strong>
                 <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
                 ${phase.attempt ? html`<small>${this.t('review.implementation.attempt', { attempt: phase.attempt })}</small>` : nothing}
               </div>
@@ -783,7 +789,7 @@ export class NewReleaseReview102035 extends StateLitElement {
               ` : nothing}
             </li>
           `)}
-        </ol>
+        </ol>` : nothing}
         ${this.actionError ? html`<p role=${placement === 'top' ? 'alert' : nothing}>${this.tStoredReviewError(this.actionError)}</p>` : nothing}
         ${this.implementationComplete() ? html`
           <p class="nr-review__implementation-note">${this.t('review.implementation.completedBody')}</p>

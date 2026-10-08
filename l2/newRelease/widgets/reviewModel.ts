@@ -152,7 +152,7 @@ export interface ReviewImplementationInput {
 
 export interface ImplementationProgressPhase {
   name: L4ImplementationPhase['name'];
-  status: 'aguardando' | 'executando' | 'concluido' | 'falhou';
+  status: 'aguardando' | 'depoisDaMaterializacao' | 'executando' | 'concluido' | 'falhou';
   attempt?: L4ImplementationPhase['attempt'];
   changedDefs?: L4ImplementationPhase['changedDefs'];
   error?: string;
@@ -170,7 +170,7 @@ export function implementationProgress(
   return (current?.merged.runAgents ?? []).map((_, index) => {
     const name = `runAgents:${index}`;
     const phase = phases.find(item => item.name === name);
-    if (!phase) return { name, status: 'aguardando', podeTentarDeNovo: false };
+    if (!phase) return { name, status: current?.merged.materialize.length ? 'depoisDaMaterializacao' : 'aguardando', podeTentarDeNovo: false };
     return {
       name,
       status: phase.status === 'running' ? 'executando' : phase.status === 'done' ? 'concluido' : 'falhou',

@@ -703,6 +703,8 @@
   "review.implementation.error.diff": "Não foi possível carregar a lista de arquivos alterados. Reabra a Revisão para tentar novamente.",
   "review.implementation.error.refuse": "Não foi possível restaurar o módulo. Tente recusar novamente.",
   "review.implementation.progress": "Progresso da implementação",
+  "review.implementation.materialize": "Para a materialização",
+  "review.implementation.status.depoisDaMaterializacao": "Depois da materialização",
   "review.implementation.phase.defsL2": "Definições de frontend",
   "review.implementation.phase.defsL1": "Definições de backend",
   "review.implementation.status.running": "Em andamento",
