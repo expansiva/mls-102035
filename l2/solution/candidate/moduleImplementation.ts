@@ -5,6 +5,29 @@ import { readActiveL4Change, withModuleWriter } from '/_102035_/l2/solution/cand
 
 export const L4_IMPLEMENTATION_SCHEMA = '2026-10-08-nr-module-implementation-v1' as const;
 
+export interface L4ImplementationPhase {
+  name: 'defsL2' | 'defsL1';
+  attempt: 1 | 2;
+  previousAttempts?: Omit<L4ImplementationPhase, 'previousAttempts'>[];
+  changedDefs?: { path: string; status: 'changed' | 'added' | 'removed' }[];
+  agent: string;
+  command: string;
+  taskId: string;
+  threadId: string;
+  messageId: string;
+  status: 'running' | 'done' | 'failed';
+  startedAt: string;
+  endedAt?: string;
+  error?: string;
+}
+
+export function implementationPhaseCommand(name: L4ImplementationPhase['name'], moduleName: string): { agent: string; command: string } {
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(moduleName)) throw new Error('implementation.invalid_module');
+  if (name === 'defsL2') return { agent: 'agentDefsL2', command: `@@agentDefsL2 ${moduleName}` };
+  if (name === 'defsL1') return { agent: 'agentDefsL1', command: `@@agentDefsL1 ${moduleName} /run` };
+  throw new Error('implementation.invalid_phase');
+}
+
 export interface L4ImplementationHashes {
   menu: string;
   backend: string;
@@ -18,7 +41,7 @@ export interface L4ImplementationRecord {
   acceptedBy: string;
   acceptedAt: string;
   hashes: L4ImplementationHashes;
-  phases: unknown[];
+  phases: L4ImplementationPhase[];
 }
 
 function implementationInfo(project: number, moduleName: string, changeId: string): Ns5FileInfo {
@@ -28,6 +51,31 @@ function implementationInfo(project: number, moduleName: string, changeId: strin
 export async function readL4Implementation(project: number, moduleName: string): Promise<L4ImplementationRecord | null> {
   const change = await readActiveL4Change(project, moduleName);
   return change ? readJson<L4ImplementationRecord>(implementationInfo(project, moduleName, change.changeId)) : null;
+}
+
+/** Keeps the fresh read, reservation and canonical task identity in the same module writer. */
+export async function withL4ImplementationWriter<T>(project: number, moduleName: string,
+  work: (record: L4ImplementationRecord, save: (phase: L4ImplementationPhase) => Promise<void>) => Promise<T>,
+): Promise<T> {
+  return withModuleWriter(project, moduleName, async () => {
+    const record = await readL4Implementation(project, moduleName);
+    if (!record) throw new Error('implementation.not_accepted');
+    return work(record, async phase => {
+      const expected = implementationPhaseCommand(phase.name, moduleName);
+      if (phase.agent !== expected.agent || phase.command !== expected.command) throw new Error('implementation.invalid_command');
+      const index = record.phases.findIndex(item => item.name === phase.name);
+      if (index < 0) record.phases.push({ ...phase });
+      else record.phases[index] = { ...phase };
+      await writeJson(implementationInfo(project, moduleName, record.changeId), record);
+    });
+  });
+}
+
+export async function recordL4ImplementationPhase(project: number, moduleName: string, phase: L4ImplementationPhase): Promise<L4ImplementationRecord> {
+  return withL4ImplementationWriter(project, moduleName, async (record, save) => {
+    await save(phase);
+    return record;
+  });
 }
 
 export async function acceptL4Implementation(

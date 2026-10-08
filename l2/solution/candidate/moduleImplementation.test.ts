@@ -118,3 +118,19 @@ test('mr_10 s1 concurrent different hashes accept only one record', async () => 
     assert.deepEqual((await readL4Implementation(project, moduleName))?.hashes, input.hashes);
   } finally { fixture.restore(); }
 });
+
+test('mr_11 s1 stor read errors propagate for active pointer and implementation', async () => {
+  const fixture = installStorFixture();
+  try {
+    fixture.activate();
+    await acceptL4Implementation(project, moduleName, input);
+    const files = (globalThis as any).mls.stor.files;
+    for (const suffix of ['pipeline/changes/change1:implementation.json', 'pipeline/changes:active.json']) {
+      const file = files[`${project}:4:fixture/${suffix}`];
+      const read = file.getValueInfo;
+      file.getValueInfo = async () => { throw new Error('stor read failed'); };
+      await assert.rejects(readL4Implementation(project, moduleName), /stor read failed/);
+      file.getValueInfo = read;
+    }
+  } finally { fixture.restore(); }
+});
