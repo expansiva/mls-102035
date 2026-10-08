@@ -25,7 +25,7 @@ if (!globalThis.HTMLElement) {
 }
 
 import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
-import type { KeyValueStorage, ReviewWorkerClaim } from './reviewRunWorker.js';
+import type { KeyValueStorage, ReviewWorkerClaim, ReviewWorkerClaimInput } from './reviewRunWorker.js';
 
 const THREAD_ID = 'thread-mr15';
 const ORDER_AT = '20261006181434.9967';
@@ -563,3 +563,199 @@ for (const phase of ['review', 'planner'] as const) {
     await assert.rejects(host.startOrGet(current), /review-worker\.execution_resume_failed:hook-lost/);
   });
 }
+
+// s6: cada "reload" reimporta o módulo (require.cache) para zerar tasksOnThisPage, com o mesmo storage.
+function loadWorkerModule(): typeof import('./reviewRunStudioWorker.ts') {
+  const resolved = require.resolve('./reviewRunStudioWorker.ts');
+  delete require.cache[resolved];
+  return require('./reviewRunStudioWorker.ts') as typeof import('./reviewRunStudioWorker.ts');
+}
+
+function driveInput(phase: 'review' | 'planner'): ReviewWorkerClaimInput {
+  const current = phaseClaim(phase);
+  return {
+    userId: 'user-mr15',
+    project: current.project,
+    moduleName: current.moduleName,
+    changeId: current.changeId,
+    inputRevisionId: 'revision-mr30',
+    inputSnapshotHash: current.canonicalSnapshotHash,
+    baseId: 'base-mr30',
+    requestRevision: 1,
+    requestHash: current.canonicalSnapshotHash,
+    runId: current.runId,
+    workerId: current.workerId,
+    canonicalSnapshotHash: current.canonicalSnapshotHash,
+  };
+}
+
+for (const phase of ['review', 'planner'] as const) {
+  test(`mr_30 s6 ${phase} reload durante o execute retoma a mesma task sem segundo execute`, async () => {
+    const storage = memoryStorage();
+    const taskId = phase === 'review' ? '20261006181434.4001' : '20261006181434.4002';
+    const current = phaseClaim(phase);
+    let executes = 0;
+    let resumes = 0;
+    let emit: ((changed: ExecutionContext) => void) | undefined;
+    let startedExecute: () => void = () => undefined;
+    const executeStarted = new Promise<void>(resolve => { startedExecute = resolve; });
+    const first = loadWorkerModule();
+    const born = first.createReviewStudioHost({
+      storage,
+      userId: () => 'user-mr15',
+      thread: async () => ({ threadId: THREAD_ID }),
+      context: () => ({ message: { threadId: THREAD_ID, orderAt: ORDER_AT } }) as ExecutionContext,
+      onTaskChange: listener => {
+        emit = listener;
+        return () => { emit = undefined; };
+      },
+      execute: async (_agentName, executionContext) => {
+        executes += 1;
+        executionContext.task = {
+          PK: `task/${taskId}`,
+          messageid_created: CANONICAL,
+          status: 'in progress',
+        } as TaskData;
+        emit?.(executionContext);
+        startedExecute();
+        await new Promise(() => undefined);
+      },
+      now: () => '2026-10-06T18:14:31.000Z',
+    });
+    const reports: string[] = [];
+    const transport = {
+      async claim() { return structuredClone(current); },
+      async report(value: { progress: { status: string } }) {
+        reports.push(value.progress.status);
+        return { status: value.progress.status };
+      },
+    };
+    void first.driveReviewRunWorker(transport, born, driveInput(phase));
+    await executeStarted;
+    const reloaded = loadWorkerModule();
+    const host = reloaded.createReviewStudioHost({
+      storage,
+      userId: () => 'user-mr15',
+      execute: async () => { executes += 1; },
+      task: async () => ({ PK: `task/${taskId}`, status: 'in progress' }) as TaskData,
+      message: async () => ({ threadId: THREAD_ID, content: current.command }) as never,
+      resume: async () => { resumes += 1; },
+      now: () => '2026-10-06T18:15:00.000Z',
+    });
+    const taskIds: string[] = [];
+    for (let tick = 0; tick < 3; tick += 1) {
+      const result = await reloaded.driveReviewRunWorker(transport, host, driveInput(phase));
+      assert.equal(result.state, 'reported');
+      if (result.state === 'reported' && result.execution) taskIds.push(result.execution.taskId);
+    }
+    assert.equal(executes, 1);
+    assert.equal(resumes, 1);
+    assert.deepEqual(taskIds, [taskId, taskId, taskId]);
+    assert.deepEqual(reports.filter(status => status === 'failed'), []);
+  });
+}
+
+test('mr_30 s6 reload antes da task nascer fica pendente e depois perdido', async () => {
+  const storage = memoryStorage();
+  const current = phaseClaim('review');
+  let startedExecute: () => void = () => undefined;
+  const executeStarted = new Promise<void>(resolve => { startedExecute = resolve; });
+  const first = loadWorkerModule();
+  const born = first.createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => ({ message: { threadId: THREAD_ID, orderAt: ORDER_AT } }) as ExecutionContext,
+    execute: async () => {
+      startedExecute();
+      await new Promise(() => undefined);
+    },
+    now: () => '2026-10-06T18:14:31.000Z',
+  });
+  const reports: string[] = [];
+  const transport = {
+    async claim() { return structuredClone(current); },
+    async report(value: { progress: { status: string; errorCode?: string } }) {
+      reports.push(value.progress.errorCode ?? value.progress.status);
+      return { status: value.progress.status };
+    },
+  };
+  void first.driveReviewRunWorker(transport, born, driveInput('review'));
+  await executeStarted;
+  const soon = loadWorkerModule();
+  const pendingHost = soon.createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    messagesAfter: async () => [],
+    now: () => '2026-10-06T18:16:30.999Z',
+  });
+  const pending = await soon.driveReviewRunWorker(transport, pendingHost, driveInput('review'));
+  assert.equal(pending.state, 'pending');
+  assert.deepEqual(reports, []);
+  const later = loadWorkerModule();
+  const lostHost = later.createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    messagesAfter: async () => [],
+    now: () => '2026-10-06T18:16:31.000Z',
+  });
+  const lost = await later.driveReviewRunWorker(transport, lostHost, driveInput('review'));
+  assert.equal(lost.state, 'reported');
+  assert.deepEqual(reports, ['review-run.worker_start_failed:review-worker.execution_start_lost']);
+});
+
+test('mr_30 s6 reload antes do task-change acha a mensagem e retoma sem segundo execute', async () => {
+  const storage = memoryStorage();
+  const current = phaseClaim('review');
+  const taskId = '20261006181434.4003';
+  let executes = 0;
+  let resumes = 0;
+  let startedExecute: () => void = () => undefined;
+  const executeStarted = new Promise<void>(resolve => { startedExecute = resolve; });
+  const first = loadWorkerModule();
+  const born = first.createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: () => ({ message: { threadId: THREAD_ID, orderAt: ORDER_AT } }) as ExecutionContext,
+    execute: async () => {
+      executes += 1;
+      startedExecute();
+      await new Promise(() => undefined);
+    },
+    now: () => '2026-10-06T18:14:31.000Z',
+  });
+  const reports: string[] = [];
+  const transport = {
+    async claim() { return structuredClone(current); },
+    async report(value: { progress: { status: string } }) {
+      reports.push(value.progress.status);
+      return { status: value.progress.status };
+    },
+  };
+  void first.driveReviewRunWorker(transport, born, driveInput('review'));
+  await executeStarted;
+  const reloaded = loadWorkerModule();
+  const host = reloaded.createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    execute: async () => { executes += 1; },
+    messagesAfter: async () => [{
+      senderId: 'user-mr15',
+      content: current.command,
+      taskId: `task/${taskId}`,
+      orderAt: '20261006181434.1000',
+      threadId: THREAD_ID,
+    }] as never,
+    task: async () => ({ PK: `task/${taskId}`, status: 'in progress' }) as TaskData,
+    message: async () => ({ threadId: THREAD_ID, content: current.command }) as never,
+    resume: async () => { resumes += 1; },
+    now: () => '2026-10-06T18:15:00.000Z',
+  });
+  const result = await reloaded.driveReviewRunWorker(transport, host, driveInput('review'));
+  assert.equal(result.state, 'reported');
+  if (result.state === 'reported') assert.equal(result.execution?.taskId, taskId);
+  assert.equal(executes, 1);
+  assert.equal(resumes, 1);
+  assert.deepEqual(reports.filter(status => status === 'failed'), []);
+});
