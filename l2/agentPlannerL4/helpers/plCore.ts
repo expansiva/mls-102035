@@ -33,6 +33,9 @@ import {
   type PoolTraceLine,
 } from '/_102035_/l2/solution/pool.js';
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
+import type { PlRevisionIdentity } from '/_102035_/l2/solution/poolPlan.js';
+// 2026-10-08: reexport until consumers import from poolPlan. Remove this block when they migrate.
+export type { PlRevisionIdentity };
 
 export const PL_FLOW_ID = 'agentPlannerL4' as const;
 export const PL_FLOW_VERSION = '2026-09-21-pl-flow-v5' as const;
@@ -76,15 +79,6 @@ export interface PlParsedInvocation {
   module: string;
   /** Resolved `l4/` folder when `/candidate` is present; otherwise `''`. */
   candidate: string;
-}
-
-/** Identity of a sealed revision, recorded on the L4 pipeline and both l4diff files. */
-export interface PlRevisionIdentity {
-  changeId: string;
-  revisionId: string;
-  baseId: string;
-  /** `sha256:` of `manifest.files` JSON with keys sorted. Same digest as `sha256Tobe`. */
-  manifestHash: string;
 }
 
 export interface PlEntryFacts {

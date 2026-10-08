@@ -9,6 +9,8 @@
  * - `pool/l1/web/needs.json`  — producer agentPlannerL2 needs30
  * - `pool/l2/web/backend.json` — producer agentPlannerL1 plan20
  * - `pool/l2/web/effort.json` — producer agentPlannerL2 effort40
+ * - `pool/l4/l4diff.json` — producer agentPlannerL4 plDiff
+ * - `pool/l4/changeEffort.json` — producer agentPlannerL4 (p4_34)
  */
 
 /** A plan file as read from disk, before the reader's own normalization: known keys, unknown values. */
@@ -340,4 +342,95 @@ export interface PoolEffortFile {
   testSupport: PoolTestSupportItem[];
   unattributed: PoolEffortUnattributed[];
   meta: { sourceMenu: string; sourceBackend: string; sourceVersion: string; generatedAt: string };
+}
+
+// ---------------------------------------------------------------- l4diff.json
+
+/** Identity of a sealed revision, recorded on the L4 pipeline and both l4diff files. */
+export interface PlRevisionIdentity {
+  changeId: string;
+  revisionId: string;
+  baseId: string;
+  /** `sha256:` of `manifest.files` JSON with keys sorted. Same digest as `sha256Tobe`. */
+  manifestHash: string;
+}
+
+export const L4_DIFF_SCHEMA = '2026-09-21-p4-l4diff-v1' as const;
+
+export const L4_DIFF_OPS = ['added', 'changed', 'removed'] as const;
+export type L4DiffOp = (typeof L4_DIFF_OPS)[number];
+
+export const L4_DIFF_KINDS = [
+  'entity', 'field', 'transition', 'rule', 'grant', 'process', 'task', 'inbound', 'outbound',
+] as const;
+export type L4DiffKind = (typeof L4_DIFF_KINDS)[number];
+
+export interface L4DiffItem {
+  changeId: string;
+  kind: L4DiffKind;
+  op: L4DiffOp;
+  entity: string;
+  source: string;
+  before?: unknown;
+  after?: unknown;
+}
+
+export interface L4Diff {
+  schemaVersion: typeof L4_DIFF_SCHEMA;
+  moduleName: string;
+  base: string;
+  candidate: string;
+  /** Null on a canonical run and on a manual root (`tobe/plan`). */
+  revision: PlRevisionIdentity | null;
+  items: L4DiffItem[];
+}
+
+// ---------------------------------------------------------------- changeEffort.json
+
+export const CHANGE_EFFORT_SCHEMA_VERSION = '2026-10-08-p4-change-effort-v1' as const;
+
+export interface EffortUnitRef {
+  kind: 'page' | 'route' | 'usecase' | 'entity' | 'request' | 'table' | 'shared' | 'contract';
+  id: string;
+  path: string;
+}
+
+export interface EffortAgentRef {
+  agent: string;
+  command: string;
+}
+
+export interface EffortMaster {
+  project: string;
+  kind: 'l2' | 'l1';
+  device: PoolDevice;
+}
+
+export interface EffortAnswer {
+  master: EffortMaster;
+  item: string;
+  status: 'computed' | 'abend';
+  regenerateDefs: EffortUnitRef[];
+  materialize: EffortUnitRef[];
+  runAgents: EffortAgentRef[];
+  abend?: { reason: string };
+}
+
+export interface ChangeEffortMerged {
+  regenerateDefs: EffortUnitRef[];
+  materialize: EffortUnitRef[];
+  runAgents: EffortAgentRef[];
+  abend: Array<{ item: string; master: EffortMaster; reason: string }>;
+}
+
+export interface ChangeEffortFile {
+  schemaVersion: typeof CHANGE_EFFORT_SCHEMA_VERSION;
+  module: string;
+  base: { baseId: string; revisionId: string; candidateRoot: string };
+  request: { text: string; items: L4DiffItem[] };
+  masters: EffortMaster[];
+  perItem: Array<{ item: string; answers: EffortAnswer[] }>;
+  merged: ChangeEffortMerged;
+  untouched: { count: number; sealHash: string };
+  status: 'simple' | 'blocked';
 }

@@ -32,36 +32,27 @@ import {
 } from '/_102035_/l2/solution/types.js';
 import { ns5OntologyEntityIds, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleEntries } from '/_102035_/l2/solution/rulesView.js';
+import {
+  L4_DIFF_SCHEMA,
+  L4_DIFF_OPS,
+  L4_DIFF_KINDS,
+  type L4DiffOp,
+  type L4DiffKind,
+  type L4DiffItem,
+  type L4Diff,
+} from '/_102035_/l2/solution/poolPlan.js';
+// 2026-10-08: reexport until consumers import from poolPlan. Remove this block when they migrate.
+export {
+  L4_DIFF_SCHEMA,
+  L4_DIFF_OPS,
+  L4_DIFF_KINDS,
+  type L4DiffOp,
+  type L4DiffKind,
+  type L4DiffItem,
+  type L4Diff,
+};
 
-export const L4_DIFF_SCHEMA = '2026-09-21-p4-l4diff-v1' as const;
 
-export const L4_DIFF_OPS = ['added', 'changed', 'removed'] as const;
-export type L4DiffOp = (typeof L4_DIFF_OPS)[number];
-
-export const L4_DIFF_KINDS = [
-  'entity', 'field', 'transition', 'rule', 'grant', 'process', 'task', 'inbound', 'outbound',
-] as const;
-export type L4DiffKind = (typeof L4_DIFF_KINDS)[number];
-
-export interface L4DiffItem {
-  changeId: string;
-  kind: L4DiffKind;
-  op: L4DiffOp;
-  entity: string;
-  source: string;
-  before?: unknown;
-  after?: unknown;
-}
-
-export interface L4Diff {
-  schemaVersion: typeof L4_DIFF_SCHEMA;
-  moduleName: string;
-  base: string;
-  candidate: string;
-  /** Null on a canonical run and on a manual root (`tobe/plan`). */
-  revision: PlRevisionIdentity | null;
-  items: L4DiffItem[];
-}
 
 interface FieldSlice {
   fieldId: string;
