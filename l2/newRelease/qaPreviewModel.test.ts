@@ -55,7 +55,7 @@ test('fixtures map to deterministic states without mutation capabilities', () =>
 
 test('automatic matrix is non-empty and covers all required dimensions', () => {
   const scenarios = newReleaseQaScenarios();
-  assert.equal(scenarios.length, 240);
+  assert.equal(scenarios.length, 228);
   assert.deepEqual(new Set(scenarios.map(item => item.width)), new Set([390, 800, 1280]));
   assert.deepEqual(new Set(scenarios.map(item => item.tab)), new Set(['general', 'review']));
   assert.deepEqual(new Set(scenarios.map(item => item.language)), new Set(['pt-BR', 'en-US']));
@@ -131,7 +131,7 @@ test('ready is emitted only after component, translation, theme and data resolve
   assert.equal(canAnnounceQaReady({ component: true, translation: true, theme: true, data: true }), true);
 });
 
-test('mr_12: all seven implementation states are included in every review presentation', () => {
+test('mr_12: all six implementation states are included in every review presentation', () => {
   for (const fixture of QA_IMPLEMENTATION_FIXTURES) {
     assert.equal(isQaImplementationFixture(fixture), true);
     assert.equal(parseNewReleaseQaParams(`fixture=${fixture}&tab=review`).ok, true);
@@ -143,17 +143,16 @@ test('mr_12: all seven implementation states are included in every review presen
   assert.equal(isQaImplementationFixture('ready'), false);
 });
 
-test('mr_12: rehearsal JSON renders waiting, both running phases, retry limit, artifacts and stale response', () => {
+test('mr_12: rehearsal JSON renders the accepted phase, retry limit and stale response', () => {
   const records = JSON.parse(readFileSync(new URL('./fixtures/implementation.json', import.meta.url), 'utf8')) as Record<string, L4ImplementationRecord>;
   const view = (name: string) => implementationProgress(records[`implementation-${name}`], 'qa-implementation-change');
-  assert.deepEqual(view('waiting').map(phase => phase.status), ['aguardando', 'aguardando']);
-  assert.deepEqual(view('l2').map(phase => phase.status), ['executando', 'aguardando']);
-  assert.deepEqual(view('l1').map(phase => phase.status), ['concluido', 'executando']);
+  assert.deepEqual(view('waiting').map(phase => phase.status), ['aguardando']);
+  assert.deepEqual(view('running').map(phase => phase.status), ['executando']);
   assert.equal(view('retry')[0].podeTentarDeNovo, true);
   assert.equal(view('failed')[0].podeTentarDeNovo, false);
   assert.equal(view('failed')[0].attempt, 2);
   assert.equal(view('failed')[0].previousAttempts?.length, 1);
-  assert.deepEqual(view('success').map(phase => phase.status), ['concluido', 'concluido']);
-  assert.ok(view('success').every(phase => phase.changedDefs?.length));
-  assert.deepEqual(view('stale').map(phase => phase.status), ['aguardando', 'aguardando']);
+  assert.deepEqual(view('success').map(phase => phase.status), ['concluido']);
+  assert.deepEqual(view('success')[0].changedDefs, []);
+  assert.deepEqual(view('stale').map(phase => phase.status), []);
 });

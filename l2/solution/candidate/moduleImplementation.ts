@@ -3,14 +3,15 @@
 import { readJson, readSourceText, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { readActiveL4Change, withModuleWriter } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
+import type { ChangeEffortMerged, EffortAgentRef } from '/_102035_/l2/solution/poolPlan.js';
 
 export const L4_IMPLEMENTATION_SCHEMA = '2026-10-08-nr-module-implementation-v1' as const;
 
 export interface L4ImplementationPhase {
-  name: 'defsL2' | 'defsL1';
+  name: string;
   attempt: 1 | 2;
   previousAttempts?: Omit<L4ImplementationPhase, 'previousAttempts'>[];
-  changedDefs?: { path: string; status: 'changed' | 'added' | 'removed' }[];
+  changedDefs?: { path: string; status: 'changed' | 'added' | 'removed'; level: 1 | 2 }[];
   agent: string;
   command: string;
   taskId: string;
@@ -22,11 +23,20 @@ export interface L4ImplementationPhase {
   error?: string;
 }
 
-export function implementationPhaseCommand(name: L4ImplementationPhase['name'], moduleName: string): { agent: string; command: string } {
-  if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(moduleName)) throw new Error('implementation.invalid_module');
-  if (name === 'defsL2') return { agent: 'agentDefsL2', command: `@@agentDefsL2 ${moduleName}` };
-  if (name === 'defsL1') return { agent: 'agentDefsL1', command: `@@agentDefsL1 ${moduleName} /run` };
-  throw new Error('implementation.invalid_phase');
+export function implementationPhaseCommand(ref: EffortAgentRef, project: number, moduleName: string): EffortAgentRef {
+  if (ref.agent !== 'agentAddLanguage' || !ref.command.startsWith('@@agentAddLanguage ')) throw new Error('implementation.invalid_command');
+  let args: unknown;
+  try { args = JSON.parse(ref.command.slice('@@agentAddLanguage '.length)); }
+  catch { throw new Error('implementation.invalid_command'); }
+  if (ref.command !== '@@agentAddLanguage ' + JSON.stringify(args)) throw new Error('implementation.invalid_command');
+  if (!Array.isArray(args) || args.length !== 1 || !args[0] || typeof args[0] !== 'object' || Array.isArray(args[0])) throw new Error('implementation.invalid_command');
+  const value = args[0] as Record<string, unknown>;
+  if (Object.keys(value).sort().join(',') !== 'languages,moduleName,projectId'
+    || value.projectId !== project || value.moduleName !== moduleName || !Array.isArray(value.languages)
+    || !value.languages.every(language => language && typeof language === 'object' && !Array.isArray(language)
+      && Object.keys(language).sort().join(',') === 'code,name'
+      && typeof language.code === 'string' && typeof language.name === 'string')) throw new Error('implementation.invalid_command');
+  return ref;
 }
 
 export interface L4ImplementationHashes {
@@ -40,6 +50,7 @@ export interface L4ImplementationRecord {
   acceptedBy: string;
   acceptedAt: string;
   hashes: L4ImplementationHashes;
+  merged: ChangeEffortMerged;
   phases: L4ImplementationPhase[];
 }
 
@@ -60,11 +71,15 @@ export async function withL4ImplementationWriter<T>(project: number, moduleName:
     const record = await readL4Implementation(project, moduleName);
     if (!record) throw new Error('implementation.not_accepted');
     return work(record, async phase => {
-      const expected = implementationPhaseCommand(phase.name, moduleName);
+      const index = Number(phase.name.slice('runAgents:'.length));
+      if (!phase.name.startsWith('runAgents:') || !Number.isSafeInteger(index) || index < 0 || `runAgents:${index}` !== phase.name) throw new Error('implementation.invalid_phase');
+      const ref = record.merged.runAgents[index];
+      if (!ref || record.merged.materialize.length) throw new Error('implementation.invalid_phase');
+      const expected = implementationPhaseCommand(ref, project, moduleName);
       if (phase.agent !== expected.agent || phase.command !== expected.command) throw new Error('implementation.invalid_command');
-      const index = record.phases.findIndex(item => item.name === phase.name);
-      if (index < 0) record.phases.push({ ...phase });
-      else record.phases[index] = { ...phase };
+      const phaseIndex = record.phases.findIndex(item => item.name === phase.name);
+      if (phaseIndex < 0) record.phases.push({ ...phase });
+      else record.phases[phaseIndex] = { ...phase };
       await writeJson(implementationInfo(project, moduleName, record.changeId), record);
     });
   });
@@ -125,6 +140,7 @@ export async function acceptL4Implementation(
       acceptedBy: input.acceptedBy,
       acceptedAt: new Date().toISOString(),
       hashes: { changeEffort: hash },
+      merged: checked.file.merged,
       phases: [],
     };
     await writeJson(info, record);

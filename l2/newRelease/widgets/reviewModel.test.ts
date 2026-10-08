@@ -34,52 +34,55 @@ const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', impo
 const changeEffort = JSON.parse(readFileSync(new URL('../../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
 
 function progressRecord(phases: L4ImplementationPhase[] = []): L4ImplementationRecord {
+  const merged = structuredClone(changeEffort.merged);
+  merged.materialize = [];
+  merged.runAgents = [0, 1].map(index => ({ agent: 'agentAddLanguage', command: `@@agentAddLanguage ${index}` }));
   return {
     schemaVersion: L4_IMPLEMENTATION_SCHEMA, changeId: 'change-one', revisionId: 'revision-one',
     acceptedBy: 'user', acceptedAt: '2026-10-08T00:00:00Z',
-    hashes: { changeEffort: 'effort' }, phases,
+    hashes: { changeEffort: 'effort' }, merged, phases,
   };
 }
 
 function progressPhase(patch: Partial<L4ImplementationPhase> = {}): L4ImplementationPhase {
   return {
-    name: 'defsL2', attempt: 1, agent: 'agentDefsL2', command: '@@agentDefsL2 agendaClinica',
+    name: 'runAgents:0', attempt: 1, agent: 'agentAddLanguage', command: '@@agentAddLanguage []',
     taskId: 'task', threadId: 'thread', messageId: 'message', status: 'running',
     startedAt: '2026-10-08T00:00:00Z', previousAttempts: [], ...patch,
   };
 }
 
-test('mr_12: absent phases await in defsL2, defsL1 order', () => {
-  const expected = ['defsL2', 'defsL1'].map(name => ({ name, status: 'aguardando', podeTentarDeNovo: false }));
-  assert.deepEqual(implementationProgress(null, 'change-one'), expected);
+test('mr_12: absent phases follow accepted runAgents order', () => {
+  const expected = ['runAgents:0', 'runAgents:1'].map(name => ({ name, status: 'aguardando', podeTentarDeNovo: false }));
+  assert.deepEqual(implementationProgress(null, 'change-one'), []);
   assert.deepEqual(implementationProgress(progressRecord(), 'change-one'), expected);
 });
 
 test('mr_12: running phase exposes its attempt and never offers retry', () => {
-  const result = implementationProgress(progressRecord([progressPhase({ name: 'defsL1', attempt: 2 })]), 'change-one');
+  const result = implementationProgress(progressRecord([progressPhase({ name: 'runAgents:1', attempt: 2 })]), 'change-one');
   assert.equal(result[0].status, 'aguardando');
-  assert.deepEqual(result[1], { name: 'defsL1', status: 'executando', attempt: 2, podeTentarDeNovo: false });
+  assert.deepEqual(result[1], { name: 'runAgents:1', status: 'executando', attempt: 2, podeTentarDeNovo: false });
 });
 
-test('mr_12: completed phases preserve changedDefs and fixed order without commits', () => {
+test('mr_12: completed phases preserve changedDefs and accepted order without commits', () => {
   const changedDefs: NonNullable<L4ImplementationPhase['changedDefs']> = [
-    { path: 'l2/agenda.defs.ts', status: 'changed' },
-    { path: 'l2/new.defs.ts', status: 'added' },
-    { path: 'l2/old.defs.ts', status: 'removed' },
+    { path: 'l2/agenda.defs.ts', status: 'changed', level: 2 },
+    { path: 'l2/new.defs.ts', status: 'added', level: 2 },
+    { path: 'l2/old.defs.ts', status: 'removed', level: 2 },
   ];
   const result = implementationProgress(progressRecord([
-    progressPhase({ name: 'defsL1', status: 'done', changedDefs: [] }),
+    progressPhase({ name: 'runAgents:1', status: 'done', changedDefs: [] }),
     { ...progressPhase({ status: 'done', changedDefs }), commits: ['unexpected'] } as L4ImplementationPhase,
   ]), 'change-one');
-  assert.deepEqual(result[0], { name: 'defsL2', status: 'concluido', attempt: 1, changedDefs, podeTentarDeNovo: false });
-  assert.equal(result[1].name, 'defsL1');
+  assert.deepEqual(result[0], { name: 'runAgents:0', status: 'concluido', attempt: 1, changedDefs, podeTentarDeNovo: false });
+  assert.equal(result[1].name, 'runAgents:1');
   assert.equal(result[1].status, 'concluido');
 });
 
 test('mr_12: any first failure offers retry with error and previous attempts', () => {
   const failed = progressPhase({ status: 'failed', error: 'Invalid defs' });
   assert.deepEqual(implementationProgress(progressRecord([failed]), 'change-one')[0], {
-    name: 'defsL2', status: 'falhou', attempt: 1, error: failed.error, previousAttempts: [], podeTentarDeNovo: true,
+    name: 'runAgents:0', status: 'falhou', attempt: 1, error: failed.error, previousAttempts: [], podeTentarDeNovo: true,
   });
 });
 
@@ -87,7 +90,7 @@ test('mr_12: second failure preserves history without retry', () => {
   const previous = progressPhase({ status: 'failed', error: 'First failure' });
   const failed = progressPhase({ status: 'failed', attempt: 2, error: 'Second failure', previousAttempts: [previous] });
   assert.deepEqual(implementationProgress(progressRecord([failed]), 'change-one')[0], {
-    name: 'defsL2', status: 'falhou', attempt: 2, error: failed.error, previousAttempts: [previous], podeTentarDeNovo: false,
+    name: 'runAgents:0', status: 'falhou', attempt: 2, error: failed.error, previousAttempts: [previous], podeTentarDeNovo: false,
   });
 });
 

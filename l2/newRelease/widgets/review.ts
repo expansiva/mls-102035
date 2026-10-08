@@ -667,10 +667,11 @@ export class NewReleaseReview102035 extends StateLitElement {
   private implementationPending(): boolean {
     const record = this.implementation;
     return !!record && record.changeId === this.data?.changeId && this.version === 'tobe' && !record.phases.some(phase => phase.status === 'failed')
-      && !(['defsL2', 'defsL1'] as const).every(name => record.phases.some(phase => phase.name === name && phase.status === 'done'));
+      && !record.merged.materialize.length
+      && record.merged.runAgents.some((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
   }
 
-  private async advanceImplementation(token = this.loadToken, retry?: 'defsL2' | 'defsL1'): Promise<void> {
+  private async advanceImplementation(token = this.loadToken, retry?: string): Promise<void> {
     if (this.implementationFlight) await this.implementationFlight;
     if (!this.implementationContextCurrent(token) || this.implementationFlight) return;
     const flight = this.runImplementation(token, retry);
@@ -680,7 +681,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
   }
 
-  private async runImplementation(token: number, retry?: 'defsL2' | 'defsL1'): Promise<void> {
+  private async runImplementation(token: number, retry?: string): Promise<void> {
     if (!this.implementationContextCurrent(token) || this.implementationBusy) return;
     if (retry) {
       const phase = this.implementation?.phases.find(phase => phase.name === retry);
@@ -718,7 +719,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private implementationComplete(): boolean {
-    return this.hasImplementation() && implementationProgress(this.implementation, this.data?.changeId ?? null)
+    return this.hasImplementation() && !this.implementation!.merged.materialize.length && implementationProgress(this.implementation, this.data?.changeId ?? null)
       .every(phase => phase.status === 'concluido');
   }
 

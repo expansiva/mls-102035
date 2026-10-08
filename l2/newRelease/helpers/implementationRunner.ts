@@ -51,8 +51,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
       const change = await readActiveL4Change(project, moduleName);
       if (!change) throw new Error('implementation.not_accepted');
       changedDefs = (await diffModuleLayers(project, moduleName, change.baseId))
-        .filter(file => file.level === (phase.name === 'defsL2' ? 2 : 1))
-        .map(({ path, status }) => ({ path, status }));
+        .map(({ path, status, level }) => ({ path, status, level }));
     }
     return { ...phase, ...(changedDefs ? { changedDefs } : {}), taskId: id, messageId: value.messageid_created || phase.messageId, status,
       ...(status === 'running' ? {} : { endedAt: now() }),
@@ -60,13 +59,12 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
     };
   }
 
-  async function dispatch(project: number, moduleName: string, name: L4ImplementationPhase['name'],
+  async function dispatch(project: number, moduleName: string, name: L4ImplementationPhase['name'], command: { agent: string; command: string },
     attempt: 1 | 2, save: (phase: L4ImplementationPhase) => Promise<void>,
     previousAttempts?: L4ImplementationPhase['previousAttempts']) {
     const user = userId();
     if (!user) throw new Error('implementation.user_unavailable');
     const resolved = await thread();
-    const command = implementationPhaseCommand(name, moduleName);
     const ctx = context(resolved.threadId, user, command.command);
     const phase: L4ImplementationPhase = { name, ...command, attempt, ...(previousAttempts ? { previousAttempts } : {}), taskId: '', threadId: resolved.threadId,
       messageId: `${ctx.message.threadId}/${ctx.message.orderAt || ctx.message.createAt}`, status: 'running', startedAt: now() };
@@ -84,8 +82,12 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
   return {
     async runNext(project: number, moduleName: string) {
       return withL4ImplementationWriter(project, moduleName, async (record, save) => {
-        const name = (['defsL2', 'defsL1'] as const).find(name => !record.phases.some(phase => phase.name === name && phase.status === 'done'));
-        if (!name) return record;
+        for (const ref of record.merged.runAgents) implementationPhaseCommand(ref, project, moduleName);
+        if (record.merged.materialize.length) return record;
+        const index = record.merged.runAgents.findIndex((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
+        if (index < 0) return record;
+        const name = `runAgents:${index}`;
+        const command = implementationPhaseCommand(record.merged.runAgents[index], project, moduleName);
         let phase = record.phases.find(phase => phase.name === name);
         if (phase?.status === 'failed') return record;
         const user = userId();
@@ -99,16 +101,21 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
           await save(await observed(project, moduleName, phase, await task(user, phase.taskId, phase.messageId)));
           return record;
         }
-        await dispatch(project, moduleName, name, 1, save);
+        await dispatch(project, moduleName, name, command, 1, save);
         return record;
       });
     },
     async retryPhase(project: number, moduleName: string, name: L4ImplementationPhase['name']) {
       return withL4ImplementationWriter(project, moduleName, async (record, save) => {
+        if (record.merged.materialize.length) throw new Error('implementation.retry_not_allowed');
+        const index = Number(name.slice('runAgents:'.length));
+        const ref = record.merged.runAgents[index];
+        if (!name.startsWith('runAgents:') || !Number.isSafeInteger(index) || `runAgents:${index}` !== name || !ref) throw new Error('implementation.retry_not_allowed');
+        const command = implementationPhaseCommand(ref, project, moduleName);
         const phase = record.phases.find(item => item.name === name);
         if (!phase || phase.status !== 'failed' || phase.attempt !== 1) throw new Error('implementation.retry_not_allowed');
         const { previousAttempts, ...previous } = phase;
-        await dispatch(project, moduleName, name, 2, save, [...(previousAttempts ?? []), previous]);
+        await dispatch(project, moduleName, name, command, 2, save, [...(previousAttempts ?? []), previous]);
         return record;
       });
     },

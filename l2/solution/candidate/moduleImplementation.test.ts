@@ -54,7 +54,7 @@ test('mr_10 s1 accepts the current result and persists the change record', async
   try {
     fixture.activate();
     const record = await acceptL4Implementation(project, moduleName, input);
-    assert.deepEqual(record, { schemaVersion: L4_IMPLEMENTATION_SCHEMA, changeId: 'change1', ...input, acceptedAt: record.acceptedAt, phases: [] });
+    assert.deepEqual(record, { schemaVersion: L4_IMPLEMENTATION_SCHEMA, changeId: 'change1', ...input, acceptedAt: record.acceptedAt, merged: golden.merged, phases: [] });
     assert.ok(Number.isFinite(Date.parse(record.acceptedAt)));
     assert.deepEqual(await readL4Implementation(project, moduleName), record);
     assert.ok(fixture.contents.has(`${project}:4:fixture/pipeline/changes/change1:implementation.json`));

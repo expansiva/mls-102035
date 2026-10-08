@@ -165,8 +165,10 @@ export function implementationProgress(
   record: L4ImplementationRecord | null,
   currentChangeId: string | null,
 ): ImplementationProgressPhase[] {
-  const phases = currentChangeId && record?.changeId === currentChangeId ? record.phases : [];
-  return (['defsL2', 'defsL1'] as const).map(name => {
+  const current = currentChangeId && record?.changeId === currentChangeId ? record : null;
+  const phases = current?.phases ?? [];
+  return (current?.merged.runAgents ?? []).map((_, index) => {
+    const name = `runAgents:${index}`;
     const phase = phases.find(item => item.name === name);
     if (!phase) return { name, status: 'aguardando', podeTentarDeNovo: false };
     return {

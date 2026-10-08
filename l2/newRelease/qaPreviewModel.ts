@@ -7,7 +7,7 @@ import { mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/g
 
 export const QA_TABS = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration', 'review'] as const;
 export const QA_IMPLEMENTATION_FIXTURES = [
-  'implementation-waiting', 'implementation-l2', 'implementation-l1', 'implementation-retry',
+  'implementation-waiting', 'implementation-running', 'implementation-retry',
   'implementation-failed', 'implementation-success', 'implementation-stale',
 ] as const;
 export type QaImplementationFixture = typeof QA_IMPLEMENTATION_FIXTURES[number];

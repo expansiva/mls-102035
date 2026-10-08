@@ -32,7 +32,7 @@ type QaReviewElement = NewReleaseElement & {
   actionPresentation(view: unknown, current: boolean): { disabled: boolean };
   implementationRunner: {
     runNext(project: number, moduleName: string): Promise<L4ImplementationRecord>;
-    retryPhase(project: number, moduleName: string, phase: 'defsL2' | 'defsL1'): Promise<L4ImplementationRecord>;
+    retryPhase(project: number, moduleName: string, phase: string): Promise<L4ImplementationRecord>;
   };
   implementationDiff: ModuleLayerDiff[] | null;
   loadImplementationDiff(): Promise<void>;
@@ -156,9 +156,6 @@ async function installImplementationFixture(
   const changeId = element.data.changeId;
   if (fixture !== 'implementation-stale') record.changeId = changeId;
   record.revisionId = element.data.revisionId!;
-  for (const phase of record.phases) {
-    phase.command = phase.name === 'defsL2' ? `@@agentDefsL2 ${config.moduleName}` : `@@agentDefsL1 ${config.moduleName} /run`;
-  }
   const cleanup = [
     fixtureFile(config.project, config.moduleName, JSON.stringify({ changeId }), 'pipeline/changes/active'),
     fixtureFile(config.project, config.moduleName, JSON.stringify({
@@ -175,7 +172,7 @@ async function installImplementationFixture(
   };
   review.loadImplementationDiff = async () => {
     review.implementationDiff = record.phases.flatMap(phase =>
-      (phase.changedDefs ?? []).map(file => ({ ...file, level: phase.name === 'defsL2' ? 2 as const : 1 as const })));
+      (phase.changedDefs ?? []).map(file => ({ ...file })));
     review.requestUpdate();
   };
   review.project = config.project;
@@ -299,7 +296,7 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
       const panels = [...review.querySelectorAll('.nr-review__implementation')];
       return panels.length === 2 && panels.every(panel => {
         const phases = panel.querySelectorAll(':scope > ol > li');
-        return phases.length === 2 && expected.every((phase, index) => phases[index].classList.contains(`is-${phase.status}`));
+        return phases.length === expected.length && expected.every((phase, index) => phases[index].classList.contains(`is-${phase.status}`));
       });
     }, 'qa.implementationStateMismatch');
     if (review.querySelector('.nr-review__primary-action')) throw new Error('qa.implementationCtaVisible');

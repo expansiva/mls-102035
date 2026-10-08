@@ -3,7 +3,7 @@
 import * as plannerL4 from '/_102035_/l2/agentPlannerL4/agentPlannerL4.js';
 import * as plannerL2 from '/_102020_/l2/agentPlannerL2/agentPlannerL2.js';
 import * as plannerL1 from '/_102021_/l2/agentPlannerL1/agentPlannerL1.js';
-import { writeJson, writeSourceText } from '../solution/fs.js';
+import { writeJson } from '../solution/fs.js';
 import { implementationPhaseCommand } from '../solution/candidate/moduleImplementation.js';
 import type { ImplementationRunnerDependencies } from '../newRelease/helpers/implementationRunner.js';
 import type { TaskData } from '/_102036_/l2/shared/interfaces.js';
@@ -25,39 +25,32 @@ export const FIXTURE = new URL('../newRelease/fixtures/ensaio/controleEstoque/',
 export const PROJECT = 102047;
 export const MODULE = 'controleEstoque';
 
-/** Defs agents exist only in this rehearsal; tasks survive runner recreation. */
-export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' | { defsL2: 'done' | 'failed' | 'running'; defsL1: 'done' | 'failed' | 'running' } = 'done') {
+/** Simulated language agent; tasks survive runner recreation. */
+export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' = 'done') {
   const dispatched: string[] = [];
   const tasks = new Map<string, TaskData>();
   const pending = new Map<string, () => Promise<void>>();
-  const agents = new Map((['defsL2', 'defsL1'] as const).map(name => {
-    const expected = implementationPhaseCommand(name, MODULE);
-    return [expected.agent, { command: expected.command, write: () => writeSourceText({
-      project: PROJECT, level: name === 'defsL2' ? 2 : 1,
-      folder: name === 'defsL2' ? `${MODULE}/web` : MODULE,
-      shortName: 'ensaio', extension: '.defs.ts',
-    }, 'export const quantidadeMinima = 1;\n') }];
-  }));
+  const command = '@@agentAddLanguage ' + JSON.stringify([{
+    languages: [{ code: 'pt-BR', name: 'pt-BR' }], projectId: PROJECT, moduleName: MODULE,
+  }]);
+  const expected = implementationPhaseCommand({ agent: 'agentAddLanguage', command }, PROJECT, MODULE);
   let sequence = 0;
   const dependencies: ImplementationRunnerDependencies = {
     userId: () => 'ensaio', thread: async () => ({ threadId: 'thread-defs-ensaio' }),
     context: (threadId, senderId, content) => ({ isTest: true, task: undefined,
       message: { threadId, senderId, content, createAt: `message-${++sequence}`, orderAt: '' } }),
     execute: async (name, context) => {
-      const agent = agents.get(name);
-      assert.ok(agent, `Unknown simulated agent ${name}`);
-      assert.equal(context.message.content, agent.command);
+      assert.equal(name, expected.agent);
+      assert.equal(context.message.content, expected.command);
       dispatched.push(context.message.content);
       const id = `defs-${dispatched.length}`;
-      const status = typeof outcome === 'string' ? (name === 'agentDefsL2' ? outcome : 'done')
-        : outcome[name === 'agentDefsL2' ? 'defsL2' : 'defsL1'];
+      const status = outcome;
       const task: TaskData = { PK: `task/#${id}`, SK: 'metadata', title: name, owner: 'ensaio', team: null,
         status: status === 'running' ? 'in progress' : status, last_updated: 0,
-        last_update_log: status === 'failed' ? 'Simulated L2 failure' : null,
+        last_update_log: status === 'failed' ? 'Simulated language failure' : null,
         messageid_created: `${context.message.threadId}/${context.message.createAt}` };
       tasks.set(id, task);
-      if (status === 'done') await agent.write();
-      if (status === 'running') pending.set(id, agent.write);
+      if (status === 'running') pending.set(id, async () => {});
       context.task = task;
     },
     task: async (_user, id, messageId) => {
@@ -68,7 +61,7 @@ export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' |
     },
     message: async () => null,
   };
-  return { dependencies, dispatched, async complete(id: string) {
+  return { dependencies, dispatched, command, async complete(id: string) {
     const write = pending.get(id);
     assert.ok(write, `No pending simulated task ${id}`);
     await write();
