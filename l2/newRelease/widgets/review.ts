@@ -18,6 +18,7 @@ import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { sealModuleLayers, restoreModuleFromSeals } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { createImplementationRunner } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import {
   claimInputForRun,
@@ -62,6 +63,7 @@ import { MENU_ACTIONS } from '/_102035_/l2/solution/poolPlan.js';
 import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView, type BackendTestSupportOwnerGroup } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
 import type { PoolTestSupportItem } from '/_102035_/l2/solution/poolPlan.js';
 
+const POLL_INTERVAL_MS = 1500;
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
 const EMPTY_ARTIFACT: ReviewArtifactRead = { status: 'missing', path: '' };
 
@@ -89,6 +91,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
 
+  @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
   @state() private implementationHashes: L4ImplementationHashes = { menu: '', backend: '', effort: '' };
 
@@ -98,11 +101,15 @@ export class NewReleaseReview102035 extends StateLitElement {
   private readonly workerTransport = createReviewWorkerTransport();
   private readonly workerHost = createReviewStudioHost();
   private workerTimer?: number;
+  private implementationTimer?: number;
+  private readonly implementationRunner = createImplementationRunner();
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
 
   createRenderRoot() { return this; }
 
   disconnectedCallback() {
+    ++this.loadToken;
+    this.stopImplementationTimer();
     if (this.workerTimer) window.clearTimeout(this.workerTimer);
     super.disconnectedCallback();
   }
@@ -151,6 +158,8 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private async load() {
     const token = ++this.loadToken;
+    this.stopImplementationTimer();
+    this.implementationBusy = false;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version, data: this.data };
     this.loadedFor = null;
     this.implementation = null;
@@ -194,8 +203,11 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.reviewRunLoadError = persistedRun.errorCode;
     await this.loadChannelRun(context, token);
     if (token !== this.loadToken) return;
+    if (!this.isConnected || context.project !== this.project || context.moduleName !== this.moduleName
+      || context.version !== this.version || context.data !== this.data) return;
     this.loadedFor = context;
     this.loading = false;
+    if (this.implementationPending()) void this.advanceImplementation(token);
   }
 
   private selectActor(actor: string) {
@@ -430,7 +442,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         if (token !== this.loadToken) return;
         this.actionError = this.reviewRunErrorKey(error instanceof Error ? error.message : String(error));
       });
-    }, 1500);
+    }, POLL_INTERVAL_MS);
   }
 
   private async readCanonicalSnapshotHash(run: PlatformReviewRun): Promise<`sha256:${string}`> {
@@ -573,6 +585,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     const baseId = data?.sealedRevision?.manifest.baseId;
     if (this.actionBusy || !this.canImplement() || !data?.changeId || !data.revisionId || !baseId || !acceptedBy) return;
     const { project, moduleName } = this;
+    const token = this.loadToken;
+    const current = () => this.implementationContextCurrent(token);
     const { changeId, revisionId } = data;
     const hashes = { ...this.implementationHashes };
     this.actionBusy = true;
@@ -581,6 +595,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       button.disabled = true;
       button.setAttribute('aria-disabled', 'true');
     });
+    let accepted = false;
     let phase: 'seal' | 'promote' | 'accept' | 'restore' = 'seal';
     try {
       await sealModuleLayers(project, moduleName, baseId);
@@ -588,7 +603,8 @@ export class NewReleaseReview102035 extends StateLitElement {
       await promoteL4Revision(project, moduleName, changeId, revisionId);
       phase = 'accept';
       const implementation = await acceptL4Implementation(project, moduleName, { revisionId, acceptedBy, hashes });
-      if (this.project === project && this.moduleName === moduleName && this.data === data) this.implementation = implementation;
+      accepted = true;
+      if (current()) this.implementation = implementation;
     } catch (error) {
       if (phase === 'accept') {
         try {
@@ -597,13 +613,80 @@ export class NewReleaseReview102035 extends StateLitElement {
           phase = 'restore';
         }
       }
-      if (this.project === project && this.moduleName === moduleName && this.data === data) {
+      if (current()) {
         this.actionError = phase === 'accept' && error instanceof Error && error.message === 'l4.implementation_conflict'
           ? 'review.implementation.error.conflict' : `review.implementation.error.${phase}`;
       }
     } finally {
-      this.actionBusy = false;
+      if (current()) this.actionBusy = false;
     }
+    // Execution failures must never roll back a successfully accepted revision.
+    if (accepted && current()) await this.advanceImplementation(token);
+  }
+
+  private stopImplementationTimer(): void {
+    if (this.implementationTimer !== undefined) window.clearTimeout(this.implementationTimer);
+    this.implementationTimer = undefined;
+  }
+
+  private implementationContextCurrent(token: number): boolean {
+    return this.isConnected && token === this.loadToken && this.isCurrentLoad() && this.version === 'tobe';
+  }
+
+  private implementationPending(): boolean {
+    const record = this.implementation;
+    return !!record && this.version === 'tobe' && !record.phases.some(phase => phase.status === 'failed')
+      && !(['defsL2', 'defsL1'] as const).every(name => record.phases.some(phase => phase.name === name && phase.status === 'done'));
+  }
+
+  private async advanceImplementation(token = this.loadToken, retry?: 'defsL2' | 'defsL1'): Promise<void> {
+    if (!this.implementationContextCurrent(token) || this.implementationBusy) return;
+    if (retry) {
+      const phase = this.implementation?.phases.find(phase => phase.name === retry);
+      if (phase?.status !== 'failed' || phase.attempt >= 2) return;
+    } else if (!this.implementationPending()) return;
+    this.stopImplementationTimer();
+    const { project, moduleName } = this;
+    this.implementationBusy = true;
+    this.actionError = '';
+    try {
+      const record = retry
+        ? await this.implementationRunner.retryPhase(project, moduleName, retry)
+        : await this.implementationRunner.runNext(project, moduleName);
+      if (!this.implementationContextCurrent(token)) return;
+      this.implementation = record;
+      // A synchronous completion can leave the next phase absent, with none running.
+      if (this.implementationPending()) {
+        this.implementationTimer = window.setTimeout(() => {
+          this.implementationTimer = undefined;
+          if (this.implementationContextCurrent(token)) void this.advanceImplementation(token);
+        }, POLL_INTERVAL_MS);
+      }
+    } catch {
+      if (this.implementationContextCurrent(token)) this.actionError = 'review.implementation.error.run';
+    } finally {
+      if (this.implementationContextCurrent(token)) this.implementationBusy = false;
+    }
+  }
+
+  private renderImplementation() {
+    if (!this.implementation || this.version !== 'tobe' || !this.isCurrentLoad()) return nothing;
+    return html`
+      <section class="nr-review__run" aria-live="polite">
+        <h3>${this.t('review.implementation.progress')}</h3>
+        ${this.implementation.phases.map(phase => html`
+          <div>
+            <strong>${this.t(`review.implementation.phase.${phase.name}`)}</strong>
+            <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
+            ${phase.error ? html`<p role="alert">${phase.error}</p>` : nothing}
+            ${phase.status === 'failed' && phase.attempt < 2 ? html`
+              <button type="button" ?disabled=${this.implementationBusy}
+                @click=${() => void this.advanceImplementation(this.loadToken, phase.name)}>${this.t('review.implementation.retry')}</button>
+            ` : nothing}
+          </div>
+        `)}
+      </section>
+    `;
   }
 
   private retryStartInput(run: PlatformReviewRun, userId: string): ReviewRunStartInput {
@@ -960,6 +1043,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         </header>
         ${this.renderPrimaryAction(topAction)}
         ${this.renderReviewRun()}
+        ${this.renderImplementation()}
         ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
         ${this.renderPrimaryAction(bottomAction)}
         ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}
