@@ -134,7 +134,7 @@ test('dois itens na mesma unidade: regenerateDefs vence materialize', () => {
     {
       item: item({ changeId: 'a', op: 'changed', kind: 'field' }),
       answers: [{
-        master: l2, item: 'a', status: 'computed',
+        master: l1, item: 'a', status: 'computed',
         regenerateDefs: [], materialize: [unit], runAgents: [],
       }],
     },
@@ -146,7 +146,7 @@ test('dois itens na mesma unidade: regenerateDefs vence materialize', () => {
       }],
     },
   ]);
-  assert.deepEqual(merged.merged.regenerateDefs, [unit]);
+  assert.deepEqual(merged.merged.regenerateDefs, [{ ...unit, project: l1.project }]);
   assert.deepEqual(merged.merged.materialize, []);
   assert.deepEqual(merged.merged.runAgents, [{ agent: 'x', command: 'run' }]);
   assert.equal(merged.status, 'simple');

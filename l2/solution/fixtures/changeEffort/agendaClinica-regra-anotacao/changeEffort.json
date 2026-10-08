@@ -32,7 +32,7 @@
           "status": "computed",
           "regenerateDefs": [],
           "materialize": [
-            { "kind": "page", "id": "agenda_diaria", "path": "pages/agenda_diaria" }
+            { "kind": "page", "id": "agenda_diaria", "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts" }
           ],
           "runAgents": []
         },
@@ -42,9 +42,9 @@
           "status": "computed",
           "regenerateDefs": [],
           "materialize": [
-            { "kind": "usecase", "id": "registrarAtendimento", "path": "usecases/registrarAtendimento" },
-            { "kind": "entity", "id": "consulta", "path": "entities/consulta" },
-            { "kind": "request", "id": "agenda_diaria", "path": "requests/agenda_diaria" }
+            { "kind": "usecase", "id": "registrarAtendimento", "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts" },
+            { "kind": "entity", "id": "consulta", "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts" },
+            { "kind": "request", "id": "agenda_diaria", "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts" }
           ],
           "runAgents": []
         }
@@ -54,10 +54,10 @@
   "merged": {
     "regenerateDefs": [],
     "materialize": [
-      { "kind": "entity", "id": "consulta", "path": "entities/consulta" },
-      { "kind": "page", "id": "agenda_diaria", "path": "pages/agenda_diaria" },
-      { "kind": "request", "id": "agenda_diaria", "path": "requests/agenda_diaria" },
-      { "kind": "usecase", "id": "registrarAtendimento", "path": "usecases/registrarAtendimento" }
+      { "project": "102020", "kind": "page", "id": "agenda_diaria", "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts" },
+      { "project": "102021", "kind": "entity", "id": "consulta", "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts" },
+      { "project": "102021", "kind": "request", "id": "agenda_diaria", "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts" },
+      { "project": "102021", "kind": "usecase", "id": "registrarAtendimento", "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts" }
     ],
     "runAgents": [],
     "abend": []

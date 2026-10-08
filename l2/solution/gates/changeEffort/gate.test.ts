@@ -58,15 +58,21 @@ test('aceita um changeEffort cujo merged é a união das respostas', () => {
   const result = validateChangeEffort(file());
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.deepEqual(result.file.merged.regenerateDefs, [page]);
-  assert.deepEqual(result.file.merged.materialize, [usecase]);
+  assert.deepEqual(result.file.merged.regenerateDefs, [{ ...page, project: '102021' }]);
+  assert.deepEqual(result.file.merged.materialize, [
+    { ...page, project: '102020' },
+    { ...usecase, project: '102021' },
+  ]);
   assert.deepEqual(result.file.merged.abend, []);
   assert.equal(result.file.status, 'simple');
 });
 
 test('rejeita merged divergente do recalculado', () => {
   const value = file();
-  value.merged = { ...value.merged, materialize: [page, usecase] };
+  value.merged = {
+    ...value.merged,
+    materialize: [{ ...page, project: '102020' }, { ...usecase, project: '102099' }],
+  };
   const result = validateChangeEffort(value);
   assert.equal(result.ok, false);
   if (result.ok) return;
@@ -91,6 +97,25 @@ test('rejeita status incoerente com merged.abend', () => {
   assert.deepEqual(result.issues, [{ code: 'status', path: 'status' }]);
 });
 
+test('dois masters l2 de projetos diferentes devolvendo a mesma página ficam duas unidades', () => {
+  const other: EffortMaster = { project: '102099', kind: 'l2', device: 'web' };
+  const perItem = [{
+    item: 'rule:anotacao',
+    answers: [
+      answer(l2, { status: 'computed', materialize: [page] }),
+      answer(other, { status: 'computed', materialize: [page] }),
+    ],
+  }];
+  const value = file({ masters: [l2, other], perItem });
+  const result = validateChangeEffort(value);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.file.merged.materialize, [
+    { ...page, project: '102020' },
+    { ...page, project: '102099' },
+  ]);
+});
+
 test('a fixture dourada agendaClinica regra anotação passa no gate', () => {
   const fixture = fileURLToPath(new URL(
     '../../fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json',
@@ -102,10 +127,10 @@ test('a fixture dourada agendaClinica regra anotação passa no gate', () => {
   assert.equal(result.file.status, 'simple');
   assert.deepEqual(result.file.merged.regenerateDefs, []);
   assert.deepEqual(result.file.merged.runAgents, []);
-  assert.deepEqual(result.file.merged.materialize.map((unit) => `${unit.kind}:${unit.id}`), [
-    'entity:consulta',
-    'page:agenda_diaria',
-    'request:agenda_diaria',
-    'usecase:registrarAtendimento',
+  assert.deepEqual(result.file.merged.materialize.map((unit) => `${unit.project}:${unit.kind}:${unit.id}`), [
+    '102020:page:agenda_diaria',
+    '102021:entity:consulta',
+    '102021:request:agenda_diaria',
+    '102021:usecase:registrarAtendimento',
   ]);
 });

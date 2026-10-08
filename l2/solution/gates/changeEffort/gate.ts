@@ -30,8 +30,10 @@ function masterKey(master: EffortMaster): string {
   return `${master.project}\0${master.kind}\0${master.device}`;
 }
 
-function unitKey(unit: EffortUnitRef): string {
-  return `${unit.kind}\0${unit.id}`;
+type MergedUnit = EffortUnitRef & { project: string };
+
+function mergedKey(unit: MergedUnit): string {
+  return `${unit.project}\0${unit.kind}\0${unit.id}`;
 }
 
 function push(issues: ChangeEffortIssue[], code: string, path: string) {
@@ -222,32 +224,58 @@ function sameMaster(a: EffortMaster, b: EffortMaster): boolean {
   return a.project === b.project && a.kind === b.kind && a.device === b.device;
 }
 
-function sameUnit(a: EffortUnitRef, b: EffortUnitRef): boolean {
-  return a.kind === b.kind && a.id === b.id && a.path === b.path;
+function sameMergedUnit(a: MergedUnit, b: MergedUnit): boolean {
+  return a.project === b.project && a.kind === b.kind && a.id === b.id && a.path === b.path;
 }
 
 function sameAgent(a: EffortAgentRef, b: EffortAgentRef): boolean {
   return a.agent === b.agent && a.command === b.command;
 }
 
-function sortUnits(units: EffortUnitRef[]): EffortUnitRef[] {
-  return [...units].sort((a, b) => unitKey(a).localeCompare(unitKey(b)) || a.path.localeCompare(b.path));
+function sortUnits(units: MergedUnit[]): MergedUnit[] {
+  return [...units].sort((a, b) => mergedKey(a).localeCompare(mergedKey(b)) || a.path.localeCompare(b.path));
+}
+
+function readMergedUnit(issues: ChangeEffortIssue[], value: unknown, path: string): MergedUnit | undefined {
+  const unit = readUnit(issues, value, path);
+  if (!isRecord(value)) return undefined;
+  const project = readString(issues, value.project, `${path}.project`);
+  if (!unit || project === undefined) return undefined;
+  return { project, kind: unit.kind, id: unit.id, path: unit.path };
+}
+
+function readMergedUnits(issues: ChangeEffortIssue[], value: unknown, path: string): MergedUnit[] | undefined {
+  if (!Array.isArray(value)) {
+    push(issues, 'schema', path);
+    return undefined;
+  }
+  const units: MergedUnit[] = [];
+  let ok = true;
+  for (let i = 0; i < value.length; i++) {
+    const unit = readMergedUnit(issues, value[i], `${path}[${i}]`);
+    if (!unit) ok = false;
+    else units.push(unit);
+  }
+  return ok ? units : undefined;
 }
 
 function sortAgents(agents: EffortAgentRef[]): EffortAgentRef[] {
   return [...agents].sort((a, b) => a.agent.localeCompare(b.agent) || a.command.localeCompare(b.command));
 }
 
-/** União por unidade: `regenerateDefs` vence `materialize`; abend entra por item e master. */
+/** União por `project + kind + id` (project do master da resposta): `regenerateDefs` vence `materialize`; abend entra por item e master. */
 export function mergeChangeEffort(perItem: Array<{ item: string; answers: EffortAnswer[] }>): ChangeEffortMerged {
-  const regen = new Map<string, EffortUnitRef>();
-  const material = new Map<string, EffortUnitRef>();
+  const regen = new Map<string, MergedUnit>();
+  const material = new Map<string, MergedUnit>();
   const agents = new Map<string, EffortAgentRef>();
   const abend: ChangeEffortMerged['abend'] = [];
 
   for (const row of perItem) {
     for (const answer of row.answers) {
-      for (const unit of answer.regenerateDefs) regen.set(unitKey(unit), unit);
+      for (const unit of answer.regenerateDefs) {
+        const merged = { project: answer.master.project, kind: unit.kind, id: unit.id, path: unit.path };
+        regen.set(mergedKey(merged), merged);
+      }
       for (const agent of answer.runAgents) agents.set(`${agent.agent}\0${agent.command}`, agent);
       if (answer.status === 'abend' && answer.abend) {
         abend.push({ item: row.item, master: answer.master, reason: answer.abend.reason });
@@ -257,8 +285,9 @@ export function mergeChangeEffort(perItem: Array<{ item: string; answers: Effort
   for (const row of perItem) {
     for (const answer of row.answers) {
       for (const unit of answer.materialize) {
-        const key = unitKey(unit);
-        if (!regen.has(key)) material.set(key, unit);
+        const merged = { project: answer.master.project, kind: unit.kind, id: unit.id, path: unit.path };
+        const key = mergedKey(merged);
+        if (!regen.has(key)) material.set(key, merged);
       }
     }
   }
@@ -277,8 +306,8 @@ export function mergeChangeEffort(perItem: Array<{ item: string; answers: Effort
 }
 
 function sameMerged(a: ChangeEffortMerged, b: ChangeEffortMerged): boolean {
-  const units = (left: EffortUnitRef[], right: EffortUnitRef[]) =>
-    left.length === right.length && left.every((unit, i) => sameUnit(unit, right[i]!));
+  const units = (left: MergedUnit[], right: MergedUnit[]) =>
+    left.length === right.length && left.every((unit, i) => sameMergedUnit(unit, right[i]!));
   const agents = (left: EffortAgentRef[], right: EffortAgentRef[]) =>
     left.length === right.length && left.every((agent, i) => sameAgent(agent, right[i]!));
   const abends = a.abend.length === b.abend.length && a.abend.every((row, i) => {
@@ -296,8 +325,8 @@ function readMerged(issues: ChangeEffortIssue[], value: unknown, path: string): 
     push(issues, 'schema', path);
     return undefined;
   }
-  const regenerateDefs = readUnits(issues, value.regenerateDefs, `${path}.regenerateDefs`);
-  const materialize = readUnits(issues, value.materialize, `${path}.materialize`);
+  const regenerateDefs = readMergedUnits(issues, value.regenerateDefs, `${path}.regenerateDefs`);
+  const materialize = readMergedUnits(issues, value.materialize, `${path}.materialize`);
   const runAgents = readAgents(issues, value.runAgents, `${path}.runAgents`);
   if (!Array.isArray(value.abend)) {
     push(issues, 'schema', `${path}.abend`);

@@ -470,6 +470,7 @@ export const CHANGE_EFFORT_STATUSES = ['simple', 'blocked'] as const;
 export interface EffortUnitRef {
   kind: (typeof EFFORT_UNIT_KINDS)[number];
   id: string;
+  /** Product def that identifies the unit, relative to the master's project, with the level prefix. Not the materialized file and not a folder. L1: the unit `.defs.ts`. L2 `page`: `l2/<mod>/web/contracts/<pageId>.defs.ts`; shared and page11 follow from `pageId`. */
   path: string;
 }
 
@@ -502,8 +503,8 @@ export interface EffortAnswer {
 }
 
 export interface ChangeEffortMerged {
-  regenerateDefs: EffortUnitRef[];
-  materialize: EffortUnitRef[];
+  regenerateDefs: Array<EffortUnitRef & { project: string }>;
+  materialize: Array<EffortUnitRef & { project: string }>;
   runAgents: EffortAgentRef[];
   abend: Array<{ item: string; master: EffortMaster; reason: string }>;
 }

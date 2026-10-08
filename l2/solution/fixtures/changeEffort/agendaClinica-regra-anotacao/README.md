@@ -4,6 +4,8 @@ Fixture **esperada** do `changeEffort.json` (quem produz o arquivo real é a `p4
 
 Item `rule:anotacaoObrigatoriaNoAtendimento` `changed`. `regenerateDefs: []`, `runAgents: []`, `status: simple`.
 
+`path` é o def de produto, relativo ao projeto do master. No `merged` cada unidade leva `project` (`102020` a página, `102021` as três do L1).
+
 Onde o id aparece, e por isso entra em `materialize`:
 
 - L2 `cc1b2e6`: página `agenda_diaria` — `rules` da rota no contrato, linha 121; função `rules` no shared da página, linha 190. O JSDoc de `contracts/agenda_diaria.defs.ts:113` só parafraseia a regra; não é o id.
