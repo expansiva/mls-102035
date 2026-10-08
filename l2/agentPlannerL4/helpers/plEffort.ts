@@ -1,6 +1,11 @@
 import { PL_PLANNER_PROJECTS } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { moduleFile, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
+import {
+  effortRegistry,
+  type DescribeEffortFn,
+  type EffortRegistry,
+} from '/_102035_/l2/solution/effortRegistry.js';
 import type {
   ChangeEffortFile,
   ChangeEffortMerged,
@@ -10,17 +15,12 @@ import type {
   L4DiffItem,
 } from '/_102035_/l2/solution/poolPlan.js';
 
+export { effortRegistry, type DescribeEffortFn, type EffortRegistry };
+
 const MASTER_BY_PROJECT: Record<(typeof PL_PLANNER_PROJECTS)[number], Pick<EffortMaster, 'kind' | 'device'>> = {
   '102020': { kind: 'l2', device: 'web' },
   '102021': { kind: 'l1', device: 'web' },
 };
-
-/** Uma linha por master, com o import do módulo neutro, quando o How publicar o `describeEffort`. */
-export const effortRegistry: EffortRegistry = {};
-
-export type DescribeEffortFn = (input: EffortInput) => EffortAnswer | Promise<EffortAnswer>;
-
-export type EffortRegistry = Record<string, { describeEffort: DescribeEffortFn } | undefined>;
 
 export function effortMasters(project: { workspaceDependencies?: readonly unknown[] }): EffortMaster[] {
   const deps = Array.isArray(project.workspaceDependencies) ? project.workspaceDependencies : [];

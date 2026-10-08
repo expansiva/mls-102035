@@ -2,15 +2,32 @@
 
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import {
+  candidateRootOf,
   createRound1InvokeSteps,
   existingModuleName,
+  loadPlRevision,
   runPlDispatch,
 } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import { l4diffFile } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
+import {
+  describeItemEffort,
+  effortMasters,
+  mergeEffort,
+  writeChangeEffort,
+} from '/_102035_/l2/agentPlannerL4/helpers/plEffort.js';
 import {
   addPlStep,
   PL_STEP_HOOKS,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
+import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { moduleFile, readJson } from '/_102035_/l2/solution/fs.js';
+import { readL5Config } from '/_102035_/l2/solution/lib.js';
+import {
+  CHANGE_EFFORT_SCHEMA_VERSION,
+  type ChangeEffortFile,
+  type L4Diff,
+} from '/_102035_/l2/solution/poolPlan.js';
 
 export async function beforePlDispatchPromptStep(
   _agent: IAgentMeta,
@@ -22,6 +39,7 @@ export async function beforePlDispatchPromptStep(
   const moduleName = existingModuleName(memoryString(context, 'moduleName') || moduleNameFromPrompt(step))
     || memoryString(context, 'moduleName')
     || moduleNameFromPrompt(step);
+  if (candidateRootOf(moduleName)) await recordMaintenanceEffort(moduleName);
   const result = await runPlDispatch(moduleName, new Date());
   const invoke = createRound1InvokeSteps(moduleName, result);
   const missing = result.status;
@@ -75,6 +93,39 @@ function doneAnchor(
     }),
     planning: { planId: 'dispatch20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
   } as mls.msg.AIResultStep);
+}
+
+/** After `l4diff`, on `/candidate` only: ask each master, merge, write `pool/l4/changeEffort.json`, then keep today's dispatch. */
+async function recordMaintenanceEffort(moduleName: string): Promise<ChangeEffortFile> {
+  const diff = await readJson<L4Diff>(l4diffFile(moduleName, 'l2'));
+  if (!diff) throw new Error(`l4diff missing for ${moduleName}`);
+  const config = await readL5Config();
+  const masters = effortMasters(config ?? {});
+  const revision = await loadPlRevision(moduleName);
+  const request = await readChangeRequest(moduleFile(moduleName).project, moduleName);
+  const base = { baseId: revision?.baseId ?? '', revisionId: revision?.revisionId ?? '' };
+  const perItem = [];
+  for (const item of diff.items) {
+    const answers = [];
+    for (const master of masters) {
+      answers.push(await describeItemEffort(master, { module: moduleName, base, item }));
+    }
+    perItem.push({ item, answers });
+  }
+  const merged = mergeEffort(perItem);
+  const file: ChangeEffortFile = {
+    schemaVersion: CHANGE_EFFORT_SCHEMA_VERSION,
+    module: moduleName,
+    base: { ...base, candidateRoot: candidateRootOf(moduleName) },
+    request: { text: request?.text ?? '', items: diff.items },
+    masters,
+    perItem: merged.perItem,
+    merged: merged.merged,
+    untouched: { count: 0, sealHash: '' },
+    status: merged.status,
+  };
+  await writeChangeEffort(moduleName, file);
+  return file;
 }
 
 function memoryString(context: mls.msg.ExecutionContext, key: string): string {
