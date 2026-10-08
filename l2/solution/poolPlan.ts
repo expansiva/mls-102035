@@ -389,8 +389,13 @@ export interface L4Diff {
 
 export const CHANGE_EFFORT_SCHEMA_VERSION = '2026-10-08-p4-change-effort-v1' as const;
 
+export const EFFORT_UNIT_KINDS = ['page', 'route', 'usecase', 'entity', 'request', 'table', 'shared', 'contract'] as const;
+export const EFFORT_MASTER_KINDS = ['l2', 'l1'] as const;
+export const EFFORT_ANSWER_STATUSES = ['computed', 'abend'] as const;
+export const CHANGE_EFFORT_STATUSES = ['simple', 'blocked'] as const;
+
 export interface EffortUnitRef {
-  kind: 'page' | 'route' | 'usecase' | 'entity' | 'request' | 'table' | 'shared' | 'contract';
+  kind: (typeof EFFORT_UNIT_KINDS)[number];
   id: string;
   path: string;
 }
@@ -402,14 +407,14 @@ export interface EffortAgentRef {
 
 export interface EffortMaster {
   project: string;
-  kind: 'l2' | 'l1';
+  kind: (typeof EFFORT_MASTER_KINDS)[number];
   device: PoolDevice;
 }
 
 export interface EffortAnswer {
   master: EffortMaster;
   item: string;
-  status: 'computed' | 'abend';
+  status: (typeof EFFORT_ANSWER_STATUSES)[number];
   regenerateDefs: EffortUnitRef[];
   materialize: EffortUnitRef[];
   runAgents: EffortAgentRef[];
@@ -432,5 +437,5 @@ export interface ChangeEffortFile {
   perItem: Array<{ item: string; answers: EffortAnswer[] }>;
   merged: ChangeEffortMerged;
   untouched: { count: number; sealHash: string };
-  status: 'simple' | 'blocked';
+  status: (typeof CHANGE_EFFORT_STATUSES)[number];
 }
