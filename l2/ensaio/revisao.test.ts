@@ -20,6 +20,23 @@ import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from
 import { effortRegistry } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
 import { buildChangeEffortView } from '../newRelease/widgets/changeEffortModel.js';
+import { mergeChangeEffort } from '../solution/gates/changeEffort/gate.js';
+
+async function withSimpleEffort<T>(run: () => Promise<T>): Promise<T> {
+  const golden = JSON.parse(readFileSync(new URL(
+    '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
+  const previous = { ...effortRegistry };
+  for (const answer of golden.perItem[0].answers) {
+    effortRegistry[answer.master.project] = {
+      describeEffort: input => ({ ...structuredClone(answer), item: input.item.changeId }) as EffortAnswer,
+    };
+  }
+  try { return await run(); }
+  finally {
+    for (const project of Object.keys(effortRegistry)) delete effortRegistry[project];
+    Object.assign(effortRegistry, previous);
+  }
+}
 
 for (const status of ['simple', 'blocked'] as const) {
   test(`mr_27: review reads the ${status} changeEffort produced by the public L4 rehearsal`, async () => {
@@ -95,12 +112,83 @@ test('recorded review goes through public hooks and publishes only quantidadeMin
   });
 });
 
+test('mr_28 s1: component hashes the same changeEffort bytes it displays and keeps effort reasons without a run', async () => {
+  await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async () => {
+  const loader = NodeModule as unknown as { _load: (request: string, ...args: unknown[]) => unknown };
+  const previousLoad = loader._load;
+  let NewReleaseReview102035: typeof import('../newRelease/widgets/review.js').NewReleaseReview102035;
+  try {
+    loader._load = function (request, ...args) {
+      if (request === 'lit/decorators.js') return { customElement: () => () => undefined,
+        property: () => () => undefined, state: () => () => undefined, query: () => () => undefined };
+      return previousLoad.call(this, request, ...args);
+    };
+    ({ NewReleaseReview102035 } = await import('../newRelease/widgets/review.js'));
+  } finally { loader._load = previousLoad; }
+  const golden = JSON.parse(readFileSync(new URL(
+    '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
+  golden.module = MODULE;
+  const first = JSON.stringify(golden);
+  const changed = JSON.stringify({ ...golden, status: 'blocked' });
+  const priorMls = globalThis.mls;
+  const priorStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true,
+    value: { getItem: () => null, setItem: () => undefined, removeItem: () => undefined } });
+  let reads = 0;
+  const fakeFile = {
+    status: 'unchanged', versionRef: '1', getContent: async () => changed,
+    getValueInfo: async () => ({ content: ++reads === 1 ? first : changed }),
+  };
+  globalThis.mls = { stor: { files: { effort: fakeFile }, getKeyToFile: () => 'effort' } } as typeof mls;
+  try {
+    const component = Object.create(NewReleaseReview102035.prototype) as any;
+    const result = await component.readCandidateChangeEffort(PROJECT, MODULE, 'candidate');
+    assert.equal(reads, 1);
+    assert.deepEqual(result.read.value, golden);
+    assert.equal(result.hash, `sha256:${createHash('sha256').update(first).digest('hex')}`);
+    fakeFile.status = 'deleted';
+    assert.deepEqual(await component.readCandidateChangeEffort(PROJECT, MODULE, 'candidate'), {
+      read: { status: 'missing', path: 'l4/candidate/pool/l4/changeEffort.json' }, hash: '',
+    });
+    fakeFile.status = 'unchanged';
+    fakeFile.getValueInfo = async () => ({ content: '{' });
+    assert.deepEqual(await component.readCandidateChangeEffort(PROJECT, MODULE, 'candidate'), {
+      read: { status: 'invalid', path: 'l4/candidate/pool/l4/changeEffort.json' }, hash: '',
+    });
+    globalThis.mls = priorMls;
+    component.project = PROJECT;
+    component.moduleName = MODULE;
+    component.version = 'tobe';
+    component.data = { changeId: 'change', revisionId: 'revision', resultCurrent: true };
+    Object.assign(component, { backendRead: { status: 'missing', path: '' }, effortRead: { status: 'missing', path: '' },
+      channelRun: null, reviewRun: null, actionBusy: false, loading: false, request: '', actionError: '' });
+    const blocked = structuredClone(golden);
+    blocked.status = 'blocked';
+    blocked.perItem[0].answers[0].status = 'abend';
+    blocked.perItem[0].answers[0].abend = { reason: 'master indisponível' };
+    blocked.merged = mergeChangeEffort(blocked.perItem);
+    component.changeEffortRead = { status: 'ok', path: 'effort', value: blocked };
+    component.canImplement = () => false;
+    assert.equal(component.actionPresentation({ kind: 'ready' }, true).descriptionKey, 'review.effort.status.blocked');
+    const regenerate = structuredClone(golden);
+    regenerate.perItem[0].answers[0].regenerateDefs.push({ kind: 'page', id: 'page', path: 'l2/page.defs.ts' });
+    regenerate.merged = mergeChangeEffort(regenerate.perItem);
+    component.changeEffortRead = { status: 'ok', path: 'effort', value: regenerate };
+    assert.equal(component.actionPresentation({ kind: 'ready' }, true).descriptionKey, 'review.implementation.error.regenerateUnsupported');
+  } finally {
+    globalThis.mls = priorMls;
+    if (priorStorage) Object.defineProperty(globalThis, 'localStorage', priorStorage);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
+  });
+});
+
 
 for (const outcome of ['current', 'edited', 'corrupted'] as const) {
 const editedAfterClick = outcome === 'edited';
 test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with a changed local manifest hash'
   : `mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited after the click' : 'becomes current in the module reader'}`, async (t) => {
-  await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async (scenario) => {
+  await withSimpleEffort(() => withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async (scenario) => {
     const { prepared, before, progress, command, fetchCalls } = scenario;
     // Load the platform ledger itself: the fake runner supplies evidence, never a fabricated ready record.
     const { ReviewRunService } = await import(new URL('../../../../collab-workspace/collab-messages/src/layer_3_usecases/reviewRuns.ts', import.meta.url).href);
@@ -288,12 +376,14 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
           assert.equal(`sha256:${createHash('sha256').update(restored).digest('hex')}`, sha256, path);
         }
       });
-      const displayedHashes = { menu: '', backend: '', effort: '' };
-      for (const [name, read] of [['menu', menu], ['backend', backend], ['effort', effort]] as const) {
-        const file = Object.values(mls.stor.files).find(file => file.project === PROJECT && file.level === 4
-          && `l4/${file.folder}/${file.shortName}${file.extension}` === read.path)!;
-        displayedHashes[name] = `sha256:${createHash('sha256').update(await file.getContent()).digest('hex')}`;
-      }
+      const effortInfo = { project: PROJECT, level: 4,
+        folder: `${MODULE}/pipeline/changes/${ready.binding.changeId}/revisions/${current.revisionId}/l4/pool/l4`,
+        shortName: 'changeEffort', extension: '.json' };
+      const effortFile = mls.stor.files[mls.stor.getKeyToFile(effortInfo)];
+      assert.ok(effortFile);
+      const effortSource = await effortFile.getContent();
+      assert.equal((JSON.parse(effortSource) as ChangeEffortFile).status, 'simple');
+      const displayedHashes = { changeEffort: `sha256:${createHash('sha256').update(effortSource).digest('hex')}` };
       await t.test('mr_10 s4: seal, promotion and local acceptance retain the displayed hashes and changed rule', async () => {
         assert.equal(await readL4Implementation(PROJECT, MODULE), null);
         await sealModuleLayers(PROJECT, MODULE, prepared.input.baseId);
@@ -325,7 +415,7 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
         await assert.rejects(async () => {
           try {
             await acceptL4Implementation(PROJECT, MODULE, { revisionId: current.revisionId!, acceptedBy: 'ensaio',
-              hashes: { ...displayedHashes, effort: `sha256:${'0'.repeat(64)}` } });
+              hashes: { changeEffort: `sha256:${'0'.repeat(64)}` } });
           } catch (error) {
             await restoreModuleFromSeals(PROJECT, MODULE, prepared.input.baseId);
             throw error;
@@ -346,7 +436,7 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
       });
     }
     assert.equal(fetchCalls(), 0);
-  });
+  }));
 });
 }
 

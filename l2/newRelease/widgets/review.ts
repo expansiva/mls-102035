@@ -7,7 +7,7 @@ import { NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import { readModuleMenu, type MenuReadResult } from '/_102035_/l2/newRelease/helpers/menuReader.js';
-import { readReviewArtifact, type ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
+import { readReviewArtifact, reviewArtifactFile, type ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import { readReviewPoolBoxes, type ReviewPoolBoxView } from '/_102035_/l2/newRelease/helpers/poolBoxes.js';
 import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.js';
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
@@ -97,7 +97,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
-  @state() private implementationHashes: L4ImplementationHashes = { menu: '', backend: '', effort: '' };
+  @state() private implementationHashes: L4ImplementationHashes = { changeEffort: '' };
 
   @state() private implementationDiff: ModuleLayerDiff[] | null = null;
   @state() private implementationRestored = false;
@@ -173,7 +173,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     const context = { project: this.project, moduleName: this.moduleName, version: this.version, data: this.data };
     this.loadedFor = null;
     this.implementation = null;
-    this.implementationHashes = { menu: '', backend: '', effort: '' };
+    this.implementationHashes = { changeEffort: '' };
     if (!this.project || !this.moduleName) {
       this.menuRead = EMPTY_MENU;
       this.backendRead = EMPTY_ARTIFACT;
@@ -486,25 +486,14 @@ export class NewReleaseReview102035 extends StateLitElement {
       readModuleMenu(run.binding.project, run.binding.moduleName, root),
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'backend', root),
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'effort', root),
-      readReviewArtifact(run.binding.project, run.binding.moduleName, 'changeEffort', root),
+      this.readCandidateChangeEffort(run.binding.project, run.binding.moduleName, root),
     ]);
     if (token !== this.loadToken) return;
-    const hash = async (name: 'menu' | 'backend' | 'effort') => {
-      const content = await readSourceText({ project: run.binding.project, level: 4,
-        folder: `${root}/pool/l2/web`, shortName: name, extension: '.json' });
-      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
-      return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
-    };
-    // The new acceptance/hash contract belongs to mr28; legacy hashes apply only to creation.
-    const hashes = changeEffort.status === 'missing'
-      ? await Promise.all(['menu', 'backend', 'effort'].map(name => hash(name as 'menu' | 'backend' | 'effort')))
-      : ['', '', ''];
-    if (token !== this.loadToken) return;
-    this.implementationHashes = { menu: hashes[0], backend: hashes[1], effort: hashes[2] };
+    this.implementationHashes = { changeEffort: changeEffort.hash };
     this.menuRead = menu;
     this.backendRead = backend;
     this.effortRead = effort;
-    this.changeEffortRead = changeEffort;
+    this.changeEffortRead = changeEffort.read;
     this.pool = [];
     this.saveOutputAlias(run, userId);
     if (run.status !== 'ready' || this.adoptedRuns.has(run.runId)
@@ -525,6 +514,26 @@ export class NewReleaseReview102035 extends StateLitElement {
     window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, {
       detail: { project: run.binding.project, moduleName: run.binding.moduleName },
     }));
+  }
+
+  private async readCandidateChangeEffort(project: number, moduleName: string, root: string): Promise<{ read: ReviewArtifactRead; hash: string }> {
+    const effortInfo = reviewArtifactFile(project, moduleName, 'changeEffort', root);
+    const effortPath = `l4/${effortInfo.folder}/${effortInfo.shortName}${effortInfo.extension}`;
+    const readEffort = async (): Promise<{ read: ReviewArtifactRead; hash: string }> => {
+      const stored = mls.stor.files[mls.stor.getKeyToFile(effortInfo)] as { status?: string } | undefined;
+      if (!stored || stored.status === 'deleted') return { read: { status: 'missing', path: effortPath }, hash: '' };
+      let source: string;
+      try { source = await readSourceText(effortInfo); }
+      catch { return { read: { status: 'invalid', path: effortPath }, hash: '' }; }
+      let value: unknown;
+      try { value = JSON.parse(source); }
+      catch { return { read: { status: 'invalid', path: effortPath }, hash: '' }; }
+      if (value === null) return { read: { status: 'invalid', path: effortPath }, hash: '' };
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+      return { read: { status: 'ok', path: effortPath, value },
+        hash: `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}` };
+    };
+    return readEffort();
   }
 
   private saveOutputAlias(run: PlatformReviewRun, userId: string): void {
@@ -591,10 +600,9 @@ export class NewReleaseReview102035 extends StateLitElement {
   };
 
   private canImplement(): boolean {
-    if (this.changeEffortRead.status !== 'missing') return false;
     return canAcceptImplementation({ project: this.project, moduleName: this.moduleName, data: this.data,
       runStatus: this.channelRun?.status ?? this.reviewRun?.status ?? null,
-      menu: this.menuRead, backend: this.backendRead, effort: this.effortRead,
+      changeEffort: this.changeEffortRead,
       hashes: this.implementationHashes, implementation: this.implementation });
   }
 
@@ -633,8 +641,12 @@ export class NewReleaseReview102035 extends StateLitElement {
         }
       }
       if (current()) {
-        this.actionError = phase === 'accept' && error instanceof Error && error.message === 'l4.implementation_conflict'
-          ? 'review.implementation.error.conflict' : `review.implementation.error.${phase}`;
+        this.actionError = phase === 'accept' && error instanceof Error
+          ? error.message === 'l4.implementation_conflict' ? 'review.implementation.error.conflict'
+            : error.message === 'l4.implementation_regenerate_unsupported' ? 'review.implementation.error.regenerateUnsupported'
+              : error.message === 'l4.implementation_blocked' ? 'review.implementation.error.blocked'
+                : `review.implementation.error.${phase}`
+          : `review.implementation.error.${phase}`;
       }
     } finally {
       if (current()) this.actionBusy = false;
@@ -828,6 +840,19 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
     const accepted = this.implementation?.changeId === this.data?.changeId
       && this.implementation?.revisionId === this.data?.revisionId && !!this.implementation;
+    const changeEffort = buildChangeEffortView(this.changeEffortRead);
+    if (this.version === 'tobe' && current && changeEffort.kind !== 'missing'
+      && this.data?.resultCurrent) {
+      const reason = changeEffort.kind !== 'ready' ? 'review.effort.invalid'
+        : changeEffort.status === 'blocked' ? 'review.effort.status.blocked'
+          : changeEffort.merged.regenerateDefs.length ? 'review.implementation.error.regenerateUnsupported'
+            : 'review.implementation.body';
+      return { ...action, kind: 'continue',
+        labelKey: this.actionBusy ? 'review.actionBusy' : accepted ? 'review.implementation.accepted' : 'review.implementation.accept',
+        descriptionKey: accepted ? 'review.implementation.acceptedBody' : reason,
+        availabilityKey: '', disabled: this.actionBusy || this.loading || accepted || !getUserId() || !this.canImplement(),
+      };
+    }
     if (this.version === 'tobe' && current && (accepted || action.kind === 'continue')) {
       return { ...action, kind: 'continue',
         labelKey: this.actionBusy ? 'review.actionBusy' : accepted ? 'review.implementation.accepted' : 'review.implementation.accept',
@@ -836,7 +861,6 @@ export class NewReleaseReview102035 extends StateLitElement {
         disabled: this.actionBusy || this.loading || accepted || !getUserId() || !this.canImplement(),
       };
     }
-    if (current && this.changeEffortRead.status !== 'missing') return { ...action, disabled: true };
     return action;
   }
 
@@ -1173,9 +1197,9 @@ export class NewReleaseReview102035 extends StateLitElement {
       <section class="nr-review">
         <header class="nr-review__hero">
           <div>
-            <span>${this.t('review.eyebrow')}</span>
-            <h2>${this.t('review.title')}</h2>
-            <p>${this.t('review.description')}</p>
+            <span>${this.t(changeEffort.kind === 'missing' ? 'review.eyebrow' : 'review.effort.eyebrow')}</span>
+            <h2>${this.t(changeEffort.kind === 'missing' ? 'review.title' : 'review.effort.title')}</h2>
+            <p>${this.t(changeEffort.kind === 'missing' ? 'review.description' : 'review.effort.description')}</p>
           </div>
         </header>
         ${this.hasImplementation() ? this.renderImplementation('top') : this.renderPrimaryAction(topAction)}

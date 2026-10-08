@@ -31,12 +31,13 @@ import { MENU_ACTIONS, MENU_SCHEMA_VERSION, type MenuStampedNode } from '/_10203
 import { L4_IMPLEMENTATION_SCHEMA, type L4ImplementationRecord, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 
 const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', import.meta.url), 'utf8'));
+const changeEffort = JSON.parse(readFileSync(new URL('../../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
 
 function progressRecord(phases: L4ImplementationPhase[] = []): L4ImplementationRecord {
   return {
     schemaVersion: L4_IMPLEMENTATION_SCHEMA, changeId: 'change-one', revisionId: 'revision-one',
     acceptedBy: 'user', acceptedAt: '2026-10-08T00:00:00Z',
-    hashes: { menu: 'menu', backend: 'backend', effort: 'effort' }, phases,
+    hashes: { changeEffort: 'effort' }, phases,
   };
 }
 
@@ -98,16 +99,14 @@ test('mr_12: another change or no current change discards the record', () => {
 });
 
 function implementationInput(): ReviewImplementationInput {
-  const root = 'l4/agendaClinica/pipeline/changes/change-one/revisions/revision-one/l4/pool/l2/web';
+  const root = 'l4/agendaClinica/pipeline/changes/change-one/revisions/revision-one/l4/pool/l4';
   return {
     project: 102047,
     moduleName: 'agendaClinica',
     data: { changeId: 'change-one', revisionId: 'revision-one', resultCurrent: true },
     runStatus: 'ready',
-    menu: { status: 'ok', path: `${root}/menu.json`, value: menu },
-    backend: { status: 'ok', path: `${root}/backend.json`, value: {} },
-    effort: { status: 'ok', path: `${root}/effort.json`, value: {} },
-    hashes: { menu: 'menu-hash', backend: 'backend-hash', effort: 'effort-hash' },
+    changeEffort: { status: 'ok', path: `${root}/changeEffort.json`, value: changeEffort },
+    hashes: { changeEffort: 'effort-hash' },
     implementation: null,
   };
 }
@@ -129,19 +128,32 @@ test('mr_10 s2: absent or unfinished run and non-current result prevent acceptan
   ]) assert.equal(canAcceptImplementation({ ...input, data }), false);
 });
 
-test('mr_10 s2: each artifact must be readable from the current revision with its hash', () => {
+test('mr_28 s1: effort must be valid and readable from the current revision with its hash', () => {
   const input = implementationInput();
-  for (const name of ['menu', 'backend', 'effort'] as const) {
-    for (const status of ['missing', 'invalid'] as const) {
-      assert.equal(canAcceptImplementation({ ...input, [name]: { ...input[name], status } }), false);
-    }
-    for (const path of [
-      input[name].path.replace('revision-one', 'revision-old'),
-      input[name].path.replace('change-one', 'change-old'),
-      `l4/agendaClinica/pool/l2/web/${name}.json`,
-    ]) assert.equal(canAcceptImplementation({ ...input, [name]: { ...input[name], path } }), false);
-    assert.equal(canAcceptImplementation({ ...input, hashes: { ...input.hashes, [name]: '' } }), false);
-  }
+  for (const status of ['missing', 'invalid'] as const)
+    assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, status } }), false);
+  for (const path of [input.changeEffort.path.replace('revision-one', 'revision-old'),
+    input.changeEffort.path.replace('change-one', 'change-old'), 'l4/agendaClinica/pool/l4/changeEffort.json'])
+    assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, path } }), false);
+  assert.equal(canAcceptImplementation({ ...input, hashes: { changeEffort: '' } }), false);
+  assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, value: {} } }), false);
+});
+
+test('mr_28 s1: blocked and regeneration effort cannot be accepted', () => {
+  const input = implementationInput();
+  const blocked = structuredClone(changeEffort);
+  blocked.perItem[0].answers[0].status = 'abend';
+  blocked.perItem[0].answers[0].abend = { reason: 'unavailable' };
+  blocked.merged.abend = [{ item: blocked.perItem[0].item, master: blocked.perItem[0].answers[0].master, reason: 'unavailable' }];
+  blocked.status = 'blocked';
+  assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, value: blocked } }), false);
+  const regenerate = structuredClone(changeEffort);
+  const unit = { kind: 'page', id: 'agenda_diaria', path: 'l2/agendaClinica/web/contracts/agenda_diaria.defs.ts' };
+  regenerate.perItem[0].answers[0].regenerateDefs = [unit];
+  regenerate.perItem[0].answers[0].materialize = [];
+  regenerate.merged.regenerateDefs = [{ project: '102020', ...unit }];
+  regenerate.merged.materialize = regenerate.merged.materialize.filter((item: { project: string; id: string }) => item.project !== '102020' || item.id !== unit.id);
+  assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, value: regenerate } }), false);
 });
 
 test('mr_10 s2: identical acceptance is idempotent; different revision or hashes block it', () => {
@@ -153,11 +165,9 @@ test('mr_10 s2: identical acceptance is idempotent; different revision or hashes
     hashes: { ...input.hashes }, phases: [],
   };
   assert.equal(canAcceptImplementation(input), true);
-  for (const name of ['menu', 'backend', 'effort'] as const) {
-    assert.equal(canAcceptImplementation({ ...input, implementation: {
-      ...input.implementation, hashes: { ...input.hashes, [name]: 'different' },
-    } }), false);
-  }
+  assert.equal(canAcceptImplementation({ ...input, implementation: {
+    ...input.implementation, hashes: { changeEffort: 'different' },
+  } }), false);
   assert.equal(canAcceptImplementation({ ...input, implementation: {
     ...input.implementation, revisionId: 'revision-old',
   } }), false);

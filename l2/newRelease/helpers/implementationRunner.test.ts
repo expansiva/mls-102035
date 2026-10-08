@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createImplementationRunner } from './implementationRunner.js';
 import { acceptL4Implementation, readL4Implementation, recordL4ImplementationPhase } from '../../solution/candidate/moduleImplementation.js';
 import type { Ns5FileInfo } from '../../solution/fs.js';
@@ -31,8 +33,13 @@ function fixture() {
   };
   json('pipeline/changes', 'active', { changeId: 'change1' });
   json('pipeline/changes/change1', 'change', { project, moduleName, baseId: 'base1', changeId: 'change1', activeRevisionId: 'rev1', resultRevisionId: 'rev1' });
+  const effort = JSON.parse(readFileSync(new URL('../../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
+  effort.module = moduleName;
+  const effortSource = JSON.stringify(effort);
+  json('pipeline/changes/change1/revisions/rev1/l4/pool/l4', 'changeEffort', effort);
   json('pipeline/releases/base1', 'layers', { schemaVersion: '2026-10-08-module-layers-v1', project, moduleName, baseId: 'base1', files: [] });
-  const accept = () => acceptL4Implementation(project, moduleName, { revisionId: 'rev1', acceptedBy: 'user', hashes: { menu: 'm', backend: 'b', effort: 'e' } });
+  const accept = () => acceptL4Implementation(project, moduleName, { revisionId: 'rev1', acceptedBy: 'user',
+    hashes: { changeEffort: `sha256:${createHash('sha256').update(effortSource).digest('hex')}` } });
   const dispatched: string[] = [];
   const reads: string[][] = [];
   let status: TaskData['status'] = 'done';

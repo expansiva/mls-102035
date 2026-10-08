@@ -5,6 +5,7 @@ import type { ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backend
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { L4ImplementationHashes, L4ImplementationPhase, L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { listPoolBoxForProject } from '/_102035_/l2/solution/pool.js';
+import { validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 import {
   MENU_ACTIONS,
   MENU_ORGANISM_KINDS,
@@ -144,9 +145,7 @@ export interface ReviewImplementationInput {
   moduleName: string;
   data: Pick<NewReleaseModuleData, 'changeId' | 'revisionId' | 'resultCurrent'> | null;
   runStatus: string | null;
-  menu: ReviewArtifactRead;
-  backend: ReviewArtifactRead;
-  effort: ReviewArtifactRead;
+  changeEffort: ReviewArtifactRead;
   hashes: L4ImplementationHashes;
   implementation: L4ImplementationRecord | null;
 }
@@ -186,15 +185,14 @@ export function canAcceptImplementation(input: ReviewImplementationInput): boole
   const { data, implementation, hashes } = input;
   if (!input.project || !input.moduleName || input.runStatus !== 'ready'
     || !data?.resultCurrent || !data.changeId || !data.revisionId) return false;
-  const root = `l4/${input.moduleName}/pipeline/changes/${data.changeId}/revisions/${data.revisionId}/l4/pool/l2/web`;
-  for (const name of ['menu', 'backend', 'effort'] as const) {
-    if (input[name].status !== 'ok' || input[name].path !== `${root}/${name}.json` || !hashes[name]) return false;
-  }
+  const path = `l4/${input.moduleName}/pipeline/changes/${data.changeId}/revisions/${data.revisionId}/l4/pool/l4/changeEffort.json`;
+  if (input.changeEffort.status !== 'ok' || input.changeEffort.path !== path || !hashes.changeEffort) return false;
+  const checked = validateChangeEffort(input.changeEffort.value);
+  if (!checked.ok || checked.file.module !== input.moduleName || checked.file.status !== 'simple'
+    || checked.file.merged.regenerateDefs.length > 0) return false;
   if (implementation && (implementation.changeId !== data.changeId
     || implementation.revisionId !== data.revisionId
-    || implementation.hashes.menu !== hashes.menu
-    || implementation.hashes.backend !== hashes.backend
-    || implementation.hashes.effort !== hashes.effort)) return false;
+    || implementation.hashes.changeEffort !== hashes.changeEffort)) return false;
   return (['l4', 'l2', 'l1'] as const).every(box => listPoolBoxForProject(input.project, input.moduleName, box).length === 0);
 }
 

@@ -9,12 +9,30 @@ import { createHash } from 'node:crypto';
 import { installMlsStub } from '../../../test/mlsStub.js';
 import { createImplementationRunner } from '../newRelease/helpers/implementationRunner.js';
 import { acceptL4Implementation, readL4Implementation } from '../solution/candidate/moduleImplementation.js';
-import { adoptL4ReviewResult, promoteL4Revision, readActiveSealedL4Candidate, readL4Release } from '../solution/candidate/moduleRevision.js';
+import { adoptL4ReviewResult, promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
 import { readSourceText } from '../solution/fs.js';
 import { readModuleMenu } from '../newRelease/helpers/menuReader.js';
 import { readReviewArtifact } from '../newRelease/helpers/backendReader.js';
 import { createSimulatedDefsHost, withReviewScenario, runPlannerScenario, PROJECT, MODULE } from './cenario.js';
+import { effortRegistry } from '../solution/effortRegistry.js';
+import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
+
+async function withSimpleEffort<T>(run: () => Promise<T>): Promise<T> {
+  const golden = JSON.parse(readFileSync(new URL(
+    '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
+  const previous = { ...effortRegistry };
+  for (const answer of golden.perItem[0].answers) {
+    effortRegistry[answer.master.project] = {
+      describeEffort: input => ({ ...structuredClone(answer), item: input.item.changeId }) as EffortAnswer,
+    };
+  }
+  try { return await run(); }
+  finally {
+    for (const project of Object.keys(effortRegistry)) delete effortRegistry[project];
+    Object.assign(effortRegistry, previous);
+  }
+}
 
 const qaRecords: Record<string, L4ImplementationRecord> = {};
 function captureQa(name: string, record: L4ImplementationRecord) {
@@ -22,7 +40,7 @@ function captureQa(name: string, record: L4ImplementationRecord) {
   copy.changeId = 'qa-implementation-change';
   copy.revisionId = 'qa-implementation-revision';
   // Artifact hashes include generated revision IDs; neither is displayed by this QA matrix.
-  copy.hashes = { menu: 'sha256:' + '0'.repeat(64), backend: 'sha256:' + '0'.repeat(64), effort: 'sha256:' + '0'.repeat(64) };
+  copy.hashes = { changeEffort: 'sha256:' + '0'.repeat(64) };
   copy.acceptedAt = '2026-10-08T00:00:00.000Z';
   for (const phase of copy.phases) for (const attempt of [phase, ...(phase.previousAttempts ?? [])]) {
     attempt.startedAt = copy.acceptedAt;
@@ -33,26 +51,21 @@ function captureQa(name: string, record: L4ImplementationRecord) {
 
 for (const outcome of ['done', 'failed', 'running'] as const) {
   test(`mr_11 s3: accepted implementation with simulated defs ${outcome}`, async () => {
-    await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async scenario => {
+    await withSimpleEffort(() => withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async scenario => {
       const planner = await runPlannerScenario(scenario.context);
       assert.equal(planner.context.task?.status, 'done');
-      const candidate = await readActiveSealedL4Candidate(PROJECT, MODULE);
-      assert.ok(candidate);
-      const revisionId = candidate.manifest.revisionId;
+      const revisionId = planner.reviewed.pointer!.revisionId;
       await adoptL4ReviewResult(PROJECT, MODULE, {
         inputRevisionId: scenario.selection.revisionId, outputRevisionId: revisionId,
       });
-      const hashes = { menu: '', backend: '', effort: '' };
-      for (const name of ['menu', 'backend', 'effort'] as const) {
-        const artifact = name === 'menu' ? await readModuleMenu(PROJECT, MODULE, planner.candidate)
-          : await readReviewArtifact(PROJECT, MODULE, name, planner.candidate);
-        const file = Object.values(mls.stor.files).find(file => file.project === PROJECT && file.level === 4
-          && `l4/${file.folder}/${file.shortName}${file.extension}` === artifact.path);
-        assert.ok(file, name);
-        const source = await readSourceText(file);
-        assert.ok(source, name);
-        hashes[name] = `sha256:${createHash('sha256').update(source).digest('hex')}`;
-      }
+      const effortInfo = { project: PROJECT, level: 4,
+        folder: `${planner.candidate}/pool/l4`,
+        shortName: 'changeEffort', extension: '.json' };
+      const effortFile = mls.stor.files[mls.stor.getKeyToFile(effortInfo)];
+      assert.ok(effortFile);
+      const effortSource = await effortFile.getContent();
+      assert.equal((JSON.parse(effortSource) as ChangeEffortFile).status, 'simple');
+      const hashes = { changeEffort: `sha256:${createHash('sha256').update(effortSource).digest('hex')}` };
       const baseId = scenario.prepared.input.baseId;
       await sealModuleLayers(PROJECT, MODULE, baseId);
       await promoteL4Revision(PROJECT, MODULE, scenario.selection.changeId, revisionId);
@@ -126,7 +139,7 @@ for (const outcome of ['done', 'failed', 'running'] as const) {
         assert.equal(`sha256:${createHash('sha256').update(source).digest('hex')}`, hash);
       }
       assert.equal(scenario.fetchCalls(), 0);
-    });
+    }));
   });
 }
 
