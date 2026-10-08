@@ -28,7 +28,8 @@ import {
   snapshotFromParsed,
   type L4DiffSnapshot,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
-import type { Ns5RulesAny } from '/_102035_/l2/solution/types.js';
+import { isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
+import type { Ns5OntologyAnyEntity, Ns5RulesAny } from '/_102035_/l2/solution/types.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -413,4 +414,43 @@ void test('p4_13: a sealed revision is accepted without pipeline.json and record
   } finally {
     setModuleRoot(MODULE, null);
   }
+});
+
+function paciente(field: Record<string, unknown>): L4DiffSnapshot {
+  const entity = {
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Paciente',
+    record: { fields: { sexo: { type: 'enum', derived: false, ...field } } },
+    transitions: [],
+  } as unknown as Ns5OntologyAnyEntity;
+  return snapshotFromParsed({
+    entities: [{ entity, source: 'ontology/Paciente.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+}
+
+void test('p4_35: a field title change is one text-only field changed item', () => {
+  const base = paciente({ title: 'Sexo', description: 'Sexo informado', values: [{ value: 'M', title: 'M' }] });
+  const next = paciente({ title: 'Sexo biológico', description: 'Sexo informado', values: [{ value: 'M', title: 'M' }] });
+  const items = diffL4Snapshots(base, next);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'field');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(items[0].changeId, 'field:sexo');
+  assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+void test('p4_35: an enum value label change is one text-only field changed item', () => {
+  const base = paciente({ title: 'Sexo', values: [{ value: 'M', title: 'M' }, { value: 'F', title: 'F' }] });
+  const next = paciente({ title: 'Sexo', values: [{ value: 'M', title: 'Masculino' }, { value: 'F', title: 'F' }] });
+  const items = diffL4Snapshots(base, next);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'field');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+void test('p4_35: an unchanged field with text emits no item', () => {
+  const snap = paciente({ title: 'Sexo', description: 'Sexo informado', values: [{ value: 'M', title: 'Masculino' }] });
+  assert.deepEqual(diffL4Snapshots(snap, snap), []);
 });

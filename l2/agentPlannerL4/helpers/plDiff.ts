@@ -36,6 +36,7 @@ import {
   L4_DIFF_SCHEMA,
   L4_DIFF_OPS,
   L4_DIFF_KINDS,
+  L4_TEXT_ATTRIBUTES,
   type L4DiffOp,
   type L4DiffKind,
   type L4DiffItem,
@@ -58,6 +59,10 @@ interface FieldSlice {
   fieldId: string;
   type: string;
   derived: boolean;
+  title: string;
+  description: string;
+  /** Enum codes plus their labels. Absent when the field has no closed domain. */
+  values?: unknown[];
 }
 
 interface TransitionSlice {
@@ -156,10 +161,49 @@ function fileAt(project: number, root: string, rel: string): Ns5FileInfo {
   };
 }
 
+function textAttrs(source: object): { title: string; description: string } {
+  const record = source as Record<string, unknown>;
+  const out = { title: '', description: '' };
+  for (const key of L4_TEXT_ATTRIBUTES) {
+    const value = record[key];
+    if (typeof value === 'string') out[key] = value;
+  }
+  return out;
+}
+
+/** Codes plus `L4_TEXT_ATTRIBUTES` only, so a label edit is visible and an added code is not text. */
+function enumLabels(field: { values?: unknown; enum?: unknown }): unknown[] | undefined {
+  const raw = field.values ?? field.enum;
+  if (!Array.isArray(raw)) return undefined;
+  return raw.map(item => {
+    if (typeof item === 'string') return item;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+    const row = item as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    if (typeof row.value === 'string') out.value = row.value;
+    for (const key of L4_TEXT_ATTRIBUTES) {
+      if (typeof row[key] === 'string') out[key] = row[key];
+    }
+    return out;
+  });
+}
+
+function fieldSlice(fieldId: string, field: { type?: unknown; derived?: unknown; values?: unknown; enum?: unknown }, derived: boolean): FieldSlice {
+  const slice: FieldSlice = {
+    fieldId,
+    type: String(field.type || ''),
+    derived,
+    ...textAttrs(field),
+  };
+  const values = enumLabels(field);
+  if (values) slice.values = values;
+  return slice;
+}
+
 function walkV3Fields(fields: Record<string, Ns5OntologyFieldV3> | undefined, parent: string, out: Record<string, FieldSlice>): void {
   for (const [id, field] of Object.entries(fields || {})) {
     const fieldId = parent ? `${parent}.${id}` : id;
-    out[fieldId] = { fieldId, type: String(field.type || ''), derived: field.derived === true };
+    out[fieldId] = fieldSlice(fieldId, field, field.derived === true);
     if (field.fields) walkV3Fields(field.fields as Record<string, Ns5OntologyFieldV3>, fieldId, out);
   }
 }
@@ -181,10 +225,10 @@ function entitySlice(entity: Ns5OntologyAnyEntity, source: string): EntitySlice 
     }
   } else {
     for (const field of entity.fields || []) {
-      fields[field.fieldId] = { fieldId: field.fieldId, type: field.type, derived: false };
+      fields[field.fieldId] = fieldSlice(field.fieldId, field, false);
     }
     for (const [fieldId, detail] of Object.entries(entity.details || {})) {
-      fields[fieldId] = { fieldId, type: detail.type, derived: true };
+      fields[fieldId] = fieldSlice(fieldId, detail, true);
     }
     for (const row of entity.transitions || []) {
       transitions[row.transitionId] = {
