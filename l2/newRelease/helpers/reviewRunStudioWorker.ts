@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/reviewRunStudioWorker.ts" enhancement="_blank" />
 
 import { environment } from '/_102036_/l2/environmentContract.js';
-import { getPostError, post, msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
+import { getPostError, post, msgGetMessage, msgGetMessagesAfter, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
 import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
@@ -95,6 +95,7 @@ export interface ReviewStudioHostDependencies {
   execute?: (agentName: string, context: ExecutionContext) => Promise<void>;
   task?: (userId: string, taskId: string, messageId: string) => Promise<TaskData>;
   message?: (userId: string, threadId: string, messageId: string) => Promise<Message | null>;
+  messagesAfter?: (userId: string, threadId: string, lastOrderAt: string) => Promise<Message[]>;
   findMessage?: (threadId: string, taskId: string) => Promise<Message | null>;
   artifacts?: (claim: ReviewWorkerClaim, taskId: string) => Promise<ReviewPlannerArtifact[]>;
   candidateTransport?: CandidateGatewayOptions;
@@ -134,6 +135,11 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
   const readMessage = dependencies.message ?? (async (userId, threadId, messageId) => {
     const result = await msgGetMessage({ userId, threadId, messageId });
     return result.success ? result.response?.message ?? null : null;
+  });
+  const listMessagesAfter = dependencies.messagesAfter ?? (async (userId, threadId, lastOrderAt) => {
+    const result = await msgGetMessagesAfter({ userId, threadId, lastOrderAt });
+    if (!result.success) throw new Error(result.error || 'review-worker.messages_unavailable');
+    return result.response?.data ?? [];
   });
   const findMessage = dependencies.findMessage ?? (async (threadId, taskId) => {
     const messages = await getAllMessagesByThreadId(threadId);
@@ -187,12 +193,24 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
       if (saved?.execution) return saved.execution;
       if (claim.execution) return saveServerExecution(claim, claim.execution);
       if (saved) {
-        const message = await readMessage(userId, saved.threadId, saved.messageId);
-        if (!message?.taskId) throw new Error('review-worker.execution_start_pending');
-        const task = await readTask(userId, normalizeTaskId(message.taskId), saved.messageId);
-        const execution = executionFromTask(saved.agentName, claim.attempt, task, saved.threadId, now());
-        save(claim, { ...saved, claimId: claim.claimId, execution });
-        return execution;
+        const listed = await listMessagesAfter(userId, saved.threadId, messagesAfterCursor(saved));
+        const command = claim.command.trim();
+        const matches = listed.filter(message =>
+          message.senderId === userId && message.content === command && Boolean(message.taskId));
+        if (matches.length > 1) {
+          throw new Error(`review-worker.execution_start_ambiguous:${matches.map(message => normalizeTaskId(message.taskId || '')).join(',')}`);
+        }
+        if (matches.length === 1) {
+          const message = matches[0];
+          const messageOrder = message.orderAt || message.createAt;
+          const messageId = `${saved.threadId}/${messageOrder}`;
+          const task = await readTask(userId, normalizeTaskId(message.taskId || ''), messageId);
+          const execution = executionFromTask(saved.agentName, claim.attempt, task, saved.threadId, now());
+          save(claim, { ...saved, claimId: claim.claimId, messageOrder, messageId, execution });
+          return execution;
+        }
+        const age = Date.parse(now()) - markerInstant(saved);
+        throw new Error(age >= 120_000 ? 'review-worker.execution_start_lost' : 'review-worker.execution_start_pending');
       }
       const thread = await resolveThread();
       const context = createContext(thread.threadId, userId, claim.command);
@@ -260,6 +278,24 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
 
 function normalizeTaskId(value: string): string {
   return value.replace(/^task(?:\/#?|#)/u, '');
+}
+
+function orderAtFromMs(ms: number): string {
+  const date = new Date(ms);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}.0000`;
+}
+
+function markerInstant(saved: SavedExecution): number {
+  if (saved.savedAt) return Date.parse(saved.savedAt);
+  const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/u.exec(saved.messageOrder);
+  if (!match) return Number.NaN;
+  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]));
+}
+
+function messagesAfterCursor(saved: SavedExecution): string {
+  if (!saved.savedAt) return saved.messageOrder;
+  return orderAtFromMs(Date.parse(saved.savedAt) - 120_000);
 }
 
 function executionFromTask(

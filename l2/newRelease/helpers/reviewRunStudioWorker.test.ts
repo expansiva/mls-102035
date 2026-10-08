@@ -117,6 +117,106 @@ test('mr_30 s2 grava taskId e messageId canônicos no task-change enquanto execu
   assert.equal(saved.savedAt, '2026-10-06T18:14:31.000Z');
 });
 
+function seedMarker(storage: KeyValueStorage, savedAt?: string): void {
+  storage.setItem('collab-new-release-review-worker-v1/run-mr15/2/review', JSON.stringify({
+    claimId: 'claim-mr15',
+    agentName: 'agentReviewSolution',
+    threadId: THREAD_ID,
+    messageOrder: ORDER_AT,
+    messageId: PROVISIONAL,
+    savedAt,
+    execution: null,
+  }));
+}
+
+test('mr_30 s3 uma mensagem do comando vira a execução canônica sem ler o id provisório', async () => {
+  const storage = memoryStorage();
+  seedMarker(storage, '2026-10-06T18:14:31.000Z');
+  let readProvisional = false;
+  let taskMessageId = '';
+  let cursor = '';
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    message: async () => { readProvisional = true; return null; },
+    messagesAfter: async (_userId, _threadId, lastOrderAt) => {
+      cursor = lastOrderAt;
+      return [{
+        senderId: 'user-mr15',
+        content: 'review',
+        taskId: 'task/20261006181434.1001',
+        orderAt: '20261006181434.1000',
+        threadId: THREAD_ID,
+      }] as never;
+    },
+    task: async (_userId, _taskId, messageId) => {
+      taskMessageId = messageId;
+      return { PK: 'task/20261006181434.1001', status: 'in progress' } as TaskData;
+    },
+    now: () => '2026-10-06T18:15:00.000Z',
+  });
+  const started = await host.startOrGet(claim());
+  assert.equal(readProvisional, false);
+  assert.equal(cursor, '20261006181231.0000');
+  assert.equal(taskMessageId, CANONICAL);
+  assert.equal(started.taskId, '20261006181434.1001');
+  const saved = JSON.parse(storage.raw()) as { messageId: string; execution: { taskId: string } };
+  assert.equal(saved.messageId, CANONICAL);
+  assert.equal(saved.execution.taskId, '20261006181434.1001');
+});
+
+test('mr_30 s3 duas mensagens do comando são ambíguas', async () => {
+  const storage = memoryStorage();
+  seedMarker(storage, '2026-10-06T18:14:31.000Z');
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    messagesAfter: async () => [
+      { senderId: 'user-mr15', content: 'review', taskId: 'task/20261006181434.1001' },
+      { senderId: 'other', content: 'review', taskId: 'task/ignored' },
+      { senderId: 'user-mr15', content: 'review', taskId: 'task/20261006181434.1002' },
+    ] as never,
+    now: () => '2026-10-06T18:15:00.000Z',
+  });
+  await assert.rejects(host.startOrGet(claim()), /review-worker\.execution_start_ambiguous:20261006181434\.1001,20261006181434\.1002/);
+});
+
+test('mr_30 s3 nenhuma mensagem antes de 2 min fica pendente', async () => {
+  const storage = memoryStorage();
+  seedMarker(storage, '2026-10-06T18:14:31.000Z');
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    messagesAfter: async () => [],
+    now: () => '2026-10-06T18:16:30.999Z',
+  });
+  await assert.rejects(host.startOrGet(claim()), /review-worker\.execution_start_pending/);
+});
+
+test('mr_30 s3 nenhuma mensagem aos 2 min está perdida, e sem savedAt usa o messageOrder', async () => {
+  const storage = memoryStorage();
+  seedMarker(storage, '2026-10-06T18:14:31.000Z');
+  const lost = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    messagesAfter: async () => [],
+    now: () => '2026-10-06T18:16:31.000Z',
+  });
+  await assert.rejects(lost.startOrGet(claim()), /review-worker\.execution_start_lost/);
+
+  const older = memoryStorage();
+  seedMarker(older);
+  let cursor = '';
+  const fromOrder = createReviewStudioHost({
+    storage: older,
+    userId: () => 'user-mr15',
+    messagesAfter: async (_userId, _threadId, lastOrderAt) => { cursor = lastOrderAt; return []; },
+    now: () => '2026-10-06T18:16:34.000Z',
+  });
+  await assert.rejects(fromOrder.startOrGet(claim()), /review-worker\.execution_start_lost/);
+  assert.equal(cursor, ORDER_AT);
+});
+
 test('mr_15 s1 grava o messageid_created depois do execute e o observe usa esse id', async () => {
   const storage = memoryStorage();
   let savedBeforeExecute = '';
