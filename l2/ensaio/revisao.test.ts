@@ -14,6 +14,7 @@ import { candidateRead } from '../solution/candidate/candidateGateway.js';
 import { writeJson } from '../solution/fs.js';
 import { readCandidateWorkerGate } from '../newRelease/helpers/candidateWorkerGate.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
+import { acceptL4Implementation, readL4Implementation } from '../solution/candidate/moduleImplementation.js';
 import { promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './cenario.js';
 
@@ -234,6 +235,62 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
           assert.ok(sealedFile, path);
           const restored = await file.getContent();
           assert.equal(restored, await sealedFile.getContent(), path);
+          assert.equal(`sha256:${createHash('sha256').update(restored).digest('hex')}`, sha256, path);
+        }
+      });
+      const displayedHashes = { menu: '', backend: '', effort: '' };
+      for (const [name, read] of [['menu', menu], ['backend', backend], ['effort', effort]] as const) {
+        const file = Object.values(mls.stor.files).find(file => file.project === PROJECT && file.level === 4
+          && `l4/${file.folder}/${file.shortName}${file.extension}` === read.path)!;
+        displayedHashes[name] = `sha256:${createHash('sha256').update(await file.getContent()).digest('hex')}`;
+      }
+      await t.test('mr_10 s4: seal, promotion and local acceptance retain the displayed hashes and changed rule', async () => {
+        assert.equal(await readL4Implementation(PROJECT, MODULE), null);
+        await sealModuleLayers(PROJECT, MODULE, prepared.input.baseId);
+        await promoteL4Revision(PROJECT, MODULE, ready.binding.changeId, current.revisionId!);
+        const accepted = await acceptL4Implementation(PROJECT, MODULE, {
+          revisionId: current.revisionId!, acceptedBy: 'ensaio', hashes: displayedHashes,
+        });
+        const reloaded = await readL4Implementation(PROJECT, MODULE);
+        assert.deepEqual(reloaded, accepted);
+        assert.equal(reloaded!.changeId, ready.binding.changeId);
+        assert.equal(reloaded!.revisionId, adoption.outputRevisionId);
+        assert.equal(reloaded!.acceptedBy, 'ensaio');
+        assert.ok(Number.isFinite(Date.parse(reloaded!.acceptedAt)));
+        assert.deepEqual(reloaded!.hashes, displayedHashes);
+        assert.deepEqual(reloaded!.phases, []);
+        const moduleRules = mls.stor.files[mls.stor.getKeyToFile({ project: PROJECT, level: 4,
+          folder: MODULE, shortName: 'rules', extension: '.defs.ts' })];
+        assert.equal(await moduleRules.getContent(), rulesSource);
+        assert.match(await moduleRules.getContent(), /maior que zero/);
+      });
+      await t.test('mr_10 s4: divergent acceptance after promotion restores the module to its release', async () => {
+        const accepted = await readL4Implementation(PROJECT, MODULE);
+        assert.ok(accepted);
+        await sealModuleLayers(PROJECT, MODULE, prepared.input.baseId);
+        await promoteL4Revision(PROJECT, MODULE, ready.binding.changeId, current.revisionId!);
+        const moduleRules = mls.stor.files[mls.stor.getKeyToFile({ project: PROJECT, level: 4,
+          folder: MODULE, shortName: 'rules', extension: '.defs.ts' })];
+        assert.equal(await moduleRules.getContent(), rulesSource);
+        await assert.rejects(async () => {
+          try {
+            await acceptL4Implementation(PROJECT, MODULE, { revisionId: current.revisionId!, acceptedBy: 'ensaio',
+              hashes: { ...displayedHashes, effort: `sha256:${'0'.repeat(64)}` } });
+          } catch (error) {
+            await restoreModuleFromSeals(PROJECT, MODULE, prepared.input.baseId);
+            throw error;
+          }
+        }, /^Error: l4.implementation_conflict$/);
+        assert.deepEqual(await readL4Implementation(PROJECT, MODULE), accepted);
+        assert.deepEqual(await diffModuleLayers(PROJECT, MODULE, prepared.input.baseId), []);
+        const release = await readL4Release(PROJECT, MODULE, prepared.input.baseId);
+        assert.ok(release);
+        for (const [path, sha256] of Object.entries(release.files)) {
+          const file = Object.values(mls.stor.files).find(file => file.project === PROJECT && file.level === 4
+            && `${file.folder}/${file.shortName}${file.extension}` === `${MODULE}/${path}`);
+          assert.ok(file, path);
+          const restored = await file.getContent();
+          assert.equal(restored, scenario.sources.get(path), path);
           assert.equal(`sha256:${createHash('sha256').update(restored).digest('hex')}`, sha256, path);
         }
       });
