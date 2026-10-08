@@ -110,6 +110,22 @@ new-release--widgets--review-102035 {
   .nr-review__run.is-failed > header strong,
   .nr-review__run.is-disputed > header strong { color: var(--status-error-text, #ab2328); }
 
+  .nr-review__implementation { min-width: 0; font-size: .78rem; }
+  .nr-review__implementation ol { display: grid; gap: .7rem; margin: 0; padding-left: 1.2rem; }
+  .nr-review__implementation li { min-width: 0; overflow-wrap: anywhere; }
+  .nr-review__phase-heading { display: flex; flex-wrap: wrap; gap: .3rem .75rem; align-items: baseline; }
+  .nr-review__phase-heading small { color: var(--text-muted, #5d6b7e); }
+  .nr-review__implementation .is-concluido > .nr-review__phase-heading > span { color: var(--status-success-text, #25640e); }
+  .nr-review__implementation .is-falhou > .nr-review__phase-heading > span,
+  .nr-review__implementation-error { color: var(--status-error-text, #ab2328); }
+  .nr-review__implementation summary { padding: .4rem 0; cursor: pointer; }
+  .nr-review__implementation ul { padding-left: 1.2rem; }
+  .nr-review__implementation code { overflow-wrap: anywhere; font-size: .72rem; }
+  .nr-review__implementation .nr-review__implementation-note { color: var(--text-muted, #5d6b7e); }
+  .nr-review__implementation-level { padding: .25rem .7rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .5rem; }
+  .nr-review__implementation button { justify-self: start; margin-top: .35rem; padding: .5rem .8rem; border: 1px solid var(--border-default, #cfd8e3); border-radius: .5rem; background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); }
+  .nr-review__implementation button:disabled { opacity: .6; cursor: not-allowed; }
+
   .nr-review__loading,
   .nr-review__empty,
   .nr-review__pending {

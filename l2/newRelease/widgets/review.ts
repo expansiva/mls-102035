@@ -16,7 +16,7 @@ import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/can
 import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
-import { sealModuleLayers, restoreModuleFromSeals } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { sealModuleLayers, restoreModuleFromSeals, diffModuleLayers, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { createImplementationRunner } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
@@ -47,6 +47,7 @@ import {
   buildReviewView,
   canStartReviewRun,
   canAcceptImplementation,
+  implementationProgress,
   openReviewExpansionKeys,
   REVIEW_ALL_ACTORS,
   reviewExpansionKey,
@@ -94,6 +95,10 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
   @state() private implementationHashes: L4ImplementationHashes = { menu: '', backend: '', effort: '' };
+
+  @state() private implementationDiff: ModuleLayerDiff[] | null = null;
+  @state() private implementationRestored = false;
+  private implementationFlight: Promise<void> | null = null;
 
   private loadToken = 0;
   private readonly adoptedRuns = new Set<string>();
@@ -159,7 +164,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   private async load() {
     const token = ++this.loadToken;
     this.stopImplementationTimer();
-    this.implementationBusy = false;
+    this.implementationDiff = null;
+    this.implementationRestored = false;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version, data: this.data };
     this.loadedFor = null;
     this.implementation = null;
@@ -193,7 +199,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       readL4Implementation(context.project, context.moduleName).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
     ]);
     if (token !== this.loadToken) return;
-    this.implementation = implementation.value;
+    this.implementation = implementation.value?.changeId === context.data?.changeId ? implementation.value : null;
     if (implementation.error) this.actionError = 'review.implementation.error.load';
     this.menuRead = menuRead;
     this.backendRead = backendRead;
@@ -208,6 +214,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.loadedFor = context;
     this.loading = false;
     if (this.implementationPending()) void this.advanceImplementation(token);
+    else if (this.implementationComplete()) void this.loadImplementationDiff(token);
   }
 
   private selectActor(actor: string) {
@@ -635,11 +642,21 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private implementationPending(): boolean {
     const record = this.implementation;
-    return !!record && this.version === 'tobe' && !record.phases.some(phase => phase.status === 'failed')
+    return !!record && record.changeId === this.data?.changeId && this.version === 'tobe' && !record.phases.some(phase => phase.status === 'failed')
       && !(['defsL2', 'defsL1'] as const).every(name => record.phases.some(phase => phase.name === name && phase.status === 'done'));
   }
 
   private async advanceImplementation(token = this.loadToken, retry?: 'defsL2' | 'defsL1'): Promise<void> {
+    if (this.implementationFlight) await this.implementationFlight;
+    if (!this.implementationContextCurrent(token) || this.implementationFlight) return;
+    const flight = this.runImplementation(token, retry);
+    this.implementationFlight = flight;
+    try { await flight; } finally {
+      if (this.implementationFlight === flight) this.implementationFlight = null;
+    }
+  }
+
+  private async runImplementation(token: number, retry?: 'defsL2' | 'defsL1'): Promise<void> {
     if (!this.implementationContextCurrent(token) || this.implementationBusy) return;
     if (retry) {
       const phase = this.implementation?.phases.find(phase => phase.name === retry);
@@ -654,7 +671,9 @@ export class NewReleaseReview102035 extends StateLitElement {
         ? await this.implementationRunner.retryPhase(project, moduleName, retry)
         : await this.implementationRunner.runNext(project, moduleName);
       if (!this.implementationContextCurrent(token)) return;
-      this.implementation = record;
+      this.implementation = record.changeId === this.data?.changeId ? record : null;
+      if (this.implementationComplete()) await this.loadImplementationDiff(token);
+      if (!this.implementationContextCurrent(token)) return;
       // A synchronous completion can leave the next phase absent, with none running.
       if (this.implementationPending()) {
         this.implementationTimer = window.setTimeout(() => {
@@ -665,26 +684,98 @@ export class NewReleaseReview102035 extends StateLitElement {
     } catch {
       if (this.implementationContextCurrent(token)) this.actionError = 'review.implementation.error.run';
     } finally {
-      if (this.implementationContextCurrent(token)) this.implementationBusy = false;
+      this.implementationBusy = false;
     }
   }
 
-  private renderImplementation() {
-    if (!this.implementation || this.version !== 'tobe' || !this.isCurrentLoad()) return nothing;
+  private hasImplementation(): boolean {
+    return this.version === 'tobe' && this.isCurrentLoad() && !!this.implementation
+      && this.implementation.changeId === this.data?.changeId;
+  }
+
+  private implementationComplete(): boolean {
+    return this.hasImplementation() && implementationProgress(this.implementation, this.data?.changeId ?? null)
+      .every(phase => phase.status === 'concluido');
+  }
+
+  private async loadImplementationDiff(token: number): Promise<void> {
+    const baseId = this.data?.sealedRevision?.manifest.baseId;
+    if (!baseId || !this.implementationContextCurrent(token)) return;
+    try {
+      const diff = await diffModuleLayers(this.project, this.moduleName, baseId);
+      if (this.implementationContextCurrent(token)) this.implementationDiff = diff;
+    } catch {
+      if (this.implementationContextCurrent(token)) this.actionError = 'review.implementation.error.diff';
+    }
+  }
+
+  private async refuseImplementation(): Promise<void> {
+    const baseId = this.data?.sealedRevision?.manifest.baseId;
+    if (!this.implementationComplete() || this.implementationBusy || this.implementationRestored || !baseId) return;
+    if (!window.confirm(this.t('review.implementation.refuseConfirm'))) return;
+    const token = this.loadToken;
+    const { project, moduleName } = this;
+    this.implementationBusy = true;
+    this.actionError = '';
+    try {
+      await restoreModuleFromSeals(project, moduleName, baseId);
+      if (!this.implementationContextCurrent(token)) return;
+      this.implementationRestored = true;
+      await this.loadImplementationDiff(token);
+    } catch {
+      if (this.implementationContextCurrent(token)) this.actionError = 'review.implementation.error.refuse';
+    } finally {
+      this.implementationBusy = false;
+    }
+  }
+
+  private renderImplementation(placement: 'top' | 'bottom') {
+    if (!this.hasImplementation()) return nothing;
+    const phases = implementationProgress(this.implementation, this.data?.changeId ?? null);
     return html`
-      <section class="nr-review__run" aria-live="polite">
+      <section class=${`nr-review__run nr-review__implementation is-${placement}`} aria-live=${placement === 'top' ? 'polite' : 'off'}>
         <h3>${this.t('review.implementation.progress')}</h3>
-        ${this.implementation.phases.map(phase => html`
-          <div>
-            <strong>${this.t(`review.implementation.phase.${phase.name}`)}</strong>
-            <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
-            ${phase.error ? html`<p role="alert">${phase.error}</p>` : nothing}
-            ${phase.status === 'failed' && phase.attempt < 2 ? html`
-              <button type="button" ?disabled=${this.implementationBusy}
-                @click=${() => void this.advanceImplementation(this.loadToken, phase.name)}>${this.t('review.implementation.retry')}</button>
-            ` : nothing}
-          </div>
-        `)}
+        <ol>
+          ${phases.map(phase => html`
+            <li class=${`is-${phase.status}`}>
+              <div class="nr-review__phase-heading">
+                <strong>${this.t(`review.implementation.phase.${phase.name}`)}</strong>
+                <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
+                ${phase.attempt ? html`<small>${this.t('review.implementation.attempt', { attempt: phase.attempt })}</small>` : nothing}
+              </div>
+              ${phase.error ? html`<p class="nr-review__implementation-error">${phase.error}</p>` : nothing}
+              ${phase.previousAttempts?.length ? html`<details>
+                <summary>${this.t('review.implementation.previousAttempts')}</summary>
+                ${phase.previousAttempts.map(previous => html`<p>${this.t('review.implementation.attempt', { attempt: previous.attempt })}: ${previous.error || this.t('review.implementation.status.falhou')}</p>`)}
+              </details>` : nothing}
+              ${phase.changedDefs?.length ? html`<details>
+                <summary>${this.t('review.implementation.changedDefs', { count: phase.changedDefs.length })}</summary>
+                <ul>${phase.changedDefs.map(file => html`<li><code>${file.path}</code> <span>${this.t(`review.implementation.file.${file.status}`)}</span></li>`)}</ul>
+              </details>` : nothing}
+              ${phase.podeTentarDeNovo ? html`
+                <button type="button" class="nr-review__implementation-retry" ?disabled=${this.implementationBusy}
+                  @click=${() => void this.advanceImplementation(this.loadToken, phase.name)}>${this.t('review.implementation.retry')}</button>
+              ` : nothing}
+            </li>
+          `)}
+        </ol>
+        ${this.actionError ? html`<p role=${placement === 'top' ? 'alert' : nothing}>${this.tStoredReviewError(this.actionError)}</p>` : nothing}
+        ${this.implementationComplete() ? html`
+          <p class="nr-review__implementation-note">${this.t('review.implementation.completedBody')}</p>
+          ${this.implementationDiff === null ? html`<p>${this.t('state.loading')}</p>` : html`
+            ${([2, 1] as const).map(level => html`<details class="nr-review__implementation-level">
+              <summary>${this.t('review.implementation.level', { level })}</summary>
+              <ul>${this.implementationDiff!.filter(file => file.level === level).map(file => html`
+                <li><code>${file.path}</code> <span>${this.t(`review.implementation.file.${file.status}`)}</span></li>
+              `)}</ul>
+              ${!this.implementationDiff!.some(file => file.level === level) ? html`<p>${this.t('review.implementation.noChanges')}</p>` : nothing}
+            </details>`)}
+          `}
+          ${this.implementationRestored ? html`<p>${this.t('review.implementation.restored')}</p>` : html`
+            <button type="button" class="nr-review__implementation-refuse" ?disabled=${this.implementationBusy || !this.data?.sealedRevision?.manifest.baseId}
+              @click=${() => void this.refuseImplementation()}>${this.t('review.implementation.refuse')}</button>
+          `}
+        ` : nothing}
       </section>
     `;
   }
@@ -1041,11 +1132,10 @@ export class NewReleaseReview102035 extends StateLitElement {
             <p>${this.t('review.description')}</p>
           </div>
         </header>
-        ${this.renderPrimaryAction(topAction)}
+        ${this.hasImplementation() ? this.renderImplementation('top') : this.renderPrimaryAction(topAction)}
         ${this.renderReviewRun()}
-        ${this.renderImplementation()}
         ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
-        ${this.renderPrimaryAction(bottomAction)}
+        ${this.hasImplementation() ? this.renderImplementation('bottom') : this.renderPrimaryAction(bottomAction)}
         ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}
       </section>
     `;
