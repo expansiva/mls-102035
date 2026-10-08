@@ -484,6 +484,13 @@ export interface EffortMaster {
   device: PoolDevice;
 }
 
+/** What each master `describeEffort` receives. How imports this; it does not copy the type. */
+export interface EffortInput {
+  module: string;
+  base: { baseId: string; revisionId: string };
+  item: L4DiffItem;
+}
+
 export interface EffortAnswer {
   master: EffortMaster;
   item: string;
