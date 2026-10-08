@@ -19,6 +19,7 @@ import { readActiveSealedL4Candidate, resolveL4Folders } from '../solution/candi
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
 import { runUntilDone, createMemoryIndexedDb } from './hostSimulado.js';
 import { createHubEmMemoria } from './hubEmMemoria.js';
+import { setDescribeEffortImporter } from '/_102035_/l2/solution/effortRegistry.js';
 
 export const FIXTURE = new URL('../newRelease/fixtures/ensaio/controleEstoque/', import.meta.url);
 export const PROJECT = 102047;
@@ -129,6 +130,44 @@ function installStorFixture() {
   return sources;
 }
 
+/** How's frozen agendaClinica defs, on the in-memory stor. Same trees the master tests read. */
+export async function installAgendaClinicaEffortFixture(project = PROJECT): Promise<void> {
+  const l2 = new URL('../../../mls-102020/l2/helpers/effort/fixtures/agendaClinica/contracts/', import.meta.url);
+  for (const name of readdirSync(l2)) {
+    if (!name.endsWith('.defs.txt')) continue;
+    const file = await mls.stor.addOrUpdateFile({
+      project, level: 2, folder: 'agendaClinica/web/contracts',
+      shortName: name.slice(0, -'.defs.txt'.length), extension: '.defs.ts', versionRef: '1',
+    });
+    assert.ok(file, name);
+    await mls.stor.localStor.setContent(file, { content: readFileSync(new URL(name, l2), 'utf8') });
+  }
+  const l1 = new URL('../../../mls-102021/l2/helpers/effort/fixtures/agendaClinica/', import.meta.url);
+  const walk = async (folder: URL, prefix: string) => {
+    for (const entry of readdirSync(folder, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        await walk(new URL(`${entry.name}/`, folder), `${prefix}${entry.name}/`);
+        continue;
+      }
+      if (!entry.name.endsWith('.defs.txt')) continue;
+      const slash = prefix.lastIndexOf('/');
+      const file = await mls.stor.addOrUpdateFile({
+        project, level: 1,
+        folder: `agendaClinica${slash < 0 ? '' : `/${prefix.slice(0, slash)}`}`,
+        shortName: entry.name.slice(0, -'.defs.txt'.length), extension: '.defs.ts', versionRef: '1',
+      });
+      assert.ok(file, `${prefix}${entry.name}`);
+      await mls.stor.localStor.setContent(file, { content: readFileSync(new URL(entry.name, folder), 'utf8') });
+    }
+  };
+  await walk(l1, '');
+}
+
+/** The rehearsal has no master unless a case installs the real importer. */
+const noMasterImporter = async () => {
+  throw new Error('no master in ensaio');
+};
+
 export async function withReviewScenario(installStub: () => void, run: (scenario: { sources: Map<string, string>; selection: Awaited<ReturnType<typeof saveChangeRequest>>; prepared: Awaited<ReturnType<typeof prepareReviewStartInput>>; before: Awaited<ReturnType<typeof candidateRead>>; command: string; context: mls.msg.ExecutionContext; replay: Awaited<ReturnType<typeof runUntilDone>>; fetchCalls: () => number; progress: ReviewWorkerProgress }) => Promise<void>, prepareSources?: (sources: Map<string, string>) => void) {
   const priorMls = globalThis.mls;
   const priorFetch = globalThis.fetch;
@@ -146,6 +185,7 @@ export async function withReviewScenario(installStub: () => void, run: (scenario
   let fetchCalls = 0;
   const fetchImpl: typeof fetch = async () => { fetchCalls++; throw new Error('Network forbidden in replay'); };
   globalThis.fetch = fetchImpl;
+  setDescribeEffortImporter(noMasterImporter);
   try {
     installStub();
     const sources = installStorFixture();
@@ -215,6 +255,7 @@ export async function withReviewScenario(installStub: () => void, run: (scenario
     assert.ok(progress);
     await run({ sources, selection, prepared, before, command, context, replay, progress, fetchCalls: () => fetchCalls });
   } finally {
+    setDescribeEffortImporter(undefined);
     globalThis.mls = priorMls; globalThis.fetch = priorFetch;
     if (priorIndexedDb) Object.defineProperty(globalThis, 'indexedDB', priorIndexedDb);
     else Reflect.deleteProperty(globalThis, 'indexedDB');

@@ -4,10 +4,12 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { installMlsStub } from '../../../test/mlsStub.js';
 import assert from 'node:assert/strict';
-import { effortRegistry } from '/_102035_/l2/solution/effortRegistry.js';
+import { effortRegistry, resolveDescribeEffort, setDescribeEffortImporter } from '/_102035_/l2/solution/effortRegistry.js';
+import { mergeChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
+import { writeJson } from '/_102035_/l2/solution/fs.js';
 import { listPoolBox } from '/_102035_/l2/solution/pool.js';
-import type { ChangeEffortFile, EffortAnswer } from '/_102035_/l2/solution/poolPlan.js';
-import { withReviewScenario, runPlannerScenario, MODULE } from './cenario.js';
+import type { ChangeEffortFile, EffortAnswer, EffortInput } from '/_102035_/l2/solution/poolPlan.js';
+import { installAgendaClinicaEffortFixture, withReviewScenario, runPlannerScenario, MODULE } from './cenario.js';
 
 const GOLDEN = JSON.parse(readFileSync(new URL(
   '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json',
@@ -91,6 +93,51 @@ test('maintenance with the agendaClinica gabarito records changeEffort and the L
     }
     assert.equal(fetchCalls(), 0);
   });
+  } finally {
+    restore();
+  }
+});
+
+test('agendaClinica effort comes from the real How modules and matches the golden fixture', async () => {
+  const restore = snapshotRegistry();
+  for (const project of Object.keys(effortRegistry)) delete effortRegistry[project];
+  try {
+    await withReviewScenario(() => installMlsStub({ actualProject: 102047 }), async () => {
+      setDescribeEffortImporter(undefined);
+      await installAgendaClinicaEffortFixture();
+      const item = GOLDEN.request.items[0];
+      assert.ok(item);
+      const input: EffortInput = { module: GOLDEN.module, base: GOLDEN.base, item };
+      const answers: EffortAnswer[] = [];
+      for (const master of GOLDEN.masters) {
+        const describeEffort = await resolveDescribeEffort(master.project);
+        assert.ok(describeEffort, master.project);
+        answers.push(await describeEffort(input));
+      }
+      const perItem = [{ item: item.changeId, answers }];
+      const merged = mergeChangeEffort(perItem);
+      const file: ChangeEffortFile = {
+        ...GOLDEN,
+        perItem,
+        merged,
+        status: merged.abend.length > 0 ? 'blocked' : 'simple',
+      };
+      await writeJson({
+        project: 102047, level: 4, folder: 'agendaClinica/pool/l4', shortName: 'changeEffort', extension: '.json',
+      }, file);
+      const writtenFile = Object.values(mls.stor.files).find(entry => entry.project === 102047
+        && entry.level === 4 && entry.shortName === 'changeEffort' && entry.extension === '.json'
+        && entry.folder === 'agendaClinica/pool/l4');
+      assert.ok(writtenFile);
+      const written = JSON.parse(await writtenFile.getContent()) as ChangeEffortFile;
+      const byUnit = (file: ChangeEffortFile) => file.perItem.map(row => row.answers.map(answer => ({
+        ...answer,
+        materialize: [...answer.materialize].sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id)),
+      })));
+      assert.equal(written.status, GOLDEN.status);
+      assert.deepEqual(written.merged, GOLDEN.merged);
+      assert.deepEqual(byUnit(written), byUnit(GOLDEN));
+    });
   } finally {
     restore();
   }

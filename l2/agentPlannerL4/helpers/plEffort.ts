@@ -2,7 +2,10 @@ import { PL_PLANNER_PROJECTS } from '/_102035_/l2/agentPlannerL4/helpers/plCore.
 import { moduleFile, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 import {
+  describeEffortFailure,
+  describeEffortModulePath,
   effortRegistry,
+  resolveDescribeEffort,
   type DescribeEffortFn,
   type EffortRegistry,
 } from '/_102035_/l2/solution/effortRegistry.js';
@@ -52,9 +55,23 @@ export async function describeItemEffort(
   input: EffortInput,
   registry: EffortRegistry = effortRegistry,
 ): Promise<EffortAnswer> {
-  const entry = registry[master.project];
+  let entry = registry[master.project];
+  if (!entry && registry === effortRegistry) {
+    const describeEffort = await resolveDescribeEffort(master.project);
+    if (describeEffort) entry = { describeEffort };
+  }
   if (!entry) {
-    return abend(master, input.item.changeId, `describeEffort not registered for master ${master.project}`);
+    const path = registry === effortRegistry ? describeEffortModulePath(master.project) : undefined;
+    const failure = registry === effortRegistry ? describeEffortFailure(master.project) : undefined;
+    if (path && failure) {
+      return abend(
+        master,
+        input.item.changeId,
+        `describeEffort unavailable for master ${master.project} at ${path}: ${failure}`,
+      );
+    }
+    const where = path ? ` at ${path}` : '';
+    return abend(master, input.item.changeId, `describeEffort not registered for master ${master.project}${where}`);
   }
   try {
     return await entry.describeEffort(input);
