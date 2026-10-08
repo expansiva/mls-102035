@@ -11,6 +11,8 @@ import { buildBackendReview, parseEffortSummary } from '../newRelease/widgets/ba
 import { installMlsStub } from '../../../test/mlsStub.js';
 import assert from 'node:assert/strict';
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
+import { writeJson } from '../solution/fs.js';
+import { readCandidateWorkerGate } from '../newRelease/helpers/candidateWorkerGate.js';
 import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './cenario.js';
 
 test('recorded review goes through public hooks and publishes only quantidadeMinimaValida', async () => {
@@ -41,8 +43,10 @@ test('recorded review goes through public hooks and publishes only quantidadeMin
 });
 
 
-for (const editedAfterClick of [false, true]) {
-test(`mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited after the click' : 'becomes current in the module reader'}`, async () => {
+for (const outcome of ['current', 'edited', 'corrupted'] as const) {
+const editedAfterClick = outcome === 'edited';
+test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with a changed local manifest hash'
+  : `mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited after the click' : 'becomes current in the module reader'}`, async () => {
   await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async (scenario) => {
     const { prepared, before, progress, command, fetchCalls } = scenario;
     // Load the platform ledger itself: the fake runner supplies evidence, never a fabricated ready record.
@@ -145,6 +149,22 @@ test(`mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited
     assert.equal(pendingCount(beforeAdoption), 1);
     const adoption = { inputRevisionId: ready.binding.inputRevisionId,
       outputRevisionId: ready.executions.find((item: any) => item.agentName === 'agentPlannerL4').candidateRevisionId };
+    const validGate = await readCandidateWorkerGate(ready);
+    assert.equal(validGate.pipelineComplete, true);
+    assert.equal(validGate.pipelineSnapshotHash, pipelineSnapshotHash);
+    if (outcome === 'corrupted') {
+      pipeline.revision.manifestHash = `sha256:${'0'.repeat(64)}`;
+      await writeJson(pipelineFile, pipeline);
+      const rejectedGate = await readCandidateWorkerGate(ready);
+      assert.equal(rejectedGate.pipelineComplete, false);
+      if (rejectedGate.pipelineComplete) await adoptL4ReviewResult(PROJECT, MODULE, adoption);
+      const pending = await readNs5Module(PROJECT, MODULE, 'tobe');
+      assert.equal(pending.resultCurrent, false);
+      assert.equal(pending.revisionId, beforeAdoption.revisionId);
+      assert.equal(pendingCount(pending), 1);
+      assert.equal(fetchCalls(), 0);
+      return;
+    }
     if (editedAfterClick) {
       const edited = await saveChangeRequest(PROJECT, MODULE, `${binding.request}\nPedido editado após o clique.`,
         beforeAdoption.changeId, beforeAdoption.revisionId);
