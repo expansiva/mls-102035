@@ -60,6 +60,8 @@ import {
   type ReviewView,
   toggleReviewSelection,
 } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { buildChangeEffortView, type ChangeEffortView } from '/_102035_/l2/newRelease/widgets/changeEffortModel.js';
+import type { EffortUnitRef } from '/_102035_/l2/solution/poolPlan.js';
 import { MENU_ACTIONS } from '/_102035_/l2/solution/poolPlan.js';
 import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, type BackendReviewView, type BackendTestSupportOwnerGroup } from '/_102035_/l2/newRelease/widgets/backendReviewModel.js';
 import type { PoolTestSupportItem } from '/_102035_/l2/solution/poolPlan.js';
@@ -81,6 +83,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private pool: ReviewPoolBoxView[] = [];
   @state() private backendRead: ReviewArtifactRead = EMPTY_ARTIFACT;
   @state() private effortRead: ReviewArtifactRead = EMPTY_ARTIFACT;
+  @state() private changeEffortRead: ReviewArtifactRead = EMPTY_ARTIFACT;
   @state() private loading = false;
   @state() private selectedActor = '';
   @state() private selectedId = '';
@@ -163,6 +166,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private async load() {
     const token = ++this.loadToken;
+    this.changeEffortRead = EMPTY_ARTIFACT;
     this.stopImplementationTimer();
     this.implementationDiff = null;
     this.implementationRestored = false;
@@ -190,10 +194,11 @@ export class NewReleaseReview102035 extends StateLitElement {
         inputRevisionId: context.data.revisionId,
       }).then(run => ({ run, errorCode: '' }), () => ({ run: null, errorCode: 'review.run.storeError' }))
       : Promise.resolve({ run: null, errorCode: '' });
-    const [menuRead, backendRead, effortRead, pool, persistedRun, implementation] = await Promise.all([
+    const [menuRead, backendRead, effortRead, changeEffortRead, pool, persistedRun, implementation] = await Promise.all([
       readModuleMenu(context.project, context.moduleName),
       readReviewArtifact(context.project, context.moduleName, 'backend'),
       readReviewArtifact(context.project, context.moduleName, 'effort'),
+      readReviewArtifact(context.project, context.moduleName, 'changeEffort'),
       readReviewPoolBoxes(context.project, context.moduleName),
       runRead,
       readL4Implementation(context.project, context.moduleName).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
@@ -204,6 +209,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.menuRead = menuRead;
     this.backendRead = backendRead;
     this.effortRead = effortRead;
+    this.changeEffortRead = changeEffortRead;
     this.pool = pool;
     this.reviewRun = persistedRun.run;
     this.reviewRunLoadError = persistedRun.errorCode;
@@ -476,10 +482,11 @@ export class NewReleaseReview102035 extends StateLitElement {
     const revisionId = outputRevisionIdForRun(run);
     if (!revisionId) throw new Error('review-run.candidate_binding_mismatch');
     const root = `${run.binding.moduleName}/pipeline/changes/${run.binding.changeId}/revisions/${revisionId}/l4`;
-    const [menu, backend, effort] = await Promise.all([
+    const [menu, backend, effort, changeEffort] = await Promise.all([
       readModuleMenu(run.binding.project, run.binding.moduleName, root),
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'backend', root),
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'effort', root),
+      readReviewArtifact(run.binding.project, run.binding.moduleName, 'changeEffort', root),
     ]);
     if (token !== this.loadToken) return;
     const hash = async (name: 'menu' | 'backend' | 'effort') => {
@@ -488,12 +495,16 @@ export class NewReleaseReview102035 extends StateLitElement {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
       return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
     };
-    const hashes = await Promise.all(['menu', 'backend', 'effort'].map(name => hash(name as 'menu' | 'backend' | 'effort')));
+    // The new acceptance/hash contract belongs to mr28; legacy hashes apply only to creation.
+    const hashes = changeEffort.status === 'missing'
+      ? await Promise.all(['menu', 'backend', 'effort'].map(name => hash(name as 'menu' | 'backend' | 'effort')))
+      : ['', '', ''];
     if (token !== this.loadToken) return;
     this.implementationHashes = { menu: hashes[0], backend: hashes[1], effort: hashes[2] };
     this.menuRead = menu;
     this.backendRead = backend;
     this.effortRead = effort;
+    this.changeEffortRead = changeEffort;
     this.pool = [];
     this.saveOutputAlias(run, userId);
     if (run.status !== 'ready' || this.adoptedRuns.has(run.runId)
@@ -580,6 +591,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   };
 
   private canImplement(): boolean {
+    if (this.changeEffortRead.status !== 'missing') return false;
     return canAcceptImplementation({ project: this.project, moduleName: this.moduleName, data: this.data,
       runStatus: this.channelRun?.status ?? this.reviewRun?.status ?? null,
       menu: this.menuRead, backend: this.backendRead, effort: this.effortRead,
@@ -824,6 +836,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         disabled: this.actionBusy || this.loading || accepted || !getUserId() || !this.canImplement(),
       };
     }
+    if (current && this.changeEffortRead.status !== 'missing') return { ...action, disabled: true };
     return action;
   }
 
@@ -993,6 +1006,38 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
+  private renderChangeEffortUnits(label: string, units: EffortUnitRef[]) {
+    return html`<section><h4>${this.t(label)}</h4>
+      ${units.length ? html`<ul>${units.map(unit => html`<li><strong>${unit.kind}: ${unit.id}</strong><code>${unit.path}</code></li>`)}</ul>
+        : html`<p>${this.t('review.effort.none')}</p>`}
+    </section>`;
+  }
+
+  private renderChangeEffort(view: ChangeEffortView) {
+    if (view.kind === 'missing') return nothing;
+    return html`<section class="nr-review__change-effort" aria-label=${this.t('review.effort.title')}>
+      <header><h3>${this.t('review.effort.title')}</h3>
+        ${view.kind === 'invalid' ? html`<p class="nr-review__effort-abend" role="alert">${this.t('review.effort.invalid')}</p>` : html`
+          <p class=${view.status === 'blocked' ? 'nr-review__effort-abend' : ''}>${this.t(`review.effort.status.${view.status}`)}</p>
+          <p>${this.t('review.effort.untouched', { count: view.untouched!.count })}</p>
+        `}
+      </header>
+      ${view.items.map(({ item, answers }) => html`<details class="nr-review__effort-item">
+        <summary><strong>${item.kind} · ${item.op} · ${item.entity}</strong><code>${item.id}</code></summary>
+        <div>${answers.map(answer => html`<article class="nr-review__effort-master">
+          <h4>${this.t('review.effort.master', { project: answer.master.project, kind: answer.master.kind, device: answer.master.device })}</h4>
+          ${answer.abend ? html`<p class="nr-review__effort-abend"><strong>${this.t('review.effort.abend')}</strong> ${answer.abend.reason}</p>` : nothing}
+          ${this.renderChangeEffortUnits('review.effort.regenerateDefs', answer.regenerateDefs)}
+          ${this.renderChangeEffortUnits('review.effort.materialize', answer.materialize)}
+          <section><h4>${this.t('review.effort.runAgents')}</h4>
+            ${answer.runAgents.length ? html`<ul>${answer.runAgents.map(agent => html`<li><strong>${agent.agent}</strong><code>${agent.command}</code></li>`)}</ul>
+              : html`<p>${this.t('review.effort.none')}</p>`}
+          </section>
+        </article>`)}</div>
+      </details>`)}
+    </section>`;
+  }
+
   private renderBackend(view: ReviewView) {
     // pool/l2/web holds the candidate result, not a snapshot of Atual or a past release.
     if (this.version !== 'tobe') return nothing;
@@ -1121,6 +1166,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   render() {
     const view = this.view();
     const current = this.isCurrentLoad();
+    const changeEffort = buildChangeEffortView(this.changeEffortRead);
     const action = this.actionPresentation(view, current);
     const [topAction, bottomAction] = buildReviewActionPlacements(action);
     return html`
@@ -1134,7 +1180,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         </header>
         ${this.hasImplementation() ? this.renderImplementation('top') : this.renderPrimaryAction(topAction)}
         ${this.renderReviewRun()}
-        ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
+        ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : changeEffort.kind !== 'missing' ? this.renderChangeEffort(changeEffort) : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
         ${this.hasImplementation() ? this.renderImplementation('bottom') : this.renderPrimaryAction(bottomAction)}
         ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}
       </section>
