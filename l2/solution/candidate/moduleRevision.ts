@@ -4,6 +4,8 @@ import { fileExists, readDefsJson, readJson, readSourceText, writeJson, writeSou
 import type { Ns5ModuleArtifact, Ns5JourneyIndexArtifact, Ns5OntologyIndexArtifact, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import { ns5OntologyEntityIds, normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeArtifactPath, type Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
+import { MODULE_LAYERS_SCHEMA, type ModuleLayersSeal } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+
 export const L4_REVISION_SCHEMA = '2026-09-20-nr-module-revision-v1' as const;
 export type L4HashMap = Record<string, string>;
 export type L4SchemaMap = Record<string, string | null>;
@@ -33,6 +35,8 @@ export interface L4ChangeRecord {
   activeRevisionId: string | null;
   requestRevision: number;
   resultRevisionId: string | null;
+  promotedRevisionId?: string;
+  promotedAt?: string;
   sourcePrompt: string;
   updatedAt: string;
 }
@@ -605,5 +609,49 @@ export async function adoptL4ReviewResult(project: number, moduleName: string, i
     } satisfies L4ChangeRecord;
     await writeJson(changeInfo(project, moduleName, change.changeId), updated);
     return updated;
+  });
+}
+
+/** Promote the active sealed defs and the pool bytes captured from that same revision. */
+export async function promoteL4Revision(project: number, moduleName: string, changeId: string, revisionId: string): Promise<L4ChangeRecord> {
+  return withModuleWriter(project, moduleName, async () => {
+    const change = await readActiveL4Change(project, moduleName);
+    if (!change || change.changeId !== changeId || change.activeRevisionId !== revisionId) {
+      throw new Error('module-promotion.revision_mismatch');
+    }
+    let sealed: L4SealedCandidateSnapshot | null;
+    try {
+      sealed = await readSealedL4Candidate(project, moduleName, changeId, revisionId);
+    } catch {
+      throw new Error('module-promotion.revision_mismatch');
+    }
+    if (!sealed || sealed.manifest.baseId !== change.baseId) throw new Error('module-promotion.revision_mismatch');
+    const layers = await readJson<ModuleLayersSeal>(jsonInfo(project, moduleName, `pipeline/releases/${sealed.manifest.baseId}`, 'layers'));
+    if (!layers || layers.schemaVersion !== MODULE_LAYERS_SCHEMA || layers.project !== project
+      || layers.moduleName !== moduleName || layers.baseId !== sealed.manifest.baseId || !Array.isArray(layers.files)) {
+      throw new Error('module-promotion.layers_unsealed');
+    }
+    const copies = sealed.sources.map(({ path, source }) => ({
+      info: artifactInfo(project, moduleName, path, 'asis'), source, sha256: sealed.manifest.files[path],
+    }));
+    const root = resolveL4Folders(project, moduleName, sealed.manifest.baseId, changeId, revisionId).revisionL4Path!.slice(3);
+    const poolRoot = `${root}/pool`;
+    for (const file of Object.values(mls.stor.files)) {
+      if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted'
+        || (file.folder !== poolRoot && !file.folder.startsWith(`${poolRoot}/`))) continue;
+      const source = await readSourceText(file);
+      copies.push({ info: { project, level: 4, folder: `${moduleName}${file.folder.slice(root.length)}`,
+        shortName: file.shortName, extension: file.extension }, source, sha256: await sourceHash(source) });
+    }
+    for (const copy of copies) {
+      await writeSourceText(copy.info, copy.source);
+      if (await sourceHash(await readSourceText(copy.info)) !== copy.sha256) {
+        throw new Error('module-promotion.revision_mismatch');
+      }
+    }
+    const promotedAt = new Date().toISOString();
+    const promoted = { ...change, promotedRevisionId: revisionId, promotedAt, updatedAt: promotedAt };
+    await writeJson(changeInfo(project, moduleName, changeId), promoted);
+    return promoted;
   });
 }
