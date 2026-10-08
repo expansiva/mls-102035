@@ -136,6 +136,22 @@ test('gapCount interpolates through the real translator in both bundles', () => 
   }
 });
 
+test('mr_12 implementation values interpolate through the real translator in both languages', () => {
+  for (const [language, attemptLabel, countLabel, levelLabel] of [
+    ['pt-BR', 'Tentativa', 'Definições alteradas', 'Nível'],
+    ['en-US', 'Attempt', 'Changed definitions', 'Level'],
+  ]) {
+    const messages = JSON.parse(readFileSync(new URL(`i18n/${language}.json`, import.meta.url), 'utf8'));
+    const t = createNewReleaseTranslator([messages]);
+    for (const value of [1, 2]) {
+      assert.equal(t('review.implementation.attempt', { attempt: value }),
+        `${attemptLabel} ${value} ${language === 'pt-BR' ? 'de' : 'of'} 2`);
+      assert.equal(t('review.implementation.changedDefs', { count: value }), `${countLabel}: ${value}`);
+      assert.equal(t('review.implementation.level', { level: value }), `${levelLabel} ${value}`);
+    }
+  }
+});
+
 test('candidate URL maps to the Studio stor file of the same catalog', () => {
   assert.deepEqual(newReleaseI18nFileFromUrl(MASTER_PT), {
     project: 102035,
