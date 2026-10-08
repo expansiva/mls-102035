@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "2026-10-08-p4-change-effort-v1",
+  "module": "agendaClinica",
+  "base": {
+    "baseId": "mls-102047",
+    "revisionId": "cc1b2e6+79f94cc",
+    "candidateRoot": "tobe/plan"
+  },
+  "request": {
+    "text": "A regra anotacaoObrigatoriaNoAtendimento passa a exigir anotação do atendimento com pelo menos 20 caracteres.",
+    "items": [
+      {
+        "changeId": "rule:anotacaoObrigatoriaNoAtendimento",
+        "kind": "rule",
+        "op": "changed",
+        "entity": "Consulta",
+        "source": "l4/agendaClinica/rules.defs.ts"
+      }
+    ]
+  },
+  "masters": [
+    { "project": "102020", "kind": "l2", "device": "web" },
+    { "project": "102021", "kind": "l1", "device": "web" }
+  ],
+  "perItem": [
+    {
+      "item": "rule:anotacaoObrigatoriaNoAtendimento",
+      "answers": [
+        {
+          "master": { "project": "102020", "kind": "l2", "device": "web" },
+          "item": "rule:anotacaoObrigatoriaNoAtendimento",
+          "status": "computed",
+          "regenerateDefs": [],
+          "materialize": [
+            { "kind": "page", "id": "agenda_diaria", "path": "pages/agenda_diaria" }
+          ],
+          "runAgents": []
+        },
+        {
+          "master": { "project": "102021", "kind": "l1", "device": "web" },
+          "item": "rule:anotacaoObrigatoriaNoAtendimento",
+          "status": "computed",
+          "regenerateDefs": [],
+          "materialize": [
+            { "kind": "usecase", "id": "registrarAtendimento", "path": "usecases/registrarAtendimento" },
+            { "kind": "entity", "id": "consulta", "path": "entities/consulta" },
+            { "kind": "request", "id": "agenda_diaria", "path": "requests/agenda_diaria" }
+          ],
+          "runAgents": []
+        }
+      ]
+    }
+  ],
+  "merged": {
+    "regenerateDefs": [],
+    "materialize": [
+      { "kind": "entity", "id": "consulta", "path": "entities/consulta" },
+      { "kind": "page", "id": "agenda_diaria", "path": "pages/agenda_diaria" },
+      { "kind": "request", "id": "agenda_diaria", "path": "requests/agenda_diaria" },
+      { "kind": "usecase", "id": "registrarAtendimento", "path": "usecases/registrarAtendimento" }
+    ],
+    "runAgents": [],
+    "abend": []
+  },
+  "untouched": { "count": 0, "sealHash": "fixture" },
+  "status": "simple"
+}

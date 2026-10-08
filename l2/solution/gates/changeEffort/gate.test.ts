@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { CHANGE_EFFORT_SCHEMA_VERSION, type ChangeEffortFile, type EffortAnswer, type EffortMaster } from '/_102035_/l2/solution/poolPlan.js';
 import { mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 
@@ -87,4 +89,23 @@ test('rejeita status incoerente com merged.abend', () => {
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.deepEqual(result.issues, [{ code: 'status', path: 'status' }]);
+});
+
+test('a fixture dourada agendaClinica regra anotação passa no gate', () => {
+  const fixture = fileURLToPath(new URL(
+    '../../fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json',
+    import.meta.url,
+  ));
+  const result = validateChangeEffort(JSON.parse(readFileSync(fixture, 'utf8')));
+  assert.equal(result.ok, true, result.ok ? '' : JSON.stringify(result.issues));
+  if (!result.ok) return;
+  assert.equal(result.file.status, 'simple');
+  assert.deepEqual(result.file.merged.regenerateDefs, []);
+  assert.deepEqual(result.file.merged.runAgents, []);
+  assert.deepEqual(result.file.merged.materialize.map((unit) => `${unit.kind}:${unit.id}`), [
+    'entity:consulta',
+    'page:agenda_diaria',
+    'request:agenda_diaria',
+    'usecase:registrarAtendimento',
+  ]);
 });
