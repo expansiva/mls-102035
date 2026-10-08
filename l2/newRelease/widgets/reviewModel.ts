@@ -3,7 +3,7 @@
 import type { MenuReadStatus } from '/_102035_/l2/newRelease/helpers/menuReader.js';
 import type { ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
-import type { L4ImplementationHashes, L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import type { L4ImplementationHashes, L4ImplementationPhase, L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { listPoolBoxForProject } from '/_102035_/l2/solution/pool.js';
 import {
   MENU_ACTIONS,
@@ -149,6 +149,36 @@ export interface ReviewImplementationInput {
   effort: ReviewArtifactRead;
   hashes: L4ImplementationHashes;
   implementation: L4ImplementationRecord | null;
+}
+
+export interface ImplementationProgressPhase {
+  name: L4ImplementationPhase['name'];
+  status: 'aguardando' | 'executando' | 'concluido' | 'falhou';
+  attempt?: L4ImplementationPhase['attempt'];
+  changedDefs?: L4ImplementationPhase['changedDefs'];
+  error?: string;
+  previousAttempts?: L4ImplementationPhase['previousAttempts'];
+  podeTentarDeNovo: boolean;
+}
+
+/** Agent completion only; this view makes no publication or materialization claim. */
+export function implementationProgress(
+  record: L4ImplementationRecord | null,
+  currentChangeId: string | null,
+): ImplementationProgressPhase[] {
+  const phases = currentChangeId && record?.changeId === currentChangeId ? record.phases : [];
+  return (['defsL2', 'defsL1'] as const).map(name => {
+    const phase = phases.find(item => item.name === name);
+    if (!phase) return { name, status: 'aguardando', podeTentarDeNovo: false };
+    return {
+      name,
+      status: phase.status === 'running' ? 'executando' : phase.status === 'done' ? 'concluido' : 'falhou',
+      attempt: phase.attempt,
+      ...(phase.status === 'done' ? { changedDefs: phase.changedDefs } : {}),
+      ...(phase.status === 'failed' ? { error: phase.error, previousAttempts: phase.previousAttempts } : {}),
+      podeTentarDeNovo: phase.status === 'failed' && phase.attempt < 2,
+    };
+  });
 }
 
 /** Presentation gate; acceptance repeats the active revision CAS under the module writer. */

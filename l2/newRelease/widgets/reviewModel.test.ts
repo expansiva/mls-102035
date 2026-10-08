@@ -12,6 +12,7 @@ import {
   buildReviewView,
   canAcceptImplementation,
   canStartReviewRun,
+  implementationProgress,
   menuTreeForActor,
   openReviewExpansionKeys,
   parseReviewMenu,
@@ -27,9 +28,74 @@ import {
   type ReviewView,
 } from './reviewModel.js';
 import { MENU_ACTIONS, MENU_SCHEMA_VERSION, type MenuStampedNode } from '/_102035_/l2/solution/poolPlan.js';
-import { L4_IMPLEMENTATION_SCHEMA } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { L4_IMPLEMENTATION_SCHEMA, type L4ImplementationRecord, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 
 const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', import.meta.url), 'utf8'));
+
+function progressRecord(phases: L4ImplementationPhase[] = []): L4ImplementationRecord {
+  return {
+    schemaVersion: L4_IMPLEMENTATION_SCHEMA, changeId: 'change-one', revisionId: 'revision-one',
+    acceptedBy: 'user', acceptedAt: '2026-10-08T00:00:00Z',
+    hashes: { menu: 'menu', backend: 'backend', effort: 'effort' }, phases,
+  };
+}
+
+function progressPhase(patch: Partial<L4ImplementationPhase> = {}): L4ImplementationPhase {
+  return {
+    name: 'defsL2', attempt: 1, agent: 'agentDefsL2', command: '@@agentDefsL2 agendaClinica',
+    taskId: 'task', threadId: 'thread', messageId: 'message', status: 'running',
+    startedAt: '2026-10-08T00:00:00Z', previousAttempts: [], ...patch,
+  };
+}
+
+test('mr_12: absent phases await in defsL2, defsL1 order', () => {
+  const expected = ['defsL2', 'defsL1'].map(name => ({ name, status: 'aguardando', podeTentarDeNovo: false }));
+  assert.deepEqual(implementationProgress(null, 'change-one'), expected);
+  assert.deepEqual(implementationProgress(progressRecord(), 'change-one'), expected);
+});
+
+test('mr_12: running phase exposes its attempt and never offers retry', () => {
+  const result = implementationProgress(progressRecord([progressPhase({ name: 'defsL1', attempt: 2 })]), 'change-one');
+  assert.equal(result[0].status, 'aguardando');
+  assert.deepEqual(result[1], { name: 'defsL1', status: 'executando', attempt: 2, podeTentarDeNovo: false });
+});
+
+test('mr_12: completed phases preserve changedDefs and fixed order without commits', () => {
+  const changedDefs: NonNullable<L4ImplementationPhase['changedDefs']> = [
+    { path: 'l2/agenda.defs.ts', status: 'changed' },
+    { path: 'l2/new.defs.ts', status: 'added' },
+    { path: 'l2/old.defs.ts', status: 'removed' },
+  ];
+  const result = implementationProgress(progressRecord([
+    progressPhase({ name: 'defsL1', status: 'done', changedDefs: [] }),
+    { ...progressPhase({ status: 'done', changedDefs }), commits: ['unexpected'] } as L4ImplementationPhase,
+  ]), 'change-one');
+  assert.deepEqual(result[0], { name: 'defsL2', status: 'concluido', attempt: 1, changedDefs, podeTentarDeNovo: false });
+  assert.equal(result[1].name, 'defsL1');
+  assert.equal(result[1].status, 'concluido');
+});
+
+test('mr_12: any first failure offers retry with error and previous attempts', () => {
+  const failed = progressPhase({ status: 'failed', error: 'Invalid defs' });
+  assert.deepEqual(implementationProgress(progressRecord([failed]), 'change-one')[0], {
+    name: 'defsL2', status: 'falhou', attempt: 1, error: failed.error, previousAttempts: [], podeTentarDeNovo: true,
+  });
+});
+
+test('mr_12: second failure preserves history without retry', () => {
+  const previous = progressPhase({ status: 'failed', error: 'First failure' });
+  const failed = progressPhase({ status: 'failed', attempt: 2, error: 'Second failure', previousAttempts: [previous] });
+  assert.deepEqual(implementationProgress(progressRecord([failed]), 'change-one')[0], {
+    name: 'defsL2', status: 'falhou', attempt: 2, error: failed.error, previousAttempts: [previous], podeTentarDeNovo: false,
+  });
+});
+
+test('mr_12: another change or no current change discards the record', () => {
+  const record = progressRecord([progressPhase({ status: 'failed', error: 'Obsolete failure' })]);
+  for (const currentChangeId of ['change-other', null]) {
+    assert.deepEqual(implementationProgress(record, currentChangeId), implementationProgress(null, currentChangeId));
+  }
+});
 
 function implementationInput(): ReviewImplementationInput {
   const root = 'l4/agendaClinica/pipeline/changes/change-one/revisions/revision-one/l4/pool/l2/web';
