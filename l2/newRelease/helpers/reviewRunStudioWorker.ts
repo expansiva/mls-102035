@@ -317,10 +317,7 @@ async function readPlannerArtifacts(claim: ReviewWorkerClaim, taskId: string): P
     ['pipeline', 'pipeline', 'pipeline'],
     ['l4diff-l1', 'pool/l1/web', 'l4diff'],
     ['l4diff-l2', 'pool/l2/web', 'l4diff'],
-    ['menu', 'pool/l2/web', 'menu'],
-    ['needs', 'pool/l1/web', 'needs'],
-    ['backend', 'pool/l2/web', 'backend'],
-    ['effort', 'pool/l2/web', 'effort'],
+    ['change-effort', 'pool/l4', 'changeEffort'],
   ] as const;
   const out: ReviewPlannerArtifact[] = [];
   for (const [kind, folder, shortName] of specs) {

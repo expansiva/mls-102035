@@ -286,3 +286,49 @@ test('mr_20 s2 com openai e outro o reportado é o primeiro observado', async ()
   assert.equal(progress.executions[0]?.provider, 'openai');
   assert.equal(progress.executions[0]?.model, 'gpt-5');
 });
+
+test('mr_29 s2 reporta change-effort e não reporta os artefatos antigos dos planners', async () => {
+  const plannerClaim = {
+    ...claim(),
+    phase: 'planner' as const,
+    command: 'run comandaRestaurante /candidate pipeline/changes/change-mr15/revisions/rev-mr29/l4',
+  };
+  const root = 'comandaRestaurante/pipeline/changes/change-mr15/revisions/rev-mr29/l4';
+  const seal = { revisionId: 'rev-mr29' };
+  const sealHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(seal)))))
+    .map(byte => byte.toString(16).padStart(2, '0')).join('');
+  const sources = [
+    ['pipeline', 'pipeline', JSON.stringify({ reviewSeal: seal, reviewSealHash: sealHash })],
+    ['pool/l1/web', 'l4diff', '{}'],
+    ['pool/l2/web', 'l4diff', '{}'],
+    ['pool/l4', 'changeEffort', '{}'],
+  ] as const;
+  const files = mls.stor.files;
+  const getKeyToFile = mls.stor.getKeyToFile;
+  mls.stor.getKeyToFile = info => JSON.stringify(info);
+  const saved = new Map<string, unknown>();
+  const keys: string[] = [];
+  for (const [folder, shortName, source] of sources) {
+    const key = mls.stor.getKeyToFile({ project: 102035, level: 4, folder: `${root}/${folder}`, shortName, extension: '.json' });
+    keys.push(key);
+    saved.set(key, files[key]);
+    files[key] = { versionRef: '0', getValueInfo: async () => ({ content: source }) } as typeof files[string];
+  }
+  try {
+    const host = hostForTask({ PK: 'task/20261006181434.1001', status: 'done' } as TaskData);
+    const started = await host.startOrGet(plannerClaim);
+    const progress = await host.observe(plannerClaim, started);
+    assert.equal(progress.status, 'ready');
+    const artifacts = progress.plannerArtifacts as { kind: string; path: string }[];
+    assert.deepEqual(artifacts.map(artifact => artifact.kind), [
+      'pipeline', 'pipeline-seal', 'l4diff-l1', 'l4diff-l2', 'change-effort',
+    ]);
+    assert.equal(artifacts[4]?.path, `l4/${root}/pool/l4/changeEffort.json`);
+  } finally {
+    mls.stor.getKeyToFile = getKeyToFile;
+    for (const key of keys) {
+      if (saved.get(key) === undefined) delete files[key];
+      else files[key] = saved.get(key) as typeof files[string];
+    }
+  }
+});
