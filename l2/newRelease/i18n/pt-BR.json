@@ -767,6 +767,8 @@
   "review.run.error.hubConflict": "Outra sessão publicou uma revisão deste módulo. Recarregue antes de calcular.",
   "review.run.error.hubRevisionDiffers": "O hub já tem outra revisão deste módulo; esta não pode ser publicada sem um resultado de agente.",
   "review.run.error.generic": "A execução da revisão terminou com erro.",
+  "review.run.error.generic.code": "Código do erro",
+  "review.run.error.generic.task": "Task",
   "review.run.error.notPublishable": "A revisão não pôde publicar o L4 ({{status}}): {{codes}}. Nada foi alterado no módulo.",
   "review.run.error.agentPaused": "O agente parou ({{motivo}}). Nenhuma alteração foi aplicada; uma nova tentativa consome uma das tentativas do run.",
   "review.pendingTitle": "Há pedidos de mudança pendentes",

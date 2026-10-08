@@ -897,6 +897,18 @@ export class NewReleaseReview102035 extends StateLitElement {
     return this.t(key, { motivo });
   }
 
+  private renderGenericFailureDetail(run: PlatformReviewRun) {
+    if (run.status !== 'failed' || this.reviewRunErrorKey(run.errorCode) !== 'review.run.error.generic') return nothing;
+    const taskId = run.executions[0]?.taskId;
+    if (!run.errorCode && !taskId) return nothing;
+    return html`
+      <div>
+        ${run.errorCode ? html`<p><span>${this.t('review.run.error.generic.code')}</span> <code style="overflow-wrap:anywhere;white-space:pre-wrap">${run.errorCode}</code></p>` : nothing}
+        ${taskId ? html`<p><span>${this.t('review.run.error.generic.task')}</span> <code>${taskId}</code></p>` : nothing}
+      </div>
+    `;
+  }
+
   private tStoredReviewError(stored: string): string {
     if (stored.startsWith('review-worker.agent_paused') || stored === 'review.run.error.agentPaused') {
       return this.tReviewRunError(stored);
@@ -918,6 +930,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         <section class=${`nr-review__run is-${channel.status}`} aria-live="polite">
           <header><div><span>${this.t('review.run.eyebrow')}</span><h3>${this.t('review.run.title')}</h3></div><strong>${this.t(stateKey)}</strong></header>
           ${channel.errorCode ? html`<p role="alert">${this.tReviewRunError(channel.errorCode)}</p>` : nothing}
+          ${this.renderGenericFailureDetail(channel)}
           <dl>
             <div><dt>${this.t('review.run.runId')}</dt><dd><code>${channel.runId}</code></dd></div>
             ${execution?.taskId ? html`<div><dt>${this.t('review.run.taskId')}</dt><dd><code>${execution.taskId}</code></dd></div>` : nothing}
