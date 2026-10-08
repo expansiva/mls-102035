@@ -13,6 +13,8 @@ import assert from 'node:assert/strict';
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
 import { writeJson } from '../solution/fs.js';
 import { readCandidateWorkerGate } from '../newRelease/helpers/candidateWorkerGate.js';
+import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
+import { promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './cenario.js';
 
 test('recorded review goes through public hooks and publishes only quantidadeMinimaValida', async () => {
@@ -46,7 +48,7 @@ test('recorded review goes through public hooks and publishes only quantidadeMin
 for (const outcome of ['current', 'edited', 'corrupted'] as const) {
 const editedAfterClick = outcome === 'edited';
 test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with a changed local manifest hash'
-  : `mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited after the click' : 'becomes current in the module reader'}`, async () => {
+  : `mr_25 s3: real ready result ${editedAfterClick ? 'rejects a request edited after the click' : 'becomes current in the module reader'}`, async (t) => {
   await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async (scenario) => {
     const { prepared, before, progress, command, fetchCalls } = scenario;
     // Load the platform ledger itself: the fake runner supplies evidence, never a fabricated ready record.
@@ -190,6 +192,51 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
       assert.equal(buildReviewView({ pendingCount: pendingCount(current), readStatus: menu.status, raw: menu.value,
         selectedActor: 'all', selectedId: '', selectedScope: 'future' }).kind, 'ready');
       assert.equal(buildBackendReview(backend, pendingCount(current) > 0, MODULE).kind, 'ready');
+      await t.test('mr_14 s5: adopted ready revision is sealed, promoted, changed and restored', async () => {
+        const layers = [
+          { level: 1, folder: MODULE, shortName: 'produto', extension: '.defs.ts' },
+          { level: 2, folder: `${MODULE}/web`, shortName: 'produto', extension: '.defs.ts' },
+        ];
+        for (const info of layers) {
+          const file = await mls.stor.addOrUpdateFile({ project: PROJECT, ...info } as mls.stor.IFileInfo);
+          assert.ok(file);
+          await mls.stor.localStor.setContent(file, { content: 'export const quantidadeMinima = 0;\n' });
+        }
+        const baseId = prepared.input.baseId;
+        const seal = await sealModuleLayers(PROJECT, MODULE, baseId);
+        assert.equal(seal.files.length, 2);
+        const promoted = await promoteL4Revision(PROJECT, MODULE, ready.binding.changeId, current.revisionId!);
+        assert.equal(promoted.promotedRevisionId, adoption.outputRevisionId);
+        const moduleRules = mls.stor.files[mls.stor.getKeyToFile({ project: PROJECT, level: 4,
+          folder: MODULE, shortName: 'rules', extension: '.defs.ts' })];
+        assert.equal(await moduleRules.getContent(), rulesSource);
+        assert.match(await moduleRules.getContent(), /quantidadeMinimaValida/);
+        assert.match(await moduleRules.getContent(), /maior que zero/);
+        for (const info of layers) {
+          const file = mls.stor.files[mls.stor.getKeyToFile({ project: PROJECT, ...info })];
+          await mls.stor.localStor.setContent(file, { content: 'export const quantidadeMinima = 1;\n' });
+        }
+        assert.deepEqual((await diffModuleLayers(PROJECT, MODULE, baseId)).map(({ level, path, status }) =>
+          ({ level, path, status })), [
+          { level: 1, path: 'produto.defs.ts', status: 'changed' },
+          { level: 2, path: 'web/produto.defs.ts', status: 'changed' },
+        ]);
+        await restoreModuleFromSeals(PROJECT, MODULE, baseId);
+        assert.deepEqual(await diffModuleLayers(PROJECT, MODULE, baseId), []);
+        const release = await readL4Release(PROJECT, MODULE, baseId);
+        assert.ok(release);
+        for (const [path, sha256] of Object.entries(release.files)) {
+          const file = Object.values(mls.stor.files).find(file => file.project === PROJECT && file.level === 4
+            && `${file.folder}/${file.shortName}${file.extension}` === `${MODULE}/${path}`);
+          const sealedFile = Object.values(mls.stor.files).find(file => file.project === PROJECT && file.level === 4
+            && `${file.folder}/${file.shortName}${file.extension}` === `${MODULE}/pipeline/releases/${baseId}/l4/${path}`);
+          assert.ok(file, path);
+          assert.ok(sealedFile, path);
+          const restored = await file.getContent();
+          assert.equal(restored, await sealedFile.getContent(), path);
+          assert.equal(`sha256:${createHash('sha256').update(restored).digest('hex')}`, sha256, path);
+        }
+      });
     }
     assert.equal(fetchCalls(), 0);
   });
