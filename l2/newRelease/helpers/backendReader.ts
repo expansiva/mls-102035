@@ -8,17 +8,17 @@ export interface ReviewArtifactRead {
   value?: unknown;
 }
 
-export function reviewArtifactFile(project: number, moduleName: string, name: 'backend' | 'effort', root?: string): Ns5FileInfo {
+export function reviewArtifactFile(project: number, moduleName: string, name: 'backend' | 'effort' | 'changeEffort', root?: string): Ns5FileInfo {
   return {
     project,
     level: 4,
-    folder: `${root || normalizeModuleName(moduleName)}/pool/l2/web`,
+    folder: `${root || normalizeModuleName(moduleName)}/pool/${name === 'changeEffort' ? 'l4' : 'l2/web'}`,
     shortName: name,
     extension: '.json',
   };
 }
 
-export async function readReviewArtifact(project: number, moduleName: string, name: 'backend' | 'effort', root?: string): Promise<ReviewArtifactRead> {
+export async function readReviewArtifact(project: number, moduleName: string, name: 'backend' | 'effort' | 'changeEffort', root?: string): Promise<ReviewArtifactRead> {
   const file = reviewArtifactFile(project, moduleName, name, root);
   const path = `l4/${file.folder}/${file.shortName}${file.extension}`;
   if (!project || !moduleName) return { status: 'missing', path };
