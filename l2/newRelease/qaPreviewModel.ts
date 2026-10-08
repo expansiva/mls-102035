@@ -3,6 +3,7 @@
 import { NS5_MODULE_SCHEMA_VERSION } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import { mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 
 export const QA_TABS = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration', 'review'] as const;
 export const QA_IMPLEMENTATION_FIXTURES = [
@@ -13,7 +14,12 @@ export type QaImplementationFixture = typeof QA_IMPLEMENTATION_FIXTURES[number];
 export function isQaImplementationFixture(fixture: string): fixture is QaImplementationFixture {
   return (QA_IMPLEMENTATION_FIXTURES as readonly string[]).includes(fixture);
 }
-export const QA_FIXTURES = ['live', 'empty', 'loading', 'error', 'pending', 'ready', ...QA_IMPLEMENTATION_FIXTURES] as const;
+export const QA_CHANGE_EFFORT_FIXTURES = ['effort-simple', 'effort-blocked', 'effort-invalid'] as const;
+export type QaChangeEffortFixture = typeof QA_CHANGE_EFFORT_FIXTURES[number];
+export function isQaChangeEffortFixture(fixture: string): fixture is QaChangeEffortFixture {
+  return (QA_CHANGE_EFFORT_FIXTURES as readonly string[]).includes(fixture);
+}
+export const QA_FIXTURES = ['live', 'empty', 'loading', 'error', 'pending', 'ready', ...QA_IMPLEMENTATION_FIXTURES, ...QA_CHANGE_EFFORT_FIXTURES] as const;
 export const QA_LANGUAGES = ['pt-BR', 'en-US'] as const;
 export const QA_THEMES = ['light', 'dark'] as const;
 
@@ -21,6 +27,24 @@ export type NewReleaseQaTab = typeof QA_TABS[number];
 export type NewReleaseQaFixture = typeof QA_FIXTURES[number];
 export type NewReleaseQaLanguage = typeof QA_LANGUAGES[number];
 export type NewReleaseQaTheme = typeof QA_THEMES[number];
+
+export function buildNewReleaseQaChangeEffort(fixture: QaChangeEffortFixture, golden: unknown): string {
+  const checked = validateChangeEffort(golden);
+  if (!checked.ok) throw new Error('qa.changeEffortFixtureInvalid');
+  if (fixture === 'effort-invalid') return '{"schemaVersion":';
+  const file = structuredClone(checked.file);
+  if (fixture === 'effort-blocked') {
+    const answer = file.perItem[0].answers[1];
+    answer.status = 'abend';
+    answer.regenerateDefs = [];
+    answer.materialize = [];
+    answer.runAgents = [];
+    answer.abend = { reason: `describeEffort not registered for master ${answer.master.project}` };
+    file.merged = mergeChangeEffort(file.perItem);
+    file.status = 'blocked';
+  }
+  return JSON.stringify(file);
+}
 
 export function buildNewReleaseQaMenuFixture(moduleName: string) {
   return {
@@ -153,7 +177,7 @@ export function buildNewReleaseQaFixture(
       details: {},
     };
   }
-  const revisionState = fixture === 'pending' || fixture === 'ready' || isQaImplementationFixture(fixture);
+  const revisionState = fixture === 'pending' || fixture === 'ready' || isQaImplementationFixture(fixture) || isQaChangeEffortFixture(fixture);
   return {
     module: artifacts.module.value,
     pipeline: null,
@@ -166,7 +190,7 @@ export function buildNewReleaseQaFixture(
     changeId: revisionState ? `qa-change-${caseId}` : null,
     revisionId: revisionState ? `qa-revision-${caseId}` : null,
     baseProvenance: null,
-    resultCurrent: fixture === 'ready' || isQaImplementationFixture(fixture),
+    resultCurrent: fixture === 'ready' || isQaImplementationFixture(fixture) || isQaChangeEffortFixture(fixture),
     stalePaths: [],
     diffs: [],
     validation: { ok: fixture !== 'error', issues: [], oracle: null, coverage: structuredClone(coverage) },
@@ -197,7 +221,7 @@ export function newReleaseQaScenarios(): NewReleaseQaScenario[] {
     }
   }
   for (const width of [390, 800, 1280] as const) for (const language of QA_LANGUAGES) {
-    for (const theme of QA_THEMES) for (const fixture of QA_IMPLEMENTATION_FIXTURES) {
+    for (const theme of QA_THEMES) for (const fixture of [...QA_IMPLEMENTATION_FIXTURES, ...QA_CHANGE_EFFORT_FIXTURES]) {
       scenarios.push({ caseId: `review-${width}-${language}-${theme}-${fixture}`, tab: 'review', width, language, theme, fixture });
     }
   }

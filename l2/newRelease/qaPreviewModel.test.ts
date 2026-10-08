@@ -6,6 +6,9 @@ import { readFileSync } from 'node:fs';
 import type { L4ImplementationRecord } from '../solution/candidate/moduleImplementation.js';
 import {
   QA_IMPLEMENTATION_FIXTURES,
+  QA_CHANGE_EFFORT_FIXTURES,
+  isQaChangeEffortFixture,
+  buildNewReleaseQaChangeEffort,
   isQaImplementationFixture,
   buildNewReleaseQaFixture,
   buildNewReleaseQaMenuFixture,
@@ -16,6 +19,7 @@ import {
   qaScenarioRequiresReview,
 } from './qaPreviewModel.js';
 import { buildReviewView, implementationProgress } from './widgets/reviewModel.js';
+import { buildChangeEffortView } from './widgets/changeEffortModel.js';
 
 test('QA query validates and normalizes the complete public context', () => {
   const parsed = parseNewReleaseQaParams('?project=102047&module=agendaClinica&tab=review&version=release:r-1&lang=en-US&theme=dark&fixture=ready&toolbar=hidden');
@@ -51,11 +55,45 @@ test('fixtures map to deterministic states without mutation capabilities', () =>
 
 test('automatic matrix is non-empty and covers all required dimensions', () => {
   const scenarios = newReleaseQaScenarios();
-  assert.equal(scenarios.length, 204);
+  assert.equal(scenarios.length, 240);
   assert.deepEqual(new Set(scenarios.map(item => item.width)), new Set([390, 800, 1280]));
   assert.deepEqual(new Set(scenarios.map(item => item.tab)), new Set(['general', 'review']));
   assert.deepEqual(new Set(scenarios.map(item => item.language)), new Set(['pt-BR', 'en-US']));
   assert.deepEqual(new Set(scenarios.map(item => item.theme)), new Set(['light', 'dark']));
+});
+
+test('mr_27: effort fixtures cover every review presentation and preserve the verified golden input', () => {
+  const golden = JSON.parse(readFileSync(new URL('./widgets/fixtures/changeEffort-agendaClinica-regra-anotacao.json', import.meta.url), 'utf8'));
+  const before = structuredClone(golden);
+  for (const fixture of QA_CHANGE_EFFORT_FIXTURES) {
+    assert.equal(isQaChangeEffortFixture(fixture), true);
+    assert.equal(parseNewReleaseQaParams(`fixture=${fixture}&tab=review`).ok, true);
+    const scenarios = newReleaseQaScenarios().filter(item => item.fixture === fixture);
+    assert.equal(scenarios.length, 12);
+    assert.equal(new Set(scenarios.map(item => `${item.width}/${item.language}/${item.theme}`)).size, 12);
+    assert.ok(scenarios.every(item => qaScenarioRequiresReview(item)));
+    assert.equal(buildNewReleaseQaFixture(fixture, 'agendaClinica').resultCurrent, true);
+    const content = buildNewReleaseQaChangeEffort(fixture, golden);
+    if (fixture === 'effort-invalid') {
+      assert.throws(() => JSON.parse(content));
+      assert.equal(buildChangeEffortView({ status: 'invalid', path: 'qa' }).kind, 'invalid');
+      continue;
+    }
+    const view = buildChangeEffortView({ status: 'ok', path: 'qa', value: JSON.parse(content) });
+    assert.equal(view.kind, 'ready');
+    assert.equal(view.status, fixture === 'effort-simple' ? 'simple' : 'blocked');
+    assert.equal(view.items.length, 1);
+    assert.equal(view.items[0].answers.length, 2);
+    assert.equal(view.items[0].answers[0].materialize[0].id, 'agenda_diaria');
+    if (fixture === 'effort-simple') assert.deepEqual(JSON.parse(content), golden);
+    else {
+      assert.match(view.items[0].answers[1].abend!.reason, /102021/);
+      assert.equal(view.merged!.abend.length, 1);
+    }
+  }
+  assert.deepEqual(golden, before);
+  assert.equal(isQaChangeEffortFixture('ready'), false);
+  assert.throws(() => buildNewReleaseQaChangeEffort('effort-simple', {}), /qa.changeEffortFixtureInvalid/);
 });
 
 test('ready fixture authorities produce two genuinely distinct review trees', () => {

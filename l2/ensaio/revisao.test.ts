@@ -17,6 +17,56 @@ import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../s
 import { acceptL4Implementation, readL4Implementation } from '../solution/candidate/moduleImplementation.js';
 import { promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './cenario.js';
+import { effortRegistry } from '../solution/effortRegistry.js';
+import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
+import { buildChangeEffortView } from '../newRelease/widgets/changeEffortModel.js';
+
+for (const status of ['simple', 'blocked'] as const) {
+  test(`mr_27: review reads the ${status} changeEffort produced by the public L4 rehearsal`, async () => {
+    const golden = JSON.parse(readFileSync(new URL(
+      '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
+    const previous = { ...effortRegistry };
+    for (const project of Object.keys(effortRegistry)) delete effortRegistry[project];
+    try {
+      if (status === 'simple') for (const answer of golden.perItem[0].answers) {
+        effortRegistry[answer.master.project] = {
+          describeEffort: input => ({ ...structuredClone(answer), item: input.item.changeId }) as EffortAnswer,
+        };
+      }
+      await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async ({ context, fetchCalls }) => {
+        const { candidate, context: planner } = await runPlannerScenario(context);
+        assert.equal(planner.task?.status, 'done');
+        const read = await readReviewArtifact(PROJECT, MODULE, 'changeEffort', candidate);
+        assert.equal(read.status, 'ok');
+        assert.equal(read.path, `l4/${candidate}/pool/l4/changeEffort.json`);
+        const written = read.value as ChangeEffortFile;
+        const view = buildChangeEffortView(read);
+        assert.equal(view.kind, 'ready');
+        assert.equal(view.status, status);
+        assert.equal(view.items.length, 1);
+        assert.equal(view.items[0].item.id, 'rule:quantidadeMinimaValida');
+        assert.deepEqual(view.items[0].answers, written.perItem[0].answers);
+        assert.deepEqual(view.merged, written.merged);
+        assert.deepEqual(view.untouched, written.untouched);
+        if (status === 'simple') {
+          assert.deepEqual(view.merged, golden.merged);
+          assert.deepEqual(view.items[0].answers.map(({ item: _item, ...answer }) => answer),
+            golden.perItem[0].answers.map(({ item: _item, ...answer }) => answer));
+        } else {
+          assert.equal(view.items[0].answers.length, written.masters.length);
+          for (const answer of view.items[0].answers) {
+            assert.equal(answer.abend?.reason, `describeEffort not registered for master ${answer.master.project}`);
+          }
+        }
+        assert.equal((await readReviewArtifact(PROJECT, MODULE, 'changeEffort')).status, 'missing');
+        assert.equal(fetchCalls(), 0);
+      });
+    } finally {
+      for (const project of Object.keys(effortRegistry)) delete effortRegistry[project];
+      Object.assign(effortRegistry, previous);
+    }
+  });
+}
 
 test('recorded review goes through public hooks and publishes only quantidadeMinimaValida', async () => {
   await withReviewScenario(() => installMlsStub({ actualProject: 102047 }), async ({ sources, selection, prepared, before, command, context, replay, fetchCalls, progress }) => {

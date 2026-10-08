@@ -2,6 +2,8 @@
 
 import {
   isQaImplementationFixture,
+  isQaChangeEffortFixture,
+  buildNewReleaseQaChangeEffort,
   type QaImplementationFixture,
   buildNewReleaseQaFixture,
   buildNewReleaseQaMenuFixture,
@@ -20,10 +22,14 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import type { ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { implementationProgress } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { readReviewArtifact } from '/_102035_/l2/newRelease/helpers/backendReader.js';
+import { buildChangeEffortView } from '/_102035_/l2/newRelease/widgets/changeEffortModel.js';
 
 type QaReviewElement = NewReleaseElement & {
   loading: boolean;
   isCurrentLoad(): boolean;
+  view(): unknown;
+  actionPresentation(view: unknown, current: boolean): { disabled: boolean };
   implementationRunner: {
     runNext(project: number, moduleName: string): Promise<L4ImplementationRecord>;
     retryPhase(project: number, moduleName: string, phase: 'defsL2' | 'defsL1'): Promise<L4ImplementationRecord>;
@@ -223,6 +229,12 @@ async function mountFixture(
       await waitFor(() => element.querySelector('.nr-index')?.getAttribute('aria-busy') === 'false');
     } else {
       cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify(buildNewReleaseQaMenuFixture(config.moduleName))));
+      if (isQaChangeEffortFixture(fixture)) {
+        const response = await fetch('/_102035_/l2/newRelease/widgets/fixtures/changeEffort-agendaClinica-regra-anotacao.json');
+        if (!response.ok) throw new Error('qa.changeEffortFixtureUnavailable');
+        cleanupFns.push(fixtureFile(config.project, config.moduleName,
+          buildNewReleaseQaChangeEffort(fixture, await response.json()), 'pool/l4/changeEffort'));
+      }
       element.project = config.project;
       element.moduleName = '';
       container.appendChild(element);
@@ -318,6 +330,53 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   if (review.updateComplete) await review.updateComplete;
   const busyAfter = [...review.querySelectorAll<HTMLElement>('.nr-review__primary-action')].map(item => item.getAttribute('aria-busy'));
   if (busyBefore.join() !== busyAfter.join() || busyAfter.some(value => value !== 'false')) throw new Error('qa.ctaProtectedTransition');
+  if (isQaChangeEffortFixture(scenario.fixture)) {
+    const block = review.querySelector<HTMLElement>('.nr-review__change-effort');
+    if (!block) throw new Error('qa.changeEffortMissing');
+    if (review.querySelector('.nr-review__toolbar, .nr-review__menu, .nr-review__backend, .nr-review__effort')) {
+      throw new Error('qa.legacyReviewVisible');
+    }
+    // Check the real presentation too: the QA guard disables every button and
+    // must not mask an enabled product CTA for blocked or invalid effort.
+    if (!review.actionPresentation(review.view(), review.isCurrentLoad()).disabled) throw new Error('qa.changeEffortCtaEnabled');
+    const view = buildChangeEffortView(await readReviewArtifact(review.project, review.moduleName, 'changeEffort'));
+    if (scenario.fixture === 'effort-invalid') {
+      if (view.kind !== 'invalid' || block.querySelectorAll('details').length
+        || block.querySelector('[role="alert"]')?.textContent?.trim() !== review.t('review.effort.invalid')) {
+        throw new Error('qa.changeEffortInvalidMissing');
+      }
+      return;
+    }
+    if (view.kind !== 'ready' || view.status !== (scenario.fixture === 'effort-simple' ? 'simple' : 'blocked')) {
+      throw new Error('qa.changeEffortStateMismatch');
+    }
+    for (const text of [review.t(`review.effort.status.${view.status}`), review.t('review.effort.untouched', { count: view.untouched.count })]) {
+      if (!block.textContent?.includes(text)) throw new Error('qa.changeEffortHeaderMismatch');
+    }
+    const details = [...block.querySelectorAll<HTMLDetailsElement>('.nr-review__effort-item')];
+    if (details.length !== view.items.length || details.some(item => item.open)) throw new Error('qa.changeEffortNotCollapsed');
+    for (const [index, detail] of details.entries()) {
+      const summary = detail.querySelector('summary')!;
+      summary.click();
+      if (!detail.open) throw new Error('qa.changeEffortDidNotOpen');
+      const expected = view.items[index];
+      if (!summary.textContent?.includes(expected.item.id)) throw new Error('qa.changeEffortItemMissing');
+      const masters = [...detail.querySelectorAll<HTMLElement>('.nr-review__effort-master')];
+      if (masters.length !== expected.answers.length) throw new Error('qa.changeEffortMasterMissing');
+      for (const [masterIndex, answer] of expected.answers.entries()) {
+        const master = masters[masterIndex];
+        const texts = [...answer.regenerateDefs, ...answer.materialize].map(unit => unit.path)
+          .concat(answer.runAgents.map(agent => agent.command), answer.abend ? [answer.abend.reason] : []);
+        for (const text of texts) if (!master.textContent?.includes(text)) throw new Error('qa.changeEffortContentMissing');
+        for (const node of master.querySelectorAll<HTMLElement>('code, p')) {
+          if (!node.getClientRects().length || node.scrollWidth > node.clientWidth + 1) throw new Error('qa.changeEffortContentClipped');
+        }
+      }
+      summary.click();
+      if (detail.open) throw new Error('qa.changeEffortDidNotClose');
+    }
+    return;
+  }
   if (scenario.fixture === 'pending') {
     if (!review.querySelector('.nr-review__pending')) throw new Error('qa.pendingStateMissing');
     return;
