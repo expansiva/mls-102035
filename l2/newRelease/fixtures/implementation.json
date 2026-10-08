@@ -1,306 +1,330 @@
 {
   "implementation-materialize": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [
-        {
-          "project": "102020",
-          "kind": "page",
-          "id": "agenda_diaria",
-          "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts"
-        },
-        {
-          "project": "102021",
-          "kind": "entity",
-          "id": "consulta",
-          "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts"
-        },
-        {
-          "project": "102021",
-          "kind": "request",
-          "id": "agenda_diaria",
-          "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts"
-        },
-        {
-          "project": "102021",
-          "kind": "usecase",
-          "id": "registrarAtendimento",
-          "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts"
-        }
-      ],
-      "runAgents": [],
-      "abend": []
-    },
-    "phases": []
-  },
-  "implementation-materialize-agent": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [
-        {
-          "project": "102020",
-          "kind": "page",
-          "id": "agenda_diaria",
-          "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts"
-        },
-        {
-          "project": "102021",
-          "kind": "entity",
-          "id": "consulta",
-          "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts"
-        },
-        {
-          "project": "102021",
-          "kind": "request",
-          "id": "agenda_diaria",
-          "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts"
-        },
-        {
-          "project": "102021",
-          "kind": "usecase",
-          "id": "registrarAtendimento",
-          "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts"
-        }
-      ],
-      "runAgents": [
-        {
-          "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
-        }
-      ],
-      "abend": []
-    },
-    "phases": []
-  },
-  "implementation-waiting": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [],
-      "runAgents": [
-        {
-          "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
-        }
-      ],
-      "abend": []
-    },
-    "phases": []
-  },
-  "implementation-success": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [],
-      "runAgents": [
-        {
-          "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
-        }
-      ],
-      "abend": []
-    },
-    "phases": [
-      {
-        "name": "runAgents:0",
-        "agent": "agentAddLanguage",
-        "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
-        "attempt": 1,
-        "taskId": "defs-1",
-        "threadId": "thread-defs-ensaio",
-        "messageId": "thread-defs-ensaio/message-1",
-        "status": "done",
-        "startedAt": "2026-10-08T00:00:00.000Z",
-        "changedDefs": [],
-        "endedAt": "2026-10-08T00:00:00.000Z"
-      }
-    ]
-  },
-  "implementation-stale": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-obsolete-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [],
-      "runAgents": [
-        {
-          "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
-        }
-      ],
-      "abend": []
-    },
-    "phases": [
-      {
-        "name": "runAgents:0",
-        "agent": "agentAddLanguage",
-        "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
-        "attempt": 1,
-        "taskId": "defs-1",
-        "threadId": "thread-defs-ensaio",
-        "messageId": "thread-defs-ensaio/message-1",
-        "status": "done",
-        "startedAt": "2026-10-08T00:00:00.000Z",
-        "changedDefs": [],
-        "endedAt": "2026-10-08T00:00:00.000Z"
-      }
-    ]
-  },
-  "implementation-retry": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [],
-      "runAgents": [
-        {
-          "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
-        }
-      ],
-      "abend": []
-    },
-    "phases": [
-      {
-        "name": "runAgents:0",
-        "agent": "agentAddLanguage",
-        "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
-        "attempt": 1,
-        "taskId": "defs-1",
-        "threadId": "thread-defs-ensaio",
-        "messageId": "thread-defs-ensaio/message-1",
-        "status": "failed",
-        "startedAt": "2026-10-08T00:00:00.000Z",
-        "endedAt": "2026-10-08T00:00:00.000Z",
-        "error": "Simulated language failure"
-      }
-    ]
-  },
-  "implementation-failed": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [],
-      "runAgents": [
-        {
-          "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
-        }
-      ],
-      "abend": []
-    },
-    "phases": [
-      {
-        "name": "runAgents:0",
-        "agent": "agentAddLanguage",
-        "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
-        "attempt": 2,
-        "previousAttempts": [
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [
           {
-            "name": "runAgents:0",
-            "agent": "agentAddLanguage",
-            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
-            "attempt": 1,
-            "taskId": "defs-1",
-            "threadId": "thread-defs-ensaio",
-            "messageId": "thread-defs-ensaio/message-1",
-            "status": "failed",
-            "startedAt": "2026-10-08T00:00:00.000Z",
-            "endedAt": "2026-10-08T00:00:00.000Z",
-            "error": "Simulated language failure"
+            "project": "102020",
+            "kind": "page",
+            "id": "agenda_diaria",
+            "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts"
+          },
+          {
+            "project": "102021",
+            "kind": "entity",
+            "id": "consulta",
+            "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts"
+          },
+          {
+            "project": "102021",
+            "kind": "request",
+            "id": "agenda_diaria",
+            "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts"
+          },
+          {
+            "project": "102021",
+            "kind": "usecase",
+            "id": "registrarAtendimento",
+            "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts"
           }
         ],
-        "taskId": "defs-2",
-        "threadId": "thread-defs-ensaio",
-        "messageId": "thread-defs-ensaio/message-2",
-        "status": "failed",
-        "startedAt": "2026-10-08T00:00:00.000Z",
-        "endedAt": "2026-10-08T00:00:00.000Z",
-        "error": "Simulated language failure"
-      }
-    ]
+        "runAgents": [],
+        "abend": []
+      },
+      "phases": []
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-442d4faa7733e7aba013fea20841dd6f\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219170-e06c0c81-5609-4729-93b1-e98ec8f82fc8/revisions/review-442d4faa7733e7aba013fea20841dd6f/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [\n            {\n              \"kind\": \"page\",\n              \"id\": \"agenda_diaria\",\n              \"path\": \"l2/agendaClinica/web/contracts/agenda_diaria.defs.ts\"\n            }\n          ],\n          \"runAgents\": []\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [\n            {\n              \"kind\": \"usecase\",\n              \"id\": \"registrarAtendimento\",\n              \"path\": \"l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts\"\n            },\n            {\n              \"kind\": \"entity\",\n              \"id\": \"consulta\",\n              \"path\": \"l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts\"\n            },\n            {\n              \"kind\": \"request\",\n              \"id\": \"agenda_diaria\",\n              \"path\": \"l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts\"\n            }\n          ],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [\n      {\n        \"project\": \"102020\",\n        \"kind\": \"page\",\n        \"id\": \"agenda_diaria\",\n        \"path\": \"l2/agendaClinica/web/contracts/agenda_diaria.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"entity\",\n        \"id\": \"consulta\",\n        \"path\": \"l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"request\",\n        \"id\": \"agenda_diaria\",\n        \"path\": \"l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"usecase\",\n        \"id\": \"registrarAtendimento\",\n        \"path\": \"l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts\"\n      }\n    ],\n    \"runAgents\": [],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
+  },
+  "implementation-materialize-agent": {
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [
+          {
+            "project": "102020",
+            "kind": "page",
+            "id": "agenda_diaria",
+            "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts"
+          },
+          {
+            "project": "102021",
+            "kind": "entity",
+            "id": "consulta",
+            "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts"
+          },
+          {
+            "project": "102021",
+            "kind": "request",
+            "id": "agenda_diaria",
+            "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts"
+          },
+          {
+            "project": "102021",
+            "kind": "usecase",
+            "id": "registrarAtendimento",
+            "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts"
+          }
+        ],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": []
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-1ca599faa86dca7491ee56e563ed74c5\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219294-5cd506cf-36e6-45af-b129-4e33087a7999/revisions/review-1ca599faa86dca7491ee56e563ed74c5/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [\n            {\n              \"kind\": \"page\",\n              \"id\": \"agenda_diaria\",\n              \"path\": \"l2/agendaClinica/web/contracts/agenda_diaria.defs.ts\"\n            }\n          ],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [\n            {\n              \"kind\": \"usecase\",\n              \"id\": \"registrarAtendimento\",\n              \"path\": \"l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts\"\n            },\n            {\n              \"kind\": \"entity\",\n              \"id\": \"consulta\",\n              \"path\": \"l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts\"\n            },\n            {\n              \"kind\": \"request\",\n              \"id\": \"agenda_diaria\",\n              \"path\": \"l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts\"\n            }\n          ],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [\n      {\n        \"project\": \"102020\",\n        \"kind\": \"page\",\n        \"id\": \"agenda_diaria\",\n        \"path\": \"l2/agendaClinica/web/contracts/agenda_diaria.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"entity\",\n        \"id\": \"consulta\",\n        \"path\": \"l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"request\",\n        \"id\": \"agenda_diaria\",\n        \"path\": \"l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"usecase\",\n        \"id\": \"registrarAtendimento\",\n        \"path\": \"l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts\"\n      }\n    ],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
+  },
+  "implementation-waiting": {
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": []
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-c1b6d2db41bcb7005bb06f2532e08f5b\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219389-a2a9e2af-fd64-4c12-8169-430b81e03597/revisions/review-c1b6d2db41bcb7005bb06f2532e08f5b/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
+  },
+  "implementation-success": {
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": [
+        {
+          "name": "runAgents:0",
+          "agent": "agentAddLanguage",
+          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
+          "attempt": 1,
+          "taskId": "defs-1",
+          "threadId": "thread-defs-ensaio",
+          "messageId": "thread-defs-ensaio/message-1",
+          "status": "done",
+          "startedAt": "2026-10-08T00:00:00.000Z",
+          "changedDefs": [],
+          "endedAt": "2026-10-08T00:00:00.000Z"
+        }
+      ]
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-c1b6d2db41bcb7005bb06f2532e08f5b\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219389-a2a9e2af-fd64-4c12-8169-430b81e03597/revisions/review-c1b6d2db41bcb7005bb06f2532e08f5b/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
+  },
+  "implementation-stale": {
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-obsolete-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": [
+        {
+          "name": "runAgents:0",
+          "agent": "agentAddLanguage",
+          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
+          "attempt": 1,
+          "taskId": "defs-1",
+          "threadId": "thread-defs-ensaio",
+          "messageId": "thread-defs-ensaio/message-1",
+          "status": "done",
+          "startedAt": "2026-10-08T00:00:00.000Z",
+          "changedDefs": [],
+          "endedAt": "2026-10-08T00:00:00.000Z"
+        }
+      ]
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-c1b6d2db41bcb7005bb06f2532e08f5b\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219389-a2a9e2af-fd64-4c12-8169-430b81e03597/revisions/review-c1b6d2db41bcb7005bb06f2532e08f5b/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
+  },
+  "implementation-retry": {
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": [
+        {
+          "name": "runAgents:0",
+          "agent": "agentAddLanguage",
+          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
+          "attempt": 1,
+          "taskId": "defs-1",
+          "threadId": "thread-defs-ensaio",
+          "messageId": "thread-defs-ensaio/message-1",
+          "status": "failed",
+          "startedAt": "2026-10-08T00:00:00.000Z",
+          "endedAt": "2026-10-08T00:00:00.000Z",
+          "error": "Simulated language failure"
+        }
+      ]
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-022becaed3201be7e88289b507dfb132\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219473-7ed44273-818c-4b04-bf72-a5331f658239/revisions/review-022becaed3201be7e88289b507dfb132/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
+  },
+  "implementation-failed": {
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": [
+        {
+          "name": "runAgents:0",
+          "agent": "agentAddLanguage",
+          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
+          "attempt": 2,
+          "previousAttempts": [
+            {
+              "name": "runAgents:0",
+              "agent": "agentAddLanguage",
+              "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
+              "attempt": 1,
+              "taskId": "defs-1",
+              "threadId": "thread-defs-ensaio",
+              "messageId": "thread-defs-ensaio/message-1",
+              "status": "failed",
+              "startedAt": "2026-10-08T00:00:00.000Z",
+              "endedAt": "2026-10-08T00:00:00.000Z",
+              "error": "Simulated language failure"
+            }
+          ],
+          "taskId": "defs-2",
+          "threadId": "thread-defs-ensaio",
+          "messageId": "thread-defs-ensaio/message-2",
+          "status": "failed",
+          "startedAt": "2026-10-08T00:00:00.000Z",
+          "endedAt": "2026-10-08T00:00:00.000Z",
+          "error": "Simulated language failure"
+        }
+      ]
+    },
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-022becaed3201be7e88289b507dfb132\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219473-7ed44273-818c-4b04-bf72-a5331f658239/revisions/review-022becaed3201be7e88289b507dfb132/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
   },
   "implementation-running": {
-    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
-    "changeId": "qa-implementation-change",
-    "revisionId": "qa-implementation-revision",
-    "acceptedBy": "ensaio",
-    "acceptedAt": "2026-10-08T00:00:00.000Z",
-    "hashes": {
-      "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    },
-    "merged": {
-      "regenerateDefs": [],
-      "materialize": [],
-      "runAgents": [
+    "record": {
+      "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+      "changeId": "qa-implementation-change",
+      "revisionId": "qa-implementation-revision",
+      "acceptedBy": "ensaio",
+      "acceptedAt": "2026-10-08T00:00:00.000Z",
+      "hashes": {
+        "changeEffort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "merged": {
+        "regenerateDefs": [],
+        "materialize": [],
+        "runAgents": [
+          {
+            "agent": "agentAddLanguage",
+            "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          }
+        ],
+        "abend": []
+      },
+      "phases": [
         {
+          "name": "runAgents:0",
           "agent": "agentAddLanguage",
-          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]"
+          "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
+          "attempt": 1,
+          "taskId": "defs-1",
+          "threadId": "thread-defs-ensaio",
+          "messageId": "thread-defs-ensaio/message-1",
+          "status": "running",
+          "startedAt": "2026-10-08T00:00:00.000Z"
         }
-      ],
-      "abend": []
+      ]
     },
-    "phases": [
-      {
-        "name": "runAgents:0",
-        "agent": "agentAddLanguage",
-        "command": "@@agentAddLanguage [{\"languages\":[{\"code\":\"pt-BR\",\"name\":\"pt-BR\"}],\"projectId\":102047,\"moduleName\":\"controleEstoque\"}]",
-        "attempt": 1,
-        "taskId": "defs-1",
-        "threadId": "thread-defs-ensaio",
-        "messageId": "thread-defs-ensaio/message-1",
-        "status": "running",
-        "startedAt": "2026-10-08T00:00:00.000Z"
-      }
-    ]
+    "changeEffort": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-e14d532784b8aeffcb70caa2f976ec19\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791485219565-b493f341-99c7-435d-8c57-7191d75b95ac/revisions/review-e14d532784b8aeffcb70caa2f976ec19/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": [\n            {\n              \"agent\": \"agentAddLanguage\",\n              \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n            }\n          ]\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [],\n    \"runAgents\": [\n      {\n        \"agent\": \"agentAddLanguage\",\n        \"command\": \"@@agentAddLanguage [{\\\"languages\\\":[{\\\"code\\\":\\\"pt-BR\\\",\\\"name\\\":\\\"pt-BR\\\"}],\\\"projectId\\\":102047,\\\"moduleName\\\":\\\"controleEstoque\\\"}]\"\n      }\n    ],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
   }
 }

@@ -37,8 +37,8 @@ async function withEffort<T>(mode: 'rule' | 'agent' | 'both', run: () => Promise
   }
 }
 
-const qaRecords: Record<string, L4ImplementationRecord> = {};
-function captureQa(name: string, record: L4ImplementationRecord) {
+const qaRecords: Record<string, { record: L4ImplementationRecord; changeEffort: string }> = {};
+function captureQa(name: string, record: L4ImplementationRecord, changeEffort: string) {
   const copy = structuredClone(record);
   copy.changeId = 'qa-implementation-change';
   copy.revisionId = 'qa-implementation-revision';
@@ -48,10 +48,10 @@ function captureQa(name: string, record: L4ImplementationRecord) {
     attempt.startedAt = copy.acceptedAt;
     if (attempt.endedAt) attempt.endedAt = copy.acceptedAt;
   }
-  qaRecords[name] = copy;
+  qaRecords[name] = { record: copy, changeEffort };
 }
 
-async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L4ImplementationRecord) => Promise<void>) {
+async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L4ImplementationRecord, changeEffort: string) => Promise<void>) {
   await withEffort(mode, () => withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async scenario => {
     const planner = await runPlannerScenario(scenario.context);
     assert.equal(planner.context.task?.status, 'done');
@@ -72,7 +72,7 @@ async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L
     const record = await acceptL4Implementation(PROJECT, MODULE, { revisionId, acceptedBy: 'ensaio',
       hashes: { changeEffort: `sha256:${createHash('sha256').update(source).digest('hex')}` } });
     assert.deepEqual(record.merged, effort.merged);
-    await run(record);
+    await run(record, source);
     await restoreModuleFromSeals(PROJECT, MODULE, baseId);
     assert.deepEqual(await diffModuleLayers(PROJECT, MODULE, baseId), []);
     const release = await readL4Release(PROJECT, MODULE, baseId);
@@ -90,7 +90,7 @@ async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L
 }
 
 test('accepted rule keeps materialization list and dispatches no phase', async () => {
-  await acceptedScenario('rule', async accepted => {
+  await acceptedScenario('rule', async (accepted, changeEffort) => {
     const golden = JSON.parse(readFileSync(new URL('../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
     assert.deepEqual(accepted.merged.materialize, golden.merged.materialize);
     assert.deepEqual(accepted.merged.runAgents, []);
@@ -98,48 +98,48 @@ test('accepted rule keeps materialization list and dispatches no phase', async (
     const record = await createImplementationRunner(host.dependencies).runNext(PROJECT, MODULE);
     assert.deepEqual(record.phases, []);
     assert.deepEqual(host.dispatched, []);
-    captureQa('implementation-materialize', record);
+    captureQa('implementation-materialize', record, changeEffort);
     assert.deepEqual(await readL4Implementation(PROJECT, MODULE), record);
   });
 });
 
 test('accepted materialization and language instruction wait without dispatch', async () => {
-  await acceptedScenario('both', async accepted => {
+  await acceptedScenario('both', async (accepted, changeEffort) => {
     assert.equal(accepted.merged.materialize.length, 4);
     assert.deepEqual(accepted.merged.runAgents, [{ agent: 'agentAddLanguage', command: languageCommand }]);
     const host = createSimulatedDefsHost();
     const record = await createImplementationRunner(host.dependencies).runNext(PROJECT, MODULE);
     assert.deepEqual(record.phases, []);
     assert.deepEqual(host.dispatched, []);
-    captureQa('implementation-materialize-agent', record);
+    captureQa('implementation-materialize-agent', record, changeEffort);
   });
 });
 
 for (const outcome of ['done', 'failed', 'running'] as const) {
   test(`accepted simulated language instruction ${outcome}`, async () => {
-    await acceptedScenario('agent', async accepted => {
+    await acceptedScenario('agent', async (accepted, changeEffort) => {
       assert.deepEqual(accepted.merged.materialize, []);
       assert.deepEqual(accepted.merged.runAgents, [{ agent: 'agentAddLanguage', command: languageCommand }]);
       assert.deepEqual(accepted.phases, []);
-      if (outcome === 'done') captureQa('implementation-waiting', accepted);
+      if (outcome === 'done') captureQa('implementation-waiting', accepted, changeEffort);
       const host = createSimulatedDefsHost(outcome);
       let runner = createImplementationRunner(host.dependencies);
       let record = await runner.runNext(PROJECT, MODULE);
       if (outcome === 'failed') {
         assert.equal(record.phases[0].status, 'failed');
         assert.equal(record.phases[0].error, 'Simulated language failure');
-        captureQa('implementation-retry', record);
+        captureQa('implementation-retry', record, changeEffort);
         runner = createImplementationRunner(host.dependencies);
         await runner.runNext(PROJECT, MODULE);
         assert.deepEqual(host.dispatched, [languageCommand]);
         record = await runner.retryPhase(PROJECT, MODULE, 'runAgents:0');
         assert.equal(record.phases[0].attempt, 2);
         assert.equal(record.phases[0].previousAttempts?.length, 1);
-        captureQa('implementation-failed', record);
+        captureQa('implementation-failed', record, changeEffort);
       } else {
         if (outcome === 'running') {
           assert.equal(record.phases[0].status, 'running');
-          captureQa('implementation-running', record);
+          captureQa('implementation-running', record, changeEffort);
           const id = record.phases[0].taskId;
           runner = createImplementationRunner(host.dependencies);
           record = await runner.runNext(PROJECT, MODULE);
@@ -151,9 +151,9 @@ for (const outcome of ['done', 'failed', 'running'] as const) {
         assert.deepEqual(record.phases.map(phase => [phase.name, phase.status]), [['runAgents:0', 'done']]);
         assert.deepEqual(record.phases[0].changedDefs, []);
         if (outcome === 'done') {
-          captureQa('implementation-success', record);
-          captureQa('implementation-stale', record);
-          qaRecords['implementation-stale'].changeId = 'qa-obsolete-change';
+          captureQa('implementation-success', record, changeEffort);
+          captureQa('implementation-stale', record, changeEffort);
+          qaRecords['implementation-stale'].record.changeId = 'qa-obsolete-change';
         }
         await runner.runNext(PROJECT, MODULE);
         assert.deepEqual(host.dispatched, [languageCommand]);
@@ -179,5 +179,15 @@ test('exported QA JSON matches simulated implementation states', () => {
   assert.equal(Object.keys(qaRecords).length, 8);
   const fixture = new URL('../newRelease/fixtures/implementation.json', import.meta.url);
   if (process.env.UPDATE_IMPLEMENTATION_QA === '1') writeFileSync(fixture, JSON.stringify(qaRecords, null, 2) + '\n');
-  assert.deepEqual(JSON.parse(readFileSync(fixture, 'utf8')), qaRecords);
+  const exported = JSON.parse(readFileSync(fixture, 'utf8')) as typeof qaRecords;
+  assert.deepEqual(Object.keys(exported).sort(), Object.keys(qaRecords).sort());
+  for (const name of Object.keys(qaRecords)) {
+    assert.deepEqual(exported[name].record, qaRecords[name].record, name);
+    const stableEffort = (source: string) => {
+      const value = JSON.parse(source) as ChangeEffortFile;
+      // These two paths contain the planner's fresh run IDs; keep the real bytes in the QA fixture.
+      return { ...value, base: { ...value.base, revisionId: '', candidateRoot: '' } };
+    };
+    assert.deepEqual(stableEffort(exported[name].changeEffort), stableEffort(qaRecords[name].changeEffort), name);
+  }
 });

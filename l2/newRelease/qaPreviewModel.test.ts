@@ -144,8 +144,16 @@ test('mr_12: all eight implementation states are included in every review presen
 });
 
 test('mr_12: rehearsal JSON renders the accepted phase, retry limit and stale response', () => {
-  const records = JSON.parse(readFileSync(new URL('./fixtures/implementation.json', import.meta.url), 'utf8')) as Record<string, L4ImplementationRecord>;
-  const view = (name: string) => implementationProgress(records[`implementation-${name}`], 'qa-implementation-change');
+  const snapshots = JSON.parse(readFileSync(new URL('./fixtures/implementation.json', import.meta.url), 'utf8')) as Record<string,
+    { record: L4ImplementationRecord; changeEffort: string }>;
+  const view = (name: string) => implementationProgress(snapshots[`implementation-${name}`].record, 'qa-implementation-change');
+  for (const fixture of QA_IMPLEMENTATION_FIXTURES) {
+    const snapshot = snapshots[fixture];
+    const effort = buildChangeEffortView({ status: 'ok', path: 'qa', value: JSON.parse(snapshot.changeEffort) });
+    assert.equal(effort.kind, 'ready', fixture);
+    assert.equal(effort.status, 'simple', fixture);
+    assert.deepEqual(effort.merged, snapshot.record.merged, fixture);
+  }
   assert.deepEqual(view('waiting').map(phase => phase.status), ['aguardando']);
   assert.deepEqual(view('running').map(phase => phase.status), ['executando']);
   assert.equal(view('retry')[0].podeTentarDeNovo, true);
@@ -158,6 +166,6 @@ test('mr_12: rehearsal JSON renders the accepted phase, retry limit and stale re
   assert.deepEqual(view('materialize'), []);
   assert.deepEqual(view('materialize-agent').map(phase => phase.status), ['depoisDaMaterializacao']);
   const golden = JSON.parse(readFileSync(new URL('../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
-  assert.deepEqual(records['implementation-materialize'].merged.materialize, golden.merged.materialize);
-  assert.deepEqual(records['implementation-materialize-agent'].merged.materialize, golden.merged.materialize);
+  assert.deepEqual(snapshots['implementation-materialize'].record.merged.materialize, golden.merged.materialize);
+  assert.deepEqual(snapshots['implementation-materialize-agent'].record.merged.materialize, golden.merged.materialize);
 });

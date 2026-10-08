@@ -151,9 +151,12 @@ async function installImplementationFixture(
 ): Promise<() => void> {
   const response = await fetch('/_102035_/l2/newRelease/fixtures/implementation.json');
   if (!response.ok) throw new Error('qa.implementationFixtureUnavailable');
-  const fixtures = await response.json() as Record<QaImplementationFixture, L4ImplementationRecord>;
-  const record = structuredClone(fixtures[fixture]);
-  if (!record || !element.data?.changeId) throw new Error('qa.implementationFixtureMissing');
+  const fixtures = await response.json() as Record<QaImplementationFixture, { record: L4ImplementationRecord; changeEffort: string }>;
+  const snapshot = fixtures[fixture];
+  if (!snapshot?.record || typeof snapshot.changeEffort !== 'string' || !element.data?.changeId) {
+    throw new Error('qa.implementationFixtureMissing');
+  }
+  const record = structuredClone(snapshot.record);
   const changeId = element.data.changeId;
   if (fixture !== 'implementation-stale') record.changeId = changeId;
   record.revisionId = element.data.revisionId!;
@@ -163,6 +166,7 @@ async function installImplementationFixture(
       project: config.project, moduleName: config.moduleName, changeId,
     }), `pipeline/changes/${changeId}/change`),
     fixtureFile(config.project, config.moduleName, JSON.stringify(record), `pipeline/changes/${changeId}/implementation`),
+    fixtureFile(config.project, config.moduleName, snapshot.changeEffort, 'pool/l4/changeEffort'),
   ];
   // Create the real widget off-DOM and inject before its first updated()/load().
   // All synthetic state is confined to this ephemeral instance and in-memory files.
@@ -290,6 +294,20 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   if (!qaScenarioRequiresReview(scenario)) return;
   const review = await waitForCurrentReview(element);
   if (!review) throw new Error('qa.inconclusive.reviewMissing');
+  if (isQaImplementationFixture(scenario.fixture)) {
+    const effort = buildChangeEffortView(await readReviewArtifact(review.project, review.moduleName, 'changeEffort'));
+    if (effort.kind !== 'ready' || effort.status !== 'simple'
+      || !review.querySelector('.nr-review__change-effort')
+      || review.querySelector('.nr-review__toolbar, .nr-review__menu, .nr-review__backend, .nr-review__effort')) {
+      throw new Error('qa.implementationEffortMissing');
+    }
+    const heroText = review.querySelector('.nr-review__hero')?.textContent ?? '';
+    if (!heroText.includes(review.t('review.effort.eyebrow'))
+      || !heroText.includes(review.t('review.effort.title'))
+      || heroText.includes(review.t('review.eyebrow'))) {
+      throw new Error('qa.implementationEffortHeaderMismatch');
+    }
+  }
   if (isQaImplementationFixture(scenario.fixture) && scenario.fixture !== 'implementation-stale') {
     const record = await review.implementationRunner.runNext(review.project, review.moduleName);
     const expected = implementationProgress(record, review.data?.changeId ?? null);
@@ -303,6 +321,11 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
       });
     }, 'qa.implementationStateMismatch');
     if (record.merged.materialize.length && review.implementationTimer !== undefined) throw new Error('qa.materializationTimerRunning');
+    if (record.merged.materialize.length && record.merged.runAgents.length
+      && ![...review.querySelectorAll('.nr-review__implementation')].every(panel =>
+        panel.textContent?.includes(review.t('review.implementation.status.depoisDaMaterializacao')))) {
+      throw new Error('qa.agentAfterMaterializationMissing');
+    }
     if (review.querySelector('.nr-review__primary-action')) throw new Error('qa.implementationCtaVisible');
     const retryCount = expected.filter(phase => phase.podeTentarDeNovo).length * 2;
     await waitForQaProtectedButtons(() => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__implementation-retry')], retryCount);
