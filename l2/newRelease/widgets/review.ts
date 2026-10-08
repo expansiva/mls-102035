@@ -13,9 +13,11 @@ import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import { readCandidateWorkerGate } from '/_102035_/l2/newRelease/helpers/candidateWorkerGate.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { adoptL4ReviewResult, originalL4FileInfo, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
+import { sealModuleLayers, restoreModuleFromSeals } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import {
   claimInputForRun,
@@ -43,6 +45,7 @@ import {
   buildReviewActionPlacements,
   buildReviewView,
   canStartReviewRun,
+  canAcceptImplementation,
   openReviewExpansionKeys,
   REVIEW_ALL_ACTORS,
   reviewExpansionKey,
@@ -85,6 +88,9 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
+
+  @state() private implementation: L4ImplementationRecord | null = null;
+  @state() private implementationHashes: L4ImplementationHashes = { menu: '', backend: '', effort: '' };
 
   private loadToken = 0;
   private readonly adoptedRuns = new Set<string>();
@@ -147,6 +153,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     const token = ++this.loadToken;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version, data: this.data };
     this.loadedFor = null;
+    this.implementation = null;
+    this.implementationHashes = { menu: '', backend: '', effort: '' };
     if (!this.project || !this.moduleName) {
       this.menuRead = EMPTY_MENU;
       this.backendRead = EMPTY_ARTIFACT;
@@ -167,14 +175,17 @@ export class NewReleaseReview102035 extends StateLitElement {
         inputRevisionId: context.data.revisionId,
       }).then(run => ({ run, errorCode: '' }), () => ({ run: null, errorCode: 'review.run.storeError' }))
       : Promise.resolve({ run: null, errorCode: '' });
-    const [menuRead, backendRead, effortRead, pool, persistedRun] = await Promise.all([
+    const [menuRead, backendRead, effortRead, pool, persistedRun, implementation] = await Promise.all([
       readModuleMenu(context.project, context.moduleName),
       readReviewArtifact(context.project, context.moduleName, 'backend'),
       readReviewArtifact(context.project, context.moduleName, 'effort'),
       readReviewPoolBoxes(context.project, context.moduleName),
       runRead,
+      readL4Implementation(context.project, context.moduleName).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
     ]);
     if (token !== this.loadToken) return;
+    this.implementation = implementation.value;
+    if (implementation.error) this.actionError = 'review.implementation.error.load';
     this.menuRead = menuRead;
     this.backendRead = backendRead;
     this.effortRead = effortRead;
@@ -452,6 +463,15 @@ export class NewReleaseReview102035 extends StateLitElement {
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'effort', root),
     ]);
     if (token !== this.loadToken) return;
+    const hash = async (name: 'menu' | 'backend' | 'effort') => {
+      const content = await readSourceText({ project: run.binding.project, level: 4,
+        folder: `${root}/pool/l2/web`, shortName: name, extension: '.json' });
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+      return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+    };
+    const hashes = await Promise.all(['menu', 'backend', 'effort'].map(name => hash(name as 'menu' | 'backend' | 'effort')));
+    if (token !== this.loadToken) return;
+    this.implementationHashes = { menu: hashes[0], backend: hashes[1], effort: hashes[2] };
     this.menuRead = menu;
     this.backendRead = backend;
     this.effortRead = effort;
@@ -506,7 +526,12 @@ export class NewReleaseReview102035 extends StateLitElement {
   private runReviewPrimaryAction = async () => {
     const action = this.actionPresentation(this.view(), this.isCurrentLoad());
     const start = beginReviewPrimaryAction(action);
-    if (!start.accepted || !['calculate', 'retry'].includes(action.kind)) return;
+    if (!start.accepted) return;
+    if (action.kind === 'continue') {
+      await this.acceptImplementation();
+      return;
+    }
+    if (!['calculate', 'retry'].includes(action.kind)) return;
     this.actionBusy = start.busy;
     this.actionError = '';
     try {
@@ -535,6 +560,52 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
   };
 
+  private canImplement(): boolean {
+    return canAcceptImplementation({ project: this.project, moduleName: this.moduleName, data: this.data,
+      runStatus: this.channelRun?.status ?? this.reviewRun?.status ?? null,
+      menu: this.menuRead, backend: this.backendRead, effort: this.effortRead,
+      hashes: this.implementationHashes, implementation: this.implementation });
+  }
+
+  private async acceptImplementation(): Promise<void> {
+    const data = this.data;
+    const acceptedBy = getUserId();
+    const baseId = data?.sealedRevision?.manifest.baseId;
+    if (this.actionBusy || !this.canImplement() || !data?.changeId || !data.revisionId || !baseId || !acceptedBy) return;
+    const { project, moduleName } = this;
+    const { changeId, revisionId } = data;
+    const hashes = { ...this.implementationHashes };
+    this.actionBusy = true;
+    this.actionError = '';
+    this.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button').forEach(button => {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+    });
+    let phase: 'seal' | 'promote' | 'accept' | 'restore' = 'seal';
+    try {
+      await sealModuleLayers(project, moduleName, baseId);
+      phase = 'promote';
+      await promoteL4Revision(project, moduleName, changeId, revisionId);
+      phase = 'accept';
+      const implementation = await acceptL4Implementation(project, moduleName, { revisionId, acceptedBy, hashes });
+      if (this.project === project && this.moduleName === moduleName && this.data === data) this.implementation = implementation;
+    } catch (error) {
+      if (phase === 'accept') {
+        try {
+          await restoreModuleFromSeals(project, moduleName, baseId);
+        } catch {
+          phase = 'restore';
+        }
+      }
+      if (this.project === project && this.moduleName === moduleName && this.data === data) {
+        this.actionError = phase === 'accept' && error instanceof Error && error.message === 'l4.implementation_conflict'
+          ? 'review.implementation.error.conflict' : `review.implementation.error.${phase}`;
+      }
+    } finally {
+      this.actionBusy = false;
+    }
+  }
+
   private retryStartInput(run: PlatformReviewRun, userId: string): ReviewRunStartInput {
     const identity = this.identityForRun(run, userId);
     const { runId: _runId, ...input } = identity;
@@ -546,7 +617,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     const effort = parseEffortSummary(this.effortRead, this.moduleName);
     const active = !!this.channelRun && !['ready', 'failed', 'disputed'].includes(this.channelRun.status);
     const retry = this.channelRun?.status === 'failed' || this.channelRun?.status === 'disputed';
-    return buildReviewActionPresentation({
+    const action = buildReviewActionPresentation({
       viewKind: retry ? 'pending' : view.kind,
       version: this.version,
       loading: this.loading,
@@ -569,6 +640,17 @@ export class NewReleaseReview102035 extends StateLitElement {
       retryAvailable: !retry || this.channelRun!.attempt < REVIEW_RUN_MAX_ATTEMPTS,
       error: this.actionError ? this.tStoredReviewError(this.actionError) : '',
     });
+    const accepted = this.implementation?.changeId === this.data?.changeId
+      && this.implementation?.revisionId === this.data?.revisionId && !!this.implementation;
+    if (this.version === 'tobe' && current && (accepted || action.kind === 'continue')) {
+      return { ...action, kind: 'continue',
+        labelKey: this.actionBusy ? 'review.actionBusy' : accepted ? 'review.implementation.accepted' : 'review.implementation.accept',
+        descriptionKey: accepted ? 'review.implementation.acceptedBody' : 'review.implementation.body',
+        availabilityKey: '',
+        disabled: this.actionBusy || this.loading || accepted || !getUserId() || !this.canImplement(),
+      };
+    }
+    return action;
   }
 
   private reviewRunErrorKey(code: string | null): string {
