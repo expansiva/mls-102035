@@ -6,6 +6,7 @@ import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/in
 import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
 import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { buildTaskStatistics } from '/_102025_/l2/collabMessagesTaskInfo.js';
+import { continuePoolingTask } from '/_102027_/l2/aiAgentOrchestration.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { candidateRead, type CandidateGatewayOptions } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import {
@@ -85,6 +86,7 @@ interface SavedExecution {
   messageId: string;
   savedAt?: string;
   execution: ReviewWorkerExecution | null;
+  resumeError?: string;
 }
 
 export interface ReviewStudioHostDependencies {
@@ -101,6 +103,7 @@ export interface ReviewStudioHostDependencies {
   candidateTransport?: CandidateGatewayOptions;
   now?: () => string;
   onTaskChange?: (listener: (context: ExecutionContext) => void) => () => void;
+  resume?: (context: ExecutionContext) => Promise<void>;
 }
 
 interface ReviewPlannerArtifact {
@@ -114,6 +117,7 @@ interface ReviewPlannerArtifact {
 
 const EXECUTION_KEY = 'collab-new-release-review-worker-v1/';
 const REVIEW_THREAD = '_102035_/l2/newRelease/review-runs';
+const tasksOnThisPage = new Set<string>();
 
 /** Concrete Studio host. The pending marker is durable before execution and server evidence wins on reattach. */
 export function createReviewStudioHost(dependencies: ReviewStudioHostDependencies = {}): ReviewStudioHost {
@@ -147,6 +151,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
   });
   const readArtifacts = dependencies.artifacts ?? readPlannerArtifacts;
   const now = dependencies.now ?? (() => new Date().toISOString());
+  const resume = dependencies.resume ?? continuePoolingTask;
   const subscribeTaskChange = dependencies.onTaskChange ?? ((listener: (context: ExecutionContext) => void) => {
     const target = typeof window === 'undefined' ? undefined : window.top ?? window;
     if (!target?.addEventListener) return () => undefined;
@@ -185,13 +190,53 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
     return execution;
   }
 
+  function rememberTask(taskId: string): void {
+    tasksOnThisPage.add(taskId);
+  }
+
+  function noteResumeError(claim: ReviewWorkerClaim, error: unknown): void {
+    console.error(error);
+    const text = error instanceof Error ? error.message : String(error);
+    try {
+      const current = read(claim);
+      if (current) save(claim, { ...current, resumeError: text });
+    } catch (saveError) {
+      console.error(saveError);
+    }
+  }
+
+  async function resumeIfOrphan(claim: ReviewWorkerClaim, execution: ReviewWorkerExecution, messageId: string): Promise<void> {
+    const saved = read(claim);
+    if (saved?.resumeError) throw new Error(`review-worker.execution_resume_failed:${saved.resumeError}`);
+    if (tasksOnThisPage.has(execution.taskId)) return;
+    const userId = currentUserId();
+    if (!userId) throw new Error('review-worker.user_unavailable');
+    const task = await readTask(userId, execution.taskId, messageId);
+    if (task.status !== 'in progress') return;
+    rememberTask(execution.taskId);
+    const message = await readMessage(userId, execution.threadId, messageId);
+    if (!message) {
+      noteResumeError(claim, new Error('review-worker.message_unavailable'));
+      return;
+    }
+    void resume({ task, message, isTest: false }).catch(error => noteResumeError(claim, error));
+  }
+
   return {
     async startOrGet(claim) {
       const saved = read(claim);
       const userId = currentUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
-      if (saved?.execution) return saved.execution;
-      if (claim.execution) return saveServerExecution(claim, claim.execution);
+      if (saved?.execution) {
+        await resumeIfOrphan(claim, saved.execution, saved.messageId);
+        return saved.execution;
+      }
+      if (claim.execution) {
+        const execution = await saveServerExecution(claim, claim.execution);
+        const stored = read(claim);
+        await resumeIfOrphan(claim, execution, stored?.messageId ?? '');
+        return execution;
+      }
       if (saved) {
         const listed = await listMessagesAfter(userId, saved.threadId, messagesAfterCursor(saved));
         const command = claim.command.trim();
@@ -207,6 +252,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
           const task = await readTask(userId, normalizeTaskId(message.taskId || ''), messageId);
           const execution = executionFromTask(saved.agentName, claim.attempt, task, saved.threadId, now());
           save(claim, { ...saved, claimId: claim.claimId, messageOrder, messageId, execution });
+          await resumeIfOrphan(claim, execution, messageId);
           return execution;
         }
         const age = Date.parse(now()) - markerInstant(saved);
@@ -225,6 +271,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
         captured = true;
         try {
           const canonicalMessageId = context.task.messageid_created || '';
+          rememberTask(normalizeTaskId(context.task.PK));
           save(claim, {
             claimId: claim.claimId,
             agentName,
@@ -242,6 +289,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
         await execute(agentName, context);
         if (!context.task?.PK || !context.message?.threadId) throw new Error('review-worker.task_not_created');
         const execution = executionFromTask(agentName, claim.attempt, context.task, context.message.threadId, now());
+        rememberTask(execution.taskId);
         const canonicalMessageId = context.task.messageid_created || '';
         save(claim, {
           claimId: claim.claimId,

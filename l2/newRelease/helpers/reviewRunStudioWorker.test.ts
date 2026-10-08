@@ -138,7 +138,11 @@ test('mr_30 s3 uma mensagem do comando vira a execução canônica sem ler o id 
   const host = createReviewStudioHost({
     storage,
     userId: () => 'user-mr15',
-    message: async () => { readProvisional = true; return null; },
+    message: async (_userId, _threadId, messageId) => {
+      if (messageId === PROVISIONAL) readProvisional = true;
+      return { threadId: THREAD_ID, orderAt: '20261006181434.1000', content: 'review' } as never;
+    },
+    resume: async () => undefined,
     messagesAfter: async (_userId, _threadId, lastOrderAt) => {
       cursor = lastOrderAt;
       return [{
@@ -467,3 +471,95 @@ test('mr_29 s2 reporta change-effort e não reporta os artefatos antigos dos pla
     }
   }
 });
+
+function phaseClaim(phase: 'review' | 'planner'): ReviewWorkerClaim {
+  return { ...claim(), phase, command: phase === 'review' ? 'review' : 'plan' };
+}
+
+function seedRunning(storage: KeyValueStorage, phase: 'review' | 'planner', taskId: string): void {
+  const current = phaseClaim(phase);
+  storage.setItem(`collab-new-release-review-worker-v1/${current.runId}/${current.attempt}/${phase}`, JSON.stringify({
+    claimId: current.claimId,
+    agentName: phase === 'review' ? 'agentReviewSolution' : 'agentPlannerL4',
+    threadId: THREAD_ID,
+    messageOrder: ORDER_AT,
+    messageId: CANONICAL,
+    execution: {
+      agentName: phase === 'review' ? 'agentReviewSolution' : 'agentPlannerL4',
+      taskId,
+      threadId: THREAD_ID,
+      status: 'running',
+      attempt: current.attempt,
+      provider: null,
+      model: null,
+      resultRunId: null,
+      candidateRevisionId: null,
+      startedAt: '2026-10-06T18:14:31.000Z',
+      updatedAt: '2026-10-06T18:14:31.000Z',
+    },
+  }));
+}
+
+for (const phase of ['review', 'planner'] as const) {
+  test(`mr_30 s5 ${phase} in progress no marcador retoma uma vez em 3 ticks`, async () => {
+    const storage = memoryStorage();
+    const taskId = phase === 'review' ? '20261006181434.3001' : '20261006181434.3002';
+    seedRunning(storage, phase, taskId);
+    let resumes = 0;
+    const host = createReviewStudioHost({
+      storage,
+      userId: () => 'user-mr15',
+      task: async () => ({ PK: `task/${taskId}`, status: 'in progress' }) as TaskData,
+      message: async () => ({ threadId: THREAD_ID, content: phaseClaim(phase).command }) as never,
+      resume: async () => { resumes += 1; },
+      now: () => '2026-10-06T18:15:00.000Z',
+    });
+    const current = phaseClaim(phase);
+    await host.startOrGet(current);
+    await host.startOrGet(current);
+    await host.startOrGet(current);
+    assert.equal(resumes, 1);
+  });
+
+  test(`mr_30 s5 ${phase} criada nesta página não retoma`, async () => {
+    const storage = memoryStorage();
+    const taskId = phase === 'review' ? '20261006181434.3101' : '20261006181434.3102';
+    let resumes = 0;
+    const host = createReviewStudioHost({
+      storage,
+      userId: () => 'user-mr15',
+      thread: async () => ({ threadId: THREAD_ID }),
+      context: () => ({ message: { threadId: THREAD_ID, orderAt: ORDER_AT }, task: { PK: `task/${taskId}` } }) as ExecutionContext,
+      execute: async (_agentName, current) => {
+        current.task = { PK: `task/${taskId}`, messageid_created: CANONICAL, status: 'in progress' } as TaskData;
+      },
+      task: async () => ({ PK: `task/${taskId}`, status: 'in progress' }) as TaskData,
+      message: async () => ({ threadId: THREAD_ID }) as never,
+      resume: async () => { resumes += 1; },
+      now: () => '2026-10-06T18:14:31.000Z',
+    });
+    const current = phaseClaim(phase);
+    await host.startOrGet(current);
+    await host.startOrGet(current);
+    await host.startOrGet(current);
+    assert.equal(resumes, 0);
+  });
+
+  test(`mr_30 s5 ${phase} resume rejeitado falha no próximo startOrGet`, async () => {
+    const storage = memoryStorage();
+    const taskId = phase === 'review' ? '20261006181434.3201' : '20261006181434.3202';
+    seedRunning(storage, phase, taskId);
+    const host = createReviewStudioHost({
+      storage,
+      userId: () => 'user-mr15',
+      task: async () => ({ PK: `task/${taskId}`, status: 'in progress' }) as TaskData,
+      message: async () => ({ threadId: THREAD_ID }) as never,
+      resume: async () => { throw new Error('hook-lost'); },
+      now: () => '2026-10-06T18:15:00.000Z',
+    });
+    const current = phaseClaim(phase);
+    await host.startOrGet(current);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await assert.rejects(host.startOrGet(current), /review-worker\.execution_resume_failed:hook-lost/);
+  });
+}
