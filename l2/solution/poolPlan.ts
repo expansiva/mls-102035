@@ -375,6 +375,79 @@ export interface L4DiffItem {
   after?: unknown;
 }
 
+/**
+ * Prose on a v3 field and on an enum value (`Ns5OntologyFieldV3` / `Ns5OntologyValueV3`):
+ * `title` and `description` only. `type`, `derived`, `required` and the value code are not text.
+ * `values` is not in this list: a label edit is text, an added or removed code is not.
+ */
+export const L4_TEXT_ATTRIBUTES = ['title', 'description'] as const;
+export type L4TextAttribute = (typeof L4_TEXT_ATTRIBUTES)[number];
+
+function isL4TextAttribute(key: string): key is L4TextAttribute {
+  return (L4_TEXT_ATTRIBUTES as readonly string[]).includes(key);
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function enumValueEntry(value: unknown): { code: string; attrs: Record<string, unknown> } | undefined {
+  if (typeof value === 'string') return { code: value, attrs: { value } };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const attrs = value as Record<string, unknown>;
+  if (typeof attrs.value !== 'string') return undefined;
+  return { code: attrs.value, attrs };
+}
+
+/** Same codes; every differing key on a value is a text attribute. */
+function enumValuesTextOnly(before: unknown, after: unknown): boolean {
+  if (!Array.isArray(before) || !Array.isArray(after) || before.length !== after.length) return false;
+  const beforeByCode = new Map<string, Record<string, unknown>>();
+  const afterByCode = new Map<string, Record<string, unknown>>();
+  for (const raw of before) {
+    const entry = enumValueEntry(raw);
+    if (!entry || beforeByCode.has(entry.code)) return false;
+    beforeByCode.set(entry.code, entry.attrs);
+  }
+  for (const raw of after) {
+    const entry = enumValueEntry(raw);
+    if (!entry || afterByCode.has(entry.code)) return false;
+    afterByCode.set(entry.code, entry.attrs);
+  }
+  if (beforeByCode.size !== afterByCode.size) return false;
+  for (const [code, beforeAttrs] of beforeByCode) {
+    const afterAttrs = afterByCode.get(code);
+    if (!afterAttrs) return false;
+    const keys = new Set([...Object.keys(beforeAttrs), ...Object.keys(afterAttrs)]);
+    for (const key of keys) {
+      if (sameJson(beforeAttrs[key], afterAttrs[key])) continue;
+      if (!isL4TextAttribute(key)) return false;
+    }
+  }
+  return true;
+}
+
+/** True only for a `field` `changed` item whose every difference is text (field or enum label). */
+export function isTextOnlyChange(item: L4DiffItem): boolean {
+  if (item.kind !== 'field' || item.op !== 'changed') return false;
+  const before = item.before;
+  const after = item.after;
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return false;
+  if (Array.isArray(before) || Array.isArray(after)) return false;
+  const beforeRecord = before as Record<string, unknown>;
+  const afterRecord = after as Record<string, unknown>;
+  const keys = new Set([...Object.keys(beforeRecord), ...Object.keys(afterRecord)]);
+  for (const key of keys) {
+    if (sameJson(beforeRecord[key], afterRecord[key])) continue;
+    if (key === 'values') {
+      if (!enumValuesTextOnly(beforeRecord[key], afterRecord[key])) return false;
+      continue;
+    }
+    if (!isL4TextAttribute(key)) return false;
+  }
+  return true;
+}
+
 export interface L4Diff {
   schemaVersion: typeof L4_DIFF_SCHEMA;
   moduleName: string;
