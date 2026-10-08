@@ -1,6 +1,10 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/reviewModel.ts" enhancement="_blank" />
 
 import type { MenuReadStatus } from '/_102035_/l2/newRelease/helpers/menuReader.js';
+import type { ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
+import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
+import type { L4ImplementationHashes, L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { listPoolBoxForProject } from '/_102035_/l2/solution/pool.js';
 import {
   MENU_ACTIONS,
   MENU_ORGANISM_KINDS,
@@ -133,6 +137,35 @@ export interface ReviewStartPreflightInput {
   userId: string | null;
   hasRun: boolean;
   sealedRevision: ReviewStartSealedRevision | null;
+}
+
+export interface ReviewImplementationInput {
+  project: number;
+  moduleName: string;
+  data: Pick<NewReleaseModuleData, 'changeId' | 'revisionId' | 'resultCurrent'> | null;
+  runStatus: string | null;
+  menu: ReviewArtifactRead;
+  backend: ReviewArtifactRead;
+  effort: ReviewArtifactRead;
+  hashes: L4ImplementationHashes;
+  implementation: L4ImplementationRecord | null;
+}
+
+/** Presentation gate; acceptance repeats the active revision CAS under the module writer. */
+export function canAcceptImplementation(input: ReviewImplementationInput): boolean {
+  const { data, implementation, hashes } = input;
+  if (!input.project || !input.moduleName || input.runStatus !== 'ready'
+    || !data?.resultCurrent || !data.changeId || !data.revisionId) return false;
+  const root = `l4/${input.moduleName}/pipeline/changes/${data.changeId}/revisions/${data.revisionId}/l4/pool/l2/web`;
+  for (const name of ['menu', 'backend', 'effort'] as const) {
+    if (input[name].status !== 'ok' || input[name].path !== `${root}/${name}.json` || !hashes[name]) return false;
+  }
+  if (implementation && (implementation.changeId !== data.changeId
+    || implementation.revisionId !== data.revisionId
+    || implementation.hashes.menu !== hashes.menu
+    || implementation.hashes.backend !== hashes.backend
+    || implementation.hashes.effort !== hashes.effort)) return false;
+  return (['l4', 'l2', 'l1'] as const).every(box => listPoolBoxForProject(input.project, input.moduleName, box).length === 0);
 }
 
 function sortedEntries(record: Readonly<Record<string, string>>): Array<readonly [string, string]> {

@@ -10,6 +10,7 @@ import {
   buildReviewActionPresentation,
   buildReviewActionPlacements,
   buildReviewView,
+  canAcceptImplementation,
   canStartReviewRun,
   menuTreeForActor,
   openReviewExpansionKeys,
@@ -21,12 +22,98 @@ import {
   toggleReviewExpansion,
   toggleReviewSelection,
   type ReviewInput,
+  type ReviewImplementationInput,
   type ReviewTreeNode,
   type ReviewView,
 } from './reviewModel.js';
 import { MENU_ACTIONS, MENU_SCHEMA_VERSION, type MenuStampedNode } from '/_102035_/l2/solution/poolPlan.js';
+import { L4_IMPLEMENTATION_SCHEMA } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 
 const menu = JSON.parse(readFileSync(new URL('./fixtures/review-menu.json', import.meta.url), 'utf8'));
+
+function implementationInput(): ReviewImplementationInput {
+  const root = 'l4/agendaClinica/pipeline/changes/change-one/revisions/revision-one/l4/pool/l2/web';
+  return {
+    project: 102047,
+    moduleName: 'agendaClinica',
+    data: { changeId: 'change-one', revisionId: 'revision-one', resultCurrent: true },
+    runStatus: 'ready',
+    menu: { status: 'ok', path: `${root}/menu.json`, value: menu },
+    backend: { status: 'ok', path: `${root}/backend.json`, value: {} },
+    effort: { status: 'ok', path: `${root}/effort.json`, value: {} },
+    hashes: { menu: 'menu-hash', backend: 'backend-hash', effort: 'effort-hash' },
+    implementation: null,
+  };
+}
+
+test('mr_10 s2: ready current revision and three empty boxes allow acceptance', () => {
+  assert.equal(canAcceptImplementation(implementationInput()), true);
+});
+
+test('mr_10 s2: absent or unfinished run and non-current result prevent acceptance', () => {
+  const input = implementationInput();
+  for (const runStatus of [null, 'running', 'failed', 'disputed']) {
+    assert.equal(canAcceptImplementation({ ...input, runStatus }), false);
+  }
+  assert.equal(canAcceptImplementation({ ...input, data: null }), false);
+  for (const data of [
+    { ...input.data!, resultCurrent: false },
+    { ...input.data!, changeId: null },
+    { ...input.data!, revisionId: null },
+  ]) assert.equal(canAcceptImplementation({ ...input, data }), false);
+});
+
+test('mr_10 s2: each artifact must be readable from the current revision with its hash', () => {
+  const input = implementationInput();
+  for (const name of ['menu', 'backend', 'effort'] as const) {
+    for (const status of ['missing', 'invalid'] as const) {
+      assert.equal(canAcceptImplementation({ ...input, [name]: { ...input[name], status } }), false);
+    }
+    for (const path of [
+      input[name].path.replace('revision-one', 'revision-old'),
+      input[name].path.replace('change-one', 'change-old'),
+      `l4/agendaClinica/pool/l2/web/${name}.json`,
+    ]) assert.equal(canAcceptImplementation({ ...input, [name]: { ...input[name], path } }), false);
+    assert.equal(canAcceptImplementation({ ...input, hashes: { ...input.hashes, [name]: '' } }), false);
+  }
+});
+
+test('mr_10 s2: identical acceptance is idempotent; different revision or hashes block it', () => {
+  const input = implementationInput();
+  input.implementation = {
+    schemaVersion: L4_IMPLEMENTATION_SCHEMA,
+    changeId: input.data!.changeId!, revisionId: input.data!.revisionId!,
+    acceptedBy: 'user-one', acceptedAt: '2026-10-08T00:00:00.000Z',
+    hashes: { ...input.hashes }, phases: [],
+  };
+  assert.equal(canAcceptImplementation(input), true);
+  for (const name of ['menu', 'backend', 'effort'] as const) {
+    assert.equal(canAcceptImplementation({ ...input, implementation: {
+      ...input.implementation, hashes: { ...input.hashes, [name]: 'different' },
+    } }), false);
+  }
+  assert.equal(canAcceptImplementation({ ...input, implementation: {
+    ...input.implementation, revisionId: 'revision-old',
+  } }), false);
+});
+
+test('mr_10 s2: each official pool box blocks on messages, ignoring artifacts and deleted messages', () => {
+  const previous = mls.stor.files;
+  try {
+    for (const box of ['l4', 'l2', 'l1']) {
+      const file = {
+        project: 102047, level: 4, folder: `agendaClinica/pool/${box}`,
+        shortName: '20261008000000_thread_1', extension: '.json', status: 'loaded',
+      };
+      mls.stor.files = { message: file } as unknown as typeof mls.stor.files;
+      assert.equal(canAcceptImplementation(implementationInput()), false, box);
+      mls.stor.files = { message: { ...file, status: 'deleted' }, artifact: { ...file, shortName: 'menu' } } as unknown as typeof mls.stor.files;
+      assert.equal(canAcceptImplementation(implementationInput()), true, box);
+    }
+  } finally {
+    mls.stor.files = previous;
+  }
+});
 
 const sealedPreflight = {
   request: 'Add one field',
