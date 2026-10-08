@@ -5,7 +5,15 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 
 export const QA_TABS = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration', 'review'] as const;
-export const QA_FIXTURES = ['live', 'empty', 'loading', 'error', 'pending', 'ready'] as const;
+export const QA_IMPLEMENTATION_FIXTURES = [
+  'implementation-waiting', 'implementation-l2', 'implementation-l1', 'implementation-retry',
+  'implementation-failed', 'implementation-success', 'implementation-stale',
+] as const;
+export type QaImplementationFixture = typeof QA_IMPLEMENTATION_FIXTURES[number];
+export function isQaImplementationFixture(fixture: string): fixture is QaImplementationFixture {
+  return (QA_IMPLEMENTATION_FIXTURES as readonly string[]).includes(fixture);
+}
+export const QA_FIXTURES = ['live', 'empty', 'loading', 'error', 'pending', 'ready', ...QA_IMPLEMENTATION_FIXTURES] as const;
 export const QA_LANGUAGES = ['pt-BR', 'en-US'] as const;
 export const QA_THEMES = ['light', 'dark'] as const;
 
@@ -145,7 +153,7 @@ export function buildNewReleaseQaFixture(
       details: {},
     };
   }
-  const revisionState = fixture === 'pending' || fixture === 'ready';
+  const revisionState = fixture === 'pending' || fixture === 'ready' || isQaImplementationFixture(fixture);
   return {
     module: artifacts.module.value,
     pipeline: null,
@@ -158,7 +166,7 @@ export function buildNewReleaseQaFixture(
     changeId: revisionState ? `qa-change-${caseId}` : null,
     revisionId: revisionState ? `qa-revision-${caseId}` : null,
     baseProvenance: null,
-    resultCurrent: fixture === 'ready',
+    resultCurrent: fixture === 'ready' || isQaImplementationFixture(fixture),
     stalePaths: [],
     diffs: [],
     validation: { ok: fixture !== 'error', issues: [], oracle: null, coverage: structuredClone(coverage) },
@@ -186,6 +194,11 @@ export function newReleaseQaScenarios(): NewReleaseQaScenario[] {
       for (const fixture of ['empty', 'loading', 'error', 'pending', 'ready'] as const) {
         scenarios.push({ caseId: `${tab}-${width}-${language}-${theme}-${fixture}`, tab, width, language, theme, fixture });
       }
+    }
+  }
+  for (const width of [390, 800, 1280] as const) for (const language of QA_LANGUAGES) {
+    for (const theme of QA_THEMES) for (const fixture of QA_IMPLEMENTATION_FIXTURES) {
+      scenarios.push({ caseId: `review-${width}-${language}-${theme}-${fixture}`, tab: 'review', width, language, theme, fixture });
     }
   }
   return scenarios;

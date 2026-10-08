@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { installQaMutationGuard, QA_PROTECTED_BUTTONS, waitForQaCondition, waitForQaProtectedButtons } from './qaPreviewGuard.js';
 
+test('mr_12: retry and refusal are protected in read-only QA', () => {
+  assert.ok(QA_PROTECTED_BUTTONS.split(',').includes('.nr-review__implementation-retry'));
+  assert.ok(QA_PROTECTED_BUTTONS.split(',').includes('.nr-review__implementation-refuse'));
+});
+
 test('DOM condition wait observes a later render and fails closed on timeout', async () => {
   let rendered = false;
   const waiting = waitForQaCondition(() => rendered, 'qa.renderTimeout', 500);

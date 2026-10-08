@@ -2,7 +2,11 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import type { L4ImplementationRecord } from '../solution/candidate/moduleImplementation.js';
 import {
+  QA_IMPLEMENTATION_FIXTURES,
+  isQaImplementationFixture,
   buildNewReleaseQaFixture,
   buildNewReleaseQaMenuFixture,
   canAnnounceQaReady,
@@ -11,7 +15,7 @@ import {
   parseNewReleaseQaParams,
   qaScenarioRequiresReview,
 } from './qaPreviewModel.js';
-import { buildReviewView } from './widgets/reviewModel.js';
+import { buildReviewView, implementationProgress } from './widgets/reviewModel.js';
 
 test('QA query validates and normalizes the complete public context', () => {
   const parsed = parseNewReleaseQaParams('?project=102047&module=agendaClinica&tab=review&version=release:r-1&lang=en-US&theme=dark&fixture=ready&toolbar=hidden');
@@ -47,7 +51,7 @@ test('fixtures map to deterministic states without mutation capabilities', () =>
 
 test('automatic matrix is non-empty and covers all required dimensions', () => {
   const scenarios = newReleaseQaScenarios();
-  assert.equal(scenarios.length, 120);
+  assert.equal(scenarios.length, 204);
   assert.deepEqual(new Set(scenarios.map(item => item.width)), new Set([390, 800, 1280]));
   assert.deepEqual(new Set(scenarios.map(item => item.tab)), new Set(['general', 'review']));
   assert.deepEqual(new Set(scenarios.map(item => item.language)), new Set(['pt-BR', 'en-US']));
@@ -87,4 +91,31 @@ test('review DOM is required only for fixture states that mount the review widge
 test('ready is emitted only after component, translation, theme and data resolve', () => {
   assert.equal(canAnnounceQaReady({ component: true, translation: true, theme: true, data: false }), false);
   assert.equal(canAnnounceQaReady({ component: true, translation: true, theme: true, data: true }), true);
+});
+
+test('mr_12: all seven implementation states are included in every review presentation', () => {
+  for (const fixture of QA_IMPLEMENTATION_FIXTURES) {
+    assert.equal(isQaImplementationFixture(fixture), true);
+    assert.equal(parseNewReleaseQaParams(`fixture=${fixture}&tab=review`).ok, true);
+    const scenarios = newReleaseQaScenarios().filter(item => item.fixture === fixture);
+    assert.equal(scenarios.length, 12);
+    assert.ok(scenarios.every(item => qaScenarioRequiresReview(item)));
+    assert.equal(buildNewReleaseQaFixture(fixture, 'qa').resultCurrent, true);
+  }
+  assert.equal(isQaImplementationFixture('ready'), false);
+});
+
+test('mr_12: rehearsal JSON renders waiting, both running phases, retry limit, artifacts and stale response', () => {
+  const records = JSON.parse(readFileSync(new URL('./fixtures/implementation.json', import.meta.url), 'utf8')) as Record<string, L4ImplementationRecord>;
+  const view = (name: string) => implementationProgress(records[`implementation-${name}`], 'qa-implementation-change');
+  assert.deepEqual(view('waiting').map(phase => phase.status), ['aguardando', 'aguardando']);
+  assert.deepEqual(view('l2').map(phase => phase.status), ['executando', 'aguardando']);
+  assert.deepEqual(view('l1').map(phase => phase.status), ['concluido', 'executando']);
+  assert.equal(view('retry')[0].podeTentarDeNovo, true);
+  assert.equal(view('failed')[0].podeTentarDeNovo, false);
+  assert.equal(view('failed')[0].attempt, 2);
+  assert.equal(view('failed')[0].previousAttempts?.length, 1);
+  assert.deepEqual(view('success').map(phase => phase.status), ['concluido', 'concluido']);
+  assert.ok(view('success').every(phase => phase.changedDefs?.length));
+  assert.deepEqual(view('stale').map(phase => phase.status), ['aguardando', 'aguardando']);
 });

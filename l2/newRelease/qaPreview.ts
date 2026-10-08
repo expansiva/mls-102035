@@ -1,6 +1,8 @@
 /// <mls fileReference="_102035_/l2/newRelease/qaPreview.ts" enhancement="_blank" />
 
 import {
+  isQaImplementationFixture,
+  type QaImplementationFixture,
   buildNewReleaseQaFixture,
   buildNewReleaseQaMenuFixture,
   canAnnounceQaReady,
@@ -12,15 +14,33 @@ import {
   type NewReleaseQaScenario,
 } from '/_102035_/l2/newRelease/qaPreviewModel.js';
 import { guardQaMutations, waitForQaCondition, waitForQaProtectedButtons } from '/_102035_/l2/newRelease/qaPreviewGuard.js';
+import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 
+import type { L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import type { ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { implementationProgress } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+
+type QaReviewElement = NewReleaseElement & {
+  loading: boolean;
+  isCurrentLoad(): boolean;
+  implementationRunner: {
+    runNext(project: number, moduleName: string): Promise<L4ImplementationRecord>;
+    retryPhase(project: number, moduleName: string, phase: 'defsL2' | 'defsL1'): Promise<L4ImplementationRecord>;
+  };
+  implementationDiff: ModuleLayerDiff[] | null;
+  loadImplementationDiff(): Promise<void>;
+};
 type NewReleaseElement = HTMLElement & {
   project: number;
   moduleName: string;
   version: NewReleaseQaConfig['version'];
   data: NewReleaseModuleData | null;
+  t: NewReleaseTranslate;
   updateComplete: Promise<unknown>;
   requestUpdate(): void;
+  activeTab: string;
+  renderTabContent(): unknown;
 };
 
 export interface NewReleaseQaFailure { caseId: string; message: string }
@@ -67,8 +87,11 @@ function fixtureFile(
   project: number,
   moduleName: string,
   content: string | Promise<string>,
+  path = 'pool/l2/web/menu',
 ): () => void {
-  const info = { project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' };
+  const parts = path.split('/');
+  const shortName = parts.pop()!;
+  const info = { project, level: 4, folder: `${moduleName}/${parts.join('/')}`, shortName, extension: '.json' };
   const key = mls.stor.getKeyToFile(info);
   const previous = mls.stor.files[key];
   mls.stor.files[key] = {
@@ -116,6 +139,65 @@ function createIndex(): NewReleaseElement {
   return document.createElement('new-release--widgets--index-102035') as NewReleaseElement;
 }
 
+async function installImplementationFixture(
+  element: NewReleaseElement, config: NewReleaseQaConfig, fixture: QaImplementationFixture,
+): Promise<() => void> {
+  const response = await fetch('/_102035_/l2/newRelease/fixtures/implementation.json');
+  if (!response.ok) throw new Error('qa.implementationFixtureUnavailable');
+  const fixtures = await response.json() as Record<QaImplementationFixture, L4ImplementationRecord>;
+  const record = structuredClone(fixtures[fixture]);
+  if (!record || !element.data?.changeId) throw new Error('qa.implementationFixtureMissing');
+  const changeId = element.data.changeId;
+  if (fixture !== 'implementation-stale') record.changeId = changeId;
+  record.revisionId = element.data.revisionId!;
+  for (const phase of record.phases) {
+    phase.command = phase.name === 'defsL2' ? `@@agentDefsL2 ${config.moduleName}` : `@@agentDefsL1 ${config.moduleName} /run`;
+  }
+  const cleanup = [
+    fixtureFile(config.project, config.moduleName, JSON.stringify({ changeId }), 'pipeline/changes/active'),
+    fixtureFile(config.project, config.moduleName, JSON.stringify({
+      project: config.project, moduleName: config.moduleName, changeId,
+    }), `pipeline/changes/${changeId}/change`),
+    fixtureFile(config.project, config.moduleName, JSON.stringify(record), `pipeline/changes/${changeId}/implementation`),
+  ];
+  // Create the real widget off-DOM and inject before its first updated()/load().
+  // All synthetic state is confined to this ephemeral instance and in-memory files.
+  const review = document.createElement('new-release--widgets--review-102035') as QaReviewElement;
+  review.implementationRunner = {
+    runNext: async () => structuredClone(record),
+    retryPhase: async () => { throw new Error('qa.mutationBlocked'); },
+  };
+  review.loadImplementationDiff = async () => {
+    review.implementationDiff = record.phases.flatMap(phase =>
+      (phase.changedDefs ?? []).map(file => ({ ...file, level: phase.name === 'defsL2' ? 2 as const : 1 as const })));
+    review.requestUpdate();
+  };
+  review.project = config.project;
+  review.moduleName = config.moduleName;
+  review.version = config.version;
+  review.data = element.data;
+  review.t = element.t;
+  const render = element.renderTabContent;
+  element.renderTabContent = function () {
+    review.t = this.t;
+    return this.activeTab === 'review' ? review : render.call(this);
+  };
+  return () => {
+    review.remove(); // disconnectedCallback cancels the widget's polling timer and invalidates in-flight loads.
+    element.renderTabContent = render;
+    cleanup.reverse().forEach(restore => restore());
+  };
+}
+
+async function waitForCurrentReview(element: NewReleaseElement): Promise<QaReviewElement | null> {
+  const review = element.querySelector<QaReviewElement>('new-release--widgets--review-102035');
+  if (!review) return null;
+  // Absence of a loading node is also true before the first load has rendered.
+  await waitForQaCondition(() => review.isCurrentLoad() && !review.loading, 'qa.reviewLoadTimeout');
+  await review.updateComplete;
+  return review;
+}
+
 async function mountFixture(
   container: HTMLElement,
   config: NewReleaseQaConfig,
@@ -124,49 +206,56 @@ async function mountFixture(
 ): Promise<{ element: NewReleaseElement; cleanup: () => void }> {
   const cleanupFns: Array<() => void> = [];
   const element = createIndex();
-  element.version = config.version;
-  if (fixture === 'loading') {
-    const pending = loadingFixtureFile(config.project, config.moduleName);
-    cleanupFns.push(pending.restore);
-    element.project = config.project;
-    element.moduleName = config.moduleName;
-    container.appendChild(element);
+  try {
+    element.version = config.version;
+    if (fixture === 'loading') {
+      const pending = loadingFixtureFile(config.project, config.moduleName);
+      cleanupFns.push(pending.restore);
+      element.project = config.project;
+      element.moduleName = config.moduleName;
+      container.appendChild(element);
+      await element.updateComplete;
+      await waitFor(() => !!element.querySelector('.nr-index__loading'));
+    } else if (fixture === 'live') {
+      element.project = config.project;
+      element.moduleName = config.moduleName;
+      container.appendChild(element);
+      await waitFor(() => element.querySelector('.nr-index')?.getAttribute('aria-busy') === 'false');
+    } else {
+      cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify(buildNewReleaseQaMenuFixture(config.moduleName))));
+      element.project = config.project;
+      element.moduleName = '';
+      container.appendChild(element);
+      await element.updateComplete;
+      await waitFor(() => !/\btab\.[A-Za-z]/u.test(element.textContent ?? ''));
+      element.moduleName = config.moduleName;
+      element.data = buildNewReleaseQaFixture(
+        fixture as Exclude<NewReleaseQaFixture, 'live' | 'loading'>,
+        config.moduleName,
+        caseId,
+      );
+      if (isQaImplementationFixture(fixture)) {
+        cleanupFns.push(await installImplementationFixture(element, config, fixture));
+      }
+      element.requestUpdate();
+      await element.updateComplete;
+    }
+    element.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, detail: { tab: config.tab } }));
     await element.updateComplete;
-    await waitFor(() => !!element.querySelector('.nr-index__loading'));
-  } else if (fixture === 'live') {
-    element.project = config.project;
-    element.moduleName = config.moduleName;
-    container.appendChild(element);
-    await waitFor(() => element.querySelector('.nr-index')?.getAttribute('aria-busy') === 'false');
-  } else {
-    cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify(buildNewReleaseQaMenuFixture(config.moduleName))));
-    element.project = config.project;
-    element.moduleName = '';
-    container.appendChild(element);
-    await element.updateComplete;
-    await waitFor(() => !/\btab\.[A-Za-z]/u.test(element.textContent ?? ''));
-    element.moduleName = config.moduleName;
-    element.data = buildNewReleaseQaFixture(
-      fixture as Exclude<NewReleaseQaFixture, 'live' | 'loading'>,
-      config.moduleName,
-      caseId,
-    );
-    element.requestUpdate();
-    await element.updateComplete;
+    await waitForCurrentReview(element);
+    await waitFor(() => !/\b(?:tab|state|review|general|request)\.[A-Za-z]/u.test(element.textContent ?? ''));
+    return {
+      element,
+      cleanup: () => {
+        element.remove();
+        cleanupFns.reverse().forEach(cleanup => cleanup());
+      },
+    };
+  } catch (error) {
+    element.remove();
+    cleanupFns.reverse().forEach(cleanup => cleanup());
+    throw error;
   }
-  element.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, detail: { tab: config.tab } }));
-  await element.updateComplete;
-  const review = element.querySelector<HTMLElement & { updateComplete?: Promise<unknown> }>('new-release--widgets--review-102035');
-  if (review?.updateComplete) await review.updateComplete;
-  if (review) await waitFor(() => !review.querySelector('.nr-review__loading'));
-  await waitFor(() => !/\b(?:tab|state|review|general|request)\.[A-Za-z]/u.test(element.textContent ?? ''));
-  return {
-    element,
-    cleanup: () => {
-      element.remove();
-      cleanupFns.reverse().forEach(cleanup => cleanup());
-    },
-  };
 }
 
 function assertScenario(element: NewReleaseElement, scenario: NewReleaseQaScenario, blockedBefore: number, blockedAfter: number): void {
@@ -189,8 +278,36 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   element.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, detail: { tab: scenario.tab } }));
   await element.updateComplete;
   if (!qaScenarioRequiresReview(scenario)) return;
-  const review = element.querySelector<HTMLElement & { updateComplete?: Promise<unknown> }>('new-release--widgets--review-102035');
+  const review = await waitForCurrentReview(element);
   if (!review) throw new Error('qa.inconclusive.reviewMissing');
+  if (isQaImplementationFixture(scenario.fixture) && scenario.fixture !== 'implementation-stale') {
+    const record = await review.implementationRunner.runNext(review.project, review.moduleName);
+    const expected = implementationProgress(record, review.data?.changeId ?? null);
+    await waitForQaCondition(() => {
+      const panels = [...review.querySelectorAll('.nr-review__implementation')];
+      return panels.length === 2 && panels.every(panel => {
+        const phases = panel.querySelectorAll(':scope > ol > li');
+        return phases.length === 2 && expected.every((phase, index) => phases[index].classList.contains(`is-${phase.status}`));
+      });
+    }, 'qa.implementationStateMismatch');
+    if (review.querySelector('.nr-review__primary-action')) throw new Error('qa.implementationCtaVisible');
+    const retryCount = expected.filter(phase => phase.podeTentarDeNovo).length * 2;
+    await waitForQaProtectedButtons(() => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__implementation-retry')], retryCount);
+    const completed = expected.every(phase => phase.status === 'concluido');
+    const buttons = await waitForQaProtectedButtons(() => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__implementation-refuse')], completed ? 2 : 0);
+    buttons.forEach(button => button.click());
+    if (completed) {
+      const levels = [...review.querySelectorAll<HTMLDetailsElement>('.nr-review__implementation-level')];
+      if (levels.length !== 4 || levels.some(level => level.open)) throw new Error('qa.implementationLevelsMissing');
+      for (const phase of expected) for (const file of phase.changedDefs ?? []) {
+        if (!levels.some(level => level.textContent?.includes(file.path))) throw new Error('qa.implementationArtifactMissing');
+      }
+    }
+    return;
+  }
+  if (scenario.fixture === 'implementation-stale' && review.querySelector('.nr-review__implementation')) {
+    throw new Error('qa.obsoleteImplementationVisible');
+  }
   const actions = await waitForQaProtectedButtons(
     () => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button')],
     2,

@@ -5,6 +5,7 @@ import { isQaProtectedRequest } from '/_102035_/l2/newRelease/qaPreviewModel.js'
 export const QA_PROTECTED_BUTTONS = [
   '.nr-index__request-actions button', '.nr-index__stale button', '.nr-index__diff button',
   '.nr-review__primary-action button', 'new-release--widgets--general-102035 button',
+  '.nr-review__implementation-retry', '.nr-review__implementation-refuse',
 ].join(',');
 
 interface QaGuardRoot {

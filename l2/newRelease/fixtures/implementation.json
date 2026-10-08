@@ -1,0 +1,252 @@
+{
+  "implementation-waiting": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": []
+  },
+  "implementation-success": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": [
+      {
+        "name": "defsL2",
+        "agent": "agentDefsL2",
+        "command": "@@agentDefsL2 controleEstoque",
+        "attempt": 1,
+        "taskId": "defs-1",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-1",
+        "status": "done",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "changedDefs": [
+          {
+            "path": "web/ensaio.defs.ts",
+            "status": "added"
+          }
+        ],
+        "endedAt": "2026-10-08T00:00:00.000Z"
+      },
+      {
+        "name": "defsL1",
+        "agent": "agentDefsL1",
+        "command": "@@agentDefsL1 controleEstoque /run",
+        "attempt": 1,
+        "taskId": "defs-2",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-2",
+        "status": "done",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "changedDefs": [
+          {
+            "path": "ensaio.defs.ts",
+            "status": "added"
+          }
+        ],
+        "endedAt": "2026-10-08T00:00:00.000Z"
+      }
+    ]
+  },
+  "implementation-stale": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-obsolete-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": [
+      {
+        "name": "defsL2",
+        "agent": "agentDefsL2",
+        "command": "@@agentDefsL2 controleEstoque",
+        "attempt": 1,
+        "taskId": "defs-1",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-1",
+        "status": "done",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "changedDefs": [
+          {
+            "path": "web/ensaio.defs.ts",
+            "status": "added"
+          }
+        ],
+        "endedAt": "2026-10-08T00:00:00.000Z"
+      },
+      {
+        "name": "defsL1",
+        "agent": "agentDefsL1",
+        "command": "@@agentDefsL1 controleEstoque /run",
+        "attempt": 1,
+        "taskId": "defs-2",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-2",
+        "status": "done",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "changedDefs": [
+          {
+            "path": "ensaio.defs.ts",
+            "status": "added"
+          }
+        ],
+        "endedAt": "2026-10-08T00:00:00.000Z"
+      }
+    ]
+  },
+  "implementation-retry": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": [
+      {
+        "name": "defsL2",
+        "agent": "agentDefsL2",
+        "command": "@@agentDefsL2 controleEstoque",
+        "attempt": 1,
+        "taskId": "defs-1",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-1",
+        "status": "failed",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "endedAt": "2026-10-08T00:00:00.000Z",
+        "error": "Simulated L2 failure"
+      }
+    ]
+  },
+  "implementation-failed": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": [
+      {
+        "name": "defsL2",
+        "agent": "agentDefsL2",
+        "command": "@@agentDefsL2 controleEstoque",
+        "attempt": 2,
+        "previousAttempts": [
+          {
+            "name": "defsL2",
+            "agent": "agentDefsL2",
+            "command": "@@agentDefsL2 controleEstoque",
+            "attempt": 1,
+            "taskId": "defs-1",
+            "threadId": "thread-defs-ensaio",
+            "messageId": "thread-defs-ensaio/message-1",
+            "status": "failed",
+            "startedAt": "2026-10-08T00:00:00.000Z",
+            "endedAt": "2026-10-08T00:00:00.000Z",
+            "error": "Simulated L2 failure"
+          }
+        ],
+        "taskId": "defs-2",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-2",
+        "status": "failed",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "endedAt": "2026-10-08T00:00:00.000Z",
+        "error": "Simulated L2 failure"
+      }
+    ]
+  },
+  "implementation-l2": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": [
+      {
+        "name": "defsL2",
+        "agent": "agentDefsL2",
+        "command": "@@agentDefsL2 controleEstoque",
+        "attempt": 1,
+        "taskId": "defs-1",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-1",
+        "status": "running",
+        "startedAt": "2026-10-08T00:00:00.000Z"
+      }
+    ]
+  },
+  "implementation-l1": {
+    "schemaVersion": "2026-10-08-nr-module-implementation-v1",
+    "changeId": "qa-implementation-change",
+    "revisionId": "qa-implementation-revision",
+    "acceptedBy": "ensaio",
+    "acceptedAt": "2026-10-08T00:00:00.000Z",
+    "hashes": {
+      "menu": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "backend": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "effort": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "phases": [
+      {
+        "name": "defsL2",
+        "agent": "agentDefsL2",
+        "command": "@@agentDefsL2 controleEstoque",
+        "attempt": 1,
+        "taskId": "defs-1",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-1",
+        "status": "done",
+        "startedAt": "2026-10-08T00:00:00.000Z",
+        "changedDefs": [
+          {
+            "path": "web/ensaio.defs.ts",
+            "status": "added"
+          }
+        ],
+        "endedAt": "2026-10-08T00:00:00.000Z"
+      },
+      {
+        "name": "defsL1",
+        "agent": "agentDefsL1",
+        "command": "@@agentDefsL1 controleEstoque /run",
+        "attempt": 1,
+        "taskId": "defs-2",
+        "threadId": "thread-defs-ensaio",
+        "messageId": "thread-defs-ensaio/message-2",
+        "status": "running",
+        "startedAt": "2026-10-08T00:00:00.000Z"
+      }
+    ]
+  }
+}

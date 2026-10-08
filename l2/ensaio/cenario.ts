@@ -25,7 +25,7 @@ export const PROJECT = 102047;
 export const MODULE = 'controleEstoque';
 
 /** Defs agents exist only in this rehearsal; tasks survive runner recreation. */
-export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' = 'done') {
+export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' | { defsL2: 'done' | 'failed' | 'running'; defsL1: 'done' | 'failed' | 'running' } = 'done') {
   const dispatched: string[] = [];
   const tasks = new Map<string, TaskData>();
   const pending = new Map<string, () => Promise<void>>();
@@ -48,7 +48,8 @@ export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' =
       assert.equal(context.message.content, agent.command);
       dispatched.push(context.message.content);
       const id = `defs-${dispatched.length}`;
-      const status = name === 'agentDefsL2' ? outcome : 'done';
+      const status = typeof outcome === 'string' ? (name === 'agentDefsL2' ? outcome : 'done')
+        : outcome[name === 'agentDefsL2' ? 'defsL2' : 'defsL1'];
       const task: TaskData = { PK: `task/#${id}`, SK: 'metadata', title: name, owner: 'ensaio', team: null,
         status: status === 'running' ? 'in progress' : status, last_updated: 0,
         last_update_log: status === 'failed' ? 'Simulated L2 failure' : null,
