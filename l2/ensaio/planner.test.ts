@@ -39,31 +39,26 @@ function answersWithoutItem(file: ChangeEffortFile): Omit<EffortAnswer, 'item'>[
   return file.perItem.map(row => row.answers.map(({ item: _item, ...answer }) => answer));
 }
 
-/** The round consumes the box; the dispatch and the L2 entry still name the message. */
-function assertL2DispatchMessage(replay: { steps: { type: string; result?: string | null }[] }): void {
+/** Maintenance records effort without dispatching creation planners. */
+function assertEffortDispatch(replay: { steps: { type: string; result?: string | null }[] }): void {
   const results = replay.steps
     .filter(step => step.type === 'result' && step.result)
     .map(step => JSON.parse(String(step.result)) as { completedStep?: string; status?: string; invokeCount?: number; messageFile?: string });
   const dispatch = results.find(row => row.completedStep === 'dispatch20');
   assert.ok(dispatch);
-  assert.match(String(dispatch.status), /pool\/l2/);
-  assert.equal(dispatch.invokeCount, 1);
-  const l2Entry = results.find(row => row.completedStep === 'entry10' && String(row.messageFile || '').includes('/pool/l2/'));
-  assert.ok(l2Entry);
-  assert.match(String(l2Entry.messageFile), /\/pool\/l2\/\d{14}_/);
+  assert.match(String(dispatch.status), /pool\/l4\/changeEffort\.json/);
+  assert.equal(dispatch.invokeCount, 0);
 }
 
-test('maintenance with the agendaClinica gabarito records changeEffort and the L2 message', async () => {
+test('maintenance with the agendaClinica gabarito records changeEffort without planner dispatch', async () => {
   const restore = snapshotRegistry();
   installGoldenRegistry();
   try {
   await withReviewScenario(() => installMlsStub({ actualProject: 102047 }), async ({ context, fetchCalls }) => {
     const { reviewed, candidate, replay, context: planner } = await runPlannerScenario(context);
-    assert.ok(replay.executedPlans.includes('entry10'),
-      replay.steps.filter(step => step.type === 'result').map(step => step.result).join('\n'));
     assert.equal(replay.intents.filter(intent => intent.type === 'add-message-ai').length, 1);
     assert.equal(planner.task?.status, 'done');
-    assertL2DispatchMessage(replay);
+    assertEffortDispatch(replay);
     const files = Object.values(mls.stor.files).filter(file => file.project === 102047);
     const effort = files.find(file => file.level === 4 && file.shortName === 'changeEffort'
       && file.folder === `${candidate}/pool/l4`);
@@ -143,14 +138,14 @@ test('agendaClinica effort comes from the real How modules and matches the golde
   }
 });
 
-test('maintenance with an empty effort registry records blocked and still writes the L2 message', async () => {
+test('maintenance with an empty effort registry records blocked without planner dispatch', async () => {
   const restore = snapshotRegistry();
   for (const project of Object.keys(effortRegistry)) delete effortRegistry[project];
   try {
   await withReviewScenario(() => installMlsStub({ actualProject: 102047 }), async ({ context }) => {
     const { candidate, replay, context: planner } = await runPlannerScenario(context);
     assert.equal(planner.task?.status, 'done');
-    assertL2DispatchMessage(replay);
+    assertEffortDispatch(replay);
     assert.equal(listPoolBox(MODULE, 'l2').length, 0);
     const effort = Object.values(mls.stor.files).find(file => file.project === 102047
       && file.level === 4 && file.shortName === 'changeEffort' && file.folder === `${candidate}/pool/l4`);

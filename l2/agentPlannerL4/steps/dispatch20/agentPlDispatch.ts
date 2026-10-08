@@ -39,7 +39,13 @@ export async function beforePlDispatchPromptStep(
   const moduleName = existingModuleName(memoryString(context, 'moduleName') || moduleNameFromPrompt(step))
     || memoryString(context, 'moduleName')
     || moduleNameFromPrompt(step);
-  if (candidateRootOf(moduleName)) await recordMaintenanceEffort(moduleName);
+  if (candidateRootOf(moduleName)) {
+    await recordMaintenanceEffort(moduleName);
+    return [
+      doneAnchor(context, parentStep, moduleName, '', 1, 'pool/l4/changeEffort.json written.', 0),
+      updateStatus(context, parentStep, step, hookSequential, 'completed', 'dispatch20 wrote pool/l4/changeEffort.json.'),
+    ];
+  }
   const result = await runPlDispatch(moduleName, new Date());
   const invoke = createRound1InvokeSteps(moduleName, result);
   const missing = result.status;
@@ -95,7 +101,7 @@ function doneAnchor(
   } as mls.msg.AIResultStep);
 }
 
-/** After `l4diff`, on `/candidate` only: ask each master, merge, write `pool/l4/changeEffort.json`, then keep today's dispatch. */
+/** After `l4diff`, on `/candidate` only: ask each master, merge, and write `pool/l4/changeEffort.json`. */
 async function recordMaintenanceEffort(moduleName: string): Promise<ChangeEffortFile> {
   const diff = await readJson<L4Diff>(l4diffFile(moduleName, 'l2'));
   if (!diff) throw new Error(`l4diff missing for ${moduleName}`);

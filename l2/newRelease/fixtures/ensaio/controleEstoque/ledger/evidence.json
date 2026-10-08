@@ -3,8 +3,8 @@
     "userId": "ensaio",
     "project": 102047,
     "moduleName": "controleEstoque",
-    "changeId": "change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c",
-    "inputRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+    "changeId": "change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3",
+    "inputRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
     "inputSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
     "baseId": "base-570dc91a3d690b78",
     "requestRevision": 1,
@@ -18,13 +18,13 @@
     "userId": "ensaio",
     "project": 102047,
     "moduleName": "controleEstoque",
-    "changeId": "change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c",
-    "inputRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+    "changeId": "change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3",
+    "inputRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
     "inputSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
     "baseId": "base-570dc91a3d690b78",
     "requestRevision": 1,
     "requestHash": "sha256:e30676b9a42a935befa7eb438c890c2c5585d50c8b48a0147c88f3f0e58ffc5c",
-    "runId": "review-65e14b31045beceadb50da9923f58ab7",
+    "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
     "workerId": "worker-ensaio",
     "canonicalSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174"
   },
@@ -39,20 +39,20 @@
         "attempt": 1,
         "provider": null,
         "model": null,
-        "resultRunId": "result-736b50e05b1f53d58f44cac8b4830585",
+        "resultRunId": "result-f55e500f89197468629453ad32be707e",
         "candidateRevisionId": null,
-        "startedAt": "2026-10-07T22:41:47.276Z",
-        "updatedAt": "2026-10-07T22:41:47.276Z"
+        "startedAt": "2026-10-08T18:27:25.321Z",
+        "updatedAt": "2026-10-08T18:27:25.321Z"
       }
     ],
     "candidateResult": {
-      "resultRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+      "resultRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
       "resultSnapshotHash": "521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
       "resultRevisionNumber": 1,
-      "resultId": "result-736b50e05b1f53d58f44cac8b4830585",
-      "resultHash": "019cc47e44f20a05442e05805c097fe8426db8b59dda39f6b8cf6caa2922f599",
+      "resultId": "result-f55e500f89197468629453ad32be707e",
+      "resultHash": "c1f3a2e0f9d5b0e1b4e8c18833ee1d14a244ca4e888c7c029fb0ce483c3dab65",
       "manifest": {
-        "runId": "result-736b50e05b1f53d58f44cac8b4830585",
+        "runId": "result-f55e500f89197468629453ad32be707e",
         "taskId": "ensaio",
         "status": "completed",
         "outputSnapshotHash": "a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66",
@@ -110,12 +110,12 @@
             "sha256": "f834d4e873c80ddcd6e0426724debeae233a520672b87459079fe1555e019b41"
           }
         ],
-        "traceHash": "a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647"
+        "traceHash": "934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1"
       },
       "permit": {
-        "resultId": "result-736b50e05b1f53d58f44cac8b4830585",
-        "resultHash": "019cc47e44f20a05442e05805c097fe8426db8b59dda39f6b8cf6caa2922f599",
-        "inputRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+        "resultId": "result-f55e500f89197468629453ad32be707e",
+        "resultHash": "c1f3a2e0f9d5b0e1b4e8c18833ee1d14a244ca4e888c7c029fb0ce483c3dab65",
+        "inputRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
         "inputSnapshotHash": "521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
         "inputRevisionNumber": 1,
         "outputSnapshotHash": "a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66"
@@ -127,17 +127,17 @@
     "userId": "ensaio",
     "project": 102047,
     "moduleName": "controleEstoque",
-    "changeId": "change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c",
-    "inputRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+    "changeId": "change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3",
+    "inputRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
     "inputSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
     "baseId": "base-570dc91a3d690b78",
     "requestRevision": 1,
     "requestHash": "sha256:e30676b9a42a935befa7eb438c890c2c5585d50c8b48a0147c88f3f0e58ffc5c",
-    "runId": "review-65e14b31045beceadb50da9923f58ab7",
+    "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
     "workerId": "worker-ensaio",
     "canonicalSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
     "pipelineStatus": "complete",
-    "pipelineSnapshotHash": "sha256:a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647",
+    "pipelineSnapshotHash": "sha256:934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1",
     "candidateSnapshotHash": "sha256:a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66"
   },
   "plannerProgress": {
@@ -152,99 +152,72 @@
         "provider": null,
         "model": null,
         "resultRunId": null,
-        "candidateRevisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "startedAt": "2026-10-07T22:41:47.310Z",
-        "updatedAt": "2026-10-07T22:41:47.310Z"
+        "candidateRevisionId": "review-f55e500f89197468629453ad32be707e",
+        "startedAt": "2026-10-08T18:27:25.330Z",
+        "updatedAt": "2026-10-08T18:27:25.330Z"
       }
     ],
     "plannerArtifacts": [
       {
         "kind": "pipeline",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pipeline/pipeline.json",
-        "sha256": "9b43ba32dc8c504142f5564d18e7e86cb4bc5831ffa05aa5d7eeae38eb438773",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pipeline/pipeline.json",
+        "sha256": "cda37fe58039f13a0b1a697d4fd7e4d9b1dcb304c00ad919a460f321fc85d222",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
         "kind": "pipeline-seal",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pipeline/pipeline.json#reviewSeal",
-        "sha256": "a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pipeline/pipeline.json#reviewSeal",
+        "sha256": "934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
         "kind": "l4diff-l1",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/web/l4diff.json",
-        "sha256": "db41c9fc879c32c05dc62817975c290331b57fff5055a8422b549e7897bf4cc4",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l1/web/l4diff.json",
+        "sha256": "d8d5f1ad691e674ed1fab497ab49e95704e64bd53445b0aa81b781364aea7d3e",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
         "kind": "l4diff-l2",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/l4diff.json",
-        "sha256": "db41c9fc879c32c05dc62817975c290331b57fff5055a8422b549e7897bf4cc4",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l2/web/l4diff.json",
+        "sha256": "d8d5f1ad691e674ed1fab497ab49e95704e64bd53445b0aa81b781364aea7d3e",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
-        "kind": "menu",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/menu.json",
-        "sha256": "43932e91cf087f098478e8f16a16e6bbaecec1a1995348029dc6c059d44ed352",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
-        "taskId": "ensaio"
-      },
-      {
-        "kind": "needs",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/web/needs.json",
-        "sha256": "ca2b9bfe1d667bcbb2b46d326ea468fad079150f71e1d94dadb98278b6595bb9",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
-        "taskId": "ensaio"
-      },
-      {
-        "kind": "backend",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/backend.json",
-        "sha256": "e5643760fda637a90268eca85bf902fbe2ee507f119c75b6c9659e29c6362ee3",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
-        "taskId": "ensaio"
-      },
-      {
-        "kind": "effort",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/effort.json",
-        "sha256": "37b69bdaec36e06d38cfaa01c991a42d4d976def6e6f66b556b9948841fd37ca",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "kind": "change-effort",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l4/changeEffort.json",
+        "sha256": "54cc80e75c62f3a0747dd6af3b2e428ff1a1a76d5459eac96a9c1039f52afd01",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       }
     ],
     "fallbackUsed": false
   },
   "artifactSources": {
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pipeline/pipeline.json": "{\n  \"schemaVersion\": \"2026-09-22-agent-review-planner-pipeline-v1\",\n  \"flowId\": \"agentReviewSolution\",\n  \"moduleName\": \"controleEstoque\",\n  \"status\": \"complete\",\n  \"revision\": {\n    \"changeId\": \"change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c\",\n    \"revisionId\": \"review-736b50e05b1f53d58f44cac8b4830585\",\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"manifestHash\": \"sha256:6269fdff91991d61885c5e37406b4ea1d56ec0ddc63e4d62ccb138d63b7535d0\"\n  },\n  \"validation\": {\n    \"status\": \"complete\",\n    \"validationContextHash\": \"sha256:a9efcca96ea405dcbcf78ae36d4adf190c670877b0af80f5b41e0901d919ebb6\",\n    \"correctionAttemptsUsed\": 0\n  },\n  \"reviewSeal\": {\n    \"schemaVersion\": \"2026-09-22-agent-review-planner-seal-v1\",\n    \"flowId\": \"agentReviewSolution\",\n    \"moduleName\": \"controleEstoque\",\n    \"revision\": {\n      \"changeId\": \"change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c\",\n      \"revisionId\": \"review-736b50e05b1f53d58f44cac8b4830585\",\n      \"baseId\": \"base-570dc91a3d690b78\",\n      \"manifestHash\": \"a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66\"\n    },\n    \"validation\": {\n      \"validationContextHash\": \"sha256:a9efcca96ea405dcbcf78ae36d4adf190c670877b0af80f5b41e0901d919ebb6\",\n      \"correctionAttemptsUsed\": 0\n    }\n  },\n  \"reviewSealHash\": \"a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647\",\n  \"poolWiped\": [],\n  \"updatedAt\": \"2026-10-07T22:41:47.309Z\",\n  \"pool\": [\n    {\n      \"at\": \"2026-10-07T22:41:47.290Z\",\n      \"file\": \"l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/20261007224147_controleEstoque-20261007224147_1.json\",\n      \"from\": \"l4\",\n      \"to\": \"l2\",\n      \"thread\": \"controleEstoque-20261007224147\",\n      \"round\": 1,\n      \"mode\": \"estimate\",\n      \"outcome\": \"delivered\"\n    },\n    {\n      \"at\": \"2026-10-07T22:41:47.303Z\",\n      \"file\": \"l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/20261007224147_controleEstoque-20261007224147_1.json\",\n      \"from\": \"l2\",\n      \"to\": \"l1\",\n      \"thread\": \"controleEstoque-20261007224147\",\n      \"round\": 1,\n      \"mode\": \"estimate\",\n      \"outcome\": \"delivered\"\n    },\n    {\n      \"at\": \"2026-10-07T22:41:47.306Z\",\n      \"file\": \"l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/20261007224147_controleEstoque-20261007224147_1.json\",\n      \"from\": \"l1\",\n      \"to\": \"l2\",\n      \"thread\": \"controleEstoque-20261007224147\",\n      \"round\": 1,\n      \"mode\": \"estimate\",\n      \"outcome\": \"delivered\"\n    },\n    {\n      \"at\": \"2026-10-07T22:41:47.308Z\",\n      \"file\": \"l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l4/20261007224147_controleEstoque-20261007224147_1.json\",\n      \"from\": \"l2\",\n      \"to\": \"l4\",\n      \"thread\": \"controleEstoque-20261007224147\",\n      \"round\": 1,\n      \"mode\": \"estimate\",\n      \"outcome\": \"processed\"\n    }\n  ],\n  \"plOrchestration\": [\n    {\n      \"round\": 1,\n      \"l2\": \"done\",\n      \"l1\": \"done\",\n      \"effort\": \"done\"\n    },\n    {\n      \"round\": 2,\n      \"l2\": \"skipped\",\n      \"l1\": \"skipped\",\n      \"effort\": \"skipped\"\n    }\n  ]\n}\n",
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/web/l4diff.json": "{\n  \"schemaVersion\": \"2026-09-21-p4-l4diff-v1\",\n  \"moduleName\": \"controleEstoque\",\n  \"base\": \"controleEstoque/pipeline/releases/base-570dc91a3d690b78/l4\",\n  \"candidate\": \"controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4\",\n  \"revision\": {\n    \"changeId\": \"change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c\",\n    \"revisionId\": \"review-736b50e05b1f53d58f44cac8b4830585\",\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"manifestHash\": \"sha256:6269fdff91991d61885c5e37406b4ea1d56ec0ddc63e4d62ccb138d63b7535d0\"\n  },\n  \"items\": [\n    {\n      \"changeId\": \"rule:quantidadeMinimaValida\",\n      \"kind\": \"rule\",\n      \"op\": \"changed\",\n      \"entity\": \"\",\n      \"source\": \"rules.defs.ts\",\n      \"before\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n      },\n      \"after\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n      }\n    }\n  ]\n}\n",
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/l4diff.json": "{\n  \"schemaVersion\": \"2026-09-21-p4-l4diff-v1\",\n  \"moduleName\": \"controleEstoque\",\n  \"base\": \"controleEstoque/pipeline/releases/base-570dc91a3d690b78/l4\",\n  \"candidate\": \"controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4\",\n  \"revision\": {\n    \"changeId\": \"change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c\",\n    \"revisionId\": \"review-736b50e05b1f53d58f44cac8b4830585\",\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"manifestHash\": \"sha256:6269fdff91991d61885c5e37406b4ea1d56ec0ddc63e4d62ccb138d63b7535d0\"\n  },\n  \"items\": [\n    {\n      \"changeId\": \"rule:quantidadeMinimaValida\",\n      \"kind\": \"rule\",\n      \"op\": \"changed\",\n      \"entity\": \"\",\n      \"source\": \"rules.defs.ts\",\n      \"before\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n      },\n      \"after\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n      }\n    }\n  ]\n}\n",
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/menu.json": "{\n  \"schemaVersion\": \"2026-09-20-p2-menu-v2.2\",\n  \"moduleName\": \"controleEstoque\",\n  \"userLanguage\": \"pt-BR\",\n  \"device\": \"web\",\n  \"tree\": [\n    {\n      \"id\": \"produtos\",\n      \"kind\": \"page\",\n      \"label\": \"Produtos\",\n      \"organisms\": [\n        {\n          \"kind\": \"summary\",\n          \"text\": \"Vejo o saldo atual de cada produto do estoque.\"\n        },\n        {\n          \"kind\": \"highlights\",\n          \"text\": \"Identifico os produtos com saldo abaixo da quantidade mínima.\"\n        },\n        {\n          \"kind\": \"list\",\n          \"text\": \"Localizo os produtos cadastrados no estoque.\"\n        },\n        {\n          \"kind\": \"detail\",\n          \"text\": \"Consulto o produto, o saldo atual e a quantidade mínima.\"\n        },\n        {\n          \"kind\": \"form\",\n          \"text\": \"Informo o produto e a quantidade mínima para acompanhamento do estoque.\"\n        },\n        {\n          \"kind\": \"actions\",\n          \"text\": \"Cadastro o produto.\"\n        }\n      ],\n      \"action\": \"new\"\n    },\n    {\n      \"id\": \"movimentacoes\",\n      \"kind\": \"page\",\n      \"label\": \"Movimentações\",\n      \"organisms\": [\n        {\n          \"kind\": \"list\",\n          \"text\": \"Acompanho as entradas e saídas já registradas.\"\n        },\n        {\n          \"kind\": \"form\",\n          \"text\": \"Registro uma entrada ou saída de unidades de um produto.\"\n        },\n        {\n          \"kind\": \"actions\",\n          \"text\": \"Registro a movimentação e atualizo o saldo.\"\n        }\n      ],\n      \"action\": \"new\"\n    }\n  ],\n  \"authorities\": {\n    \"actor:estoquista\": [\n      \"produtos\",\n      \"movimentacoes\"\n    ]\n  },\n  \"meta\": {\n    \"journeys\": {\n      \"cadastrarProduto\": [\n        \"produtos\"\n      ],\n      \"registrarMovimentacaoEstoque\": [\n        \"produtos\",\n        \"movimentacoes\"\n      ],\n      \"acompanharSaldos\": [\n        \"produtos\"\n      ],\n      \"tratarAvisoSaldoBaixo\": [\n        \"produtos\"\n      ]\n    },\n    \"processes\": {},\n    \"records\": {},\n    \"removed\": []\n  }\n}\n",
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/web/needs.json": "{\n  \"schemaVersion\": \"2026-09-21-p2-needs-v1\",\n  \"moduleName\": \"controleEstoque\",\n  \"device\": \"web\",\n  \"menuSchema\": \"2026-09-20-p2-menu-v2.2\",\n  \"pages\": [\n    {\n      \"pageId\": \"produtos\",\n      \"actors\": [\n        \"estoquista\"\n      ],\n      \"reads\": [\n        {\n          \"entity\": \"MovimentacaoEstoque\",\n          \"family\": \"tdm\",\n          \"scope\": \"organization\",\n          \"derived\": [],\n          \"from\": [\n            \"grant:gerenciarEstoque\",\n            \"journey:acompanharSaldos/consultarSaldos\",\n            \"journey:acompanharSaldos/localizarProdutos\",\n            \"journey:cadastrarProduto/informarProduto\",\n            \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n            \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n            \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n            \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n            \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n            \"relationship:Produto/movimentacaoEstoqueProduto\"\n          ]\n        },\n        {\n          \"entity\": \"Produto\",\n          \"family\": \"mdm\",\n          \"scope\": \"organization\",\n          \"derived\": [\n            \"details.controleEstoque.saldoAbaixoDoMinimo\",\n            \"details.controleEstoque.saldoAtual\"\n          ],\n          \"from\": [\n            \"grant:gerenciarEstoque\",\n            \"journey:acompanharSaldos/consultarSaldos\",\n            \"journey:acompanharSaldos/localizarProdutos\",\n            \"journey:cadastrarProduto/informarProduto\",\n            \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n            \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n            \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n            \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n            \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n            \"relationship:Produto/movimentacaoEstoqueProduto\"\n          ]\n        }\n      ],\n      \"writes\": [\n        {\n          \"entity\": \"MovimentacaoEstoque\",\n          \"operation\": \"create\",\n          \"transitionRef\": \"\",\n          \"from\": [\n            \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\"\n          ]\n        },\n        {\n          \"entity\": \"Produto\",\n          \"operation\": \"create\",\n          \"transitionRef\": \"\",\n          \"from\": [\n            \"journey:cadastrarProduto/informarProduto\"\n          ]\n        }\n      ]\n    },\n    {\n      \"pageId\": \"movimentacoes\",\n      \"actors\": [\n        \"estoquista\"\n      ],\n      \"reads\": [\n        {\n          \"entity\": \"MovimentacaoEstoque\",\n          \"family\": \"tdm\",\n          \"scope\": \"organization\",\n          \"derived\": [],\n          \"from\": [\n            \"grant:gerenciarEstoque\",\n            \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n            \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n            \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n            \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n            \"relationship:Produto/movimentacaoEstoqueProduto\"\n          ]\n        },\n        {\n          \"entity\": \"Produto\",\n          \"family\": \"mdm\",\n          \"scope\": \"organization\",\n          \"derived\": [\n            \"details.controleEstoque.saldoAbaixoDoMinimo\",\n            \"details.controleEstoque.saldoAtual\"\n          ],\n          \"from\": [\n            \"grant:gerenciarEstoque\",\n            \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n            \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n            \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n            \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n            \"relationship:Produto/movimentacaoEstoqueProduto\"\n          ]\n        }\n      ],\n      \"writes\": [\n        {\n          \"entity\": \"MovimentacaoEstoque\",\n          \"operation\": \"create\",\n          \"transitionRef\": \"\",\n          \"from\": [\n            \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\"\n          ]\n        }\n      ]\n    }\n  ],\n  \"meta\": {\n    \"sourceMenu\": \"pool/l2/web/menu.json\",\n    \"generatedAt\": \"2026-10-07T22:41:47.299Z\"\n  }\n}\n",
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/backend.json": "{\n  \"schemaVersion\": \"2026-09-21-p1-backend-v1.2\",\n  \"moduleName\": \"controleEstoque\",\n  \"device\": \"web\",\n  \"sourceNeeds\": \"pool/l1/web/needs.json\",\n  \"inventoryPresent\": false,\n  \"endpoints\": [\n    {\n      \"route\": \"controleEstoque.movimentacoes.cmdCreateMovimentacaoEstoque\",\n      \"page\": \"movimentacoes\",\n      \"kind\": \"cmd\",\n      \"usecaseRef\": \"createMovimentacaoEstoque\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    },\n    {\n      \"route\": \"controleEstoque.movimentacoes.qryListMovimentacaoEstoque\",\n      \"page\": \"movimentacoes\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listMovimentacaoEstoque\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    },\n    {\n      \"route\": \"controleEstoque.movimentacoes.qryListProduto\",\n      \"page\": \"movimentacoes\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listProduto\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [],\n      \"noTable\": \"mdm\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.cmdCreateMovimentacaoEstoque\",\n      \"page\": \"produtos\",\n      \"kind\": \"cmd\",\n      \"usecaseRef\": \"createMovimentacaoEstoque\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.cmdCreateProduto\",\n      \"page\": \"produtos\",\n      \"kind\": \"cmd\",\n      \"usecaseRef\": \"createProduto\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [],\n      \"noTable\": \"mdm\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.qryListMovimentacaoEstoque\",\n      \"page\": \"produtos\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listMovimentacaoEstoque\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.qryListProduto\",\n      \"page\": \"produtos\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listProduto\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [],\n      \"noTable\": \"mdm\"\n    }\n  ],\n  \"usecases\": [\n    {\n      \"usecaseId\": \"createMovimentacaoEstoque\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"operation\": \"create\",\n      \"ports\": [\n        \"MovimentacaoEstoque\"\n      ],\n      \"status\": \"toCreate\",\n      \"existing\": \"\",\n      \"reason\": \"no l1 usecase for MovimentacaoEstoque.create\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    },\n    {\n      \"usecaseId\": \"createProduto\",\n      \"entity\": \"Produto\",\n      \"operation\": \"create\",\n      \"ports\": [],\n      \"status\": \"toCreate\",\n      \"existing\": \"\",\n      \"reason\": \"no l1 usecase for Produto.create\",\n      \"tableRefs\": [],\n      \"noTable\": \"mdm\"\n    },\n    {\n      \"usecaseId\": \"listMovimentacaoEstoque\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"operation\": \"list\",\n      \"ports\": [\n        \"MovimentacaoEstoque\"\n      ],\n      \"status\": \"toCreate\",\n      \"existing\": \"\",\n      \"reason\": \"no l1 usecase for MovimentacaoEstoque.list\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    },\n    {\n      \"usecaseId\": \"listProduto\",\n      \"entity\": \"Produto\",\n      \"operation\": \"list\",\n      \"ports\": [],\n      \"status\": \"toCreate\",\n      \"existing\": \"\",\n      \"reason\": \"no l1 usecase for Produto.list\",\n      \"tableRefs\": [],\n      \"noTable\": \"mdm\"\n    }\n  ],\n  \"ports\": [\n    {\n      \"portId\": \"MovimentacaoEstoqueRepository\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    }\n  ],\n  \"tables\": [\n    {\n      \"tableId\": \"movimentacaoEstoque\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"status\": \"toCreate\",\n      \"tableRefs\": [\n        \"movimentacaoEstoque\"\n      ],\n      \"noTable\": \"ok\"\n    }\n  ],\n  \"removed\": [],\n  \"changes\": [\n    {\n      \"changeId\": \"rule:quantidadeMinimaValida\",\n      \"kind\": \"rule\",\n      \"op\": \"changed\",\n      \"entity\": \"Produto\",\n      \"tableRefs\": [],\n      \"noTable\": \"mdm\",\n      \"usecaseRefs\": [\n        \"createProduto\",\n        \"listProduto\"\n      ],\n      \"reason\": \"changed rule quantidadeMinimaValida\",\n      \"source\": \"rules.defs.ts\"\n    }\n  ],\n  \"testSupport\": [\n    {\n      \"id\": \"data:MovimentacaoEstoque\",\n      \"actorRefs\": [\n        \"estoquista\"\n      ],\n      \"entityRefs\": [\n        \"MovimentacaoEstoque\",\n        \"Produto\"\n      ],\n      \"sourceRefs\": [\n        \"grant:gerenciarEstoque\",\n        \"journey:acompanharSaldos/consultarSaldos\",\n        \"journey:acompanharSaldos/localizarProdutos\",\n        \"journey:cadastrarProduto/informarProduto\",\n        \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n        \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n        \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n        \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n        \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n        \"relationship:Produto/movimentacaoEstoqueProduto\"\n      ],\n      \"status\": \"toCreate\",\n      \"owner\": \"L1\",\n      \"executorRef\": \"\",\n      \"cleanupRef\": \"\",\n      \"gap\": \"FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes movimentacaoEstoque rows by execution id\"\n    },\n    {\n      \"id\": \"identity:estoquista\",\n      \"actorRefs\": [\n        \"estoquista\"\n      ],\n      \"entityRefs\": [],\n      \"sourceRefs\": [\n        \"access:actors/estoquista\",\n        \"grant:gerenciarEstoque\",\n        \"journey:acompanharSaldos/consultarSaldos\",\n        \"journey:acompanharSaldos/localizarProdutos\",\n        \"journey:cadastrarProduto/informarProduto\",\n        \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n        \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n        \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n        \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n        \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n        \"relationship:Produto/movimentacaoEstoqueProduto\"\n      ],\n      \"status\": \"toCreate\",\n      \"owner\": \"runtime\",\n      \"executorRef\": \"\",\n      \"cleanupRef\": \"\",\n      \"gap\": \"PERSON_ENTITY_UNDECLARED: actor estoquista declares no personEntity; the test identity cannot be bound\"\n    },\n    {\n      \"id\": \"mdm:Produto\",\n      \"actorRefs\": [\n        \"estoquista\"\n      ],\n      \"entityRefs\": [\n        \"Produto\"\n      ],\n      \"sourceRefs\": [\n        \"grant:gerenciarEstoque\",\n        \"journey:acompanharSaldos/consultarSaldos\",\n        \"journey:acompanharSaldos/localizarProdutos\",\n        \"journey:cadastrarProduto/informarProduto\",\n        \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n        \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n        \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n        \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n        \"ontology:MovimentacaoEstoque/relationships\",\n        \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n        \"relationship:Produto/movimentacaoEstoqueProduto\"\n      ],\n      \"status\": \"toCreate\",\n      \"owner\": \"runtime\",\n      \"executorRef\": \"\",\n      \"cleanupRef\": \"\",\n      \"gap\": \"RUNTIME_MDM_FIXTURE_UNREFERENCED: no verified runtime capability provisions and removes Produto records by execution id\"\n    }\n  ],\n  \"meta\": {\n    \"pages\": {\n      \"produtos\": [\n        \"controleEstoque.produtos.cmdCreateMovimentacaoEstoque\",\n        \"controleEstoque.produtos.cmdCreateProduto\",\n        \"controleEstoque.produtos.qryListMovimentacaoEstoque\",\n        \"controleEstoque.produtos.qryListProduto\"\n      ],\n      \"movimentacoes\": [\n        \"controleEstoque.movimentacoes.cmdCreateMovimentacaoEstoque\",\n        \"controleEstoque.movimentacoes.qryListMovimentacaoEstoque\",\n        \"controleEstoque.movimentacoes.qryListProduto\"\n      ]\n    },\n    \"generatedAt\": \"2026-10-07T22:41:47.304Z\",\n    \"llmCalled\": false,\n    \"unmappedChanges\": []\n  }\n}\n",
-    "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/effort.json": "{\n  \"schemaVersion\": \"2026-09-21-p2-effort-v1.2\",\n  \"moduleName\": \"controleEstoque\",\n  \"device\": \"web\",\n  \"totals\": {\n    \"screens\": {\n      \"toCreate\": 2,\n      \"toUpdate\": 0,\n      \"toRemove\": 0,\n      \"done\": 0\n    },\n    \"endpoints\": {\n      \"toCreate\": 7,\n      \"toUpdate\": 0,\n      \"toRemove\": 0,\n      \"done\": 0\n    },\n    \"usecases\": {\n      \"toCreate\": 4,\n      \"toUpdate\": 0,\n      \"toRemove\": 0,\n      \"done\": 0\n    },\n    \"tables\": {\n      \"toCreate\": 1,\n      \"toUpdate\": 0,\n      \"toRemove\": 0,\n      \"done\": 0\n    }\n  },\n  \"screens\": [\n    {\n      \"pageId\": \"produtos\",\n      \"label\": \"Produtos\",\n      \"actors\": [\n        \"estoquista\"\n      ],\n      \"status\": \"toCreate\",\n      \"endpoints\": [\n        \"controleEstoque.produtos.cmdCreateMovimentacaoEstoque\",\n        \"controleEstoque.produtos.cmdCreateProduto\",\n        \"controleEstoque.produtos.qryListMovimentacaoEstoque\",\n        \"controleEstoque.produtos.qryListProduto\"\n      ]\n    },\n    {\n      \"pageId\": \"movimentacoes\",\n      \"label\": \"Movimentações\",\n      \"actors\": [\n        \"estoquista\"\n      ],\n      \"status\": \"toCreate\",\n      \"endpoints\": [\n        \"controleEstoque.movimentacoes.cmdCreateMovimentacaoEstoque\",\n        \"controleEstoque.movimentacoes.qryListMovimentacaoEstoque\",\n        \"controleEstoque.movimentacoes.qryListProduto\"\n      ]\n    }\n  ],\n  \"endpoints\": [\n    {\n      \"route\": \"controleEstoque.movimentacoes.cmdCreateMovimentacaoEstoque\",\n      \"page\": \"movimentacoes\",\n      \"kind\": \"cmd\",\n      \"usecaseRef\": \"createMovimentacaoEstoque\",\n      \"status\": \"toCreate\"\n    },\n    {\n      \"route\": \"controleEstoque.movimentacoes.qryListMovimentacaoEstoque\",\n      \"page\": \"movimentacoes\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listMovimentacaoEstoque\",\n      \"status\": \"toCreate\"\n    },\n    {\n      \"route\": \"controleEstoque.movimentacoes.qryListProduto\",\n      \"page\": \"movimentacoes\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listProduto\",\n      \"status\": \"toCreate\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.cmdCreateMovimentacaoEstoque\",\n      \"page\": \"produtos\",\n      \"kind\": \"cmd\",\n      \"usecaseRef\": \"createMovimentacaoEstoque\",\n      \"status\": \"toCreate\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.cmdCreateProduto\",\n      \"page\": \"produtos\",\n      \"kind\": \"cmd\",\n      \"usecaseRef\": \"createProduto\",\n      \"status\": \"toCreate\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.qryListMovimentacaoEstoque\",\n      \"page\": \"produtos\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listMovimentacaoEstoque\",\n      \"status\": \"toCreate\"\n    },\n    {\n      \"route\": \"controleEstoque.produtos.qryListProduto\",\n      \"page\": \"produtos\",\n      \"kind\": \"qry\",\n      \"usecaseRef\": \"listProduto\",\n      \"status\": \"toCreate\"\n    }\n  ],\n  \"usecases\": [\n    {\n      \"usecaseId\": \"createMovimentacaoEstoque\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"operation\": \"create\",\n      \"status\": \"toCreate\",\n      \"existing\": \"\"\n    },\n    {\n      \"usecaseId\": \"createProduto\",\n      \"entity\": \"Produto\",\n      \"operation\": \"create\",\n      \"status\": \"toCreate\",\n      \"existing\": \"\"\n    },\n    {\n      \"usecaseId\": \"listMovimentacaoEstoque\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"operation\": \"list\",\n      \"status\": \"toCreate\",\n      \"existing\": \"\"\n    },\n    {\n      \"usecaseId\": \"listProduto\",\n      \"entity\": \"Produto\",\n      \"operation\": \"list\",\n      \"status\": \"toCreate\",\n      \"existing\": \"\"\n    }\n  ],\n  \"tables\": [\n    {\n      \"tableId\": \"movimentacaoEstoque\",\n      \"entity\": \"MovimentacaoEstoque\",\n      \"status\": \"toCreate\"\n    }\n  ],\n  \"removed\": [],\n  \"testSupport\": [\n    {\n      \"id\": \"data:MovimentacaoEstoque\",\n      \"actorRefs\": [\n        \"estoquista\"\n      ],\n      \"entityRefs\": [\n        \"MovimentacaoEstoque\",\n        \"Produto\"\n      ],\n      \"sourceRefs\": [\n        \"grant:gerenciarEstoque\",\n        \"journey:acompanharSaldos/consultarSaldos\",\n        \"journey:acompanharSaldos/localizarProdutos\",\n        \"journey:cadastrarProduto/informarProduto\",\n        \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n        \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n        \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n        \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n        \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n        \"relationship:Produto/movimentacaoEstoqueProduto\"\n      ],\n      \"status\": \"toCreate\",\n      \"owner\": \"L1\",\n      \"executorRef\": \"\",\n      \"cleanupRef\": \"\",\n      \"gap\": \"FIXTURE_EXECUTOR_UNREFERENCED: no L1 fixture executor creates and removes movimentacaoEstoque rows by execution id\"\n    },\n    {\n      \"id\": \"identity:estoquista\",\n      \"actorRefs\": [\n        \"estoquista\"\n      ],\n      \"entityRefs\": [],\n      \"sourceRefs\": [\n        \"access:actors/estoquista\",\n        \"grant:gerenciarEstoque\",\n        \"journey:acompanharSaldos/consultarSaldos\",\n        \"journey:acompanharSaldos/localizarProdutos\",\n        \"journey:cadastrarProduto/informarProduto\",\n        \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n        \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n        \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n        \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n        \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n        \"relationship:Produto/movimentacaoEstoqueProduto\"\n      ],\n      \"status\": \"toCreate\",\n      \"owner\": \"runtime\",\n      \"executorRef\": \"\",\n      \"cleanupRef\": \"\",\n      \"gap\": \"PERSON_ENTITY_UNDECLARED: actor estoquista declares no personEntity; the test identity cannot be bound\"\n    },\n    {\n      \"id\": \"mdm:Produto\",\n      \"actorRefs\": [\n        \"estoquista\"\n      ],\n      \"entityRefs\": [\n        \"Produto\"\n      ],\n      \"sourceRefs\": [\n        \"grant:gerenciarEstoque\",\n        \"journey:acompanharSaldos/consultarSaldos\",\n        \"journey:acompanharSaldos/localizarProdutos\",\n        \"journey:cadastrarProduto/informarProduto\",\n        \"journey:registrarMovimentacaoEstoque/consultarSaldo\",\n        \"journey:registrarMovimentacaoEstoque/localizarProduto\",\n        \"journey:registrarMovimentacaoEstoque/registrarMovimentacao\",\n        \"journey:tratarAvisoSaldoBaixo/consultarProdutoAvisado\",\n        \"ontology:MovimentacaoEstoque/relationships\",\n        \"relationship:MovimentacaoEstoque/movimentacaoEstoqueProduto\",\n        \"relationship:Produto/movimentacaoEstoqueProduto\"\n      ],\n      \"status\": \"toCreate\",\n      \"owner\": \"runtime\",\n      \"executorRef\": \"\",\n      \"cleanupRef\": \"\",\n      \"gap\": \"RUNTIME_MDM_FIXTURE_UNREFERENCED: no verified runtime capability provisions and removes Produto records by execution id\"\n    }\n  ],\n  \"unattributed\": [],\n  \"meta\": {\n    \"sourceMenu\": \"pool/l2/web/menu.json\",\n    \"sourceBackend\": \"pool/l2/web/backend.json\",\n    \"sourceVersion\": \"2026-09-21-p1-backend-v1.2\",\n    \"generatedAt\": \"2026-10-07T22:41:47.307Z\"\n  }\n}\n"
+    "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pipeline/pipeline.json": "{\n  \"schemaVersion\": \"2026-09-22-agent-review-planner-pipeline-v1\",\n  \"flowId\": \"agentReviewSolution\",\n  \"moduleName\": \"controleEstoque\",\n  \"status\": \"complete\",\n  \"revision\": {\n    \"changeId\": \"change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3\",\n    \"revisionId\": \"review-f55e500f89197468629453ad32be707e\",\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"manifestHash\": \"sha256:6269fdff91991d61885c5e37406b4ea1d56ec0ddc63e4d62ccb138d63b7535d0\"\n  },\n  \"validation\": {\n    \"status\": \"complete\",\n    \"validationContextHash\": \"sha256:a9efcca96ea405dcbcf78ae36d4adf190c670877b0af80f5b41e0901d919ebb6\",\n    \"correctionAttemptsUsed\": 0\n  },\n  \"reviewSeal\": {\n    \"schemaVersion\": \"2026-09-22-agent-review-planner-seal-v1\",\n    \"flowId\": \"agentReviewSolution\",\n    \"moduleName\": \"controleEstoque\",\n    \"revision\": {\n      \"changeId\": \"change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3\",\n      \"revisionId\": \"review-f55e500f89197468629453ad32be707e\",\n      \"baseId\": \"base-570dc91a3d690b78\",\n      \"manifestHash\": \"a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66\"\n    },\n    \"validation\": {\n      \"validationContextHash\": \"sha256:a9efcca96ea405dcbcf78ae36d4adf190c670877b0af80f5b41e0901d919ebb6\",\n      \"correctionAttemptsUsed\": 0\n    }\n  },\n  \"reviewSealHash\": \"934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1\",\n  \"poolWiped\": [],\n  \"updatedAt\": \"2026-10-08T18:27:25.329Z\",\n  \"plOrchestration\": [\n    {\n      \"round\": 1,\n      \"l2\": \"skipped\",\n      \"l1\": \"skipped\",\n      \"effort\": \"skipped\"\n    }\n  ]\n}\n",
+    "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l1/web/l4diff.json": "{\n  \"schemaVersion\": \"2026-09-21-p4-l4diff-v1\",\n  \"moduleName\": \"controleEstoque\",\n  \"base\": \"controleEstoque/pipeline/releases/base-570dc91a3d690b78/l4\",\n  \"candidate\": \"controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4\",\n  \"revision\": {\n    \"changeId\": \"change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3\",\n    \"revisionId\": \"review-f55e500f89197468629453ad32be707e\",\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"manifestHash\": \"sha256:6269fdff91991d61885c5e37406b4ea1d56ec0ddc63e4d62ccb138d63b7535d0\"\n  },\n  \"items\": [\n    {\n      \"changeId\": \"rule:quantidadeMinimaValida\",\n      \"kind\": \"rule\",\n      \"op\": \"changed\",\n      \"entity\": \"\",\n      \"source\": \"rules.defs.ts\",\n      \"before\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n      },\n      \"after\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n      }\n    }\n  ]\n}\n",
+    "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l2/web/l4diff.json": "{\n  \"schemaVersion\": \"2026-09-21-p4-l4diff-v1\",\n  \"moduleName\": \"controleEstoque\",\n  \"base\": \"controleEstoque/pipeline/releases/base-570dc91a3d690b78/l4\",\n  \"candidate\": \"controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4\",\n  \"revision\": {\n    \"changeId\": \"change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3\",\n    \"revisionId\": \"review-f55e500f89197468629453ad32be707e\",\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"manifestHash\": \"sha256:6269fdff91991d61885c5e37406b4ea1d56ec0ddc63e4d62ccb138d63b7535d0\"\n  },\n  \"items\": [\n    {\n      \"changeId\": \"rule:quantidadeMinimaValida\",\n      \"kind\": \"rule\",\n      \"op\": \"changed\",\n      \"entity\": \"\",\n      \"source\": \"rules.defs.ts\",\n      \"before\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n      },\n      \"after\": {\n        \"ruleId\": \"quantidadeMinimaValida\",\n        \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n      }\n    }\n  ]\n}\n",
+    "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l4/changeEffort.json": "{\n  \"schemaVersion\": \"2026-10-08-p4-change-effort-v1\",\n  \"module\": \"controleEstoque\",\n  \"base\": {\n    \"baseId\": \"base-570dc91a3d690b78\",\n    \"revisionId\": \"review-f55e500f89197468629453ad32be707e\",\n    \"candidateRoot\": \"controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4\"\n  },\n  \"request\": {\n    \"text\": \"Na regra quantidadeMinimaValida, a quantidade mínima de um produto passa a ter de ser maior que zero; zero deixa de ser aceito.\",\n    \"items\": [\n      {\n        \"changeId\": \"rule:quantidadeMinimaValida\",\n        \"kind\": \"rule\",\n        \"op\": \"changed\",\n        \"entity\": \"\",\n        \"source\": \"rules.defs.ts\",\n        \"before\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior ou igual a zero.\"\n        },\n        \"after\": {\n          \"ruleId\": \"quantidadeMinimaValida\",\n          \"description\": \"A quantidade mínima definida para um produto deve ser maior que zero.\"\n        }\n      }\n    ]\n  },\n  \"masters\": [\n    {\n      \"project\": \"102020\",\n      \"kind\": \"l2\",\n      \"device\": \"web\"\n    },\n    {\n      \"project\": \"102021\",\n      \"kind\": \"l1\",\n      \"device\": \"web\"\n    }\n  ],\n  \"perItem\": [\n    {\n      \"item\": \"rule:quantidadeMinimaValida\",\n      \"answers\": [\n        {\n          \"master\": {\n            \"project\": \"102020\",\n            \"kind\": \"l2\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [\n            {\n              \"kind\": \"page\",\n              \"id\": \"agenda_diaria\",\n              \"path\": \"l2/agendaClinica/web/contracts/agenda_diaria.defs.ts\"\n            }\n          ],\n          \"runAgents\": []\n        },\n        {\n          \"master\": {\n            \"project\": \"102021\",\n            \"kind\": \"l1\",\n            \"device\": \"web\"\n          },\n          \"item\": \"rule:quantidadeMinimaValida\",\n          \"status\": \"computed\",\n          \"regenerateDefs\": [],\n          \"materialize\": [\n            {\n              \"kind\": \"usecase\",\n              \"id\": \"registrarAtendimento\",\n              \"path\": \"l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts\"\n            },\n            {\n              \"kind\": \"entity\",\n              \"id\": \"consulta\",\n              \"path\": \"l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts\"\n            },\n            {\n              \"kind\": \"request\",\n              \"id\": \"agenda_diaria\",\n              \"path\": \"l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts\"\n            }\n          ],\n          \"runAgents\": []\n        }\n      ]\n    }\n  ],\n  \"merged\": {\n    \"regenerateDefs\": [],\n    \"materialize\": [\n      {\n        \"project\": \"102020\",\n        \"kind\": \"page\",\n        \"id\": \"agenda_diaria\",\n        \"path\": \"l2/agendaClinica/web/contracts/agenda_diaria.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"entity\",\n        \"id\": \"consulta\",\n        \"path\": \"l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"request\",\n        \"id\": \"agenda_diaria\",\n        \"path\": \"l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts\"\n      },\n      {\n        \"project\": \"102021\",\n        \"kind\": \"usecase\",\n        \"id\": \"registrarAtendimento\",\n        \"path\": \"l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts\"\n      }\n    ],\n    \"runAgents\": [],\n    \"abend\": []\n  },\n  \"untouched\": {\n    \"count\": 0,\n    \"sealHash\": \"\"\n  },\n  \"status\": \"simple\"\n}\n"
   },
   "ready": {
     "schemaVersion": "2026-09-21-platform-review-run-v2",
-    "runId": "review-65e14b31045beceadb50da9923f58ab7",
-    "idempotencyKey": "sha256:65e14b31045beceadb50da9923f58ab786628158a9a02dda6ca66b4b67b98020",
+    "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
+    "idempotencyKey": "sha256:fff77b6e8bf56e62bfcec4d9533583c3b907a255b68700a2818b9d0f6d64431b",
     "ownerUserId": "ensaio",
     "binding": {
       "userId": "ensaio",
       "project": 102047,
       "moduleName": "controleEstoque",
-      "changeId": "change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c",
-      "inputRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+      "changeId": "change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3",
+      "inputRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
       "inputSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
       "baseId": "base-570dc91a3d690b78",
       "requestRevision": 1,
@@ -259,14 +232,14 @@
     "dispatch": {
       "attempt": 1,
       "state": "started",
-      "key": "review-65e14b31045beceadb50da9923f58ab7:attempt-1",
-      "claimId": "c6ad3c6f-58b6-454a-adf7-eb924d2097f0",
-      "claimedAt": "2026-10-07T22:41:47.281Z",
-      "leaseExpiresAt": "2026-10-07T22:42:17.281Z"
+      "key": "review-fff77b6e8bf56e62bfcec4d9533583c3:attempt-1",
+      "claimId": "b29d7747-7056-419f-accd-17a77dadaafb",
+      "claimedAt": "2026-10-08T18:27:25.323Z",
+      "leaseExpiresAt": "2026-10-08T18:27:55.323Z"
     },
     "workerLease": null,
     "canonicalSnapshotHash": "sha256:521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
-    "pipelineSnapshotHash": "sha256:a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647",
+    "pipelineSnapshotHash": "sha256:934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1",
     "executions": [
       {
         "agentName": "agentPlannerL4",
@@ -277,9 +250,9 @@
         "provider": null,
         "model": null,
         "resultRunId": null,
-        "candidateRevisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "startedAt": "2026-10-07T22:41:47.310Z",
-        "updatedAt": "2026-10-07T22:41:47.310Z"
+        "candidateRevisionId": "review-f55e500f89197468629453ad32be707e",
+        "startedAt": "2026-10-08T18:27:25.330Z",
+        "updatedAt": "2026-10-08T18:27:25.330Z"
       },
       {
         "agentName": "agentReviewSolution",
@@ -289,20 +262,20 @@
         "attempt": 1,
         "provider": null,
         "model": null,
-        "resultRunId": "result-736b50e05b1f53d58f44cac8b4830585",
+        "resultRunId": "result-f55e500f89197468629453ad32be707e",
         "candidateRevisionId": null,
-        "startedAt": "2026-10-07T22:41:47.276Z",
-        "updatedAt": "2026-10-07T22:41:47.276Z"
+        "startedAt": "2026-10-08T18:27:25.321Z",
+        "updatedAt": "2026-10-08T18:27:25.321Z"
       }
     ],
     "candidateResult": {
-      "resultRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+      "resultRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
       "resultSnapshotHash": "521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
       "resultRevisionNumber": 1,
-      "resultId": "result-736b50e05b1f53d58f44cac8b4830585",
-      "resultHash": "019cc47e44f20a05442e05805c097fe8426db8b59dda39f6b8cf6caa2922f599",
+      "resultId": "result-f55e500f89197468629453ad32be707e",
+      "resultHash": "c1f3a2e0f9d5b0e1b4e8c18833ee1d14a244ca4e888c7c029fb0ce483c3dab65",
       "manifest": {
-        "runId": "result-736b50e05b1f53d58f44cac8b4830585",
+        "runId": "result-f55e500f89197468629453ad32be707e",
         "taskId": "ensaio",
         "status": "completed",
         "outputSnapshotHash": "a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66",
@@ -360,12 +333,12 @@
             "sha256": "f834d4e873c80ddcd6e0426724debeae233a520672b87459079fe1555e019b41"
           }
         ],
-        "traceHash": "a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647"
+        "traceHash": "934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1"
       },
       "permit": {
-        "resultId": "result-736b50e05b1f53d58f44cac8b4830585",
-        "resultHash": "019cc47e44f20a05442e05805c097fe8426db8b59dda39f6b8cf6caa2922f599",
-        "inputRevisionId": "rev-1791412907204-570dc91a3d69-86a09f85-d4d9-4828-8b1e-8d895c2eaa4c",
+        "resultId": "result-f55e500f89197468629453ad32be707e",
+        "resultHash": "c1f3a2e0f9d5b0e1b4e8c18833ee1d14a244ca4e888c7c029fb0ce483c3dab65",
+        "inputRevisionId": "rev-1791484045259-570dc91a3d69-84b197b2-4118-44ac-878d-b946eb57548f",
         "inputSnapshotHash": "521d0668afa11b49d6ed8072298a2ca134a43508e066a118c3446e4e2cf40174",
         "inputRevisionNumber": 1,
         "outputSnapshotHash": "a7215c3c5491fc5ef9c95466c1599c7f48ac5ba1db61a5233c826d4d92334e66"
@@ -374,73 +347,49 @@
     "plannerArtifacts": [
       {
         "kind": "pipeline",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pipeline/pipeline.json",
-        "sha256": "9b43ba32dc8c504142f5564d18e7e86cb4bc5831ffa05aa5d7eeae38eb438773",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pipeline/pipeline.json",
+        "sha256": "cda37fe58039f13a0b1a697d4fd7e4d9b1dcb304c00ad919a460f321fc85d222",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
         "kind": "pipeline-seal",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pipeline/pipeline.json#reviewSeal",
-        "sha256": "a47497ed91a322a0d2e3dbd250a8291a93f5d3c2f74bfb7df8621246aa24a647",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pipeline/pipeline.json#reviewSeal",
+        "sha256": "934da63bfc76b801fd205e37ff41387d41da2e732479bf7b2a0724aed672edb1",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
         "kind": "l4diff-l1",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/web/l4diff.json",
-        "sha256": "db41c9fc879c32c05dc62817975c290331b57fff5055a8422b549e7897bf4cc4",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l1/web/l4diff.json",
+        "sha256": "d8d5f1ad691e674ed1fab497ab49e95704e64bd53445b0aa81b781364aea7d3e",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
         "kind": "l4diff-l2",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/l4diff.json",
-        "sha256": "db41c9fc879c32c05dc62817975c290331b57fff5055a8422b549e7897bf4cc4",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l2/web/l4diff.json",
+        "sha256": "d8d5f1ad691e674ed1fab497ab49e95704e64bd53445b0aa81b781364aea7d3e",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       },
       {
-        "kind": "menu",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/menu.json",
-        "sha256": "43932e91cf087f098478e8f16a16e6bbaecec1a1995348029dc6c059d44ed352",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
-        "taskId": "ensaio"
-      },
-      {
-        "kind": "needs",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l1/web/needs.json",
-        "sha256": "ca2b9bfe1d667bcbb2b46d326ea468fad079150f71e1d94dadb98278b6595bb9",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
-        "taskId": "ensaio"
-      },
-      {
-        "kind": "backend",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/backend.json",
-        "sha256": "e5643760fda637a90268eca85bf902fbe2ee507f119c75b6c9659e29c6362ee3",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
-        "taskId": "ensaio"
-      },
-      {
-        "kind": "effort",
-        "path": "l4/controleEstoque/pipeline/changes/change-1791412907203-42060151-fe5b-48cf-aeaa-ee205106101c/revisions/review-736b50e05b1f53d58f44cac8b4830585/l4/pool/l2/web/effort.json",
-        "sha256": "37b69bdaec36e06d38cfaa01c991a42d4d976def6e6f66b556b9948841fd37ca",
-        "revisionId": "review-736b50e05b1f53d58f44cac8b4830585",
-        "runId": "review-65e14b31045beceadb50da9923f58ab7",
+        "kind": "change-effort",
+        "path": "l4/controleEstoque/pipeline/changes/change-1791484045258-59b01bb4-e279-43ce-b8cf-0eecda2af2e3/revisions/review-f55e500f89197468629453ad32be707e/l4/pool/l4/changeEffort.json",
+        "sha256": "54cc80e75c62f3a0747dd6af3b2e428ff1a1a76d5459eac96a9c1039f52afd01",
+        "revisionId": "review-f55e500f89197468629453ad32be707e",
+        "runId": "review-fff77b6e8bf56e62bfcec4d9533583c3",
         "taskId": "ensaio"
       }
     ],
     "errorCode": null,
     "storeRevision": 7,
-    "createdAt": "2026-10-07T22:41:47.281Z",
-    "updatedAt": "2026-10-07T22:41:47.310Z",
+    "createdAt": "2026-10-08T18:27:25.323Z",
+    "updatedAt": "2026-10-08T18:27:25.330Z",
     "fallbackUsed": false
   }
 }

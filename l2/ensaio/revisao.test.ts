@@ -4,10 +4,7 @@ import test from 'node:test';
 import NodeModule from 'node:module';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { readModuleMenu } from '../newRelease/helpers/menuReader.js';
 import { readReviewArtifact } from '../newRelease/helpers/backendReader.js';
-import { buildReviewView } from '../newRelease/widgets/reviewModel.js';
-import { buildBackendReview, parseEffortSummary } from '../newRelease/widgets/backendReviewModel.js';
 import { installMlsStub } from '../../../test/mlsStub.js';
 import assert from 'node:assert/strict';
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
@@ -247,23 +244,14 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
     assert.equal(ready.errorCode, null);
     const root = `${MODULE}/pipeline/changes/${ready.binding.changeId}/revisions/${ready.executions.find((item: any) => item.agentName === 'agentPlannerL4').candidateRevisionId}/l4`;
     assert.equal(root, planner.candidate);
-    const menu = await readModuleMenu(PROJECT, MODULE, root);
-    const backend = await readReviewArtifact(PROJECT, MODULE, 'backend', root);
-    const effort = await readReviewArtifact(PROJECT, MODULE, 'effort', root);
-    const menuView = buildReviewView({ pendingCount: 0, readStatus: menu.status, raw: menu.value,
-      selectedActor: 'all', selectedId: '', selectedScope: 'future' });
-    const backendView = buildBackendReview(backend, false, MODULE);
-    assert.equal(menuView.kind, 'ready');
-    assert.ok(menuView.tree.length);
-    assert.equal(backendView.kind, 'ready');
-    assert.ok(backendView.groups.length);
-    assert.ok(backendView.itemCount > 0);
-    assert.equal(parseEffortSummary(effort, MODULE).kind, 'counts');
+    const changeEffort = await readReviewArtifact(PROJECT, MODULE, 'changeEffort', root);
+    assert.equal(changeEffort.status, 'ok');
+    assert.equal(changeEffort.path, `l4/${root}/pool/l4/changeEffort.json`);
     const diffRef = ready.plannerArtifacts.find((item: any) => item.kind === 'l4diff-l2');
     const diffFile = Object.values(mls.stor.files).find(file => `l4/${file.folder}/${file.shortName}${file.extension}` === diffRef.path)!;
     const diff = JSON.parse(await diffFile.getContent());
     assert.deepEqual(diff.items.map((item: any) => item.changeId), ['rule:quantidadeMinimaValida']);
-    for (const read of [menu, backend, effort]) {
+    for (const read of [changeEffort]) {
       const artifact = ready.plannerArtifacts.find((item: any) => item.path === read.path);
       assert.ok(artifact);
       const file = Object.values(mls.stor.files).find(file => `l4/${file.folder}/${file.shortName}${file.extension}` === read.path)!;
@@ -328,9 +316,6 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
         'A quantidade mínima definida para um produto deve ser maior que zero.'));
       assert.match(JSON.stringify(current.artifacts.rules.value), /quantidadeMinimaValida/);
       assert.match(JSON.stringify(current.artifacts.rules.value), /maior que zero/);
-      assert.equal(buildReviewView({ pendingCount: pendingCount(current), readStatus: menu.status, raw: menu.value,
-        selectedActor: 'all', selectedId: '', selectedScope: 'future' }).kind, 'ready');
-      assert.equal(buildBackendReview(backend, pendingCount(current) > 0, MODULE).kind, 'ready');
       await t.test('mr_14 s5: adopted ready revision is sealed, promoted, changed and restored', async () => {
         const layers = [
           { level: 1, folder: MODULE, shortName: 'produto', extension: '.defs.ts' },
