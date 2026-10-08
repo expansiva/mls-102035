@@ -11,6 +11,7 @@ import type {
 
 export type ReviewWorkerDriveResult<Run> =
   | { state: 'idle' }
+  | { state: 'pending'; claim: ReviewWorkerClaim; reason: string }
   | { state: 'running'; claim: ReviewWorkerClaim; execution: ReviewWorkerExecution }
   | { state: 'reported'; claim: ReviewWorkerClaim; execution: ReviewWorkerExecution | null; run: Run };
 
@@ -28,9 +29,14 @@ export async function driveReviewRunWorker<Run>(
   try {
     execution = await host.startOrGet(claim);
     assertExecutionMatchesClaim(execution, claim);
-  } catch {
+  } catch (error) {
+    const reason = (error instanceof Error ? error.message : String(error)).slice(0, 200);
+    if (reason.startsWith('review-worker.execution_start_pending')
+      || reason.startsWith('review-worker.execution_message_pending')) {
+      return { state: 'pending', claim, reason };
+    }
     const run = await reportProgress(transport, input, claim, {
-      status: 'failed', executions: [], errorCode: 'review-run.worker_start_failed', fallbackUsed: false,
+      status: 'failed', executions: [], errorCode: `review-run.worker_start_failed:${reason}`, fallbackUsed: false,
     });
     return { state: 'reported', claim, execution: null, run };
   }

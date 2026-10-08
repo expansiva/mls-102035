@@ -95,7 +95,7 @@ void test('review worker reports start and observe failures as terminal progress
     async observe() { return null; },
   }, input);
   assert.equal(startFailure.state, 'reported');
-  assert.equal(reported[0].errorCode, 'review-run.worker_start_failed');
+  assert.equal(reported[0].errorCode, 'review-run.worker_start_failed:task unavailable');
   assert.deepEqual(reported[0].executions, []);
 
   const observeFailure = await driveReviewRunWorker(transport, {
@@ -105,6 +105,24 @@ void test('review worker reports start and observe failures as terminal progress
   assert.equal(observeFailure.state, 'reported');
   assert.equal(reported[1].errorCode, 'review-run.worker_observe_failed');
   assert.equal(reported[1].executions[0].status, 'failed');
+});
+
+void test('review worker keeps a pending execution start out of the report', async () => {
+  let reports = 0;
+  const transport: ReviewWorkerTransport<{ status: string }> = {
+    async claim() { return structuredClone(claim); },
+    async report() { reports++; return { status: 'failed' }; },
+  };
+  const result = await driveReviewRunWorker(transport, {
+    async startOrGet() { throw new Error('review-worker.execution_start_pending'); },
+    async observe() { return null; },
+  }, input);
+  assert.equal(result.state, 'pending');
+  if (result.state === 'pending') {
+    assert.equal(result.reason, 'review-worker.execution_start_pending');
+    assert.equal(result.claim.claimId, claim.claimId);
+  }
+  assert.equal(reports, 0);
 });
 
 void test('review run reload reattaches after the active revision changes before report', () => {
