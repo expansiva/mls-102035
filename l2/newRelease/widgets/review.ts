@@ -1008,7 +1008,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private renderChangeEffortUnits(label: string, units: EffortUnitRef[]) {
     return html`<section><h4>${this.t(label)}</h4>
-      ${units.length ? html`<ul>${units.map(unit => html`<li><strong>${unit.kind}: ${unit.id}</strong><code>${unit.path}</code></li>`)}</ul>
+      ${units.length ? html`<ul>${units.map(unit => html`<li><strong>${unit.kind}: ${unit.id}</strong><code>${unit.path}</code></li>`)}</ul>`
         : html`<p>${this.t('review.effort.none')}</p>`}
     </section>`;
   }
@@ -1030,7 +1030,7 @@ export class NewReleaseReview102035 extends StateLitElement {
           ${this.renderChangeEffortUnits('review.effort.regenerateDefs', answer.regenerateDefs)}
           ${this.renderChangeEffortUnits('review.effort.materialize', answer.materialize)}
           <section><h4>${this.t('review.effort.runAgents')}</h4>
-            ${answer.runAgents.length ? html`<ul>${answer.runAgents.map(agent => html`<li><strong>${agent.agent}</strong><code>${agent.command}</code></li>`)}</ul>
+            ${answer.runAgents.length ? html`<ul>${answer.runAgents.map(agent => html`<li><strong>${agent.agent}</strong><code>${agent.command}</code></li>`)}</ul>`
               : html`<p>${this.t('review.effort.none')}</p>`}
           </section>
         </article>`)}</div>
