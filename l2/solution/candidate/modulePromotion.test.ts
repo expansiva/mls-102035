@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, readActiveL4Change, writeL4OutputRevision } from './moduleRevision.js';
-import { sealModuleLayers } from './moduleLayers.js';
+import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from './moduleLayers.js';
 import type { Ns5FileInfo } from '../fs.js';
 import type { Ns5TobeArtifactPath } from './tobePaths.js';
 
@@ -32,6 +32,7 @@ function installStorFixture() {
       } },
     },
     editor: { models: {}, getKeyModel: () => '' },
+    common: { crc: { crc32: () => 0 } },
   };
   const values: Array<[Ns5TobeArtifactPath, object]> = [
     ['module.defs.ts', { schemaVersion: '2026-09-10-ns5-module-v2', moduleName }],
@@ -60,6 +61,39 @@ const inputFor = (sources: Array<{ path: string; source: string }>) => ({
   requestHash: hash('pedido'), changedPaths: ['module.defs.ts'], sources,
 });
 
+test('mr_14 s4: seal, promote, regenerate and restore exact hashes with real deletion', async () => {
+  const fixture = installStorFixture();
+  try {
+    await ready(fixture);
+    const l2 = { project, level: 2, folder: 'fixture/web/shared', shortName: 'model', extension: '.defs.ts' };
+    const l1 = { project, level: 1, folder: 'fixture/domain', shortName: 'model', extension: '.defs.ts' };
+    fixture.add(l2, 'export const model = "original L2";');
+    fixture.add(l1, 'export const model = "original L1";');
+    const seal = await sealModuleLayers(project, moduleName, 'base1');
+    const release = [...fixture.contents].filter(([key]) => key.includes('/pipeline/releases/'));
+    await promoteL4Revision(project, moduleName, 'change1', 'rev2');
+    fixture.add(l2, 'export const model = "regenerated L2";');
+    fixture.add(l1).status = 'deleted';
+    const added = fixture.add({ ...l1, shortName: 'added' }, 'export const added = true;');
+    const materialization = fixture.add({ ...l1, folder: 'fixture/materialization', shortName: 'keep' }, 'keep materialization');
+    const ordinary = fixture.add({ ...l1, shortName: 'keep', extension: '.ts' }, 'keep implementation');
+    assert.deepEqual((await diffModuleLayers(project, moduleName, 'base1')).map(file => file.status).sort(), ['added', 'changed', 'removed']);
+    await restoreModuleFromSeals(project, moduleName, 'base1');
+    assert.deepEqual(await diffModuleLayers(project, moduleName, 'base1'), []);
+    for (const file of seal.files) {
+      const slash = file.path.lastIndexOf('/');
+      assert.equal(hash(fixture.contents.get(`${project}:${file.level}:fixture/${file.path.slice(0, slash)}:${file.path.slice(slash + 1)}`)!), file.sha256);
+    }
+    for (const [key, content] of release.filter(([key]) => key.includes('/base1/l4'))) {
+      assert.equal(hash(fixture.contents.get(key.replace('/pipeline/releases/base1/l4', ''))!), hash(content));
+    }
+    assert.equal(added.status, 'deleted');
+    assert.equal(materialization.status, 'unchanged');
+    assert.equal(ordinary.status, 'unchanged');
+    assert.deepEqual([...fixture.contents].filter(([key]) => key.includes('/pipeline/releases/')), release);
+  } finally { fixture.restore(); }
+});
+
 function installActiveChange(fixture: ReturnType<typeof installStorFixture>, activeRevisionId = 'rev1') {
   const change = {
     schemaVersion: L4_REVISION_SCHEMA, project, moduleName, changeId: 'change1', baseId: 'base1',
@@ -78,6 +112,25 @@ async function ready(fixture: ReturnType<typeof installStorFixture>) {
   await writeL4OutputRevision(project, moduleName, inputFor(fixture.sources));
   fixture.add({ project, level: 4, folder: 'fixture/pipeline/changes/change1/revisions/rev2/l4/pool/nested',
     shortName: 'receipt', extension: '.json' }, '{"text":"ação"}\n');
+}
+
+for (const level of [2, 4]) {
+  test(`mr_14 s4: rejects corrupted restored L${level} bytes`, async () => {
+    const fixture = installStorFixture();
+    try {
+      await ready(fixture);
+      fixture.add({ project, level: 2, folder: 'fixture/web/shared', shortName: 'model', extension: '.defs.ts' }, 'original');
+      await sealModuleLayers(project, moduleName, 'base1');
+      await promoteL4Revision(project, moduleName, 'change1', 'rev2');
+      const stor = (globalThis as any).mls.stor;
+      const write = stor.localStor.setContent;
+      stor.localStor.setContent = async (file: Ns5FileInfo, value: { content: string }) => {
+        await write(file, file.level === level ? { content: value.content + ' ' } : value);
+      };
+      await assert.rejects(restoreModuleFromSeals(project, moduleName, 'base1'),
+        level === 2 ? /module-restoration.layers_mismatch/ : /module-restoration.l4_mismatch/);
+    } finally { fixture.restore(); }
+  });
 }
 
 test('mr_14 s3: promotes exact defs and pool bytes without touching the release', async () => {

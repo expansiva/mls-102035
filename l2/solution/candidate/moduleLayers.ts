@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/candidate/moduleLayers.ts" enhancement="_blank" />
 
-import { fileExists, readJson, readSourceText, writeJson } from '/_102035_/l2/solution/fs.js';
-import { resolveL4Folders, withModuleWriter } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { fileExists, readJson, readSourceText, writeJson, writeSourceText } from '/_102035_/l2/solution/fs.js';
+import { originalL4FileInfo, readL4Release, resolveL4Folders, withModuleWriter } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 export const MODULE_LAYERS_SCHEMA = '2026-10-08-module-layers-v1' as const;
 
@@ -97,5 +97,55 @@ export async function sealModuleLayers(project: number, moduleName: string, base
     const seal: ModuleLayersSeal = { schemaVersion: MODULE_LAYERS_SCHEMA, project, moduleName, baseId, createdAt: new Date().toISOString(), files };
     await writeJson(info, seal);
     return seal;
+  });
+}
+
+export async function restoreModuleFromSeals(project: number, moduleName: string, baseId: string): Promise<void> {
+  const { originalL4Path } = resolveL4Folders(project, moduleName, baseId);
+  await withModuleWriter(project, moduleName, async () => {
+    const release = await readL4Release(project, moduleName, baseId);
+    if (!release) throw new Error('module-restoration.invalid_release');
+    const diff = await diffModuleLayers(project, moduleName, baseId);
+    const seal = (await readJson<ModuleLayersSeal>({ project, level: 4,
+      folder: `${moduleName}/pipeline/releases/${baseId}`, shortName: 'layers', extension: '.json' }))!;
+    const hash = async (content: string) => {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+      return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+    };
+    const layerInfo = (file: Pick<ModuleLayerFile, 'level' | 'path'>) => {
+      const path = file.path;
+      if ((file.level !== 1 && file.level !== 2) || path.split('/').some(part => !part || part === '.' || part === '..')
+        || (file.level === 1 && path.startsWith('materialization/'))
+        || (path.endsWith('.ts') && !path.endsWith('.defs.ts'))
+        || !(path.startsWith(`pipeline/agentDefsL${file.level}/`)
+          || (path.endsWith('.defs.ts') && (file.level === 1 || path.startsWith('web/'))))) {
+        throw new Error('module-layers.invalid_seal');
+      }
+      const slash = path.lastIndexOf('/');
+      const name = path.slice(slash + 1);
+      const dot = name.indexOf('.');
+      return { project, level: file.level, folder: moduleName + (slash < 0 ? '' : '/' + path.slice(0, slash)),
+        shortName: dot < 0 ? name : name.slice(0, dot), extension: dot < 0 ? '' : name.slice(dot) };
+    };
+    const layers = await Promise.all(seal.files.map(async file => {
+      const info = layerInfo(file);
+      if (await hash(file.content) !== file.sha256) throw new Error('module-layers.invalid_seal');
+      return { info, ...file };
+    }));
+    const l4 = await Promise.all(Object.entries(release.files).map(async ([path, sha256]) => {
+      const source = originalL4FileInfo(project, moduleName, baseId, path as Parameters<typeof originalL4FileInfo>[3]);
+      return { info: { ...source, folder: moduleName + source.folder.slice(originalL4Path.slice(3).length) },
+        content: await readSourceText(source), sha256 };
+    }));
+    for (const file of [...l4, ...layers]) await writeSourceText(file.info, file.content);
+    const { deleteFile } = await import('/_102027_/l2/libStor.js');
+    for (const file of diff.filter(file => file.status === 'added')) {
+      const indexed = mls.stor.files[mls.stor.getKeyToFile(layerInfo(file))];
+      if (indexed) await deleteFile(indexed);
+    }
+    if ((await diffModuleLayers(project, moduleName, baseId)).length) throw new Error('module-restoration.layers_mismatch');
+    for (const file of l4) {
+      if (await hash(await readSourceText(file.info)) !== file.sha256) throw new Error('module-restoration.l4_mismatch');
+    }
   });
 }
