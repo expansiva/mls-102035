@@ -497,3 +497,128 @@ test('mr_24 s3: base with an empty transition by fails publicly without publishi
       '"processes": []', `"processes": ${JSON.stringify([process])}`));
   });
 });
+
+for (const foreignRequest of [false, true]) {
+test(`mr_31 s3: retry ${foreignRequest ? 'executes when the hub belongs to another request' : 'adopts the published task and reaches ready'}`, async () => {
+  await withSimpleEffort(() => withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async (scenario) => {
+    const { prepared, before, progress, command, fetchCalls } = scenario;
+    // Load the platform ledger itself: the fake runner supplies evidence, never a fabricated ready record.
+    const { ReviewRunService } = await import(new URL('../../../../collab-workspace/collab-messages/src/layer_3_usecases/reviewRuns.ts', import.meta.url).href);
+    let stored: any = null;
+    const store = {
+      read: async () => structuredClone(stored),
+      create: async (record: any) => { stored = structuredClone(record); return { created: true, current: structuredClone(stored) }; },
+      compareAndSwap: async (revision: number, record: any) => {
+        assert.equal(stored.storeRevision, revision);
+        stored = structuredClone(record);
+        return { committed: true, current: structuredClone(stored) };
+      },
+    };
+    const args = JSON.parse(command.slice(command.indexOf('{')));
+    const requestInput = foreignRequest ? { ...prepared.input, changeId: 'another-request' } : prepared.input;
+    const binding = { ...requestInput, inputRevisionNumber: before.pointer!.revisionNumber,
+      request: args.request, originalL4Path: args.originalL4Path, temporaryL4Path: args.temporaryL4Path };
+    const service = new ReviewRunService(store, {
+      authorize: async () => undefined, verify: async () => binding,
+    }, { start: async () => null, observe: async () => null });
+    const caller = { userId: 'ensaio', authenticatedUser: 'ensaio@example.test' };
+    const started = await service.start(caller, requestInput);
+    const common = { ...requestInput, runId: started.runId, workerId: 'worker-ensaio',
+      canonicalSnapshotHash: prepared.input.inputSnapshotHash };
+    const reviewClaim = await service.claimWork(caller, common);
+    assert.ok(reviewClaim);
+    if (!foreignRequest) assert.equal(reviewClaim.command, command);
+    const report = (claim: any, value: unknown, pipelineSnapshotHash?: string) => service.reportWork(caller, {
+      ...common, claimId: claim.claimId, phase: claim.phase, attempt: claim.attempt,
+      commandHash: claim.commandHash, progress: value, ...(pipelineSnapshotHash ? { pipelineSnapshotHash } : {}),
+    });
+    const failed = await report(reviewClaim, { status: 'failed', executions: [],
+      errorCode: 'review-run.worker_start_failed:lost acknowledgement', fallbackUsed: false });
+    assert.equal(failed.status, 'failed');
+    assert.deepEqual(failed.executions, []);
+    const retried = await service.start(caller, { ...requestInput, retry: true });
+    assert.equal(retried.attempt, 2);
+    assert.equal(retried.runId, started.runId);
+    const { driveReviewRunWorker } = await import('../newRelease/helpers/reviewRunWorkerCore.js');
+    const { publishedCandidateMatchesRunRevision } = await import('../newRelease/helpers/reviewRunWorker.js');
+    const { createReviewStudioHost } = await import('../newRelease/helpers/reviewRunStudioWorker.js');
+    const published = await candidateRead({ project: PROJECT, moduleName: MODULE });
+    assert.ok(published.pointer);
+    assert.ok(published.result);
+    const matches = publishedCandidateMatchesRunRevision(retried, published.pointer.revisionId, published);
+    assert.equal(matches, !foreignRequest);
+    const publication = matches ? { taskId: published.result.manifest.taskId!,
+      resultRunId: published.result.manifest.runId } : undefined;
+    let executes = 0;
+    let adoptions = 0;
+    const reviewStorage = new Map<string, string>();
+    const reviewHost = createReviewStudioHost({ userId: () => 'ensaio',
+      storage: { getItem: key => reviewStorage.get(key) ?? null,
+        setItem: (key, value) => { reviewStorage.set(key, value); } },
+      thread: async () => ({ threadId: scenario.context.message.threadId }),
+      context: () => scenario.context,
+      execute: async () => { executes++; },
+      onTaskChange: () => () => undefined,
+      task: async () => scenario.context.task!,
+      message: async () => scenario.context.message,
+      findMessage: async () => scenario.context.message,
+    });
+    const tick = await driveReviewRunWorker({
+      claim: async input => {
+        const claim = await service.claimWork(caller, input);
+        return claim ? { ...claim, project: PROJECT, moduleName: MODULE, changeId: requestInput.changeId } : null;
+      },
+      report: input => service.reportWork(caller, input),
+    }, { ...reviewHost, adoptPublished: async (claim, value) => {
+      adoptions++;
+      return reviewHost.adoptPublished!(claim, value);
+    } }, { ...common, userId: 'ensaio' }, publication);
+    assert.equal(executes, foreignRequest ? 1 : 0);
+    assert.equal(adoptions, foreignRequest ? 0 : 1);
+    assert.equal(tick.state, 'reported');
+    assert.ok(tick.state === 'reported');
+    if (foreignRequest) return;
+    const reviewedRun = tick.run;
+    assert.equal(reviewedRun.status, 'planning', reviewedRun.errorCode || JSON.stringify(tick));
+    assert.equal(reviewedRun.executions[0].attempt, 2);
+    assert.equal(reviewedRun.executions[0].taskId, published.result.manifest.taskId);
+    assert.equal(reviewedRun.executions[0].resultRunId, published.result.manifest.runId);
+    assert.deepEqual(reviewedRun.candidateResult.manifest, published.result.manifest);
+    const planner = await runPlannerScenario(scenario.context);
+    const pipelineFile = Object.values(mls.stor.files).find(file => file.project === PROJECT
+      && file.folder === `${planner.candidate}/pipeline` && file.shortName === 'pipeline')!;
+    const pipeline = JSON.parse(await pipelineFile.getContent());
+    const pipelineSnapshotHash = `sha256:${pipeline.reviewSealHash}`;
+    const plannerClaimInput = { ...common, pipelineStatus: 'complete', pipelineSnapshotHash,
+      candidateSnapshotHash: `sha256:${reviewedRun.candidateResult.manifest.outputSnapshotHash}` };
+    const plannerClaim = await service.claimWork(caller, plannerClaimInput);
+    assert.ok(plannerClaim, JSON.stringify(stored));
+    const execution = { ...progress.executions[0], attempt: plannerClaim.attempt, agentName: 'agentPlannerL4',
+      taskId: planner.context.task!.PK.replace(/^task(?:\/#?|#)/u, ''), resultRunId: null, candidateRevisionId: null };
+    const storage = new Map<string, string>();
+    const observedWorker = createReviewStudioHost({ userId: () => 'ensaio',
+      storage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => { storage.set(key, value); } },
+      task: async () => planner.context.task!, message: async () => planner.context.message,
+      findMessage: async () => planner.context.message,
+    });
+    const plannerProgress = await observedWorker.observe({ ...plannerClaim, project: PROJECT, moduleName: MODULE,
+      changeId: prepared.input.changeId, execution }, execution);
+    assert.equal(plannerProgress?.status, 'ready', plannerProgress?.errorCode || 'planner artifacts rejected');
+    const ready = await report(plannerClaim, plannerProgress, pipelineSnapshotHash);
+    assert.equal(ready.status, 'ready', ready.errorCode || 'planner evidence rejected');
+    assert.equal(ready.errorCode, null);
+    const root = `${MODULE}/pipeline/changes/${ready.binding.changeId}/revisions/${ready.executions.find((item: any) => item.agentName === 'agentPlannerL4').candidateRevisionId}/l4`;
+    assert.equal(root, planner.candidate);
+    const changeEffort = await readReviewArtifact(PROJECT, MODULE, 'changeEffort', root);
+    assert.equal(changeEffort.status, 'ok');
+    assert.equal(changeEffort.path, `l4/${root}/pool/l4/changeEffort.json`);
+    const effortArtifact = ready.plannerArtifacts.find((item: any) => item.path === changeEffort.path);
+    assert.ok(effortArtifact);
+    assert.equal(effortArtifact.runId, ready.runId);
+    const effortFile = Object.values(mls.stor.files).find(file =>
+      `l4/${file.folder}/${file.shortName}${file.extension}` === changeEffort.path)!;
+    assert.equal(effortArtifact.sha256, createHash('sha256').update(await effortFile.getContent()).digest('hex'));
+    assert.equal(fetchCalls(), 0);
+  }));
+});
+}
