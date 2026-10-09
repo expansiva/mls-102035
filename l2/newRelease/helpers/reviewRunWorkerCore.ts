@@ -20,6 +20,7 @@ export async function driveReviewRunWorker<Run>(
   transport: ReviewWorkerTransport<Run>,
   host: ReviewStudioHost,
   input: ReviewWorkerClaimInput,
+  published?: { taskId: string; resultRunId: string },
 ): Promise<ReviewWorkerDriveResult<Run>> {
   const claim = await transport.claim(input);
   if (!claim) return { state: 'idle' };
@@ -27,7 +28,9 @@ export async function driveReviewRunWorker<Run>(
 
   let execution: ReviewWorkerExecution;
   try {
-    execution = await host.startOrGet(claim);
+    execution = claim.phase === 'review' && !claim.execution && published && host.adoptPublished
+      ? await host.adoptPublished(claim, published)
+      : await host.startOrGet(claim);
     assertExecutionMatchesClaim(execution, claim);
   } catch (error) {
     const reason = (error instanceof Error ? error.message : String(error)).slice(0, 200);

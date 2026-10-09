@@ -168,14 +168,15 @@ export function publishedCandidateMatchesRunRevision(
     result?: Record<string, unknown>;
   } | null;
   const pointer = value?.pointer;
+  const source = pointer?.source as Record<string, unknown> | undefined;
   const result = value?.result;
   const manifest = result?.manifest as Record<string, unknown> | undefined;
   const match = /^result-([a-f0-9]{32})$/u.exec(String(manifest?.runId || ''));
   return value?.status === 'read' && !!pointer && !!result && !!manifest && !!match
     && pointer.changeId === run.binding.changeId
     && pointer.revisionId === revisionId
-    && pointer.resultId === result.resultId
-    && pointer.resultHash === result.resultHash
+    && !!source && source.resultId === result.resultId
+    && source.resultHash === result.resultHash
     && revisionId === `review-${match[1]}`
     && result.resultRevisionId === run.binding.inputRevisionId
     && result.resultSnapshotHash === run.binding.inputSnapshotHash.replace(/^sha256:/u, '')

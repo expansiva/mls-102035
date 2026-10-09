@@ -175,8 +175,7 @@ void test('lost acknowledgement reattaches from the published candidate before t
     pointer: {
       changeId: input.changeId,
       revisionId: outputRevisionId,
-      resultId: `result-${'d'.repeat(32)}`,
-      resultHash: 'b'.repeat(64),
+      source: { resultId: `result-${'d'.repeat(32)}`, resultHash: 'b'.repeat(64) },
     },
     result: {
       resultRevisionId: input.inputRevisionId,
@@ -189,9 +188,80 @@ void test('lost acknowledgement reattaches from the published candidate before t
   };
 
   assert.equal(publishedCandidateMatchesRunRevision(run, outputRevisionId, candidate), true);
+  for (const unpublished of [
+    null,
+    { status: 'read', pointer: null, snapshot: null },
+    { status: 'read', pointer: candidate.pointer },
+    { ...candidate, result: null },
+  ]) {
+    assert.equal(publishedCandidateMatchesRunRevision(run, outputRevisionId, unpublished), false);
+  }
+  for (const pointer of [
+    { ...candidate.pointer, source: { ...candidate.pointer.source, resultId: 'result-other' } },
+    { ...candidate.pointer, source: { ...candidate.pointer.source, resultHash: 'c'.repeat(64) } },
+    { ...candidate.pointer, changeId: 'change-other' },
+    { ...candidate.pointer, source: undefined, resultId: candidate.result.resultId, resultHash: candidate.result.resultHash },
+  ]) {
+    assert.equal(publishedCandidateMatchesRunRevision(run, outputRevisionId, { ...candidate, pointer }), false);
+  }
+  for (const result of [
+    { ...candidate.result, resultSnapshotHash: 'c'.repeat(64) },
+    { ...candidate.result, resultRevisionNumber: 2 },
+    { ...candidate.result, manifest: { ...candidate.result.manifest, taskId: '' } },
+    { ...candidate.result, manifest: { ...candidate.result.manifest, status: 'running' } },
+    { ...candidate.result, manifest: { ...candidate.result.manifest, runId: `result-${'e'.repeat(32)}` } },
+  ]) {
+    assert.equal(publishedCandidateMatchesRunRevision(run, outputRevisionId, { ...candidate, result }), false);
+  }
+
   assert.equal(publishedCandidateMatchesRunRevision(run, 'revision-new-request', candidate), false);
   assert.equal(publishedCandidateMatchesRunRevision(run, outputRevisionId, {
     ...candidate,
     result: { ...candidate.result, resultRevisionId: 'revision-other' },
   }), false);
 });
+
+void test('published review execution is adopted and observed without starting', async () => {
+  const published = { taskId: 'published-task', resultRunId: 'result-published' };
+  const adopted = { ...execution, taskId: published.taskId, resultRunId: published.resultRunId, status: 'completed' as const };
+  let adoptions = 0;
+  let starts = 0;
+  let reports = 0;
+  const transport: ReviewWorkerTransport<{ status: string }> = {
+    async claim() { return structuredClone(claim); },
+    async report(value) { reports++; assert.equal(value.progress.status, 'planning'); return { status: 'planning' }; },
+  };
+  const host: ReviewStudioHost = {
+    async adoptPublished(value, result) { adoptions++; assert.deepEqual(value, claim); assert.deepEqual(result, published); return adopted; },
+    async startOrGet() { starts++; return execution; },
+    async observe(value, observed) { assert.deepEqual(value, claim); assert.deepEqual(observed, adopted); return { status: 'planning', executions: [observed] }; },
+  };
+  const result = await driveReviewRunWorker(transport, host, input, published);
+  assert.equal(result.state, 'reported');
+  assert.equal(adoptions, 1);
+  assert.equal(starts, 0);
+  assert.equal(reports, 1);
+});
+
+for (const scenario of ['planner', 'existing execution', 'host without adoption'] as const) {
+  void test(`published execution is ignored for ${scenario}`, async () => {
+    const currentClaim = { ...claim, ...(scenario === 'planner' ? { phase: 'planner' as const } : {}),
+      ...(scenario === 'existing execution' ? { execution } : {}) };
+    const currentExecution = { ...execution, agentName: scenario === 'planner' ? 'agentPlannerL4' : execution.agentName };
+    let starts = 0;
+    let adoptions = 0;
+    const transport: ReviewWorkerTransport<unknown> = {
+      async claim() { return currentClaim; },
+      async report() { throw new Error('must not report without progress'); },
+    };
+    const host: ReviewStudioHost = {
+      ...(scenario === 'host without adoption' ? {} : { async adoptPublished() { adoptions++; return currentExecution; } }),
+      async startOrGet() { starts++; return currentExecution; },
+      async observe() { return null; },
+    };
+    const result = await driveReviewRunWorker(transport, host, input, { taskId: 'published-task', resultRunId: 'result-published' });
+    assert.equal(result.state, 'running');
+    assert.equal(starts, 1);
+    assert.equal(adoptions, 0);
+  });
+}

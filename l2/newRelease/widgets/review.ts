@@ -431,10 +431,21 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (token !== this.loadToken) return;
     const canonicalHash = await this.readCanonicalSnapshotHash(run);
     if (token !== this.loadToken) return;
+    let publishedExecution: { taskId: string; resultRunId: string } | undefined;
+    if (['queued', 'reviewing'].includes(run.status) && run.candidateResult === null) {
+      const published = await candidateRead({ project: run.binding.project, moduleName: run.binding.moduleName });
+      if (token !== this.loadToken) return;
+      if (published.status === 'read' && published.pointer && published.result
+        && publishedCandidateMatchesRunRevision(run, published.pointer.revisionId, published)) {
+        const { manifest } = (published as unknown as { result: { manifest: { taskId: string; runId: string } } }).result;
+        publishedExecution = { taskId: manifest.taskId, resultRunId: manifest.runId };
+      }
+    }
     const result = await driveReviewRunWorker(
       this.workerTransport,
       this.workerHost,
       claimInputForRun(run, userId, this.workerId(), canonicalHash, candidate),
+      publishedExecution,
     );
     const current = result.state === 'reported'
       ? result.run
