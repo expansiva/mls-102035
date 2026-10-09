@@ -82,6 +82,91 @@ function context(): ExecutionContext {
   } as ExecutionContext;
 }
 
+for (const fromServer of [false, true]) {
+  test(`mr_31 s1 adota task done pela busca ${fromServer ? 'no servidor' : 'local'} sem executar ou retomar`, async () => {
+    const storage = memoryStorage();
+    const taskId = '20261008202911.1001';
+    const messageOrder = '20261008202911.1000';
+    const message = { threadId: THREAD_ID, orderAt: messageOrder, taskId: `task/${taskId}` };
+    let executes = 0;
+    let resumes = 0;
+    let serverReads = 0;
+    const host = createReviewStudioHost({
+      storage,
+      userId: () => 'user-mr15',
+      thread: async () => ({ threadId: THREAD_ID }),
+      findMessage: async (threadId, requestedTaskId) => {
+        assert.equal(threadId, THREAD_ID);
+        assert.equal(requestedTaskId, taskId);
+        return fromServer ? null : message as never;
+      },
+      messagesAfter: async (userId, threadId, cursor) => {
+        serverReads += 1;
+        assert.equal(userId, 'user-mr15');
+        assert.equal(threadId, THREAD_ID);
+        assert.equal(cursor, '20261008202811.0000');
+        return [{ ...message, taskId: 'task/another-task' }, message] as never;
+      },
+      task: async (_userId, requestedTaskId, messageId) => {
+        assert.equal(requestedTaskId, taskId);
+        assert.equal(messageId, `${THREAD_ID}/${messageOrder}`);
+        return { PK: `task/${taskId}`, status: 'done' } as TaskData;
+      },
+      execute: async () => { executes += 1; },
+      resume: async () => { resumes += 1; },
+      now: () => '2026-10-09T12:00:00.000Z',
+    });
+    const execution = await host.adoptPublished!(claim(), { taskId, resultRunId: 'review-published' });
+    assert.equal(execution.status, 'completed');
+    assert.equal(execution.taskId, taskId);
+    assert.equal(execution.attempt, claim().attempt);
+    assert.equal(execution.agentName, 'agentReviewSolution');
+    assert.equal(execution.resultRunId, 'review-published');
+    assert.equal(executes, 0);
+    assert.equal(resumes, 0);
+    assert.equal(serverReads, fromServer ? 1 : 0);
+    const saved = JSON.parse(storage.raw());
+    assert.equal(saved.claimId, claim().claimId);
+    assert.equal(saved.messageId, `${THREAD_ID}/${messageOrder}`);
+    assert.deepEqual(saved.execution, execution);
+  });
+}
+
+test('mr_31 s1 recusa task publicada ainda in progress', async () => {
+  const storage = memoryStorage();
+  const taskId = '20261008202911.1001';
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    findMessage: async () => ({ orderAt: ORDER_AT, taskId }) as never,
+    task: async () => ({ PK: `task/${taskId}`, status: 'in progress' }) as TaskData,
+    execute: async () => { assert.fail('execute'); },
+    resume: async () => { assert.fail('resume'); },
+  });
+  await assert.rejects(host.adoptPublished!(claim(), { taskId, resultRunId: 'review-published' }),
+    { message: `review-worker.published_task_not_done:${taskId}` });
+  assert.equal(storage.raw(), '');
+});
+
+test('mr_31 s1 recusa mensagem ausente no local e no servidor', async () => {
+  const storage = memoryStorage();
+  const taskId = '20261008202911.1001';
+  const host = createReviewStudioHost({
+    storage,
+    userId: () => 'user-mr15',
+    thread: async () => ({ threadId: THREAD_ID }),
+    findMessage: async () => null,
+    messagesAfter: async () => [{ taskId: 'task/other' }] as never,
+    task: async () => { throw new Error('task must not be read'); },
+    execute: async () => { assert.fail('execute'); },
+    resume: async () => { assert.fail('resume'); },
+  });
+  await assert.rejects(host.adoptPublished!(claim(), { taskId, resultRunId: 'review-published' }),
+    { message: `review-worker.published_task_unavailable:${taskId}` });
+  assert.equal(storage.raw(), '');
+});
+
 test('mr_30 s2 grava taskId e messageId canônicos no task-change enquanto execute não resolve', async () => {
   const storage = memoryStorage();
   const current = context();

@@ -223,6 +223,28 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
   }
 
   return {
+    async adoptPublished(claim, published) {
+      const userId = currentUserId();
+      if (!userId) throw new Error('review-worker.user_unavailable');
+      const { threadId } = await resolveThread();
+      let message = await findMessage(threadId, published.taskId);
+      if (!message) {
+        const instant = markerInstant({ messageOrder: published.taskId });
+        const listed = await listMessagesAfter(userId, threadId, orderAtFromMs(instant - 60_000));
+        message = listed.find(value => normalizeTaskId(value.taskId || '') === published.taskId) ?? null;
+      }
+      if (!message) throw new Error(`review-worker.published_task_unavailable:${published.taskId}`);
+      const messageOrder = message.orderAt || message.createAt;
+      const messageId = `${threadId}/${messageOrder}`;
+      const task = await readTask(userId, published.taskId, messageId);
+      if (task.status !== 'done') throw new Error(`review-worker.published_task_not_done:${published.taskId}`);
+      const execution = {
+        ...executionFromTask('agentReviewSolution', claim.attempt, task, threadId, now()),
+        resultRunId: published.resultRunId,
+      };
+      save(claim, { claimId: claim.claimId, agentName: execution.agentName, threadId, messageOrder, messageId, execution });
+      return execution;
+    },
     async startOrGet(claim) {
       const saved = read(claim);
       const userId = currentUserId();
@@ -334,7 +356,7 @@ function orderAtFromMs(ms: number): string {
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}.0000`;
 }
 
-function markerInstant(saved: SavedExecution): number {
+function markerInstant(saved: Pick<SavedExecution, 'savedAt' | 'messageOrder'>): number {
   if (saved.savedAt) return Date.parse(saved.savedAt);
   const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/u.exec(saved.messageOrder);
   if (!match) return Number.NaN;

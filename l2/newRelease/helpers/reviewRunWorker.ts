@@ -137,6 +137,7 @@ export interface ReviewWorkerTransport<Run> {
  * a reload or lost acknowledgement therefore reattaches instead of creating another task.
  */
 export interface ReviewStudioHost {
+  adoptPublished?(claim: ReviewWorkerClaim, published: { taskId: string; resultRunId: string }): Promise<ReviewWorkerExecution>;
   startOrGet(claim: ReviewWorkerClaim): Promise<ReviewWorkerExecution>;
   observe(claim: ReviewWorkerClaim, execution: ReviewWorkerExecution): Promise<ReviewWorkerProgress | null>;
 }
