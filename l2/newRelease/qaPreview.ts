@@ -49,6 +49,7 @@ type NewReleaseElement = HTMLElement & {
   requestUpdate(): void;
   activeTab: string;
   renderTabContent(): unknown;
+  loadModule(): Promise<void>;
 };
 
 export interface NewReleaseQaFailure { caseId: string; message: string }
@@ -112,28 +113,6 @@ function fixtureFile(
   return () => {
     if (previous) mls.stor.files[key] = previous;
     else delete mls.stor.files[key];
-  };
-}
-
-function loadingFixtureFile(project: number, moduleName: string): { restore: () => void; resolve: () => void } {
-  const info = { project, level: 4, folder: moduleName, shortName: 'module', extension: '.defs.ts' };
-  const key = mls.stor.getKeyToFile(info);
-  const previous = mls.stor.files[key];
-  let settle: (value: string) => void = () => undefined;
-  const content = new Promise<string>(resolve => { settle = resolve; });
-  mls.stor.files[key] = {
-    ...info,
-    status: 'loaded',
-    versionRef: 'qa-fixture',
-    getContent: async () => content,
-  } as unknown as mls.stor.IFileInfo;
-  return {
-    resolve: () => settle(''),
-    restore: () => {
-      settle('');
-      if (previous) mls.stor.files[key] = previous;
-      else delete mls.stor.files[key];
-    },
   };
 }
 
@@ -218,8 +197,9 @@ async function mountFixture(
   try {
     element.version = config.version;
     if (fixture === 'loading') {
-      const pending = loadingFixtureFile(config.project, config.moduleName);
-      cleanupFns.push(pending.restore);
+      // Keep this ephemeral index loading without reading version-specific module files.
+      // initialize() still loads the real translations before calling this isolated seam.
+      element.loadModule = async () => undefined;
       element.project = config.project;
       element.moduleName = config.moduleName;
       container.appendChild(element);
@@ -241,6 +221,10 @@ async function mountFixture(
       element.project = config.project;
       element.moduleName = '';
       container.appendChild(element);
+      await element.updateComplete;
+      // Translation rendering precedes initialize()'s loadModule(); wait for both before
+      // installing data so the initial empty-module load cannot clear the fixture.
+      await waitFor(() => element.querySelector('.nr-index')?.getAttribute('aria-busy') === 'false');
       await element.updateComplete;
       await waitFor(() => !/\btab\.[A-Za-z]/u.test(element.textContent ?? ''));
       element.moduleName = config.moduleName;
@@ -442,6 +426,17 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   const treeButton = review.querySelector<HTMLButtonElement>('.nr-review__toggle[aria-expanded="false"]');
   if (!treeButton) throw new Error('qa.inconclusive.treeToggleMissing');
   const collapsedRows = review.querySelectorAll('.nr-review__row').length;
+  if (element.version.startsWith('release:')) {
+    if (!treeButton.closest('fieldset')?.disabled || !select.closest('fieldset')?.disabled
+      || !review.querySelector('.nr-review__menu') || !review.querySelector('.nr-review__backend')
+      || !review.textContent?.includes('QA agenda')) throw new Error('qa.historicalQueryMissing');
+    treeButton.click();
+    if (review.updateComplete) await review.updateComplete;
+    if (review.querySelector('.nr-review__toggle[aria-expanded="true"]')
+      || review.querySelectorAll('.nr-review__row').length !== collapsedRows
+      || select.value !== 'actor:professional') throw new Error('qa.historicalTreeChanged');
+    return;
+  }
   treeButton.click();
   await waitForQaCondition(
     () => !!review.querySelector('.nr-review__toggle[aria-expanded="true"]')
@@ -555,7 +550,7 @@ class NewReleaseQaPreview102035 extends HTMLElement {
   private async runAll(config: NewReleaseQaConfig, stage: HTMLElement): Promise<void> {
     const startedAt = new Date().toISOString();
     const scenarios = newReleaseQaScenarios().flatMap(scenario =>
-      scenario.tab === 'review' && ['pending', 'ready', 'effort-blocked', 'effort-invalid'].includes(scenario.fixture)
+      scenario.fixture === 'loading' || scenario.tab === 'review' && ['pending', 'ready', 'effort-blocked', 'effort-invalid'].includes(scenario.fixture)
         ? (['tobe', 'asis', 'release:qa-history'] as const).map(version => ({ ...scenario, version, caseId: `${scenario.caseId}-${version}` }))
         : [{ ...scenario, version: config.version }]);
     const failures: NewReleaseQaFailure[] = [];

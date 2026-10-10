@@ -155,3 +155,26 @@ test('QA runner checks one calculation only in tobe and keeps protected result a
   }
   assert.match(qa, /\['tobe', 'asis', 'release:qa-history'\]/);
 });
+
+
+test('QA fixtures settle initialization and preserve loading and historical query coverage', () => {
+  const qa = readFileSync(new URL('./qaPreview.ts', import.meta.url), 'utf8');
+  const loading = qa.slice(qa.indexOf("if (fixture === 'loading')"), qa.indexOf("} else if (fixture === 'live')"));
+  assert.match(loading, /element\.loadModule = async \(\) => undefined/);
+  assert.ok(loading.indexOf('element.loadModule =') < loading.indexOf('container.appendChild(element)'));
+  assert.match(loading, /nr-index__loading/);
+  const synthetic = qa.slice(qa.indexOf("element.moduleName = '';"), qa.indexOf('element.data.diffs ='));
+  assert.ok(synthetic.indexOf("getAttribute('aria-busy') === 'false'") < synthetic.indexOf('element.data = buildNewReleaseQaFixture'));
+  assert.match(qa, /scenario\.fixture === 'loading' \|\| scenario\.tab === 'review'/);
+  assert.match(qa, /element\.version\.startsWith\('release:'\)/);
+  assert.doesNotMatch(qa, /dispatchEvent\(new MouseEvent\('click'/);
+  const historical = qa.slice(qa.indexOf("if (element.version.startsWith('release:'))"), qa.indexOf("'qa.treeDidNotOpen'"));
+  assert.match(historical, /closest\('fieldset'\)\?\.disabled/);
+  assert.match(historical, /treeButton\.click\(\)/);
+  assert.match(historical, /querySelectorAll\('\.nr-review__row'\)\.length !== collapsedRows/);
+  assert.match(historical, /return;/);
+  for (const button of ['treeButton', 'opened', 'reopen']) assert.ok(qa.includes(`${button}.click()`));
+  for (const failure of ['loadingMissing', 'historicalQueryMissing', 'historicalTreeChanged', 'treeDidNotOpen', 'treeDidNotClose', 'treeDidNotReopen', 'authorityFilterIneffective']) {
+    assert.ok(qa.includes(`qa.${failure}`), failure);
+  }
+});
