@@ -5,6 +5,7 @@ import type {
   Ns5OntologyEntityArtifact,
   Ns5Rule,
   Ns5RulesArtifact,
+  Ns5RulesArtifactV2,
 } from '../../solution/types.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
@@ -23,7 +24,7 @@ export interface RuleCitation {
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 
-/** Rules v2 is a map of business statements, not the editable v1 array. */
+/** Rules v2 is a map of business statements. */
 export function readRulesV2(value: unknown): Ns5Rule[] | null {
   if (!value || typeof value !== 'object' || (value as { schemaVersion?: unknown }).schemaVersion !== '2026-09-16-ns5-rules-v2') return null;
   const rules = (value as { rules?: unknown }).rules;
@@ -31,6 +32,14 @@ export function readRulesV2(value: unknown): Ns5Rule[] | null {
   const entries = Object.entries(rules);
   if (entries.some(([ruleId, description]) => !MEMBER_ID.test(ruleId) || typeof description !== 'string')) return null;
   return entries.map(([ruleId, description]) => ({ ruleId, description: description as string }));
+}
+
+/** Change one existing statement while retaining the written artifact and its metadata. */
+export function editRulesV2Text(artifact: Ns5RulesArtifactV2, ruleId: string, description: string): Ns5RulesArtifactV2 | null {
+  if (!readRulesV2(artifact) || !Object.hasOwn(artifact.rules, ruleId) || !description.trim()) return null;
+  const next = structuredClone(artifact);
+  next.rules = { ...next.rules, [ruleId]: description };
+  return next;
 }
 
 function textMentionsRule(text: string, ruleId: string): boolean {

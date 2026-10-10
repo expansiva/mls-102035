@@ -9,6 +9,8 @@ import type {
   Ns5OntologyEntityArtifact,
   Ns5Rule,
   Ns5RulesArtifact,
+  Ns5RulesArtifactV2,
+  Ns5RulesAny,
 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
@@ -28,6 +30,7 @@ import {
   ruleEntityIds,
   rulesOracleIssues,
   readRulesV2,
+  editRulesV2Text,
   type RuleCitation,
 } from '/_102035_/l2/newRelease/widgets/rulesModel.js';
 
@@ -38,7 +41,7 @@ interface RuleIssueView {
 }
 
 @customElement('new-release--widgets--rules-102035')
-export class NewReleaseRules102035 extends StateLitElement implements NewReleaseEditableTab<Ns5RulesArtifact | null> {
+export class NewReleaseRules102035 extends StateLitElement implements NewReleaseEditableTab<Ns5RulesAny | null> {
   @property({ type: Number }) project = 0;
   @property({ type: String, attribute: 'module-name' }) moduleName = '';
   @property({ type: String }) version: NewReleaseVersion = 'asis';
@@ -50,6 +53,11 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
   @state() private selectedRuleId = '';
   @state() private query = '';
   @state() private rulesDraft: Ns5RulesArtifact | null = null;
+  @state() private v2Draft: Ns5RulesArtifactV2 | null = null;
+  @state() private savingV2 = false;
+  private v2Context = '';
+  private editContext() { return `${this.project}/${this.moduleName}/${this.version}`; }
+
   @state() private newRuleId = '';
   @state() private suppliedIssues: NewReleaseValidationIssue[] = [];
   @state() private gateIssues: RuleIssueView[] = [];
@@ -58,13 +66,15 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
   createRenderRoot() { return this; }
 
   updated(changed: PropertyValues) {
+    if (this.v2Draft && (this.v2Context !== this.editContext() || changed.has('data'))) this.cancelV2Edit();
     if (!changed.has('data') || this.mode === 'edit') return;
     if (readRulesV2(this.data?.artifacts.rules.value)) return;
     const rules = this.currentRules()?.rules || [];
     if (!rules.some(rule => rule.ruleId === this.selectedRuleId)) this.selectedRuleId = rules[0]?.ruleId || '';
   }
 
-  getDraft(): Ns5RulesArtifact | null {
+  getDraft(): Ns5RulesAny | null {
+    if (this.v2Draft) return structuredClone(this.v2Draft);
     const rules = this.currentRules();
     return rules ? structuredClone(rules) : null;
   }
@@ -188,6 +198,48 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
     }
   }
 
+  private beginV2Edit(ruleId: string) {
+    if (this.version.startsWith('release:') || this.savingV2) return;
+    const artifact = this.data?.artifacts.rules.value;
+    if (!readRulesV2(artifact)) return;
+    this.v2Draft = structuredClone(artifact) as unknown as Ns5RulesArtifactV2;
+    this.selectedRuleId = ruleId;
+    this.v2Context = this.editContext();
+    this.mode = 'edit';
+    this.dirty = false;
+    this.gateIssues = [];
+    this.editMessage = '';
+  }
+
+  private cancelV2Edit() {
+    this.v2Draft = null;
+    this.v2Context = '';
+    this.mode = 'view';
+    this.dirty = false;
+    this.gateIssues = [];
+    this.editMessage = '';
+  }
+
+  private async saveV2Edit() {
+    if (!this.v2Draft || !this.dirty || this.savingV2 || this.version.startsWith('release:') || this.v2Context !== this.editContext()) return;
+    const draft = this.v2Draft;
+    const ruleId = this.selectedRuleId;
+    const context = this.v2Context;
+    this.savingV2 = true;
+    try {
+      const gate = await import('/_102035_/l2/solution/gates/rules40/gate.js');
+      if (this.v2Draft !== draft || context !== this.editContext()) return;
+      const result = gate.validateNs5Rules(ns5RuleRecord(draft), { moduleName: this.moduleName });
+      this.gateIssues = result.issues.map(issue => ({ severity: issue.severity, code: issue.code, message: issue.message }));
+      const next = editRulesV2Text(draft, ruleId, draft.rules[ruleId]);
+      if (!result.ok || !next) { this.editMessage = this.t('rules.gateBlocked'); return; }
+      announceNewReleaseChange(this, { path: 'rules.defs.ts', jsonPath: `$.rules.${ruleId}`, value: next });
+      this.cancelV2Edit();
+    } catch (error) {
+      if (this.v2Draft === draft && context === this.editContext()) this.editMessage = this.t('rules.gateUnavailable', { message: error instanceof Error ? error.message : String(error) });
+    } finally { this.savingV2 = false; }
+  }
+
   private ruleIcon(orphan: boolean) {
     return orphan
       ? svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.5 19h17Z"/><path d="M12 9v4m0 3h.01"/></svg>`
@@ -228,8 +280,12 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
   render() {
     const v2Rules = readRulesV2(this.data?.artifacts.rules.value);
     if (v2Rules) return html`<section class="nr-rules nr-rules--v2" aria-label=${this.t('rules.title')}>
-      <header class="nr-rules__hero"><div><span>${this.t('general.readonly')}</span><h2>${this.t('rules.title')}</h2></div><dl><div><dt>${this.t('rules.plural')}</dt><dd>${v2Rules.length}</dd></div></dl></header>
-      <div class="nr-rules__v2-list">${v2Rules.map(rule => html`<article><h3>${rule.ruleId}</h3><p>${rule.description}</p></article>`)}</div>
+      <header class="nr-rules__hero"><div><span>${this.t(this.version.startsWith('release:') ? 'general.readonly' : 'rules.eyebrow')}</span><h2>${this.t('rules.title')}</h2></div><dl><div><dt>${this.t('rules.plural')}</dt><dd>${v2Rules.length}</dd></div></dl></header>
+      <div class="nr-rules__v2-list">${v2Rules.map(rule => html`<article><h3>${rule.ruleId}</h3>${this.v2Draft && this.selectedRuleId === rule.ruleId ? html`<label><span>${this.t('rules.businessStatement')} — ${rule.ruleId}</span><textarea ?disabled=${this.savingV2} .value=${this.v2Draft.rules[rule.ruleId]} @input=${(event: Event) => {
+        if (!this.v2Draft || this.v2Context !== this.editContext()) return;
+        this.v2Draft = { ...this.v2Draft, rules: { ...this.v2Draft.rules, [rule.ruleId]: (event.currentTarget as HTMLTextAreaElement).value } };
+        this.dirty = true; this.gateIssues = []; this.editMessage = '';
+      }}></textarea></label>${this.renderIssues()}<button type="button" ?disabled=${this.savingV2} @click=${() => this.cancelV2Edit()}>${this.t('rules.cancel')}</button><button type="button" ?disabled=${!this.dirty || this.savingV2} @click=${() => void this.saveV2Edit()}>${this.t('rules.save')}</button>` : html`<p>${rule.description}</p>${!this.version.startsWith('release:') ? html`<button type="button" ?disabled=${!!this.v2Draft || this.savingV2} @click=${() => this.beginV2Edit(rule.ruleId)}>${this.t('rules.edit')}</button>` : nothing}`}</article>`)}</div>
     </section>`;
     const artifact = this.currentRules();
     if (!artifact) return html`<section class="nr-rules__empty"><h2>${this.t('rules.emptyTitle')}</h2><p>${this.t('rules.emptyBody')}</p></section>`;

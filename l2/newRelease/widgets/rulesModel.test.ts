@@ -10,6 +10,7 @@ import {
   groupRulesByEntity,
   isValidNewRuleId,
   readRulesV2,
+  editRulesV2Text,
 } from './rulesModel.js';
 
 test('reads v2 rule map for display without claiming it is editable v1', () => {
@@ -74,4 +75,21 @@ test('search includes citation labels and new ids must be lowerCamel and unique'
   assert.equal(isValidNewRuleId(rules, 'newRule'), true);
   assert.equal(isValidNewRuleId(rules, 'NewRule'), false);
   assert.equal(isValidNewRuleId(rules, 'approvalRequired'), false);
+});
+
+
+test('v2 text edit preserves ids, other statements and metadata without mutating source', () => {
+  const source = {
+    schemaVersion: '2026-09-16-ns5-rules-v2' as const, moduleName: 'orders',
+    metadata: { owner: 'manager', references: ['approvalRequired'] },
+    rules: { approvalRequired: 'Approval required.', stockRequired: 'Stock required.', paymentRequired: 'Payment required.' },
+  };
+  const original = structuredClone(source);
+  const edited = editRulesV2Text(source, 'approvalRequired', 'Manager approval is required.');
+  assert.deepEqual(edited, { ...original, rules: { ...original.rules, approvalRequired: 'Manager approval is required.' } });
+  assert.deepEqual(source, original);
+  assert.deepEqual(Object.keys(edited!.rules), Object.keys(source.rules));
+  assert.equal(editRulesV2Text(source, 'unknownRule', 'New text.'), null);
+  assert.equal(editRulesV2Text(source, 'approvalRequired', '  '), null);
+  assert.deepEqual(source, original);
 });
