@@ -25,6 +25,7 @@ import { tabForArtifactPath } from './editContract.js';
 import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { L4SealedCandidateError, markL4Result, readActiveL4Change, readChangeRequest, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { historicalReleaseId } from './helpers/context.js';
+import { readNs5Module } from './helpers/l4Reader.js';
 import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
 
 test('v3 ontology index resolves descriptor rows to entity file ids without changing v2 ids', () => {
@@ -256,6 +257,16 @@ test('Current reads live L4 while preparation and history retain their own sourc
   assert.equal(current.sealedRevision, null);
   assert.deepEqual(current.stalePaths, []);
   assert.deepEqual(current.diffs, []);
+  const currentModule = await readNs5Module(project, moduleName, 'asis');
+  assert.equal(currentModule.module?.title, 'Localizar paciente');
+  assert.equal(currentModule.baseProvenance, null);
+  assert.equal(currentModule.manifest, null);
+  assert.equal(currentModule.changeId, null);
+  assert.equal(currentModule.revisionId, null);
+  assert.equal(currentModule.sealedRevision, null);
+  assert.equal(currentModule.tobeChanges, 0);
+  assert.deepEqual(currentModule.stalePaths, []);
+  assert.deepEqual(currentModule.diffs, []);
   assert.deepEqual(snapshot(), beforeCurrentRead);
   const prepared = await readNs5Overlay(project, moduleName, 'tobe');
   assert.deepEqual(prepared.sources.module.value, edited);
@@ -267,12 +278,23 @@ test('Current reads live L4 while preparation and history retain their own sourc
     { jsonPath: '$.description', before: captured.description, after: edited.description },
     { jsonPath: '$.title', before: captured.title, after: edited.title },
   ]);
+  const preparedModule = await readNs5Module(project, moduleName, 'tobe');
+  const capturedRelease = await readL4Release(project, moduleName, saved.baseId!);
+  assert.ok(capturedRelease?.provenance);
+  assert.deepEqual(preparedModule.baseProvenance, capturedRelease.provenance);
+  assert.deepEqual(preparedModule.module, edited);
+  assert.equal(preparedModule.changeId, saved.changeId);
+  assert.equal(preparedModule.revisionId, saved.revisionId);
+  assert.deepEqual(preparedModule.stalePaths, ['module.defs.ts']);
   const history = await readNs5Overlay(project, moduleName, `release:${saved.baseId}`);
   assert.deepEqual(history.sources.module.value, captured);
   assert.equal(history.manifest, null);
   assert.equal(history.changeId, null);
   assert.equal(history.revisionId, null);
   assert.deepEqual(history.stalePaths, []);
+  const historicalModule = await readNs5Module(project, moduleName, `release:${saved.baseId}`);
+  assert.deepEqual(historicalModule.module, captured);
+  assert.equal(historicalModule.baseProvenance, null);
 });
 
 test('runtime full discard removes every prepared artifact and the manifest', async () => {

@@ -215,7 +215,7 @@ export async function readNs5Module(
     ? overlay.validation.oracle
     : persistedReport;
   const active = version.startsWith('release:') ? null : await readActiveL4Change(project, moduleName);
-  const baseProvenance = active ? (await readL4Release(project, moduleName, active.baseId))?.provenance ?? null : null;
+  const baseProvenance = version === 'tobe' && active ? (await readL4Release(project, moduleName, active.baseId))?.provenance ?? null : null;
   const resultCurrent = !!active?.activeRevisionId && active.resultRevisionId === active.activeRevisionId;
 
   return {
