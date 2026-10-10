@@ -363,6 +363,39 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return !!this.data?.artifacts.all.some(artifact => artifact.source === 'tobe' && tabForArtifactPath(artifact.path) === tab);
   }
 
+  private async cancelChanges() {
+    if (this.version !== 'tobe' || this.loading || this.changing || this.requestBusy) return;
+    const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+    const moduleKey = `${context.project}/${context.moduleName}`;
+    const requestKeys = [this.requestKey,
+      ChangeRequestDrafts.key(context.project, context.moduleName, this.expectedChangeId),
+      ChangeRequestDrafts.key(context.project, context.moduleName, null)];
+    this.pendingMutations += 1;
+    this.changing = true;
+    this.mutationError = '';
+    try {
+      await discardTobe(context.project, context.moduleName, undefined, false);
+      for (const key of requestKeys) this.requestDrafts.forget(key);
+      this.changeByModule.delete(moduleKey);
+      this.revisionByModule.delete(moduleKey);
+      if (!contextStillCurrent(context, this)) return;
+      this.requestText = '';
+      this.savedRequest = '';
+      this.requestKey = null;
+      this.requestError = '';
+      this.expectedChangeId = null;
+      this.expectedRevisionId = null;
+      this.version = 'asis';
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
+      await this.loadModule();
+    } catch (error) {
+      if (contextStillCurrent(context, this)) this.mutationError = this.revisionError(error);
+    } finally {
+      this.pendingMutations -= 1;
+      this.changing = this.pendingMutations > 0;
+    }
+  }
+
   private async discardPaths(paths: Ns5TobeArtifactPath[]) {
     if (!paths.length || this.changing) return;
     if (!window.confirm(this.t('tobe.discardConfirm', { count: paths.length }))) return;
@@ -533,6 +566,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
     }
     if (this.activeTab === 'review') {
       return html`
+        ${this.version === 'tobe' ? html`
+          <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
+            @click=${() => void this.cancelChanges()}>${this.t('review.cancelChanges')}</button>
+        ` : nothing}
         <new-release--widgets--review-102035
           .project=${this.project}
           .moduleName=${this.moduleName}

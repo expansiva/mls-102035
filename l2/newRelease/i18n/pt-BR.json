@@ -725,6 +725,7 @@
   "review.implementation.error.regenerateUnsupported": "O esforço pede regerar definições por unidade, o que esta implementação ainda não executa.",
   "review.implementation.error.restore": "O aceite falhou e não foi possível restaurar o módulo.",
   "review.continue": "Continuar",
+  "review.cancelChanges": "Cancelar alterações",
   "review.calculate": "Calcular alterações",
   "review.retry": "Tentar novamente",
   "review.primaryActionTitle": "Próxima etapa",
