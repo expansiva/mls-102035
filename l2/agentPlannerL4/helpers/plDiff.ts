@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/helpers/plDiff.ts" enhancement="_blank"/>
 
+import { readL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { parseNs4ClassicDefsSource as parseDefsSource } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import {
   declaredRevisionBaseId,
@@ -516,6 +517,26 @@ export async function runPlDiff(moduleName: string): Promise<L4Diff> {
     await loadSnapshot(project, resolved.root),
     await loadSnapshot(project, candidate),
   );
+  if (rev) {
+    const manifest = await readL4Revision(project, existing, rev.changeId, rev.revisionId);
+    if (!manifest || !Array.isArray(manifest.changedPaths)) {
+      throw new Error('L4 revision manifest is missing changedPaths.');
+    }
+    // changedPaths and item.source are both paths relative to the module L4 root (e.g. rules.defs.ts).
+    const covered = new Set(items.map(item => item.source));
+    for (const path of manifest.changedPaths) {
+      if (covered.has(path)) continue;
+      covered.add(path);
+      items.push({
+        changeId: `artifact:${path}`,
+        kind: 'artifact',
+        op: 'changed',
+        entity: '',
+        source: path,
+      });
+    }
+    items.sort((a, b) => a.changeId.localeCompare(b.changeId) || a.op.localeCompare(b.op));
+  }
   const diff: L4Diff = {
     schemaVersion: L4_DIFF_SCHEMA,
     moduleName: existing,

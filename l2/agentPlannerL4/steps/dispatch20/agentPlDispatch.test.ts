@@ -9,6 +9,7 @@ import {
   afterPlDispatchPromptStep,
   beforePlDispatchPromptStep,
 } from '/_102035_/l2/agentPlannerL4/steps/dispatch20/agentPlDispatch.js';
+import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import { listPoolBox, readPoolTrace } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
@@ -182,4 +183,90 @@ void test('dispatch20 afterPrompt fails an LLM reply', async () => {
   const intents = await afterPlDispatchPromptStep(AGENT, context, parent, step, 1);
   assert.equal(intents[0]?.type, 'update-status');
   assert.equal((intents[0] as mls.msg.AgentIntentUpdateStatus).status, 'failed');
+});
+
+const REVISION = 'mensalidadesAcademia/pipeline/changes/c1/revisions/r1/l4';
+
+const ARTIFACT_ITEM = {
+  changeId: 'artifact:journeys/atendimento.defs.ts',
+  kind: 'artifact',
+  op: 'changed',
+  entity: '',
+  source: 'journeys/atendimento.defs.ts',
+};
+
+const RULE_ITEM = {
+  changeId: 'rule:anotacao',
+  kind: 'rule',
+  op: 'changed',
+  entity: 'Consulta',
+  source: 'rules.defs.ts',
+};
+
+function seedEffortInputs(host: Host, items: readonly unknown[]): void {
+  seed(host, { level: 5, folder: '', shortName: 'config', extension: '.json' }, `${JSON.stringify({
+    workspaceDependencies: ['102020', '102021'],
+  })}\n`);
+  seed(
+    host,
+    { level: 2, folder: 'mensalidadesAcademia/web/contracts', shortName: 'tela', extension: '.defs.ts' },
+    'export const tela = {};\n',
+  );
+  seed(
+    host,
+    { level: 1, folder: 'mensalidadesAcademia', shortName: 'caso', extension: '.defs.ts' },
+    'export const caso = {};\n',
+  );
+  seed(
+    host,
+    { level: 4, folder: `${REVISION}/pool/l2/web`, shortName: 'l4diff', extension: '.json' },
+    `${JSON.stringify({ items })}\n`,
+  );
+}
+
+async function changeEffortFor(items: readonly unknown[]): Promise<{
+  status: string;
+  request: { items: Array<{ changeId: string }> };
+  merged: { abend: Array<{ item: string; master: { project: string }; reason: string }> };
+}> {
+  const { host, context, parent, step } = contextWith();
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(host, items);
+    await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
+    const stored = host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];
+    assert.ok(stored, 'changeEffort.json was not written');
+    return JSON.parse(stored.content) as {
+      status: string;
+      request: { items: Array<{ changeId: string }> };
+      merged: { abend: Array<{ item: string; master: { project: string }; reason: string }> };
+    };
+  } finally {
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+}
+
+function abendsCiting(file: Awaited<ReturnType<typeof changeEffortFor>>, changeId: string): string[] {
+  return file.merged.abend
+    .filter(row => row.item === changeId)
+    .map(row => `${row.master.project}: ${row.reason}`);
+}
+
+void test('dispatch20 blocks a journey artifact the masters do not compute', async () => {
+  const file = await changeEffortFor([ARTIFACT_ITEM]);
+  assert.equal(file.status, 'blocked');
+  assert.deepEqual(abendsCiting(file, ARTIFACT_ITEM.changeId).sort(), [
+    '102020: v1 computes only rule changed; artifact changed is not handled',
+    '102021: kind/op fora da v1: artifact changed',
+  ]);
+});
+
+void test('dispatch20 blocks a rule plus an artifact — no partial accept', async () => {
+  const file = await changeEffortFor([RULE_ITEM, ARTIFACT_ITEM]);
+  assert.equal(file.status, 'blocked');
+  assert.deepEqual(file.request.items.map(item => item.changeId), [RULE_ITEM.changeId, ARTIFACT_ITEM.changeId]);
+  assert.deepEqual(abendsCiting(file, ARTIFACT_ITEM.changeId).sort(), [
+    '102020: v1 computes only rule changed; artifact changed is not handled',
+    '102021: kind/op fora da v1: artifact changed',
+  ]);
 });

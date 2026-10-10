@@ -116,6 +116,37 @@ test('dois masters l2 de projetos diferentes devolvendo a mesma página ficam du
   ]);
 });
 
+test('aceita um changeEffort blocked cujo item é artifact', () => {
+  const changeId = 'artifact:journeys/atendimento.defs.ts';
+  const perItem = [{
+    item: changeId,
+    answers: [
+      answer(l2, { item: changeId, status: 'abend', abend: { reason: 'tipo fora da v1' } }),
+      answer(l1, { item: changeId, status: 'abend', abend: { reason: 'tipo fora da v1' } }),
+    ],
+  }];
+  const value = file({
+    request: {
+      text: 'jornada alterada',
+      items: [{
+        changeId,
+        kind: 'artifact',
+        op: 'changed',
+        entity: '',
+        source: 'journeys/atendimento.defs.ts',
+      }],
+    },
+    perItem,
+  });
+  const result = validateChangeEffort(value);
+  assert.equal(result.ok, true, result.ok ? '' : JSON.stringify(result.issues));
+  if (!result.ok) return;
+  assert.equal(result.file.status, 'blocked');
+  assert.equal(result.file.request.items[0]?.kind, 'artifact');
+  assert.equal(result.file.request.items[0]?.entity, '');
+  assert.equal(result.file.merged.abend.length, 2);
+});
+
 test('a fixture dourada agendaClinica regra anotação passa no gate', () => {
   const fixture = fileURLToPath(new URL(
     '../../fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json',

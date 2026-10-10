@@ -429,6 +429,112 @@ function paciente(field: Record<string, unknown>): L4DiffSnapshot {
   });
 }
 
+async function sealFromCanonical(files: Map<string, string>, edit?: (host: Host) => void) {
+  const host = installHost();
+  seedTree(host, MODULE, files);
+  seedL5(host);
+  await prepareL4Change(PROJECT, MODULE);
+  edit?.(host);
+  const sealed = await sealL4Revision(PROJECT, MODULE, null);
+  const root = `${MODULE}/pipeline/changes/${sealed.changeId}/revisions/${sealed.revisionId}/l4`;
+  return { host, sealed, root };
+}
+
+function planFile(host: Host, rel: string): Stored {
+  const parts = splitRel(rel);
+  const folder = parts.folder ? `${MODULE}/tobe/plan/${parts.folder}` : `${MODULE}/tobe/plan`;
+  const file = host.files[keyOf({
+    project: PROJECT, level: 4, folder, shortName: parts.shortName, extension: parts.extension,
+  })];
+  assert.ok(file, rel);
+  return file;
+}
+
+void test('p4_38: a sealed rules-only change keeps the rule item and adds no artifact', async () => {
+  const files = loadFixtureFiles();
+  const { host, root } = await sealFromCanonical(files, current => {
+    const rules = planFile(current, 'rules.defs.ts');
+    rules.content = rules.content.replace(RULE_OLD, RULE_NEW);
+  });
+  try {
+    setModuleRoot(MODULE, root);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.items.length, 1);
+    assert.equal(diff.items[0].kind, 'rule');
+    assert.equal(diff.items[0].source, 'rules.defs.ts');
+    assert.equal(diff.items.some(item => item.kind === 'artifact'), false);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+  void host;
+});
+
+void test('p4_38: a changed journey file becomes one artifact item', async () => {
+  const files = loadFixtureFiles();
+  const rel = 'journeys/matricularAluno.defs.ts';
+  const { root } = await sealFromCanonical(files, current => {
+    const journey = planFile(current, rel);
+    journey.content = `${journey.content}\n`;
+  });
+  try {
+    setModuleRoot(MODULE, root);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.items.length, 1);
+    assert.deepEqual(diff.items[0], {
+      changeId: `artifact:${rel}`,
+      kind: 'artifact',
+      op: 'changed',
+      entity: '',
+      source: rel,
+    });
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
+void test('p4_38: a workflows change outside title, description and trigger becomes one artifact', async () => {
+  const files = loadFixtureFiles();
+  const { root } = await sealFromCanonical(files, current => {
+    const workflows = planFile(current, 'workflows.defs.ts');
+    assert.equal(workflows.content.includes('"inProcess": false'), true);
+    workflows.content = workflows.content.replace('"inProcess": false', '"inProcess": true');
+  });
+  try {
+    setModuleRoot(MODULE, root);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.items.length, 1);
+    assert.equal(diff.items[0].changeId, 'artifact:workflows.defs.ts');
+    assert.equal(diff.items[0].kind, 'artifact');
+    assert.equal(diff.items[0].op, 'changed');
+    assert.equal(diff.items[0].entity, '');
+    assert.equal(diff.items[0].source, 'workflows.defs.ts');
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
+void test('p4_38: a revision manifest without changedPaths is refused', async () => {
+  const files = loadFixtureFiles();
+  const { host, sealed, root } = await sealFromCanonical(files);
+  const manifest = host.files[keyOf({
+    project: PROJECT,
+    level: 4,
+    folder: `${MODULE}/pipeline/changes/${sealed.changeId}/revisions/${sealed.revisionId}`,
+    shortName: 'manifest',
+    extension: '.json',
+  })];
+  assert.ok(manifest);
+  const parsed = JSON.parse(manifest.content) as { changedPaths?: unknown };
+  delete parsed.changedPaths;
+  manifest.content = `${JSON.stringify(parsed, null, 2)}\n`;
+  try {
+    setModuleRoot(MODULE, root);
+    await assert.rejects(runPlDiff(MODULE), /changedPaths/);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
+});
+
 void test('p4_35: a field title change is one text-only field changed item', () => {
   const base = paciente({ title: 'Sexo', description: 'Sexo informado', values: [{ value: 'M', title: 'M' }] });
   const next = paciente({ title: 'Sexo biológico', description: 'Sexo informado', values: [{ value: 'M', title: 'M' }] });

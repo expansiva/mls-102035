@@ -362,6 +362,7 @@ export type L4DiffOp = (typeof L4_DIFF_OPS)[number];
 
 export const L4_DIFF_KINDS = [
   'entity', 'field', 'transition', 'rule', 'grant', 'process', 'task', 'inbound', 'outbound',
+  'artifact',
 ] as const;
 export type L4DiffKind = (typeof L4_DIFF_KINDS)[number];
 
