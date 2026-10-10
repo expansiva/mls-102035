@@ -386,7 +386,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.expectedChangeId = null;
       this.expectedRevisionId = null;
       this.version = 'asis';
-      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName, version: 'asis' } }));
       await this.loadModule();
     } catch (error) {
       if (contextStillCurrent(context, this)) this.mutationError = this.revisionError(error);
