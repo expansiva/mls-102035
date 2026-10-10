@@ -323,7 +323,7 @@ export async function readNs5Overlay(
   const errors: Array<{ path: string; message: string }> = [];
   const historicalId = historicalReleaseId(version);
   if (historicalId && !await readL4Release(project, moduleName, historicalId)) throw new Error('Historical release is incomplete.');
-  let active = historicalId ? null : await readActiveL4Change(project, moduleName);
+  let active = version === 'tobe' ? await readActiveL4Change(project, moduleName) : null;
   if (version === 'tobe' && !active) active = (await prepareL4Change(project, moduleName, await readManifest(project, moduleName))).change;
   const baseId = historicalId ?? active?.baseId;
   const reading = version === 'tobe' ? 'tobe' : 'asis';
@@ -346,7 +346,7 @@ export async function readNs5Overlay(
   const ontologyPlan = !historicalId && isNs5OntologyV3(ontologyIndex.value)
     ? await readJson<Ns5OntologyV3PlanDraft>(pipelineJsonFileForProject(project, moduleName, 'ontology30-plan-draft'))
     : null;
-  const storedManifest = historicalId ? null : await readManifest(project, moduleName);
+  const storedManifest = version === 'tobe' ? await readManifest(project, moduleName) : null;
   const manifest = storedManifest && active ? { ...storedManifest, changeId: active.changeId, revisionId: active.activeRevisionId ?? undefined, baseId: active.baseId } : storedManifest;
   let sealedRevision: L4SealedCandidateSnapshot | null = null;
   if (version === 'tobe' && active?.activeRevisionId) {

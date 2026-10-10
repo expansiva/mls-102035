@@ -225,6 +225,56 @@ test('runtime overlay saves one artifact, detects stale base, and discards with 
   assert.ok(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/plan')));
 });
 
+test('Current reads live L4 while preparation and history retain their own source and metadata', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const captured = { ...fixture.source.module, title: 'Captured title', description: 'Captured description' };
+  fixture.add('module.defs.ts', captured);
+  const snapshot = () => ({
+    contents: [...fixture.contents],
+    files: Object.entries(fixture.files).map(([key, file]) => [key, { ...file }]),
+  });
+  const beforePreparation = snapshot();
+  const initial = await readNs5Overlay(project, moduleName, 'asis');
+  assert.equal(initial.sources.module.value?.title, captured.title);
+  assert.deepEqual(snapshot(), beforePreparation);
+  const edited = { ...captured, title: 'Prepared title', description: 'Prepared description' };
+  const saved = await saveTobeArtifact(project, moduleName, 'module.defs.ts', edited, {
+    author: 'tester', expectedRevisionId: null,
+  });
+  assert.ok(saved.baseId && saved.changeId && saved.revisionId);
+  fixture.add('module.defs.ts', { ...captured, title: 'Localizar paciente', description: 'Live description' });
+  const beforeCurrentRead = snapshot();
+  const current = await readNs5Overlay(project, moduleName, 'asis');
+  assert.equal(current.sources.module.value?.title, 'Localizar paciente');
+  assert.equal(current.sources.module.value?.description, 'Live description');
+  assert.equal(current.sources.module.source, 'asis');
+  assert.equal(current.manifest, null);
+  assert.equal(current.changeId, null);
+  assert.equal(current.revisionId, null);
+  assert.equal(current.sealedRevision, null);
+  assert.deepEqual(current.stalePaths, []);
+  assert.deepEqual(current.diffs, []);
+  assert.deepEqual(snapshot(), beforeCurrentRead);
+  const prepared = await readNs5Overlay(project, moduleName, 'tobe');
+  assert.deepEqual(prepared.sources.module.value, edited);
+  assert.equal(prepared.manifest?.baseId, saved.baseId);
+  assert.equal(prepared.changeId, saved.changeId);
+  assert.equal(prepared.revisionId, saved.revisionId);
+  assert.deepEqual(prepared.stalePaths, ['module.defs.ts']);
+  assert.deepEqual(prepared.diffs[0]?.entries, [
+    { jsonPath: '$.description', before: captured.description, after: edited.description },
+    { jsonPath: '$.title', before: captured.title, after: edited.title },
+  ]);
+  const history = await readNs5Overlay(project, moduleName, `release:${saved.baseId}`);
+  assert.deepEqual(history.sources.module.value, captured);
+  assert.equal(history.manifest, null);
+  assert.equal(history.changeId, null);
+  assert.equal(history.revisionId, null);
+  assert.deepEqual(history.stalePaths, []);
+});
+
 test('runtime full discard removes every prepared artifact and the manifest', async () => {
   const project = 102047;
   const moduleName = 'ordenServicio5';
