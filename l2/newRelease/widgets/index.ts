@@ -23,6 +23,7 @@ import {
 import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import { discardTobe, saveTobeArtifact } from '/_102035_/l2/newRelease/tobe.js';
+import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
 import { type NewReleaseValidationIssue, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   NEW_RELEASE_CHANGED_EVENT,
@@ -421,7 +422,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderDiffs() {
-    const diffs = this.data?.diffs ?? [];
+    const diffs = visibleDiffs(this.data?.diffs ?? [], this.activeTab);
     if (!diffs.length) return nothing;
     return html`
       <details class="nr-index__diff">
@@ -602,7 +603,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
         ${this.renderTabs()}
 
-        ${!this.loading && this.data?.module ? this.renderRequest() : nothing}
+        ${!this.loading && this.data?.module && this.activeTab !== 'review' ? this.renderRequest() : nothing}
         ${!this.loading && this.data?.baseProvenance?.status === 'unverified' ? html`<p class="nr-index__base-warning" role="status">${this.t('request.baseUnverified')}</p>` : nothing}
 
         ${this.renderTobeStatus()}
