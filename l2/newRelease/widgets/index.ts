@@ -637,12 +637,19 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   render() {
     const historical = !!historicalReleaseId(this.version);
+    const pendingChanges = !this.loading && this.version === 'tobe' && this.data?.module
+      ? visibleDiffs(this.data.diffs, 'review').reduce((count, diff) => count + diff.entries.length, 0)
+      : null;
     return html`
       <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
         ${this.renderTabs()}
+        ${pendingChanges !== null ? html`<p class="nr-index__changes-summary" role="status">${this.t(
+          pendingChanges === 0 ? 'tobe.noChanges' : pendingChanges === 1 ? 'tobe.onePendingChange' : 'tobe.pendingChanges',
+          { count: pendingChanges },
+        )}</p>` : nothing}
 
         ${!this.loading && this.data?.module && this.activeTab !== 'review' ? this.renderRequest() : nothing}
-        ${!this.loading && this.data?.baseProvenance?.status === 'unverified' ? html`<p class="nr-index__base-warning" role="status">${this.t('request.baseUnverified')}</p>` : nothing}
+        ${!this.loading && this.version !== 'tobe' && this.data?.baseProvenance?.status === 'unverified' ? html`<p class="nr-index__base-warning" role="status">${this.t('request.baseUnverified')}</p>` : nothing}
 
         ${this.renderTobeStatus()}
 
