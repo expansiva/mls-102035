@@ -14,7 +14,7 @@ import { claimInputForRun } from '../newRelease/helpers/reviewRunWorker.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
 import { acceptL4Implementation, readL4Implementation } from '../solution/candidate/moduleImplementation.js';
 import { promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
-import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './cenario.js';
+import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './nodejsCenario.js';
 import { effortRegistry } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
 import { buildChangeEffortView } from '../newRelease/widgets/changeEffortModel.js';

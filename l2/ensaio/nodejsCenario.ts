@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/ensaio/cenario.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/ensaio/nodejsCenario.ts" enhancement="_blank" />
 
 import * as plannerL4 from '/_102035_/l2/agentPlannerL4/agentPlannerL4.js';
 import * as plannerL2 from '/_102020_/l2/agentPlannerL2/agentPlannerL2.js';
@@ -18,7 +18,7 @@ import { prepareReviewStartInput } from '../newRelease/helpers/reviewStart.js';
 import { readActiveSealedL4Candidate, resolveL4Folders } from '../solution/candidate/moduleRevision.js';
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
 import { runUntilDone, createMemoryIndexedDb } from './hostSimulado.js';
-import { createHubEmMemoria } from './hubEmMemoria.js';
+import { createHubEmMemoria } from './nodejsHubEmMemoria.js';
 import { setDescribeEffortImporter } from '/_102035_/l2/solution/effortRegistry.js';
 
 export const FIXTURE = new URL('../newRelease/fixtures/ensaio/controleEstoque/', import.meta.url);

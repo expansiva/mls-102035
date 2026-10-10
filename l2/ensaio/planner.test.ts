@@ -9,7 +9,7 @@ import { mergeChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate
 import { writeJson } from '/_102035_/l2/solution/fs.js';
 import { listPoolBox } from '/_102035_/l2/solution/pool.js';
 import type { ChangeEffortFile, EffortAnswer, EffortInput } from '/_102035_/l2/solution/poolPlan.js';
-import { installAgendaClinicaEffortFixture, withReviewScenario, runPlannerScenario, MODULE } from './cenario.js';
+import { installAgendaClinicaEffortFixture, withReviewScenario, runPlannerScenario, MODULE } from './nodejsCenario.js';
 
 const GOLDEN = JSON.parse(readFileSync(new URL(
   '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json',

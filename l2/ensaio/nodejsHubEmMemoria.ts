@@ -1,4 +1,4 @@
-/// <mls fileReference="_102035_/l2/ensaio/hubEmMemoria.ts" enhancement="_blank" />
+/// <mls fileReference="_102035_/l2/ensaio/nodejsHubEmMemoria.ts" enhancement="_blank" />
 
 import {
   candidateRead, candidatePublish, candidateMarkResult,

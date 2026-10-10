@@ -8,7 +8,7 @@ import { createImplementationRunner } from '../newRelease/helpers/implementation
 import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord } from '../solution/candidate/moduleImplementation.js';
 import { adoptL4ReviewResult, promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
-import { createSimulatedDefsHost, withReviewScenario, runPlannerScenario, PROJECT, MODULE } from './cenario.js';
+import { createSimulatedDefsHost, withReviewScenario, runPlannerScenario, PROJECT, MODULE } from './nodejsCenario.js';
 import { effortRegistry } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
 
