@@ -278,11 +278,12 @@ export function buildReviewActionPresentation(input: ReviewPrimaryActionInput): 
   };
 }
 
-export function buildReviewActionPlacements(action: ReviewPrimaryActionPresentation): readonly ReviewPrimaryActionPlacement[] {
-  return [
-    { placement: 'top', action, announceError: true },
-    { placement: 'bottom', action, announceError: false },
-  ];
+export function reviewResultVisible(input: Pick<ReviewPrimaryActionInput, 'version' | 'loading' | 'current' | 'resultCurrent'>): boolean {
+  return !input.loading && input.current && (input.version !== 'tobe' || input.resultCurrent);
+}
+
+export function buildReviewActionPlacements(action: ReviewPrimaryActionPresentation, version: ReviewPrimaryActionInput['version'] = 'tobe'): readonly ReviewPrimaryActionPlacement[] {
+  return version === 'tobe' ? [{ placement: 'top', action, announceError: true }] : [];
 }
 
 export function beginReviewPrimaryAction(action: ReviewPrimaryActionPresentation): { accepted: boolean; busy: boolean } {

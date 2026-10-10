@@ -19,6 +19,7 @@ import {
   resolveSelectedActor,
   REVIEW_ALL_ACTORS,
   reviewExpansionKey,
+  reviewResultVisible,
   sameReviewStartSnapshot,
   toggleReviewExpansion,
   toggleReviewSelection,
@@ -27,6 +28,7 @@ import {
   type ReviewTreeNode,
   type ReviewView,
 } from './reviewModel.js';
+import { buildChangeEffortView } from './changeEffortModel.js';
 import { MENU_ACTIONS, MENU_SCHEMA_VERSION, type MenuStampedNode } from '/_102035_/l2/solution/poolPlan.js';
 import { L4_IMPLEMENTATION_SCHEMA, type L4ImplementationRecord, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 
@@ -428,14 +430,16 @@ test('failed review offers explicit retry until the attempt limit is exhausted',
   assert.equal(retry.labelKey, 'review.retry');
   assert.equal(retry.descriptionKey, 'review.actionRetryBody');
   assert.equal(retry.disabled, false);
+  assert.equal(buildReviewActionPlacements(retry).length, 1);
 
   const exhausted = buildReviewActionPresentation({ ...base, retryAvailable: false });
   assert.equal(exhausted.kind, 'unavailable');
   assert.equal(exhausted.descriptionKey, 'review.actionRetryExhausted');
   assert.equal(exhausted.disabled, true);
+  assert.equal(buildReviewActionPlacements(exhausted).length, 1);
 });
 
-test('review action placements share one state, announce one error and deduplicate while busy', () => {
+test('review has one action placement, announces errors and prevents a second dispatch while busy', () => {
   const input = {
     viewKind: 'pending' as const,
     version: 'tobe' as const,
@@ -451,14 +455,17 @@ test('review action placements share one state, announce one error and deduplica
   const available = buildReviewActionPresentation(input);
   assert.equal(available.disabled, false);
   const placements = buildReviewActionPlacements(available);
-  assert.equal(placements.length, 2);
-  assert.equal(placements[0].action, placements[1].action);
+  assert.equal(placements.length, 1);
+  assert.equal(placements[0].action, available);
+  for (const version of ['asis', 'release:past'] as const)
+    assert.deepEqual(buildReviewActionPlacements(available, version), []);
   assert.equal(placements.filter(block => block.announceError).length, 1);
   assert.deepEqual(beginReviewPrimaryAction(available), { accepted: true, busy: true });
   const busy = buildReviewActionPresentation({ ...input, busy: true, error: 'review failed' });
   assert.equal(busy.disabled, true);
   assert.equal(busy.labelKey, 'review.actionBusy');
   assert.equal(busy.error, 'review failed');
+  assert.equal(buildReviewActionPlacements(busy).length, 1);
   assert.deepEqual(beginReviewPrimaryAction(busy), { accepted: false, busy: true });
 });
 
@@ -588,4 +595,24 @@ test('pending tobe changes hide the menu even when a valid menu is present', () 
 test('actor key strips the actor: prefix', () => {
   assert.equal(actorIdFromKey('actor:profissional'), 'profissional');
   assert.equal(actorIdFromKey('recepcionista'), 'recepcionista');
+});
+
+test('mr_33: tobe results require current completed load; current blocked effort remains visible', () => {
+  const input = { version: 'tobe' as const, loading: false, current: true, resultCurrent: true };
+  const blocked = structuredClone(changeEffort);
+  blocked.perItem[0].answers[0].status = 'abend';
+  blocked.perItem[0].answers[0].abend = { reason: 'unavailable' };
+  blocked.merged.abend = [{ item: blocked.perItem[0].item, master: blocked.perItem[0].answers[0].master, reason: 'unavailable' }];
+  blocked.status = 'blocked';
+  const effort = buildChangeEffortView({ status: 'ok', path: '', value: blocked });
+  assert.equal(effort.kind, 'ready');
+  assert.equal(effort.status, 'blocked');
+  assert.equal(reviewResultVisible(input), true);
+  assert.equal(reviewResultVisible({ ...input, resultCurrent: false }), false);
+  assert.equal(reviewResultVisible({ ...input, loading: true }), false);
+  assert.equal(reviewResultVisible({ ...input, current: false }), false);
+  for (const version of ['asis', 'release:past'] as const) {
+    assert.equal(reviewResultVisible({ ...input, version, resultCurrent: false }), true);
+    assert.equal(reviewResultVisible({ ...input, version, current: false }), false);
+  }
 });

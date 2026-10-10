@@ -51,6 +51,7 @@ import {
   openReviewExpansionKeys,
   REVIEW_ALL_ACTORS,
   reviewExpansionKey,
+  reviewResultVisible,
   toggleReviewExpansion,
   type ReviewNodeDetail,
   type ReviewNodeScope,
@@ -1223,21 +1224,22 @@ export class NewReleaseReview102035 extends StateLitElement {
     const current = this.isCurrentLoad();
     const changeEffort = buildChangeEffortView(this.changeEffortRead);
     const action = this.actionPresentation(view, current);
-    const [topAction, bottomAction] = buildReviewActionPlacements(action);
+    const actions = buildReviewActionPlacements(action, this.version);
+    const resultVisible = reviewResultVisible({ version: this.version, loading: this.loading, current, resultCurrent: this.data?.resultCurrent === true });
     return html`
       <section class="nr-review">
-        <header class="nr-review__hero">
+        ${resultVisible ? html`<header class="nr-review__hero">
           <div>
             <span>${this.t(changeEffort.kind === 'missing' ? 'review.eyebrow' : 'review.effort.eyebrow')}</span>
             <h2>${this.t(changeEffort.kind === 'missing' ? 'review.title' : 'review.effort.title')}</h2>
             <p>${this.t(changeEffort.kind === 'missing' ? 'review.description' : 'review.effort.description')}</p>
           </div>
-        </header>
-        ${this.hasImplementation() ? this.renderImplementation('top') : this.renderPrimaryAction(topAction)}
+        </header>` : nothing}
+        ${this.hasImplementation() ? this.renderImplementation('top') : actions.map(block => this.renderPrimaryAction(block))}
         ${this.renderReviewRun()}
-        ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : changeEffort.kind !== 'missing' ? this.renderChangeEffort(changeEffort) : html`${this.renderMenu(view)}${this.renderBackend(view)}`}
-        ${this.hasImplementation() ? this.renderImplementation('bottom') : this.renderPrimaryAction(bottomAction)}
-        ${current && !this.version.startsWith('release:') ? this.renderPool() : nothing}
+        ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : resultVisible ? changeEffort.kind !== 'missing' ? this.renderChangeEffort(changeEffort) : html`${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
+        ${this.hasImplementation() ? this.renderImplementation('bottom') : nothing}
+        ${resultVisible && !this.version.startsWith('release:') ? this.renderPool() : nothing}
       </section>
     `;
   }
