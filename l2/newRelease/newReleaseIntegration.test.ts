@@ -136,3 +136,22 @@ test('presentation environment badge is hidden while Studio is active', () => {
   assert.match(shell, /getElementById\('collab-env-badge'\)/);
   assert.match(shell, /environmentBadge\.hidden\s*=\s*this\.studioModeOn/);
 });
+
+
+test('review composition hides its request and stale summary while other tabs retain scoped diffs', () => {
+  const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
+  assert.match(index, /this\.activeTab !== 'review' \? this\.renderRequest\(\)/);
+  assert.match(index, /this\.activeTab === 'review' && this\.version === 'tobe' && !this\.data\?\.resultCurrent\) return nothing/);
+  assert.match(index, /visibleDiffs\(this\.data\?\.diffs \?\? \[\], this\.activeTab\)/);
+  assert.match(index, /this\.renderTobeStatus\(\)/);
+});
+
+test('QA runner checks one calculation only in tobe and keeps protected result and diff checks', () => {
+  const qa = readFileSync(new URL('./qaPreview.ts', import.meta.url), 'utf8');
+  assert.match(qa, /element\.version === 'tobe' \? 1 : 0/);
+  assert.doesNotMatch(qa, /ctaPlacementsDiverged/);
+  for (const failure of ['reviewRequestVisible', 'reviewDiffMismatch', 'tabDiffMismatch', 'previousResultVisible', 'changeEffortInvalidMissing', 'changeEffortContentMissing', 'protectedRequestAttempted', 'implementationCtaVisible']) {
+    assert.ok(qa.includes(`qa.${failure}`), failure);
+  }
+  assert.match(qa, /\['tobe', 'asis', 'release:qa-history'\]/);
+});

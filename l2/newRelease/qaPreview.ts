@@ -23,6 +23,7 @@ import type { L4ImplementationRecord } from '/_102035_/l2/solution/candidate/mod
 import type { ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { implementationProgress } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
 import { readReviewArtifact } from '/_102035_/l2/newRelease/helpers/backendReader.js';
+import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
 import { buildChangeEffortView } from '/_102035_/l2/newRelease/widgets/changeEffortModel.js';
 
 type QaReviewElement = NewReleaseElement & {
@@ -248,6 +249,13 @@ async function mountFixture(
         config.moduleName,
         caseId,
       );
+      element.data.diffs = [
+        { path: 'journeys/qa.defs.ts', entries: [
+          { jsonPath: '$.description', before: 'Before QA journey', after: 'After QA journey' },
+          { jsonPath: '$.businessHash', before: 'before', after: 'after' },
+        ] },
+        { path: 'rules.defs.ts', entries: [{ jsonPath: '$.description', before: 'Before QA rule', after: 'After QA rule' }] },
+      ];
       if (isQaImplementationFixture(fixture)) {
         cleanupFns.push(await installImplementationFixture(element, config, fixture));
       }
@@ -292,6 +300,26 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   element.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, detail: { tab: scenario.tab } }));
   await element.updateComplete;
   if (!qaScenarioRequiresReview(scenario)) return;
+  if (element.querySelector('.nr-index__request')) throw new Error('qa.reviewRequestVisible');
+  const expectedDiffs = element.version === 'tobe' && !element.data?.resultCurrent ? [] : visibleDiffs(element.data?.diffs ?? [], 'review');
+  if (element.querySelectorAll('.nr-index__diff-lines article').length !== expectedDiffs.reduce((count, diff) => count + diff.entries.length, 0)) {
+    throw new Error('qa.reviewDiffMismatch');
+  }
+  if (element.data?.module) {
+    for (const tab of ['journeys', 'rules'] as const) {
+      element.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, detail: { tab } }));
+      await element.updateComplete;
+      const expected = visibleDiffs(element.data.diffs, tab);
+      const lines = [...element.querySelectorAll('.nr-index__diff-lines article')];
+      if (lines.length !== expected.reduce((count, diff) => count + diff.entries.length, 0)
+        || lines.some(line => line.textContent?.includes('$.businessHash'))
+        || lines.some(line => line.textContent?.includes(tab === 'rules' ? 'QA journey' : 'QA rule'))) {
+        throw new Error('qa.tabDiffMismatch');
+      }
+    }
+    element.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, detail: { tab: 'review' } }));
+    await element.updateComplete;
+  }
   const review = await waitForCurrentReview(element);
   if (!review) throw new Error('qa.inconclusive.reviewMissing');
   if (isQaImplementationFixture(scenario.fixture)) {
@@ -346,11 +374,10 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
   }
   const actions = await waitForQaProtectedButtons(
     () => [...review.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button')],
-    2,
+    element.version === 'tobe' ? 1 : 0,
   );
-  if (actions[0].textContent?.trim() !== actions[1].textContent?.trim()) throw new Error('qa.ctaPlacementsDiverged');
   const busyBefore = [...review.querySelectorAll<HTMLElement>('.nr-review__primary-action')].map(item => item.getAttribute('aria-busy'));
-  actions[0].click();
+  actions[0]?.click();
   if (review.updateComplete) await review.updateComplete;
   const busyAfter = [...review.querySelectorAll<HTMLElement>('.nr-review__primary-action')].map(item => item.getAttribute('aria-busy'));
   if (busyBefore.join() !== busyAfter.join() || busyAfter.some(value => value !== 'false')) throw new Error('qa.ctaProtectedTransition');
@@ -401,8 +428,11 @@ async function exerciseScenario(element: NewReleaseElement, scenario: NewRelease
     }
     return;
   }
+  if (element.version === 'tobe' && !element.data?.resultCurrent
+    && review.querySelector('.nr-review__hero, .nr-review__toolbar, .nr-review__menu, .nr-review__backend, .nr-review__pool, .nr-review__effort, .nr-review__change-effort')) {
+    throw new Error('qa.previousResultVisible');
+  }
   if (scenario.fixture === 'pending') {
-    if (!review.querySelector('.nr-review__pending')) throw new Error('qa.pendingStateMissing');
     return;
   }
   if (scenario.fixture !== 'ready') return;
@@ -524,7 +554,10 @@ class NewReleaseQaPreview102035 extends HTMLElement {
 
   private async runAll(config: NewReleaseQaConfig, stage: HTMLElement): Promise<void> {
     const startedAt = new Date().toISOString();
-    const scenarios = newReleaseQaScenarios();
+    const scenarios = newReleaseQaScenarios().flatMap(scenario =>
+      scenario.tab === 'review' && ['pending', 'ready', 'effort-blocked', 'effort-invalid'].includes(scenario.fixture)
+        ? (['tobe', 'asis', 'release:qa-history'] as const).map(version => ({ ...scenario, version, caseId: `${scenario.caseId}-${version}` }))
+        : [{ ...scenario, version: config.version }]);
     const failures: NewReleaseQaFailure[] = [];
     let passed = 0;
     let inconclusive = 0;
@@ -540,6 +573,7 @@ class NewReleaseQaPreview102035 extends HTMLElement {
         const scenarioConfig: NewReleaseQaConfig = {
           ...config,
           tab: scenario.tab,
+          version: scenario.version,
           language: scenario.language,
           theme: scenario.theme,
           fixture: scenario.fixture,

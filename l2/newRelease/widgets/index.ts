@@ -422,6 +422,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderDiffs() {
+    if (this.activeTab === 'review' && this.version === 'tobe' && !this.data?.resultCurrent) return nothing;
     const diffs = visibleDiffs(this.data?.diffs ?? [], this.activeTab);
     if (!diffs.length) return nothing;
     return html`
