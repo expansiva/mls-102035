@@ -297,19 +297,72 @@ test('Current reads live L4 while preparation and history retain their own sourc
   assert.equal(historicalModule.baseProvenance, null);
 });
 
-test('runtime full discard removes every prepared artifact and the manifest', async () => {
+test('runtime full discard clears the preparation and a new edit captures the current L4', async () => {
   const project = 102047;
   const moduleName = 'ordenServicio5';
   const fixture = installStorFixture(project, moduleName);
-  const first = await saveTobeArtifact(project, moduleName, 'module.defs.ts', fixture.source.module, { author: 'tester@example.com', expectedRevisionId: null });
-  await saveTobeArtifact(project, moduleName, 'rules.defs.ts', fixture.source.rules, { author: 'tester@example.com', expectedRevisionId: first.revisionId ?? null });
+  const originals = new Map(fixture.contents);
+  const oldModule = { ...fixture.source.module, title: 'Cancelled title' };
+  const oldRules = { ...fixture.source.rules, rules: [] };
+  const first = await saveTobeArtifact(project, moduleName, 'module.defs.ts', oldModule, { author: 'tester@example.com', expectedRevisionId: null });
+  const second = await saveTobeArtifact(project, moduleName, 'rules.defs.ts', oldRules, {
+    author: 'tester@example.com', expectedChangeId: first.changeId, expectedRevisionId: first.revisionId ?? null,
+  });
+  const request = await saveChangeRequest(project, moduleName, 'Cancelled request', second.changeId!, second.revisionId!);
+  const oldPreparation = await readNs5Overlay(project, moduleName, 'tobe');
+  assert.deepEqual(oldPreparation.sources.module.value, oldModule);
+  assert.deepEqual(oldPreparation.sources.rules.value, oldRules);
+  assert.equal(oldPreparation.sealedRevision?.request, 'Cancelled request');
+  assert.equal(oldPreparation.changeId, first.changeId);
+  assert.equal(oldPreparation.revisionId, request.revisionId);
+  assert.ok(first.baseId);
+  const history = new Map([...fixture.contents].filter(([key]) => key.includes(`${moduleName}/pipeline/releases/${first.baseId}`) || key.includes(`${moduleName}/pipeline/changes/${first.changeId}`)));
+  assert.ok(history.size);
+  for (const [key, content] of originals) assert.equal(fixture.contents.get(key), content);
 
+  const liveModule = { ...fixture.source.module, title: 'Current title after regeneration', description: 'Current description after regeneration' };
+  fixture.add('module.defs.ts', liveModule);
+  const liveOriginals = new Map([...fixture.contents].filter(([key]) => originals.has(key)));
   const discarded = await discardTobe(project, moduleName);
   assert.equal(discarded.manifest, null);
   assert.ok(discarded.deleted.some(path => path.endsWith('/module.defs.ts')));
   assert.ok(discarded.deleted.some(path => path.endsWith('/rules.defs.ts')));
   assert.ok(discarded.deleted.some(path => path.endsWith('/tobe.json')));
   assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/plan')), false);
+  assert.equal(await readActiveL4Change(project, moduleName), null);
+  assert.equal(await readChangeRequest(project, moduleName), null);
+  const current = await readNs5Overlay(project, moduleName, 'asis');
+  assert.deepEqual(current.sources.module.value, liveModule);
+  assert.deepEqual(current.sources.rules.value, fixture.source.rules);
+  assert.equal(current.manifest, null);
+  assert.equal(current.changeId, null);
+  assert.equal(current.revisionId, null);
+  for (const [key, content] of liveOriginals) assert.equal(fixture.contents.get(key), content);
+  for (const [key, content] of history) assert.equal(fixture.contents.get(key), content);
+  assert.deepEqual((await readNs5Overlay(project, moduleName, `release:${first.baseId}`)).sources.module.value, fixture.source.module);
+
+  const newModule = { ...liveModule, description: 'New preparation description' };
+  const fresh = await saveTobeArtifact(project, moduleName, 'module.defs.ts', newModule, {
+    author: 'tester@example.com', expectedChangeId: null, expectedRevisionId: null, jsonPath: '$.description',
+  });
+  assert.ok(fresh.changeId && fresh.revisionId && fresh.baseId);
+  assert.notEqual(fresh.changeId, first.changeId);
+  assert.notEqual(fresh.revisionId, request.revisionId);
+  assert.notEqual(fresh.baseId, first.baseId);
+  const newPreparation = await readNs5Overlay(project, moduleName, 'tobe');
+  assert.deepEqual(newPreparation.sources.module.value, newModule);
+  assert.deepEqual(newPreparation.sources.rules.value, fixture.source.rules);
+  assert.equal(newPreparation.sealedRevision?.request, '');
+  assert.equal((await readChangeRequest(project, moduleName))?.text || '', '');
+  assert.deepEqual(newPreparation.manifest?.base, { 'module.defs.ts': await sha256Tobe(liveModule) });
+  assert.deepEqual(newPreparation.manifest?.changes.map(change => [change.path, change.jsonPath]), [['module.defs.ts', '$.description']]);
+  assert.deepEqual(newPreparation.stalePaths, []);
+  assert.deepEqual(newPreparation.diffs.map(diff => [diff.path, diff.entries]), [
+    ['module.defs.ts', [{ jsonPath: '$.description', before: liveModule.description, after: newModule.description }]],
+  ]);
+  assert.deepEqual((await readNs5Overlay(project, moduleName, `release:${fresh.baseId}`)).sources.module.value, liveModule);
+  for (const [key, content] of liveOriginals) assert.equal(fixture.contents.get(key), content);
+  for (const [key, content] of history) assert.equal(fixture.contents.get(key), content);
 });
 
 test('base snapshot is complete, byte-stable and separate from the temporary candidate', async () => {
