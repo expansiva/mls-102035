@@ -1,13 +1,14 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/candidateWorkerGate.ts" enhancement="_blank" />
 
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
-import { readL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { buildCandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { outputRevisionIdForRun, type PlatformReviewRun } from '/_102035_/l2/newRelease/helpers/reviewRunWorker.js';
 
 export interface CandidateWorkerGateDependencies {
   readSourceText?: typeof readSourceText;
-  readL4Revision?: typeof readL4Revision;
+  readSealedL4Candidate?: typeof readSealedL4Candidate;
 }
 
 export async function readCandidateWorkerGate(run: PlatformReviewRun, dependencies: CandidateWorkerGateDependencies = {}): Promise<{
@@ -34,12 +35,18 @@ export async function readCandidateWorkerGate(run: PlatformReviewRun, dependenci
     return { snapshotHash };
   }
   let localManifestHash: string;
+  let wireSnapshotHash: string;
   try {
-    const localRevision = await (dependencies.readL4Revision ?? readL4Revision)(
+    const sealed = await (dependencies.readSealedL4Candidate ?? readSealedL4Candidate)(
       run.binding.project, run.binding.moduleName, run.binding.changeId, outputRevisionId,
     );
-    if (!localRevision) return { snapshotHash, pipelineComplete: false };
-    localManifestHash = await sha256Tobe(localRevision.files);
+    if (!sealed) return { snapshotHash, pipelineComplete: false };
+    localManifestHash = await sha256Tobe(sealed.manifest.files);
+    wireSnapshotHash = (await buildCandidateSnapshot({
+      baseId: sealed.manifest.baseId, requestRevision: sealed.manifest.requestRevision,
+      request: sealed.request, sources: sealed.sources,
+    })).hash;
+    if (wireSnapshotHash !== manifest.outputSnapshotHash) return { snapshotHash, pipelineComplete: false };
   } catch {
     return { snapshotHash, pipelineComplete: false };
   }
@@ -51,7 +58,7 @@ export async function readCandidateWorkerGate(run: PlatformReviewRun, dependenci
     && pipeline.flowId === 'agentReviewSolution' && pipeline.moduleName === run.binding.moduleName
     && pipeline.status === 'complete' && revision?.changeId === run.binding.changeId
     && revision.revisionId === outputRevisionId && revision.baseId === run.binding.baseId
-    && revision.manifestHash === localManifestHash
+    && (revision.manifestHash === localManifestHash || revision.manifestHash === wireSnapshotHash)
     && reviewSeal?.schemaVersion === '2026-09-22-agent-review-planner-seal-v1'
     && reviewSeal.flowId === 'agentReviewSolution' && reviewSeal.moduleName === run.binding.moduleName
     && sealRevision?.changeId === run.binding.changeId && sealRevision.revisionId === outputRevisionId
