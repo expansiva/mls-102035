@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
 import { writeJson } from '../solution/fs.js';
 import { readCandidateWorkerGate } from '../newRelease/helpers/candidateWorkerGate.js';
+import { claimInputForRun } from '../newRelease/helpers/reviewRunWorker.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
 import { acceptL4Implementation, readL4Implementation } from '../solution/candidate/moduleImplementation.js';
 import { promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
@@ -218,15 +219,22 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
     });
     const reviewedRun = await report(reviewClaim, progress);
     assert.equal(reviewedRun.status, 'planning', reviewedRun.errorCode || 'review evidence rejected');
+    const reviewedGate = await readCandidateWorkerGate(reviewedRun);
+    assert.equal(reviewedGate.pipelineComplete, true);
+    assert.equal(reviewedGate.snapshotHash, `sha256:${reviewedRun.candidateResult.manifest.outputSnapshotHash}`);
+    assert.equal(reviewedGate.pipelineSnapshotHash, `sha256:${reviewedRun.candidateResult.manifest.traceHash}`);
+    assert.ok(reviewedGate.pipelineSnapshotHash);
+    const pipelineSnapshotHash = reviewedGate.pipelineSnapshotHash;
+    const plannerClaimInput = claimInputForRun(reviewedRun, caller.userId, common.workerId,
+      common.canonicalSnapshotHash, reviewedGate);
+    const plannerClaim = await service.claimWork(caller, plannerClaimInput);
+    assert.ok(plannerClaim, JSON.stringify(stored));
+    assert.equal(plannerClaim.phase, 'planner');
     const planner = await runPlannerScenario(scenario.context);
     const pipelineFile = Object.values(mls.stor.files).find(file => file.project === PROJECT
       && file.folder === `${planner.candidate}/pipeline` && file.shortName === 'pipeline')!;
     const pipeline = JSON.parse(await pipelineFile.getContent());
-    const pipelineSnapshotHash = `sha256:${pipeline.reviewSealHash}`;
-    const plannerClaimInput = { ...common, pipelineStatus: 'complete', pipelineSnapshotHash,
-      candidateSnapshotHash: `sha256:${reviewedRun.candidateResult.manifest.outputSnapshotHash}` };
-    const plannerClaim = await service.claimWork(caller, plannerClaimInput);
-    assert.ok(plannerClaim, JSON.stringify(stored));
+    assert.equal(`sha256:${pipeline.reviewSealHash}`, pipelineSnapshotHash);
     const { createReviewStudioHost } = await import('../newRelease/helpers/reviewRunStudioWorker.js');
     const execution = { ...progress.executions[0], agentName: 'agentPlannerL4',
       taskId: planner.context.task!.PK.replace(/^task(?:\/#?|#)/u, ''), resultRunId: null, candidateRevisionId: null };
@@ -584,15 +592,22 @@ test(`mr_31 s3: retry ${foreignRequest ? 'executes when the hub belongs to anoth
     assert.equal(reviewedRun.executions[0].taskId, published.result.manifest.taskId);
     assert.equal(reviewedRun.executions[0].resultRunId, published.result.manifest.runId);
     assert.deepEqual(reviewedRun.candidateResult.manifest, published.result.manifest);
+    const reviewedGate = await readCandidateWorkerGate(reviewedRun);
+    assert.equal(reviewedGate.pipelineComplete, true);
+    assert.equal(reviewedGate.snapshotHash, `sha256:${reviewedRun.candidateResult.manifest.outputSnapshotHash}`);
+    assert.equal(reviewedGate.pipelineSnapshotHash, `sha256:${reviewedRun.candidateResult.manifest.traceHash}`);
+    assert.ok(reviewedGate.pipelineSnapshotHash);
+    const pipelineSnapshotHash = reviewedGate.pipelineSnapshotHash;
+    const plannerClaimInput = claimInputForRun(reviewedRun, caller.userId, common.workerId,
+      common.canonicalSnapshotHash, reviewedGate);
+    const plannerClaim = await service.claimWork(caller, plannerClaimInput);
+    assert.ok(plannerClaim, JSON.stringify(stored));
+    assert.equal(plannerClaim.phase, 'planner');
     const planner = await runPlannerScenario(scenario.context);
     const pipelineFile = Object.values(mls.stor.files).find(file => file.project === PROJECT
       && file.folder === `${planner.candidate}/pipeline` && file.shortName === 'pipeline')!;
     const pipeline = JSON.parse(await pipelineFile.getContent());
-    const pipelineSnapshotHash = `sha256:${pipeline.reviewSealHash}`;
-    const plannerClaimInput = { ...common, pipelineStatus: 'complete', pipelineSnapshotHash,
-      candidateSnapshotHash: `sha256:${reviewedRun.candidateResult.manifest.outputSnapshotHash}` };
-    const plannerClaim = await service.claimWork(caller, plannerClaimInput);
-    assert.ok(plannerClaim, JSON.stringify(stored));
+    assert.equal(`sha256:${pipeline.reviewSealHash}`, pipelineSnapshotHash);
     const execution = { ...progress.executions[0], attempt: plannerClaim.attempt, agentName: 'agentPlannerL4',
       taskId: planner.context.task!.PK.replace(/^task(?:\/#?|#)/u, ''), resultRunId: null, candidateRevisionId: null };
     const storage = new Map<string, string>();
@@ -618,6 +633,15 @@ test(`mr_31 s3: retry ${foreignRequest ? 'executes when the hub belongs to anoth
     const effortFile = Object.values(mls.stor.files).find(file =>
       `l4/${file.folder}/${file.shortName}${file.extension}` === changeEffort.path)!;
     assert.equal(effortArtifact.sha256, createHash('sha256').update(await effortFile.getContent()).digest('hex'));
+    const readyGate = await readCandidateWorkerGate(ready);
+    assert.equal(readyGate.pipelineComplete, true);
+    assert.equal(readyGate.pipelineSnapshotHash, pipelineSnapshotHash);
+    assert.equal(readyGate.snapshotHash, reviewedGate.snapshotHash);
+    pipeline.revision.manifestHash = `sha256:${'0'.repeat(64)}`;
+    await writeJson(pipelineFile, pipeline);
+    const rejectedGate = await readCandidateWorkerGate(ready);
+    assert.equal(rejectedGate.pipelineComplete, false);
+    assert.equal(rejectedGate.pipelineSnapshotHash, undefined);
     assert.equal(fetchCalls(), 0);
   }));
 });
