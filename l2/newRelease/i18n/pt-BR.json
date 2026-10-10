@@ -36,7 +36,7 @@
   "tobe.statusLabel": "Estado da versão preparada",
   "tobe.noChanges": "Sem alterações",
   "tobe.onePendingChange": "Com 1 alteração pendente",
-  "tobe.pendingChanges": "Com {count} alterações pendentes",
+  "tobe.pendingChanges": "Com {{count}} alterações pendentes",
   "tobe.byline": "Atualizado por {{author}} em {{date}}",
   "tobe.tabSource": "Esta aba possui dados preparados no tobe",
   "tobe.staleTitle": "A base desta preparação mudou",

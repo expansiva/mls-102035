@@ -36,7 +36,7 @@
   "tobe.statusLabel": "Prepared version status",
   "tobe.noChanges": "No changes",
   "tobe.onePendingChange": "1 pending change",
-  "tobe.pendingChanges": "{count} pending changes",
+  "tobe.pendingChanges": "{{count}} pending changes",
   "tobe.byline": "Updated by {{author}} on {{date}}",
   "tobe.tabSource": "This tab has prepared tobe data",
   "tobe.staleTitle": "The base for this preparation changed",
