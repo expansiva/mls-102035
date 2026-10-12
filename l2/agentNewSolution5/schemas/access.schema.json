@@ -67,11 +67,11 @@
         "mode": { "type": "string", "enum": ["fullRecord", "fieldsOnly", "summaryOnly", "aggregateOnly"] },
         "allowedFields": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(?:\\.[a-z][A-Za-z0-9]*)*$" }
         },
         "deniedFields": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*\\.(?:details\\.)?[a-z][A-Za-z0-9]*$" }
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(?:\\.[a-z][A-Za-z0-9]*)*$" }
         },
         "description": { "type": "string", "minLength": 1 }
       }

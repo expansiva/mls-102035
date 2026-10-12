@@ -38,6 +38,7 @@ import {
   applyNs5AccessFormNormalizations,
   buildNs5AccessArtifact,
   collectNs5AccessRefCatalog,
+  isAccessFieldRef,
   mergeNs5AccessActors,
   normalizeNs5AccessPayload,
   type Ns5AccessEntityView,
@@ -183,6 +184,39 @@ function gateOf(
     journeys: extras.journeys || ORDEN_JOURNEYS,
   });
 }
+
+void test('access60 disclosure field patterns match the gate field ref', () => {
+  const schema = loadSchema() as {
+    $defs: {
+      disclosure: {
+        properties: {
+          allowedFields: { items: { pattern: string } };
+          deniedFields: { items: { pattern: string } };
+        };
+      };
+    };
+  };
+  const patterns = [
+    schema.$defs.disclosure.properties.allowedFields.items.pattern,
+    schema.$defs.disclosure.properties.deniedFields.items.pattern,
+  ];
+  const accepted = [
+    'Comprador',
+    'Pedido.status',
+    'Comprador.details.identification.name',
+    'ContatoFornecedor.details.contactChannel.value',
+    'Paciente.details.base.contacts',
+  ];
+  const rejected = ['comprador.name', 'Pedido.', 'Pedido.Status', 'Pedido..status'];
+  for (const pattern of patterns) {
+    const re = new RegExp(pattern);
+    for (const sample of [...accepted, ...rejected]) {
+      const bySchema = re.test(sample);
+      assert.equal(isAccessFieldRef(sample), bySchema, `${pattern} ${sample}`);
+      assert.equal(bySchema, accepted.includes(sample), sample);
+    }
+  }
+});
 
 void test('access60 tool schema is provider-clean', () => {
   const tool = buildNs5AccessTool(loadSchema(), createNs4FlexibleWorkerTool);
