@@ -56,7 +56,7 @@ reads the whole record, use `fullRecord`; if the actor reads part of it, name th
   resolvable path of the grant entities and `deniedFields` would be empty.
 - `fieldsOnly` or `summaryOnly` — list `allowedFields` and/or `deniedFields` as a **proper**
   restriction (non-empty and not the complete resolvable set).
-- `aggregateOnly` — totals or counts, not row fields.
+- `aggregateOnly` — totals or counts, not row fields. On an entity whose record is already an aggregate (it declares an `aggregate.*` capability), use `fullRecord`: its fields are the totals.
 
 Omit `anchorEntity` unless `dataScope.mode` is `own`, `assigned` or `related`.
 

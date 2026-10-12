@@ -73,6 +73,8 @@ export interface Ns5AccessEntityView {
    * resolvable set. A v2 view never carries it, which is why nothing changes for the eleven v2 modules.
    */
   paths?: readonly string[];
+  /** True when the entity's own record is already an aggregate (`aggregate.*` capability). */
+  aggregate?: boolean;
 }
 
 export interface Ns5AccessRelationshipView {
@@ -135,6 +137,7 @@ export function mergeNs5AccessActors(
 
 /**
  * Post-LLM form cleanup: fieldsOnly with no real restriction becomes fullRecord;
+ * aggregateOnly over entities whose record is already an aggregate becomes fullRecord;
  * anchorEntity is dropped unless the scope is own/assigned/related;
  * own/assigned whose actor has a personEntity anchors on that person.
  */
@@ -172,6 +175,21 @@ export function applyNs5AccessFormNormalizations(
         kind: 'disclosureFullRecord',
         grantId: current.grantId,
         detail: 'fieldsOnly allowedFields covered every resolvable field; mode is fullRecord.',
+      });
+    }
+    if (
+      current.disclosure.mode === 'aggregateOnly'
+      && current.entityRefs.length > 0
+      && current.entityRefs.every(entityId => entityById.get(entityId)?.aggregate === true)
+    ) {
+      current = {
+        ...current,
+        disclosure: { mode: 'fullRecord', description: current.disclosure.description },
+      };
+      normalizations.push({
+        kind: 'disclosureFullRecord',
+        grantId: current.grantId,
+        detail: 'aggregateOnly covered only aggregate entities; mode is fullRecord.',
       });
     }
     if (current.dataScope.anchorEntity && !isPersonScopeMode(current.dataScope.mode)) {

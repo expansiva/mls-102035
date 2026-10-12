@@ -64,6 +64,11 @@ export interface Ns5OntologyEntityViewItem {
    * (`core|event|supporting`), which is what v2 put in `kind`. On a v2 entity it IS `kind`.
    */
   writerKind: string;
+  /**
+   * True when this entity's own record is already an aggregate: a v3 entity that declares a capability
+   * whose id starts with `aggregate.`. A v2 entity, or one with no such capability, is false.
+   */
+  aggregate: boolean;
   /** v2: declared. v3: derived from the subtype of a `role` (see the header). */
   party: 'person' | 'organization' | 'none' | string;
   /** v2 `mdmSubtype`, v3 `subtype` of a `role`. */
@@ -216,6 +221,7 @@ function viewOfV2(entity: Ns5OntologyEntityArtifact): Ns5OntologyEntityViewItem 
     description: entity.description,
     kind: entity.kind,
     writerKind: entity.kind,
+    aggregate: false,
     party: entity.party,
     ...(entity.mdmSubtype ? { mdmSubtype: entity.mdmSubtype } : {}),
     ...(entity.writer ? { writer: entity.writer } : {}),
@@ -246,6 +252,7 @@ function viewOfV3(entity: Ns5OntologyEntityV3): Ns5OntologyEntityViewItem {
     description: entity.description,
     kind: entity.kind,
     writerKind: entity.kind === 'role' ? 'mdm' : entity.class,
+    aggregate: Object.keys(entity.capabilities ?? {}).some(id => id.startsWith('aggregate.')),
     party,
     ...(subtype ? { mdmSubtype: subtype } : {}),
     ...(entity.writer ? { writer: entity.writer } : {}),

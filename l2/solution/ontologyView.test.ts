@@ -175,3 +175,18 @@ void test('the eleven recorded modules are all still v2 (ns5_43 T7 keeps them th
   assert.ok(views.length > 0);
   assert.ok(views.every(view => view.paths === undefined));
 });
+
+void test('aggregate is true only when a v3 entity declares an aggregate.* capability', () => {
+  assert.equal(ns5OntologyEntityView(CONSULTA).aggregate, false);
+
+  const panel = clone(CONSULTA);
+  (panel as { capabilities: Record<string, string> }).capabilities = {
+    ...panel.capabilities,
+    'aggregate.byWindow': 'totals over a window',
+  };
+  assert.equal(ns5OntologyEntityView(panel).aggregate, true);
+
+  const v2 = ns5OntologyEntityViews(loadNs5Entities('ordenServicio5'));
+  assert.ok(v2.length > 0);
+  assert.ok(v2.every(view => view.aggregate === false));
+});

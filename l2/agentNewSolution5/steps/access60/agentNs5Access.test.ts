@@ -98,7 +98,7 @@ function entity(
   entityId: string,
   party: Ns5AccessEntityView['party'],
   fields: string[],
-  extras: { details?: Record<string, string>; idField?: string } = {},
+  extras: { details?: Record<string, string>; idField?: string; aggregate?: boolean } = {},
 ): Ns5AccessEntityView {
   return {
     entityId,
@@ -106,6 +106,7 @@ function entity(
     fields: fields.map(fieldId => ({ fieldId })),
     ...(extras.details ? { details: extras.details } : {}),
     ...(extras.idField ? { storage: { idField: extras.idField } } : {}),
+    ...(extras.aggregate ? { aggregate: true } : {}),
   };
 }
 
@@ -631,6 +632,7 @@ void test('access60 prompt has no domain examples and keeps structured disclosur
   assert.match(prompt, /internal/);
   assert.match(prompt, /placeholders — use only ids that exist in the module/);
   assert.match(prompt, /proper/);
+  assert.match(prompt, /On an entity whose record is already an aggregate \(it declares an `aggregate\.\*` capability\), use `fullRecord`: its fields are the totals\./);
   assert.doesNotMatch(prompt, /## Authorities/);
   assert.doesNotMatch(prompt, /authorityRef|authorityId/);
   assert.match(prompt, /2026-09-12-ns5-access-v3/);
@@ -718,6 +720,53 @@ void test('live access of the three modules: fieldsOnly without restriction beco
   assert.equal(own?.disclosure.mode, 'fieldsOnly');
   assert.equal(own?.dataScope.anchorEntity, 'Aluno');
   assert.ok(academiaGrants.filter(grant => grant.disclosure.mode === 'fullRecord').length >= 4);
+});
+
+void test('aggregateOnly over only aggregate entities becomes fullRecord', () => {
+  const painel = entity('PainelRecebiveis', 'none', ['total'], { aggregate: true });
+  const linhas = entity('Recebivel', 'none', ['valor']);
+  const actors = actorsOf(['gerente']);
+  const aggregateOnly = (grantId: string, entityRefs: string[]): Ns5AccessGrant => ({
+    grantId,
+    actorRef: 'gerente',
+    title: 'Painel',
+    description: 'Totals.',
+    entityRefs,
+    dataScope: { mode: 'organization', description: 'The organization.' },
+    disclosure: {
+      mode: 'aggregateOnly',
+      description: 'Totals only.',
+      allowedFields: ['PainelRecebiveis.total'],
+      deniedFields: ['PainelRecebiveis.total'],
+    },
+  });
+
+  const onlyAggregate = applyNs5AccessFormNormalizations(
+    [aggregateOnly('gerentePainel', ['PainelRecebiveis'])],
+    [painel, linhas],
+    actors,
+  );
+  assert.equal(onlyAggregate.grants[0].disclosure.mode, 'fullRecord');
+  assert.equal(onlyAggregate.grants[0].disclosure.allowedFields, undefined);
+  assert.equal(onlyAggregate.grants[0].disclosure.deniedFields, undefined);
+  assert.ok(onlyAggregate.normalizations.some(item => item.kind === 'disclosureFullRecord' && item.grantId === 'gerentePainel'));
+
+  const linesOnly = applyNs5AccessFormNormalizations(
+    [aggregateOnly('gerenteLinhas', ['Recebivel'])],
+    [painel, linhas],
+    actors,
+  );
+  assert.equal(linesOnly.grants[0].disclosure.mode, 'aggregateOnly');
+  assert.deepEqual(linesOnly.grants[0].disclosure.allowedFields, ['PainelRecebiveis.total']);
+  assert.equal(linesOnly.normalizations.some(item => item.kind === 'disclosureFullRecord'), false);
+
+  const mixed = applyNs5AccessFormNormalizations(
+    [aggregateOnly('gerenteMisto', ['PainelRecebiveis', 'Recebivel'])],
+    [painel, linhas],
+    actors,
+  );
+  assert.equal(mixed.grants[0].disclosure.mode, 'aggregateOnly');
+  assert.equal(mixed.normalizations.some(item => item.kind === 'disclosureFullRecord'), false);
 });
 
 void test('fieldsOnly covering every resolvable field fails the gate unless normalized to fullRecord', () => {

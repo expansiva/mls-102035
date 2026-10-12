@@ -560,6 +560,7 @@ void test('act requires effect; transitionRef only with effect transition', () =
 
   const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
   assert.match(prompt, /Every `act` declares its `effect`/);
+  assert.match(prompt, /Exporting, downloading, printing or sharing records the actor already sees is `inspect` on that entity, never `act`: an `act` always writes\./);
   assert.match(prompt, /transitionRef` only with `effect: 'transition'`/);
   assert.match(prompt, /"effect": "update"/);
   assert.doesNotMatch(prompt, /creates: true/);
