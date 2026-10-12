@@ -23,11 +23,14 @@ import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4Wo
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5FixturePath, ns5ReplayModules } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
+  afterNs5OntologyPromptStep,
+  beforeNs5OntologyPromptStep,
   buildNs5OntologyEntityHumanPrompt,
   buildNs5OntologyPlanHumanPrompt,
   buildNs5OntologyPlanV3Tool,
   buildNs5OntologyEntityV3Tool,
 } from '/_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.js';
+import { draftFile, journeyIndexFile, moduleFile, pipelineFile, readJson, writeJson } from '/_102035_/l2/solution/fs.js';
 import {
   NS5_NAMESPACE_EMPTY_DESCRIPTION,
   assembleNs5OntologyIndexV3,
@@ -1194,4 +1197,244 @@ void test('ns5_57: the human prompt tags the decide citation the gate reads', ()
     platformCatalog: '',
   });
   assert.match(prompt, /- decidirConsulta decide Consulta decide/);
+});
+
+// Trace entry copied from /tmp/p4_39/compras.ns5.r1.task.json
+// (iaCompressed.nextSteps[0].nextSteps[3].nextSteps[0].interaction.trace[4]).
+// The provider-failure object is the real one; the chat completion after the violation
+// block is cut so the fixture stays the same shape without the reasoning tail.
+const COMPRAS_SCHEMA_TRACE_ENTRY = '{"title": "Processing with args: entity:Recebimento", "ok": true, "trace": ["starting at 2026-10-12T15:00:24.565Z", "[provider-failure] {\\"userMessage\\":\\"We are experiencing technical difficulties. Please try again later.\\",\\"userMsgCode\\":\\"llm.provider.unavailable\\",\\"providerMsgCode\\":\\"llm.model.tool_schema\\",\\"requiresAdmin\\":false,\\"retryable\\":true,\\"adminDetail\\":\\"The model returned invalid tool arguments (schema drift) — model grok-4.6 (primary) on xai. Action: none; retry/repair handles it.\\\\n## Schema violations\\\\n\\\\n- submitNs5Entity: /result must have required property \'relationships\'\\\\n- submitNs5Entity: /result must have required property \'capabilities\'\\\\n- submitNs5Entity: /result must have required property \'rules\'\\\\n\\\\n{\\\\\\"id\\\\\\":\\\\\\"8c707bce-3539-9ba5-9e18-40435bbf2e0c\\\\\\",\\\\\\"object\\\\\\":\\\\\\"chat.completion\\\\\\",\\\\\\"created\\"}"], "recoveredByAfterPrompt": true}';
+
+const SCHEMA_VIOLATIONS = [
+  "- submitNs5Entity: /result must have required property 'relationships'",
+  "- submitNs5Entity: /result must have required property 'capabilities'",
+  "- submitNs5Entity: /result must have required property 'rules'",
+];
+
+function installDraftStor(): void {
+  const files: Record<string, {
+    project?: number; level?: number; folder?: string; shortName?: string; extension?: string;
+    status?: string; content?: unknown;
+    getValueInfo?: () => Promise<{ content?: unknown }>;
+    getContent?: () => Promise<unknown>;
+  }> = {};
+  const keyOf = (info: { project?: number; level?: number; folder?: string; shortName?: string; extension?: string }) =>
+    [info.project, info.level, info.folder, info.shortName, info.extension].join('|');
+  mls.stor.getKeyToFile = keyOf as typeof mls.stor.getKeyToFile;
+  mls.stor.files = files as typeof mls.stor.files;
+  mls.stor.localStor = {
+    async setContent(file, payload) {
+      const stored = file as { content?: unknown };
+      stored.content = payload?.content;
+    },
+    async deleteFile(file) {
+      delete files[keyOf(file)];
+    },
+  } as typeof mls.stor.localStor;
+}
+
+function touchDraft(info: ReturnType<typeof draftFile>): void {
+  const key = mls.stor.getKeyToFile(info);
+  if (mls.stor.files[key]) return;
+  const file: {
+    project: number; level: number; folder: string; shortName: string; extension: string;
+    status: string; content: string;
+    getValueInfo: () => Promise<{ content: string }>;
+    getContent: () => Promise<string>;
+  } = {
+    ...info,
+    status: 'changed',
+    content: '',
+    getValueInfo: async () => ({ content: file.content }),
+    getContent: async () => file.content,
+  };
+  mls.stor.files[key] = file as unknown as typeof mls.stor.files[string];
+}
+
+function putText(info: ReturnType<typeof draftFile>, content: string): void {
+  touchDraft(info);
+  const stored = mls.stor.files[mls.stor.getKeyToFile(info)] as { content?: string };
+  stored.content = content;
+}
+
+/** module10 + journeys20 + workflows50, the reads a saved entity draft has to pass. */
+async function seedApprovedModule(moduleName: string): Promise<void> {
+  putText(moduleFile(moduleName), `export const moduleArtifact = ${JSON.stringify({
+    moduleName, userLanguage: 'pt-BR', sourcePrompt: 'recebimento de compra',
+  })};\n`);
+  putText(journeyIndexFile(moduleName), 'export const journeyIndex = { "journeys": [] };\n');
+  touchDraft(pipelineFile(moduleName));
+  await writeJson(pipelineFile(moduleName), {
+    moduleName,
+    sourcePrompt: 'recebimento de compra',
+    steps: {
+      journeys20: { status: 'approved' },
+      workflows50: { status: 'approved' },
+    },
+  });
+}
+
+function rejectionContext(moduleName: string): mls.msg.ExecutionContext {
+  const parent = {
+    type: 'agent',
+    stepId: 1,
+    status: 'running',
+    nextSteps: [],
+  } as mls.msg.AIAgentStep;
+  return {
+    message: { orderAt: '1', threadId: 'schema-reject' },
+    task: {
+      PK: 'schema-reject',
+      iaCompressed: { longMemory: { moduleName }, nextSteps: [parent] },
+    },
+  } as mls.msg.ExecutionContext;
+}
+
+async function rejectEntity(moduleName: string, trace: unknown): Promise<void> {
+  const context = rejectionContext(moduleName);
+  const parent = context.task!.iaCompressed!.nextSteps![0] as mls.msg.AIAgentStep;
+  const step = {
+    type: 'agent',
+    stepId: 2,
+    status: 'running',
+    prompt: 'entity:Recebimento',
+    interaction: { trace, payload: [] },
+  } as mls.msg.AIAgentStep;
+  await afterNs5OntologyPromptStep({} as never, context, parent, step, 1, 'entity:Recebimento');
+}
+
+void test('a refused entity call records the schema violations from the real trace', async () => {
+  installDraftStor();
+  const moduleName = 'schemaRejectReal';
+  const plan = normalizeNs5OntologyPlanV3({
+    businessDomain: 'Compras',
+    entities: [{
+      entityId: 'Recebimento',
+      kind: 'entity',
+      class: 'event',
+      title: 'Recebimento',
+      description: 'entrada de mercadoria',
+      displayField: 'number',
+      writer: 'journey',
+    }],
+    relationships: [],
+  }, moduleName);
+  touchDraft(draftFile(moduleName, 'ontology30-plan'));
+  touchDraft(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  await writeJson(draftFile(moduleName, 'ontology30-plan'), plan);
+  await rejectEntity(moduleName, [COMPRAS_SCHEMA_TRACE_ENTRY]);
+  const saved = await readJson<{ violations: string[] }>(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  assert.deepEqual(saved?.violations, SCHEMA_VIOLATIONS);
+});
+
+void test('a trace without a schema-violations block records an empty rejection', async () => {
+  installDraftStor();
+  const moduleName = 'schemaRejectEmpty';
+  const plan = normalizeNs5OntologyPlanV3({
+    businessDomain: 'Compras',
+    entities: [{
+      entityId: 'Recebimento',
+      kind: 'entity',
+      class: 'event',
+      title: 'Recebimento',
+      description: 'entrada de mercadoria',
+      displayField: 'number',
+      writer: 'journey',
+    }],
+    relationships: [],
+  }, moduleName);
+  touchDraft(draftFile(moduleName, 'ontology30-plan'));
+  touchDraft(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  await writeJson(draftFile(moduleName, 'ontology30-plan'), plan);
+  await rejectEntity(moduleName, ['starting at 2026-10-12T15:00:24.565Z']);
+  const saved = await readJson<{ violations: string[] }>(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  assert.deepEqual(saved, { violations: [] });
+});
+
+void test('a draft saved after the refusal deletes the rejection', async () => {
+  installDraftStor();
+  const moduleName = 'schemaRejectCleared';
+  const plan = normalizeNs5OntologyPlanV3({
+    businessDomain: 'Compras',
+    entities: [{
+      entityId: 'Recebimento',
+      kind: 'entity',
+      class: 'event',
+      title: 'Recebimento',
+      description: 'entrada de mercadoria',
+      displayField: 'number',
+      writer: 'journey',
+    }],
+    relationships: [],
+  }, moduleName);
+  touchDraft(draftFile(moduleName, 'ontology30-plan'));
+  touchDraft(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  touchDraft(draftFile(moduleName, 'ontology30-entity-Recebimento'));
+  await writeJson(draftFile(moduleName, 'ontology30-plan'), plan);
+  await seedApprovedModule(moduleName);
+  await rejectEntity(moduleName, [COMPRAS_SCHEMA_TRACE_ENTRY]);
+  const context = rejectionContext(moduleName);
+  const parent = context.task!.iaCompressed!.nextSteps![0] as mls.msg.AIAgentStep;
+  const step = {
+    type: 'agent',
+    stepId: 3,
+    status: 'running',
+    prompt: 'entity:Recebimento',
+    interaction: {
+      payload: [{
+        result: {
+          relationships: [],
+          capabilities: [],
+          rules: [],
+          record: { fields: [{ id: 'number', type: 'string', required: true }] },
+        },
+      }],
+    },
+  } as mls.msg.AIAgentStep;
+  await afterNs5OntologyPromptStep({} as never, context, parent, step, 2, 'entity:Recebimento');
+  const rejection = await readJson(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  assert.equal(rejection, null);
+  const draft = await readJson<{ entity?: { entityId?: string } }>(draftFile(moduleName, 'ontology30-entity-Recebimento'));
+  assert.equal(draft?.entity?.entityId, 'Recebimento');
+});
+
+void test('a missing draft with recorded schema violations is repaired with those lines', async () => {
+  installDraftStor();
+  const moduleName = 'schemaRejectRepair';
+  const plan = normalizeNs5OntologyPlanV3({
+    businessDomain: 'Compras',
+    entities: [{
+      entityId: 'Recebimento',
+      kind: 'entity',
+      class: 'event',
+      title: 'Recebimento',
+      description: 'entrada de mercadoria',
+      displayField: 'number',
+      writer: 'journey',
+    }],
+    relationships: [],
+  }, moduleName);
+  touchDraft(draftFile(moduleName, 'ontology30-plan'));
+  touchDraft(draftFile(moduleName, 'ontology30-entity-Recebimento-rejected'));
+  await writeJson(draftFile(moduleName, 'ontology30-plan'), plan);
+  await seedApprovedModule(moduleName);
+  await rejectEntity(moduleName, [COMPRAS_SCHEMA_TRACE_ENTRY]);
+  const context = rejectionContext(moduleName);
+  const parent = context.task!.iaCompressed!.nextSteps![0] as mls.msg.AIAgentStep;
+  const step = {
+    type: 'agent',
+    stepId: 4,
+    status: 'running',
+    nextSteps: [],
+    prompt: JSON.stringify({ planId: 'ontology30', moduleName, stage: 'finalize', entityRepairRound: 0 }),
+  } as mls.msg.AIAgentStep;
+  const intents = await beforeNs5OntologyPromptStep({} as never, context, parent, step, 3, step.prompt);
+  const repair = intents.find(intent => intent.type === 'add-step' && 'executionMode' in intent && intent.executionMode?.type === 'parallel');
+  assert.ok(repair && repair.type === 'add-step');
+  const feedback = JSON.parse(String(repair.step.prompt)).entityFeedback.Recebimento as string;
+  assert.equal(feedback, [
+    'The previous submitNs5Entity call for Recebimento was rejected by the tool schema:',
+    ...SCHEMA_VIOLATIONS,
+    'Write it again from the frozen plan and send every required property.',
+  ].join('\n'));
 });

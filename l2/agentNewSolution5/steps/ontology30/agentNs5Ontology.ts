@@ -476,6 +476,10 @@ async function handleEntityResult(
   const plan = await readPlanDraft(parsed.moduleName);
   const payload = unwrapArtifactPayload(step.interaction?.payload?.[0]);
   if (!isRecord(payload)) {
+    // The model sent arguments the tool schema refused. The only copy of that refusal is the
+    // step trace (collab-llm TOOL_ARGS_SCHEMA); without it the repair round only hears "missing".
+    const violations = schemaViolationsFromTrace(step.interaction?.trace);
+    await writeJson(entityRejectionFile(parsed.moduleName, entityId), { violations });
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} returned no usable payload; finalizer will repair it.`)];
   }
   const moduleArtifact = await readModule(parsed.moduleName);
@@ -493,6 +497,7 @@ async function handleEntityResult(
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} is not in the plan; finalizer will repair it.`)];
   }
   await writeJson(entityDraftFile(parsed.moduleName, entityId), { entity, normalizations });
+  await removeDraft(entityRejectionFile(parsed.moduleName, entityId));
   const gate = validateNs5OntologyEntityV3(entity, plan, {
     moduleName: parsed.moduleName,
     mdm,
@@ -562,9 +567,13 @@ async function finalizeOntology(
     if (!entity || !gate?.ok) {
       invalid.push(planned.entityId);
       // ns5_58: without this the repair round reran the entity blind — the model never saw the issue.
+      // A missing draft with a schema rejection (l4_p4_40) carries those lines instead of "missing".
+      const violations = entity ? [] : await schemaViolationsFromRejection(parsed.moduleName, planned.entityId);
       entityFeedback[planned.entityId] = gate
         ? formatNs5OntologyV3Gate(gate.issues)
-        : `The draft of ${planned.entityId} is missing; write it again from the frozen plan.`;
+        : violations.length
+          ? schemaRejectionFeedback(planned.entityId, violations)
+          : `The draft of ${planned.entityId} is missing; write it again from the frozen plan.`;
       continue;
     }
     entities.push(entity);
@@ -818,6 +827,95 @@ async function readPlanDraft(moduleName: string): Promise<Ns5OntologyV3PlanDraft
  */
 function entityDraftFile(moduleName: string, entityId: string) {
   return draftFile(moduleName, `ontology30-entity-${entityId}`);
+}
+
+/** Same `draftFile` suffix as the entity draft: `ontology30-entity-<id>-rejected-draft.json`. */
+function entityRejectionFile(moduleName: string, entityId: string) {
+  return draftFile(moduleName, `ontology30-entity-${entityId}-rejected`);
+}
+
+const SCHEMA_VIOLATIONS_HEADING = '## Schema violations';
+const MAX_SCHEMA_VIOLATIONS = 20;
+
+/**
+ * Lines under `## Schema violations` in the entity step trace. A trace entry is often a JSON
+ * string whose own `trace` holds `[provider-failure] {…}` with the heading inside `adminDetail`.
+ * No heading means an empty list — the caller still records the rejection.
+ */
+function schemaViolationsFromTrace(trace: unknown): string[] {
+  const texts: string[] = [];
+  const visit = (value: unknown): void => {
+    if (typeof value === 'string') {
+      texts.push(value);
+      const parsed = parseMaybeJson(value);
+      if (parsed !== value) visit(parsed);
+      const marker = '[provider-failure] ';
+      const at = value.indexOf(marker);
+      if (at >= 0) {
+        const failure = parseMaybeJson(value.slice(at + marker.length));
+        if (failure !== value.slice(at + marker.length)) visit(failure);
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (isRecord(value)) {
+      if (typeof value.adminDetail === 'string') texts.push(value.adminDetail);
+      if ('trace' in value) visit(value.trace);
+    }
+  };
+  visit(trace);
+  const found: string[] = [];
+  const seen = new Set<string>();
+  for (const text of texts) {
+    for (const line of schemaViolationLines(text)) {
+      if (seen.has(line)) continue;
+      seen.add(line);
+      found.push(line);
+      if (found.length >= MAX_SCHEMA_VIOLATIONS) return found;
+    }
+  }
+  return found;
+}
+
+async function schemaViolationsFromRejection(moduleName: string, entityId: string): Promise<string[]> {
+  const saved = await readJson<{ violations?: unknown }>(entityRejectionFile(moduleName, entityId));
+  if (!Array.isArray(saved?.violations)) return [];
+  return saved.violations.filter((line): line is string => typeof line === 'string' && line.trim().length > 0);
+}
+
+function schemaRejectionFeedback(entityId: string, violations: string[]): string {
+  return [
+    `The previous submitNs5Entity call for ${entityId} was rejected by the tool schema:`,
+    ...violations,
+    'Write it again from the frozen plan and send every required property.',
+  ].join('\n');
+}
+
+function schemaViolationLines(text: string): string[] {
+  const at = text.indexOf(SCHEMA_VIOLATIONS_HEADING);
+  if (at < 0) return [];
+  const lines: string[] = [];
+  for (const raw of text.slice(at + SCHEMA_VIOLATIONS_HEADING.length).split('\n')) {
+    const line = raw.trim();
+    if (!line) {
+      if (lines.length) break;
+      continue;
+    }
+    if (!line.startsWith('- ')) break;
+    lines.push(line);
+    if (lines.length >= MAX_SCHEMA_VIOLATIONS) break;
+  }
+  return lines;
+}
+
+async function removeDraft(fileInfo: ReturnType<typeof draftFile>): Promise<void> {
+  const stored = mls.stor.files[mls.stor.getKeyToFile(fileInfo)];
+  if (!stored || stored.status === 'deleted') return;
+  const { deleteFile } = await import('/_102027_/l2/libStor.js');
+  await deleteFile(stored);
 }
 
 async function requirePipeline(moduleName: string): Promise<Ns5PipelineState> {
