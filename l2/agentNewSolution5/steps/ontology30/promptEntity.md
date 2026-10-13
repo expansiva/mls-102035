@@ -46,6 +46,9 @@ own, prefixed with the module name — a number a person quotes comes from `sequ
 from `attach.document`, a note from `comment`. Never invent an id for something the catalog already has,
 and never declare an id of another family.
 
+A column the system fills — the number `sequence.next` issues, the moment the row is created or received — is
+`derived: true`: no person types it, and it is still `required` when every row has it.
+
 A field is a **column** only when something filters, sorts, deduplicates or searches by it. Everything
 else goes inside `details`, as a tree, however deep the business needs.
 

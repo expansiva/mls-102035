@@ -477,6 +477,49 @@ void test('normalize indexes a foreign key and writes id and version of a table'
   assert.ok(normalizations.some(item => item.detail.includes('foreign key')));
 });
 
+void test('normalize keeps derived: true on a table column the model marked, and leaves it off when omitted', () => {
+  const plan = formPlan();
+  const built = normalizeNs5OntologyEntityV3({
+    entityId: 'Consulta',
+    record: {
+      fields: [
+        { id: 'pacienteId', type: 'record', to: ['Paciente'], required: true, title: 'Paciente' },
+        { id: 'numero', type: 'integer', required: true, unique: true, indexed: true, derived: true, title: 'Numero' },
+        { id: 'motivo', type: 'string', required: true, indexed: true, title: 'Motivo' },
+        { id: 'details', type: 'object', fields: [] },
+      ],
+    },
+    relationships: [],
+    capabilities: [],
+    rules: [],
+  }, 'Consulta', { moduleName: 'agendaClinica', mdm, plan }, [])! as Ns5OntologyTableV3;
+  assert.equal(built.record.fields.numero.derived, true);
+  assert.equal(built.record.fields.motivo.derived, undefined);
+});
+
+void test('normalize of a role keeps the platform derived flag, whatever the model wrote', () => {
+  const plan = formPlan();
+  const built = normalizeNs5OntologyEntityV3({
+    entityId: 'Paciente',
+    record: {
+      fields: [
+        { id: 'details', type: 'object', fields: [
+          { id: 'identification', type: 'object', fields: [
+            { id: 'name', type: 'string', required: true, derived: true, title: 'Nome completo' },
+            { id: 'status', type: 'enum', required: true, derived: false, title: 'Situacao' },
+          ] },
+        ] },
+      ],
+    },
+    relationships: [],
+    capabilities: [],
+    rules: [],
+  }, 'Paciente', { moduleName: 'agendaClinica', mdm, plan }, [])!;
+  const identification = built.record.fields.details!.fields!.identification.fields!;
+  assert.equal(identification.status.derived, true, 'platform derived is restored');
+  assert.equal(identification.name.derived, undefined, 'the model cannot mark a platform field derived');
+});
+
 // --- the eleven v2 modules are not this gate's business --------------------
 
 void test('no v3 check fires on any recorded v2 module artifact', () => {
@@ -537,6 +580,7 @@ void test('the entity prompt teaches copy-and-tighten, the column rule and the e
   assert.match(prompt, /`attach\.document`/);
   assert.match(prompt, /`link\.contact`/);
   assert.match(prompt, /prefix\s+`<moduleName>\.`/);
+  assert.match(prompt, /A column the system fills — the number `sequence\.next` issues, the moment the row is created or received — is\s+`derived: true`: no person types it, and it is still `required` when every row has it\./);
 });
 
 void test('the human prompts carry the platform catalog, the starting point and the cited transitions', () => {
