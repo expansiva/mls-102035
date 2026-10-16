@@ -50,7 +50,7 @@ are PascalCase nouns; never a page, a form, a menu or a journey action. A total,
 position is not an entity — the entity pass puts it inside `details`.
 
 `displayField` is the path a person reads to recognise the record: `details.identification.name` on a
-role over a person or a company, a column of the table otherwise. Never guessed from a name suffix.
+role over a person or a company; on a table, the field's bare id (the entity pass decides whether it is a column or lives in `details`). Never guessed from a name suffix.
 
 `writer` says how the record is written: `journey` when an `act` writes it, `crud` for a reference
 catalog nobody creates in a journey, `inbound` when another system creates it. On a `ddm` entity, where

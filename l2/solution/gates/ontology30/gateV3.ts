@@ -367,7 +367,7 @@ export function validateNs5OntologyEntityV3(
     issues.push({
       severity: 'error',
       code: 'NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED',
-      message: `displayField '${entity.displayField}' is not a path of record.fields.`,
+      message: `displayField '${entity.displayField}' is not a path of record.fields. Put it as a column, or freeze the full path (details.<…>).`,
       path: `${path}.displayField`,
     });
   }

@@ -1482,3 +1482,90 @@ void test('a missing draft with recorded schema violations is repaired with thos
     'Write it again from the frozen plan and send every required property.',
   ].join('\n'));
 });
+
+// --- l4_p4_47: a bare displayField resolves to the one matching path --------
+
+function ns5_47Plan(displayField: string): Ns5OntologyV3PlanDraft {
+  return normalizeNs5OntologyPlanV3({
+    businessDomain: 'Tasks',
+    entities: [
+      { entityId: 'ItemChecklist', kind: 'entity', class: 'supporting', title: 'Item', description: 'x', displayField, writer: 'journey' },
+    ],
+    relationships: [],
+  }, 'tarefas');
+}
+
+function ns5_47Normalize(
+  displayField: string,
+  detailFields: Array<Record<string, unknown>>,
+  normalizations: Ns5OntologyV3Normalization[],
+  columns: Array<Record<string, unknown>> = [],
+) {
+  return normalizeNs5OntologyEntityV3({
+    entityId: 'ItemChecklist',
+    record: {
+      fields: [
+        ...columns,
+        { id: 'details', type: 'object', fields: detailFields },
+      ],
+    },
+    relationships: [],
+    capabilities: [],
+    rules: [],
+  }, 'ItemChecklist', { moduleName: 'tarefas', mdm, plan: ns5_47Plan(displayField) }, normalizations);
+}
+
+void test('l4_p4_47: a bare displayField resolves to the single details path', () => {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const built = ns5_47Normalize('descricao', [
+    { id: 'descricao', type: 'text', title: 'Descricao' },
+  ], normalizations)!;
+  assert.equal(built.displayField, 'details.descricao');
+  assert.deepEqual(
+    normalizations.find(item => item.kind === 'displayFieldResolved'),
+    { kind: 'displayFieldResolved', entityId: 'ItemChecklist', detail: 'descricao → details.descricao' },
+  );
+  const gate = validateNs5OntologyEntityV3(built, ns5_47Plan('descricao'), { moduleName: 'tarefas', mdm, tdm, ddm });
+  assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED'), false);
+});
+
+void test('l4_p4_47: two paths with the same bare name stay unresolved', () => {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const built = ns5_47Normalize('descricao', [
+    { id: 'descricao', type: 'text', title: 'Descricao' },
+    { id: 'extra', type: 'object', fields: [{ id: 'descricao', type: 'text', title: 'Outra' }] },
+  ], normalizations)!;
+  assert.equal(built.displayField, 'descricao');
+  assert.equal(normalizations.some(item => item.kind === 'displayFieldResolved'), false);
+  const issue = validateNs5OntologyEntityV3(built, ns5_47Plan('descricao'), { moduleName: 'tarefas', mdm, tdm, ddm })
+    .issues.find(item => item.code === 'NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED');
+  assert.ok(issue);
+  assert.equal(
+    issue!.message,
+    "displayField 'descricao' is not a path of record.fields. Put it as a column, or freeze the full path (details.<…>).",
+  );
+});
+
+void test('l4_p4_47: a bare name that exists nowhere is a gate error', () => {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const built = ns5_47Normalize('descricao', [
+    { id: 'nota', type: 'text', title: 'Nota' },
+  ], normalizations)!;
+  assert.equal(normalizations.some(item => item.kind === 'displayFieldResolved'), false);
+  const issue = validateNs5OntologyEntityV3(built, ns5_47Plan('descricao'), { moduleName: 'tarefas', mdm, tdm, ddm })
+    .issues.find(item => item.code === 'NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED');
+  assert.match(issue!.message, /Put it as a column, or freeze the full path/);
+});
+
+void test('l4_p4_47: a column displayField is left as the bare id', () => {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const built = ns5_47Normalize('numero', [
+    { id: 'descricao', type: 'text', title: 'Descricao' },
+  ], normalizations, [
+    { id: 'numero', type: 'integer', required: true, unique: true, indexed: true, title: 'Numero' },
+  ])!;
+  assert.equal(built.displayField, 'numero');
+  assert.equal(normalizations.some(item => item.kind === 'displayFieldResolved'), false);
+  const gate = validateNs5OntologyEntityV3(built, ns5_47Plan('numero'), { moduleName: 'tarefas', mdm, tdm, ddm });
+  assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED'), false);
+});

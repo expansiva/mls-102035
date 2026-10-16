@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-10-16 (l4_p4_47)
+
+- l4_p4_47: the plan prompt no longer tells `displayField` to be a table column; a bare id is frozen and the entity pass decides column or `details`.
+
 ## 2026-10-02 (p4_21)
 
 - p4_21: `gate.ts`, `contracts.ts`, `gateV3.ts`, `contractsV3.ts` moved to `solution/gates/ontology30/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5Ontology{Plan,Entity,Bindings}Tool, buildNs5Ontology{Plan,Entity}V3Tool) stayed in the agent: it moved, body unchanged, to `agentNs5Ontology.ts`. Dated reexport left at the old path of `gate.ts`, `gateV3.ts`, `contractsV3.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

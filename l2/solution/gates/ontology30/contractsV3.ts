@@ -171,7 +171,9 @@ export type Ns5OntologyV3NormalizationKind =
   /** ns5_49: a journey cites `Entity.transitionId` and `by` omitted that actor; normalize adds it. */
   | 'transitionByAdded'
   /** ns5_49: a transition cited only by a process stage has no human author; `by` becomes `[]`. */
-  | 'transitionOwnedByProcess';
+  | 'transitionOwnedByProcess'
+  /** l4_p4_47: a bare displayField names exactly one path under record.fields. */
+  | 'displayFieldResolved';
 
 export interface Ns5OntologyV3Normalization {
   kind: Ns5OntologyV3NormalizationKind;
@@ -454,28 +456,50 @@ export function normalizeNs5OntologyEntityV3(
     normalizations,
   );
 
-  if (frozen.kind === 'role') {
-    const subtype = frozen.subtype as MdmSubtypeName;
-    return {
+  const built: Ns5OntologyEntityV3 = frozen.kind === 'role'
+    ? {
       ...common,
       kind: 'role',
-      subtype,
+      subtype: frozen.subtype as MdmSubtypeName,
       roleTag: frozen.roleTag ?? `${context.moduleName}.${entityId}`,
       source: frozen.source ?? platformOntologyPath(),
-      record: { fields: normalizeRoleRecord(raw.record, entityId, subtype, context, normalizations, derivedItems) },
+      record: { fields: normalizeRoleRecord(raw.record, entityId, frozen.subtype as MdmSubtypeName, context, normalizations, derivedItems) },
       ...(uniqueKeys.length ? { uniqueKeys } : {}),
+    }
+    : {
+      ...common,
+      kind: 'entity',
+      class: frozen.class ?? 'core',
+      storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' },
+      record: { fields: normalizeTableRecord(raw.record, entityId, family, normalizations, derivedItems) },
+      ...(uniqueKeys.length ? { uniqueKeys } : {}),
+      ...(lifecycleStates.length ? { lifecycleStates } : {}),
+      ...(transitions.length ? { transitions } : {}),
     };
-  }
-  return {
-    ...common,
-    kind: 'entity',
-    class: frozen.class ?? 'core',
-    storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' },
-    record: { fields: normalizeTableRecord(raw.record, entityId, family, normalizations, derivedItems) },
-    ...(uniqueKeys.length ? { uniqueKeys } : {}),
-    ...(lifecycleStates.length ? { lifecycleStates } : {}),
-    ...(transitions.length ? { transitions } : {}),
-  };
+  resolveBareDisplayField(built, frozen.displayField, normalizations);
+  return built;
+}
+
+/**
+ * A bare name the plan froze (`descricao`) is the path when exactly one `record.fields` path ends in
+ * `.<name>`. A dotted path that misses, or zero or many candidates, stays for the gate.
+ */
+function resolveBareDisplayField(
+  entity: Ns5OntologyEntityV3,
+  frozenDisplayField: string,
+  normalizations: Ns5OntologyV3Normalization[],
+): void {
+  if (frozenDisplayField.includes('.')) return;
+  const paths = ns5ResolvableFieldIdsV3(entity);
+  if (paths.includes(frozenDisplayField)) return;
+  const matches = paths.filter(path => path.endsWith(`.${frozenDisplayField}`));
+  if (matches.length !== 1) return;
+  entity.displayField = matches[0];
+  normalizations.push({
+    kind: 'displayFieldResolved',
+    entityId: entity.entityId,
+    detail: `${frozenDisplayField} → ${matches[0]}`,
+  });
 }
 
 /** The `derived[]` the model wrote, read tolerantly. Items without an id are dropped. */
