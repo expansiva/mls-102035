@@ -82,6 +82,24 @@ test('recognizes workflows v3 and derives the recurring duty from a scheduled al
   assert.equal(isRecurringDuty(view.processes[1]), false);
 });
 
+test('lists process functions and uses an empty list when the artifact has none', () => {
+  const withFunctions = normalizeWorkflows({
+    schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',
+    processes: [{ processId: 'p', title: 'P', description: 'D', trigger: { kind: 'manual', actorRef: 'a' }, tasks: [], functions: [
+      { functionId: 'abrirOcorrencia', description: 'A tela chama, abre a mensagem e a Task, e devolve o id.' },
+    ] }],
+  });
+  assert.deepEqual(withFunctions.processes[0].functions, [
+    { functionId: 'abrirOcorrencia', description: 'A tela chama, abre a mensagem e a Task, e devolve o id.' },
+  ]);
+  const without = normalizeWorkflows({
+    schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',
+    processes: [{ processId: 'p', title: 'P', description: 'D', trigger: { kind: 'manual', actorRef: 'a' }, tasks: [] }],
+  });
+  assert.deepEqual(without.processes[0].functions, []);
+  assert.equal(without.processes[0].functions.some(item => item === undefined), false);
+});
+
 test('a scheduled process with no stage is not a recurring duty', () => {
   const view = normalizeWorkflows({
     schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',

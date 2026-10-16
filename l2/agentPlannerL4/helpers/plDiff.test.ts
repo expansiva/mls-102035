@@ -29,7 +29,7 @@ import {
   type L4DiffSnapshot,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
 import { isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
-import type { Ns5OntologyAnyEntity, Ns5RulesAny } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -554,6 +554,35 @@ void test('p4_35: an enum value label change is one text-only field changed item
   assert.equal(items[0].kind, 'field');
   assert.equal(items[0].op, 'changed');
   assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+function processSnap(functions?: { functionId: string; description: string }[]): L4DiffSnapshot {
+  const process = {
+    processId: 'cicloTarefa',
+    title: 'Ciclo',
+    description: 'Ciclo da tarefa',
+    trigger: { kind: 'manual' },
+    tasks: [],
+    ...(functions ? { functions } : {}),
+  };
+  return snapshotFromParsed({
+    entities: [],
+    rules: null,
+    access: null,
+    workflows: { processes: [process] } as Ns5WorkflowsArtifact,
+    integration: null,
+  });
+}
+
+void test('p4_45: a function added to a process is one process changed item and no artifact', () => {
+  const items = diffL4Snapshots(processSnap(), processSnap([
+    { functionId: 'iniciarTarefa', description: 'Abre a ocorrência.' },
+  ]));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'process');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(items[0].changeId, 'process:cicloTarefa');
+  assert.equal(items.some(item => item.kind === 'artifact'), false);
 });
 
 void test('p4_35: an unchanged field with text emits no item', () => {

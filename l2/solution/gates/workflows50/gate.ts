@@ -63,6 +63,7 @@ export function validateNs5Workflows(
   // is checked against, so a condition over data cannot be dressed up as an event.
   const journeyTransitionRefs = new Set(collectNs5JourneyTransitionRefs(context.journeys));
   const processIds = new Set<string>();
+  const functionIds = new Set<string>();
   const coveredHandoffs = new Set<string>();
   const signals = collectNs5ProcessSignals(context.journeys, context.entities);
   const mustProcess = signals.filter(signal => MUST_PROCESS.has(signal.kind));
@@ -116,6 +117,8 @@ export function validateNs5Workflows(
         `${base}.tasks`,
       );
     }
+
+    validateFunctions(process, base, functionIds, issues);
   });
 
   validateJourneyDecisions(context.journeyDecisions || [], {
@@ -422,6 +425,37 @@ function hasCycleWithoutWait(tasks: readonly Ns5WorkflowTask[]): boolean {
   return false;
 }
 
+function validateFunctions(
+  process: Ns5WorkflowProcess,
+  base: string,
+  functionIds: Set<string>,
+  issues: Ns5WorkflowsGateIssue[],
+): void {
+  if (!process.functions?.length) {
+    warning(
+      issues,
+      'NS5_WORKFLOWS_FUNCTIONS_MISSING',
+      'Process lists no functions. Recorded artifacts from before this field stay valid.',
+      `${base}.functions`,
+    );
+    return;
+  }
+  process.functions.forEach((fn, index) => {
+    const path = `${base}.functions[${index}].functionId`;
+    if (!MEMBER_ID.test(fn.functionId)) {
+      error(issues, 'NS5_WORKFLOWS_FUNCTION_ID', 'functionId must be lowerCamel.', path);
+    }
+    if (fn.functionId && functionIds.has(fn.functionId)) {
+      error(issues, 'NS5_WORKFLOWS_FUNCTION_ID', `Duplicate functionId ${fn.functionId}.`, path);
+    }
+    if (fn.functionId) functionIds.add(fn.functionId);
+  });
+}
+
 function error(issues: Ns5WorkflowsGateIssue[], code: string, message: string, path?: string): void {
   issues.push({ severity: 'error', code, message, ...(path ? { path } : {}) });
+}
+
+function warning(issues: Ns5WorkflowsGateIssue[], code: string, message: string, path?: string): void {
+  issues.push({ severity: 'warning', code, message, ...(path ? { path } : {}) });
 }

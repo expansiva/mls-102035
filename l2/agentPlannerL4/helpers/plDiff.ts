@@ -106,6 +106,7 @@ interface ProcessSlice {
   title: string;
   description: string;
   trigger: unknown;
+  functions: Record<string, string>;
   tasks: Record<string, TaskSlice>;
 }
 
@@ -255,6 +256,8 @@ function grantSlice(grant: Ns5AccessArtifact['grants'][number]): GrantSlice {
 }
 
 function processSlice(process: Ns5WorkflowsArtifact['processes'][number]): ProcessSlice {
+  const functions: Record<string, string> = {};
+  for (const fn of process.functions || []) functions[fn.functionId] = fn.description;
   const tasks: Record<string, TaskSlice> = {};
   for (const task of process.tasks || []) {
     tasks[task.taskId] = {
@@ -274,6 +277,7 @@ function processSlice(process: Ns5WorkflowsArtifact['processes'][number]): Proce
     title: process.title,
     description: process.description,
     trigger: process.trigger,
+    functions,
     tasks,
   };
 }
@@ -388,8 +392,8 @@ export function diffL4Snapshots(base: L4DiffSnapshot, candidate: L4DiffSnapshot)
   pushMapDiff(items, 'grant', base.grants, candidate.grants, () => 'access.defs.ts', () => '');
   pushMapDiff(
     items, 'process',
-    Object.fromEntries(Object.entries(base.processes).map(([id, row]) => [id, { processId: row.processId, title: row.title, description: row.description, trigger: row.trigger }])),
-    Object.fromEntries(Object.entries(candidate.processes).map(([id, row]) => [id, { processId: row.processId, title: row.title, description: row.description, trigger: row.trigger }])),
+    Object.fromEntries(Object.entries(base.processes).map(([id, row]) => [id, { processId: row.processId, title: row.title, description: row.description, trigger: row.trigger, functions: row.functions }])),
+    Object.fromEntries(Object.entries(candidate.processes).map(([id, row]) => [id, { processId: row.processId, title: row.title, description: row.description, trigger: row.trigger, functions: row.functions }])),
     () => 'workflows.defs.ts',
     () => '',
   );

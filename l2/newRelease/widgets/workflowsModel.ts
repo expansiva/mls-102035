@@ -2,6 +2,7 @@
 
 import type {
   Ns5JourneyDecision,
+  Ns5WorkflowFunction,
   Ns5WorkflowProcess,
   Ns5WorkflowTask,
   Ns5WorkflowTrigger,
@@ -11,9 +12,10 @@ import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/
 
 export type WorkflowSchemaKind = 'v1' | 'v2' | 'v3' | 'unknown';
 export type WorkflowTaskView = Omit<Ns5WorkflowTask, 'kind'> & { kind: Ns5WorkflowTask['kind'] | 'system' };
-export type WorkflowProcessView = Omit<Ns5WorkflowProcess, 'trigger' | 'tasks'> & {
+export type WorkflowProcessView = Omit<Ns5WorkflowProcess, 'trigger' | 'tasks' | 'functions'> & {
   trigger: Ns5WorkflowTrigger | null;
   tasks: WorkflowTaskView[];
+  functions: Ns5WorkflowFunction[];
 };
 
 export interface WorkflowsView {
@@ -42,6 +44,17 @@ function triggerOf(value: unknown): Ns5WorkflowTrigger | null {
     ...(typeof item.event === 'string' ? { event: item.event } : {}),
     ...(typeof item.actorRef === 'string' ? { actorRef: item.actorRef } : {}),
   };
+}
+
+function functionsOf(value: unknown): Ns5WorkflowFunction[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(item => {
+    const row = record(item);
+    const functionId = typeof row.functionId === 'string' ? row.functionId : '';
+    const description = typeof row.description === 'string' ? row.description : '';
+    if (!functionId && !description) return [];
+    return [{ functionId, description }];
+  });
 }
 
 function taskOf(value: unknown): WorkflowTaskView {
@@ -80,6 +93,7 @@ export function normalizeWorkflows(value: unknown): WorkflowsView {
       description: String(item.description || ''),
       trigger: triggerOf(item.trigger),
       tasks: Array.isArray(item.tasks) ? item.tasks.map(taskOf) : [],
+      functions: functionsOf(item.functions),
     };
   }) : [];
   const journeyDecisions = Array.isArray(root.journeyDecisions) ? root.journeyDecisions.map(decision => {

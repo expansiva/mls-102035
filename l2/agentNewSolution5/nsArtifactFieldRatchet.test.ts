@@ -285,6 +285,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     description: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     trigger: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, harness, backend job', since: '2026-09-12' },
     tasks: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
+    functions: { reader: 'steps/workflows50/gate.ts, agentPlannerL4/helpers/plDiff.ts, newRelease/widgets/workflowsModel.ts, L1 workflow service', since: '2026-10-15' },
   },
   Ns5JourneyDecision: {
     journeyId: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },

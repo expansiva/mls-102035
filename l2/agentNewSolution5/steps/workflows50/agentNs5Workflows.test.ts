@@ -14,6 +14,7 @@ import {
   loadNs5Entities,
   loadNs5FixtureJson,
   loadNs5Journeys,
+  loadNs5Workflows,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type {
   Ns5JourneyArtifact,
@@ -271,6 +272,14 @@ void test('normalize + gate accept a valid chained process covering handoffs by 
   const normalized = drafts({ processes: [validProcess()] });
   const gate = gateOf(normalized.processes);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('normalize keeps the process functions and omits the key when the model sent none', () => {
+  const functions = [{ functionId: 'openOrder', description: 'Reception opens the order; a repeated call returns the same order.' }];
+  const withFunctions = drafts({ processes: [validProcess({ functions })] });
+  assert.deepEqual(withFunctions.processes[0].functions, functions);
+  const without = drafts({ processes: [validProcess()] });
+  assert.equal('functions' in without.processes[0], false);
 });
 
 void test('empty catalog is invalid when a handoff exists', () => {
@@ -897,6 +906,93 @@ void test('ns5_49: the reference catalog comes from the journeys when there is n
     'ServiceOrder.markServiceOrderReady',
     'ServiceOrder.publishBudget',
   ]);
+});
+
+void test('workflows schema requires process functions and lowerCamel functionId', () => {
+  const schema = loadSchema() as {
+    $defs: {
+      process: {
+        required: string[];
+        additionalProperties: boolean;
+        properties: {
+          functions: {
+            minItems: number;
+            items: {
+              additionalProperties: boolean;
+              required: string[];
+              properties: { functionId: { pattern: string }; description: { minLength: number } };
+            };
+          };
+        };
+      };
+    };
+  };
+  const process = schema.$defs.process;
+  assert.equal(process.additionalProperties, false);
+  assert.ok(process.required.includes('functions'));
+  const functions = process.properties.functions;
+  assert.equal(functions.minItems, 1);
+  assert.equal(functions.items.additionalProperties, false);
+  assert.deepEqual(functions.items.required, ['functionId', 'description']);
+  const re = new RegExp(functions.items.properties.functionId.pattern);
+  assert.equal(re.test('iniciarTarefa'), true);
+  assert.equal(re.test('IniciarTarefa'), false);
+});
+
+void test('duplicate functionId across processes is NS5_WORKFLOWS_FUNCTION_ID', () => {
+  const fn = { functionId: 'abrirOcorrencia', description: 'A screen calls this to open the occurrence.' };
+  const processes = [
+    validProcess({ processId: 'one', functions: [fn] }),
+    validProcess({ processId: 'two', functions: [{ ...fn }] }),
+  ] as Ns5WorkflowProcess[];
+  const gate = gateOf(processes);
+  const duplicates = gate.issues.filter(issue => issue.code === 'NS5_WORKFLOWS_FUNCTION_ID');
+  assert.equal(duplicates.length, 1);
+  assert.equal(duplicates[0]?.severity, 'error');
+  assert.equal(gate.ok, false);
+});
+
+void test('a process without functions warns and stays valid', () => {
+  const processes = [validProcess()] as Ns5WorkflowProcess[];
+  const gate = gateOf(processes);
+  const missing = gate.issues.filter(issue => issue.code === 'NS5_WORKFLOWS_FUNCTIONS_MISSING');
+  assert.equal(missing.length, 1);
+  assert.equal(missing[0]?.severity, 'warning');
+  assert.equal(gate.issues.some(issue => issue.severity === 'error'), false);
+  assert.equal(gate.ok, true);
+});
+
+void test('recorded compras fixture still passes the workflows gate', () => {
+  const workflows = loadNs5Workflows('compras');
+  const journeys = loadNs5Journeys('compras').map(item => ({
+    journeyId: item.journeyId,
+    business: {
+      actorRef: item.business.actorRef,
+      steps: item.business.steps.map(step => ({
+        stepId: step.stepId,
+        kind: step.kind,
+        entity: step.entity,
+        ...(step.handoffTo ? { handoffTo: step.handoffTo } : {}),
+        ...(step.effect ? { effect: step.effect } : {}),
+        ...(step.transitionRef ? { transitionRef: step.transitionRef } : {}),
+      })),
+    },
+  }));
+  const entities = loadNs5Entities('compras').map(item => ({
+    entityId: item.entityId,
+    transitions: (item.transitions || []).map(transition => ({
+      transitionId: transition.transitionId,
+      by: transition.by,
+    })),
+  }));
+  const normalized = drafts(workflows, journeys.map(item => item.journeyId));
+  const gate = validateNs5Workflows(normalized.processes, {
+    actorIds: loadNs5Actors('compras').map(actor => actor.actorId),
+    journeys,
+    entities,
+    journeyDecisions: normalized.journeyDecisions,
+  });
+  assert.equal(gate.ok, true, formatNs5WorkflowsGate(gate.issues));
 });
 
 void test('ns5_49: the human prompt no longer carries the entity lifecycle block', () => {

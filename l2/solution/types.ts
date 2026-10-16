@@ -618,6 +618,13 @@ export interface Ns5WorkflowTask {
   description: string;
 }
 
+export interface Ns5WorkflowFunction {
+  /** lowerCamel; unique within the module. */
+  functionId: string;
+  /** Prose: who calls it (screen, harness, schedule), what it validates, writes, notifies and returns, and what happens on a repeated call. */
+  description: string;
+}
+
 export interface Ns5WorkflowProcess {
   /** Index identity. */
   processId: string;
@@ -629,6 +636,8 @@ export interface Ns5WorkflowProcess {
   trigger: Ns5WorkflowTrigger;
   /** finalize80 I6: every journey handoff appears as a human journeyRef. */
   tasks: Ns5WorkflowTask[];
+  /** The functions the L1 workflow service implements for this process. Optional only for artifacts saved before functions existed. */
+  functions?: Ns5WorkflowFunction[];
 }
 
 export interface Ns5JourneyDecision {

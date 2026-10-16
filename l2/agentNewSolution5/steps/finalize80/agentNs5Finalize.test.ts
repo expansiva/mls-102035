@@ -14,9 +14,16 @@ import { loadNs5Defs, loadNs5FixtureJson, loadNs5OracleSources } from '/_102035_
 import { buildSolutionRegistryModuleBlock } from '/_102035_/l2/solution/lib.js';
 import type {
   Ns5AccessArtifact,
+  Ns5IntegrationArtifact,
   Ns5JourneyArtifact,
+  Ns5JourneyIndexArtifact,
+  Ns5ModuleArtifact,
+  Ns5OntologyAnyEntity,
   Ns5OntologyEntityArtifact,
+  Ns5RulesArtifact,
+  Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import type { Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
 import { collectNs5LifecycleSignal } from '/_102035_/l2/solution/gates/ontology30/contracts.js';
 import {
   ensureConfigListsModule,
@@ -30,6 +37,7 @@ import {
 } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
 import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
+import { formatNs5WorkflowsGate, validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
 import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import agendaClinicaConsulta from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Consulta.defs.js';
 import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';
@@ -1430,4 +1438,48 @@ void test('fixture entities stay typed as ontology artifacts when cloned', () =>
   const journey: Ns5JourneyArtifact = sources.journeys[0];
   assert.equal(entity.kind, 'mdm');
   assert.equal(journey.business.steps[1].kind, 'act');
+});
+
+function tarefasDefs<T>(name: string): T {
+  return loadNs5Defs<T>('fixtures/finalize80/tarefas', name);
+}
+
+void test('tarefas passa no workflows50 e no finalize80 (I1–I13) sem erro', () => {
+  const journeyIndex = tarefasDefs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
+  const journeys = journeyIndex.journeys.map(entry =>
+    tarefasDefs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`),
+  );
+  const entities = ['Tarefa', 'Lista'].map(entityId =>
+    tarefasDefs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`),
+  );
+  const workflows = tarefasDefs<Ns5WorkflowsArtifact>('workflows.defs.ts');
+  const access = tarefasDefs<Ns5AccessArtifact>('access.defs.ts');
+  const sources: Ns5OracleSources = {
+    module: tarefasDefs<Ns5ModuleArtifact>('module.defs.ts'),
+    journeys,
+    journeyIndex,
+    entities: ns5OntologyEntityViews(entities),
+    ontologyIndex: tarefasDefs<Ns5OntologyAnyIndex>('ontology/index.defs.ts'),
+    rules: tarefasDefs<Ns5RulesArtifact>('rules.defs.ts'),
+    workflows,
+    access,
+    integration: tarefasDefs<Ns5IntegrationArtifact>('integration.defs.ts'),
+    journeyDiskFiles: ['index', ...journeyIndex.journeys.map(entry => entry.journeyId)],
+    ontologyDiskFiles: ['index', 'Tarefa', 'Lista'],
+  };
+  const gate = validateNs5Workflows(workflows.processes, {
+    moduleName: 'tarefas',
+    actorIds: access.actors.map(actor => actor.actorId),
+    journeys,
+    entities: sources.entities,
+    journeyDecisions: workflows.journeyDecisions,
+  });
+  assert.equal(gate.ok, true, formatNs5WorkflowsGate(gate.issues));
+  assert.equal(gate.issues.filter(issue => issue.severity === 'error').length, 0);
+  const report = runNs5Oracle(sources);
+  assert.equal(report.errors.length, 0, report.errors.map(issue => `${issue.checkId} ${issue.path}: ${issue.message}`).join('\n'));
+  assert.equal(report.finalStatus, 'passed');
+  for (const checkId of ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13']) {
+    assert.equal(report.checks.find(check => check.checkId === checkId)?.status, 'passed', checkId);
+  }
 });

@@ -317,13 +317,20 @@ export function collectNs5WorkflowsRefCatalog(
 function normalizeProcess(value: unknown): Ns5WorkflowProcess {
   const source = record(value);
   const tasks = list(source.tasks).map(normalizeTask).filter(task => task.taskId || task.description);
-  return {
+  const process: Ns5WorkflowProcess = {
     processId: memberId(text(source.processId) || text(source.id), ''),
     title: text(source.title),
     description: text(source.description),
     trigger: normalizeTrigger(source.trigger),
     tasks,
   };
+  if (Array.isArray(source.functions)) {
+    process.functions = list(source.functions).map(item => {
+      const fn = record(item);
+      return { functionId: text(fn.functionId), description: text(fn.description) };
+    });
+  }
+  return process;
 }
 
 function normalizeTrigger(value: unknown): Ns5WorkflowTrigger {

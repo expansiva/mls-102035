@@ -48,6 +48,16 @@ Every process has a trigger:
   instruction is the `description`, and when that person usually runs a listed journey, name that
   journey in the description. Requires `actorRef`. It carries no `journeyRef` and no `entityRef`.
 
+## Functions
+
+Each process lists the functions the backend implements for it. A function is what a screen, the
+harness, or the schedule calls: the one that opens the occurrence (creates the origin message and
+the Task that references the record), the one that advances a stage (applies the transition, marks
+the stage, passes the turn, notifies), and the ones that decide who the person of the stage is.
+The description says who calls, what it validates, what it writes, who it notifies, what it
+returns, and what happens when the call is repeated. Do not repeat the entity operations of the
+journeys.
+
 ## When a journey is in a process
 
 For every journey in the human prompt, write one `journeyDecisions` row: `{ journeyId, inProcess,

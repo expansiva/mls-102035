@@ -516,6 +516,8 @@
   "workflows.end": "End",
   "workflows.removeTask": "Remove stage",
   "workflows.addTask": "Add stage",
+  "workflows.functions": "Functions",
+  "workflows.functionCount": "{{count}} functions",
   "workflows.newProcessTitle": "New process",
   "workflows.newProcessDescription": "Describe this process's goal and outcome.",
   "workflows.newTaskDescription": "Describe what happens in this stage.",
