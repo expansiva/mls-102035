@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-10-16 (l4_p4_48)
+
+- l4_p4_48: `## Functions` — the same function serves the screen (through its BFF), the cm, and the module clock.
+
 ## 2026-10-02 (p4_21)
 
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/workflows50/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5WorkflowsTool) stayed in the agent: it moved, body unchanged, to `agentNs5Workflows.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

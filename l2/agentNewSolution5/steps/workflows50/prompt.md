@@ -50,10 +50,12 @@ Every process has a trigger:
 
 ## Functions
 
-Each process lists the functions the backend implements for it. A function is what a screen, the
-harness, or the schedule calls: the one that opens the occurrence (creates the origin message and
-the Task that references the record), the one that advances a stage (applies the transition, marks
-the stage, passes the turn, notifies), and the ones that decide who the person of the stage is.
+Each process lists the functions the backend implements for it. A function is what the screen calls
+through its BFF, what the cm calls on behalf of a person who answered in a channel (chat,
+Telegram), or what the module clock calls; the same function serves every caller. Name them: the
+one that opens the occurrence (asks the cm for the origin message and the Task that references the
+record), the one that advances a stage (applies the transition, records the progress, passes the
+turn, asks the cm to notify), and the ones that decide who the person of the stage is.
 The description says who calls, what it validates, what it writes, who it notifies, what it
 returns, and what happens when the call is repeated. Do not repeat the entity operations of the
 journeys.
