@@ -995,6 +995,70 @@ void test('recorded compras fixture still passes the workflows gate', () => {
   assert.equal(gate.ok, true, formatNs5WorkflowsGate(gate.issues));
 });
 
+void test('room person and a periodic wait survive normalization', () => {
+  const normalized = drafts({
+    processes: [validProcess({
+      room: 'person',
+      tasks: [
+        humanTask('receive', 'recepcionista', 'abrirOrdenServicio', ['pause'], 'Reception opens the order.'),
+        { taskId: 'pause', kind: 'wait', next: [], description: 'Wait.', wake: { mode: 'periodic', every: 'PT1H' } },
+        { taskId: 'aside', kind: 'human', actorRef: 'tecnico', journeyRef: 'prepararPresupuestoServicio', next: [], description: 'Not a wait.', wake: { mode: 'periodic', every: 'P1D' } },
+      ],
+    })],
+  });
+  assert.equal(normalized.processes[0].room, 'person');
+  const pause = normalized.processes[0].tasks.find(task => task.taskId === 'pause');
+  assert.deepEqual(pause?.wake, { mode: 'periodic', every: 'PT1H' });
+  const aside = normalized.processes[0].tasks.find(task => task.taskId === 'aside');
+  assert.equal(aside?.wake, undefined);
+  assert.ok(normalized.systemDecisions.some(decision => decision.decisionId === 'dropWakeOffWaitAside'));
+});
+
+void test('periodic wake without every, or with a non-duration, is NS5_WORKFLOWS_WAKE_EVERY', () => {
+  const noHandoff = ORDEN_JOURNEYS.map(item => ({
+    ...item,
+    business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
+  }));
+  const gateFor = (wake: { mode: 'periodic'; every?: string }) => {
+    const processes = drafts({
+      processes: [validProcess({
+        room: 'exclusive',
+        tasks: [
+          humanTask('receive', 'recepcionista', 'abrirOrdenServicio', ['pause'], 'Reception opens the order.'),
+          { taskId: 'pause', kind: 'wait', next: [], description: 'Wait.', wake },
+        ],
+      })],
+    }).processes;
+    return gateOf(processes, noHandoff, ORDEN_ENTITIES);
+  };
+  const missing = gateFor({ mode: 'periodic' });
+  assert.equal(missing.ok, false);
+  assert.ok(missing.issues.some(issue => issue.code === 'NS5_WORKFLOWS_WAKE_EVERY' && issue.severity === 'error'));
+  const bad = gateFor({ mode: 'periodic', every: '1h' });
+  assert.equal(bad.ok, false);
+  assert.ok(bad.issues.some(issue => issue.code === 'NS5_WORKFLOWS_WAKE_EVERY' && issue.severity === 'error'));
+});
+
+void test('a recorded process without room and a wait without wake only warn and stay valid', () => {
+  const noHandoff = ORDEN_JOURNEYS.map(item => ({
+    ...item,
+    business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
+  }));
+  const processes = drafts({
+    processes: [validProcess({
+      tasks: [
+        humanTask('receive', 'recepcionista', 'abrirOrdenServicio', ['pause'], 'Reception opens the order.'),
+        { taskId: 'pause', kind: 'wait', next: [], description: 'Wait.' },
+      ],
+    })],
+  }).processes;
+  const gate = gateOf(processes, noHandoff, ORDEN_ENTITIES);
+  assert.equal(gate.ok, true, formatNs5WorkflowsGate(gate.issues));
+  assert.equal(gate.issues.filter(issue => issue.code === 'NS5_WORKFLOWS_ROOM_MISSING' && issue.severity === 'warning').length, 1);
+  assert.equal(gate.issues.filter(issue => issue.code === 'NS5_WORKFLOWS_WAKE_MISSING' && issue.severity === 'warning').length, 1);
+  assert.equal(gate.issues.some(issue => issue.severity === 'error'), false);
+});
+
 void test('ns5_49: the human prompt no longer carries the entity lifecycle block', () => {
   const prompt = buildNs5WorkflowsHumanPrompt({
     sourcePrompt: 'todo mes a gerencia fecha as ordens.',

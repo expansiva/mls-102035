@@ -278,6 +278,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     transitionRef: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I2', since: '2026-09-12' },
     next: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/workflows50/gate.ts, executor LLM', since: '2026-09-10' },
+    wake: { reader: 'steps/workflows50/gate.ts, agentPlannerL4/helpers/plDiff.ts, newRelease/widgets/workflowsModel.ts, L1 workflow engine (How)', since: '2026-10-19' },
   },
   Ns5WorkflowProcess: {
     processId: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
@@ -286,6 +287,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     trigger: { reader: 'steps/workflows50/gate.ts, tela da Fase 2, harness, backend job', since: '2026-09-12' },
     tasks: { reader: 'steps/workflows50/gate.ts, finalize80 I6', since: '2026-09-10' },
     functions: { reader: 'steps/workflows50/gate.ts, agentPlannerL4/helpers/plDiff.ts, newRelease/widgets/workflowsModel.ts, L1 workflow service', since: '2026-10-15' },
+    room: { reader: 'steps/workflows50/gate.ts, agentPlannerL4/helpers/plDiff.ts, newRelease/widgets/workflowsModel.ts, L1 workflow engine (How)', since: '2026-10-19' },
   },
   Ns5JourneyDecision: {
     journeyId: { reader: 'steps/workflows50/gate.ts, tela da Fase 2', since: '2026-09-12' },

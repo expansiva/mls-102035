@@ -24,7 +24,7 @@
     "process": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["processId", "title", "description", "trigger", "tasks", "functions"],
+      "required": ["processId", "title", "description", "trigger", "tasks", "functions", "room"],
       "properties": {
         "processId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
         "title": { "type": "string", "minLength": 1 },
@@ -47,7 +47,8 @@
               "description": { "type": "string", "minLength": 1 }
             }
           }
-        }
+        },
+        "room": { "type": "string", "enum": ["exclusive", "person", "group"] }
       }
     },
     "trigger": {
@@ -120,7 +121,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["taskId", "kind", "next", "description"],
+          "required": ["taskId", "kind", "next", "description", "wake"],
           "properties": {
             "taskId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
             "kind": { "type": "string", "const": "wait" },
@@ -128,7 +129,31 @@
               "type": "array",
               "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
             },
-            "description": { "type": "string", "minLength": 1 }
+            "description": { "type": "string", "minLength": 1 },
+            "wake": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["mode"],
+                  "properties": {
+                    "mode": { "type": "string", "const": "none" }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["mode", "every"],
+                  "properties": {
+                    "mode": { "type": "string", "const": "periodic" },
+                    "every": {
+                      "type": "string",
+                      "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$"
+                    }
+                  }
+                }
+              ]
+            }
           }
         },
         {

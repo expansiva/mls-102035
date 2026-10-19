@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-10-19 (l4_p4_51)
+
+- l4_p4_51: plano revisto de 18/10, §§3, 5, 6, 9.
+
 ## 2026-10-16 (l4_p4_48)
 
 - l4_p4_48: `## Functions` — the same function serves the screen (through its BFF), the cm, and the module clock.

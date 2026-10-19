@@ -556,14 +556,18 @@ void test('p4_35: an enum value label change is one text-only field changed item
   assert.equal(isTextOnlyChange(items[0]), true);
 });
 
-function processSnap(functions?: { functionId: string; description: string }[]): L4DiffSnapshot {
+function processSnap(
+  functions?: { functionId: string; description: string }[],
+  extra?: { room?: 'exclusive' | 'person' | 'group'; tasks?: Ns5WorkflowsArtifact['processes'][number]['tasks'] },
+): L4DiffSnapshot {
   const process = {
     processId: 'cicloTarefa',
     title: 'Ciclo',
     description: 'Ciclo da tarefa',
     trigger: { kind: 'manual' },
-    tasks: [],
+    tasks: extra?.tasks || [],
     ...(functions ? { functions } : {}),
+    ...(extra?.room ? { room: extra.room } : {}),
   };
   return snapshotFromParsed({
     entities: [],
@@ -583,6 +587,37 @@ void test('p4_45: a function added to a process is one process changed item and 
   assert.equal(items[0].op, 'changed');
   assert.equal(items[0].changeId, 'process:cicloTarefa');
   assert.equal(items.some(item => item.kind === 'artifact'), false);
+});
+
+void test('p4_51: a room added to a process is one process changed item and no artifact', () => {
+  const items = diffL4Snapshots(processSnap(), processSnap(undefined, { room: 'group' }));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'process');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(items[0].changeId, 'process:cicloTarefa');
+  assert.equal(items.some(item => item.kind === 'artifact'), false);
+});
+
+void test('p4_51: a wake added to a wait is one process changed item and no artifact', () => {
+  const wait = { taskId: 'aguardar', kind: 'wait' as const, description: 'Espera.', next: [] as string[] };
+  const items = diffL4Snapshots(
+    processSnap(undefined, { tasks: [wait] }),
+    processSnap(undefined, { tasks: [{ ...wait, wake: { mode: 'periodic' as const, every: 'PT1H' } }] }),
+  );
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'process');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(items[0].changeId, 'process:cicloTarefa');
+  assert.equal(items.some(item => item.kind === 'artifact'), false);
+});
+
+void test('p4_51: the neutral room and wake on a recorded artifact emit no item', () => {
+  const wait = { taskId: 'aguardar', kind: 'wait' as const, description: 'Espera.', next: [] as string[] };
+  const items = diffL4Snapshots(
+    processSnap(undefined, { tasks: [wait] }),
+    processSnap(undefined, { room: 'exclusive', tasks: [{ ...wait, wake: { mode: 'none' as const } }] }),
+  );
+  assert.deepEqual(items, []);
 });
 
 void test('p4_35: an unchanged field with text emits no item', () => {

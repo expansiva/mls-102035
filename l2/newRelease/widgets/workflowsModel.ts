@@ -11,11 +11,17 @@ import type {
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type WorkflowSchemaKind = 'v1' | 'v2' | 'v3' | 'unknown';
-export type WorkflowTaskView = Omit<Ns5WorkflowTask, 'kind'> & { kind: Ns5WorkflowTask['kind'] | 'system' };
-export type WorkflowProcessView = Omit<Ns5WorkflowProcess, 'trigger' | 'tasks' | 'functions'> & {
+export type WorkflowRoom = 'exclusive' | 'person' | 'group';
+export type WorkflowWake = { mode: 'none' | 'periodic'; every?: string };
+export type WorkflowTaskView = Omit<Ns5WorkflowTask, 'kind' | 'wake'> & {
+  kind: Ns5WorkflowTask['kind'] | 'system';
+  wake?: WorkflowWake;
+};
+export type WorkflowProcessView = Omit<Ns5WorkflowProcess, 'trigger' | 'tasks' | 'functions' | 'room'> & {
   trigger: Ns5WorkflowTrigger | null;
   tasks: WorkflowTaskView[];
   functions: Ns5WorkflowFunction[];
+  room: WorkflowRoom;
 };
 
 export interface WorkflowsView {
@@ -57,6 +63,20 @@ function functionsOf(value: unknown): Ns5WorkflowFunction[] {
   });
 }
 
+const ROOMS: readonly WorkflowRoom[] = ['exclusive', 'person', 'group'];
+
+function roomOf(value: unknown): WorkflowRoom {
+  return ROOMS.includes(value as WorkflowRoom) ? value as WorkflowRoom : 'exclusive';
+}
+
+function wakeOf(value: unknown): WorkflowWake {
+  const item = record(value);
+  if (item.mode === 'periodic' && typeof item.every === 'string' && item.every.length > 0) {
+    return { mode: 'periodic', every: item.every };
+  }
+  return { mode: 'none' };
+}
+
 function taskOf(value: unknown): WorkflowTaskView {
   const item = record(value);
   const kind = ['human', 'mechanical', 'llm', 'wait', 'alert', 'system'].includes(String(item.kind || ''))
@@ -72,6 +92,7 @@ function taskOf(value: unknown): WorkflowTaskView {
     ...(typeof item.transitionRef === 'string' ? { transitionRef: item.transitionRef } : {}),
     next: strings(item.next),
     description: String(item.description || ''),
+    ...(kind === 'wait' ? { wake: wakeOf(item.wake) } : {}),
   };
 }
 
@@ -94,6 +115,7 @@ export function normalizeWorkflows(value: unknown): WorkflowsView {
       trigger: triggerOf(item.trigger),
       tasks: Array.isArray(item.tasks) ? item.tasks.map(taskOf) : [],
       functions: functionsOf(item.functions),
+      room: roomOf(item.room),
     };
   }) : [];
   const journeyDecisions = Array.isArray(root.journeyDecisions) ? root.journeyDecisions.map(decision => {

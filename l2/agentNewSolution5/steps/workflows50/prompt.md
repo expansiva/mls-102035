@@ -19,6 +19,8 @@ A stage is not a screen step. Do not copy `locate` or `inspect`. `taskId` is a s
 id. `next` lists the `taskId`s that follow this one. `description` says what this hand-off of work
 is, in one sentence.
 
+`room` is where the conversation of an occurrence happens by default: `exclusive` (one room per occurrence, open to whoever takes part), `person` (the room of the person who owns the occurrence; only that person enters) or `group` (only the members of one group enter). When more than one person acts in the process, choose `exclusive` or `group`, never `person`.
+
 ## Trigger
 
 Every process has a trigger:
@@ -39,7 +41,7 @@ Every process has a trigger:
 - `kind: llm` — a model decides or drafts on an entity. Same `entityRef` / `effect` /
   `transitionRef` shape as mechanical.
 - `kind: wait` — a pause (time or an event). The pause is prose in `description`. A cycle in
-  `next` is allowed only when it goes through a `wait` task.
+  `next` is allowed only when it goes through a `wait` task. `wake` says whether the process routine asks to be told periodically while this stage waits (`periodic` with `every`, an ISO 8601 duration such as `PT1H`), or not (`none`); the routine decides what to do, and being woken is not a message to a person.
 - An `entityRef` / `transitionRef` you name on a `mechanical` or `llm` stage is a **declaration**,
   not a lookup: the ontology is written after this step and will declare that entity and that
   transition, with this stage as its owner. Use the ids listed under `## Valid reference ids` when
@@ -52,7 +54,7 @@ Every process has a trigger:
 
 Each process lists the functions the backend implements for it. A function is what the screen calls
 through its BFF, what the cm calls on behalf of a person who answered in a channel (chat,
-Telegram), or what the module clock calls; the same function serves every caller. Name them: the
+Telegram), what the cm calls when a stage it is waiting on asks to be woken, or what a schedule calls to open a new occurrence; the same function serves every caller. Name them: the
 one that opens the occurrence (asks the cm for the origin message and the Task that references the
 record), the one that advances a stage (applies the transition, records the progress, passes the
 turn, asks the cm to notify), and the ones that decide who the person of the stage is.

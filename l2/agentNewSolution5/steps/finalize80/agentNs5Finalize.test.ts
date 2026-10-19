@@ -1453,6 +1453,11 @@ void test('tarefas passa no workflows50 e no finalize80 (I1–I13) sem erro', ()
     tarefasDefs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`),
   );
   const workflows = tarefasDefs<Ns5WorkflowsArtifact>('workflows.defs.ts');
+  const ciclo = workflows.processes.find(process => process.processId === 'cicloTarefa');
+  const prazos = workflows.processes.find(process => process.processId === 'avisarPrazos');
+  assert.equal(ciclo?.room, 'exclusive');
+  assert.deepEqual(ciclo?.tasks.find(task => task.taskId === 'aguardarAjuste')?.wake, { mode: 'periodic', every: 'P1D' });
+  assert.equal(prazos?.room, 'person');
   const access = tarefasDefs<Ns5AccessArtifact>('access.defs.ts');
   const sources: Ns5OracleSources = {
     module: tarefasDefs<Ns5ModuleArtifact>('module.defs.ts'),

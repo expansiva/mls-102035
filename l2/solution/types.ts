@@ -616,6 +616,12 @@ export interface Ns5WorkflowTask {
   next: string[];
   /** Planner / UI. Wait: the pause (time or event) in prose. */
   description: string;
+  /**
+   * Whether the process routine asks to be woken while this stage waits (plan §6). Only on kind 'wait'.
+   * The routine decides what to do; waking is not a message to a person. Optional only for recorded
+   * artifacts; absent → 'none'. `every` is an ISO 8601 duration (PT1H, P1D), required iff mode === 'periodic'.
+   */
+  wake?: { mode: 'none' | 'periodic'; every?: string };
 }
 
 export interface Ns5WorkflowFunction {
@@ -638,6 +644,13 @@ export interface Ns5WorkflowProcess {
   tasks: Ns5WorkflowTask[];
   /** The functions the L1 workflow service implements for this process. Optional only for artifacts saved before functions existed. */
   functions?: Ns5WorkflowFunction[];
+  /**
+   * Default room of an occurrence, chosen by the module (plan §§5, 9). 'exclusive': one room per occurrence;
+   * 'person': the room of the person who owns the occurrence, and only that person enters; 'group': only the
+   * members of the group enter. The cm resolves the concrete room and refuses an actor outside the audience.
+   * Optional only for artifacts recorded before this spec; readers treat it as absent → 'exclusive'.
+   */
+  room?: 'exclusive' | 'person' | 'group';
 }
 
 export interface Ns5JourneyDecision {

@@ -18,6 +18,8 @@ const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const EVENT_TRANSITION = /^([A-Z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/;
 const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait', 'alert']);
 const EFFECTS = new Set(['create', 'update', 'transition']);
+const ROOMS = new Set(['exclusive', 'person', 'group']);
+const WAKE_MODES = new Set(['none', 'periodic']);
 /** Deterministic extract of time/event phrases from sourcePrompt. Not in the prompt. Accents are folded first. */
 const TIME_EVENT_MARKER = /\b(?:todo|cada|quando|automaticamente|a cada|mensal|diario)\b/;
 
@@ -69,8 +71,8 @@ export function normalizeNs5WorkflowsPayload(
   options?: { journeyIds?: readonly string[] },
 ): Ns5WorkflowsNormalization {
   const root = record(value);
-  const rawProcesses = list(root.processes).map(normalizeProcess).filter(process => process.processId || process.tasks.length);
   const dropped: Ns5SystemDecision[] = [];
+  const rawProcesses = list(root.processes).map(item => normalizeProcess(item, dropped)).filter(process => process.processId || process.tasks.length);
   const processes = rawProcesses.map(process => dropDuplicateTasks(process, dropped));
   return {
     processes,
@@ -314,15 +316,17 @@ export function collectNs5WorkflowsRefCatalog(
   };
 }
 
-function normalizeProcess(value: unknown): Ns5WorkflowProcess {
+function normalizeProcess(value: unknown, dropped: Ns5SystemDecision[]): Ns5WorkflowProcess {
   const source = record(value);
-  const tasks = list(source.tasks).map(normalizeTask).filter(task => task.taskId || task.description);
+  const tasks = list(source.tasks).map(item => normalizeTask(item, dropped)).filter(task => task.taskId || task.description);
+  const room = text(source.room);
   const process: Ns5WorkflowProcess = {
     processId: memberId(text(source.processId) || text(source.id), ''),
     title: text(source.title),
     description: text(source.description),
     trigger: normalizeTrigger(source.trigger),
     tasks,
+    ...(ROOMS.has(room) ? { room: room as NonNullable<Ns5WorkflowProcess['room']> } : {}),
   };
   if (Array.isArray(source.functions)) {
     process.functions = list(source.functions).map(item => {
@@ -342,7 +346,7 @@ function normalizeTrigger(value: unknown): Ns5WorkflowTrigger {
   return actorRef ? { kind: 'manual', actorRef } : { kind: 'manual' };
 }
 
-function normalizeTask(value: unknown): Ns5WorkflowTask {
+function normalizeTask(value: unknown, dropped: Ns5SystemDecision[]): Ns5WorkflowTask {
   const source = record(value);
   const kind = text(source.kind);
   const resolved = TASK_KINDS.has(kind) ? kind as Ns5WorkflowTask['kind'] : 'human';
@@ -368,7 +372,29 @@ function normalizeTask(value: unknown): Ns5WorkflowTask {
     next: unique(strings(source.next).map(item => memberId(item, '')).filter(Boolean)),
     description: text(source.description),
   };
+  const wake = normalizeWake(source.wake);
+  if (wake) {
+    if (resolved === 'wait') task.wake = wake;
+    else {
+      dropped.push({
+        decisionId: `dropWakeOffWait${capitalize(task.taskId || 'anonymous')}`,
+        chosen: 'drop',
+        alternatives: ['keep', 'drop'],
+        decidedBy: 'system',
+      });
+    }
+  }
   return task;
+}
+
+/** Keeps a wake the gate can still reject: a periodic wake may arrive without a valid `every`. */
+function normalizeWake(value: unknown): Ns5WorkflowTask['wake'] | undefined {
+  const source = record(value);
+  const mode = text(source.mode);
+  if (!WAKE_MODES.has(mode)) return undefined;
+  if (mode === 'none') return { mode: 'none' };
+  const every = text(source.every);
+  return every ? { mode: 'periodic', every } : { mode: 'periodic' };
 }
 
 function normalizeDecision(value: unknown): Ns5JourneyDecision {

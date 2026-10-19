@@ -100,6 +100,39 @@ test('lists process functions and uses an empty list when the artifact has none'
   assert.equal(without.processes[0].functions.some(item => item === undefined), false);
 });
 
+test('shows room and wake when the artifact records them', () => {
+  const view = normalizeWorkflows({
+    schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',
+    processes: [{
+      processId: 'p', title: 'P', description: 'D', room: 'group',
+      trigger: { kind: 'manual', actorRef: 'a' },
+      tasks: [
+        { taskId: 'esperar', kind: 'wait', next: [], description: 'Espera.', wake: { mode: 'periodic', every: 'PT1H' } },
+        { taskId: 'agir', kind: 'human', actorRef: 'a', next: [], description: 'Age.', wake: { mode: 'periodic', every: 'PT1H' } },
+      ],
+    }],
+  });
+  assert.equal(view.processes[0].room, 'group');
+  assert.deepEqual(view.processes[0].tasks[0].wake, { mode: 'periodic', every: 'PT1H' });
+  assert.equal(view.processes[0].tasks[1].wake, undefined);
+  assert.equal(JSON.stringify(view.processes[0]).includes('undefined'), false);
+});
+
+test('defaults a recorded process without room and a wait without wake', () => {
+  const view = normalizeWorkflows({
+    schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',
+    processes: [{
+      processId: 'p', title: 'P', description: 'D',
+      trigger: { kind: 'manual', actorRef: 'a' },
+      tasks: [{ taskId: 'esperar', kind: 'wait', next: [], description: 'Espera.' }],
+    }],
+  });
+  assert.equal(view.processes[0].room, 'exclusive');
+  assert.deepEqual(view.processes[0].tasks[0].wake, { mode: 'none' });
+  assert.equal(view.processes[0].room === undefined, false);
+  assert.equal(view.processes[0].tasks[0].wake === undefined, false);
+});
+
 test('a scheduled process with no stage is not a recurring duty', () => {
   const view = normalizeWorkflows({
     schemaVersion: '2026-09-17-ns5-workflows-v3', moduleName: 'm',

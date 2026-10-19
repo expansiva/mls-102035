@@ -99,6 +99,7 @@ interface TaskSlice {
   transitionRef: string;
   next: string[];
   description: string;
+  wake?: { mode: 'none' | 'periodic'; every?: string };
 }
 
 interface ProcessSlice {
@@ -107,6 +108,7 @@ interface ProcessSlice {
   description: string;
   trigger: unknown;
   functions: Record<string, string>;
+  room?: 'exclusive' | 'person' | 'group';
   tasks: Record<string, TaskSlice>;
 }
 
@@ -270,6 +272,8 @@ function processSlice(process: Ns5WorkflowsArtifact['processes'][number]): Proce
       transitionRef: asString(task.transitionRef),
       next: [...(task.next || [])],
       description: task.description,
+      // A recorded wait without wake reads as 'none', so adding the neutral value is not a change.
+      ...(task.kind === 'wait' ? { wake: task.wake?.mode === 'periodic' ? { mode: 'periodic' as const, ...(task.wake.every ? { every: task.wake.every } : {}) } : { mode: 'none' as const } } : {}),
     };
   }
   return {
@@ -278,8 +282,41 @@ function processSlice(process: Ns5WorkflowsArtifact['processes'][number]): Proce
     description: process.description,
     trigger: process.trigger,
     functions,
+    // A recorded process without room reads as 'exclusive'.
+    room: process.room || 'exclusive',
     tasks,
   };
+}
+
+/** Process-level view. `wake` is stored on each task and compared here, same as `functions`. */
+function processCompare(row: ProcessSlice): {
+  processId: string;
+  title: string;
+  description: string;
+  trigger: unknown;
+  functions: Record<string, string>;
+  room?: 'exclusive' | 'person' | 'group';
+  wake: Record<string, { mode: 'none' | 'periodic'; every?: string }>;
+} {
+  const wake: Record<string, { mode: 'none' | 'periodic'; every?: string }> = {};
+  for (const task of Object.values(row.tasks)) {
+    if (task.wake) wake[task.taskId] = task.wake;
+  }
+  return {
+    processId: row.processId,
+    title: row.title,
+    description: row.description,
+    trigger: row.trigger,
+    functions: row.functions,
+    ...(row.room ? { room: row.room } : {}),
+    wake,
+  };
+}
+
+function taskForDiff(task: TaskSlice, processId: string): Omit<TaskSlice, 'wake'> & { processId: string } {
+  const rest: Omit<TaskSlice, 'wake'> & { wake?: TaskSlice['wake'] } = { ...task };
+  delete rest.wake;
+  return { ...rest, processId };
 }
 
 function integrationSlice(item: Ns5IntegrationArtifact['inbound'][number]): IntegrationSlice {
@@ -392,18 +429,18 @@ export function diffL4Snapshots(base: L4DiffSnapshot, candidate: L4DiffSnapshot)
   pushMapDiff(items, 'grant', base.grants, candidate.grants, () => 'access.defs.ts', () => '');
   pushMapDiff(
     items, 'process',
-    Object.fromEntries(Object.entries(base.processes).map(([id, row]) => [id, { processId: row.processId, title: row.title, description: row.description, trigger: row.trigger, functions: row.functions }])),
-    Object.fromEntries(Object.entries(candidate.processes).map(([id, row]) => [id, { processId: row.processId, title: row.title, description: row.description, trigger: row.trigger, functions: row.functions }])),
+    Object.fromEntries(Object.entries(base.processes).map(([id, row]) => [id, processCompare(row)])),
+    Object.fromEntries(Object.entries(candidate.processes).map(([id, row]) => [id, processCompare(row)])),
     () => 'workflows.defs.ts',
     () => '',
   );
-  const beforeTasks: Record<string, TaskSlice & { processId: string }> = {};
-  const afterTasks: Record<string, TaskSlice & { processId: string }> = {};
+  const beforeTasks: Record<string, Omit<TaskSlice, 'wake'> & { processId: string }> = {};
+  const afterTasks: Record<string, Omit<TaskSlice, 'wake'> & { processId: string }> = {};
   for (const process of Object.values(base.processes)) {
-    for (const task of Object.values(process.tasks)) beforeTasks[`${process.processId}.${task.taskId}`] = { ...task, processId: process.processId };
+    for (const task of Object.values(process.tasks)) beforeTasks[`${process.processId}.${task.taskId}`] = taskForDiff(task, process.processId);
   }
   for (const process of Object.values(candidate.processes)) {
-    for (const task of Object.values(process.tasks)) afterTasks[`${process.processId}.${task.taskId}`] = { ...task, processId: process.processId };
+    for (const task of Object.values(process.tasks)) afterTasks[`${process.processId}.${task.taskId}`] = taskForDiff(task, process.processId);
   }
   pushMapDiff(items, 'task', beforeTasks, afterTasks, () => 'workflows.defs.ts', () => '');
   pushMapDiff(items, 'inbound', base.inbound, candidate.inbound, () => 'integration.defs.ts', () => '');

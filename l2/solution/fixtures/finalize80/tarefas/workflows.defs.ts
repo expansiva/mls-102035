@@ -8,6 +8,7 @@ export const tarefasWorkflows = {
   "processes": [
     {
       "processId": "cicloTarefa",
+      "room": "exclusive",
       "title": "Ciclo da tarefa",
       "description": "Abre a tarefa, executa, revisa e, se devolvida, espera o ajuste e volta à execução.",
       "trigger": { "kind": "manual", "actorRef": "membro" },
@@ -39,6 +40,7 @@ export const tarefasWorkflows = {
         {
           "taskId": "aguardarAjuste",
           "kind": "wait",
+          "wake": { "mode": "periodic", "every": "P1D" },
           "next": ["executarTarefa"],
           "description": "Espera o membro retomar a tarefa devolvida."
         }
@@ -64,6 +66,7 @@ export const tarefasWorkflows = {
     },
     {
       "processId": "avisarPrazos",
+      "room": "person",
       "title": "Avisar prazos",
       "description": "Todo dia lista as tarefas vencidas e avisa o gestor.",
       "trigger": { "kind": "scheduled", "schedule": "todo dia, no início do expediente" },

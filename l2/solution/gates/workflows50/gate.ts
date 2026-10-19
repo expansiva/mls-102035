@@ -20,6 +20,7 @@ const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const TASK_KINDS = new Set(['human', 'mechanical', 'llm', 'wait', 'alert']);
 const EFFECTS = new Set(['create', 'update', 'transition']);
+const ISO_DURATION = /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$/;
 /**
  * ns5_49: the signals that oblige a process are the ones the JOURNEYS carry. `foreignBy` is read off
  * the ontology, which in the flow v2 order does not exist yet, so it can no longer oblige anything
@@ -119,6 +120,7 @@ export function validateNs5Workflows(
     }
 
     validateFunctions(process, base, functionIds, issues);
+    validateRoomAndWake(process, base, issues);
   });
 
   validateJourneyDecisions(context.journeyDecisions || [], {
@@ -449,6 +451,42 @@ function validateFunctions(
       error(issues, 'NS5_WORKFLOWS_FUNCTION_ID', `Duplicate functionId ${fn.functionId}.`, path);
     }
     if (fn.functionId) functionIds.add(fn.functionId);
+  });
+}
+
+function validateRoomAndWake(
+  process: Ns5WorkflowProcess,
+  base: string,
+  issues: Ns5WorkflowsGateIssue[],
+): void {
+  if (!process.room) {
+    warning(
+      issues,
+      'NS5_WORKFLOWS_ROOM_MISSING',
+      'Process lists no room. Recorded artifacts from before this field stay valid.',
+      `${base}.room`,
+    );
+  }
+  process.tasks.forEach((task, index) => {
+    if (task.kind !== 'wait') return;
+    const path = `${base}.tasks[${index}].wake`;
+    if (!task.wake) {
+      warning(
+        issues,
+        'NS5_WORKFLOWS_WAKE_MISSING',
+        'A wait stage lists no wake. Recorded artifacts from before this field stay valid.',
+        path,
+      );
+      return;
+    }
+    if (task.wake.mode === 'periodic' && !ISO_DURATION.test(task.wake.every || '')) {
+      error(
+        issues,
+        'NS5_WORKFLOWS_WAKE_EVERY',
+        'A periodic wake names every as an ISO 8601 duration.',
+        `${path}.every`,
+      );
+    }
   });
 }
 
