@@ -127,6 +127,8 @@ export interface Ns5OntologyV3PlanEntity {
   description: string;
   displayField: string;
   writer?: typeof NS5_ONTOLOGY_V3_WRITERS[number];
+  /** Sentence of what a table starts with. Absent means no initial data. A role never carries it. */
+  initialData?: string;
   /** Derived: `<moduleName>.<entityId>` on a role. */
   roleTag?: string;
   /** Derived: the platform ontology a role copies from. */
@@ -295,6 +297,8 @@ function normalizePlanEntity(
   };
   const writer = optionalOneOf(raw.writer, NS5_ONTOLOGY_V3_WRITERS);
   if (writer && writer !== 'journey') base.writer = writer;
+  const initialData = text(raw.initialData);
+  if (initialData) base.initialData = initialData;
   if (kind === 'role') {
     base.subtype = text(raw.subtype);
     base.roleTag = `${moduleName}.${entityId}`;
@@ -472,6 +476,7 @@ export function normalizeNs5OntologyEntityV3(
       class: frozen.class ?? 'core',
       storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' },
       record: { fields: normalizeTableRecord(raw.record, entityId, family, normalizations, derivedItems) },
+      ...(frozen.initialData ? { initialData: frozen.initialData } : {}),
       ...(uniqueKeys.length ? { uniqueKeys } : {}),
       ...(lifecycleStates.length ? { lifecycleStates } : {}),
       ...(transitions.length ? { transitions } : {}),

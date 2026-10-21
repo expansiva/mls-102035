@@ -487,6 +487,8 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
    * table without it is read as `relational`.
    */
   storage: { target: 'moduleDatabase'; table: string; kind?: 'relational' | 'timeSeries' };
+  /** What the table starts with in every database, in one sentence (e.g. 'all ISO 3166-1 countries'); absent = no initial data. Test data is not initialData. */
+  initialData?: string;
 }
 
 export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =

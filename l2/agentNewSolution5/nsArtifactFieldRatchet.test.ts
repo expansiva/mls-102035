@@ -194,6 +194,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     kind: { reader: 'steps/ontology30/gateV3.ts, 102034 resolveMdmEntity.ts', since: '2026-09-16' },
     class: { reader: 'steps/ontology30/gateV3.ts, registry', since: '2026-09-16' },
     storage: { reader: 'basic backend DDL, registry', since: '2026-09-16' },
+    initialData: { reader: 'agentDefsL1 support70 (seed initial)', since: '2026-10-21' },
   },
   Ns5OntologyFieldV3: {
     to: { reader: 'steps/ontology30/gateV3.ts (record target), backend foreign key', since: '2026-09-16' },

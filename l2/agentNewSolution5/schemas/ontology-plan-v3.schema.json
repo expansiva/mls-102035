@@ -32,7 +32,8 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "displayField": { "type": "string" },
-        "writer": { "type": "string", "enum": ["journey", "crud", "inbound"] }
+        "writer": { "type": "string", "enum": ["journey", "crud", "inbound"] },
+        "initialData": { "type": "string" }
       }
     },
     "relationship": {

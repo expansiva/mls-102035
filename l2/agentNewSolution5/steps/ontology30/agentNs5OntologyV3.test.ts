@@ -1557,6 +1557,31 @@ void test('l4_p4_47: a bare name that exists nowhere is a gate error', () => {
   assert.match(issue!.message, /Put it as a column, or freeze the full path/);
 });
 
+void test('l4_p4_57: initialData lands on a table, is absent when unset, and a role is INITIAL_DATA_ON_ROLE', () => {
+  const plan = normalizeNs5OntologyPlanV3({
+    businessDomain: 'Tasks',
+    entities: [
+      { entityId: 'Pais', kind: 'entity', class: 'supporting', title: 'Pais', description: 'x', displayField: 'code', writer: 'journey', initialData: 'all ISO 3166-1 countries' },
+      { entityId: 'Pessoa', kind: 'role', subtype: 'Person', title: 'Pessoa', description: 'x', displayField: 'details.identification.name', writer: 'journey', initialData: 'all ISO 3166-1 countries' },
+      { entityId: 'Tarefa', kind: 'entity', class: 'core', title: 'Tarefa', description: 'x', displayField: 'title', writer: 'journey' },
+    ],
+    relationships: [],
+  }, 'tarefas');
+  const context = { moduleName: 'tarefas', mdm, plan };
+  const empty = { relationships: [], capabilities: [], rules: [] };
+  const pais = normalizeNs5OntologyEntityV3({
+    record: { fields: [{ id: 'code', type: 'text', title: 'Code' }] },
+    ...empty,
+  }, 'Pais', context, [])!;
+  const tarefa = normalizeNs5OntologyEntityV3({
+    record: { fields: [{ id: 'title', type: 'text', title: 'Title' }] },
+    ...empty,
+  }, 'Tarefa', context, [])!;
+  assert.equal(pais.kind === 'entity' && pais.initialData, 'all ISO 3166-1 countries');
+  assert.equal('initialData' in tarefa, false);
+  assert.ok(codes(validateNs5OntologyPlanV3(plan, { moduleName: 'tarefas', mdm, tdm, ddm }).issues).includes('INITIAL_DATA_ON_ROLE'));
+});
+
 void test('l4_p4_47: a column displayField is left as the bare id', () => {
   const normalizations: Ns5OntologyV3Normalization[] = [];
   const built = ns5_47Normalize('numero', [

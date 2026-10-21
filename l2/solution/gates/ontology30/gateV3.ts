@@ -151,6 +151,14 @@ export function validateNs5OntologyPlanV3(
         path: `${path}.writer`,
       });
     }
+    if (entity.kind === 'role' && entity.initialData) {
+      issues.push({
+        severity: 'error',
+        code: 'INITIAL_DATA_ON_ROLE',
+        message: `${entity.entityId} is a role: initial data belongs to a table of the module, not to a master record.`,
+        path: `${path}.initialData`,
+      });
+    }
     if (entity.kind === 'role') {
       if (!entity.subtype || !subtypes.has(entity.subtype)) {
         issues.push({
