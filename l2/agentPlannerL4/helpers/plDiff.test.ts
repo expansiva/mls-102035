@@ -620,6 +620,33 @@ void test('p4_51: the neutral room and wake on a recorded artifact emit no item'
   assert.deepEqual(items, []);
 });
 
+function table(initialData?: string): L4DiffSnapshot {
+  const entity = {
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Country',
+    kind: 'entity',
+    record: { fields: {} },
+    transitions: [],
+    ...(initialData !== undefined ? { initialData } : {}),
+  } as unknown as Ns5OntologyAnyEntity;
+  return snapshotFromParsed({
+    entities: [{ entity, source: 'ontology/Country.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+}
+
+void test('p4_57: a table without initialData on both sides emits no item', () => {
+  assert.deepEqual(diffL4Snapshots(table(), table()), []);
+});
+
+void test('p4_57: initialData from empty to a sentence is one entity item', () => {
+  const items = diffL4Snapshots(table(''), table('all ISO 3166-1 countries'));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'entity');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(items[0].entity, 'Country');
+});
+
 void test('p4_35: an unchanged field with text emits no item', () => {
   const snap = paciente({ title: 'Sexo', description: 'Sexo informado', values: [{ value: 'M', title: 'Masculino' }] });
   assert.deepEqual(diffL4Snapshots(snap, snap), []);

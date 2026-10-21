@@ -80,6 +80,8 @@ interface EntitySlice {
   source: string;
   fields: Record<string, FieldSlice>;
   transitions: Record<string, TransitionSlice>;
+  /** Sentence of what the table starts with. Absent on a recorded table reads as ''. */
+  initialData: string;
 }
 
 interface GrantSlice {
@@ -245,7 +247,8 @@ function entitySlice(entity: Ns5OntologyAnyEntity, source: string): EntitySlice 
       };
     }
   }
-  return { entityId: entity.entityId, source, fields, transitions };
+  const initialData = isNs5OntologyEntityV3(entity) && entity.kind === 'entity' ? (entity.initialData || '') : '';
+  return { entityId: entity.entityId, source, fields, transitions, initialData };
 }
 
 function grantSlice(grant: Ns5AccessArtifact['grants'][number]): GrantSlice {
@@ -410,6 +413,13 @@ export function diffL4Snapshots(base: L4DiffSnapshot, candidate: L4DiffSnapshot)
       items.push({
         changeId: `entity:${entityId}`, kind: 'entity', op: 'removed', entity: entityId,
         source: before.source, before: { entityId },
+      });
+    } else if (before && after && before.initialData !== after.initialData) {
+      items.push({
+        changeId: `entity:${entityId}`, kind: 'entity', op: 'changed', entity: entityId,
+        source: after.source,
+        before: { entityId, initialData: before.initialData },
+        after: { entityId, initialData: after.initialData },
       });
     }
     pushMapDiff(
