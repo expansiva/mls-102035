@@ -43,6 +43,10 @@ The engine writes `id`, `version`, the status of a master record, `tags`, `relat
 offers them and you never declare them. On a platform branch the whole structure -- type, `derived`, `indexed`, `unique`, `collection`,
 `of` -- is the platform's and is filled in for you: you say which fields you keep, how you tighten them, and what they mean here.
 
+A table the request says starts with data (a reference list such as countries, an initial text, rows that help fill the database)
+declares `initialData`: one sentence of what it starts with and where that comes from ("all ISO 3166-1 countries"). Only on a table,
+never on a role; without such a request, no `initialData`. Test data for the journeys is not `initialData`.
+
 ## 4. A master-data record (MDM) — copy from the platform, then customize
 
 A person, company, product, place, asset, animal, bank account, document or contact channel is **never a table of the module**. The module
