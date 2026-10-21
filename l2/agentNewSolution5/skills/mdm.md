@@ -78,6 +78,18 @@ Creating a role is **create-or-attach**: the engine looks the record up by docum
 it only when absent, then attaches the role tag and writes the namespace. A role is never deleted; it is
 inactivated and can be reactivated.
 
+Organization users are chosen, not registered — this comes before the registration paths above. A person
+who works inside the organization (a team member, a manager, an approver, whoever is responsible for
+something) is already an organization user: the `Person` that carries the platform login link. The module
+picks her with the platform user list (`locate.users`); it never registers her, never asks her name,
+country, document or consent, and never gives that role `register.createOrAttach`. What the module needs
+to know about her (she takes tasks, her shift) goes in `details.<moduleId>`, which the module writes and
+filters. The boundary: whoever only exists for the module and never signs in to the app (a customer, a
+student, a patient, a supplier, a contact reached by a channel) stays create-or-attach; whoever signs in
+as part of the organization is a user, chosen from the list. The one exception is a module whose purpose
+is the first access: it completes the session `Person` through the platform self-registration and access
+release (`register.self`), and still never creates a second `Person` nor links an arbitrary e-mail or record.
+
 Actors are not roles. A receptionist or a manager is an actor (someone who acts) and a profile (a set of
 authorities); she becomes an MDM entity only when the business needs to record something **about** her
 (an employee file, a commission). Do not create a `Person` entity per actor. An internal actor whose
