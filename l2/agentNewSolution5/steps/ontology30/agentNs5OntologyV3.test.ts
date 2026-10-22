@@ -269,6 +269,18 @@ void test('l4_p4_60: an fk on a role names a platform path; an fk on a table nam
   assert.ok(codes(validateNs5OntologyEntityV3(CONSULTA, plan, gateContext).issues).includes('NS5_ONTOLOGY_FK_FIELD_UNRESOLVED'));
 });
 
+void test('l4_p4_56 B2: a sub-field of a platform value type that the type does not have is PLATFORM_FIELD_UNKNOWN', () => {
+  const plan = formPlan();
+  const clean = validateNs5OntologyEntityV3(PACIENTE, plan, gateContext);
+  assert.equal(codes(clean.issues).includes('NS5_ONTOLOGY_PLATFORM_FIELD_UNKNOWN'), false);
+  const invented = clone(PACIENTE);
+  const consent = invented.record.fields.details!.fields!.person!.fields!.privacyConsent!;
+  consent.fields = { ...consent.fields, acceptedAt: { type: 'timestamp' } };
+  const red = validateNs5OntologyEntityV3(invented, plan, gateContext).issues.filter(issue => issue.code === 'NS5_ONTOLOGY_PLATFORM_FIELD_UNKNOWN');
+  assert.deepEqual(red.map(issue => issue.path), ['entities.Paciente.record.fields.details.person.privacyConsent.acceptedAt']);
+  assert.match(red[0].message, /consentedAt/);
+});
+
 void test('composition refuses a child that is also an entity or is referenced by a third party', () => {
   const plan = normalizeNs5OntologyPlanV3({
     businessDomain: 'Orders',

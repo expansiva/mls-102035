@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-10-22 (l4_p4_56 B2)
+
+- `NS5_ONTOLOGY_PLATFORM_FIELD_UNKNOWN` also below the first level of a platform branch: a sub-field of an inline platform object or of `of: <ValueType>` must exist in the platform (existence only; tightening below the first level is not checked). Measured on the 25 recorded roles: two refusals, the Onboarding `privacyConsent.acceptedAt`/`method` (PrivacyConsent has `consentedAt`/`channel`).
+
 ## 2026-10-22 (l4_p4_60)
 
 - l4_p4_60: `NS5_ONTOLOGY_FK_FIELD_UNRESOLVED`. The plan gate refuses an fk `field` on a role that is not a platform path (identification column, or the full `details.*` path walking `of:` value types; `general` and the module namespace are open); the entity gate refuses an fk `field` on a table that the table does not declare. Measured on the 52 fk rows of the 14 recorded modules: one refusal, the Onboarding `OrganizationMember.consentVersion` (hint `details.person.privacyConsent.consentVersion`). The plan prompt says how a role names its fk field.

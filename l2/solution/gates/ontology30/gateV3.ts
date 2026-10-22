@@ -862,7 +862,7 @@ function checkRoleRecord(
         });
         continue;
       }
-      issues.push(...checkTightening(field, platformField, `${where}.${id}`));
+      issues.push(...checkTightening(field, platformField, `${where}.${id}`, mdm));
     }
   }
   return issues;
@@ -872,8 +872,13 @@ function checkTightening(
   mine: Ns5OntologyFieldV3,
   platform: MdmDefFields[string],
   where: string,
+  mdm: MdmOntology,
 ): Ns5OntologyV3Issue[] {
   const issues: Ns5OntologyV3Issue[] = [];
+  // l4_p4_56 B2: the sub-fields of a platform object (inline, or `of: <ValueType>`) are the platform's too. The
+  // Onboarding kept `privacyConsent` (of PrivacyConsent) and invented `acceptedAt` and `method` inside it, so the
+  // contract wrote keys the engine does not read (`consentedAt`, `channel`).
+  issues.push(...checkPlatformChildren(mine, platform, where, mdm));
   if (mine.type !== platform.type) {
     issues.push({
       severity: 'error',
@@ -909,6 +914,26 @@ function checkTightening(
     });
   }
   return issues;
+}
+
+/** Only existence is checked below the first level: a sub-field may still be tightened (string → enum subset). */
+function checkPlatformChildren(
+  mine: Ns5OntologyFieldV3,
+  platform: MdmDefFields[string],
+  where: string,
+  mdm: MdmOntology,
+): Ns5OntologyV3Issue[] {
+  const children = platform.fields ?? (platform.of ? mdm.types[platform.of] : undefined);
+  return Object.entries(mine.fields ?? {}).flatMap(([id, child]) => {
+    const platformChild = children?.[id];
+    if (platformChild) return checkPlatformChildren(child, platformChild, `${where}.${id}`, mdm);
+    return [{
+      severity: 'error' as const,
+      code: 'NS5_ONTOLOGY_PLATFORM_FIELD_UNKNOWN',
+      message: `The platform ${platform.of ? `type ${platform.of}` : 'object'} has no field '${id}' (${Object.keys(children ?? {}).join(', ') || 'none'}); keep only its own fields.`,
+      path: `${where}.${id}`,
+    }];
+  });
 }
 
 function checkNamespace(
