@@ -239,6 +239,36 @@ void test('the plan gate refuses an unknown subtype, catalog type, role and endp
   assert.ok(codes(validateNs5OntologyPlanV3(wrongEnd, gateContext).issues).includes('NS5_ONTOLOGY_CATALOG_ENDPOINT'));
 });
 
+void test('l4_p4_60: an fk on a role names a platform path; an fk on a table names a declared field', () => {
+  const onboarding = (field: string) => normalizeNs5OntologyPlanV3({
+    businessDomain: 'Onboarding',
+    entities: [
+      { entityId: 'OrganizationMember', kind: 'role', subtype: 'Person', title: 'x', description: 'x', displayField: 'details.identification.name' },
+      { entityId: 'PrivacyText', kind: 'entity', class: 'supporting', title: 'x', description: 'x', displayField: 'versionCode' },
+      { entityId: 'Country', kind: 'entity', class: 'supporting', title: 'x', description: 'x', displayField: 'name' },
+    ],
+    relationships: [
+      { relationshipId: 'memberConsentVersion', from: 'OrganizationMember', to: 'PrivacyText', type: 'manyToOne', required: false, mode: 'fk', field, description: 'x' },
+      { relationshipId: 'memberCountry', from: 'OrganizationMember', to: 'Country', type: 'manyToOne', required: true, mode: 'fk', field: 'OrganizationMember.countryCode', description: 'x' },
+    ],
+  }, 'onboarding');
+  const context = { moduleName: 'onboarding', mdm, tdm, ddm };
+  const refused = validateNs5OntologyPlanV3(onboarding('OrganizationMember.consentVersion'), context).issues
+    .filter(issue => issue.code === 'NS5_ONTOLOGY_FK_FIELD_UNRESOLVED');
+  assert.deepEqual(refused.map(issue => issue.path), ['relationships.memberConsentVersion.field']);
+  assert.match(refused[0].message, /OrganizationMember\.details\.person\.privacyConsent\.consentVersion/);
+  for (const field of ['OrganizationMember.details.person.privacyConsent.consentVersion', 'OrganizationMember.details.onboarding.acceptedVersion']) {
+    assert.equal(codes(validateNs5OntologyPlanV3(onboarding(field), context).issues).includes('NS5_ONTOLOGY_FK_FIELD_UNRESOLVED'), false, field);
+  }
+
+  const plan = formPlan();
+  assert.equal(codes(validateNs5OntologyEntityV3(CONSULTA, plan, gateContext).issues).includes('NS5_ONTOLOGY_FK_FIELD_UNRESOLVED'), false);
+  const row = plan.relationships.find(item => item.mode === 'fk' && (item.field ?? '').startsWith('Consulta.'));
+  assert.ok(row, 'the form plan has an fk on Consulta');
+  row!.field = 'Consulta.pacienteCodigo';
+  assert.ok(codes(validateNs5OntologyEntityV3(CONSULTA, plan, gateContext).issues).includes('NS5_ONTOLOGY_FK_FIELD_UNRESOLVED'));
+});
+
 void test('composition refuses a child that is also an entity or is referenced by a third party', () => {
   const plan = normalizeNs5OntologyPlanV3({
     businessDomain: 'Orders',

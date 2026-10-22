@@ -62,7 +62,8 @@ Declare every link the journeys need, each with a `relationshipId` in lowerCamel
 `description` in the user language. `type` is the structural shape (`oneToOne`, `oneToMany`,
 `manyToOne`, `manyToMany`), read from `from` to `to`. `mode` says how it exists:
 
-- `fk` — a column of a module table pointing at another record. `field` is `<Entity>.<column>`.
+- `fk` — a field pointing at another record. `field` is `<Entity>.<column>` on a module table; on a role it is
+  `<Role>.<identification column>` or the full platform path (`<Role>.details.person.privacyConsent.consentVersion`).
 - `mdmRelationship` — master to master. `catalogType` is one of the relationship types of the catalog
   below, and `from`/`to` must be ends that type accepts. `roles` only from that type's role list.
   Kinship, guardianship, function and emergency contact are roles of a link, never fields.

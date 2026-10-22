@@ -1066,6 +1066,41 @@ export function ns5ResolvableFieldIdsV3(entity: Ns5OntologyEntityV3): string[] {
   }
 }
 
+/**
+ * l4_p4_60 — every path the platform record of a role offers, walking `of: <ValueType>` into its fields:
+ * `details.identification.countryCode`, `details.person.privacyConsent.consentVersion`, … The index columns
+ * of `identification` also answer by their bare id (`countryCode`), which is how an fk names a column.
+ * `general` and the module namespace are open, so they are not listed here.
+ */
+export function ns5RolePlatformPathsV3(mdm: MdmOntology, subtype: MdmSubtypeName): string[] {
+  const out = Object.keys(mdm.groups.identification?.fields ?? {});
+  for (const declared of mdm.record.fields.details?.groups ?? Object.keys(mdm.groups)) {
+    if (declared === NS5_PLATFORM_NAMESPACE_KEY || mdm.groups[declared]?.open) continue;
+    const key = declared === NS5_PLATFORM_SUBTYPE_KEY ? uncapitalize(subtype) : declared;
+    const fields = declared === NS5_PLATFORM_SUBTYPE_KEY ? mdm.subtypes[subtype]?.fields : mdm.groups[declared]?.fields;
+    walk(fields, `details.${key}`, 0);
+  }
+  return out;
+
+  function walk(fields: MdmDefFields | undefined, parent: string, depth: number): void {
+    if (depth > 4) return;
+    for (const [id, field] of Object.entries(fields ?? {})) {
+      const path = `${parent}.${id}`;
+      out.push(path);
+      walk(field.fields ?? (field.of ? mdm.types[field.of] : undefined), path, depth + 1);
+    }
+  }
+}
+
+/** l4_p4_60 — the path of an fk `field` resolves on a role: a platform path, or one under `general` or the namespace. */
+export function ns5RolePathResolvesV3(mdm: MdmOntology, subtype: MdmSubtypeName, moduleName: string, path: string): boolean {
+  if (path.startsWith(`details.${moduleName}.`)) return true;
+  for (const [declared, group] of Object.entries(mdm.groups)) {
+    if (group.open && declared !== NS5_PLATFORM_NAMESPACE_KEY && path.startsWith(`details.${declared}.`)) return true;
+  }
+  return ns5RolePlatformPathsV3(mdm, subtype).includes(path);
+}
+
 /** The columns of a table: every top-level field other than `details`. `uniqueKeys` may only use these. */
 export function ns5ColumnIdsV3(entity: Ns5OntologyEntityV3): string[] {
   return Object.keys(entity.record.fields).filter(id => id !== 'details');

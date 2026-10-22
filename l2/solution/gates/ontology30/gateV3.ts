@@ -38,6 +38,8 @@ import {
   ns5ColumnIdsV3,
   ns5FamilyOfV3,
   ns5ResolvableFieldIdsV3,
+  ns5RolePathResolvesV3,
+  ns5RolePlatformPathsV3,
   type Ns5OntologyV3Family,
   type Ns5OntologyV3PlanDraft,
   type Ns5OntologyV3PlanRelationship,
@@ -232,6 +234,7 @@ export function validateNs5OntologyPlanV3(
       issues.push({ severity: 'error', code: 'NS5_ONTOLOGY_THROUGH_MISSING', message: 'A throughTable link must name the table walked.', path: `${path}.through` });
     }
     if (row.mode === 'composition') issues.push(...checkComposition(row, plan, path));
+    if (row.mode === 'fk') issues.push(...checkRoleFkField(row, plan, context, path));
   }
 
   for (const cited of collectNs5CitedEntitiesV3(context.journeys ?? [])) {
@@ -257,6 +260,36 @@ export function validateNs5OntologyPlanV3(
     });
   }
   return ok(issues);
+}
+
+/**
+ * l4_p4_60: an fk whose column sits on a role names a path the platform record has. The Onboarding wrote
+ * `OrganizationMember.consentVersion`, a path of nothing; the contract then bound the id of the text, and the
+ * engine refused the consent (`CONSENT_INVALID`). The platform tree is known before the entities are written,
+ * so the plan's own repair fixes it. A column on a module table is checked by the entity (`checkTableFkFields`).
+ */
+function checkRoleFkField(
+  row: Ns5OntologyV3PlanRelationship,
+  plan: Ns5OntologyV3PlanDraft,
+  context: Ns5OntologyV3GateContext,
+  path: string,
+): Ns5OntologyV3Issue[] {
+  const field = row.field ?? '';
+  const ownerId = field.split('.')[0];
+  const owner = plan.entities.find(entity => entity.entityId === ownerId);
+  if (owner?.kind !== 'role' || !owner.subtype || !(owner.subtype in context.mdm.subtypes)) return [];
+  const subtype = owner.subtype as MdmSubtypeName;
+  const rest = field.slice(ownerId.length + 1);
+  if (ns5RolePathResolvesV3(context.mdm, subtype, context.moduleName, rest)) return [];
+  const leaf = rest.split('.').pop() ?? '';
+  const near = ns5RolePlatformPathsV3(context.mdm, subtype).filter(candidate => candidate.split('.').pop() === leaf);
+  return [{
+    severity: 'error',
+    code: 'NS5_ONTOLOGY_FK_FIELD_UNRESOLVED',
+    message: `${field} is not a path of the ${subtype} record. On a role, field is ${ownerId}.<an identification column> or ${ownerId}.details.<full path>`
+      + (near.length ? `; did you mean ${near.map(candidate => `${ownerId}.${candidate}`).join(' or ')}?` : '; a path of its own goes under details.' + context.moduleName + '.'),
+    path: `${path}.field`,
+  }];
 }
 
 /** The subtype on each end has to be one the catalog accepts on that end. A role stands for its subtype. */
@@ -384,6 +417,7 @@ export function validateNs5OntologyEntityV3(
   issues.push(...checkRules(entity, context, path));
   issues.push(...checkDecideBranching(entity, context, path));
   issues.push(...checkEntityRelationships(entity, plan, path));
+  if (entity.kind !== 'role') issues.push(...checkTableFkFields(entity, plan, paths, path));
   if (entity.kind === 'role') {
     issues.push(...checkRoleRecord(entity, context, path));
   } else {
@@ -646,6 +680,24 @@ function checkEntityRelationships(
     }
   }
   return issues;
+}
+
+/** l4_p4_60: an fk column on this table is a field this table declares. */
+function checkTableFkFields(
+  entity: Ns5OntologyEntityV3,
+  plan: Ns5OntologyV3PlanDraft,
+  paths: ReadonlySet<string>,
+  path: string,
+): Ns5OntologyV3Issue[] {
+  const own = `${entity.entityId}.`;
+  return plan.relationships
+    .filter(row => row.mode === 'fk' && (row.field ?? '').startsWith(own) && !paths.has((row.field ?? '').slice(own.length)))
+    .map(row => ({
+      severity: 'error' as const,
+      code: 'NS5_ONTOLOGY_FK_FIELD_UNRESOLVED',
+      message: `${row.relationshipId} keeps its key in ${row.field}, and ${entity.entityId} declares no such field. Declare the column.`,
+      path: `${path}.record.fields`,
+    }));
 }
 
 // --- a table ---------------------------------------------------------------

@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-10-22 (l4_p4_60)
+
+- l4_p4_60: `NS5_ONTOLOGY_FK_FIELD_UNRESOLVED`. The plan gate refuses an fk `field` on a role that is not a platform path (identification column, or the full `details.*` path walking `of:` value types; `general` and the module namespace are open); the entity gate refuses an fk `field` on a table that the table does not declare. Measured on the 52 fk rows of the 14 recorded modules: one refusal, the Onboarding `OrganizationMember.consentVersion` (hint `details.person.privacyConsent.consentVersion`). The plan prompt says how a role names its fk field.
+
 ## 2026-10-16 (l4_p4_47)
 
 - l4_p4_47: the plan prompt no longer tells `displayField` to be a table column; a bare id is frozen and the entity pass decides column or `details`.
