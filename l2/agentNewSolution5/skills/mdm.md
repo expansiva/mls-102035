@@ -34,6 +34,12 @@ The record's `docType` + `docId` stay for the **national document** (`CPF`, `CNP
 permanent records, which is what deduplication uses. A person can therefore have both a login and a
 document, and a record that never signs in has no login row.
 
+When a screen shows a person's **login e-mail** (a member list, "my access"), the role declares it as one item
+of `derived`: id `loginEmail`, type `string`, a description saying it is read from the platform login and never
+typed nor stored, and the capability `locate.users` among the role's capabilities. Every grant that shows the
+person lists `loginEmail` among its fields. It is never a field the module writes, never a `ContactChannel`, and
+never asked on a form: the login is created by the platform invitation (`invite.login`), not by the module.
+
 The JWT says **who** (login e-mail) and **what she may do** (authorities `<moduleId>:<actorId>`). The MDM
 says **where she exists**: the role tags `<moduleId>.<EntityId>` on her record list every module she takes
 part in, and `details[<moduleId>]` holds that module's data about her. The platform resolves the session
