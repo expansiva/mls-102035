@@ -463,7 +463,7 @@ export interface L4Diff {
 
 export const CHANGE_EFFORT_SCHEMA_VERSION = '2026-10-25-p4-change-effort-v2' as const;
 
-export const EFFORT_UNIT_KINDS = ['page', 'route', 'usecase', 'entity', 'request', 'table', 'shared', 'contract'] as const;
+export const EFFORT_UNIT_KINDS = ['page', 'route', 'usecase', 'entity', 'request', 'table', 'shared', 'contract', 'workflow'] as const;
 export const EFFORT_MASTER_KINDS = ['l2', 'l1'] as const;
 export const EFFORT_ANSWER_STATUSES = ['computed', 'abend'] as const;
 export const EFFORT_CONTRACT_VALUES = ['keep', 'change'] as const;
@@ -506,6 +506,21 @@ export interface EffortAnswer {
   contract: (typeof EFFORT_CONTRACT_VALUES)[number];
   abend?: { reason: string };
 }
+
+/** What a master asks the dispatch to send to the model. `null` from `effortPrompt` means no call. */
+export interface EffortPromptRequest {
+  prompt: string;
+  schema: object;
+}
+
+export type EffortPromptFn = (
+  input: EffortInput,
+) => EffortPromptRequest | null | Promise<EffortPromptRequest | null>;
+
+export type FinishEffortFn = (
+  input: EffortInput,
+  modelOutput: unknown,
+) => EffortAnswer | Promise<EffortAnswer>;
 
 export interface ChangeEffortMerged {
   create: Array<EffortUnitRef & { project: string }>;

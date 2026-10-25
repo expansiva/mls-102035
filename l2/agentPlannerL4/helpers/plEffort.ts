@@ -60,8 +60,14 @@ export async function describeItemEffort(
 ): Promise<EffortAnswer> {
   let entry = registry[master.project];
   if (!entry && registry === effortRegistry) {
-    const describeEffort = await resolveDescribeEffort(master.project);
-    if (describeEffort) entry = { describeEffort };
+    const resolved = await resolveDescribeEffort(master.project);
+    if (resolved) {
+      entry = {
+        describeEffort: resolved.describeEffort,
+        ...(resolved.effortPrompt ? { effortPrompt: resolved.effortPrompt } : {}),
+        ...(resolved.finishEffort ? { finishEffort: resolved.finishEffort } : {}),
+      };
+    }
   }
   if (!entry) {
     const path = registry === effortRegistry ? describeEffortModulePath(master.project) : undefined;

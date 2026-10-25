@@ -105,9 +105,9 @@ test('agendaClinica effort comes from the real How modules and matches the golde
       const input: EffortInput = { module: GOLDEN.module, base: GOLDEN.base, item };
       const answers: EffortAnswer[] = [];
       for (const master of GOLDEN.masters) {
-        const describeEffort = await resolveDescribeEffort(master.project);
-        assert.ok(describeEffort, master.project);
-        answers.push(await describeEffort(input));
+        const resolved = await resolveDescribeEffort(master.project);
+        assert.ok(resolved, master.project);
+        answers.push(await resolved.describeEffort(input));
       }
       const perItem = [{ item: item.changeId, answers }];
       const merged = mergeChangeEffort(perItem);

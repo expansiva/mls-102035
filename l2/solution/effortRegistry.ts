@@ -1,17 +1,33 @@
 /// <mls fileReference="_102035_/l2/solution/effortRegistry.ts" enhancement="_blank"/>
 
-import type { EffortAnswer, EffortInput } from '/_102035_/l2/solution/poolPlan.js';
+import type {
+  EffortAnswer,
+  EffortInput,
+  EffortPromptFn,
+  FinishEffortFn,
+} from '/_102035_/l2/solution/poolPlan.js';
 
 export type DescribeEffortFn = (input: EffortInput) => EffortAnswer | Promise<EffortAnswer>;
 
-export type EffortRegistry = Record<string, { describeEffort: DescribeEffortFn } | undefined>;
+/** The three exports of a master effort module. A new object; the imported function stays plain. */
+export type ResolvedDescribeEffort = {
+  describeEffort: DescribeEffortFn;
+  effortPrompt: EffortPromptFn | null;
+  finishEffort: FinishEffortFn | null;
+};
+
+export type EffortRegistry = Record<string, {
+  describeEffort: DescribeEffortFn;
+  effortPrompt?: EffortPromptFn;
+  finishEffort?: FinishEffortFn;
+} | undefined>;
 
 /** Empty until How publishes one neutral `describeEffort` module per master. The ensaio mutates this object. */
 export const effortRegistry: EffortRegistry = {};
 
 export type DescribeEffortImporter = (specifier: string) => Promise<unknown>;
 
-const resolvedByProject = new Map<string, DescribeEffortFn | undefined>();
+const resolvedByProject = new Map<string, ResolvedDescribeEffort | undefined>();
 const failureByProject = new Map<string, string>();
 
 const defaultDescribeEffortImporter: DescribeEffortImporter = (specifier) => import(specifier);
@@ -48,10 +64,19 @@ export function describeEffortFailure(project: string): string | undefined {
   return failureByProject.get(project);
 }
 
-function asDescribeEffort(mod: unknown): DescribeEffortFn | undefined {
+function asOptionalFn<T>(value: unknown): T | null {
+  return typeof value === 'function' ? value as T : null;
+}
+
+function asResolvedDescribeEffort(mod: unknown): ResolvedDescribeEffort | undefined {
   if (!mod || typeof mod !== 'object' || !('describeEffort' in mod)) return undefined;
-  const fn = (mod as { describeEffort?: unknown }).describeEffort;
-  return typeof fn === 'function' ? fn as DescribeEffortFn : undefined;
+  const record = mod as { describeEffort?: unknown; effortPrompt?: unknown; finishEffort?: unknown };
+  if (typeof record.describeEffort !== 'function') return undefined;
+  return {
+    describeEffort: record.describeEffort as DescribeEffortFn,
+    effortPrompt: asOptionalFn<EffortPromptFn>(record.effortPrompt),
+    finishEffort: asOptionalFn<FinishEffortFn>(record.finishEffort),
+  };
 }
 
 /**
@@ -61,9 +86,9 @@ function asDescribeEffort(mod: unknown): DescribeEffortFn | undefined {
 export async function resolveDescribeEffort(
   project: string,
   importer?: DescribeEffortImporter,
-): Promise<DescribeEffortFn | undefined> {
-  const injected = effortRegistry[project]?.describeEffort;
-  if (injected) return injected;
+): Promise<ResolvedDescribeEffort | undefined> {
+  const injected = effortRegistry[project];
+  if (injected) return asResolvedDescribeEffort(injected);
   if (resolvedByProject.has(project)) return resolvedByProject.get(project);
 
   const load = importer ?? describeEffortImporter;
@@ -81,10 +106,10 @@ export async function resolveDescribeEffort(
     resolvedByProject.set(project, undefined);
     return undefined;
   }
-  let fn: DescribeEffortFn | undefined;
+  let fn: ResolvedDescribeEffort | undefined;
   let failure: string | undefined;
   try {
-    fn = asDescribeEffort(await load(specifier));
+    fn = asResolvedDescribeEffort(await load(specifier));
     if (!fn) failure = 'module does not export describeEffort';
   } catch (error) {
     fn = undefined;

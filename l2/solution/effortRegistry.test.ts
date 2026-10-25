@@ -44,7 +44,10 @@ test('entrada injetada vence o import', async () => {
   };
   const fn = await resolveDescribeEffort('102020', importer);
   assert.equal(calls, 0);
-  assert.equal(fn, effortRegistry['102020']!.describeEffort);
+  assert.ok(fn);
+  assert.equal(fn.describeEffort, effortRegistry['102020']!.describeEffort);
+  assert.equal(fn.effortPrompt, null);
+  assert.equal(fn.finishEffort, null);
   const answer = await describeItemEffort(master, input);
   assert.equal(answer, computed);
   reset();
@@ -108,8 +111,27 @@ test('segundo pedido do mesmo projeto usa o cache', async () => {
   const first = await resolveDescribeEffort('102020', importer);
   const second = await resolveDescribeEffort('102020', importer);
   assert.equal(calls, 1);
-  assert.equal(first, describeEffort);
-  assert.equal(second, describeEffort);
+  assert.equal(first?.describeEffort, describeEffort);
+  assert.equal(second, first);
+  assert.equal('effortPrompt' in describeEffort, false);
+  reset();
+});
+
+test('a mesma função injetada em dois projetos não ganha propriedade', async () => {
+  reset();
+  const describeEffort = () => ({ status: 'computed' }) as EffortAnswer;
+  effortRegistry['102020'] = { describeEffort };
+  effortRegistry['102021'] = { describeEffort };
+  const a = await resolveDescribeEffort('102020');
+  const b = await resolveDescribeEffort('102021');
+  assert.ok(a && b);
+  assert.notEqual(a, b);
+  assert.equal(a.describeEffort, describeEffort);
+  assert.equal(b.describeEffort, describeEffort);
+  assert.equal(a.effortPrompt, null);
+  assert.equal(b.finishEffort, null);
+  assert.equal('effortPrompt' in describeEffort, false);
+  assert.equal('finishEffort' in describeEffort, false);
   reset();
 });
 
