@@ -261,6 +261,12 @@ export async function withReviewScenario(installStub: () => void, run: (scenario
 
 export async function runPlannerScenario(context: mls.msg.ExecutionContext) {
   await writeJson({ project: 102047, level: 5, folder: '', shortName: 'config', extension: '.json' }, { workspaceDependencies: ['102047', '102020', '102035', '102021'], projects: { '102020': { root: '../mls-102020', type: 'lib' }, '102021': { root: '../mls-102021', type: 'lib' } } });
+  await writeJson({ project: 102047, level: 5, folder: '', shortName: 'project', extension: '.json' }, {
+    masters: {
+      frontend: { masterProject: 102020, agentFolder: 'agentMaterializeL2', runtimeProject: 102033 },
+      backend: { masterProject: 102021, agentFolder: 'agentMaterializeL1', runtimeProject: 102034 },
+    },
+  });
   for (const [project, path] of [
     [102020, 'agentPlannerL2/agentPlannerL2.ts'],
     [102021, 'agentPlannerL1/agentPlannerL1.ts'],

@@ -1,4 +1,4 @@
-import { PL_PLANNER_PROJECTS } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
+import type { L5Masters } from '/_102029_/l2/runtimeConfigTypes.js';
 import { moduleFile, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { changeEffortFileStatus, mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 import {
@@ -20,19 +20,27 @@ import type {
 
 export { effortRegistry, type DescribeEffortFn, type EffortRegistry };
 
-const MASTER_BY_PROJECT: Record<(typeof PL_PLANNER_PROJECTS)[number], Pick<EffortMaster, 'kind' | 'device'>> = {
-  '102020': { kind: 'l2', device: 'web' },
-  '102021': { kind: 'l1', device: 'web' },
-};
+function masterProjectId(signature: unknown): string | undefined {
+  if (!signature || typeof signature !== 'object' || Array.isArray(signature)) return undefined;
+  const masterProject = (signature as { masterProject?: unknown }).masterProject;
+  if (typeof masterProject === 'number' && Number.isFinite(masterProject)) return String(masterProject);
+  if (typeof masterProject === 'string' && masterProject.trim()) return masterProject.trim();
+  return undefined;
+}
 
-export function effortMasters(project: { workspaceDependencies?: readonly unknown[] }): EffortMaster[] {
-  const deps = Array.isArray(project.workspaceDependencies) ? project.workspaceDependencies : [];
-  const declared = new Set(deps.map(entry => String(entry)));
+/** Masters declared on the client `l5/project.json`. One side is enough. None abends with the file path. */
+export function effortMasters(projectJson: unknown, projectFilePath: string): EffortMaster[] {
+  const root = projectJson && typeof projectJson === 'object' && !Array.isArray(projectJson)
+    ? projectJson as { masters?: L5Masters }
+    : undefined;
+  const declared = root?.masters;
   const masters: EffortMaster[] = [];
-  for (const id of PL_PLANNER_PROJECTS) {
-    if (!declared.has(id)) continue;
-    const shape = MASTER_BY_PROJECT[id];
-    masters.push({ project: id, kind: shape.kind, device: shape.device });
+  const frontend = masterProjectId(declared?.frontend);
+  const backend = masterProjectId(declared?.backend);
+  if (frontend) masters.push({ project: frontend, kind: 'l2', device: 'web' });
+  if (backend) masters.push({ project: backend, kind: 'l1', device: 'web' });
+  if (masters.length === 0) {
+    throw new Error(`no masters in ${projectFilePath}`);
   }
   return masters;
 }

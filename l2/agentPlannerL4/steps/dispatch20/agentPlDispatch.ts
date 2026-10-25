@@ -22,7 +22,7 @@ import {
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
 import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { moduleFile, readJson } from '/_102035_/l2/solution/fs.js';
-import { readL5Config } from '/_102035_/l2/solution/lib.js';
+import { readL5Project } from '/_102035_/l2/solution/lib.js';
 import {
   CHANGE_EFFORT_SCHEMA_VERSION,
   type ChangeEffortFile,
@@ -105,8 +105,9 @@ function doneAnchor(
 async function recordMaintenanceEffort(moduleName: string): Promise<ChangeEffortFile> {
   const diff = await readJson<L4Diff>(l4diffFile(moduleName, 'l2'));
   if (!diff) throw new Error(`l4diff missing for ${moduleName}`);
-  const config = await readL5Config();
-  const masters = effortMasters(config ?? {});
+  const projectFilePath = 'l5/project.json';
+  const projectJson = await readL5Project();
+  const masters = effortMasters(projectJson, projectFilePath);
   const revision = await loadPlRevision(moduleName);
   const request = await readChangeRequest(moduleFile(moduleName).project, moduleName);
   const base = { baseId: revision?.baseId ?? '', revisionId: revision?.revisionId ?? '' };

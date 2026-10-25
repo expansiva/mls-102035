@@ -111,18 +111,32 @@ test('erro do describeEffort vira abend', async () => {
   assert.equal(answer.item, input.item.changeId);
 });
 
-test('master fora do workspaceDependencies não é consultado', () => {
-  const masters = effortMasters({ workspaceDependencies: ['102020', '109999'] });
-  assert.deepEqual(masters, [l2]);
-  assert.equal(masters.some(master => master.project === '102021'), false);
+const projectFilePath = 'l5/project.json';
+
+test('os dois lados vêm de masters, com masterProject diferente de 102020', () => {
+  const masters = effortMasters({
+    masters: {
+      frontend: { masterProject: 102099, agentFolder: 'web', runtimeProject: 1 },
+      backend: { masterProject: 102088, agentFolder: 'api', runtimeProject: 2 },
+    },
+  }, projectFilePath);
+  assert.deepEqual(masters, [
+    { project: '102099', kind: 'l2', device: 'web' },
+    { project: '102088', kind: 'l1', device: 'web' },
+  ]);
 });
 
-test('os dois planners declarados entram na ordem do registro', () => {
-  const masters = effortMasters({ workspaceDependencies: ['102021', '102020'] });
-  assert.deepEqual(masters, [
-    l2,
-    { project: '102021', kind: 'l1', device: 'web' },
-  ]);
+test('um lado só devolve esse lado', () => {
+  const masters = effortMasters({
+    masters: { backend: { masterProject: 102077, agentFolder: 'api', runtimeProject: 2 } },
+  }, projectFilePath);
+  assert.deepEqual(masters, [{ project: '102077', kind: 'l1', device: 'web' }]);
+});
+
+test('sem masters abend com o caminho do arquivo', () => {
+  assert.throws(() => effortMasters(null, projectFilePath), /l5\/project\.json/);
+  assert.throws(() => effortMasters({}, projectFilePath), /l5\/project\.json/);
+  assert.throws(() => effortMasters({ masters: {} }, projectFilePath), /l5\/project\.json/);
 });
 
 const l1 = { project: '102021', kind: 'l1' as const, device: 'web' as const };

@@ -207,6 +207,12 @@ function seedEffortInputs(host: Host, items: readonly unknown[]): void {
   seed(host, { level: 5, folder: '', shortName: 'config', extension: '.json' }, `${JSON.stringify({
     workspaceDependencies: ['102020', '102021'],
   })}\n`);
+  seed(host, { level: 5, folder: '', shortName: 'project', extension: '.json' }, `${JSON.stringify({
+    masters: {
+      frontend: { masterProject: 102020, agentFolder: 'web', runtimeProject: 1 },
+      backend: { masterProject: 102021, agentFolder: 'api', runtimeProject: 2 },
+    },
+  })}\n`);
   seed(
     host,
     { level: 2, folder: 'mensalidadesAcademia/web/contracts', shortName: 'tela', extension: '.defs.ts' },
