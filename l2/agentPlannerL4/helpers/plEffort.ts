@@ -1,6 +1,6 @@
 import { PL_PLANNER_PROJECTS } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { moduleFile, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
-import { mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
+import { changeEffortFileStatus, mergeChangeEffort, validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 import {
   describeEffortFailure,
   describeEffortModulePath,
@@ -42,9 +42,12 @@ function abend(master: EffortMaster, item: string, reason: string): EffortAnswer
     master,
     item,
     status: 'abend',
+    create: [],
     regenerateDefs: [],
     materialize: [],
+    remove: [],
     runAgents: [],
+    contract: 'keep',
     abend: { reason },
   };
 }
@@ -115,7 +118,7 @@ export function mergeEffort(perItem: readonly EffortPerItem[]): MergedEffort {
   }
   const rows = ordered.map(row => ({ item: row.item.changeId, answers: row.answers }));
   const merged = mergeChangeEffort(rows);
-  return { perItem: rows, merged, status: merged.abend.length > 0 ? 'blocked' : 'simple' };
+  return { perItem: rows, merged, status: changeEffortFileStatus(rows) };
 }
 
 /** `pool/l4/changeEffort.json` na mesma raiz que o `moduleFile` (candidato, quando há override). */

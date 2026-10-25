@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2026-10-08-p4-change-effort-v1",
+  "schemaVersion": "2026-10-25-p4-change-effort-v2",
   "module": "agendaClinica",
   "base": {
     "baseId": "mls-102047",
@@ -30,28 +30,35 @@
           "master": { "project": "102020", "kind": "l2", "device": "web" },
           "item": "rule:anotacaoObrigatoriaNoAtendimento",
           "status": "computed",
+          "create": [],
           "regenerateDefs": [],
           "materialize": [
             { "kind": "page", "id": "agenda_diaria", "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts" }
           ],
-          "runAgents": []
+          "remove": [],
+          "runAgents": [],
+          "contract": "keep"
         },
         {
           "master": { "project": "102021", "kind": "l1", "device": "web" },
           "item": "rule:anotacaoObrigatoriaNoAtendimento",
           "status": "computed",
+          "create": [],
           "regenerateDefs": [],
           "materialize": [
             { "kind": "usecase", "id": "registrarAtendimento", "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts" },
             { "kind": "entity", "id": "consulta", "path": "l1/agendaClinica/layer_3_domain/entities/consulta.defs.ts" },
             { "kind": "request", "id": "agenda_diaria", "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts" }
           ],
-          "runAgents": []
+          "remove": [],
+          "runAgents": [],
+          "contract": "keep"
         }
       ]
     }
   ],
   "merged": {
+    "create": [],
     "regenerateDefs": [],
     "materialize": [
       { "project": "102020", "kind": "page", "id": "agenda_diaria", "path": "l2/agendaClinica/web/contracts/agenda_diaria.defs.ts" },
@@ -59,6 +66,7 @@
       { "project": "102021", "kind": "request", "id": "agenda_diaria", "path": "l1/agendaClinica/layer_2_application/requests/agenda_diaria.defs.ts" },
       { "project": "102021", "kind": "usecase", "id": "registrarAtendimento", "path": "l1/agendaClinica/layer_2_application/usecases/registrarAtendimento.defs.ts" }
     ],
+    "remove": [],
     "runAgents": [],
     "abend": []
   },

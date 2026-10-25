@@ -115,7 +115,7 @@ test('agendaClinica effort comes from the real How modules and matches the golde
         ...GOLDEN,
         perItem,
         merged,
-        status: merged.abend.length > 0 ? 'blocked' : 'simple',
+        status: merged.abend.length > 0 ? 'blocked' : (perItem.some(row => row.answers.some(a => a.contract === 'change')) ? 'contract' : 'simple'),
       };
       await writeJson({
         project: 102047, level: 4, folder: 'agendaClinica/pool/l4', shortName: 'changeEffort', extension: '.json',

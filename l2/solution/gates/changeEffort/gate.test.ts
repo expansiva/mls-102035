@@ -15,9 +15,12 @@ function answer(master: EffortMaster, partial: Partial<EffortAnswer> & Pick<Effo
   return {
     master,
     item: 'rule:anotacao',
+    create: [],
     regenerateDefs: [],
     materialize: [],
+    remove: [],
     runAgents: [],
+    contract: 'keep',
     ...partial,
   };
 }
@@ -49,7 +52,7 @@ function file(overrides: Partial<ChangeEffortFile> = {}): ChangeEffortFile {
     perItem,
     merged,
     untouched: { count: 4, sealHash: 'sha256:abc' },
-    status: merged.abend.length > 0 ? 'blocked' : 'simple',
+    status: merged.abend.length > 0 ? 'blocked' : (perItem.some(row => row.answers.some(a => a.contract === 'change')) ? 'contract' : 'simple'),
     ...overrides,
   };
 }
@@ -145,6 +148,39 @@ test('aceita um changeEffort blocked cujo item é artifact', () => {
   assert.equal(result.file.request.items[0]?.kind, 'artifact');
   assert.equal(result.file.request.items[0]?.entity, '');
   assert.equal(result.file.merged.abend.length, 2);
+});
+
+test('merge soma create e remove e o status vira contract quando um master diz change', () => {
+  const created = { kind: 'page' as const, id: 'nova', path: 'pages/nova' };
+  const dropped = { kind: 'page' as const, id: 'velha', path: 'pages/velha' };
+  const perItem = [{
+    item: 'rule:anotacao',
+    answers: [
+      answer(l2, { status: 'computed', create: [created], contract: 'change' }),
+      answer(l1, { status: 'computed', remove: [dropped] }),
+    ],
+  }];
+  const merged = mergeChangeEffort(perItem);
+  assert.deepEqual(merged.create, [{ ...created, project: '102020' }]);
+  assert.deepEqual(merged.remove, [{ ...dropped, project: '102021' }]);
+  const result = validateChangeEffort(file({ perItem, merged, status: 'contract' }));
+  assert.equal(result.ok, true, result.ok ? '' : JSON.stringify(result.issues));
+  if (!result.ok) return;
+  assert.equal(result.file.status, 'contract');
+});
+
+test('blocked vence contract', () => {
+  const perItem = [{
+    item: 'rule:anotacao',
+    answers: [
+      answer(l2, { status: 'computed', contract: 'change' }),
+      answer(l1, { status: 'abend', abend: { reason: 'fora' } }),
+    ],
+  }];
+  const result = validateChangeEffort(file({ perItem }));
+  assert.equal(result.ok, true, result.ok ? '' : JSON.stringify(result.issues));
+  if (!result.ok) return;
+  assert.equal(result.file.status, 'blocked');
 });
 
 test('a fixture dourada agendaClinica regra anotação passa no gate', () => {

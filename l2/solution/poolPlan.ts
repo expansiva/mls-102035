@@ -461,12 +461,13 @@ export interface L4Diff {
 
 // ---------------------------------------------------------------- changeEffort.json
 
-export const CHANGE_EFFORT_SCHEMA_VERSION = '2026-10-08-p4-change-effort-v1' as const;
+export const CHANGE_EFFORT_SCHEMA_VERSION = '2026-10-25-p4-change-effort-v2' as const;
 
 export const EFFORT_UNIT_KINDS = ['page', 'route', 'usecase', 'entity', 'request', 'table', 'shared', 'contract'] as const;
 export const EFFORT_MASTER_KINDS = ['l2', 'l1'] as const;
 export const EFFORT_ANSWER_STATUSES = ['computed', 'abend'] as const;
-export const CHANGE_EFFORT_STATUSES = ['simple', 'blocked'] as const;
+export const EFFORT_CONTRACT_VALUES = ['keep', 'change'] as const;
+export const CHANGE_EFFORT_STATUSES = ['simple', 'contract', 'blocked'] as const;
 
 export interface EffortUnitRef {
   kind: (typeof EFFORT_UNIT_KINDS)[number];
@@ -497,15 +498,20 @@ export interface EffortAnswer {
   master: EffortMaster;
   item: string;
   status: (typeof EFFORT_ANSWER_STATUSES)[number];
+  create: EffortUnitRef[];
   regenerateDefs: EffortUnitRef[];
   materialize: EffortUnitRef[];
+  remove: EffortUnitRef[];
   runAgents: EffortAgentRef[];
+  contract: (typeof EFFORT_CONTRACT_VALUES)[number];
   abend?: { reason: string };
 }
 
 export interface ChangeEffortMerged {
+  create: Array<EffortUnitRef & { project: string }>;
   regenerateDefs: Array<EffortUnitRef & { project: string }>;
   materialize: Array<EffortUnitRef & { project: string }>;
+  remove: Array<EffortUnitRef & { project: string }>;
   runAgents: EffortAgentRef[];
   abend: Array<{ item: string; master: EffortMaster; reason: string }>;
 }

@@ -82,9 +82,12 @@ test('describeEffort falso devolve a resposta dele', async () => {
     master: l2,
     item: 'c1',
     status: 'computed',
+    create: [],
     regenerateDefs: [],
     materialize: [{ kind: 'entity', id: 'Paciente', path: 'model/Paciente.json' }],
+    remove: [],
     runAgents: [],
+    contract: 'keep',
   };
   const registry: EffortRegistry = {
     '102020': {
@@ -135,14 +138,14 @@ test('dois itens na mesma unidade: regenerateDefs vence materialize', () => {
       item: item({ changeId: 'a', op: 'changed', kind: 'field' }),
       answers: [{
         master: l1, item: 'a', status: 'computed',
-        regenerateDefs: [], materialize: [unit], runAgents: [],
+        create: [], regenerateDefs: [], materialize: [unit], remove: [], runAgents: [], contract: 'keep',
       }],
     },
     {
       item: item({ changeId: 'b', op: 'changed', kind: 'rule' }),
       answers: [{
         master: l1, item: 'b', status: 'computed',
-        regenerateDefs: [unit], materialize: [unit], runAgents: [{ agent: 'x', command: 'run' }],
+        create: [], regenerateDefs: [unit], materialize: [unit], remove: [], runAgents: [{ agent: 'x', command: 'run' }], contract: 'keep',
       }],
     },
   ]);
@@ -156,7 +159,7 @@ test('campo added vem antes da regra changed na mesma entidade', () => {
   const field = item({ changeId: 'field:nota', op: 'added', kind: 'field' });
   const rule = item({ changeId: 'rule:anotacao', op: 'changed', kind: 'rule' });
   const empty = (changeId: string): EffortAnswer => ({
-    master: l2, item: changeId, status: 'computed', regenerateDefs: [], materialize: [], runAgents: [],
+    master: l2, item: changeId, status: 'computed', create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [], contract: 'keep',
   });
   const merged = mergeEffort([
     { item: rule, answers: [empty(rule.changeId)] },
@@ -170,7 +173,7 @@ test('item que nenhum master calcula fica blocked', () => {
     item: item({ changeId: 'c1', op: 'changed', kind: 'field' }),
     answers: [{
       master: l2, item: 'c1', status: 'abend',
-      regenerateDefs: [], materialize: [], runAgents: [],
+      create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [], contract: 'keep',
       abend: { reason: 'describeEffort not registered for master 102020' },
     }],
   }]);

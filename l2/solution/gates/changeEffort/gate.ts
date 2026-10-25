@@ -13,6 +13,7 @@ import {
   EFFORT_UNIT_KINDS,
   EFFORT_MASTER_KINDS,
   EFFORT_ANSWER_STATUSES,
+  EFFORT_CONTRACT_VALUES,
   CHANGE_EFFORT_STATUSES,
 } from '/_102035_/l2/solution/poolPlan.js';
 
@@ -181,9 +182,15 @@ function readAnswer(
   if (typeof status !== 'string' || !(EFFORT_ANSWER_STATUSES as readonly string[]).includes(status)) {
     push(issues, 'schema', `${path}.status`);
   }
+  const create = readUnits(issues, value.create, `${path}.create`);
   const regenerateDefs = readUnits(issues, value.regenerateDefs, `${path}.regenerateDefs`);
   const materialize = readUnits(issues, value.materialize, `${path}.materialize`);
+  const remove = readUnits(issues, value.remove, `${path}.remove`);
   const runAgents = readAgents(issues, value.runAgents, `${path}.runAgents`);
+  const contract = value.contract;
+  if (typeof contract !== 'string' || !(EFFORT_CONTRACT_VALUES as readonly string[]).includes(contract)) {
+    push(issues, 'schema', `${path}.contract`);
+  }
   let abend: { reason: string } | undefined;
   if ('abend' in value && value.abend !== undefined) {
     if (!isRecord(value.abend)) push(issues, 'schema', `${path}.abend`);
@@ -200,9 +207,13 @@ function readAnswer(
     || item !== itemId
     || typeof status !== 'string'
     || !(EFFORT_ANSWER_STATUSES as readonly string[]).includes(status)
+    || !create
     || !regenerateDefs
     || !materialize
+    || !remove
     || !runAgents
+    || typeof contract !== 'string'
+    || !(EFFORT_CONTRACT_VALUES as readonly string[]).includes(contract)
     || (status === 'abend' && !abend)
     || (status === 'computed' && abend)
   ) {
@@ -212,9 +223,12 @@ function readAnswer(
     master,
     item,
     status: status as EffortAnswer['status'],
+    create,
     regenerateDefs,
     materialize,
+    remove,
     runAgents,
+    contract: contract as EffortAnswer['contract'],
   };
   if (abend) answer.abend = abend;
   return answer;
@@ -263,27 +277,33 @@ function sortAgents(agents: EffortAgentRef[]): EffortAgentRef[] {
   return [...agents].sort((a, b) => a.agent.localeCompare(b.agent) || a.command.localeCompare(b.command));
 }
 
+function collectUnits(answers: EffortAnswer[], pick: (answer: EffortAnswer) => EffortUnitRef[]): Map<string, MergedUnit> {
+  const units = new Map<string, MergedUnit>();
+  for (const answer of answers) {
+    for (const unit of pick(answer)) {
+      const merged = { project: answer.master.project, kind: unit.kind, id: unit.id, path: unit.path };
+      units.set(mergedKey(merged), merged);
+    }
+  }
+  return units;
+}
+
 /** União por `project + kind + id` (project do master da resposta): `regenerateDefs` vence `materialize`; abend entra por item e master. */
 export function mergeChangeEffort(perItem: Array<{ item: string; answers: EffortAnswer[] }>): ChangeEffortMerged {
-  const regen = new Map<string, MergedUnit>();
-  const material = new Map<string, MergedUnit>();
+  const allAnswers = perItem.flatMap(row => row.answers);
+  const create = collectUnits(allAnswers, answer => answer.create);
+  const regen = collectUnits(allAnswers, answer => answer.regenerateDefs);
+  const remove = collectUnits(allAnswers, answer => answer.remove);
   const agents = new Map<string, EffortAgentRef>();
   const abend: ChangeEffortMerged['abend'] = [];
+  const material = new Map<string, MergedUnit>();
 
   for (const row of perItem) {
     for (const answer of row.answers) {
-      for (const unit of answer.regenerateDefs) {
-        const merged = { project: answer.master.project, kind: unit.kind, id: unit.id, path: unit.path };
-        regen.set(mergedKey(merged), merged);
-      }
       for (const agent of answer.runAgents) agents.set(`${agent.agent}\0${agent.command}`, agent);
       if (answer.status === 'abend' && answer.abend) {
         abend.push({ item: row.item, master: answer.master, reason: answer.abend.reason });
       }
-    }
-  }
-  for (const row of perItem) {
-    for (const answer of row.answers) {
       for (const unit of answer.materialize) {
         const merged = { project: answer.master.project, kind: unit.kind, id: unit.id, path: unit.path };
         const key = mergedKey(merged);
@@ -298,11 +318,24 @@ export function mergeChangeEffort(perItem: Array<{ item: string; answers: Effort
     || a.reason.localeCompare(b.reason));
 
   return {
+    create: sortUnits([...create.values()]),
     regenerateDefs: sortUnits([...regen.values()]),
     materialize: sortUnits([...material.values()]),
+    remove: sortUnits([...remove.values()]),
     runAgents: sortAgents([...agents.values()]),
     abend,
   };
+}
+
+export function changeEffortFileStatus(perItem: Array<{ item: string; answers: EffortAnswer[] }>): ChangeEffortFile['status'] {
+  const merged = mergeChangeEffort(perItem);
+  if (merged.abend.length > 0) return 'blocked';
+  for (const row of perItem) {
+    for (const answer of row.answers) {
+      if (answer.contract === 'change') return 'contract';
+    }
+  }
+  return 'simple';
 }
 
 function sameMerged(a: ChangeEffortMerged, b: ChangeEffortMerged): boolean {
@@ -314,8 +347,10 @@ function sameMerged(a: ChangeEffortMerged, b: ChangeEffortMerged): boolean {
     const other = b.abend[i]!;
     return row.item === other.item && row.reason === other.reason && sameMaster(row.master, other.master);
   });
-  return units(a.regenerateDefs, b.regenerateDefs)
+  return units(a.create, b.create)
+    && units(a.regenerateDefs, b.regenerateDefs)
     && units(a.materialize, b.materialize)
+    && units(a.remove, b.remove)
     && agents(a.runAgents, b.runAgents)
     && abends;
 }
@@ -325,8 +360,10 @@ function readMerged(issues: ChangeEffortIssue[], value: unknown, path: string): 
     push(issues, 'schema', path);
     return undefined;
   }
+  const create = readMergedUnits(issues, value.create, `${path}.create`);
   const regenerateDefs = readMergedUnits(issues, value.regenerateDefs, `${path}.regenerateDefs`);
   const materialize = readMergedUnits(issues, value.materialize, `${path}.materialize`);
+  const remove = readMergedUnits(issues, value.remove, `${path}.remove`);
   const runAgents = readAgents(issues, value.runAgents, `${path}.runAgents`);
   if (!Array.isArray(value.abend)) {
     push(issues, 'schema', `${path}.abend`);
@@ -348,8 +385,8 @@ function readMerged(issues: ChangeEffortIssue[], value: unknown, path: string): 
     if (item === undefined || !master || reason === undefined) abendOk = false;
     else abend.push({ item, master, reason });
   }
-  if (!regenerateDefs || !materialize || !runAgents || !abendOk) return undefined;
-  return { regenerateDefs, materialize, runAgents, abend };
+  if (!create || !regenerateDefs || !materialize || !remove || !runAgents || !abendOk) return undefined;
+  return { create, regenerateDefs, materialize, remove, runAgents, abend };
 }
 
 export function validateChangeEffort(value: unknown): ChangeEffortGateResult {
@@ -459,8 +496,8 @@ export function validateChangeEffort(value: unknown): ChangeEffortGateResult {
   if (perItem && merged) {
     const expected = mergeChangeEffort(perItem);
     if (!sameMerged(merged, expected)) push(issues, 'merged-mismatch', 'merged');
-    const expectedStatus = expected.abend.length > 0 ? 'blocked' : 'simple';
-    if (status === 'simple' || status === 'blocked') {
+    const expectedStatus = changeEffortFileStatus(perItem);
+    if ((CHANGE_EFFORT_STATUSES as readonly string[]).includes(status as string)) {
       if (status !== expectedStatus) push(issues, 'status', 'status');
     }
   }
@@ -475,7 +512,8 @@ export function validateChangeEffort(value: unknown): ChangeEffortGateResult {
     || !perItem
     || !merged
     || !untouched
-    || (status !== 'simple' && status !== 'blocked')
+    || typeof status !== 'string'
+    || !(CHANGE_EFFORT_STATUSES as readonly string[]).includes(status)
   ) {
     return { ok: false, issues };
   }
@@ -489,7 +527,7 @@ export function validateChangeEffort(value: unknown): ChangeEffortGateResult {
     perItem,
     merged,
     untouched,
-    status,
+    status: status as ChangeEffortFile['status'],
   };
   return { ok: true, file };
 }
