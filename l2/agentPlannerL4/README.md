@@ -3,7 +3,7 @@
 L4 planner. On accept it **wipes** the module pool, diffs the sealed release against
 the `/candidate` root, lists the artifacts of an existing complete module, writes
 `pool/l2`, and orchestrates L2 → L1 → L2 by `type: 'agent'` steps
-**in the same task**. No LLM. Does not read ontology to opine. A step never emits
+**in the same task**. No LLM, except when a master asks for the model in the maintenance effort (`/candidate`). Does not read ontology to opine. A step never emits
 `add-message-ai`.
 
 `entry10` parses (including `/candidate`), sets `moduleFolder`, refuses, wipes

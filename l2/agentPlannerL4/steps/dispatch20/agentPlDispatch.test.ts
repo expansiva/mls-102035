@@ -296,6 +296,104 @@ void test('dispatch20 counts module files no answer cites', async () => {
   }
 });
 
+function computedAnswer(input: EffortInput, project: string, kind: 'l1' | 'l2'): EffortAnswer {
+  return {
+    master: { project, kind, device: 'web' },
+    item: input.item.changeId,
+    status: 'computed',
+    create: [],
+    regenerateDefs: [],
+    materialize: kind === 'l2'
+      ? [{ kind: 'page', id: 'tela', path: 'l2/mensalidadesAcademia/web/contracts/tela.defs.ts' }]
+      : [],
+    remove: [],
+    runAgents: [],
+    contract: 'keep',
+  };
+}
+
+void test('dispatch20 asks only the master that requests a model and joins both answers', async () => {
+  let described = 0;
+  effortRegistry['102020'] = {
+    describeEffort: () => { described += 1; throw new Error('describeEffort should not run'); },
+    effortPrompt: () => ({ prompt: 'which page', schema: { type: 'object' } }),
+    finishEffort: (input, output) => ({
+      ...computedAnswer(input, '102020', 'l2'),
+      materialize: [{
+        kind: 'page',
+        id: String((output as { page?: string }).page || ''),
+        path: 'l2/mensalidadesAcademia/web/contracts/tela.defs.ts',
+      }],
+    }),
+  };
+  effortRegistry['102021'] = { describeEffort: input => computedAnswer(input, '102021', 'l1') };
+  const { host, context, parent, step } = contextWith();
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(host, [RULE_ITEM]);
+    const opened = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
+    assert.equal(host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`], undefined);
+    const added = opened.find((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+    const child = added?.step as mls.msg.AIAgentStep;
+    assert.equal(child.planning?.planId, 'dispatch20-effort-0');
+    const ready = await beforePlDispatchPromptStep(AGENT, context, parent, child, 2);
+    const prompt = ready.find((intent): intent is mls.msg.AgentIntentPromptReady => intent.type === 'prompt_ready');
+    assert.equal(prompt?.humanPrompt, 'which page');
+    child.interaction = {
+      input: [],
+      cost: 0,
+      trace: [],
+      payload: [{
+        type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [], stepTitle: 'model',
+        result: JSON.stringify({ page: 'tela' }),
+      } as mls.msg.AIResultStep],
+    };
+    await afterPlDispatchPromptStep(AGENT, context, parent, child, 3);
+    const stored = host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];
+    assert.ok(stored);
+    const file = JSON.parse(stored.content) as { perItem: Array<{ answers: EffortAnswer[] }> };
+    assert.deepEqual(file.perItem[0].answers.map(answer => answer.master.project), ['102020', '102021']);
+    assert.equal(file.perItem[0].answers[0].materialize[0].id, 'tela');
+    assert.equal(file.perItem[0].answers[1].status, 'computed');
+    assert.equal(described, 0);
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+});
+
+void test('dispatch20 turns a missing model reply into that master abend and still joins the file', async () => {
+  effortRegistry['102020'] = {
+    describeEffort: input => computedAnswer(input, '102020', 'l2'),
+    effortPrompt: () => ({ prompt: 'which page', schema: { type: 'object' } }),
+    finishEffort: input => computedAnswer(input, '102020', 'l2'),
+  };
+  effortRegistry['102021'] = { describeEffort: input => computedAnswer(input, '102021', 'l1') };
+  const { host, context, parent, step } = contextWith();
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(host, [RULE_ITEM]);
+    const opened = await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
+    const added = opened.find((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+    const child = added?.step as mls.msg.AIAgentStep;
+    await afterPlDispatchPromptStep(AGENT, context, parent, child, 2);
+    const stored = host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];
+    assert.ok(stored);
+    const file = JSON.parse(stored.content) as {
+      status: string;
+      perItem: Array<{ answers: EffortAnswer[] }>;
+    };
+    assert.equal(file.status, 'blocked');
+    assert.match(file.perItem[0].answers[0].abend?.reason || '', /model unavailable/);
+    assert.equal(file.perItem[0].answers[1].status, 'computed');
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+});
+
 void test('dispatch20 blocks a rule plus an artifact — no partial accept', async () => {
   const file = await changeEffortFor([RULE_ITEM, ARTIFACT_ITEM]);
   assert.equal(file.status, 'blocked');
