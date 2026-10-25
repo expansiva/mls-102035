@@ -339,14 +339,17 @@ void test('dispatch20 asks only the master that requests a model and joins both 
     const ready = await beforePlDispatchPromptStep(AGENT, context, parent, child, 2);
     const prompt = ready.find((intent): intent is mls.msg.AgentIntentPromptReady => intent.type === 'prompt_ready');
     assert.equal(prompt?.humanPrompt, 'which page');
+    assert.equal(prompt?.systemPrompt?.split('\n')[0], '<!-- modelType: reasoning -->');
+    assert.equal(prompt?.tools?.[0]?.function.name, 'submitEffort');
+    assert.deepEqual(prompt?.tools?.[0]?.function.parameters, { type: 'object' });
+    assert.deepEqual(prompt?.toolChoice, { type: 'function', function: { name: 'submitEffort' } });
     child.interaction = {
       input: [],
       cost: 0,
       trace: [],
       payload: [{
-        type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [], stepTitle: 'model',
-        result: JSON.stringify({ page: 'tela' }),
-      } as mls.msg.AIResultStep],
+        function: { name: 'submitEffort', arguments: JSON.stringify({ page: 'tela' }) },
+      } as unknown as mls.msg.AIResultStep],
     };
     await afterPlDispatchPromptStep(AGENT, context, parent, child, 3);
     const stored = host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];

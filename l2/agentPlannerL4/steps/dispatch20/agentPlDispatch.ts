@@ -127,6 +127,14 @@ function beforeEffortModelStep(
   if (!parsed.work || !slot?.prompt) {
     return [updateStatus(context, parentStep, step, hookSequential, 'failed', parsed.error || 'dispatch20 effort step has no model request.')];
   }
+  const tool: mls.msg.LLMTool = {
+    type: 'function',
+    function: {
+      name: 'submitEffort',
+      description: 'Submit the effort answer for this maintenance change.',
+      parameters: slot.prompt.schema as Record<string, unknown>,
+    },
+  };
   return [{
     type: 'prompt_ready',
     args: String(step.prompt || ''),
@@ -135,8 +143,10 @@ function beforeEffortModelStep(
     taskId: context.task?.PK || '',
     hookSequential,
     parentStepId: parentStep.stepId,
-    systemPrompt: `Reply with JSON matching this schema:\n${JSON.stringify(slot.prompt.schema)}`,
+    systemPrompt: '<!-- modelType: reasoning -->\nCall submitEffort with the effort answer.',
     humanPrompt: slot.prompt.prompt,
+    tools: [tool],
+    toolChoice: { type: 'function', function: { name: tool.function.name } },
   }];
 }
 
@@ -187,18 +197,31 @@ function effortModelStep(work: EffortWork): mls.msg.AIAgentStep {
 }
 
 function modelOutputOf(step: mls.msg.AIAgentStep): { ok: true; value: unknown } | { ok: false; reason: string } {
-  const first = step.interaction?.payload?.[0] as { result?: unknown } | undefined;
-  if (!first) return { ok: false, reason: 'model unavailable: the reply did not arrive' };
-  const raw = first.result !== undefined ? first.result : first;
-  if (typeof raw === 'string') {
+  const first = step.interaction?.payload?.[0];
+  if (first === undefined || first === null) return { ok: false, reason: 'model unavailable: the reply did not arrive' };
+  return unwrapEffortOutput(first);
+}
+
+/** Tool reply as an object, or JSON text, including `function.arguments` (same nesting as the L1 resolve). */
+function unwrapEffortOutput(value: unknown): { ok: true; value: unknown } | { ok: false; reason: string } {
+  if (typeof value === 'string') {
     try {
-      return { ok: true, value: JSON.parse(raw) as unknown };
+      return unwrapEffortOutput(JSON.parse(value) as unknown);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, reason: `model unavailable: reply is not JSON (${message})` };
     }
   }
-  return { ok: true, value: raw };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { ok: true, value };
+  const record = value as Record<string, unknown>;
+  const fn = record.function;
+  if (fn && typeof fn === 'object' && !Array.isArray(fn) && (fn as Record<string, unknown>).arguments !== undefined) {
+    return unwrapEffortOutput((fn as Record<string, unknown>).arguments);
+  }
+  if (typeof record.args === 'string') return unwrapEffortOutput(record.args);
+  if (record.arguments !== undefined) return unwrapEffortOutput(record.arguments);
+  if (record.result !== undefined) return unwrapEffortOutput(record.result);
+  return { ok: true, value: record };
 }
 
 async function finishModelSlot(
