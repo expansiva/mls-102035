@@ -397,6 +397,128 @@ void test('dispatch20 turns a missing model reply into that master abend and sti
   }
 });
 
+void test('dispatch20 on /candidate opens the planner conversation only when the effort status is contract', async () => {
+  const answer = (input: EffortInput, contract: 'keep' | 'change'): EffortAnswer => ({
+    ...computedAnswer(input, '102020', 'l2'),
+    contract,
+  });
+  effortRegistry['102020'] = { describeEffort: input => answer(input, 'change') };
+  effortRegistry['102021'] = { describeEffort: input => ({ ...computedAnswer(input, '102021', 'l1'), contract: 'change' }) };
+  const opened = contextWith({ l2Agent: true });
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(opened.host, [RULE_ITEM]);
+    seed(
+      opened.host,
+      { level: 4, folder: `${REVISION}/pipeline`, shortName: 'pipeline', extension: '.json' },
+      `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+    );
+    seed(opened.host, { level: 4, folder: `${REVISION}/pool/l2/web`, shortName: 'menu', extension: '.json' }, '{}\n');
+    const intents = await beforePlDispatchPromptStep(AGENT, opened.context, opened.parent, opened.step, 1);
+    const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+    const agents = added.filter(intent => intent.step.type === 'agent');
+    assert.equal(agents.length, 1);
+    const l2Prompt = JSON.parse(String((agents[0].step as mls.msg.AIAgentStep).prompt)) as { candidate: string; file: string };
+    assert.equal(l2Prompt.candidate, REVISION);
+    assert.match(l2Prompt.file, new RegExp(`${REVISION}/pool/l2/`));
+    const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
+    const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { nextStep: string; invokeCount: number };
+    assert.equal(result.nextStep, 'loop30');
+    assert.equal(result.invokeCount, 1);
+    const box = listPoolBox('mensalidadesAcademia', 'l2');
+    assert.equal(box.length, 1);
+    const message = JSON.parse(opened.host.files[keyOf(box[0])].content) as { mode: string; from: string; to: string };
+    assert.equal(message.mode, 'estimate');
+    assert.equal(message.from, 'l4');
+    assert.equal(message.to, 'l2');
+    assert.equal(opened.host.files[`${PROJECT}_4_${REVISION}/pool/l2/web/menu.json`]?.status, 'changed');
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+
+  effortRegistry['102020'] = { describeEffort: input => answer(input, 'keep') };
+  effortRegistry['102021'] = { describeEffort: input => computedAnswer(input, '102021', 'l1') };
+  const quiet = contextWith({ l2Agent: true });
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(quiet.host, [RULE_ITEM]);
+    const intents = await beforePlDispatchPromptStep(AGENT, quiet.context, quiet.parent, quiet.step, 1);
+    const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+    assert.equal(added.some(intent => intent.step.type === 'agent'), false);
+    assert.equal(listPoolBox('mensalidadesAcademia', 'l2').length, 0);
+    const stored = quiet.host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];
+    assert.equal(JSON.parse(stored.content).status, 'simple');
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+});
+
+void test('dispatch20 on /candidate opens the conversation when l2 asks regenerateDefs, create or remove', async () => {
+  const page = { kind: 'page', id: 'tela', path: 'l2/mensalidadesAcademia/web/contracts/tela.defs.ts' };
+  const l2 = (
+    input: EffortInput,
+    units: Pick<EffortAnswer, 'regenerateDefs' | 'create' | 'remove'>,
+    status: EffortAnswer['status'] = 'computed',
+  ): EffortAnswer => ({
+    ...computedAnswer(input, '102020', 'l2'),
+    ...units,
+    status,
+    ...(status === 'abend' ? { abend: { reason: 'not handled' } } : {}),
+  });
+
+  async function openedFor(answer: (input: EffortInput) => EffortAnswer): Promise<boolean> {
+    effortRegistry['102020'] = { describeEffort: answer };
+    effortRegistry['102021'] = { describeEffort: input => computedAnswer(input, '102021', 'l1') };
+    const run = contextWith({ l2Agent: true });
+    setModuleRoot('mensalidadesAcademia', REVISION);
+    try {
+      seedEffortInputs(run.host, [RULE_ITEM]);
+      seed(
+        run.host,
+        { level: 4, folder: `${REVISION}/pipeline`, shortName: 'pipeline', extension: '.json' },
+        `${JSON.stringify(COMPLETE_PIPELINE, null, 2)}\n`,
+      );
+      const intents = await beforePlDispatchPromptStep(AGENT, run.context, run.parent, run.step, 1);
+      const added = intents.filter((intent): intent is mls.msg.AgentIntentAddStep => intent.type === 'add-step');
+      const talked = added.some(intent => intent.step.type === 'agent');
+      if (talked) {
+        const agent = added.find(intent => intent.step.type === 'agent');
+        const prompt = JSON.parse(String((agent?.step as mls.msg.AIAgentStep).prompt)) as { candidate: string };
+        assert.equal(prompt.candidate, REVISION);
+        const done = added.find(intent => intent.step.planning?.planId === 'dispatch20-done');
+        const result = JSON.parse(String((done?.step as mls.msg.AIResultStep).result)) as { nextStep: string };
+        assert.equal(result.nextStep, 'loop30');
+        const box = listPoolBox('mensalidadesAcademia', 'l2');
+        const message = JSON.parse(run.host.files[keyOf(box[0])].content) as { mode: string; from: string; to: string };
+        assert.equal(message.mode, 'estimate');
+        assert.equal(message.from, 'l4');
+        assert.equal(message.to, 'l2');
+      }
+      return talked;
+    } finally {
+      delete effortRegistry['102020'];
+      delete effortRegistry['102021'];
+      setModuleRoot('mensalidadesAcademia', null);
+    }
+  }
+
+  assert.equal(await openedFor(input => l2(input, { regenerateDefs: [page], create: [], remove: [] })), true);
+  assert.equal(await openedFor(input => l2(input, { regenerateDefs: [], create: [page], remove: [] })), true);
+  assert.equal(await openedFor(input => l2(input, { regenerateDefs: [], create: [], remove: [page] })), true);
+  assert.equal(await openedFor(input => l2(input, { regenerateDefs: [page], create: [], remove: [] }, 'abend')), false);
+  assert.equal(await openedFor(input => ({
+    ...computedAnswer(input, '102021', 'l1'),
+    master: { project: '102020', kind: 'l2', device: 'web' },
+    regenerateDefs: [],
+    create: [],
+    remove: [],
+  })), false);
+});
+
 void test('dispatch20 blocks a rule plus an artifact — no partial accept', async () => {
   const file = await changeEffortFor([RULE_ITEM, ARTIFACT_ITEM]);
   assert.equal(file.status, 'blocked');

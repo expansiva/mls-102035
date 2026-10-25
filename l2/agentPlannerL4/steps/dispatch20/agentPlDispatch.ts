@@ -72,11 +72,8 @@ export async function beforePlDispatchPromptStep(
     const work = await prepareMaintenanceEffort(moduleName);
     const ask = work.slots.findIndex(slot => slot.prompt && !slot.answer);
     if (ask < 0) {
-      await writePreparedEffort(work);
-      return [
-        doneAnchor(context, parentStep, moduleName, '', 1, 'pool/l4/changeEffort.json written.', 0),
-        updateStatus(context, parentStep, step, hookSequential, 'completed', 'dispatch20 wrote pool/l4/changeEffort.json.'),
-      ];
+      const file = await writePreparedEffort(work);
+      return finishCandidateEffort(context, parentStep, step, hookSequential, moduleName, file);
     }
     return [
       addPlStep(context, parentStep, effortModelStep({ ...work, ask })),
@@ -171,12 +168,55 @@ async function afterEffortModelStep(
       updateStatus(context, parentStep, step, hookSequential, 'completed', 'dispatch20 received one effort model reply.'),
     ];
   }
-  await writePreparedEffort(work);
+  const file = await writePreparedEffort(work);
   const dispatch = parentStep.nextSteps?.find(item => item.planning?.planId === 'dispatch20');
+  return finishCandidateEffort(context, parentStep, step, hookSequential, work.moduleName, file, dispatch);
+}
+
+/** `contract`, or an l2 answer with `regenerateDefs` / `create` / `remove`, opens the same l4→l2 estimate and loop30 hand-off as creation. `blocked` and materialize-only stay closed. The pool stays. */
+function opensPlannerConversation(file: ChangeEffortFile): boolean {
+  if (file.status === 'blocked') return false;
+  if (file.status === 'contract') return true;
+  return file.perItem.some(row => row.answers.some(answer =>
+    answer.master.kind === 'l2'
+    && (answer.regenerateDefs.length > 0 || answer.create.length > 0 || answer.remove.length > 0)));
+}
+
+async function finishCandidateEffort(
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+  moduleName: string,
+  file: ChangeEffortFile,
+  dispatch?: mls.msg.AIPayload,
+): Promise<mls.msg.AgentIntent[]> {
+  const closeDispatch = dispatch
+    ? [updateStatus(context, parentStep, dispatch, hookSequential, 'completed', 'dispatch20 wrote pool/l4/changeEffort.json.')]
+    : [];
+  if (!opensPlannerConversation(file)) {
+    return [
+      doneAnchor(context, parentStep, moduleName, '', 1, 'pool/l4/changeEffort.json written.', 0),
+      ...closeDispatch,
+      updateStatus(context, parentStep, step, hookSequential, 'completed', 'dispatch20 wrote pool/l4/changeEffort.json.'),
+    ];
+  }
+  const result = await runPlDispatch(moduleName, new Date());
+  const invoke = createRound1InvokeSteps(moduleName, result);
+  const missing = result.status;
+  const status = missing || `pool/l2 pending for the planner (${result.artifacts.length} artifacts).`;
   return [
-    doneAnchor(context, parentStep, work.moduleName, '', 1, 'pool/l4/changeEffort.json written.', 0),
-    ...(dispatch ? [updateStatus(context, parentStep, dispatch, hookSequential, 'completed', 'dispatch20 wrote pool/l4/changeEffort.json.')] : []),
-    updateStatus(context, parentStep, step, hookSequential, 'completed', 'dispatch20 wrote pool/l4/changeEffort.json.'),
+    ...invoke.map(child => addPlStep(context, parentStep, child)),
+    doneAnchor(context, parentStep, moduleName, result.thread, result.artifacts.length, status, invoke.length),
+    ...closeDispatch,
+    updateStatus(
+      context,
+      parentStep,
+      step,
+      hookSequential,
+      'completed',
+      missing || `dispatch20 wrote pool/l2 and created ${invoke.length} planner step(s).`,
+    ),
   ];
 }
 
