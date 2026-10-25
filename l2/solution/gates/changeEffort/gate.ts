@@ -288,12 +288,13 @@ function collectUnits(answers: EffortAnswer[], pick: (answer: EffortAnswer) => E
   return units;
 }
 
-/** União por `project + kind + id` (project do master da resposta): `regenerateDefs` vence `materialize`; abend entra por item e master. */
+/** União por `project + kind + id` (project do master da resposta): `remove` vence `regenerateDefs` e `materialize`; `regenerateDefs` vence `materialize`; abend entra por item e master. */
 export function mergeChangeEffort(perItem: Array<{ item: string; answers: EffortAnswer[] }>): ChangeEffortMerged {
   const allAnswers = perItem.flatMap(row => row.answers);
   const create = collectUnits(allAnswers, answer => answer.create);
   const regen = collectUnits(allAnswers, answer => answer.regenerateDefs);
   const remove = collectUnits(allAnswers, answer => answer.remove);
+  for (const key of remove.keys()) regen.delete(key);
   const agents = new Map<string, EffortAgentRef>();
   const abend: ChangeEffortMerged['abend'] = [];
   const material = new Map<string, MergedUnit>();
@@ -307,7 +308,7 @@ export function mergeChangeEffort(perItem: Array<{ item: string; answers: Effort
       for (const unit of answer.materialize) {
         const merged = { project: answer.master.project, kind: unit.kind, id: unit.id, path: unit.path };
         const key = mergedKey(merged);
-        if (!regen.has(key)) material.set(key, merged);
+        if (!regen.has(key) && !remove.has(key)) material.set(key, merged);
       }
     }
   }

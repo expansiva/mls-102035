@@ -169,6 +169,29 @@ test('merge soma create e remove e o status vira contract quando um master diz c
   assert.equal(result.file.status, 'contract');
 });
 
+test('remove vence regenerateDefs e materialize da mesma unidade', () => {
+  const workflow = { kind: 'workflow' as const, id: 'resumoDiario', path: 'workflows/resumoDiario' };
+  const perItem = [
+    {
+      item: 'rule:resumo',
+      answers: [answer(l1, { item: 'rule:resumo', status: 'computed', remove: [workflow] })],
+    },
+    {
+      item: 'workflow:resumo',
+      answers: [answer(l1, {
+        item: 'workflow:resumo',
+        status: 'computed',
+        regenerateDefs: [workflow],
+        materialize: [workflow],
+      })],
+    },
+  ];
+  const merged = mergeChangeEffort(perItem);
+  assert.deepEqual(merged.remove, [{ ...workflow, project: '102021' }]);
+  assert.deepEqual(merged.regenerateDefs, []);
+  assert.deepEqual(merged.materialize, []);
+});
+
 test('blocked vence contract', () => {
   const perItem = [{
     item: 'rule:anotacao',
