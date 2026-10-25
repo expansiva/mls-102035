@@ -9,7 +9,9 @@ import {
   afterPlDispatchPromptStep,
   beforePlDispatchPromptStep,
 } from '/_102035_/l2/agentPlannerL4/steps/dispatch20/agentPlDispatch.js';
+import { effortRegistry } from '/_102035_/l2/agentPlannerL4/helpers/plEffort.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
+import type { EffortAnswer, EffortInput } from '/_102035_/l2/solution/poolPlan.js';
 import { listPoolBox, readPoolTrace } from '/_102035_/l2/solution/pool.js';
 
 type Stored = {
@@ -234,6 +236,7 @@ async function changeEffortFor(items: readonly unknown[]): Promise<{
   status: string;
   request: { items: Array<{ changeId: string }> };
   merged: { abend: Array<{ item: string; master: { project: string }; reason: string }> };
+  untouched: { count: number; sealHash: string };
 }> {
   const { host, context, parent, step } = contextWith();
   setModuleRoot('mensalidadesAcademia', REVISION);
@@ -246,6 +249,7 @@ async function changeEffortFor(items: readonly unknown[]): Promise<{
       status: string;
       request: { items: Array<{ changeId: string }> };
       merged: { abend: Array<{ item: string; master: { project: string }; reason: string }> };
+      untouched: { count: number; sealHash: string };
     };
   } finally {
     setModuleRoot('mensalidadesAcademia', null);
@@ -265,6 +269,31 @@ void test('dispatch20 blocks a journey artifact the masters do not compute', asy
     '102020: v1 computes only rule changed; artifact changed is not handled',
     '102021: kind/op fora da v1: artifact changed',
   ]);
+});
+
+void test('dispatch20 counts module files no answer cites', async () => {
+  const cited = 'l2/mensalidadesAcademia/web/contracts/tela.defs.ts';
+  const answer = (input: EffortInput): EffortAnswer => ({
+    master: { project: '102020', kind: 'l2', device: 'web' },
+    item: input.item.changeId,
+    status: 'computed',
+    create: [],
+    regenerateDefs: [],
+    materialize: [{ kind: 'page', id: 'tela', path: cited }],
+    remove: [],
+    runAgents: [],
+    contract: 'keep',
+  });
+  effortRegistry['102020'] = { describeEffort: answer };
+  effortRegistry['102021'] = { describeEffort: (input) => ({ ...answer(input), master: { project: '102021', kind: 'l1', device: 'web' }, materialize: [] }) };
+  try {
+    const file = await changeEffortFor([RULE_ITEM]);
+    assert.equal(file.untouched.count, 1);
+    assert.match(file.untouched.sealHash, /^sha256:[0-9a-f]{64}$/);
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+  }
 });
 
 void test('dispatch20 blocks a rule plus an artifact — no partial accept', async () => {

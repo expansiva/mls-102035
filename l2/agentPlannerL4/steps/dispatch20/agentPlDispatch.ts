@@ -20,12 +20,14 @@ import {
   PL_STEP_HOOKS,
   updateStatus,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
+import { enumerateModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { moduleFile, readJson } from '/_102035_/l2/solution/fs.js';
 import { readL5Project } from '/_102035_/l2/solution/lib.js';
 import {
   CHANGE_EFFORT_SCHEMA_VERSION,
   type ChangeEffortFile,
+  type EffortAnswer,
   type L4Diff,
 } from '/_102035_/l2/solution/poolPlan.js';
 
@@ -128,11 +130,48 @@ async function recordMaintenanceEffort(moduleName: string): Promise<ChangeEffort
     masters,
     perItem: merged.perItem,
     merged: merged.merged,
-    untouched: { count: 0, sealHash: '' },
+    untouched: await untouchedOf(moduleName, perItem.flatMap(row => row.answers)),
     status: merged.status,
   };
   await writeChangeEffort(moduleName, file);
   return file;
+}
+
+/** Module layer files no answer cites. Hash is the review seal digest of `{level, path, sha256}`. */
+async function untouchedOf(
+  moduleName: string,
+  answers: readonly EffortAnswer[],
+): Promise<ChangeEffortFile['untouched']> {
+  const files = await enumerateModuleLayers(moduleFile(moduleName).project, moduleName);
+  const cited = citedLayerKeys(moduleName, answers);
+  const kept = files
+    .filter(file => !cited.has(`${file.level}:${file.path}`))
+    .map(file => ({ level: file.level, path: file.path, sha256: file.sha256 }));
+  return { count: kept.length, sealHash: await sha256Text(JSON.stringify(kept)) };
+}
+
+function citedLayerKeys(moduleName: string, answers: readonly EffortAnswer[]): Set<string> {
+  const keys = new Set<string>();
+  for (const answer of answers) {
+    for (const unit of [...answer.create, ...answer.regenerateDefs, ...answer.materialize, ...answer.remove]) {
+      const key = layerKey(moduleName, unit.path);
+      if (key) keys.add(key);
+    }
+  }
+  return keys;
+}
+
+function layerKey(moduleName: string, unitPath: string): string | undefined {
+  for (const level of [1, 2] as const) {
+    const prefix = `l${level}/${moduleName}/`;
+    if (unitPath.startsWith(prefix)) return `${level}:${unitPath.slice(prefix.length)}`;
+  }
+  return undefined;
+}
+
+async function sha256Text(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
 function memoryString(context: mls.msg.ExecutionContext, key: string): string {
