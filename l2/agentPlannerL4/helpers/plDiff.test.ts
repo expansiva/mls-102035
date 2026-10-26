@@ -29,7 +29,7 @@ import {
   type L4DiffSnapshot,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
 import { isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
-import type { Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5AccessArtifact, Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -710,4 +710,93 @@ void test('p4_57: initialData from empty to a sentence is one entity item', () =
 void test('p4_35: an unchanged field with text emits no item', () => {
   const snap = paciente({ title: 'Sexo', description: 'Sexo informado', values: [{ value: 'M', title: 'Masculino' }] });
   assert.deepEqual(diffL4Snapshots(snap, snap), []);
+});
+
+function grantSnap(patch: Record<string, unknown>): L4DiffSnapshot {
+  const grant = {
+    grantId: 'membroTarefasProprias',
+    actorRef: 'membroEquipe',
+    title: 'Tarefas próprias',
+    description: 'O membro vê as próprias tarefas.',
+    entityRefs: ['Tarefa'],
+    dataScope: { mode: 'own' },
+    disclosure: { mode: 'fullRecord' },
+    ...patch,
+  };
+  return snapshotFromParsed({
+    entities: [],
+    rules: null,
+    access: { grants: [grant] } as unknown as Ns5AccessArtifact,
+    workflows: null,
+    integration: null,
+  });
+}
+
+void test('p4_66: a grant description change is one text-only grant item', () => {
+  const items = diffL4Snapshots(grantSnap({}), grantSnap({ description: 'O membro vê só as suas.' }));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].changeId, 'grant:membroTarefasProprias');
+  assert.equal(items[0].kind, 'grant');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+void test('p4_66: a grant actorRef change is one grant item and not text', () => {
+  const items = diffL4Snapshots(grantSnap({}), grantSnap({ actorRef: 'gestor' }));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'grant');
+  assert.equal(items[0].op, 'changed');
+  assert.equal((items[0].after as { actorRef: string }).actorRef, 'gestor');
+  assert.equal(isTextOnlyChange(items[0]), false);
+});
+
+void test('p4_66: a task actorRef, a process trigger and a transition by are items and not text', () => {
+  const task = { taskId: 'abrir', kind: 'act' as const, actorRef: 'membro', description: 'Abre.', next: [] as string[] };
+  const tasks = diffL4Snapshots(
+    processSnap(undefined, { tasks: [task] }),
+    processSnap(undefined, { tasks: [{ ...task, actorRef: 'gestor' }] }),
+  );
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].kind, 'task');
+  assert.equal(tasks[0].op, 'changed');
+  assert.equal(isTextOnlyChange(tasks[0]), false);
+
+  const baseProcess = processSnap();
+  const nextProcess = snapshotFromParsed({
+    entities: [],
+    rules: null,
+    access: null,
+    workflows: {
+      processes: [{
+        processId: 'cicloTarefa',
+        title: 'Ciclo',
+        description: 'Ciclo da tarefa',
+        trigger: { kind: 'schedule' },
+        tasks: [],
+      }],
+    } as Ns5WorkflowsArtifact,
+    integration: null,
+  });
+  const processes = diffL4Snapshots(baseProcess, nextProcess);
+  assert.equal(processes.length, 1);
+  assert.equal(processes[0].kind, 'process');
+  assert.equal(processes[0].changeId, 'process:cicloTarefa');
+  assert.equal(isTextOnlyChange(processes[0]), false);
+
+  const entity = (by: string[]) => ({
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Tarefa',
+    kind: 'entity',
+    record: { fields: {} },
+    transitions: [{ transitionId: 'abrir', from: ['nova'], to: 'aberta', by, description: 'Abre.', ruleRefs: [] }],
+  }) as unknown as Ns5OntologyAnyEntity;
+  const transitionSnap = (by: string[]) => snapshotFromParsed({
+    entities: [{ entity: entity(by), source: 'ontology/Tarefa.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+  const transitions = diffL4Snapshots(transitionSnap(['membro']), transitionSnap(['gestor']));
+  assert.equal(transitions.length, 1);
+  assert.equal(transitions[0].kind, 'transition');
+  assert.equal(transitions[0].op, 'changed');
+  assert.equal(isTextOnlyChange(transitions[0]), false);
 });

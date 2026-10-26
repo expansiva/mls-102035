@@ -75,6 +75,8 @@ interface TransitionSlice {
   by: string[] | 'system' | 'time';
   description: string;
   ruleRefs: string[];
+  /** Every other attribute of the transition. */
+  [attr: string]: unknown;
 }
 
 interface EntitySlice {
@@ -84,6 +86,8 @@ interface EntitySlice {
   transitions: Record<string, TransitionSlice>;
   /** Sentence of what the table starts with. Absent on a recorded table reads as ''. */
   initialData: string;
+  /** Every other attribute of the entity. `fields` / `transitions` / `record.fields` are not here. */
+  [attr: string]: unknown;
 }
 
 interface GrantSlice {
@@ -91,6 +95,8 @@ interface GrantSlice {
   entityRefs: string[];
   dataScope: unknown;
   disclosure: unknown;
+  /** Every other attribute of the grant (`title`, `description`, `actorRef`, …). */
+  [attr: string]: unknown;
 }
 
 interface TaskSlice {
@@ -104,6 +110,8 @@ interface TaskSlice {
   next: string[];
   description: string;
   wake?: { mode: 'none' | 'periodic'; every?: string };
+  /** Every other attribute of the task. */
+  [attr: string]: unknown;
 }
 
 interface ProcessSlice {
@@ -114,6 +122,8 @@ interface ProcessSlice {
   functions: Record<string, string>;
   room?: 'exclusive' | 'person' | 'group';
   tasks: Record<string, TaskSlice>;
+  /** Every other attribute of the process. `tasks` are not here. */
+  [attr: string]: unknown;
 }
 
 interface IntegrationSlice {
@@ -128,6 +138,8 @@ interface IntegrationSlice {
   on: string;
   description: string;
   entityRefs: string[];
+  /** Every other attribute of the integration row. */
+  [attr: string]: unknown;
 }
 
 export interface L4DiffSnapshot {
@@ -153,6 +165,14 @@ function asStringArray(value: unknown): string[] {
 
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+/** Copies every own attribute. `skip` is only the children that already have their own diff item. */
+function assignOwn(target: Record<string, unknown>, source: object, skip: ReadonlySet<string>): void {
+  for (const [key, value] of Object.entries(source)) {
+    if (skip.has(key)) continue;
+    target[key] = value;
+  }
 }
 
 function fileAt(project: number, root: string, rel: string): Ns5FileInfo {
@@ -229,21 +249,39 @@ function walkV3Fields(fields: Record<string, Ns5OntologyFieldV3> | undefined, pa
   }
 }
 
+function transitionSlice(row: object, cloneBy: boolean): TransitionSlice {
+  const record = row as Record<string, unknown> & {
+    transitionId: string;
+    from: string[];
+    to: string;
+    by: string[] | 'system' | 'time';
+    description: string;
+    ruleRefs?: string[];
+  };
+  const slice: TransitionSlice = {
+    transitionId: record.transitionId,
+    from: [...record.from],
+    to: record.to,
+    by: cloneBy || Array.isArray(record.by) ? [...(record.by as string[])] : record.by,
+    description: record.description,
+    ruleRefs: [...(record.ruleRefs || [])],
+  };
+  assignOwn(slice, record, new Set(['from', 'by', 'ruleRefs']));
+  slice.transitionId = record.transitionId;
+  slice.from = [...record.from];
+  slice.to = record.to;
+  slice.by = cloneBy || Array.isArray(record.by) ? [...(record.by as string[])] : record.by;
+  slice.description = record.description;
+  slice.ruleRefs = [...(record.ruleRefs || [])];
+  return slice;
+}
+
 function entitySlice(entity: Ns5OntologyAnyEntity, source: string): EntitySlice {
   const fields: Record<string, FieldSlice> = {};
   const transitions: Record<string, TransitionSlice> = {};
   if (isNs5OntologyEntityV3(entity)) {
     walkV3Fields(entity.record?.fields as Record<string, Ns5OntologyFieldV3> | undefined, '', fields);
-    for (const row of entity.transitions || []) {
-      transitions[row.transitionId] = {
-        transitionId: row.transitionId,
-        from: [...row.from],
-        to: row.to,
-        by: [...row.by],
-        description: row.description,
-        ruleRefs: [...(row.ruleRefs || [])],
-      };
-    }
+    for (const row of entity.transitions || []) transitions[row.transitionId] = transitionSlice(row, true);
   } else {
     for (const field of entity.fields || []) {
       fields[field.fieldId] = fieldSlice(field.fieldId, field, false);
@@ -251,50 +289,83 @@ function entitySlice(entity: Ns5OntologyAnyEntity, source: string): EntitySlice 
     for (const [fieldId, detail] of Object.entries(entity.details || {})) {
       fields[fieldId] = fieldSlice(fieldId, detail, true);
     }
-    for (const row of entity.transitions || []) {
-      transitions[row.transitionId] = {
-        transitionId: row.transitionId,
-        from: [...row.from],
-        to: row.to,
-        by: row.by,
-        description: row.description,
-        ruleRefs: [...(row.ruleRefs || [])],
-      };
-    }
+    for (const row of entity.transitions || []) transitions[row.transitionId] = transitionSlice(row, false);
   }
-  const initialData = isNs5OntologyEntityV3(entity) && entity.kind === 'entity' ? (entity.initialData || '') : '';
-  return { entityId: entity.entityId, source, fields, transitions, initialData };
+  const slice: EntitySlice = {
+    entityId: entity.entityId,
+    source,
+    fields,
+    transitions,
+    initialData: '',
+  };
+  assignOwn(slice, entity, new Set(['fields', 'transitions', 'details']));
+  const record = slice.record;
+  if (record && typeof record === 'object' && !Array.isArray(record)) {
+    const copy = { ...(record as Record<string, unknown>) };
+    delete copy.fields;
+    slice.record = copy;
+  }
+  slice.entityId = entity.entityId;
+  slice.source = source;
+  slice.fields = fields;
+  slice.transitions = transitions;
+  // Absent initialData on a recorded table reads as ''. A role never carries it.
+  slice.initialData = isNs5OntologyEntityV3(entity) && entity.kind === 'entity' ? (entity.initialData || '') : '';
+  return slice;
 }
 
 function grantSlice(grant: Ns5AccessArtifact['grants'][number]): GrantSlice {
-  return {
+  const slice: GrantSlice = {
     grantId: grant.grantId,
     entityRefs: [...grant.entityRefs],
     dataScope: grant.dataScope,
     disclosure: grant.disclosure,
   };
+  assignOwn(slice, grant, new Set(['entityRefs']));
+  slice.grantId = grant.grantId;
+  slice.entityRefs = [...grant.entityRefs];
+  return slice;
+}
+
+function taskSlice(task: Ns5WorkflowsArtifact['processes'][number]['tasks'][number]): TaskSlice {
+  const slice: TaskSlice = {
+    taskId: task.taskId,
+    kind: task.kind,
+    actorRef: asString(task.actorRef),
+    journeyRef: asString(task.journeyRef),
+    entityRef: asString(task.entityRef),
+    effect: asString(task.effect),
+    transitionRef: asString(task.transitionRef),
+    next: [...(task.next || [])],
+    description: task.description,
+  };
+  assignOwn(slice, task, new Set(['next']));
+  slice.taskId = task.taskId;
+  slice.kind = task.kind;
+  slice.actorRef = asString(task.actorRef);
+  slice.journeyRef = asString(task.journeyRef);
+  slice.entityRef = asString(task.entityRef);
+  slice.effect = asString(task.effect);
+  slice.transitionRef = asString(task.transitionRef);
+  slice.next = [...(task.next || [])];
+  slice.description = task.description;
+  // A recorded wait without wake reads as 'none', so adding the neutral value is not a change.
+  if (task.kind === 'wait') {
+    slice.wake = task.wake?.mode === 'periodic'
+      ? { mode: 'periodic', ...(task.wake.every ? { every: task.wake.every } : {}) }
+      : { mode: 'none' };
+  } else {
+    delete slice.wake;
+  }
+  return slice;
 }
 
 function processSlice(process: Ns5WorkflowsArtifact['processes'][number]): ProcessSlice {
   const functions: Record<string, string> = {};
   for (const fn of process.functions || []) functions[fn.functionId] = fn.description;
   const tasks: Record<string, TaskSlice> = {};
-  for (const task of process.tasks || []) {
-    tasks[task.taskId] = {
-      taskId: task.taskId,
-      kind: task.kind,
-      actorRef: asString(task.actorRef),
-      journeyRef: asString(task.journeyRef),
-      entityRef: asString(task.entityRef),
-      effect: asString(task.effect),
-      transitionRef: asString(task.transitionRef),
-      next: [...(task.next || [])],
-      description: task.description,
-      // A recorded wait without wake reads as 'none', so adding the neutral value is not a change.
-      ...(task.kind === 'wait' ? { wake: task.wake?.mode === 'periodic' ? { mode: 'periodic' as const, ...(task.wake.every ? { every: task.wake.every } : {}) } : { mode: 'none' as const } } : {}),
-    };
-  }
-  return {
+  for (const task of process.tasks || []) tasks[task.taskId] = taskSlice(task);
+  const slice: ProcessSlice = {
     processId: process.processId,
     title: process.title,
     description: process.description,
@@ -304,31 +375,25 @@ function processSlice(process: Ns5WorkflowsArtifact['processes'][number]): Proce
     room: process.room || 'exclusive',
     tasks,
   };
+  assignOwn(slice, process, new Set(['tasks', 'functions']));
+  slice.processId = process.processId;
+  slice.title = process.title;
+  slice.description = process.description;
+  slice.trigger = process.trigger;
+  slice.functions = functions;
+  slice.room = process.room || 'exclusive';
+  slice.tasks = tasks;
+  return slice;
 }
 
 /** Process-level view. `wake` is stored on each task and compared here, same as `functions`. */
-function processCompare(row: ProcessSlice): {
-  processId: string;
-  title: string;
-  description: string;
-  trigger: unknown;
-  functions: Record<string, string>;
-  room?: 'exclusive' | 'person' | 'group';
-  wake: Record<string, { mode: 'none' | 'periodic'; every?: string }>;
-} {
+function processCompare(row: ProcessSlice): Record<string, unknown> {
   const wake: Record<string, { mode: 'none' | 'periodic'; every?: string }> = {};
   for (const task of Object.values(row.tasks)) {
     if (task.wake) wake[task.taskId] = task.wake;
   }
-  return {
-    processId: row.processId,
-    title: row.title,
-    description: row.description,
-    trigger: row.trigger,
-    functions: row.functions,
-    ...(row.room ? { room: row.room } : {}),
-    wake,
-  };
+  const { tasks, ...rest } = row;
+  return { ...rest, wake };
 }
 
 function taskForDiff(task: TaskSlice, processId: string): Omit<TaskSlice, 'wake'> & { processId: string } {
@@ -338,7 +403,7 @@ function taskForDiff(task: TaskSlice, processId: string): Omit<TaskSlice, 'wake'
 }
 
 function integrationSlice(item: Ns5IntegrationArtifact['inbound'][number]): IntegrationSlice {
-  return {
+  const slice: IntegrationSlice = {
     id: item.id,
     kind: item.kind,
     from: asString(item.from),
@@ -351,6 +416,25 @@ function integrationSlice(item: Ns5IntegrationArtifact['inbound'][number]): Inte
     description: item.description,
     entityRefs: [...(item.entityRefs || [])],
   };
+  assignOwn(slice, item, new Set(['writes', 'entityRefs']));
+  slice.id = item.id;
+  slice.kind = item.kind;
+  slice.from = asString(item.from);
+  slice.to = asString(item.to);
+  slice.event = asString(item.event);
+  slice.writes = asStringArray(item.writes);
+  slice.effect = asString(item.effect);
+  slice.transitionRef = asString(item.transitionRef);
+  slice.on = asString(item.on);
+  slice.description = item.description;
+  slice.entityRefs = [...(item.entityRefs || [])];
+  return slice;
+}
+
+/** Entity attributes compared as one item. Fields and transitions already have their own items. */
+function entityBody(row: EntitySlice): Record<string, unknown> {
+  const { fields, transitions, source, ...rest } = row;
+  return rest;
 }
 
 export function snapshotFromParsed(input: {
@@ -429,12 +513,12 @@ export function diffL4Snapshots(base: L4DiffSnapshot, candidate: L4DiffSnapshot)
         changeId: `entity:${entityId}`, kind: 'entity', op: 'removed', entity: entityId,
         source: before.source, before: { entityId },
       });
-    } else if (before && after && before.initialData !== after.initialData) {
+    } else if (before && after && !sameJson(entityBody(before), entityBody(after))) {
       items.push({
         changeId: `entity:${entityId}`, kind: 'entity', op: 'changed', entity: entityId,
         source: after.source,
-        before: { entityId, initialData: before.initialData },
-        after: { entityId, initialData: after.initialData },
+        before: entityBody(before),
+        after: entityBody(after),
       });
     }
     pushMapDiff(

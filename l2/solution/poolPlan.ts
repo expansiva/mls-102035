@@ -428,9 +428,12 @@ function enumValuesTextOnly(before: unknown, after: unknown): boolean {
   return true;
 }
 
-/** True only for a `field` `changed` item whose every difference is text (field or enum label). */
+/**
+ * True when every difference on a `changed` item is text (`title` / `description`, or an enum label).
+ * A `rule` is never text: its description is the rule. Any other key is not text.
+ */
 export function isTextOnlyChange(item: L4DiffItem): boolean {
-  if (item.kind !== 'field' || item.op !== 'changed') return false;
+  if (item.op !== 'changed' || item.kind === 'rule') return false;
   const before = item.before;
   const after = item.after;
   if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return false;
