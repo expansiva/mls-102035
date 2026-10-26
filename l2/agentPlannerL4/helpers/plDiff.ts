@@ -26,6 +26,10 @@ import {
   isNs5OntologyEntityV3,
   type Ns5AccessArtifact,
   type Ns5IntegrationArtifact,
+  type Ns5JourneyArtifact,
+  type Ns5JourneyIndexArtifact,
+  type Ns5JourneyIndexEntry,
+  type Ns5JourneyStep,
   type Ns5OntologyAnyEntity,
   type Ns5OntologyFieldV3,
   type Ns5RulesAny,
@@ -126,6 +130,21 @@ interface ProcessSlice {
   [attr: string]: unknown;
 }
 
+interface JourneySlice {
+  journeyId: string;
+  /** Index row for this journey (`journeys/index.defs.ts`). */
+  index: Record<string, unknown>;
+  /** Every `business` attribute except `steps`. `schemaVersion` and `businessHash` are not here. */
+  [attr: string]: unknown;
+}
+
+interface StepSlice {
+  journeyId: string;
+  stepId: string;
+  /** Every attribute of the step. */
+  [attr: string]: unknown;
+}
+
 interface IntegrationSlice {
   id: string;
   kind: string;
@@ -149,10 +168,15 @@ export interface L4DiffSnapshot {
   processes: Record<string, ProcessSlice>;
   inbound: Record<string, IntegrationSlice>;
   outbound: Record<string, IntegrationSlice>;
+  journeys: Record<string, JourneySlice>;
+  steps: Record<string, StepSlice>;
 }
 
 function emptySnapshot(): L4DiffSnapshot {
-  return { entities: {}, rules: {}, grants: {}, processes: {}, inbound: {}, outbound: {} };
+  return {
+    entities: {}, rules: {}, grants: {}, processes: {}, inbound: {}, outbound: {},
+    journeys: {}, steps: {},
+  };
 }
 
 function asString(value: unknown): string {
@@ -437,12 +461,33 @@ function entityBody(row: EntitySlice): Record<string, unknown> {
   return rest;
 }
 
+/** Journey body compared as one item. Steps already have their own items. Derived hashes stay out. */
+function journeySlice(journey: Ns5JourneyArtifact, indexEntry: Ns5JourneyIndexEntry): JourneySlice {
+  const slice: JourneySlice = {
+    journeyId: journey.journeyId,
+    index: { ...indexEntry },
+  };
+  assignOwn(slice, journey.business, new Set(['steps']));
+  slice.journeyId = journey.journeyId;
+  slice.index = { ...indexEntry };
+  return slice;
+}
+
+function stepSlice(journeyId: string, step: Ns5JourneyStep): StepSlice {
+  const slice: StepSlice = { journeyId, stepId: step.stepId };
+  assignOwn(slice, step, new Set());
+  slice.journeyId = journeyId;
+  slice.stepId = step.stepId;
+  return slice;
+}
+
 export function snapshotFromParsed(input: {
   entities: Array<{ entity: Ns5OntologyAnyEntity; source: string }>;
   rules: Ns5RulesAny | null;
   access: Ns5AccessArtifact | null;
   workflows: Ns5WorkflowsArtifact | null;
   integration: Ns5IntegrationArtifact | null;
+  journeys?: Array<{ journey: Ns5JourneyArtifact; index: Ns5JourneyIndexEntry }> | null;
 }): L4DiffSnapshot {
   const snap = emptySnapshot();
   for (const row of input.entities) snap.entities[row.entity.entityId] = entitySlice(row.entity, row.source);
@@ -458,6 +503,14 @@ export function snapshotFromParsed(input: {
   if (input.integration) {
     for (const item of input.integration.inbound || []) snap.inbound[item.id] = integrationSlice(item);
     for (const item of input.integration.outbound || []) snap.outbound[item.id] = integrationSlice(item);
+  }
+  for (const row of input.journeys || []) {
+    const journeyId = row.index.journeyId || row.journey.journeyId;
+    snap.journeys[journeyId] = journeySlice(row.journey, row.index);
+    for (const step of row.journey.business?.steps || []) {
+      if (!step.stepId) continue;
+      snap.steps[`${journeyId}/${step.stepId}`] = stepSlice(journeyId, step);
+    }
   }
   return snap;
 }
@@ -554,6 +607,16 @@ export function diffL4Snapshots(base: L4DiffSnapshot, candidate: L4DiffSnapshot)
   pushMapDiff(items, 'task', beforeTasks, afterTasks, () => 'workflows.defs.ts', () => '');
   pushMapDiff(items, 'inbound', base.inbound, candidate.inbound, () => 'integration.defs.ts', () => '');
   pushMapDiff(items, 'outbound', base.outbound, candidate.outbound, () => 'integration.defs.ts', () => '');
+  pushMapDiff(
+    items, 'journey', base.journeys, candidate.journeys,
+    (id) => `journeys/${id}.defs.ts`,
+    () => '',
+  );
+  pushMapDiff(
+    items, 'step', base.steps, candidate.steps,
+    (id) => `journeys/${id.slice(0, id.indexOf('/'))}.defs.ts`,
+    (_id, value) => asString((value as StepSlice).entity),
+  );
   return items.sort((a, b) => a.changeId.localeCompare(b.changeId) || a.op.localeCompare(b.op));
 }
 
@@ -576,12 +639,21 @@ async function loadSnapshot(project: number, root: string): Promise<L4DiffSnapsh
       if (entity) entities.push({ entity, source });
     }
   }
+  const journeyIndex = await readDefsAt<Ns5JourneyIndexArtifact>(fileAt(project, root, 'journeys/index.defs.ts'));
+  const journeys: Array<{ journey: Ns5JourneyArtifact; index: Ns5JourneyIndexEntry }> = [];
+  if (journeyIndex) {
+    for (const entry of journeyIndex.journeys || []) {
+      const journey = await readDefsAt<Ns5JourneyArtifact>(fileAt(project, root, `journeys/${entry.journeyId}.defs.ts`));
+      if (journey) journeys.push({ journey, index: entry });
+    }
+  }
   return snapshotFromParsed({
     entities,
     rules: await readDefsAt<Ns5RulesAny>(fileAt(project, root, 'rules.defs.ts')),
     access: await readDefsAt<Ns5AccessArtifact>(fileAt(project, root, 'access.defs.ts')),
     workflows: await readDefsAt<Ns5WorkflowsArtifact>(fileAt(project, root, 'workflows.defs.ts')),
     integration: await readDefsAt<Ns5IntegrationArtifact>(fileAt(project, root, 'integration.defs.ts')),
+    journeys,
   });
 }
 

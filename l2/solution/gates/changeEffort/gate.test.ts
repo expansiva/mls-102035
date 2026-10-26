@@ -119,6 +119,38 @@ test('dois masters l2 de projetos diferentes devolvendo a mesma página ficam du
   ]);
 });
 
+test('aceita journey e step no item do changeEffort', () => {
+  const items = [
+    {
+      changeId: 'journey:duplicarTarefa',
+      kind: 'journey' as const,
+      op: 'added' as const,
+      entity: '',
+      source: 'journeys/duplicarTarefa.defs.ts',
+    },
+    {
+      changeId: 'step:duplicarTarefa/duplicar',
+      kind: 'step' as const,
+      op: 'added' as const,
+      entity: 'Tarefa',
+      source: 'journeys/duplicarTarefa.defs.ts',
+    },
+  ];
+  const perItem = items.map(item => ({
+    item: item.changeId,
+    answers: [
+      answer(l2, { item: item.changeId, status: 'computed' as const }),
+      answer(l1, { item: item.changeId, status: 'computed' as const }),
+    ],
+  }));
+  const result = validateChangeEffort(file({
+    request: { text: 'jornada nova', items },
+    perItem,
+    merged: mergeChangeEffort(perItem),
+  }));
+  assert.equal(result.ok, true, result.ok ? '' : JSON.stringify(result.issues));
+});
+
 test('aceita um changeEffort blocked cujo item é artifact', () => {
   const changeId = 'artifact:journeys/atendimento.defs.ts';
   const perItem = [{

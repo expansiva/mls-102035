@@ -29,7 +29,7 @@ import {
   type L4DiffSnapshot,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
 import { isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
-import type { Ns5AccessArtifact, Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5AccessArtifact, Ns5JourneyArtifact, Ns5JourneyIndexEntry, Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -799,4 +799,153 @@ void test('p4_66: a task actorRef, a process trigger and a transition by are ite
   assert.equal(transitions[0].kind, 'transition');
   assert.equal(transitions[0].op, 'changed');
   assert.equal(isTextOnlyChange(transitions[0]), false);
+});
+
+function journeyRow(
+  journeyId: string,
+  goal: string,
+  steps: Array<{ stepId: string; title?: string; description?: string }>,
+  title = journeyId,
+  indexTitle = title,
+): { journey: Ns5JourneyArtifact; index: Ns5JourneyIndexEntry } {
+  return {
+    index: { journeyId, actorRef: 'membroEquipe', title: indexTitle },
+    journey: {
+      schemaVersion: '2026-09-10-ns5-journey-v1',
+      journeyId,
+      businessHash: 'hash-fora-do-slice',
+      business: {
+        actorRef: 'membroEquipe',
+        title,
+        goal,
+        entry: { mode: 'coldStart' },
+        steps: steps.map(step => ({
+          stepId: step.stepId,
+          kind: 'act' as const,
+          entity: 'Tarefa',
+          effect: 'create' as const,
+          title: step.title || step.stepId,
+          description: step.description || step.stepId,
+        })),
+        outcome: { statement: 'feito', evidence: [] },
+      },
+    } as Ns5JourneyArtifact,
+  };
+}
+
+function journeysSnapshot(
+  rows: Array<{ journey: Ns5JourneyArtifact; index: Ns5JourneyIndexEntry }>,
+): L4DiffSnapshot {
+  return snapshotFromParsed({
+    entities: [], rules: null, access: null, workflows: null, integration: null, journeys: rows,
+  });
+}
+
+void test('journey and step: goal, removed step, new journey, removed journey', () => {
+  const base = journeysSnapshot([
+    journeyRow('criarTarefa', 'criar', [
+      { stepId: 'preencherTarefa' },
+      { stepId: 'adicionarChecklist' },
+    ]),
+    journeyRow('cancelarTarefaCriada', 'cancelar', [{ stepId: 'cancelar' }]),
+  ]);
+  const goalOnly = journeysSnapshot([
+    journeyRow('criarTarefa', 'criar com prazo', [
+      { stepId: 'preencherTarefa' },
+      { stepId: 'adicionarChecklist' },
+    ]),
+    journeyRow('cancelarTarefaCriada', 'cancelar', [{ stepId: 'cancelar' }]),
+  ]);
+  const goalItems = diffL4Snapshots(base, goalOnly);
+  assert.equal(goalItems.length, 1);
+  assert.equal(goalItems[0].changeId, 'journey:criarTarefa');
+  assert.equal(goalItems[0].kind, 'journey');
+  assert.equal(goalItems[0].op, 'changed');
+  assert.equal(goalItems[0].source, 'journeys/criarTarefa.defs.ts');
+  assert.equal(goalItems[0].entity, '');
+  assert.equal((goalItems[0].before as { goal?: string }).goal, 'criar');
+  assert.equal((goalItems[0].after as { goal?: string }).goal, 'criar com prazo');
+  assert.equal('steps' in (goalItems[0].after as object), false);
+  assert.equal('businessHash' in (goalItems[0].after as object), false);
+  assert.equal('schemaVersion' in (goalItems[0].after as object), false);
+  assert.equal((goalItems[0].after as { index?: { title?: string } }).index?.title, 'criarTarefa');
+  assert.equal(isTextOnlyChange(goalItems[0]), false);
+
+  const titleOnly = journeysSnapshot([
+    journeyRow('criarTarefa', 'criar', [
+      { stepId: 'preencherTarefa', title: 'Preencher' },
+      { stepId: 'adicionarChecklist' },
+    ], 'Criar tarefa', 'criarTarefa'),
+    journeyRow('cancelarTarefaCriada', 'cancelar', [{ stepId: 'cancelar' }]),
+  ]);
+  const titleItems = diffL4Snapshots(base, titleOnly);
+  assert.equal(titleItems.length, 2);
+  assert.equal(titleItems.find(item => item.kind === 'journey')?.op, 'changed');
+  assert.equal(isTextOnlyChange(titleItems.find(item => item.kind === 'journey')!), true);
+  const stepTitle = titleItems.find(item => item.changeId === 'step:criarTarefa/preencherTarefa');
+  assert.equal(stepTitle?.op, 'changed');
+  assert.equal(isTextOnlyChange(stepTitle!), true);
+
+  const stepGone = journeysSnapshot([
+    journeyRow('criarTarefa', 'criar', [{ stepId: 'preencherTarefa' }]),
+    journeyRow('cancelarTarefaCriada', 'cancelar', [{ stepId: 'cancelar' }]),
+  ]);
+  const removedStep = diffL4Snapshots(base, stepGone);
+  assert.equal(removedStep.length, 1);
+  assert.equal(removedStep[0].changeId, 'step:criarTarefa/adicionarChecklist');
+  assert.equal(removedStep[0].kind, 'step');
+  assert.equal(removedStep[0].op, 'removed');
+  assert.equal(removedStep[0].entity, 'Tarefa');
+  assert.equal(removedStep[0].source, 'journeys/criarTarefa.defs.ts');
+
+  const added = journeysSnapshot([
+    journeyRow('criarTarefa', 'criar', [
+      { stepId: 'preencherTarefa' },
+      { stepId: 'adicionarChecklist' },
+    ]),
+    journeyRow('cancelarTarefaCriada', 'cancelar', [{ stepId: 'cancelar' }]),
+    journeyRow('duplicarTarefa', 'duplicar', [{ stepId: 'duplicar' }]),
+  ]);
+  const addedItems = diffL4Snapshots(base, added);
+  assert.deepEqual(addedItems.map(item => `${item.op}:${item.changeId}`), [
+    'added:journey:duplicarTarefa',
+    'added:step:duplicarTarefa/duplicar',
+  ]);
+
+  const dropped = journeysSnapshot([
+    journeyRow('criarTarefa', 'criar', [
+      { stepId: 'preencherTarefa' },
+      { stepId: 'adicionarChecklist' },
+    ]),
+  ]);
+  const droppedItems = diffL4Snapshots(base, dropped);
+  assert.deepEqual(droppedItems.map(item => `${item.op}:${item.changeId}`), [
+    'removed:journey:cancelarTarefaCriada',
+    'removed:step:cancelarTarefaCriada/cancelar',
+  ]);
+});
+
+void test('loadSnapshot reads journeys/index and each journey file', async () => {
+  const files = loadFixtureFiles();
+  const rel = 'journeys/matricularAluno.defs.ts';
+  const original = files.get(rel) || '';
+  const goal = 'Registrar a matrícula de um aluno em um plano a partir de uma data de início.';
+  assert.match(original, new RegExp(goal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  const candidateFiles = new Map(files);
+  candidateFiles.set(rel, original.replace(goal, `${goal} Com comprovante.`));
+  const host = installHost();
+  seedTree(host, MODULE, files);
+  seedTree(host, `${MODULE}/tobe/plan`, candidateFiles);
+  try {
+    setModuleRoot(MODULE, `${MODULE}/tobe/plan`);
+    const diff = await runPlDiff(MODULE);
+    assert.equal(diff.items.length, 1);
+    assert.equal(diff.items[0].changeId, 'journey:matricularAluno');
+    assert.equal(diff.items[0].kind, 'journey');
+    assert.equal(diff.items[0].op, 'changed');
+    assert.equal(diff.items[0].source, rel);
+    assert.equal(isTextOnlyChange(diff.items[0]), false);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
 });
