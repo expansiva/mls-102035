@@ -463,7 +463,7 @@ export interface L4Diff {
 
 export const CHANGE_EFFORT_SCHEMA_VERSION = '2026-10-25-p4-change-effort-v2' as const;
 
-export const EFFORT_UNIT_KINDS = ['page', 'route', 'usecase', 'entity', 'request', 'table', 'shared', 'contract', 'workflow'] as const;
+export const EFFORT_UNIT_KINDS = ['page', 'route', 'usecase', 'entity', 'request', 'table', 'shared', 'contract', 'workflow', 'repository'] as const;
 export const EFFORT_MASTER_KINDS = ['l2', 'l1'] as const;
 export const EFFORT_ANSWER_STATUSES = ['computed', 'abend'] as const;
 export const EFFORT_CONTRACT_VALUES = ['keep', 'change'] as const;
