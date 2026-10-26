@@ -64,6 +64,8 @@ interface FieldSlice {
   description: string;
   /** Enum codes plus their labels. Absent when the field has no closed domain. */
   values?: unknown[];
+  /** Every other attribute of the field (`required`, `maxLength`, `to`, …). Nested `fields` are not here. */
+  [attr: string]: unknown;
 }
 
 interface TransitionSlice {
@@ -194,15 +196,28 @@ function enumLabels(field: { values?: unknown; enum?: unknown }): unknown[] | un
   });
 }
 
-function fieldSlice(fieldId: string, field: { type?: unknown; derived?: unknown; values?: unknown; enum?: unknown }, derived: boolean): FieldSlice {
+function fieldSlice(fieldId: string, field: object, derived: boolean): FieldSlice {
+  const record = field as Record<string, unknown>;
   const slice: FieldSlice = {
     fieldId,
-    type: String(field.type || ''),
+    type: '',
     derived,
-    ...textAttrs(field),
+    title: '',
+    description: '',
   };
+  for (const [key, value] of Object.entries(record)) {
+    if (key === 'fields' || key === 'enum') continue;
+    slice[key] = value;
+  }
+  slice.fieldId = fieldId;
+  slice.type = String(record.type || '');
+  slice.derived = derived;
+  const text = textAttrs(field);
+  slice.title = text.title;
+  slice.description = text.description;
   const values = enumLabels(field);
   if (values) slice.values = values;
+  else delete slice.values;
   return slice;
 }
 

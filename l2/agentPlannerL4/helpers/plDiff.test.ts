@@ -556,6 +556,66 @@ void test('p4_35: an enum value label change is one text-only field changed item
   assert.equal(isTextOnlyChange(items[0]), true);
 });
 
+void test('p4_65: required and maxLength changes are field items and not text', () => {
+  const required = diffL4Snapshots(
+    paciente({ title: 'Prioridade', required: true }),
+    paciente({ title: 'Prioridade', required: false }),
+  );
+  assert.equal(required.length, 1);
+  assert.equal(required[0].changeId, 'field:sexo');
+  assert.equal(required[0].op, 'changed');
+  assert.equal((required[0].before as { required: boolean }).required, true);
+  assert.equal((required[0].after as { required: boolean }).required, false);
+  assert.equal(isTextOnlyChange(required[0]), false);
+
+  const length = diffL4Snapshots(
+    paciente({ title: 'Título', maxLength: 200 }),
+    paciente({ title: 'Título', maxLength: 100 }),
+  );
+  assert.equal(length.length, 1);
+  assert.equal(length[0].changeId, 'field:sexo');
+  assert.equal((length[0].before as { maxLength: number }).maxLength, 200);
+  assert.equal((length[0].after as { maxLength: number }).maxLength, 100);
+  assert.equal(isTextOnlyChange(length[0]), false);
+});
+
+void test('p4_65: an attribute the slice does not name still shows up', () => {
+  const items = diffL4Snapshots(
+    paciente({ title: 'Horas', unique: false }),
+    paciente({ title: 'Horas', unique: true }),
+  );
+  assert.equal(items.length, 1);
+  assert.equal((items[0].after as { unique: boolean }).unique, true);
+  assert.equal(isTextOnlyChange(items[0]), false);
+});
+
+void test('p4_65: a title change stays text when the other attributes match', () => {
+  const items = diffL4Snapshots(
+    paciente({ title: 'Prazo', description: 'Data', required: true, maxLength: 20 }),
+    paciente({ title: 'Prazo final', description: 'Data', required: true, maxLength: 20 }),
+  );
+  assert.equal(items.length, 1);
+  assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+void test('p4_65: nested fields stay their own item and leave the parent slice', () => {
+  const entity = (marker: string) => ({
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Paciente',
+    record: { fields: { details: { type: 'object', fields: { horas: { type: 'number', title: marker } } } } },
+    transitions: [],
+  }) as unknown as Ns5OntologyAnyEntity;
+  const snap = (marker: string) => snapshotFromParsed({
+    entities: [{ entity: entity(marker), source: 'ontology/Paciente.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+  const items = diffL4Snapshots(snap('Horas'), snap('Estimativa'));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].changeId, 'field:details.horas');
+  assert.equal(isTextOnlyChange(items[0]), true);
+  assert.equal('fields' in snap('Horas').entities.Paciente.fields.details, false);
+});
+
 function processSnap(
   functions?: { functionId: string; description: string }[],
   extra?: { room?: 'exclusive' | 'person' | 'group'; tasks?: Ns5WorkflowsArtifact['processes'][number]['tasks'] },
