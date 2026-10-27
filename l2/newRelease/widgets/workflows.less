@@ -71,7 +71,7 @@ new-release--widgets--workflows-102035 {
   .nr-workflows__task.kind-llm { border-top-color: var(--chart-series-3, #8250df); }
   .nr-workflows__task.kind-wait { border-top-color: var(--chart-series-4, #d17a00); }
   .nr-workflows__task.kind-alert { border-top-color: var(--chart-series-5, #c2410c); }
-  .nr-workflows__task:not(:last-child)::after { position: absolute; top: 50%; right: -.58rem; width: .52rem; border-top: 1px solid var(--border-default, #cfd8e3); content: ''; }
+  .nr-workflows__task:not(:last-child)::after { position: absolute; top: 50%; right: -.58rem; width: .52rem; border-top: 1px solid var(--border-default, #cfd8e3); content: none; }
   .nr-workflows__task > header { display: grid; grid-template-columns: 1.9rem minmax(0, 1fr) auto; gap: .45rem; align-items: center; }
   .nr-workflows__task > header i { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: .52rem; background: var(--selected-bg, #e3f1ff); color: var(--selected-text, #0d5296); }
   .nr-workflows__task > header svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
@@ -140,4 +140,18 @@ new-release--widgets--workflows-102035 {
     .nr-workflows__title-input { min-width: 0; }
     .nr-workflows__edit-footer > div { justify-content: flex-end; }
   }
+  .nr-workflows__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; padding: 1rem; }
+  .nr-workflows__card, .nr-workflows__node { display: grid; gap: .5rem; padding: 1rem; text-align: left; border: 1px solid var(--border-default, #354158); border-radius: .75rem; background: var(--surface-bg, #151c2b); color: var(--text-default, #dce5f5); }
+  .nr-workflows__card:hover, .nr-workflows__node:hover { border-color: var(--focus-border, #729cff); }
+  .nr-workflows__graph { position: relative; }
+  .nr-workflows__edges { position: absolute; inset: 0; pointer-events: none; color: var(--text-muted, #9aacc9); }
+  .nr-workflows__edges > path { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .nr-workflows__node { position: absolute; top: 0; width: 230px; grid-template-rows: 24px 1.2em 1.2em 1.2em; gap: .25rem; overflow: hidden; }
+  .nr-workflows__node > strong, .nr-workflows__node > code, .nr-workflows__node > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-workflows__node svg { width: 24px; height: 24px; fill: none; stroke: currentColor; }
+  .nr-workflows__task-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nr-workflows__detail > .nr-workflows__task { max-width: none; width: 100%; }
+  .nr-workflows__functions { display: grid; gap: .5rem; }
+  .nr-workflows__functions article { padding: .75rem; border: 1px solid var(--border-subtle, #354158); border-radius: .5rem; }
+
 }

@@ -44,6 +44,8 @@ export interface NewReleaseTextNode {
 export interface NewReleaseTabPresentation {
   nodes: NewReleaseTextNode[];
   detail: boolean;
+  canBack?: boolean;
+  filters?: {id: string; label: string; rootIds: string[]}[];
   select: (id: string) => void;
   back: () => void;
 }
@@ -62,4 +64,10 @@ export function tabForArtifactPath(path: string): NewReleaseTabId {
 /** Ask the common container before discarding a tab's draft. */
 export function canDiscardNewReleaseDraft(target: EventTarget): boolean {
   return target.dispatchEvent(new CustomEvent('nr-before-discard', { bubbles: true, cancelable: true }));
+}
+
+/** Explicit accepted navigation only; never emitted from render/updated. */
+export interface NewReleasePresentationRequest { mode: 'graph' | 'text'; }
+export function requestNewReleasePresentation(target: EventTarget, mode: NewReleasePresentationRequest['mode']) {
+  target.dispatchEvent(new CustomEvent<NewReleasePresentationRequest>('nr-presentation-request', {bubbles: true, composed: true, detail: {mode}}));
 }

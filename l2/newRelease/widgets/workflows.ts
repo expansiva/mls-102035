@@ -4,25 +4,31 @@ import { html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import type {
-  Ns5OntologyEntityArtifact,
+  Ns5OntologyAnyEntity,
   Ns5WorkflowProcess,
   Ns5WorkflowTask,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  requestNewReleasePresentation,
   canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
+  type NewReleaseTabPresentation,
 } from '/_102035_/l2/newRelease/editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   isEditableWorkflowSchema,
   isRecurringDuty,
-  nextMemberId,
+  workflowEdges,
+  appendWorkflowTask,
+  workflowNewTaskError,
+  WORKFLOW_TASK_KINDS,
   normalizeWorkflows,
   workflowNextLabels,
   workflowOracleIssues,
@@ -45,6 +51,11 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   @property({ type: Boolean }) dirty = false;
 
   @state() private selectedProcessId = '';
+  @state() private selectedTaskId = '';
+  @state() private adding = false;
+  @state() private newId = '';
+  @state() private saving = false;
+  private snapshot = '';
   @state() private draft: Ns5WorkflowsArtifact | null = null;
   @state() private gateIssues: WorkflowIssueView[] = [];
   @state() private suppliedIssues: NewReleaseValidationIssue[] = [];
@@ -53,11 +64,36 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   createRenderRoot() { return this; }
 
   updated(changed: PropertyValues) {
-    if (!changed.has('data') || this.mode === 'edit') return;
-    const processes = this.view().processes;
-    if (!processes.some(process => process.processId === this.selectedProcessId)) {
-      this.selectedProcessId = processes[0]?.processId || '';
+    if (changed.has('data') || changed.has('version') || changed.has('moduleName')) {
+      this.cancelEdit(); this.selectedProcessId = ''; this.selectedTaskId = '';
     }
+    if (['data', 'selectedProcessId', 'selectedTaskId', 'mode', 'draft', 'adding', 't'].some(key => changed.has(key))) this.present();
+  }
+  private taskTitle(task: WorkflowTaskView) {
+    return task.title || this.journeys().find(item => item.journeyId === task.journeyRef)?.business.title || task.taskId;
+  }
+  private present() {
+    const presentation: NewReleaseTabPresentation = {
+      detail: !!this.selectedTaskId || this.adding,
+      canBack: !!this.selectedProcessId,
+      filters: (['manual', 'scheduled', 'event'] as const).map(kind => ({id: kind, label: this.t(`workflows.trigger.${kind}`), rootIds: this.view().processes.filter(process => process.trigger?.kind === kind).map(process => JSON.stringify([process.processId]))})),
+      nodes: this.view().processes.map(process => ({id: JSON.stringify([process.processId]), label: process.title, value: `${process.trigger?.kind || ''} ${process.description}`, children: process.tasks.map(task => ({id: JSON.stringify([process.processId, task.taskId]), label: this.taskTitle(task), value: `${task.taskId} ${task.description}`, children: []}))})),
+      select: id => { const [processId, taskId = ''] = JSON.parse(id) as string[]; this.select(processId, taskId); },
+      back: () => this.back(),
+    };
+    this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
+  }
+  private select(processId: string, taskId = '') {
+    if (this.saving || !canDiscardNewReleaseDraft(this)) return;
+    this.cancelEdit(); this.selectedProcessId = processId; this.selectedTaskId = taskId;
+    requestNewReleasePresentation(this, 'graph');
+  }
+  private back() {
+    if (this.saving || !canDiscardNewReleaseDraft(this)) return;
+    const task = !!this.selectedTaskId || this.adding;
+    this.cancelEdit(); this.selectedTaskId = ''; if (!task) this.selectedProcessId = '';
+    requestNewReleasePresentation(this, 'graph');
+    this.present();
   }
 
   getDraft(): Ns5WorkflowsArtifact | null {
@@ -79,13 +115,15 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
 
   private actors() { return this.data?.artifacts.access.value?.actors || []; }
   private journeys() { return this.data?.artifacts.journeys.map(item => item.value).filter((item): item is NonNullable<typeof item> => !!item) || []; }
-  private entities(): Ns5OntologyEntityArtifact[] { return this.data?.artifacts.entities.map(item => item.value).filter((item): item is Ns5OntologyEntityArtifact => !!item) || []; }
+  private entities(): Ns5OntologyAnyEntity[] { return this.data?.artifacts.entities.map(item => item.value).filter((item): item is Ns5OntologyAnyEntity => !!item) || []; }
   private process(): WorkflowProcessView | null { return this.view().processes.find(item => item.processId === this.selectedProcessId) || null; }
 
   private beginEdit() {
     const artifact = this.currentArtifact();
     if (!artifact) return;
+    if (this.version.startsWith('release:')) return;
     this.draft = structuredClone(artifact);
+    this.snapshot = JSON.stringify(artifact);
     this.mode = 'edit';
     this.dirty = false;
     this.gateIssues = [];
@@ -93,6 +131,8 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   }
 
   private cancelEdit() {
+    this.adding = false;
+    if (!normalizeWorkflows(this.sourceValue()).processes.find(process => process.processId === this.selectedProcessId)?.tasks.some(task => task.taskId === this.selectedTaskId)) this.selectedTaskId = '';
     this.draft = null;
     this.mode = 'view';
     this.dirty = false;
@@ -102,7 +142,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
 
   private updateDraft(next: Ns5WorkflowsArtifact) {
     this.draft = next;
-    this.dirty = true;
+    this.dirty = JSON.stringify(next) !== this.snapshot;
     this.gateIssues = [];
     this.editMessage = '';
   }
@@ -112,40 +152,15 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     this.updateDraft({ ...this.draft, processes: this.draft.processes.map(process => process.processId === this.selectedProcessId ? { ...process, ...patch } : process) });
   }
 
-  private addProcess() {
-    const artifact = this.currentArtifact();
-    if (!artifact) return;
-    if (this.mode !== 'edit') this.beginEdit();
-    const source = this.draft || artifact;
-    const processId = nextMemberId('process', source.processes.map(process => process.processId));
-    const process: Ns5WorkflowProcess = {
-      processId,
-      title: this.t('workflows.newProcessTitle'),
-      description: this.t('workflows.newProcessDescription'),
-      trigger: { kind: 'manual', actorRef: this.actors()[0]?.actorId || '' },
-      tasks: [],
-    };
-    this.selectedProcessId = processId;
-    this.updateDraft({ ...source, processes: [...source.processes, process] });
-  }
-
-  private removeProcess() {
-    if (!this.draft) return;
-    const processes = this.draft.processes.filter(process => process.processId !== this.selectedProcessId);
-    const journeyDecisions = this.draft.journeyDecisions.map(decision => decision.processId === this.selectedProcessId
-      ? { journeyId: decision.journeyId, inProcess: false }
-      : decision);
-    this.selectedProcessId = processes[0]?.processId || '';
-    this.updateDraft({ ...this.draft, processes, journeyDecisions });
-  }
-
   private addTask() {
+    if (!this.draft) this.beginEdit();
     if (!this.draft) return;
     const process = this.draft.processes.find(item => item.processId === this.selectedProcessId);
     if (!process) return;
-    const taskId = nextMemberId('task', process.tasks.map(task => task.taskId));
-    const task: Ns5WorkflowTask = { taskId, kind: 'wait', description: this.t('workflows.newTaskDescription'), next: [] };
-    this.updateProcess({ tasks: [...process.tasks, task] });
+    const error = workflowNewTaskError(this.newId, process.tasks.map(task => task.taskId));
+    if (error) { this.editMessage = this.t(`workflows.newId.${error}`); return; }
+    this.updateDraft(appendWorkflowTask(this.draft, process.processId, this.newId));
+    this.selectedTaskId = this.newId; this.adding = false; this.newId = '';
   }
 
   private updateTask(taskId: string, patch: Partial<Ns5WorkflowTask>) {
@@ -163,7 +178,9 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   }
 
   private updateTaskKind(task: Ns5WorkflowTask, kind: Ns5WorkflowTask['kind']) {
-    const base: Ns5WorkflowTask = { taskId: task.taskId, kind, description: task.description, next: task.next };
+    const {actorRef, journeyRef, entityRef, effect, transitionRef, wake, ...rest} = task;
+    const base: Ns5WorkflowTask = { ...rest, kind };
+    if (kind === 'wait') base.wake = {mode: 'none'};
     if (kind === 'human') {
       base.actorRef = this.actors()[0]?.actorId || '';
       base.journeyRef = this.journeys()[0]?.journeyId || '';
@@ -176,22 +193,17 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     this.replaceTask(task.taskId, base);
   }
 
-  private removeTask(taskId: string) {
-    if (!this.draft) return;
-    const process = this.draft.processes.find(item => item.processId === this.selectedProcessId);
-    if (!process) return;
-    this.updateProcess({ tasks: process.tasks.filter(task => task.taskId !== taskId).map(task => ({ ...task, next: task.next.filter(next => next !== taskId) })) });
-  }
-
   private async saveEdit() {
-    if (!this.draft || !this.dirty) return;
+    if (!this.draft || !this.dirty || this.saving || this.version.startsWith('release:')) return;
+    if (this.draft.processes.some(process => process.tasks.some(task => !task.description.trim()))) { this.editMessage = this.t('workflows.descriptionRequired'); return; }
+    this.saving = true;
     try {
       const gate = await import('/_102035_/l2/solution/gates/workflows50/gate.js');
       const result = gate.validateNs5Workflows(this.draft.processes, {
         moduleName: this.moduleName,
         actorIds: this.actors().map(actor => actor.actorId),
         journeys: this.journeys(),
-        entities: this.entities(),
+        entities: ns5OntologyEntityViews(this.entities()),
         journeyDecisions: this.draft.journeyDecisions,
       });
       this.gateIssues = result.issues;
@@ -203,7 +215,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
       this.cancelEdit();
     } catch (error) {
       this.editMessage = this.t('workflows.gateUnavailable', { message: error instanceof Error ? error.message : String(error) });
-    }
+    } finally { this.saving = false; }
   }
 
   private taskIcon(kind: WorkflowTaskView['kind']) {
@@ -245,16 +257,16 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   private renderTask(process: WorkflowProcessView, task: WorkflowTaskView, index: number) {
     const isStart = workflowStartTaskIds(process).includes(task.taskId);
     const next = workflowNextLabels(process, task);
-    const title = task.journeyRef || task.entityRef || task.taskId;
+    const title = this.taskTitle(task);
     if (this.mode === 'edit' && this.draft) {
       const draftProcess = this.draft.processes.find(item => item.processId === process.processId);
       const draftTask = draftProcess?.tasks.find(item => item.taskId === task.taskId);
       if (!draftTask) return nothing;
       const transitions = this.entities().find(entity => entity.entityId === draftTask.entityRef)?.transitions || [];
       return html`<article class=${`nr-workflows__task kind-${draftTask.kind}`}>
-        <header><i>${this.taskIcon(draftTask.kind)}</i><div><span>${isStart ? this.t('workflows.start') : this.t('workflows.step', { number: index + 1 })}</span><code>${draftTask.taskId}</code></div><button type="button" title=${this.t('workflows.removeTask')} @click=${() => this.removeTask(draftTask.taskId)}>×</button></header>
+        <header><i>${this.taskIcon(draftTask.kind)}</i><div><span>${isStart ? this.t('workflows.start') : this.t('workflows.step', { number: index + 1 })}</span><code>${draftTask.taskId}</code></div><input readonly aria-label=${this.t('workflows.taskId')} .value=${draftTask.taskId}></header>
         <div class="nr-workflows__task-form">
-          <label><span>${this.t('workflows.taskKind')}</span><select @change=${(event: Event) => this.updateTaskKind(draftTask, (event.currentTarget as HTMLSelectElement).value as Ns5WorkflowTask['kind'])}>${['human', 'mechanical', 'llm', 'wait', 'alert'].map(kind => html`<option value=${kind} ?selected=${draftTask.kind === kind}>${this.t(`workflows.kind.${kind}`)}</option>`)}</select></label>
+          <label><span>${this.t('workflows.taskKind')}</span><select @change=${(event: Event) => this.updateTaskKind(draftTask, (event.currentTarget as HTMLSelectElement).value as Ns5WorkflowTask['kind'])}>${WORKFLOW_TASK_KINDS.map(kind => html`<option value=${kind} ?selected=${draftTask.kind === kind}>${this.t(`workflows.kind.${kind}`)}</option>`)}</select></label>
           ${draftTask.kind === 'human' ? html`
             <label><span>${this.t('workflows.actor')}</span><select @change=${(event: Event) => this.updateTask(draftTask.taskId, { actorRef: (event.currentTarget as HTMLSelectElement).value })}>${this.actors().map(actor => html`<option value=${actor.actorId} ?selected=${draftTask.actorRef === actor.actorId}>${actor.title} · ${actor.actorId}</option>`)}</select></label>
             <label><span>${this.t('workflows.journey')}</span><select @change=${(event: Event) => this.updateTask(draftTask.taskId, { journeyRef: (event.currentTarget as HTMLSelectElement).value })}>${this.journeys().map(journey => html`<option value=${journey.journeyId} ?selected=${draftTask.journeyRef === journey.journeyId}>${journey.business.title}</option>`)}</select></label>
@@ -267,8 +279,9 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
             <label><span>${this.t('workflows.effect')}</span><select @change=${(event: Event) => this.updateTask(draftTask.taskId, { effect: (event.currentTarget as HTMLSelectElement).value as Ns5WorkflowTask['effect'], transitionRef: undefined })}>${['create', 'update', 'transition'].map(effect => html`<option value=${effect} ?selected=${draftTask.effect === effect}>${this.t(`workflows.effect.${effect}`)}</option>`)}</select></label>
             ${draftTask.effect === 'transition' ? html`<label><span>${this.t('workflows.transition')}</span><select @change=${(event: Event) => this.updateTask(draftTask.taskId, { transitionRef: (event.currentTarget as HTMLSelectElement).value })}><option value="" ?selected=${!draftTask.transitionRef}>${this.t('workflows.choose')}</option>${transitions.map(transition => html`<option value=${transition.transitionId} ?selected=${draftTask.transitionRef === transition.transitionId}>${transition.transitionId}</option>`)}</select></label>` : nothing}
           ` : nothing}
+          ${draftTask.kind === 'wait' ? html`<label><span>${this.t('workflows.wakeMode')}</span><select @change=${(event: Event) => this.updateTask(draftTask.taskId, {wake: (event.currentTarget as HTMLSelectElement).value === 'periodic' ? {mode: 'periodic', every: draftTask.wake?.every || ''} : {mode: 'none'}})}>${(['none', 'periodic'] as const).map(mode => html`<option value=${mode} ?selected=${(draftTask.wake?.mode || 'none') === mode}>${this.t(`workflows.wake.${mode}`)}</option>`)}</select></label>${draftTask.wake?.mode === 'periodic' ? html`<label><span>${this.t('workflows.wakeEvery')}</span><input .value=${draftTask.wake.every || ''} @input=${(event: Event) => this.updateTask(draftTask.taskId, {wake: {mode: 'periodic', every: (event.currentTarget as HTMLInputElement).value}})}></label>` : nothing}` : nothing}
           <label class="is-wide"><span>${this.t('workflows.taskDescription')}</span><textarea .value=${draftTask.description} @input=${(event: Event) => this.updateTask(draftTask.taskId, { description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>
-          <label class="is-wide"><span>${this.t('workflows.next')}</span><select multiple @change=${(event: Event) => this.updateTask(draftTask.taskId, { next: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value) })}>${draftProcess?.tasks.filter(item => item.taskId !== draftTask.taskId).map(item => html`<option value=${item.taskId} ?selected=${draftTask.next.includes(item.taskId)}>${item.taskId}</option>`)}</select></label>
+          <label class="is-wide"><span>${this.t('workflows.next')}</span><select multiple @change=${(event: Event) => this.updateTask(draftTask.taskId, { next: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value) })}>${draftProcess?.tasks.map(item => html`<option value=${item.taskId} ?selected=${draftTask.next.includes(item.taskId)}>${item.taskId}</option>`)}</select></label>
         </div>
       </article>`;
     }
@@ -284,10 +297,16 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
   }
 
   private renderProcess(process: WorkflowProcessView) {
-    const editable = this.mode === 'edit' && this.draft;
-    const draftProcess = editable ? this.draft!.processes.find(item => item.processId === process.processId) : null;
-    const trigger = draftProcess?.trigger;
-    return html`<main class="nr-workflows__detail"><header><div><span>${this.t('workflows.selected')}</span>${editable ? html`<input class="nr-workflows__title-input" .value=${draftProcess!.title} @input=${(event: Event) => this.updateProcess({ title: (event.currentTarget as HTMLInputElement).value })}>` : html`<h3>${process.title}</h3>`}<code>${process.processId}</code></div>${this.mode === 'view' ? html`<button class="nr-button" type="button" @click=${() => this.beginEdit()}>${this.t('workflows.edit')}</button>` : html`<button class="nr-danger" type="button" @click=${() => this.removeProcess()}>${this.t('workflows.removeProcess')}</button>`}</header>${editable ? html`<label class="nr-workflows__description"><span>${this.t('workflows.processDescription')}</span><textarea .value=${draftProcess!.description} @input=${(event: Event) => this.updateProcess({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label><section class="nr-workflows__trigger is-edit"><div><span>${this.t('workflows.trigger')}</span><select @change=${(event: Event) => { const kind = (event.currentTarget as HTMLSelectElement).value as Ns5WorkflowProcess['trigger']['kind']; this.updateProcess({ trigger: kind === 'manual' ? { kind, actorRef: this.actors()[0]?.actorId || '' } : kind === 'event' ? { kind, event: '' } : { kind, schedule: '' } }); }}>${['manual', 'event', 'scheduled'].map(kind => html`<option value=${kind} ?selected=${trigger!.kind === kind}>${this.t(`workflows.trigger.${kind}`)}</option>`)}</select></div>${trigger!.kind === 'manual' ? html`<label><span>${this.t('workflows.actor')}</span><select @change=${(event: Event) => this.updateProcess({ trigger: { kind: 'manual', actorRef: (event.currentTarget as HTMLSelectElement).value } })}>${this.actors().map(actor => html`<option value=${actor.actorId} ?selected=${trigger!.actorRef === actor.actorId}>${actor.title}</option>`)}</select></label>` : html`<label><span>${trigger!.kind === 'event' ? this.t('workflows.event') : this.t('workflows.schedule')}</span><input .value=${trigger!.kind === 'event' ? trigger!.event || '' : trigger!.schedule || ''} @input=${(event: Event) => this.updateProcess({ trigger: trigger!.kind === 'event' ? { kind: 'event', event: (event.currentTarget as HTMLInputElement).value } : { kind: 'scheduled', schedule: (event.currentTarget as HTMLInputElement).value } })}></label>`}</section>` : html`<p class="nr-workflows__process-description">${process.description}</p><section class="nr-workflows__trigger"><i></i><div><span>${this.t('workflows.trigger')}</span><strong>${process.trigger ? this.t(`workflows.trigger.${process.trigger.kind}`) : this.t('workflows.trigger.undeclared')}</strong><code>${this.triggerSummary(process)}</code>${isRecurringDuty(process) ? html`<em class="nr-workflows__duty">${this.recurringDutyLabel(process)}</em>` : nothing}</div><div><span>${this.t('workflows.room')}</span><strong>${this.t(`workflows.room.${process.room}`)}</strong></div></section>`}${this.renderIssues()}<section class="nr-workflows__flow"><header><div><span>${this.t('workflows.flow')}</span><p>${this.t('workflows.flowDescription')}</p></div><strong>${this.t('workflows.taskCount', { count: process.tasks.length })}</strong></header><div>${process.tasks.map((task, index) => this.renderTask(process, task, index))}${editable ? html`<button class="nr-workflows__add-task" type="button" @click=${() => this.addTask()}>+ ${this.t('workflows.addTask')}</button>` : nothing}</div></section>${this.renderFunctions(process)}</main>`;
+    const task = process.tasks.find(item => item.taskId === this.selectedTaskId);
+    if (this.adding) return html`<section class="nr-workflows__detail"><label>${this.t('workflows.taskId')}<input .value=${this.newId} @input=${(event: Event) => {this.newId = (event.currentTarget as HTMLInputElement).value;}}></label><button class="nr-button" @click=${() => this.addTask()}>${this.t('workflows.addTask')}</button>${this.renderIssues()}</section>`;
+    if (task) return html`<main class="nr-workflows__detail">${this.mode === 'view' && !this.version.startsWith('release:') && isEditableWorkflowSchema(this.view().schema) ? html`<button class="nr-button" @click=${() => this.beginEdit()}>${this.t('workflows.edit')}</button>` : nothing}${this.renderTask(process, task, process.tasks.indexOf(task))}${this.renderIssues()}</main>`;
+    const edges = workflowEdges(process);
+    const width = Math.max(400, process.tasks.length * 260);
+    const nodeHeight = 125;
+    return html`<main class="nr-workflows__detail"><header><div><h3>${process.title}</h3><code>${process.processId}</code><p>${process.description}</p><p>${this.t('workflows.trigger')}: ${this.triggerSummary(process)}</p><p>${this.t('workflows.room')}: ${this.t(`workflows.room.${process.room}`)}</p></div>${!this.version.startsWith('release:') && isEditableWorkflowSchema(this.view().schema) ? html`<button class="nr-button" @click=${() => {this.adding = true; this.newId = ''; this.beginEdit();}}>${this.t('workflows.addTask')}</button>` : nothing}</header>
+      <section class="nr-workflows__graph" style=${`width:${width}px;min-height:${220 + edges.length * 22}px`}>
+      <svg class="nr-workflows__edges" width=${width} height=${220 + edges.length * 22} aria-label=${this.t('workflows.connections')} role="img"><defs><marker id="nr-workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker></defs>${edges.map((edge, index) => {const x1 = edge.from * 260 + 115; const x2 = edge.to * 260 + 130; const y = 190 + index * 22; return svg`<path d=${`M ${x1} ${nodeHeight} C ${x1} ${y}, ${x2} ${y}, ${x2} ${nodeHeight}`} marker-end="url(#nr-workflow-arrow)"/><title>${process.tasks[edge.from].taskId} → ${edge.id}</title>`;})}</svg>
+      ${process.tasks.map((item, index) => html`<button class=${`nr-workflows__node kind-${item.kind}`} style=${`left:${index * 260}px;height:${nodeHeight}px`} aria-label=${this.taskTitle(item)} @click=${() => this.select(process.processId, item.taskId)}><i>${this.taskIcon(item.kind)}</i><strong>${this.taskTitle(item)}</strong><code>${item.taskId}</code><span>${this.t(`workflows.kind.${item.kind}`)}</span></button>`)}</section>${this.renderFunctions(process)}${this.renderIssues()}</main>`;
   }
 
   private renderDecisions() {
@@ -301,7 +320,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     if (!this.sourceValue()) return html`<section class="nr-workflows__empty"><h2>${this.t('workflows.emptyTitle')}</h2><p>${this.t('workflows.emptyBody')}</p></section>`;
     if (view.schema === 'unknown') return html`<section class="nr-workflows__unknown" role="alert"><h2>${this.t('workflows.unknownTitle')}</h2><p>${this.t('workflows.unknownBody', { version: view.schemaVersion || this.t('workflows.notRecorded') })}</p><pre>${JSON.stringify(view.raw, null, 2)}</pre></section>`;
     const process = this.process();
-    return html`<section class="nr-workflows"><header class="nr-workflows__hero"><div><span>${this.t('workflows.eyebrow')}</span><h2>${this.t('workflows.title')}</h2><p>${this.t('workflows.description')}</p><small class=${`schema-${view.schema}`}>${this.t(`workflows.schema.${view.schema}`)}</small></div><dl><div><dt>${this.t('workflows.processes')}</dt><dd>${view.processes.length}</dd></div><div><dt>${this.t('workflows.tasks')}</dt><dd>${workflowTaskCount(view.processes)}</dd></div><div><dt>${this.t('workflows.decisions')}</dt><dd>${view.journeyDecisions.length}</dd></div></dl></header><div class="nr-workflows__workspace"><aside class="nr-workflows__catalog"><header><span>${this.t('workflows.catalog')}</span>${isEditableWorkflowSchema(view.schema) ? html`<button type="button" @click=${() => this.addProcess()}>+ ${this.t('workflows.addProcess')}</button>` : nothing}</header>${view.processes.map(item => html`<button type="button" class=${item.processId === this.selectedProcessId ? 'is-active' : ''} @click=${() => { this.selectedProcessId = item.processId; }}><i>${this.taskIcon(item.tasks[0]?.kind || 'wait')}</i><span><strong>${item.title}</strong><small>${isRecurringDuty(item) ? this.recurringDutyLabel(item) : this.triggerSummary(item)}</small></span><b>${item.tasks.length}</b></button>`)}${!view.processes.length ? html`<p>${this.t('workflows.noProcesses')}</p>` : nothing}</aside>${process ? this.renderProcess(process) : html`<section class="nr-workflows__empty-detail"><h3>${this.t('workflows.noSelection')}</h3><p>${this.t('workflows.noSelectionDescription')}</p>${isEditableWorkflowSchema(view.schema) ? html`<button type="button" @click=${() => this.addProcess()}>+ ${this.t('workflows.addProcess')}</button>` : nothing}</section>`}</div>${this.renderDecisions()}${this.mode === 'edit' ? html`<footer class="nr-workflows__edit-footer"><span>${this.dirty ? this.t('workflows.unsaved') : this.t('workflows.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('workflows.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('workflows.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-workflows">${process ? this.renderProcess(process) : html`<div class="nr-workflows__cards">${view.processes.map(item => html`<button class="nr-workflows__card" @click=${() => this.select(item.processId)}><h3>${item.title}</h3><code>${item.processId}</code><p>${item.description}</p><span>${this.t('workflows.trigger')}: ${item.trigger ? this.t(`workflows.trigger.${item.trigger.kind}`) : this.t('workflows.trigger.undeclared')} · ${this.triggerSummary(item)}</span><strong>${this.t('workflows.taskCount', {count: item.tasks.length})}</strong></button>`)}</div>${this.renderDecisions()}`}${this.mode === 'edit' ? html`<footer class="nr-workflows__edit-footer"><span>${this.dirty ? this.t('workflows.unsaved') : this.t('workflows.noChanges')}</span><div><button ?disabled=${this.saving} @click=${() => {if (canDiscardNewReleaseDraft(this)) this.cancelEdit();}}>${this.t('workflows.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty || this.saving || this.adding} @click=${() => void this.saveEdit()}>${this.t('workflows.save')}</button></div></footer>` : nothing}</section>`;
   }
 }
 

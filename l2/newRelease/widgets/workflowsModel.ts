@@ -15,6 +15,7 @@ export type WorkflowRoom = 'exclusive' | 'person' | 'group';
 export type WorkflowWake = { mode: 'none' | 'periodic'; every?: string };
 export type WorkflowTaskView = Omit<Ns5WorkflowTask, 'kind' | 'wake'> & {
   kind: Ns5WorkflowTask['kind'] | 'system';
+  title?: string;
   wake?: WorkflowWake;
 };
 export type WorkflowProcessView = Omit<Ns5WorkflowProcess, 'trigger' | 'tasks' | 'functions' | 'room'> & {
@@ -84,6 +85,7 @@ function taskOf(value: unknown): WorkflowTaskView {
     : 'wait';
   return {
     taskId: String(item.taskId || ''),
+    ...(typeof item.title === 'string' ? {title: item.title} : {}),
     kind,
     ...(typeof item.actorRef === 'string' ? { actorRef: item.actorRef } : {}),
     ...(typeof item.journeyRef === 'string' ? { journeyRef: item.journeyRef } : {}),
@@ -183,3 +185,18 @@ export function isRecurringDuty(process: WorkflowProcessView): boolean {
     && process.tasks.every(task => task.kind === 'alert' || task.kind === 'human');
 }
 
+
+/** Only declared edges; cycles and self links are retained. */
+export function workflowEdges(process: WorkflowProcessView) {
+  return process.tasks.flatMap((task, from) => task.next.map(id => ({ from, to: process.tasks.findIndex(item => item.taskId === id), id })).filter(edge => edge.to >= 0));
+}
+export const WORKFLOW_TASK_KINDS = ['human', 'mechanical', 'llm', 'wait', 'alert'] as const satisfies readonly Ns5WorkflowTask['kind'][];
+export function workflowNewTaskError(taskId: string, existing: readonly string[]): 'id' | 'duplicate' | null {
+  if (!/^[a-z][a-zA-Z0-9]*$/.test(taskId)) return 'id';
+  return existing.includes(taskId) ? 'duplicate' : null;
+}
+export function appendWorkflowTask(artifact: Ns5WorkflowsArtifact, processId: string, taskId: string): Ns5WorkflowsArtifact {
+  const process = artifact.processes.find(item => item.processId === processId);
+  if (!process || workflowNewTaskError(taskId, process.tasks.map(task => task.taskId))) return artifact;
+  return { ...artifact, processes: artifact.processes.map(item => item !== process ? item : { ...item, tasks: [...item.tasks, { taskId, kind: 'wait', description: '', next: [], wake: {mode: 'none'} }] }) };
+}

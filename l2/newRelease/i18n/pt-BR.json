@@ -1028,5 +1028,14 @@
   "access.noPersonEntity": "Sem entidade de pessoa",
   "access.unassigned": "Papel desconhecido",
   "rules.key": "Chave da regra",
-  "rules.usedIn": "Usada em"
+  "rules.usedIn": "Usada em",
+  "workflows.taskId": "Identificador da etapa",
+  "workflows.newId.id": "Use um identificador lowerCamel.",
+  "workflows.newId.duplicate": "Este identificador já existe neste workflow.",
+  "workflows.descriptionRequired": "Descreva todas as etapas antes de salvar.",
+  "workflows.wakeMode": "Modo de despertar",
+  "workflows.wake.none": "Nenhum",
+  "workflows.wake.periodic": "Periódico",
+  "workflows.wakeEvery": "Intervalo (ISO 8601)",
+  "workflows.connections": "Conexões declaradas entre etapas"
 }

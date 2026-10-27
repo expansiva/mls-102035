@@ -178,3 +178,20 @@ test('QA fixtures settle initialization and preserve loading and historical quer
     assert.ok(qa.includes(`qa.${failure}`), failure);
   }
 });
+
+
+test('workflow has three navigation levels and protects structural identities', () => {
+  const source = readFileSync(new URL('./widgets/workflows.ts', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
+  const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
+  assert.match(source, /readonly aria-label=\$\{this.t\('workflows.taskId'\)\}/);
+  assert.doesNotMatch(source, /removeTask|removeProcess|addProcess/);
+  assert.match(source, /workflowEdges\(process\)/);
+  assert.match(source, /draftProcess\?\.tasks.map/); // self links are selectable
+  assert.match(source, /draftTask.kind === 'wait'/);
+  assert.match(source, /wake: \{mode: 'periodic'/);
+  assert.match(source, /requestNewReleasePresentation\(this, 'graph'\)/);
+  assert.match(index, /nr-presentation-request/);
+  assert.match(ontology, /requestNewReleasePresentation\(this, 'graph'\)/);
+  assert.match(index, /selected.rootIds.includes\(root.id\)/);
+});

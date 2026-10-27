@@ -1028,5 +1028,14 @@
   "access.noPersonEntity": "No person entity",
   "access.unassigned": "Unknown role",
   "rules.key": "Rule key",
-  "rules.usedIn": "Used in"
+  "rules.usedIn": "Used in",
+  "workflows.taskId": "Stage identifier",
+  "workflows.newId.id": "Use a lowerCamel identifier.",
+  "workflows.newId.duplicate": "This identifier already exists in this workflow.",
+  "workflows.descriptionRequired": "Describe every stage before saving.",
+  "workflows.wakeMode": "Wake mode",
+  "workflows.wake.none": "None",
+  "workflows.wake.periodic": "Periodic",
+  "workflows.wakeEvery": "Interval (ISO 8601)",
+  "workflows.connections": "Declared stage connections"
 }

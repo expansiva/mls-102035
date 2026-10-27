@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { comprasWorkflows } from './fixtures/compras-workflows.defs.js';
 import {
+  workflowEdges,
+  appendWorkflowTask,
+  workflowNewTaskError,
+  WORKFLOW_TASK_KINDS,
   isEditableWorkflowSchema,
   isRecurringDuty,
   nextMemberId,
@@ -140,4 +144,51 @@ test('a scheduled process with no stage is not a recurring duty', () => {
     journeyDecisions: [],
   });
   assert.equal(isRecurringDuty(view.processes[0]), false);
+});
+
+
+test('graph keeps declared returns and self cycles without inventing sequential edges', () => {
+  const process = normalizeWorkflows({processes: [{tasks: [
+    {taskId: 'a', kind: 'wait', next: ['c'], description: 'A'},
+    {taskId: 'b', kind: 'human', next: [], description: 'B'},
+    {taskId: 'c', kind: 'wait', next: ['a', 'c'], description: 'C'},
+  ]}]}).processes[0];
+  assert.deepEqual(workflowEdges(process), [{from: 0, to: 2, id: 'c'}, {from: 2, to: 0, id: 'a'}, {from: 2, to: 2, id: 'c'}]);
+});
+test('new stage validates its one-time identity and preserves all existing metadata and edges', () => {
+  const artifact = structuredClone(comprasWorkflows);
+  const before = structuredClone(artifact);
+  const process = artifact.processes[0];
+  assert.equal(workflowNewTaskError('', []), 'id');
+  assert.equal(workflowNewTaskError('WrongId', []), 'id');
+  assert.equal(workflowNewTaskError('new-stage', []), 'id');
+  assert.equal(workflowNewTaskError(process.tasks[0].taskId, process.tasks.map(task => task.taskId)), 'duplicate');
+  assert.equal(appendWorkflowTask(artifact, process.processId, ''), artifact);
+  const next = appendWorkflowTask(artifact, process.processId, 'novaEtapa');
+  assert.deepEqual(artifact, before);
+  assert.deepEqual(next.processes[0].tasks.slice(0, -1), process.tasks);
+  assert.deepEqual(next.processes[0].tasks.at(-1), {taskId: 'novaEtapa', kind: 'wait', description: '', next: [], wake: {mode: 'none'}});
+  assert.deepEqual({...next.processes[0], tasks: []}, {...process, tasks: []});
+  assert.deepEqual(next.journeyDecisions, artifact.journeyDecisions);
+  assert.deepEqual(WORKFLOW_TASK_KINDS, ['human', 'mechanical', 'llm', 'wait', 'alert']);
+});
+
+
+test('workflow gate accepts a v3 entity without transitions through the neutral ontology view', async () => {
+  const { ns5OntologyEntityViews } = await import('../../solution/ontologyView.js');
+  const { validateNs5Workflows } = await import('../../solution/gates/workflows50/gate.js');
+  const { default: fixture } = await import('../../solution/fixtures/ontology30/agendaClinica-v3/Consulta.defs.js');
+  const entity = structuredClone(fixture) as unknown as import('../../solution/types.js').Ns5OntologyEntityV3;
+  delete entity.transitions;
+  const before = structuredClone(entity);
+  const entities = ns5OntologyEntityViews([entity]);
+  assert.deepEqual(entities[0].transitions, []);
+  const result = validateNs5Workflows([{
+    processId: 'atender', title: 'Atender', description: 'Atender consulta', room: 'exclusive',
+    trigger: {kind: 'manual', actorRef: 'medico'}, functions: [],
+    tasks: [{taskId: 'mudar', kind: 'mechanical', entityRef: entity.entityId, effect: 'transition', transitionRef: 'inexistente', description: 'Mudar consulta', next: []}],
+  }], {moduleName: entity.moduleName, actorIds: ['medico'], journeys: [], entities, journeyDecisions: []});
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some(issue => issue.message.includes('inexistente')));
+  assert.deepEqual(entity, before);
 });

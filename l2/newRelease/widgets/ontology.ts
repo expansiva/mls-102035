@@ -30,6 +30,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  requestNewReleasePresentation,
   canDiscardNewReleaseDraft,
   type NewReleaseTabPresentation,
   type NewReleaseEditableTab,
@@ -974,6 +975,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   private closePanelEditor() {
     if (!canDiscardNewReleaseDraft(this)) return;
     this.panelEntityId = ''; this.panelFieldPath = ''; this.panelDraft = null; this.mode = 'view'; this.dirty = false;
+    requestNewReleasePresentation(this, 'graph');
   }
 
   private changePanel(patch: OntologyPanelPatch) {

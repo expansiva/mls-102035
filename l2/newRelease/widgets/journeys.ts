@@ -52,7 +52,6 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
   @state() private selectedStepId = '';
   @state() private newStepId = '';
   @state() private creatingStep = false;
-  @state() private actorFilter = 'all';
   @state() private view: JourneyView = 'cards';
   @state() private journeyDraft: Ns5JourneyArtifact | null = null;
   @state() private indexDraft: Ns5JourneyIndexArtifact | null = null;
@@ -71,9 +70,10 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     if (changed.has('data') && !this.journeys().some(j => j.journeyId === this.selectedJourneyId)) {
       this.selectedJourneyId = ''; this.opened = false; this.selectedStepId = '';
     }
-    if (['data', 'opened', 'mode', 'selectedStepId', 'creatingStep', 'actorFilter', 'journeyDraft'].some(key => changed.has(key))) {
+    if (['data', 'opened', 'mode', 'selectedStepId', 'creatingStep', 'journeyDraft'].some(key => changed.has(key))) {
       const presentation: NewReleaseTabPresentation = {
-        nodes: this.visibleJourneys().map(journey => ({ id: journey.journeyId, label: journey.business.title, value: journey.journeyId,
+        filters: this.actors().map(actor => ({id: actor.actorId, label: actor.title, rootIds: this.journeys().filter(journey => journey.business.actorRef === actor.actorId).map(journey => journey.journeyId)})),
+        nodes: this.journeys().map(journey => ({ id: journey.journeyId, label: journey.business.title, value: journey.journeyId,
           children: journey.business.steps.map(step => ({ id: `${journey.journeyId}/${step.stepId}`, label: step.title, value: step.stepId, children: [] })) })),
         detail: this.mode === 'edit' || !!this.selectedStepId || this.creatingStep,
         select: id => { const [journeyId, stepId] = id.split('/'); this.selectJourney(journeyId); this.selectedStepId = stepId || ''; },
@@ -119,10 +119,6 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
       ? this.journeyDraft
       : item);
     return orderedJourneys(this.currentIndex(), values);
-  }
-
-  private visibleJourneys(): Ns5JourneyArtifact[] {
-    return this.journeys().filter(journey => this.actorFilter === 'all' || journey.business.actorRef === this.actorFilter);
   }
 
   private currentJourney(): Ns5JourneyArtifact | null {
@@ -267,7 +263,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
   }
 
   private reorderJourney(journeyId: string, targetJourneyId: string) {
-    if (!this.indexDraft || this.actorFilter !== 'all') return;
+    if (!this.indexDraft) return;
     this.indexDraft = moveJourney(this.indexDraft, journeyId, targetJourneyId);
     this.indexDirty = true;
     this.dirty = true;
@@ -316,17 +312,8 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     this.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, composed: true, detail: { tab: 'ontology', entityId } }));
   }
 
-  private renderFilters() {
-    const journeys = this.visibleJourneys();
-    return html`<div class="nr-journeys__filters">
-      <label><span>${this.t('journeys.actorFilter')}</span><select .value=${this.actorFilter} @change=${(event: Event) => { this.actorFilter = (event.currentTarget as HTMLSelectElement).value; this.opened = false; }}><option value="all" ?selected=${this.actorFilter === 'all'}>${this.t('journeys.allActors')}</option>${this.actors().map(actor => html`<option value=${actor.actorId} ?selected=${this.actorFilter === actor.actorId}>${actor.title}</option>`)}</select></label>
-      <span>${this.t('journeys.visibleCount', { count: journeys.length })}</span>
-
-    </div>`;
-  }
-
   private renderJourneyList() {
-    const journeys = this.opened ? this.visibleJourneys().filter(j => j.journeyId === this.selectedJourneyId) : this.visibleJourneys();
+    const journeys = this.opened ? this.journeys().filter(j => j.journeyId === this.selectedJourneyId) : this.journeys();
     const actors = [...new Set(journeys.map(j => j.business.actorRef))];
     return html`${actors.map(actor => html`<section class="nr-journeys__group"><h3>${this.actorTitle(actor)}</h3><div class="nr-journeys__cards">${journeys.filter(j => j.business.actorRef === actor).map(journey => html`<button type="button" class=${this.opened ? 'is-active' : ''} @click=${() => this.selectJourney(journey.journeyId)}><span>◇</span><div><strong>${journey.business.title}</strong></div></button>`)}</div></section>`)}`;
   }
@@ -383,7 +370,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
 
   render() {
     const journey = this.currentJourney();
-    return html`<section class="nr-journeys">${this.opened && !this.selectedStepId && this.mode !== 'edit' ? html`<button class="nr-button" @click=${() => { this.opened = false; }}>${this.t('common.back')}</button>` : nothing}${!this.opened ? this.renderFilters() : nothing}${this.renderJourneyList()}${this.opened && journey ? this.renderDetail(journey) : nothing}${this.mode === 'edit' ? html`<footer class="nr-journeys__edit-footer"><span>${this.dirty ? this.t('journeys.unsaved') : this.t('journeys.noChanges')}</span><div><button @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('journeys.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('journeys.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-journeys">${this.opened && !this.selectedStepId && this.mode !== 'edit' ? html`<button class="nr-button" @click=${() => { this.opened = false; }}>${this.t('common.back')}</button>` : nothing}${this.renderJourneyList()}${this.opened && journey ? this.renderDetail(journey) : nothing}${this.mode === 'edit' ? html`<footer class="nr-journeys__edit-footer"><span>${this.dirty ? this.t('journeys.unsaved') : this.t('journeys.noChanges')}</span><div><button @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('journeys.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('journeys.save')}</button></div></footer>` : nothing}</section>`;
   }
 
 }

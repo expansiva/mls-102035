@@ -100,6 +100,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.addEventListener('scroll', this.closeHintsOnScroll, true);
     this.addEventListener('nr-before-discard', this.beforeDiscard);
     this.addEventListener('nr-view-state', this.onViewState);
+    this.addEventListener('nr-presentation-request', this.onPresentationRequest);
     this.addEventListener('nr-request-change', this.openChangeRequest);
     this.addEventListener('input', this.refreshControls);
     this.addEventListener('change', this.refreshControls);
@@ -117,6 +118,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.removeEventListener('scroll', this.closeHintsOnScroll, true);
     this.removeEventListener('nr-before-discard', this.beforeDiscard);
     this.removeEventListener('nr-view-state', this.onViewState);
+    this.removeEventListener('nr-presentation-request', this.onPresentationRequest);
     this.removeEventListener('nr-request-change', this.openChangeRequest);
     this.removeEventListener('input', this.refreshControls);
     this.removeEventListener('change', this.refreshControls);
@@ -237,6 +239,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }); };
 
   // Tabs can announce detail navigation without coupling their models to the container.
+  private onPresentationRequest = (event: Event) => {
+    const detail = (event as CustomEvent<import('/_102035_/l2/newRelease/editContract.js').NewReleasePresentationRequest>).detail;
+    this.presentation = detail.mode;
+  };
   private onViewState = (event: Event) => {
     this.tabPresentation = (event as CustomEvent<NewReleaseTabPresentation>).detail;
     this.tabDetail = !!this.tabPresentation?.detail;
@@ -290,16 +296,17 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const editing = this.activeEditor()?.mode === 'edit';
     const nested = this.tabDetail || editing;
     return html`<div class="nr-common__toolbar">
-      ${nested ? html`<button type="button" @click=${() => {
+      ${nested || this.tabPresentation?.canBack ? html`<button type="button" @click=${() => {
         if (this.tabPresentation) { this.tabPresentation.back(); return; }
         if (!this.canLeaveTab()) return;
         const editor = this.activeEditor();
         if (editor?.mode === 'edit') { editor.mode = 'view'; editor.dirty = false; }
         editor?.dispatchEvent(new CustomEvent('nr-back'));
         this.tabDetail = false;
-      }}>${this.t('common.back')}</button>` : html`<div role="group" aria-label=${this.t('common.presentation')}>
+      }}>${this.t('common.back')}</button>` : nothing}
+      ${!nested ? html`<div role="group" aria-label=${this.t('common.presentation')}>
         ${(['graph', 'text'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
-      </div>`}
+      </div>` : nothing}
       ${this.presentation === 'graph' && !nested ? html`<div role="group" aria-label=${this.t('common.zoom')}>
         <button type="button" aria-label=${this.t('common.zoomOut')} ?disabled=${this.graphZoom <= .5} @click=${() => { this.graphZoom = Math.max(.5, this.graphZoom - .1); }}>−</button>
         <button type="button" aria-label=${this.t('common.zoomReset')} @click=${() => { this.graphZoom = 1; }}>${Math.round(this.graphZoom * 100)}%</button>
@@ -312,10 +319,12 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private renderTextTree() {
     const roots = this.treeNodes();
-    const nodes = filterTextTree(roots, this.textSearch, this.textFilter);
+    const filters = this.tabPresentation?.filters;
+    const selected = filters?.find(filter => filter.id === this.textFilter);
+    const nodes = filterTextTree(selected ? roots.filter(root => selected.rootIds.includes(root.id)) : roots, this.textSearch, filters ? '' : this.textFilter);
     return html`<section class="nr-common__text">
       <label>${this.t('common.search')}<input type="search" .value=${this.textSearch} @input=${(event: Event) => { this.textSearch = (event.target as HTMLInputElement).value; }}></label>
-      <label>${this.t('common.filter')}<select .value=${this.textFilter} @change=${(event: Event) => { this.textFilter = (event.target as HTMLSelectElement).value; }}><option value="">${this.t('common.all')}</option>${roots.map(root => html`<option value=${root.id}>${root.label}</option>`)}</select></label>
+      <label>${this.t('common.filter')}<select .value=${this.textFilter} @change=${(event: Event) => { this.textFilter = (event.target as HTMLSelectElement).value; }}><option value="">${this.t('common.all')}</option>${(filters || roots).map(root => html`<option value=${root.id}>${root.label}</option>`)}</select></label>
       ${nodes.length ? html`<ul>${nodes.map(node => this.renderTreeNode(node))}</ul>` : html`<p role="status">${this.t('common.noResults')}</p>`}
     </section>`;
   }
