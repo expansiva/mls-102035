@@ -137,3 +137,90 @@ void test('removing a details field touches only that field line, and a leftover
   }, { written: true, reason: null, files: [] });
   assert.equal((report.pendingTextMarks as unknown[]).length, 1);
 });
+
+void test('an add keeps the rest of the file and the report names every written kind once', () => {
+  const source = readFileSync(TAREFA, 'utf8');
+  const entity = JSON.parse(extractNs4ClassicJsonObject(source)) as {
+    record: { fields: { prioridade: { values: Array<{ value: string; title: string }>; default?: string } } };
+  };
+  const withValue = JSON.parse(JSON.stringify(entity)) as typeof entity;
+  withValue.record.fields.prioridade.values.push({ value: 'urgente', title: 'Urgente' });
+  const valueText = replaceDefsJsonLiteral(source, withValue);
+  assert.equal(
+    valueText.replace(
+      /,\n          \{\n            "value": "urgente",\n            "title": "Urgente"\n          \}/u,
+      '',
+    ),
+    source,
+  );
+  const valueSpan = changedSpan(source, valueText);
+  assert.equal(valueSpan.length >= 4 && valueSpan.length <= 6, true);
+  assert.equal(nrpDefsRoundTripError(valueText, withValue), null);
+
+  const withDefault = JSON.parse(JSON.stringify(entity)) as typeof entity;
+  withDefault.record.fields.prioridade.default = 'media';
+  const defaultText = replaceDefsJsonLiteral(source, withDefault);
+  assert.equal(defaultText.replace(',\n        "default": "media"', ''), source);
+  assert.equal(nrpDefsRoundTripError(defaultText, withDefault), null);
+
+  const indexPath = join(dirname(TAREFA), '../journeys/index.defs.ts');
+  const indexSource = readFileSync(indexPath, 'utf8');
+  const index = JSON.parse(extractNs4ClassicJsonObject(indexSource)) as { journeys: Array<{ journeyId: string }> };
+  const nextIndex = JSON.parse(JSON.stringify(index)) as typeof index;
+  nextIndex.journeys.push({ journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'Duplicar tarefa' } as { journeyId: string });
+  const indexText = replaceDefsJsonLiteral(indexSource, nextIndex);
+  assert.equal(
+    indexText.replace(
+      /,\n    \{\n      "journeyId": "duplicarTarefa",\n      "actorRef": "gestor",\n      "title": "Duplicar tarefa"\n    \}/u,
+      '',
+    ),
+    indexSource,
+  );
+  assert.equal(nrpDefsRoundTripError(indexText, nextIndex), null);
+
+  const rulesPath = join(dirname(TAREFA), '../rules.defs.ts');
+  const rulesSource = readFileSync(rulesPath, 'utf8').replace(
+    '"rules": []',
+    '"rules": {\n    "edicaoNaoMudaSituacao": "A edição não muda a situação."\n  }',
+  );
+  const rules = JSON.parse(extractNs4ClassicJsonObject(rulesSource)) as { rules: Record<string, string> };
+  const nextRules = JSON.parse(JSON.stringify(rules)) as typeof rules;
+  nextRules.rules.gestorDuplicaTarefa = 'O gestor pode duplicar uma tarefa.';
+  const rulesText = replaceDefsJsonLiteral(rulesSource, nextRules);
+  assert.equal(
+    rulesText.replace(',\n    "gestorDuplicaTarefa": "O gestor pode duplicar uma tarefa."', ''),
+    rulesSource,
+  );
+  assert.equal(nrpDefsRoundTripError(rulesText, nextRules), null);
+
+  const report = nrpReport({
+    moduleName: 'tarefas', project: 1, request: 'Drop labels.',
+    triage: {
+      valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
+      intent: 'Drop labels.', mechanicalOnly: false,
+      mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
+    },
+    artifacts: { entities: [] } as unknown as NrpModuleArtifacts,
+    applied: [
+      { mode: 'model', kind: 'journeys', artifact: { files: [] } },
+      { mode: 'model', kind: 'journeys', artifact: { files: [] } },
+    ],
+    issues: [], allowWrite: true, modelCalls: 3,
+  }, { written: true, reason: null, files: ['ontology/Tarefa.defs.ts', 'journeys/criarTarefa.defs.ts'] });
+  assert.deepEqual(report.changed, ['ontology', 'journeys']);
+  assert.deepEqual(report.modelKinds, ['journeys']);
+});
+
+function changedSpan(before: string, after: string): string[] {
+  const left = before.split('\n');
+  const right = after.split('\n');
+  let start = 0;
+  while (start < left.length && start < right.length && left[start] === right[start]) start += 1;
+  let endLeft = left.length - 1;
+  let endRight = right.length - 1;
+  while (endLeft >= start && endRight >= start && left[endLeft] === right[endRight]) {
+    endLeft -= 1;
+    endRight -= 1;
+  }
+  return right.slice(start, endRight + 1);
+}

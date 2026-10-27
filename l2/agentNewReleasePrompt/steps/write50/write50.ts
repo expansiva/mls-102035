@@ -296,18 +296,46 @@ function patchObjectKept(source: string, current: Record<string, unknown>, next:
   out += source.slice(cursor);
   const extra = Object.keys(next).filter(key => !Object.prototype.hasOwnProperty.call(current, key));
   if (!extra.length) return out;
-  const inserted = extra.map(key => `${JSON.stringify(key)}: ${JSON.stringify(next[key])}`).join(', ');
-  const close = out.lastIndexOf('}');
-  const pad = entries.length ? ', ' : '';
-  return `${out.slice(0, close)}${pad}${inserted}${out.slice(close)}`;
+  return insertObjectKeys(out, entries.length > 0, extra, next);
+}
+
+/** Adds keys on their own lines, at the indent of the sibling keys. The keys already there stay as they are. */
+function insertObjectKeys(source: string, hasSiblings: boolean, keys: readonly string[], next: Record<string, unknown>): string {
+  const close = source.lastIndexOf('}');
+  if (close < 0) return source;
+  const indent = objectKeyIndent(source, close);
+  const blocks = keys.map(key => formatKey(key, next[key], indent));
+  let end = close;
+  while (end > 0 && /\s/u.test(source[end - 1])) end -= 1;
+  const needsComma = hasSiblings && source[end - 1] !== ',' && source[end - 1] !== '{';
+  const head = `${source.slice(0, end)}${needsComma ? ',' : ''}`;
+  const closeLine = source.lastIndexOf('\n', close);
+  const closeIndent = closeLine >= 0 ? source.slice(closeLine + 1, close) : '';
+  return `${head}\n${blocks.join(',\n')}\n${closeIndent}}${source.slice(close + 1)}`;
+}
+
+function objectKeyIndent(source: string, close: number): string {
+  const entries = objectEntries(source);
+  if (entries.length) {
+    const lineStart = source.lastIndexOf('\n', entries[0].keyStart - 1) + 1;
+    const spaces = source.slice(lineStart, entries[0].keyStart);
+    if (/^ *$/u.test(spaces)) return spaces;
+  }
+  const lineStart = source.lastIndexOf('\n', close) + 1;
+  const spaces = source.slice(lineStart, close).match(/^ */u)?.[0] || '';
+  return `${spaces}  `;
 }
 
 function patchArray(source: string, current: unknown[], next: unknown[]): string {
   if (current.length !== next.length) {
-    const drop = pureDrops(current, next);
-    if (!drop) return JSON.stringify(next);
-    const items = arrayItems(source);
-    return omitSpans(source, drop.map(index => removalSpan(source, items[index].start, items[index].end)));
+    const drop = current.length > next.length ? pureDrops(current, next) : null;
+    if (drop) {
+      const items = arrayItems(source);
+      return omitSpans(source, drop.map(index => removalSpan(source, items[index].start, items[index].end)));
+    }
+    const added = next.length > current.length ? pureAdds(current, next) : null;
+    if (added) return insertArrayItems(source, next, added);
+    return JSON.stringify(next);
   }
   const items = arrayItems(source);
   let cursor = 0;
@@ -320,6 +348,82 @@ function patchArray(source: string, current: unknown[], next: unknown[]): string
   }
   out += source.slice(cursor);
   return out;
+}
+
+/** Indexes in `next` that are new, when every current item is still there, unchanged and in order. */
+function pureAdds(current: unknown[], next: unknown[]): number[] | null {
+  const added: number[] = [];
+  let matched = 0;
+  for (let index = 0; index < next.length; index += 1) {
+    if (matched < current.length && JSON.stringify(current[matched]) === JSON.stringify(next[index])) matched += 1;
+    else added.push(index);
+  }
+  return matched === current.length ? added : null;
+}
+
+/** Inserts new elements on their own lines. The elements already there stay byte for byte, plus a comma on the previous one. */
+function insertArrayItems(source: string, next: unknown[], added: readonly number[]): string {
+  const items = arrayItems(source);
+  const addedSet = new Set(added);
+  const indent = arrayItemIndent(source, items);
+  const bracket = source.indexOf('[');
+  const close = source.lastIndexOf(']');
+  let itemIndex = 0;
+  let out = source.slice(0, bracket + 1);
+  let lastKeptEnd: number | null = null;
+  let wrote = false;
+  for (let index = 0; index < next.length; index += 1) {
+    if (!addedSet.has(index)) {
+      const item = items[itemIndex];
+      const previous = itemIndex > 0 ? items[itemIndex - 1] : null;
+      if (previous && lastKeptEnd === previous.end) out += source.slice(lastKeptEnd, item.end);
+      else if (!wrote) out += source.slice(bracket + 1, item.end);
+      else {
+        if (!out.trimEnd().endsWith(',')) out += ',';
+        out += `\n${source.slice(item.start, item.end)}`;
+      }
+      lastKeptEnd = item.end;
+      itemIndex += 1;
+      wrote = true;
+      continue;
+    }
+    if (wrote && !out.trimEnd().endsWith(',')) out += ',';
+    out += `\n${formatBlock(next[index], indent)}`;
+    lastKeptEnd = null;
+    wrote = true;
+  }
+  if (lastKeptEnd !== null) return `${out}${source.slice(lastKeptEnd)}`;
+  const closeLine = source.lastIndexOf('\n', close);
+  const closeIndent = closeLine >= 0 ? source.slice(closeLine + 1, close) : '';
+  return `${out}\n${closeIndent}]${source.slice(close + 1)}`;
+}
+
+function arrayItemIndent(source: string, items: ReadonlyArray<{ start: number }>): string {
+  if (items.length) {
+    const lineStart = source.lastIndexOf('\n', items[0].start - 1) + 1;
+    const spaces = source.slice(lineStart, items[0].start);
+    if (/^ *$/u.test(spaces)) return spaces;
+  }
+  const bracket = source.indexOf('[');
+  const lineStart = source.lastIndexOf('\n', Math.max(bracket, 0)) + 1;
+  const spaces = source.slice(lineStart, Math.max(bracket, 0)).match(/^ */u)?.[0] || '';
+  return `${spaces}  `;
+}
+
+function formatBlock(value: unknown, indent: string): string {
+  return formatJson(value).split('\n').map(line => `${indent}${line}`).join('\n');
+}
+
+function formatKey(key: string, value: unknown, indent: string): string {
+  const lines = formatJson(value).split('\n');
+  const rest = lines.slice(1).map(line => `${indent}${line}`);
+  return [`${indent}${JSON.stringify(key)}: ${lines[0]}`, ...rest].join('\n');
+}
+
+function formatJson(value: unknown): string {
+  const pretty = JSON.stringify(value, null, 2);
+  if (pretty === undefined) throw new Error('Value cannot be written as JSON.');
+  return pretty;
 }
 
 /** Indexes in `current` that are absent from `next`, when every kept item is unchanged and in order. */
@@ -484,12 +588,36 @@ function stable(value: unknown): string {
   return JSON.stringify(value);
 }
 
+const WRITTEN_KIND: Array<[prefix: string, kind: string]> = [
+  ['ontology/', 'ontology'],
+  ['journeys/', 'journeys'],
+  ['rules', 'rules'],
+  ['access', 'access'],
+  ['workflows', 'workflows'],
+  ['integration', 'integration'],
+];
+
+/** Kinds whose written file differs from the original. The pipeline report is not one of the six kinds. */
+export function kindsOfWrittenFiles(files: readonly string[]): string[] {
+  const kinds: string[] = [];
+  for (const file of files) {
+    if (file.includes('pipeline/')) continue;
+    const found = WRITTEN_KIND.find(([prefix]) => file.startsWith(prefix));
+    if (found && !kinds.includes(found[1])) kinds.push(found[1]);
+  }
+  return kinds;
+}
+
 export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Record<string, unknown> {
-  const modelKinds = payload.applied.filter(edit => edit.mode === 'model').map(edit => edit.kind);
+  const modelKinds: string[] = [];
+  for (const edit of payload.applied) {
+    if (edit.mode !== 'model' || !edit.kind || modelKinds.includes(edit.kind)) continue;
+    modelKinds.push(edit.kind);
+  }
   return {
     request: payload.request,
     triage: payload.triage,
-    changed: payload.triage.artifacts,
+    changed: kindsOfWrittenFiles(planned.files),
     mechanical: payload.triage.mechanical,
     modelKinds,
     checks: nrpCheckRows(payload.issues),
