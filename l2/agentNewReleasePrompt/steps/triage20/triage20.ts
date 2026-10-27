@@ -5,6 +5,7 @@ import { loadNrpArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/art
 import { buildNrpIndex, type NrpCompactIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import { createNs4FlexibleWorkerTool, unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
+import { createEdit30Step, planNrpEditOrders } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
 export const NRP_TRIAGE_TOOL = 'submitNrpTriage' as const;
 
@@ -165,7 +166,7 @@ export async function afterNrpTriageStep(
     const payload = unwrapNs4FlexibleWorkerPayload(step.interaction?.payload?.[0]);
     const triage = normalizeNrpTriage(payload);
     const stopped = !triage.valid;
-    return [
+    const intents: mls.msg.AgentIntent[] = [
       {
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
@@ -174,14 +175,22 @@ export async function afterNrpTriageStep(
           planning: { planId: 'triage20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
-      {
-        type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
-        cleaner: 'input_output',
-        traceMsg: stopped
-          ? `triage20 stopped: ${triage.clarification || triage.reason || 'invalid request'}.`
-          : `triage20: ${triage.artifacts.join(', ') || 'no artifacts'}.`,
-      },
     ];
+    if (!stopped) {
+      const project = mls.actualProject || 0;
+      const invocation = parseNrpInvocation(String(step.prompt || ''), project);
+      setModuleRoot(invocation.moduleName, `${invocation.moduleName}/${NRP_CANDIDATE_REL}`);
+      const orders = planNrpEditOrders(await loadNrpArtifacts(invocation.moduleName), triage);
+      for (const order of orders) intents.push({ type: 'add-step', ...base, step: createEdit30Step(invocation.moduleName, invocation.request, order) });
+    }
+    intents.push({
+      type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
+      cleaner: 'input_output',
+      traceMsg: stopped
+        ? `triage20 stopped: ${triage.clarification || triage.reason || 'invalid request'}.`
+        : `triage20: ${triage.artifacts.join(', ') || 'no artifacts'}.`,
+    });
+    return intents;
   } catch (error) {
     console.error('[agentNewReleasePrompt] triage20 result rejected', error);
     return [fail(context, parentStep, step, hookSequential, error)];

@@ -1,9 +1,9 @@
 {
   "flowId": "agentNewReleasePrompt",
   "schemaVersion": "2026-10-27-nrp-flow-v1",
-  "status": "entry10-index10-triage20",
+  "status": "entry10-index10-triage20-edit30",
   "visibility": "private",
-  "description": "Deterministic index of the L4 in editing, then a short triage call. Later steps edit artifacts.",
+  "description": "Index, triage, then one edit call per artifact kind that the code cannot apply.",
   "invocation": {
     "cli": "@@agentNewReleasePrompt {\"moduleName\":\"...\",\"request\":\"...\"}",
     "project": "Required from mls.actualProject",
@@ -42,6 +42,17 @@
       "reads": ["compact index", "user request"],
       "writes": ["triage result; stops when the request is invalid or needs a question"],
       "goal": "Decide which artifact kinds a request may change, or stop before editing."
+    },
+    {
+      "id": "edit30",
+      "agentName": "agentNewReleasePrompt",
+      "kind": "model",
+      "modelAlias": null,
+      "dependsOn": ["triage20-done"],
+      "doneAnchor": "edit30-done",
+      "reads": ["one artifact kind", "intent", "target ids", "mechanical marks"],
+      "writes": ["edited artifact in the step result; mechanical marks are applied without a model"],
+      "goal": "Apply mechanical edits in code and ask the model once per remaining artifact kind."
     }
   ]
 }
