@@ -5,6 +5,7 @@ import { loadNrpArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/art
 import { buildNrpIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import { NRP_CANDIDATE_REL } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
+import { createTriage20Step } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
 export async function beforeNrpIndexStep(
   context: mls.msg.ExecutionContext,
@@ -37,6 +38,7 @@ export async function beforeNrpIndexStep(
         cleaner: 'input_output',
         traceMsg: `index10: ${index.entities.length} entities, ${index.rules.length} rules, ${bytes} bytes.`,
       },
+      { type: 'add-step', ...base, step: createTriage20Step(String(step.prompt || '')) },
     ];
   } catch (error) {
     console.error('[agentNewReleasePrompt] index10 failed', error);

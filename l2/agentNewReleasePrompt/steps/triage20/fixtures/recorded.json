@@ -1,0 +1,31 @@
+{
+  "outside": {
+    "valid": false,
+    "reason": "Button color is presentation, outside the specification.",
+    "clarification": null,
+    "artifacts": [],
+    "targets": [],
+    "intent": null,
+    "mechanical": []
+  },
+  "vague": {
+    "valid": false,
+    "reason": null,
+    "clarification": "Which part of the specification should change?",
+    "artifacts": [],
+    "targets": [],
+    "intent": null,
+    "mechanical": []
+  },
+  "fieldOptional": {
+    "valid": true,
+    "reason": null,
+    "clarification": null,
+    "artifacts": ["ontology"],
+    "targets": ["WorkItem"],
+    "intent": "Make the priority field optional.",
+    "mechanical": [
+      { "op": "setOptional", "targetId": "WorkItem", "fieldId": "priority", "value": "" }
+    ]
+  }
+}

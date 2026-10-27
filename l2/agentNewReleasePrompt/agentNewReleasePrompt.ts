@@ -8,6 +8,7 @@ import {
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
 import { beforeNrpEntryStep } from '/_102035_/l2/agentNewReleasePrompt/steps/entry10/entry10.js';
 import { beforeNrpIndexStep } from '/_102035_/l2/agentNewReleasePrompt/steps/index10/index10.js';
+import { afterNrpTriageStep, beforeNrpTriageStep } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
 export function createAgent(): IAgentAsync {
   return {
@@ -18,6 +19,7 @@ export function createAgent(): IAgentAsync {
     visibility: 'private',
     beforePromptImplicit,
     beforePromptStep,
+    afterPromptStep,
   };
 }
 
@@ -70,10 +72,22 @@ export async function beforePromptStep(
 ): Promise<mls.msg.AgentIntent[]> {
   if (step.planning?.planId === 'entry10') return beforeNrpEntryStep(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'index10') return beforeNrpIndexStep(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'triage20') return beforeNrpTriageStep(context, parentStep, step, hookSequential);
   if (!step.planning?.planId) {
     return [update(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed without LLM.')];
   }
   return [update(context, parentStep, step, hookSequential, 'failed', `Step ${step.planning.planId} is not enabled.`)];
+}
+
+export async function afterPromptStep(
+  _agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+): Promise<mls.msg.AgentIntent[]> {
+  if (step.planning?.planId === 'triage20') return afterNrpTriageStep(context, parentStep, step, hookSequential);
+  return [];
 }
 
 export function update(

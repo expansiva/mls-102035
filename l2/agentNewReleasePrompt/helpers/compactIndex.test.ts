@@ -55,6 +55,13 @@ void test('compact index of the tarefas fixture lists triage targets and stays s
   const bytes = new TextEncoder().encode(JSON.stringify(index)).length;
   assert.ok(bytes < 8_192, `index is ${bytes} bytes`);
   assert.ok(index.entities.some(entity => entity.entityId === 'Tarefa' && entity.fields.some(field => field.id === 'prioridade' && field.required)));
+  const cancelar = index.entities.find(entity => entity.entityId === 'Tarefa')?.transitions.find(item => item.id === 'cancelar');
+  assert.deepEqual(cancelar, {
+    id: 'cancelar',
+    from: ['aFazer', 'emAndamento', 'emRevisao'],
+    to: 'cancelada',
+    by: ['membro', 'gestor'],
+  });
   assert.ok(index.journeys.some(journey => journey.journeyId === 'criarTarefa' && journey.stepIds.length > 0));
   assert.ok(index.grants.some(grant => grant.grantId && grant.scope));
   assert.ok(index.processes.some(process => process.processId === 'cicloTarefa' && process.trigger.includes('manual')));

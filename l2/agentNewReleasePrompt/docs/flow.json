@@ -1,9 +1,9 @@
 {
   "flowId": "agentNewReleasePrompt",
   "schemaVersion": "2026-10-27-nrp-flow-v1",
-  "status": "entry10-index10",
+  "status": "entry10-index10-triage20",
   "visibility": "private",
-  "description": "Deterministic index of the L4 in editing, then triage and per-artifact edits. s1 ships entry10 and index10 only.",
+  "description": "Deterministic index of the L4 in editing, then a short triage call. Later steps edit artifacts.",
   "invocation": {
     "cli": "@@agentNewReleasePrompt {\"moduleName\":\"...\",\"request\":\"...\"}",
     "project": "Required from mls.actualProject",
@@ -31,6 +31,17 @@
       "reads": ["tobe/plan artifacts"],
       "writes": ["compact index in the step result"],
       "goal": "List entities, fields, rules, journeys, grants, processes and events for triage."
+    },
+    {
+      "id": "triage20",
+      "agentName": "agentNewReleasePrompt",
+      "kind": "model",
+      "modelAlias": null,
+      "dependsOn": ["index10-done"],
+      "doneAnchor": "triage20-done",
+      "reads": ["compact index", "user request"],
+      "writes": ["triage result; stops when the request is invalid or needs a question"],
+      "goal": "Decide which artifact kinds a request may change, or stop before editing."
     }
   ]
 }

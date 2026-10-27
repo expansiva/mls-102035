@@ -19,10 +19,18 @@ export interface NrpFieldIndex {
   required: boolean;
 }
 
+export interface NrpTransitionIndex {
+  id: string;
+  from: string[];
+  to: string;
+  by: string[];
+}
+
 export interface NrpEntityIndex {
   entityId: string;
   kind: string;
   fields: NrpFieldIndex[];
+  transitions: NrpTransitionIndex[];
 }
 
 export interface NrpRuleIndex {
@@ -109,6 +117,26 @@ function fieldsOf(entity: Ns5OntologyAnyEntity): NrpFieldIndex[] {
   });
 }
 
+function stringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (typeof value === 'string' && value) return [value];
+  return [];
+}
+
+function transitionsOf(entity: Ns5OntologyAnyEntity): NrpTransitionIndex[] {
+  const transitions = (entity as unknown as Record<string, unknown>).transitions;
+  if (!Array.isArray(transitions)) return [];
+  return transitions.map(item => {
+    const row = isRecord(item) ? item : {};
+    return {
+      id: typeof row.transitionId === 'string' ? row.transitionId : '',
+      from: stringList(row.from),
+      to: typeof row.to === 'string' ? row.to : '',
+      by: stringList(row.by),
+    };
+  });
+}
+
 function triggerOf(process: Ns5WorkflowsArtifact['processes'][number]): string {
   const trigger = process.trigger as { kind?: string; actorRef?: string; event?: string } | undefined;
   if (!trigger) return '';
@@ -121,11 +149,12 @@ export function buildNrpIndex(artifacts: NrpModuleArtifacts): NrpCompactIndex {
   const byId = new Map(artifacts.entities.map(entity => [entity.entityId, entity]));
   const entities = entityOrder.map(entityId => {
     const entity = byId.get(entityId);
-    if (!entity) return { entityId, kind: '', fields: [] };
+    if (!entity) return { entityId, kind: '', fields: [], transitions: [] };
     return {
       entityId,
       kind: String((entity as { kind?: string }).kind || ''),
       fields: fieldsOf(entity),
+      transitions: transitionsOf(entity),
     };
   });
   const journeys = artifacts.journeys.map(journey => ({
