@@ -117,6 +117,99 @@ export function nrpIssueLines(issues: readonly NrpGateIssue[], kind: NrpArtifact
     .map(issue => `${issue.code} ${issue.path}: ${issue.message}`);
 }
 
+export interface NrpLocatedIssue {
+  file: string;
+  pointer: string;
+}
+
+/**
+ * Maps a gate path onto one file and a pointer inside that file.
+ * A path that names no file (coherence, index against a file) stays unmapped.
+ */
+export function nrpLocateIssue(
+  kind: NrpArtifactKind,
+  path: string,
+  catalog: readonly NrpRepairFile[],
+): NrpLocatedIssue | null {
+  if (path.includes('/')) return null;
+  const parts = pathParts(path);
+  if (!parts.length) return null;
+  const head = parts[0];
+  const files = catalog.filter(file => file.id !== 'index');
+  if ((head.key === 'journeys' || head.key === 'entities') && head.index !== null) {
+    const file = files[head.index];
+    const pointer = pointerFrom(parts.slice(1));
+    return file && pointer ? { file: file.id, pointer } : null;
+  }
+  if (head.key === 'journeyIndex' || head.key === 'ontologyIndex') {
+    const pointer = pointerFrom(parts.slice(1));
+    return catalog.some(file => file.id === 'index') && pointer ? { file: 'index', pointer } : null;
+  }
+  if (head.key === 'rules' && kind === 'rules') {
+    const ruleId = ruleIdFrom(parts, catalog);
+    return ruleId ? { file: 'rules', pointer: `/rules/${escapePointer(ruleId)}` } : null;
+  }
+  if (catalog.length !== 1) return null;
+  const pointer = pointerFrom(parts);
+  return pointer ? { file: catalog[0].id, pointer } : null;
+}
+
+/** Adds the file and pointer the error expects when the repair names a place that is not there. */
+export function nrpAnnotateRepairRefusal(
+  kind: NrpArtifactKind,
+  issues: readonly NrpGateIssue[],
+  catalog: readonly NrpRepairFile[],
+  message: string,
+): string {
+  if (!/does not exist|is not a target/u.test(message)) return message;
+  const expected = nrpFreshIssues(issues)
+    .filter(issue => nrpIssueOwner(issue) === kind)
+    .map(issue => nrpLocateIssue(kind, issue.path, catalog))
+    .filter((located): located is NrpLocatedIssue => !!located);
+  if (!expected.length) return message;
+  const pairs = expected.map(located => `file: ${located.file} pointer: ${located.pointer}`).join('; ');
+  return `${message} Expected ${pairs}.`;
+}
+
+function pathParts(path: string): Array<{ key: string; index: number | null }> {
+  const parts: Array<{ key: string; index: number | null }> = [];
+  const pattern = /([A-Za-z_][A-Za-z0-9_]*)(?:\[(\d+)\])?/gu;
+  let match = pattern.exec(path);
+  while (match) {
+    parts.push({ key: match[1], index: match[2] === undefined ? null : Number(match[2]) });
+    match = pattern.exec(path);
+  }
+  return parts;
+}
+
+function ruleIdFrom(parts: Array<{ key: string; index: number | null }>, catalog: readonly NrpRepairFile[]): string | null {
+  const second = parts[1];
+  if (second && second.index === null) return second.key;
+  const rules = catalog.find(file => file.id === 'rules');
+  const root = rules?.artifact;
+  if (!root || typeof root !== 'object' || Array.isArray(root)) return null;
+  const list = (root as Record<string, unknown>).rules;
+  if (!Array.isArray(list) || parts[0].index === null) return null;
+  const row = list[parts[0].index];
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+  const ruleId = (row as Record<string, unknown>).ruleId;
+  return typeof ruleId === 'string' && ruleId ? ruleId : null;
+}
+
+function pointerFrom(parts: Array<{ key: string; index: number | null }>): string | null {
+  if (!parts.length) return null;
+  const tokens: string[] = [];
+  for (const part of parts) {
+    tokens.push(escapePointer(part.key));
+    if (part.index !== null) tokens.push(String(part.index));
+  }
+  return `/${tokens.join('/')}`;
+}
+
+function escapePointer(token: string): string {
+  return token.replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
 export function nrpRepairRoundCounts(rounds: readonly NrpRepairRound[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const round of rounds) counts[round.kind] = (counts[round.kind] || 0) + 1;
@@ -262,12 +355,13 @@ export function buildNrpRepairHumanPrompt(
   shape: { rule: string; file: { id: string; artifact: unknown } } | null = null,
   earlier: readonly string[] = [],
 ): string {
-  const lines = nrpIssueLines(issues, kind);
+  const lines = nrpRepairIssueLines(issues, kind, catalog);
   const files = nrpRepairPromptFiles(kind, issues, catalog);
   const parts = [
     `Kind: ${kind}`,
     `Request:\n${request}`,
     `Verification:\n${lines.join('\n')}`,
+    'A pointer is inside the named file. It is not a path through the whole kind.',
   ];
   if (earlier.length) {
     parts.push(`Earlier verification:\n${earlier.join('\n')}\nThe error set changed since the previous repair of this kind.`);
@@ -278,6 +372,20 @@ export function buildNrpRepairHumanPrompt(
   }
   parts.push(`Files:\n${files.map(file => `${file.id}\n${JSON.stringify(file.artifact)}`).join('\n')}`);
   return parts.join('\n\n');
+}
+
+function nrpRepairIssueLines(
+  issues: readonly NrpGateIssue[],
+  kind: NrpArtifactKind,
+  catalog: readonly NrpRepairFile[],
+): string[] {
+  return nrpFreshIssues(issues)
+    .filter(issue => nrpIssueOwner(issue) === kind)
+    .map(issue => {
+      const located = nrpLocateIssue(kind, issue.path, catalog);
+      if (!located) return `${issue.code} ${issue.path}: ${issue.message}`;
+      return `${issue.code} file: ${located.file} pointer: ${located.pointer}: ${issue.message}`;
+    });
 }
 
 function nrpRepairAsk(issues: readonly NrpGateIssue[]): string {

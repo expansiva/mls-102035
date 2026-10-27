@@ -335,7 +335,7 @@ function patchArray(source: string, current: unknown[], next: unknown[]): string
     }
     const added = next.length > current.length ? pureAdds(current, next) : null;
     if (added) return insertArrayItems(source, next, added);
-    return JSON.stringify(next);
+    return patchArrayMixed(source, current, next);
   }
   const items = arrayItems(source);
   let cursor = 0;
@@ -348,6 +348,97 @@ function patchArray(source: string, current: unknown[], next: unknown[]): string
   }
   out += source.slice(cursor);
   return out;
+}
+
+/**
+ * A set whose list is not a pure append still rewrites only the items that differ.
+ * Unchanged items stay byte for byte. New and changed items use the file indent.
+ */
+function patchArrayMixed(source: string, current: unknown[], next: unknown[]): string {
+  const kept = lcsKeep(current, next);
+  if (!kept.length) return prettyArray(source, next);
+  const items = arrayItems(source);
+  const indent = arrayItemIndent(source, items);
+  const close = source.lastIndexOf(']');
+  const closeLine = source.lastIndexOf('\n', close);
+  const closeIndent = closeLine >= 0 ? source.slice(closeLine + 1, close) : '';
+  const bracket = source.indexOf('[');
+  let out = source.slice(0, bracket + 1);
+  let wrote = false;
+  let lastKeptEnd: number | null = null;
+  let currentIndex = 0;
+  let nextIndex = 0;
+  let pair = 0;
+  while (nextIndex < next.length || currentIndex < current.length) {
+    const keep = kept[pair];
+    if (keep && keep.current === currentIndex && keep.next === nextIndex) {
+      const item = items[currentIndex];
+      if (lastKeptEnd !== null && lastKeptEnd <= item.start) out += source.slice(lastKeptEnd, item.end);
+      else if (!wrote) out += source.slice(bracket + 1, item.end);
+      else {
+        if (!out.trimEnd().endsWith(',')) out += ',';
+        const lineStart = source.lastIndexOf('\n', item.start - 1);
+        const prefix = lineStart >= 0 ? source.slice(lineStart, item.start) : `\n${indent}`;
+        out += `${prefix}${source.slice(item.start, item.end)}`;
+      }
+      lastKeptEnd = item.end;
+      wrote = true;
+      currentIndex += 1;
+      nextIndex += 1;
+      pair += 1;
+      continue;
+    }
+    if (keep && keep.current === currentIndex) {
+      currentIndex += 1;
+      lastKeptEnd = null;
+      continue;
+    }
+    if (nextIndex < next.length) {
+      if (wrote && !out.trimEnd().endsWith(',')) out += ',';
+      out += `\n${formatBlock(next[nextIndex], indent)}`;
+      lastKeptEnd = null;
+      wrote = true;
+      nextIndex += 1;
+    } else currentIndex += 1;
+  }
+  if (lastKeptEnd !== null) return `${out}${source.slice(lastKeptEnd)}`;
+  return `${out}\n${closeIndent}]${source.slice(close + 1)}`;
+}
+
+function prettyArray(source: string, value: unknown[]): string {
+  const indent = arrayItemIndent(source, arrayItems(source));
+  const close = source.lastIndexOf(']');
+  const closeLine = close >= 0 ? source.lastIndexOf('\n', close) : -1;
+  const closeIndent = closeLine >= 0 ? source.slice(closeLine + 1, close) : '';
+  if (!value.length) return '[]';
+  const blocks = value.map(item => formatBlock(item, indent));
+  return `[\n${blocks.join(',\n')}\n${closeIndent}]`;
+}
+
+function lcsKeep(current: unknown[], next: unknown[]): Array<{ current: number; next: number }> {
+  const rows = current.length + 1;
+  const cols = next.length + 1;
+  const score: number[] = new Array(rows * cols).fill(0);
+  const at = (row: number, col: number) => row * cols + col;
+  for (let row = current.length - 1; row >= 0; row -= 1) {
+    for (let col = next.length - 1; col >= 0; col -= 1) {
+      score[at(row, col)] = JSON.stringify(current[row]) === JSON.stringify(next[col])
+        ? score[at(row + 1, col + 1)] + 1
+        : Math.max(score[at(row + 1, col)], score[at(row, col + 1)]);
+    }
+  }
+  const kept: Array<{ current: number; next: number }> = [];
+  let row = 0;
+  let col = 0;
+  while (row < current.length && col < next.length) {
+    if (JSON.stringify(current[row]) === JSON.stringify(next[col])) {
+      kept.push({ current: row, next: col });
+      row += 1;
+      col += 1;
+    } else if (score[at(row + 1, col)] >= score[at(row, col + 1)]) row += 1;
+    else col += 1;
+  }
+  return kept;
 }
 
 /** Indexes in `next` that are new, when every current item is still there, unchanged and in order. */

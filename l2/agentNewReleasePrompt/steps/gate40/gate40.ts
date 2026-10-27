@@ -5,6 +5,7 @@ import { loadNrpArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/art
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import {
   buildNrpRepairHumanPrompt,
+  nrpAnnotateRepairRefusal,
   buildNrpRepairTool,
   checkNrpGates,
   classifyNrpGateIssues,
@@ -183,7 +184,7 @@ export async function afterNrpGateStep(
     const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
     const scope = repairScope(merged, decision.kind, cursor.triage, marks, issues);
     const payload = unwrapNs4FlexibleWorkerPayload(step.interaction.payload[0]);
-    const artifact = acceptNrpRepair(decision.kind, issues, scope, payload);
+    const artifact = acceptNrpRepair(decision.kind, issues, scope, payload, nrpKindCatalog(merged, decision.kind));
     const next: NrpGateCursor = {
       ...cursor,
       applied: [...cursor.applied, { mode: 'model', kind: decision.kind, artifact }],
@@ -241,13 +242,21 @@ function acceptNrpRepair(
   issues: readonly NrpGateIssue[],
   scope: { present: string[]; creates: string[]; files: NrpRepairFile[] },
   payload: unknown,
+  catalog: readonly NrpRepairFile[],
 ): { files: NrpRepairFile[] } {
-  const artifact = normalizeNrpEdit(kind, payload, scope);
-  const indexOnly = nrpIndexOnlyRepairMessage(kind, issues, artifact.files);
-  if (indexOnly) throw new NrpEditRefusal(indexOnly, payload);
-  const gaps = nrpIndexFileGaps(kind, scope, artifact.files);
-  if (gaps.messages.length) throw new NrpEditRefusal(gaps.messages.join('\n'), payload);
-  return artifact;
+  try {
+    const artifact = normalizeNrpEdit(kind, payload, scope);
+    const indexOnly = nrpIndexOnlyRepairMessage(kind, issues, artifact.files);
+    if (indexOnly) throw new NrpEditRefusal(indexOnly, payload);
+    const gaps = nrpIndexFileGaps(kind, scope, artifact.files);
+    if (gaps.messages.length) throw new NrpEditRefusal(gaps.messages.join('\n'), payload);
+    return artifact;
+  } catch (error) {
+    if (!(error instanceof NrpEditRefusal)) throw error;
+    const message = nrpAnnotateRepairRefusal(kind, issues, catalog, error.message);
+    if (message === error.message) throw error;
+    throw new NrpEditRefusal(message, error.raw);
+  }
 }
 
 function nrpAllowed(scope: { present: string[]; creates: string[] }): string[] {

@@ -138,6 +138,37 @@ void test('removing a details field touches only that field line, and a leftover
   assert.equal((report.pendingTextMarks as unknown[]).length, 1);
 });
 
+void test('a set that adds one workflow task rewrites only the new lines', () => {
+  const source = readFileSync(join(dirname(TAREFA), '../workflows.defs.ts'), 'utf8');
+  const workflows = JSON.parse(extractNs4ClassicJsonObject(source)) as {
+    processes: Array<{ processId: string; tasks: Array<Record<string, unknown>> }>;
+  };
+  const next = JSON.parse(JSON.stringify(workflows)) as typeof workflows;
+  const cycle = next.processes.find(process => process.processId === 'cicloTarefa');
+  if (!cycle) throw new Error('cicloTarefa is missing from the tarefas fixture.');
+  cycle.tasks.push({
+    taskId: 'avisarCriador',
+    kind: 'alert',
+    actorRef: 'membro',
+    next: [],
+    description: 'Avisa quem criou a tarefa.',
+  });
+  const patched = replaceDefsJsonLiteral(source, next);
+  const inserted = [
+    ',',
+    '        {',
+    '          "taskId": "avisarCriador",',
+    '          "kind": "alert",',
+    '          "actorRef": "membro",',
+    '          "next": [],',
+    '          "description": "Avisa quem criou a tarefa."',
+    '        }',
+  ].join('\n');
+  assert.equal(patched.includes(inserted), true);
+  assert.equal(patched.replace(inserted, ''), source);
+  assert.equal(nrpDefsRoundTripError(patched, next), null);
+});
+
 void test('an add keeps the rest of the file and the report names every written kind once', () => {
   const source = readFileSync(TAREFA, 'utf8');
   const entity = JSON.parse(extractNs4ClassicJsonObject(source)) as {

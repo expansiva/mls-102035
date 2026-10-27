@@ -13,6 +13,7 @@ import {
   buildNrpRepairTool,
   checkNrpGates,
   classifyNrpGateIssues,
+  nrpAnnotateRepairRefusal,
   nrpFreshIssues,
   nrpGateAction,
   nrpIndexOnlyRepairMessage,
@@ -25,7 +26,7 @@ import {
   nrpMayWrite,
   type NrpGateIssue,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
-import { normalizeNrpEdit, nrpFileScope } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { normalizeNrpEdit, nrpFileScope, NrpEditRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import { nrpReport, planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { NRP_ARTIFACT_KINDS } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
@@ -347,6 +348,47 @@ void test('a new error gets a second repair, the same error stops, and a third r
     repairRound('journeys', [twin]),
     repairRound('journeys', afterView),
   ]).action, 'write');
+});
+
+void test('a step-kind error names the journey file and the pointer inside it', () => {
+  const artifacts = tarefasModule();
+  const source = artifacts.journeys.find(journey => journey.journeyId === 'revisarTarefa');
+  if (!source) throw new Error('revisarTarefa is missing from the tarefas fixture.');
+  const journey = JSON.parse(JSON.stringify(source)) as Ns5JourneyArtifact;
+  journey.journeyId = 'duplicarTarefa';
+  journey.business.title = 'Duplicar tarefa';
+  journey.business.steps = [
+    ...journey.business.steps,
+    { stepId: 'ver', kind: 'view', entity: 'Tarefa', title: 'Ver', description: 'Mostra a tarefa.' },
+  ];
+  artifacts.journeys.push(journey);
+  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS);
+  const issues = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS)));
+  const stepKind = issues.find(issue => issue.code === 'NS5_JOURNEY_STEP_KIND');
+  assert.ok(stepKind, issues.map(issue => `${issue.code} ${issue.path}`).join('; '));
+  const catalog = nrpKindCatalog(artifacts, 'journeys');
+  const human = buildNrpRepairHumanPrompt('The manager can duplicate a task.', 'journeys', issues, catalog);
+  assert.match(human, /NS5_JOURNEY_STEP_KIND file: duplicarTarefa pointer: \/business\/steps\/2\/kind/);
+  assert.match(human, /inside the named file/);
+  const scope = { present: catalog.map(file => file.id), creates: [] as string[], files: catalog };
+  let refused = '';
+  try {
+    normalizeNrpEdit('journeys', {
+      operations: [{
+        file: 'index',
+        op: 'set',
+        pointer: '/journeys/14/business',
+        expectedJson: '{}',
+        valueJson: '{}',
+        reason: 'Edit the kind path.',
+      }],
+    }, scope);
+  } catch (error) {
+    assert.ok(error instanceof NrpEditRefusal);
+    refused = nrpAnnotateRepairRefusal('journeys', issues, catalog, error.message);
+  }
+  assert.match(refused, /does not exist/);
+  assert.match(refused, /Expected file: duplicarTarefa pointer: \/business\/steps\/2\/kind/);
 });
 
 function applyJourneyOps(
