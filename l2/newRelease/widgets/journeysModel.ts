@@ -111,3 +111,18 @@ export function journeyIssues(
 export function journeyPath(journeyId: string): `journeys/${string}.defs.ts` {
   return `journeys/${journeyId}.defs.ts`;
 }
+
+/** New identities are entered once; existing identities never pass through this editor. */
+export function validNewJourneyStepId(journey: Ns5JourneyArtifact, id: string): boolean {
+  return /^[a-z][a-zA-Z0-9]*$/.test(id) && !journey.business.steps.some(step => step.stepId === id);
+}
+
+/** Explicit branches share the decision card; legacy steps keep their declared order. */
+export function journeyStepGroups(journey: Ns5JourneyArtifact) {
+  const steps = journey.business.steps;
+  const isBranch = (step: typeof steps[number]) => !!step.decisionRef
+    && steps.some(parent => parent.stepId === step.decisionRef && parent.kind === 'decide');
+  return steps.filter(step => !isBranch(step)).map(step => ({
+    step, branches: steps.filter(branch => isBranch(branch) && branch.decisionRef === step.stepId),
+  }));
+}

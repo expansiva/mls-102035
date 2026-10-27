@@ -901,5 +901,10 @@
   "common.noResults": "No results",
   "common.validation.unavailable": "Save blocked: complete candidate validation is unavailable in this environment.",
   "common.validation.invalid": "Save blocked by candidate validation:",
-  "common.validation.missing": "Save blocked: artifact not found."
+  "common.validation.missing": "Save blocked: artifact not found.",
+  "journeys.stepId": "Step ID",
+  "journeys.invalidStepId": "Use a unique lowerCamel step ID.",
+  "journeys.confirmRemoveStep": "Remove this step?",
+  "journeys.decisionRef": "Decision branch",
+  "journeys.noDecisionRef": "No decision branch"
 }

@@ -901,5 +901,10 @@
   "common.noResults": "Nenhum resultado",
   "common.validation.unavailable": "Salvar bloqueado: a validação completa do candidato está indisponível neste ambiente.",
   "common.validation.invalid": "Salvar bloqueado pela validação do candidato:",
-  "common.validation.missing": "Salvar bloqueado: artefato não encontrado."
+  "common.validation.missing": "Salvar bloqueado: artefato não encontrado.",
+  "journeys.stepId": "ID da etapa",
+  "journeys.invalidStepId": "Use um ID de etapa único em lowerCamel.",
+  "journeys.confirmRemoveStep": "Excluir esta etapa?",
+  "journeys.decisionRef": "Ramo de decisão",
+  "journeys.noDecisionRef": "Sem ramo de decisão"
 }

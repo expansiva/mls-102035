@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Ns5JourneyArtifact, Ns5JourneyIndexArtifact, Ns5OntologyEntityArtifact } from '../../solution/types.js';
-import { journeyTransitions, moveJourney, moveJourneyStep, orderedJourneys, syncJourneyIndex } from './journeysModel.js';
+import { journeyStepGroups, validNewJourneyStepId, journeyTransitions, moveJourney, moveJourneyStep, orderedJourneys, syncJourneyIndex } from './journeysModel.js';
 
 const journey = (journeyId: string, actorRef = 'buyer'): Ns5JourneyArtifact => ({
   schemaVersion: '2026-09-10-ns5-journey-v1', journeyId,
@@ -42,4 +42,23 @@ test('transition options expose all exits but enable only transitions assigned t
   assert.deepEqual(journeyTransitions([entity], 'Order', 'buyer').map(item => [item.transitionId, item.eligible]), [
     ['approve', true], ['expire', false],
   ]);
+});
+
+test('new step identities require lowerCamel and uniqueness without changing the journey', () => {
+  const source = journey('one');
+  const before = structuredClone(source);
+  for (const id of ['', 'First', 'has space', 'has-dash', 'first']) assert.equal(validNewJourneyStepId(source, id), false, id);
+  assert.equal(validNewJourneyStepId(source, 'reviewOrder2'), true);
+  assert.deepEqual(source, before);
+});
+
+test('legacy steps remain sequential and explicit decision branches share one visual level', () => {
+  const source = journey('one');
+  assert.deepEqual(journeyStepGroups(source).map(group => [group.step.stepId, group.branches.length]), [['first', 0], ['second', 0]]);
+  source.business.steps[0].kind = 'decide';
+  source.business.steps[1].decisionRef = 'first';
+  source.business.steps.push({ ...source.business.steps[1], stepId: 'other' });
+  const groups = journeyStepGroups(source);
+  assert.equal(groups.length, 1);
+  assert.deepEqual(groups[0].branches.map(step => step.stepId), ['second', 'other']);
 });

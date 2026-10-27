@@ -68,8 +68,8 @@ test('module navigation and complex views expose equivalent keyboard and text pa
   assert.match(ontology, /ontology\.graphAlternative/);
   assert.match(ontology, /role="img"/);
   assert.match(access, /access\.matrixCell/);
-  assert.match(journeys, /journeys\.moveUp/);
-  assert.match(journeys, /journeys\.moveDown/);
+  assert.match(journeys, /nr-step__open/);
+  assert.match(journeys, /<input readonly \.value=\$\{step.stepId\}/);
   assert.match(styles, /prefers-reduced-motion:\s*reduce/);
   assert.match(styles, /:focus-visible/);
 });

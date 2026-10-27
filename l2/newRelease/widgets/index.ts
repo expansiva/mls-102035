@@ -274,8 +274,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderTreeNode(node: TextTreeNode): unknown {
-    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); this.tabDetail = true; }}>${node.label}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
-    return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); this.tabDetail = true; }}>${node.label}</button>` : nothing}<details ?open=${!!this.textSearch}><summary>${node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
+    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${node.label}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
+    return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${node.label}</button>` : nothing}<details ?open=${!!this.textSearch}><summary>${node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
   }
 
   private renderCommonControls() {
@@ -284,8 +284,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const nested = this.tabDetail || editing;
     return html`<div class="nr-common__toolbar">
       ${nested ? html`<button type="button" @click=${() => {
+        if (this.tabPresentation) { this.tabPresentation.back(); return; }
         if (!this.canLeaveTab()) return;
-        this.tabPresentation?.back();
         const editor = this.activeEditor();
         if (editor?.mode === 'edit') { editor.mode = 'view'; editor.dirty = false; }
         editor?.dispatchEvent(new CustomEvent('nr-back'));
