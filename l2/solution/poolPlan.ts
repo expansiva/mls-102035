@@ -454,6 +454,30 @@ export function isTextOnlyChange(item: L4DiffItem): boolean {
   return true;
 }
 
+const PRESENTATION_KINDS = new Set<L4DiffKind>(['journey', 'step', 'task']);
+
+/**
+ * A `changed` journey, step or workflow task whose only differing attribute is `icon`.
+ * Text, `decisionRef` or any other key keeps the item on the master path. Added and removed never qualify.
+ */
+export function isPresentationOnlyChange(item: L4DiffItem): boolean {
+  if (item.op !== 'changed' || !PRESENTATION_KINDS.has(item.kind)) return false;
+  const before = item.before;
+  const after = item.after;
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return false;
+  if (Array.isArray(before) || Array.isArray(after)) return false;
+  const beforeRecord = before as Record<string, unknown>;
+  const afterRecord = after as Record<string, unknown>;
+  const keys = new Set([...Object.keys(beforeRecord), ...Object.keys(afterRecord)]);
+  let sawIcon = false;
+  for (const key of keys) {
+    if (sameJson(beforeRecord[key], afterRecord[key])) continue;
+    if (key !== 'icon') return false;
+    sawIcon = true;
+  }
+  return sawIcon;
+}
+
 export interface L4Diff {
   schemaVersion: typeof L4_DIFF_SCHEMA;
   moduleName: string;
@@ -510,6 +534,8 @@ export interface EffortAnswer {
   runAgents: EffortAgentRef[];
   contract: (typeof EFFORT_CONTRACT_VALUES)[number];
   abend?: { reason: string };
+  /** Set when dispatch skipped both masters because the item is presentation-only (`icon`). */
+  presentation?: true;
 }
 
 /** What a master asks the dispatch to send to the model. `null` from `effortPrompt` means no call. */

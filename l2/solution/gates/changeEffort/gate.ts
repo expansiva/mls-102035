@@ -201,6 +201,11 @@ function readAnswer(
   }
   if (status === 'abend' && !abend) push(issues, 'schema', `${path}.abend`);
   if (status === 'computed' && abend) push(issues, 'schema', `${path}.abend`);
+  let presentation = false;
+  if ('presentation' in value && value.presentation !== undefined) {
+    if (value.presentation !== true) push(issues, 'schema', `${path}.presentation`);
+    else presentation = true;
+  }
   if (
     !master
     || item === undefined
@@ -216,6 +221,7 @@ function readAnswer(
     || !(EFFORT_CONTRACT_VALUES as readonly string[]).includes(contract)
     || (status === 'abend' && !abend)
     || (status === 'computed' && abend)
+    || ('presentation' in value && value.presentation !== undefined && value.presentation !== true)
   ) {
     return undefined;
   }
@@ -231,6 +237,7 @@ function readAnswer(
     contract: contract as EffortAnswer['contract'],
   };
   if (abend) answer.abend = abend;
+  if (presentation) answer.presentation = true;
   return answer;
 }
 

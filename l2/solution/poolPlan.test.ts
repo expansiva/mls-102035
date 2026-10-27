@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isTextOnlyChange, type L4DiffItem } from '/_102035_/l2/solution/poolPlan.js';
+import { isPresentationOnlyChange, isTextOnlyChange, type L4DiffItem } from '/_102035_/l2/solution/poolPlan.js';
 
 function fieldChange(before: unknown, after: unknown, op: L4DiffItem['op'] = 'changed'): L4DiffItem {
   return { changeId: 'c1', kind: 'field', op, entity: 'Paciente', source: 'ontology', before, after };
@@ -43,6 +43,29 @@ test('p4_74 a step whose only change is icon is text', () => {
   const after = { ...before, icon: 'clipboard-check' };
   assert.equal(isTextOnlyChange(fieldChange(before, after)), true);
   assert.equal(isTextOnlyChange(fieldChange({ ...before, icon: undefined }, { ...before, icon: 'send' })), true);
+});
+
+function presentationItem(
+  kind: L4DiffItem['kind'],
+  before: unknown,
+  after: unknown,
+  op: L4DiffItem['op'] = 'changed',
+): L4DiffItem {
+  return { changeId: `${kind}:id`, kind, op, entity: 'Tarefa', source: 'journeys', before, after };
+}
+
+test('p4_74 only icon on a journey, step or task is presentation', () => {
+  const before = { title: 'Criar', icon: 'plus' };
+  const after = { title: 'Criar', icon: 'clipboard-check' };
+  for (const kind of ['journey', 'step', 'task'] as const) {
+    assert.equal(isPresentationOnlyChange(presentationItem(kind, before, after)), true);
+  }
+  assert.equal(isPresentationOnlyChange(presentationItem('step', { title: 'Criar' }, { title: 'Criar', icon: 'plus' })), true);
+  assert.equal(isPresentationOnlyChange(presentationItem('step', before, { ...before, icon: 'plus', title: 'Outro' })), false);
+  assert.equal(isPresentationOnlyChange(presentationItem('step', before, { ...before, decisionRef: 'decidir' })), false);
+  assert.equal(isPresentationOnlyChange(presentationItem('field', before, after)), false);
+  assert.equal(isPresentationOnlyChange(presentationItem('step', before, after, 'added')), false);
+  assert.equal(isPresentationOnlyChange(presentationItem('step', before, after, 'removed')), false);
 });
 
 test('p4_74 decisionRef is not text', () => {

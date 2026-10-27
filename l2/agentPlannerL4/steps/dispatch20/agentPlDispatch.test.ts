@@ -312,6 +312,102 @@ function computedAnswer(input: EffortInput, project: string, kind: 'l1' | 'l2'):
   };
 }
 
+void test('dispatch20 answers nothing for an icon-only journey, step and task and does not call the masters', async () => {
+  let calls = 0;
+  const boom = () => {
+    calls += 1;
+    throw new Error('master should not run');
+  };
+  effortRegistry['102020'] = { describeEffort: boom, effortPrompt: boom };
+  effortRegistry['102021'] = { describeEffort: boom, effortPrompt: boom };
+  const icon = (kind: string, changeId: string) => ({
+    changeId,
+    kind,
+    op: 'changed',
+    entity: 'Tarefa',
+    source: 'journeys',
+    before: { title: 'Criar', icon: 'plus' },
+    after: { title: 'Criar', icon: 'list' },
+  });
+  const { host, context, parent, step } = contextWith();
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(host, [
+      icon('journey', 'journey:criarTarefa'),
+      icon('step', 'step:criarTarefa/preencher'),
+      icon('task', 'task:processo/criar'),
+    ]);
+    await beforePlDispatchPromptStep(AGENT, context, parent, step, 1);
+    const stored = host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];
+    assert.ok(stored);
+    const file = JSON.parse(stored.content) as {
+      status: string;
+      perItem: Array<{ answers: EffortAnswer[] }>;
+      merged: { create: unknown[]; regenerateDefs: unknown[]; materialize: unknown[]; remove: unknown[]; runAgents: unknown[] };
+    };
+    assert.equal(file.status, 'simple');
+    assert.equal(calls, 0);
+    assert.equal(file.perItem.length, 3);
+    for (const row of file.perItem) {
+      assert.equal(row.answers.length, 2);
+      for (const answer of row.answers) {
+        assert.equal(answer.presentation, true);
+        assert.equal(answer.status, 'computed');
+        assert.equal(answer.contract, 'keep');
+        assert.deepEqual(answer.create, []);
+        assert.deepEqual(answer.regenerateDefs, []);
+        assert.deepEqual(answer.materialize, []);
+        assert.deepEqual(answer.remove, []);
+        assert.deepEqual(answer.runAgents, []);
+      }
+    }
+    assert.deepEqual(file.merged.create, []);
+    assert.deepEqual(file.merged.regenerateDefs, []);
+    assert.deepEqual(file.merged.materialize, []);
+    assert.deepEqual(file.merged.remove, []);
+    assert.deepEqual(file.merged.runAgents, []);
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+});
+
+void test('dispatch20 still asks the masters when icon shares the step with text or decisionRef changes', async () => {
+  let calls = 0;
+  const count = (project: string, kind: 'l1' | 'l2') => (input: EffortInput): EffortAnswer => {
+    calls += 1;
+    return computedAnswer(input, project, kind);
+  };
+  effortRegistry['102020'] = { describeEffort: count('102020', 'l2') };
+  effortRegistry['102021'] = { describeEffort: count('102021', 'l1') };
+  const step = (changeId: string, before: Record<string, unknown>, after: Record<string, unknown>) => ({
+    changeId, kind: 'step', op: 'changed', entity: 'Tarefa', source: 'journeys', before, after,
+  });
+  const base = { title: 'Criar', icon: 'plus' };
+  const { host, context, parent, step: agentStep } = contextWith();
+  setModuleRoot('mensalidadesAcademia', REVISION);
+  try {
+    seedEffortInputs(host, [
+      step('step:texto', base, { ...base, icon: 'list', title: 'Criar tarefa' }),
+      step('step:ramo', base, { ...base, decisionRef: 'decidir' }),
+    ]);
+    await beforePlDispatchPromptStep(AGENT, context, parent, agentStep, 1);
+    const stored = host.files[`${PROJECT}_4_${REVISION}/pool/l4/changeEffort.json`];
+    assert.ok(stored);
+    const file = JSON.parse(stored.content) as { perItem: Array<{ answers: EffortAnswer[] }> };
+    assert.equal(calls, 4);
+    assert.equal(file.perItem.length, 2);
+    for (const row of file.perItem) {
+      for (const answer of row.answers) assert.equal(answer.presentation, undefined);
+    }
+  } finally {
+    delete effortRegistry['102020'];
+    delete effortRegistry['102021'];
+    setModuleRoot('mensalidadesAcademia', null);
+  }
+});
+
 void test('dispatch20 asks only the master that requests a model and joins both answers', async () => {
   let described = 0;
   effortRegistry['102020'] = {

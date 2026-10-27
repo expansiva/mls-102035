@@ -33,6 +33,7 @@ import {
   type EffortInput,
   type EffortMaster,
   type EffortPromptRequest,
+  isPresentationOnlyChange,
   type L4Diff,
   type L4DiffItem,
 } from '/_102035_/l2/solution/poolPlan.js';
@@ -356,7 +357,25 @@ async function prepareMaintenanceEffort(moduleName: string): Promise<EffortWork>
   };
 }
 
+function presentationAnswer(master: EffortMaster, input: EffortInput): EffortAnswer {
+  return {
+    master,
+    item: input.item.changeId,
+    status: 'computed',
+    create: [],
+    regenerateDefs: [],
+    materialize: [],
+    remove: [],
+    runAgents: [],
+    contract: 'keep',
+    presentation: true,
+  };
+}
+
 async function slotFor(master: EffortMaster, input: EffortInput): Promise<EffortSlot> {
+  if (isPresentationOnlyChange(input.item)) {
+    return { master, input, answer: presentationAnswer(master, input) };
+  }
   const entry = await loadMasterEffort(master.project);
   if (!entry?.effortPrompt) {
     return { master, input, answer: await describeItemEffort(master, input) };
