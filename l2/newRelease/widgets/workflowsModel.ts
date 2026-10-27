@@ -85,6 +85,7 @@ function taskOf(value: unknown): WorkflowTaskView {
     : 'wait';
   return {
     taskId: String(item.taskId || ''),
+    ...(typeof item.icon === 'string' ? {icon: item.icon} : {}),
     ...(typeof item.title === 'string' ? {title: item.title} : {}),
     kind,
     ...(typeof item.actorRef === 'string' ? { actorRef: item.actorRef } : {}),

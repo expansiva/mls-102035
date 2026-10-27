@@ -38,6 +38,9 @@ import {
   type WorkflowTaskView,
 } from '/_102035_/l2/newRelease/widgets/workflowsModel.js';
 
+import { renderNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconPicker.js';
+import { WORKFLOW_ICON_DEFAULTS, iconNeedsFallback, withNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconModel.js';
+
 interface WorkflowIssueView { severity: 'error' | 'warning'; code: string; message: string; }
 
 @customElement('new-release--widgets--workflows-102035')
@@ -218,14 +221,6 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     } finally { this.saving = false; }
   }
 
-  private taskIcon(kind: WorkflowTaskView['kind']) {
-    if (kind === 'human') return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20c.5-4 2.5-6 6-6s5.5 2 6 6"/></svg>`;
-    if (kind === 'llm') return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3M4.2 7.5l2.6 1.4M19.8 7.5l-2.6 1.4M5 17h14v-6H5Z"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>`;
-    if (kind === 'wait') return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>`;
-    if (kind === 'alert') return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6M4 17h16M10 20h4"/></svg>`;
-    return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2 3.5 4-.2-.2 4 3.2 2.2-3.2 2.2.2 4-4-.2-2 3.5-2-3.5-4 .2.2-4L3 12.5l3.2-2.2-.2-4 4 .2Z"/><circle cx="12" cy="12.5" r="2.5"/></svg>`;
-  }
-
   /** ns5_48: derived, never written — "Recurring duty · <schedule> · <actor>". */
   private recurringDutyLabel(process: WorkflowProcessView): string {
     const schedule = process.trigger?.schedule?.trim() || this.t('workflows.notRecorded');
@@ -264,8 +259,9 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
       if (!draftTask) return nothing;
       const transitions = this.entities().find(entity => entity.entityId === draftTask.entityRef)?.transitions || [];
       return html`<article class=${`nr-workflows__task kind-${draftTask.kind}`}>
-        <header><i>${this.taskIcon(draftTask.kind)}</i><div><span>${isStart ? this.t('workflows.start') : this.t('workflows.step', { number: index + 1 })}</span><code>${draftTask.taskId}</code></div><input readonly aria-label=${this.t('workflows.taskId')} .value=${draftTask.taskId}></header>
+        <header><i>${renderNewReleaseIcon(draftTask.icon, WORKFLOW_ICON_DEFAULTS[draftTask.kind])}</i><div><span>${isStart ? this.t('workflows.start') : this.t('workflows.step', { number: index + 1 })}</span><code>${draftTask.taskId}</code></div><input readonly aria-label=${this.t('workflows.taskId')} .value=${draftTask.taskId}></header>
         <div class="nr-workflows__task-form">
+          <new-release--widgets--icon-picker-102035 .value=${draftTask.icon || ''} .fallback=${WORKFLOW_ICON_DEFAULTS[draftTask.kind]} .t=${this.t} @nr-icon-selected=${(event: CustomEvent<string>) => this.replaceTask(draftTask.taskId, withNewReleaseIcon(draftTask, event.detail))}></new-release--widgets--icon-picker-102035>
           <label><span>${this.t('workflows.taskKind')}</span><select @change=${(event: Event) => this.updateTaskKind(draftTask, (event.currentTarget as HTMLSelectElement).value as Ns5WorkflowTask['kind'])}>${WORKFLOW_TASK_KINDS.map(kind => html`<option value=${kind} ?selected=${draftTask.kind === kind}>${this.t(`workflows.kind.${kind}`)}</option>`)}</select></label>
           ${draftTask.kind === 'human' ? html`
             <label><span>${this.t('workflows.actor')}</span><select @change=${(event: Event) => this.updateTask(draftTask.taskId, { actorRef: (event.currentTarget as HTMLSelectElement).value })}>${this.actors().map(actor => html`<option value=${actor.actorId} ?selected=${draftTask.actorRef === actor.actorId}>${actor.title} · ${actor.actorId}</option>`)}</select></label>
@@ -288,7 +284,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     const wake = task.kind === 'wait' && task.wake?.mode === 'periodic' && task.wake.every
       ? html`<span>${this.t('workflows.wakePeriodic', { every: task.wake.every })}</span>`
       : nothing;
-    return html`<article class=${`nr-workflows__task kind-${task.kind}`}><header><i>${this.taskIcon(task.kind)}</i><div><span>${isStart ? this.t('workflows.start') : this.t('workflows.step', { number: index + 1 })}</span><code>${task.taskId}</code></div><b>${this.t(`workflows.kind.${task.kind}`)}</b></header><h4>${title}</h4><p>${task.description}</p><div class="nr-workflows__task-meta">${task.actorRef ? html`<span>${this.t('workflows.actor')}: <strong>${task.actorRef}</strong></span>` : nothing}${task.effect ? html`<span>${this.t('workflows.effect')}: <strong>${this.t(`workflows.effect.${task.effect}`)}</strong></span>` : nothing}${task.transitionRef ? html`<code>${task.transitionRef}</code>` : nothing}${wake}</div><footer><span>${this.t('workflows.next')}</span>${next.length ? next.map(label => html`<code>${label}</code>`) : html`<strong>${this.t('workflows.end')}</strong>`}</footer></article>`;
+    return html`<article class=${`nr-workflows__task kind-${task.kind}`}><header><i>${renderNewReleaseIcon(task.icon, WORKFLOW_ICON_DEFAULTS[task.kind])}</i><div><span>${isStart ? this.t('workflows.start') : this.t('workflows.step', { number: index + 1 })}</span><code>${task.taskId}</code></div><b>${this.t(`workflows.kind.${task.kind}`)}</b></header><h4>${title}</h4><p>${task.description}</p><div class="nr-workflows__task-meta">${task.actorRef ? html`<span>${this.t('workflows.actor')}: <strong>${task.actorRef}</strong></span>` : nothing}${task.effect ? html`<span>${this.t('workflows.effect')}: <strong>${this.t(`workflows.effect.${task.effect}`)}</strong></span>` : nothing}${task.transitionRef ? html`<code>${task.transitionRef}</code>` : nothing}${wake}</div><footer><span>${this.t('workflows.next')}</span>${next.length ? next.map(label => html`<code>${label}</code>`) : html`<strong>${this.t('workflows.end')}</strong>`}</footer></article>`;
   }
 
   private renderFunctions(process: WorkflowProcessView) {
@@ -306,7 +302,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     return html`<main class="nr-workflows__detail"><header><div><h3>${process.title}</h3><code>${process.processId}</code><p>${process.description}</p><p>${this.t('workflows.trigger')}: ${this.triggerSummary(process)}</p><p>${this.t('workflows.room')}: ${this.t(`workflows.room.${process.room}`)}</p></div>${!this.version.startsWith('release:') && isEditableWorkflowSchema(this.view().schema) ? html`<button class="nr-button" @click=${() => {this.adding = true; this.newId = ''; this.beginEdit();}}>${this.t('workflows.addTask')}</button>` : nothing}</header>
       <section class="nr-workflows__graph" style=${`width:${width}px;min-height:${220 + edges.length * 22}px`}>
       <svg class="nr-workflows__edges" width=${width} height=${220 + edges.length * 22} aria-label=${this.t('workflows.connections')} role="img"><defs><marker id="nr-workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker></defs>${edges.map((edge, index) => {const x1 = edge.from * 260 + 115; const x2 = edge.to * 260 + 130; const y = 190 + index * 22; return svg`<path d=${`M ${x1} ${nodeHeight} C ${x1} ${y}, ${x2} ${y}, ${x2} ${nodeHeight}`} marker-end="url(#nr-workflow-arrow)"/><title>${process.tasks[edge.from].taskId} → ${edge.id}</title>`;})}</svg>
-      ${process.tasks.map((item, index) => html`<button class=${`nr-workflows__node kind-${item.kind}`} style=${`left:${index * 260}px;height:${nodeHeight}px`} aria-label=${this.taskTitle(item)} @click=${() => this.select(process.processId, item.taskId)}><i>${this.taskIcon(item.kind)}</i><strong>${this.taskTitle(item)}</strong><code>${item.taskId}</code><span>${this.t(`workflows.kind.${item.kind}`)}</span></button>`)}</section>${this.renderFunctions(process)}${this.renderIssues()}</main>`;
+      ${process.tasks.map((item, index) => html`<button class=${`nr-workflows__node kind-${item.kind}`} style=${`left:${index * 260}px;height:${nodeHeight}px`} aria-label=${this.taskTitle(item)} @click=${() => this.select(process.processId, item.taskId)}><i>${renderNewReleaseIcon(item.icon, WORKFLOW_ICON_DEFAULTS[item.kind])}</i><strong>${this.taskTitle(item)}</strong><code>${item.taskId}</code><span>${this.t(`workflows.kind.${item.kind}`)}</span></button>`)}</section>${this.renderFunctions(process)}${this.renderIssues()}</main>`;
   }
 
   private renderDecisions() {
@@ -320,7 +316,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     if (!this.sourceValue()) return html`<section class="nr-workflows__empty"><h2>${this.t('workflows.emptyTitle')}</h2><p>${this.t('workflows.emptyBody')}</p></section>`;
     if (view.schema === 'unknown') return html`<section class="nr-workflows__unknown" role="alert"><h2>${this.t('workflows.unknownTitle')}</h2><p>${this.t('workflows.unknownBody', { version: view.schemaVersion || this.t('workflows.notRecorded') })}</p><pre>${JSON.stringify(view.raw, null, 2)}</pre></section>`;
     const process = this.process();
-    return html`<section class="nr-workflows">${process ? this.renderProcess(process) : html`<div class="nr-workflows__cards">${view.processes.map(item => html`<button class="nr-workflows__card" @click=${() => this.select(item.processId)}><h3>${item.title}</h3><code>${item.processId}</code><p>${item.description}</p><span>${this.t('workflows.trigger')}: ${item.trigger ? this.t(`workflows.trigger.${item.trigger.kind}`) : this.t('workflows.trigger.undeclared')} · ${this.triggerSummary(item)}</span><strong>${this.t('workflows.taskCount', {count: item.tasks.length})}</strong></button>`)}</div>${this.renderDecisions()}`}${this.mode === 'edit' ? html`<footer class="nr-workflows__edit-footer"><span>${this.dirty ? this.t('workflows.unsaved') : this.t('workflows.noChanges')}</span><div><button ?disabled=${this.saving} @click=${() => {if (canDiscardNewReleaseDraft(this)) this.cancelEdit();}}>${this.t('workflows.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty || this.saving || this.adding} @click=${() => void this.saveEdit()}>${this.t('workflows.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-workflows">${view.processes.some(item => item.tasks.some(task => iconNeedsFallback(task.icon))) ? html`<p role="status">${this.t('icons.fallbackNotice')}</p>` : nothing}${process ? this.renderProcess(process) : html`<div class="nr-workflows__cards">${view.processes.map(item => html`<button class="nr-workflows__card" @click=${() => this.select(item.processId)}><h3>${item.title}</h3><code>${item.processId}</code><p>${item.description}</p><span>${this.t('workflows.trigger')}: ${item.trigger ? this.t(`workflows.trigger.${item.trigger.kind}`) : this.t('workflows.trigger.undeclared')} · ${this.triggerSummary(item)}</span><strong>${this.t('workflows.taskCount', {count: item.tasks.length})}</strong></button>`)}</div>${this.renderDecisions()}`}${this.mode === 'edit' ? html`<footer class="nr-workflows__edit-footer"><span>${this.dirty ? this.t('workflows.unsaved') : this.t('workflows.noChanges')}</span><div><button ?disabled=${this.saving} @click=${() => {if (canDiscardNewReleaseDraft(this)) this.cancelEdit();}}>${this.t('workflows.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty || this.saving || this.adding} @click=${() => void this.saveEdit()}>${this.t('workflows.save')}</button></div></footer>` : nothing}</section>`;
   }
 }
 

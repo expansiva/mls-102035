@@ -1064,5 +1064,15 @@
   "general.languagesFailed": "Falha ao atualizar idiomas. Salve novamente para tentar de novo.",
   "general.languagesInvalid": "Selecione ao menos um idioma e um idioma padrão da lista.",
   "general.languagesConflict": "O módulo mudou. Recarregue antes de salvar idiomas.",
-  "general.languagesPending": "Conclua a atualização de idiomas pendente antes de selecionar outros idiomas."
+  "general.languagesPending": "Conclua a atualização de idiomas pendente antes de selecionar outros idiomas.",
+  "icons.label": "Ícone (opcional)",
+  "icons.default": "Usar padrão do tipo",
+  "icons.choose": "Escolher ícone",
+  "icons.search": "Buscar ícones Lucide",
+  "icons.searchPlaceholder": "Buscar pelo nome do ícone",
+  "icons.results": "{{count}} ícones encontrados",
+  "icons.more": "Mostrar mais ícones",
+  "icons.absent": "Nenhum ícone selecionado. O padrão do tipo está sendo exibido.",
+  "icons.unknown": "Ícone desconhecido. O padrão do tipo está sendo exibido; o salvamento continua disponível.",
+  "icons.fallbackNotice": "Itens sem um ícone Lucide conhecido usam o padrão do tipo. Você pode escolher um ícone ao editar."
 }
