@@ -2,8 +2,23 @@
 
 import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import type { ReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
+import { displayPath, pipelineJsonFileForProject, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 
 export const REVIEW20_SCHEMA_VERSION = '2026-09-21-review20-v1' as const;
+export const REVIEW20_CLARIFICATION_MAX = 1000;
+
+const SECRET_KEY = /token|secret|password|authorization|api[-_]?key|credential/iu;
+const clipNotes = new WeakMap<Review20Stage, string>();
+
+/** A `parseResponse` refusal. The raw model answer stays on the error so the caller can record it. */
+export class Review20ParseRefusal extends Error {
+  readonly raw: unknown;
+  constructor(message: string, raw: unknown) {
+    super(message);
+    this.name = 'Review20ParseRefusal';
+    this.raw = raw;
+  }
+}
 
 export interface Review20Operation {
   artifactPath: string;
@@ -79,31 +94,95 @@ function assertArtifactPath(path: string): void {
   }
 }
 
-function parseResponse(value: unknown): Review20Response {
-  if (!isRecord(value)) throw new Error('review20 response must be an object');
-  exactKeys(value, ['schemaVersion', 'decision', 'clarification', 'operations'], 'review20 response');
-  if (value.schemaVersion !== REVIEW20_SCHEMA_VERSION) throw new Error('review20 schema version mismatch');
-  if (value.decision !== 'apply' && value.decision !== 'clarification') throw new Error('invalid review20 decision');
-  if (typeof value.clarification !== 'string' || value.clarification.length > 1000) throw new Error('invalid clarification');
-  if (!Array.isArray(value.operations) || value.operations.length > 32) throw new Error('invalid operations');
+/** Last whole sentence that fits, otherwise the last word, otherwise a hard cut. */
+export function clipClarification(text: string): { text: string; clipped: boolean } {
+  const trimmed = text.trim();
+  if (trimmed.length <= REVIEW20_CLARIFICATION_MAX) return { text: trimmed, clipped: false };
+  let end = -1;
+  const limit = Math.min(trimmed.length, REVIEW20_CLARIFICATION_MAX);
+  for (let index = 0; index < limit; index += 1) {
+    const mark = trimmed[index];
+    if ((mark === '.' || mark === '?' || mark === '!') && (index + 1 === trimmed.length || /\s/u.test(trimmed[index + 1]))) {
+      end = index + 1;
+    }
+  }
+  if (end > 0) return { text: trimmed.slice(0, end).trim(), clipped: true };
+  const space = trimmed.lastIndexOf(' ', REVIEW20_CLARIFICATION_MAX);
+  const cut = space > 0 ? space : REVIEW20_CLARIFICATION_MAX;
+  return { text: trimmed.slice(0, cut).trim(), clipped: true };
+}
+
+function refuse(message: string, raw: unknown): never {
+  throw new Review20ParseRefusal(message, raw);
+}
+
+function redact(value: unknown, depth = 0): unknown {
+  if (depth > 8) return null;
+  if (Array.isArray(value)) return value.slice(0, 64).map(item => redact(item, depth + 1));
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = SECRET_KEY.test(key) ? '[redacted]' : redact(item, depth + 1);
+    }
+    return out;
+  }
+  if (typeof value === 'string' && value.length > 20_000) return `${value.slice(0, 20_000)}…`;
+  return value;
+}
+
+/** `l4/<module>/pipeline/review20-refused.json` — the raw refused or clipped answer, never a secret. */
+export function review20RefusalInfo(project: number, moduleName: string): Ns5FileInfo {
+  return pipelineJsonFileForProject(project, moduleName, 'review20-refused');
+}
+
+export async function recordReview20Refusal(
+  info: Ns5FileInfo,
+  reason: string,
+  raw: unknown,
+  writer: (file: Ns5FileInfo, value: unknown) => Promise<unknown> = writeJson,
+): Promise<string> {
+  const citation = displayPath(info);
+  await writer(info, { reason, raw: redact(raw) });
+  return citation;
+}
+
+/** Set when a clarification question was longer than the limit and cut to a whole sentence. */
+export function review20ClipNote(stage: Review20Stage): string | undefined {
+  return clipNotes.get(stage);
+}
+
+function parseResponse(value: unknown): { response: Review20Response; clipNote?: string } {
+  if (!isRecord(value)) refuse('review20 response must be an object', value);
+  try { exactKeys(value, ['schemaVersion', 'decision', 'clarification', 'operations'], 'review20 response'); }
+  catch (error) { refuse(error instanceof Error ? error.message : String(error), value); }
+  if (value.schemaVersion !== REVIEW20_SCHEMA_VERSION) refuse('review20 schema version mismatch', value);
+  if (value.decision !== 'apply' && value.decision !== 'clarification') refuse('invalid review20 decision', value);
+  if (typeof value.clarification !== 'string') refuse('invalid clarification', value);
+  if (!Array.isArray(value.operations) || value.operations.length > 32) refuse('invalid operations', value);
+  let clarification = value.clarification;
+  let clipNote: string | undefined;
   if (value.decision === 'clarification') {
-    if (!value.clarification.trim() || value.operations.length) throw new Error('clarification requires a question and no operations');
+    const clipped = clipClarification(clarification);
+    clarification = clipped.text;
+    if (clipped.clipped) clipNote = `clarification exceeded ${REVIEW20_CLARIFICATION_MAX} characters and was cut to a whole sentence`;
+    if (!clarification || value.operations.length) refuse('clarification requires a question and no operations', value);
   } else if (value.clarification || !value.operations.length) {
-    throw new Error('apply requires operations and no clarification');
+    refuse('apply requires operations and no clarification', value);
   }
   for (const operation of value.operations) {
-    if (!isRecord(operation)) throw new Error('operation must be an object');
-    exactKeys(operation, ['artifactPath', 'op', 'pointer', 'basis', 'expectedJson', 'valueJson', 'reason'], 'operation');
+    if (!isRecord(operation)) refuse('operation must be an object', value);
+    try { exactKeys(operation, ['artifactPath', 'op', 'pointer', 'basis', 'expectedJson', 'valueJson', 'reason'], 'operation'); }
+    catch (error) { refuse(error instanceof Error ? error.message : String(error), value); }
     if (typeof operation.artifactPath !== 'string' || typeof operation.pointer !== 'string'
       || operation.op !== 'replace' || (operation.basis !== 'base-unchanged' && operation.basis !== 'refine-candidate-edit')
       || typeof operation.expectedJson !== 'string'
       || typeof operation.valueJson !== 'string' || typeof operation.reason !== 'string'
       || !operation.reason.trim() || operation.reason.length > 1000
       || operation.expectedJson.length > 10000 || operation.valueJson.length > 10000) {
-      throw new Error('invalid review20 operation');
+      refuse('invalid review20 operation', value);
     }
   }
-  return value as unknown as Review20Response;
+  return { response: { ...(value as unknown as Review20Response), clarification }, clipNote };
 }
 
 function parseScalar(text: string): string | number | boolean {
@@ -183,12 +262,15 @@ export function stageReview20(
       if (Object.hasOwn(artifact, 'moduleName') && artifact.moduleName !== moduleName) throw new Error('artifact belongs to another module');
     }
   }
-  const response = parseResponse(untrustedResponse);
+  const parsed = parseResponse(untrustedResponse);
+  const response = parsed.response;
   const proposal = cloneJson(candidate);
   const explicitDiff = diffMaps(base, candidate);
   if (response.decision === 'clarification') {
-    return { status: 'clarification', clarification: response.clarification.trim(), proposal,
+    const stage: Review20Stage = { status: 'clarification', clarification: response.clarification.trim(), proposal,
       explicitDiff, operationDiff: {}, proposedDiff: explicitDiff };
+    if (parsed.clipNote) clipNotes.set(stage, parsed.clipNote);
+    return stage;
   }
   const touched = new Set<string>();
   for (const operation of response.operations) {

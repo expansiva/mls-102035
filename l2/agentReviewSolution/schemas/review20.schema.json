@@ -6,7 +6,10 @@
   "properties": {
     "schemaVersion": { "const": "2026-09-21-review20-v1" },
     "decision": { "enum": ["apply", "clarification"] },
-    "clarification": { "type": "string" },
+    "clarification": {
+      "type": "string",
+      "description": "Empty string when decision is apply. When decision is clarification, the question, at most 1000 characters."
+    },
     "operations": {
       "type": "array",
       "maxItems": 32,

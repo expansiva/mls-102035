@@ -1,8 +1,16 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/review20/review20.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { REVIEW20_SCHEMA_VERSION, stageReview20 } from './review20.js';
+import {
+  recordReview20Refusal,
+  REVIEW20_SCHEMA_VERSION,
+  review20ClipNote,
+  review20RefusalInfo,
+  Review20ParseRefusal,
+  stageReview20,
+} from './review20.js';
 
 const snapshot = { moduleName: 'agendaClinica', request: 'Use a clearer appointment label.', requestRevision: 2 };
 const persisted = { revision: 2, request: snapshot.request };
@@ -84,6 +92,45 @@ test('review20 rejects an unsafe artifact path', () => {
   const unsafeBase = { ...base, 'ontology/../Consulta.defs.ts': { entityId: 'Consulta', title: 'Consulta' } };
   const unsafeCandidate = JSON.parse(JSON.stringify(unsafeBase)) as typeof unsafeBase;
   assert.throws(() => stageReview20(snapshot, persisted, unsafeBase, unsafeCandidate, applyResponse()), /invalid artifact path/);
+});
+
+test('review20 cuts a long clarification to a whole sentence and keeps a null or an apply question as a refusal', async () => {
+  const sentence = 'Which label should clinicians see? ';
+  const long = `${sentence}${'Extra detail. '.repeat(80)}`;
+  assert.ok(long.length > 1000);
+  const clipped = stageReview20(snapshot, persisted, base, candidate, {
+    schemaVersion: REVIEW20_SCHEMA_VERSION, decision: 'clarification', clarification: long, operations: [],
+  });
+  assert.equal(clipped.status, 'clarification');
+  assert.ok(clipped.clarification.length <= 1000);
+  assert.ok(clipped.clarification.length < long.trim().length);
+  assert.ok(long.trim().startsWith(clipped.clarification));
+  assert.match(clipped.clarification, /[.?!]$/u);
+  assert.match(review20ClipNote(clipped) || '', /cut to a whole sentence/u);
+
+  assert.throws(() => stageReview20(snapshot, persisted, base, candidate, {
+    schemaVersion: REVIEW20_SCHEMA_VERSION, decision: 'clarification', clarification: null, operations: [],
+  }), (error: unknown) => error instanceof Review20ParseRefusal
+    && error.message === 'invalid clarification'
+    && (error.raw as { clarification: unknown }).clarification === null);
+
+  assert.throws(() => stageReview20(snapshot, persisted, base, candidate, applyResponse({ clarification: 'Ask anyway.' })),
+    (error: unknown) => error instanceof Review20ParseRefusal && /no clarification/u.test(error.message));
+
+  const info = review20RefusalInfo(102047, 'agendaClinica');
+  let written: unknown;
+  const citation = await recordReview20Refusal(info, 'invalid clarification', { clarification: null, apiKey: 'sk-secret' }, async (_file, value) => {
+    written = value;
+  });
+  assert.equal(citation, 'l4/agendaClinica/pipeline/review20-refused.json');
+  assert.equal((written as { raw: { apiKey: string } }).raw.apiKey, '[redacted]');
+
+  const prompt = readFileSync(new URL('./prompt.md', import.meta.url), 'utf8');
+  const schema = readFileSync(new URL('../../schemas/review20.schema.json', import.meta.url), 'utf8');
+  assert.match(prompt, /at most 1000 characters/u);
+  assert.match(prompt, /clarification` is `""`/u);
+  assert.match(schema, /at most 1000 characters/u);
+  assert.equal(schema.includes('"maxLength"'), false);
 });
 
 test('review20 returns business ambiguity as a question without proposing an edit', () => {

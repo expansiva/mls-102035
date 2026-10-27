@@ -16,6 +16,10 @@ import {
 } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
 import type { Validate40CorrectionState } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
 import {
+  recordReview20Refusal,
+  review20ClipNote,
+  review20RefusalInfo,
+  Review20ParseRefusal,
   stageReview20,
   type Review20Stage,
 } from '/_102035_/l2/agentReviewSolution/steps/review20/review20.js';
@@ -120,13 +124,7 @@ export async function afterReview20PromptStep(
     assertReviewSnapshotMatches(reviewSnapshotFromContext(context), inventories.snapshot);
     const taskState = await reviewTaskStateFromContext(context, inventories.snapshot);
     const response = unwrapArtifactPayload(step.interaction?.payload?.[0]);
-    const staged = stageReview20(
-      inventories.snapshot,
-      inventories.persistedRequest,
-      inventories.base,
-      inventories.candidate,
-      response,
-    );
+    const staged = await stageOrRecordRefusal(inventories, response);
     if (staged.status === 'clarification') {
       return [
         addStep(context, parentStep, {
@@ -194,6 +192,29 @@ export function parseReview20PrivateState(raw: string): Review20PrivateState {
     throw new Error('review20 private state has an invalid shape.');
   }
   return parsed as unknown as Review20PrivateState;
+}
+
+async function stageOrRecordRefusal(inventories: ReviewInventories, response: unknown): Promise<Review20Stage> {
+  const info = review20RefusalInfo(inventories.snapshot.project, inventories.snapshot.moduleName);
+  let staged: Review20Stage;
+  try {
+    staged = stageReview20(
+      inventories.snapshot,
+      inventories.persistedRequest,
+      inventories.base,
+      inventories.candidate,
+      response,
+    );
+  } catch (error) {
+    if (!(error instanceof Review20ParseRefusal)) throw error;
+    let citation = 'review20 refusal not recorded';
+    try { citation = await recordReview20Refusal(info, error.message, response); }
+    catch (recordError) { citation = `review20 refusal not recorded: ${errorMessage(recordError)}`; }
+    throw new Error(`${error.message} (${citation})`);
+  }
+  const clipNote = review20ClipNote(staged);
+  if (clipNote) await recordReview20Refusal(info, clipNote, response);
+  return staged;
 }
 
 function buildReview20HumanPrompt(inventories: ReviewInventories): string {
