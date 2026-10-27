@@ -31,23 +31,37 @@ export interface NrpEditFollow {
 export interface NrpEditCursor extends NrpEditOrder {
   rest: NrpEditFollow[];
   applied: NrpAppliedEdit[];
+  attempts?: number;
+  editErrors?: string[];
 }
 
+export const NRP_EDIT_OPS = ['set', 'add', 'remove', 'create'] as const;
+export type NrpEditOp = typeof NRP_EDIT_OPS[number];
+
+export const NRP_EDIT_OP_LIMIT = 40;
+export const NRP_EDIT_JSON_LIMIT = 6000;
+export const NRP_EDIT_REASON_LIMIT = 300;
+
 export const NRP_EDIT_SCHEMA: Record<string, unknown> = {
-  $id: 'https://collab.codes/schemas/agentNewReleasePrompt/edit/2026-10-27-nrp-edit-files-v1',
+  $id: 'https://collab.codes/schemas/agentNewReleasePrompt/edit/2026-10-27-nrp-edit-ops-v1',
   type: 'object',
   additionalProperties: false,
-  required: ['files'],
+  required: ['operations'],
   properties: {
-    files: {
+    operations: {
       type: 'array',
+      maxItems: NRP_EDIT_OP_LIMIT,
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['id', 'artifactJson'],
+        required: ['file', 'op', 'pointer', 'expectedJson', 'valueJson', 'reason'],
         properties: {
-          id: { type: 'string', minLength: 1 },
-          artifactJson: { type: 'string', minLength: 2 },
+          file: { type: 'string', minLength: 1 },
+          op: { type: 'string', enum: [...NRP_EDIT_OPS] },
+          pointer: { type: 'string' },
+          expectedJson: { type: 'string', maxLength: NRP_EDIT_JSON_LIMIT },
+          valueJson: { type: 'string', maxLength: NRP_EDIT_JSON_LIMIT },
+          reason: { type: 'string', maxLength: NRP_EDIT_REASON_LIMIT },
         },
       },
     },
@@ -56,10 +70,13 @@ export const NRP_EDIT_SCHEMA: Record<string, unknown> = {
 
 export const NRP_EDIT_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
 Edit the L4 files named in the message. You receive only those files, the intent, and the target ids.
-Call submitNrpEdit. Return only the files you changed or created.
-files is a list of {id, artifactJson}. artifactJson is that one file as JSON text.
-id is the entity id or the journey id, index for that kind's index, or the kind name for a single file: rules, access, workflows, integration.
-A new id is allowed only when the message lists it under Creates.
+Call submitNrpEdit. Return small operations. Do not repeat a file.
+operations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Every field is required. Use an empty string when a field does not apply.
+op is set, add, remove, or create.
+file is the id you were given: the entity id or the journey id, index for that kind's index, or the kind name for a single file: rules, access, workflows, integration.
+pointer is an RFC 6901 pointer inside that file. add on a list ends with /-. add on an object ends with the new key.
+valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.
+create adds a new journey file only when the message lists that id under Creates. Its valueJson is the new journey and its pointer is empty.
 Change only what the request requires. Keep every other value.
 When the message lists marked texts, rewrite only those texts so they no longer cite the named item.
 Do not invent an example module.`;
@@ -82,6 +99,7 @@ export function buildNrpEditHumanPrompt(
   files: readonly NrpEditFile[],
   textMarks: readonly NrpTextMark[] = [],
   creates: readonly string[] = [],
+  editErrors: readonly string[] = [],
 ): string {
   const marked = textMarks.filter(mark => mark.kind === kind);
   const lines = [
@@ -94,6 +112,9 @@ export function buildNrpEditHumanPrompt(
   if (marked.length) {
     lines.push(`Marked texts:\n${marked.map(mark => `${mark.path} — adjust the text so it does not cite ${mark.item}: ${JSON.stringify(mark.text)}`).join('\n')}`);
   }
+  if (editErrors.length) {
+    lines.push(`Previous operations were refused:\n${editErrors.join('\n')}\nSubmit a corrected list. The request is unchanged.`);
+  }
   lines.push(`Files:\n${files.map(file => `${file.id}\n${JSON.stringify(file.artifact)}`).join('\n')}`);
   return lines.join('\n\n');
 }
@@ -101,7 +122,7 @@ export function buildNrpEditHumanPrompt(
 export function buildNrpEditTool(): mls.msg.LLMTool {
   return createNs4FlexibleWorkerTool(
     NRP_EDIT_TOOL,
-    'Return the edited artifact as JSON text. One kind only.',
+    'Return small JSON operations for the named files. Do not return a file.',
     NRP_EDIT_SCHEMA,
   );
 }
@@ -130,33 +151,241 @@ export function nrpFileScope(artifacts: NrpModuleArtifacts, kind: NrpArtifactKin
   return journeyScope(artifacts, triage);
 }
 
+export interface NrpEditOperation {
+  file: string;
+  op: NrpEditOp;
+  pointer: string;
+  expectedJson: string;
+  valueJson: string;
+  reason: string;
+}
+
+/** One more model call after a refused operation list. A second refusal stops the edit. */
+export function nextNrpEditAfterRefusal(order: NrpEditCursor, message: string): NrpEditCursor | null {
+  if ((order.attempts || 0) >= 1) return null;
+  return { ...order, attempts: 1, editErrors: [message] };
+}
+
 export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: NrpFileScope): { files: NrpEditFile[] } {
   try {
-    const root = record(value, 'Edit payload');
-    if (!Array.isArray(root.files)) throw new Error('Edit payload must list files.');
-    const allowed = new Set([...scope.present, ...scope.creates]);
-    const files = root.files.map(item => {
-      const row = record(item, 'Edit file');
-      const id = row.id;
-      if (typeof id !== 'string' || !id.trim()) throw new Error('Edit file id must be text.');
-      if (!allowed.has(id)) throw new Error(`Edit file ${id} is not a target and was not created by triage.`);
-      const raw = row.artifactJson;
-      if (typeof raw !== 'string' || raw.trim().length < 2) throw new Error('Edit artifactJson must be JSON text.');
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (error) {
-        console.error('[agentNewReleasePrompt] edit artifactJson is not JSON', error);
-        throw new Error('Edit artifactJson must be JSON text.');
-      }
-      assertFile(kind, id, parsed);
-      return { id, artifact: parsed };
-    });
+    const operations = readOperations(value);
+    const working = new Map<string, { artifact: unknown; created: boolean }>();
+    for (const file of scope.files) working.set(file.id, { artifact: cloneJson(file.artifact), created: false });
+    for (const operation of operations) applyOperation(kind, scope, working, operation);
+    const files: NrpEditFile[] = [];
+    for (const [id, item] of working) {
+      const before = scope.files.find(file => file.id === id);
+      if (!item.created && before && sameJson(before.artifact, item.artifact)) continue;
+      assertFile(kind, id, item.artifact);
+      files.push({ id, artifact: item.artifact });
+    }
     return { files };
   } catch (error) {
     if (error instanceof NrpEditRefusal) throw error;
     throw new NrpEditRefusal(error instanceof Error ? error.message : String(error), value);
   }
+}
+
+function readOperations(value: unknown): NrpEditOperation[] {
+  const root = record(value, 'Edit payload');
+  if (!Array.isArray(root.operations)) throw new Error('Edit payload must list operations.');
+  if (root.operations.length > NRP_EDIT_OP_LIMIT) {
+    throw new Error(`Edit payload has more than ${NRP_EDIT_OP_LIMIT} operations.`);
+  }
+  return root.operations.map(item => {
+    const row = record(item, 'Edit operation');
+    const file = requireText(row.file, 'Edit operation file');
+    const op = row.op;
+    if (typeof op !== 'string' || !NRP_EDIT_OPS.includes(op as NrpEditOp)) throw new Error('Edit operation op is not set, add, remove, or create.');
+    const pointer = requireText(row.pointer, 'Edit operation pointer', true);
+    const expectedJson = boundedJson(row.expectedJson, 'expectedJson');
+    const valueJson = boundedJson(row.valueJson, 'valueJson');
+    const reason = requireText(row.reason, 'Edit operation reason', true);
+    if (reason.length > NRP_EDIT_REASON_LIMIT) throw new Error(`Edit operation reason is longer than ${NRP_EDIT_REASON_LIMIT} characters.`);
+    return { file, op: op as NrpEditOp, pointer, expectedJson, valueJson, reason };
+  });
+}
+
+function applyOperation(
+  kind: NrpArtifactKind,
+  scope: NrpFileScope,
+  working: Map<string, { artifact: unknown; created: boolean }>,
+  operation: NrpEditOperation,
+): void {
+  if (operation.op === 'create') {
+    createFile(kind, scope, working, operation);
+    return;
+  }
+  if (!scope.present.includes(operation.file) || !working.has(operation.file)) {
+    throw new Error(`Edit file ${operation.file} is not a target and was not created by triage.`);
+  }
+  const current = working.get(operation.file);
+  if (!current) throw new Error(`Edit file ${operation.file} is not a target and was not created by triage.`);
+  const tokens = pointerTokens(operation.pointer);
+  assertMutable(tokens);
+  if (operation.op === 'add') {
+    current.artifact = addAt(current.artifact, tokens, parseJsonText(operation.valueJson, 'valueJson'));
+    return;
+  }
+  const expected = parseJsonText(operation.expectedJson, 'expectedJson');
+  if (operation.op === 'remove') {
+    current.artifact = removeAt(current.artifact, tokens, expected);
+    return;
+  }
+  current.artifact = setAt(current.artifact, tokens, expected, parseJsonText(operation.valueJson, 'valueJson'));
+}
+
+function createFile(
+  kind: NrpArtifactKind,
+  scope: NrpFileScope,
+  working: Map<string, { artifact: unknown; created: boolean }>,
+  operation: NrpEditOperation,
+): void {
+  if (kind !== 'journeys') throw new Error('create only adds a journey file.');
+  if (!scope.creates.includes(operation.file)) throw new Error(`Edit file ${operation.file} is not a target and was not created by triage.`);
+  if (operation.pointer !== '') throw new Error('create uses an empty pointer.');
+  if (working.has(operation.file)) throw new Error(`Edit file ${operation.file} already exists.`);
+  const artifact = parseJsonText(operation.valueJson, 'valueJson');
+  assertFile(kind, operation.file, artifact);
+  working.set(operation.file, { artifact, created: true });
+}
+
+const FROZEN_TOKENS = new Set(['schemaVersion', 'moduleName', 'entityId', 'journeyId']);
+
+function assertMutable(tokens: readonly string[]): void {
+  if (tokens.some(token => FROZEN_TOKENS.has(token))) {
+    throw new Error('set and remove cannot change schemaVersion, moduleName, or the file id.');
+  }
+}
+
+function pointerTokens(pointer: string): string[] {
+  if (pointer === '') throw new Error('Pointer must name a location inside the file.');
+  if (!pointer.startsWith('/')) throw new Error(`Pointer ${pointer} is not an RFC 6901 pointer.`);
+  return pointer.slice(1).split('/').map(unescapeToken);
+}
+
+function unescapeToken(token: string): string {
+  return token.replace(/~1/g, '/').replace(/~0/g, '~');
+}
+
+function addAt(root: unknown, tokens: readonly string[], value: unknown): unknown {
+  if (!tokens.length) throw new Error('add needs a pointer.');
+  const parentTokens = tokens.slice(0, -1);
+  const leaf = tokens[tokens.length - 1];
+  const parent = parentTokens.length ? requireAt(root, parentTokens) : root;
+  if (leaf === '-') {
+    if (!Array.isArray(parent)) throw new Error(`Pointer ${formatPointer(parentTokens)} is not a list.`);
+    const next = cloneJson(root);
+    const list = requireAt(next, parentTokens);
+    if (!Array.isArray(list)) throw new Error(`Pointer ${formatPointer(parentTokens)} is not a list.`);
+    list.push(value);
+    return next;
+  }
+  if (Array.isArray(parent)) throw new Error('add on a list ends with /-.');
+  if (!parent || typeof parent !== 'object') throw new Error(`Pointer ${formatPointer(parentTokens)} does not exist.`);
+  if (Object.prototype.hasOwnProperty.call(parent, leaf)) throw new Error(`Key ${leaf} is not free.`);
+  const next = cloneJson(root);
+  const target = parentTokens.length ? requireAt(next, parentTokens) : next;
+  if (!target || typeof target !== 'object' || Array.isArray(target)) {
+    throw new Error(`Pointer ${formatPointer(parentTokens)} does not exist.`);
+  }
+  (target as Record<string, unknown>)[leaf] = value;
+  return next;
+}
+
+function setAt(root: unknown, tokens: readonly string[], expected: unknown, value: unknown): unknown {
+  const current = requireAt(root, tokens);
+  if (!sameJson(current, expected)) throw new Error(`expectedJson does not match the current value at ${formatPointer(tokens)}.`);
+  if (!tokens.length) return value;
+  const next = cloneJson(root);
+  const parent = requireAt(next, tokens.slice(0, -1));
+  const leaf = tokens[tokens.length - 1];
+  writeLeaf(parent, leaf, value);
+  return next;
+}
+
+function removeAt(root: unknown, tokens: readonly string[], expected: unknown): unknown {
+  if (!tokens.length) throw new Error('remove needs a pointer.');
+  const current = requireAt(root, tokens);
+  if (!sameJson(current, expected)) throw new Error(`expectedJson does not match the current value at ${formatPointer(tokens)}.`);
+  const next = cloneJson(root);
+  const parent = requireAt(next, tokens.slice(0, -1));
+  const leaf = tokens[tokens.length - 1];
+  if (Array.isArray(parent)) {
+    if (!/^(0|[1-9]\d*)$/.test(leaf)) throw new Error(`Pointer ${formatPointer(tokens)} does not exist.`);
+    parent.splice(Number(leaf), 1);
+    return next;
+  }
+  if (!parent || typeof parent !== 'object') throw new Error(`Pointer ${formatPointer(tokens)} does not exist.`);
+  delete (parent as Record<string, unknown>)[leaf];
+  return next;
+}
+
+function requireAt(root: unknown, tokens: readonly string[]): unknown {
+  let current = root;
+  const walked: string[] = [];
+  for (const token of tokens) {
+    walked.push(token);
+    if (Array.isArray(current)) {
+      if (!/^(0|[1-9]\d*)$/.test(token) || Number(token) >= current.length) {
+        throw new Error(`Pointer ${formatPointer(walked)} does not exist.`);
+      }
+      current = current[Number(token)];
+      continue;
+    }
+    if (!current || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, token)) {
+      throw new Error(`Pointer ${formatPointer(walked)} does not exist.`);
+    }
+    current = (current as Record<string, unknown>)[token];
+  }
+  return current;
+}
+
+function writeLeaf(parent: unknown, leaf: string, value: unknown): void {
+  if (Array.isArray(parent)) {
+    if (!/^(0|[1-9]\d*)$/.test(leaf) || Number(leaf) >= parent.length) {
+      throw new Error(`Pointer does not exist.`);
+    }
+    parent[Number(leaf)] = value;
+    return;
+  }
+  if (!parent || typeof parent !== 'object') throw new Error('Pointer does not exist.');
+  (parent as Record<string, unknown>)[leaf] = value;
+}
+
+function formatPointer(tokens: readonly string[]): string {
+  if (!tokens.length) return '/';
+  return `/${tokens.map(token => token.replace(/~/g, '~0').replace(/\//g, '~1')).join('/')}`;
+}
+
+function parseJsonText(value: string, label: string): unknown {
+  if (!value.trim()) throw new Error(`Edit operation ${label} must be JSON text.`);
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    console.error(`[agentNewReleasePrompt] edit ${label} is not JSON`, error);
+    throw new Error(`Edit operation ${label} must be JSON text.`);
+  }
+}
+
+function boundedJson(value: unknown, label: string): string {
+  const text = requireText(value, `Edit operation ${label}`, true);
+  if (text.length > NRP_EDIT_JSON_LIMIT) throw new Error(`Edit operation ${label} is longer than ${NRP_EDIT_JSON_LIMIT} characters.`);
+  return text;
+}
+
+function requireText(value: unknown, label: string, allowEmpty = false): string {
+  if (typeof value !== 'string') throw new Error(`${label} must be text.`);
+  if (!allowEmpty && !value.trim()) throw new Error(`${label} must be text.`);
+  return value;
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function artifactSlice(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind): unknown {
@@ -345,7 +574,9 @@ export async function beforeNrpEditStep(
       hookSequential,
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_EDIT_SYSTEM_PROMPT,
-      humanPrompt: buildNrpEditHumanPrompt(parsed.request, parsed.order.triage, kind, scope.files, edited.textMarks, scope.creates),
+      humanPrompt: buildNrpEditHumanPrompt(
+        parsed.request, parsed.order.triage, kind, scope.files, edited.textMarks, scope.creates, parsed.order.editErrors || [],
+      ),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
     }];
@@ -398,7 +629,32 @@ export async function afterNrpEditStep(
   } catch (error) {
     console.error('[agentNewReleasePrompt] edit30 result rejected', error);
     const cited = await citeEditRefusal(step, error);
+    const retry = retryEdit(step, cited);
+    if (retry) {
+      return [
+        { type: 'add-step', ...base, step: retry },
+        {
+          type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
+          cleaner: 'input_output',
+          traceMsg: cited instanceof Error ? cited.message : String(cited),
+        },
+      ];
+    }
     return [fail(context, parentStep, step, hookSequential, cited)];
+  }
+}
+
+function retryEdit(step: mls.msg.AIAgentStep, error: unknown): mls.msg.AIAgentStep | null {
+  if (!(error instanceof NrpEditRefusal)) return null;
+  try {
+    const project = mls.actualProject || 0;
+    const parsed = parseNrpEditPrompt(String(step.prompt || ''), project);
+    const next = nextNrpEditAfterRefusal(parsed.order, error.message);
+    if (!next) return null;
+    return createEdit30Step(parsed.moduleName, parsed.request, next);
+  } catch (retryError) {
+    console.error('[agentNewReleasePrompt] edit30 could not plan a retry', retryError);
+    return null;
   }
 }
 
@@ -445,7 +701,21 @@ function readOrder(value: unknown): NrpEditCursor {
     triage,
     rest: follows(root.rest),
     applied: appliedEdits(root.applied),
+    attempts: readAttempts(root.attempts),
+    editErrors: readErrors(root.editErrors),
   };
+}
+
+function readAttempts(value: unknown): number {
+  if (value === undefined) return 0;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) throw new Error('Edit attempts must be a whole number.');
+  return value;
+}
+
+function readErrors(value: unknown): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some(item => typeof item !== 'string')) throw new Error('Edit errors must be a list of text.');
+  return value;
 }
 
 function follows(value: unknown): NrpEditFollow[] {
@@ -510,7 +780,7 @@ function nextAfterEdit(
 
 function assertFile(kind: NrpArtifactKind, id: string, value: unknown): void {
   const root = record(value, 'Edited file');
-  if (kind === 'rules' && id === 'rules' && 'rules' in root) return;
+  if (kind === 'rules' && id === 'rules' && Array.isArray(root.rules)) return;
   if (kind === 'access' && id === 'access' && Array.isArray(root.grants)) return;
   if (kind === 'workflows' && id === 'workflows' && Array.isArray(root.processes)) return;
   if (kind === 'integration' && id === 'integration' && Array.isArray(root.inbound) && Array.isArray(root.outbound)) return;

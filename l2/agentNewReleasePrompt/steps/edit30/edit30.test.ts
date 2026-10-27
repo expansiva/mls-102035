@@ -12,13 +12,29 @@ import {
   NRP_EDIT_SYSTEM_PROMPT,
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
+  nextNrpEditAfterRefusal,
   normalizeNrpEdit,
   nrpFileScope,
   planNrpEditOrders,
+  type NrpEditCursor,
+  type NrpFileScope,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { checkNrpGates, classifyNrpGateIssues, nrpFreshIssues, overlayNrpEdits } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
+import { recordNrpTriageRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
+import { pipelineJsonFileForProject } from '/_102035_/l2/solution/fs.js';
+import type { Ns5FileInfo } from '/_102035_/l2/solution/types.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
-import type { Ns5OntologyAnyEntity } from '/_102035_/l2/solution/types.js';
+import type {
+  Ns5AccessArtifact,
+  Ns5IntegrationArtifact,
+  Ns5JourneyArtifact,
+  Ns5JourneyIndexArtifact,
+  Ns5ModuleArtifact,
+  Ns5OntologyAnyEntity,
+  Ns5RulesAny,
+  Ns5WorkflowsArtifact,
+} from '/_102035_/l2/solution/types.js';
 import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -67,16 +83,24 @@ void test('edit schema is strict and the prompt names no sample module', () => {
   assert.match(human, /Add a rule\./);
 });
 
-void test('a recorded edit response is the changed file only', () => {
-  const recorded = JSON.parse(readFileSync(path.join(HERE, 'fixtures/recorded.json'), 'utf8')) as { rulesReplace: unknown };
-  const scope = { present: ['rules'], creates: [], files: [] };
-  const edited = normalizeNrpEdit('rules', recorded.rulesReplace, scope);
+void test('a recorded edit response applies one operation to the current file', () => {
+  const recorded = JSON.parse(readFileSync(path.join(HERE, 'fixtures/recorded.json'), 'utf8')) as { rulesAdd: unknown };
+  const scope: NrpFileScope = {
+    present: ['rules'],
+    creates: [],
+    files: [{ id: 'rules', artifact: { schemaVersion: 'recorded', moduleName: 'sample', rules: [] } }],
+  };
+  const edited = normalizeNrpEdit('rules', recorded.rulesAdd, scope);
   const artifact = edited.files[0].artifact as { rules: Array<{ ruleId: string }> };
   assert.equal(edited.files[0].id, 'rules');
   assert.equal(artifact.rules[0].ruleId, 'defaultPriority');
-  assert.throws(() => normalizeNrpEdit('rules', { artifactJson: '{"rules":[]}' }, scope), /list files/);
-  assert.throws(() => normalizeNrpEdit('rules', { files: [{ id: 'rules', artifactJson: '{"journeys":[]}' }] }, scope), /wrong shape/);
-  assert.throws(() => normalizeNrpEdit('ontology', { files: [{ id: 'NewThing', artifactJson: '{"entityId":"NewThing"}' }] }, { present: ['WorkItem'], creates: [], files: [] }), /not a target/);
+  assert.throws(() => normalizeNrpEdit('rules', { artifactJson: '{"rules":[]}' }, scope), /list operations/);
+  assert.throws(() => normalizeNrpEdit('rules', {
+    operations: [{ file: 'rules', op: 'set', pointer: '/rules', expectedJson: '[]', valueJson: '{"journeys":[]}', reason: 'bad' }],
+  }, scope), /wrong shape/);
+  assert.throws(() => normalizeNrpEdit('ontology', {
+    operations: [{ file: 'NewThing', op: 'set', pointer: '/title', expectedJson: '"x"', valueJson: '"y"', reason: 'no' }],
+  }, { present: ['WorkItem'], creates: [], files: [{ id: 'WorkItem', artifact: { entityId: 'WorkItem', title: 'x' } }] }), /not a target/);
 });
 
 void test('mechanical marks change the artifact and leave the other kind to the model', () => {
@@ -166,4 +190,142 @@ void test('an ontology edit prompt sends the target file, not the whole kind', (
   assert.ok(oneBytes < wholeBytes);
   assert.equal(one.includes('Tarefa'), true);
   assert.equal(one.includes('"entityId":"Lista"') || one.includes('"entityId": "Lista"'), false);
+});
+
+function workItemScope(): NrpFileScope {
+  const artifact = {
+    schemaVersion: 'v',
+    moduleName: 'sample',
+    entityId: 'WorkItem',
+    title: 'Work item',
+    record: { fields: { details: { type: 'object', fields: { note: { type: 'text', title: 'Note' } } } } },
+    tags: ['open'],
+  };
+  return { present: ['WorkItem'], creates: [], files: [{ id: 'WorkItem', artifact }] };
+}
+
+function op(partial: Record<string, string>): Record<string, string> {
+  return { file: 'WorkItem', op: 'set', pointer: '/title', expectedJson: '"Work item"', valueJson: '"Task"', reason: 'rename', ...partial };
+}
+
+void test('operations set text, add a details field, append a list, and remove', () => {
+  const scope = workItemScope();
+  const set = normalizeNrpEdit('ontology', { operations: [op({})] }, scope);
+  assert.equal((set.files[0].artifact as { title: string }).title, 'Task');
+  const added = normalizeNrpEdit('ontology', {
+    operations: [op({
+      op: 'add',
+      pointer: '/record/fields/details/fields/hours',
+      expectedJson: '',
+      valueJson: '{"type":"number","title":"Hours"}',
+      reason: 'add hours',
+    })],
+  }, scope);
+  const fields = (added.files[0].artifact as { record: { fields: { details: { fields: Record<string, { title: string }> } } } }).record.fields.details.fields;
+  assert.equal(fields.hours.title, 'Hours');
+  assert.equal(fields.note.title, 'Note');
+  const listed = normalizeNrpEdit('ontology', {
+    operations: [op({ op: 'add', pointer: '/tags/-', expectedJson: '', valueJson: '"closed"', reason: 'append' })],
+  }, scope);
+  assert.deepEqual((listed.files[0].artifact as { tags: string[] }).tags, ['open', 'closed']);
+  const removed = normalizeNrpEdit('ontology', {
+    operations: [op({
+      op: 'remove',
+      pointer: '/record/fields/details/fields/note',
+      expectedJson: '{"type":"text","title":"Note"}',
+      valueJson: '',
+      reason: 'drop note',
+    })],
+  }, scope);
+  const left = (removed.files[0].artifact as { record: { fields: { details: { fields: Record<string, unknown> } } } }).record.fields.details.fields;
+  assert.equal(left.note, undefined);
+});
+
+void test('create adds a journey only when triage asked for it', () => {
+  const created = normalizeNrpEdit('journeys', {
+    operations: [{
+      file: 'gestorCopia',
+      op: 'create',
+      pointer: '',
+      expectedJson: '',
+      valueJson: '{"journeyId":"gestorCopia","business":{"title":"Copy","actorRef":"gestor","steps":[]}}',
+      reason: 'new journey',
+    }],
+  }, { present: [], creates: ['gestorCopia'], files: [] });
+  assert.equal((created.files[0].artifact as { journeyId: string }).journeyId, 'gestorCopia');
+  assert.throws(() => normalizeNrpEdit('ontology', {
+    operations: [{ file: 'NewThing', op: 'create', pointer: '', expectedJson: '', valueJson: '{"entityId":"NewThing"}', reason: 'no' }],
+  }, { present: [], creates: ['NewThing'], files: [] }), /only adds a journey/);
+});
+
+void test('a mismatched expectedJson and a missing pointer are refused and the mismatch is recorded', async () => {
+  const scope = workItemScope();
+  assert.throws(() => normalizeNrpEdit('ontology', {
+    operations: [op({ expectedJson: '"Other"' })],
+  }, scope), /expectedJson does not match/);
+  assert.throws(() => normalizeNrpEdit('ontology', {
+    operations: [op({ pointer: '/missing' })],
+  }, scope), /does not exist/);
+  let stored: unknown;
+  const info = pipelineJsonFileForProject(1, 'sample', 'newReleasePrompt-refused');
+  const citation = await recordNrpTriageRefusal(info, 'expectedJson does not match the current value at /title.', { operations: [] }, async (_file: Ns5FileInfo, value: unknown) => {
+    stored = value;
+  });
+  assert.match(citation, /newReleasePrompt-refused\.json$/);
+  assert.equal((stored as { reason: string }).reason.includes('expectedJson'), true);
+});
+
+void test('operation count and value size are refused', () => {
+  const scope = workItemScope();
+  const many = Array.from({ length: 41 }, () => op({}));
+  assert.throws(() => normalizeNrpEdit('ontology', { operations: many }, scope), /40/);
+  assert.throws(() => normalizeNrpEdit('ontology', {
+    operations: [op({ valueJson: JSON.stringify('x'.repeat(6001)) })],
+  }, scope), /6000/);
+});
+
+void test('a refused edit is retried once with the same request and the error', () => {
+  const order: NrpEditCursor = { mode: 'model', kind: 'ontology', triage, rest: [], applied: [], attempts: 0, editErrors: [] };
+  const again = nextNrpEditAfterRefusal(order, 'Pointer /missing does not exist.');
+  assert.equal(again?.attempts, 1);
+  const prompt = buildNrpEditHumanPrompt('Add hours.', triage, 'ontology', workItemScope().files, [], [], again?.editErrors || []);
+  assert.match(prompt, /Add hours\./);
+  assert.match(prompt, /Pointer \/missing does not exist/);
+  assert.equal(nextNrpEditAfterRefusal(again || order, 'again'), null);
+});
+
+void test('the recorded hour-estimate operations apply to Tarefa and pass the gates', () => {
+  const fixture = path.join(HERE, '../../../solution/fixtures/finalize80/tarefas');
+  const defs = <T>(name: string): T => {
+    const json = extractNs4ClassicJsonObject(readFileSync(path.join(fixture, name), 'utf8'));
+    if (!json) throw new Error(`no JSON in ${name}`);
+    return JSON.parse(json) as T;
+  };
+  const journeyIndex = defs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
+  const ontologyIndex = defs<Ns5OntologyAnyIndex>('ontology/index.defs.ts');
+  const artifacts = {
+    module: defs<Ns5ModuleArtifact>('module.defs.ts'),
+    journeyIndex,
+    journeys: journeyIndex.journeys.map(entry => defs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`)),
+    ontologyIndex,
+    entities: ns5OntologyEntityIds(ontologyIndex).map(entityId => defs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`)),
+    rules: defs<Ns5RulesAny>('rules.defs.ts'),
+    workflows: defs<Ns5WorkflowsArtifact>('workflows.defs.ts'),
+    access: defs<Ns5AccessArtifact>('access.defs.ts'),
+    integration: defs<Ns5IntegrationArtifact>('integration.defs.ts'),
+  } as unknown as NrpModuleArtifacts;
+  const ask = { ...triage, artifacts: ['ontology'] as NrpTriage['artifacts'], targets: ['Tarefa'], mechanical: [] };
+  const scope = nrpFileScope(artifacts, 'ontology', ask);
+  const recorded = JSON.parse(readFileSync(path.join(HERE, 'fixtures/recorded.json'), 'utf8')) as { tarefaHours: unknown };
+  const edited = normalizeNrpEdit('ontology', recorded.tarefaHours, scope);
+  assert.equal(edited.files.length, 1);
+  assert.equal(edited.files[0].id, 'Tarefa');
+  const merged = overlayNrpEdits(artifacts, [{ mode: 'model', kind: 'ontology', artifact: edited }]);
+  const entity = merged.entities.find(item => item.entityId === 'Tarefa') as unknown as {
+    record: { fields: { details: { fields: Record<string, { title: string }> } } };
+  };
+  assert.equal(entity.record.fields.details.fields.estimativaHoras.title, 'Estimativa de horas');
+  const before = checkNrpGates(artifacts, ['ontology']);
+  const after = classifyNrpGateIssues(before, checkNrpGates(merged, ['ontology']));
+  assert.deepEqual(nrpFreshIssues(after), []);
 });

@@ -1,5 +1,22 @@
 {
-  "rulesReplace": {
-    "files": [{ "id": "rules", "artifactJson": "{\"schemaVersion\":\"recorded\",\"moduleName\":\"sample\",\"rules\":[{\"ruleId\":\"defaultPriority\",\"description\":\"When priority is omitted, it is medium.\"}]}" }]
+  "rulesAdd": {
+    "operations": [{
+      "file": "rules",
+      "op": "add",
+      "pointer": "/rules/-",
+      "expectedJson": "",
+      "valueJson": "{\"ruleId\":\"defaultPriority\",\"description\":\"When priority is omitted, it is medium.\"}",
+      "reason": "Add the default priority rule."
+    }]
+  },
+  "tarefaHours": {
+    "operations": [{
+      "file": "Tarefa",
+      "op": "add",
+      "pointer": "/record/fields/details/fields/estimativaHoras",
+      "expectedJson": "",
+      "valueJson": "{\"type\":\"number\",\"title\":\"Estimativa de horas\"}",
+      "reason": "Record an optional hour estimate on the task."
+    }]
   }
 }

@@ -11,6 +11,7 @@ import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
+import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
 export type NrpGateKind = NrpArtifactKind | 'coherence';
 
@@ -35,8 +36,6 @@ export interface NrpGateAction {
   action: NrpGateActionName;
   kind: NrpArtifactKind | null;
 }
-
-const REPAIR_TOOL = 'submitNrpEdit';
 
 export function overlayNrpEdits(base: NrpModuleArtifacts, applied: NrpAppliedEdit[]): NrpModuleArtifacts {
   let next = clone(base);
@@ -118,33 +117,17 @@ export function buildNrpRepairHumanPrompt(
 
 export const NRP_REPAIR_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
 Repair the L4 files named in the message. The full user request is in the message. Keep every rule and value the request does not change.
-Call submitNrpEdit. Return only the files you changed: files is a list of {id, artifactJson}. artifactJson is that one file as JSON text.
-id is the entity id or the journey id, index for that kind's index, or the kind name for a single file: rules, access, workflows, integration.`;
+Call submitNrpEdit. Return small operations. Do not repeat a file.
+operations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Every field is required. Use an empty string when a field does not apply.
+op is set, add, remove, or create.
+pointer is an RFC 6901 pointer. add on a list ends with /-. add on an object ends with the new key.
+valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.`;
 
 export function buildNrpRepairTool(): mls.msg.LLMTool {
   return createNs4FlexibleWorkerTool(
-    REPAIR_TOOL,
-    'Return the repaired files as JSON text. Only the files you change.',
-    {
-      $id: 'https://collab.codes/schemas/agentNewReleasePrompt/repair/2026-10-27-nrp-repair-files-v1',
-      type: 'object',
-      additionalProperties: false,
-      required: ['files'],
-      properties: {
-        files: {
-          type: 'array',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['id', 'artifactJson'],
-            properties: {
-              id: { type: 'string', minLength: 1 },
-              artifactJson: { type: 'string', minLength: 2 },
-            },
-          },
-        },
-      },
-    },
+    NRP_EDIT_TOOL,
+    'Return small JSON operations that repair the named files. Do not return a file.',
+    NRP_EDIT_SCHEMA,
   );
 }
 

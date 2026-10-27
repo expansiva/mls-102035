@@ -136,7 +136,7 @@ void test('a hook that plants a step closes itself last', async () => {
     {
       planId: 'edit30', stepId: 7, when: 'after',
       prompt: encodeNrpEditPrompt(MODULE, REQUEST, { mode: 'model', kind: 'rules', triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'] }, rest: [], applied: [] }),
-      payload: { files: [{ id: 'rules', artifactJson: JSON.stringify({ schemaVersion: 'recorded', moduleName: MODULE, rules: [] }) }] },
+      payload: { operations: [{ file: 'rules', op: 'add', pointer: '/rules/-', expectedJson: '', valueJson: '{"ruleId":"keep","description":"Keep the catalog."}', reason: 'Add a rule.' }] },
       plants: true,
     },
     {
@@ -158,7 +158,7 @@ void test('a hook that plants a step closes itself last', async () => {
           repaired: [], modelCalls: 1,
         },
       }),
-      payload: { files: [{ id: 'rules', artifactJson: JSON.stringify({ schemaVersion: '2026-09-16-ns5-rules-v2', moduleName: MODULE, rules: { okRule: 'Keep the catalog.' } }) }] },
+      payload: { operations: [{ file: 'rules', op: 'set', pointer: '/rules', expectedJson: '{"BadId":""}', valueJson: '[]', reason: 'Replace the broken catalog.' }] },
       plants: true,
     },
     {
