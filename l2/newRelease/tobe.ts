@@ -1,5 +1,8 @@
 /// <mls fileReference="_102035_/l2/newRelease/tobe.ts" enhancement="_blank" />
 
+import { assertNewReleaseEditable } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
+import { implementationCommands, readL4Implementation } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+
 import { getSessionUser } from '/_102033_/l2/shared/sessionUser.js';
 import {
   fileExists,
@@ -153,6 +156,7 @@ export async function saveTobeArtifact(
   value: unknown,
   options: { expectedRevisionId: string | null; expectedChangeId?: string | null; jsonPath?: string; author?: string; now?: string },
 ): Promise<Ns5TobeManifest> {
+  await assertNewReleaseEditable(project, moduleName);
   const path = normalizeTobeArtifactPath(pathValue);
   const active = await readActiveL4Change(project, moduleName);
   const reading = active ? 'tobe' : 'asis';
@@ -390,4 +394,18 @@ export async function readNs5Overlay(
     overlayDiffs(project, moduleName, sources, baseId),
   ]);
   return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }), errors };
+}
+
+/** Retire only the successfully applied revision, keeping its immutable history. */
+export async function completeTobeImplementation(project: number, moduleName: string, changeId: string, revisionId: string): Promise<void> {
+  await deactivateL4Change(project, moduleName, async () => {
+    const active = await readActiveL4Change(project, moduleName);
+    if (active?.changeId !== changeId || active.activeRevisionId !== revisionId || active.promotedRevisionId !== revisionId) {
+      throw new Error('l4.implementation_conflict');
+    }
+    const record = await readL4Implementation(project, moduleName);
+    if (!record || record.revisionId !== revisionId || !implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) throw new Error('implementation.not_complete');
+    await deleteInventory(listedPlanFiles(project, moduleName));
+  });
+  announceTobeUpdated(project, moduleName);
 }

@@ -1,4 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/review.ts" enhancement="_102027_/l2/enhancementLit" />
+import { completeTobeImplementation } from '/_102035_/l2/newRelease/tobe.js';
+import { effortMatchesCurrent } from '/_102035_/l2/newRelease/helpers/effortFreshness.js';
 
 import { html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -17,7 +19,7 @@ import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL
 import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { sealModuleLayers, restoreModuleFromSeals, diffModuleLayers, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
-import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { createImplementationRunner } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import {
@@ -40,6 +42,9 @@ import {
   startReviewRun,
 } from '/_102035_/l2/newRelease/helpers/reviewRunStudioWorker.js';
 import {
+  reviewImplementationVisible,
+  moduleHasGeneratedSources,
+  reviewReleaseState,
   actorIdFromKey,
   beginReviewPrimaryAction,
   buildReviewActionPresentation,
@@ -86,6 +91,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private effortRead: ReviewArtifactRead = EMPTY_ARTIFACT;
   @state() private changeEffortRead: ReviewArtifactRead = EMPTY_ARTIFACT;
   @state() private loading = false;
+  @state() private hasRelease = false;
+  @state() private effortCurrent = false;
   @state() private selectedActor = '';
   @state() private selectedId = '';
   @state() private selectedScope: ReviewNodeScope = 'future';
@@ -168,6 +175,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   private async load() {
     const token = ++this.loadToken;
     this.changeEffortRead = EMPTY_ARTIFACT;
+    this.effortCurrent = false;
     this.stopImplementationTimer();
     this.implementationDiff = null;
     this.implementationRestored = false;
@@ -202,10 +210,14 @@ export class NewReleaseReview102035 extends StateLitElement {
       readReviewArtifact(context.project, context.moduleName, 'changeEffort'),
       readReviewPoolBoxes(context.project, context.moduleName),
       runRead,
-      readL4Implementation(context.project, context.moduleName).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
+      (context.data?.changeId ? readL4Implementation(context.project, context.moduleName) : readLatestCompletedL4Implementation(context.project, context.moduleName)).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
     ]);
     if (token !== this.loadToken) return;
-    this.implementation = implementation.value?.changeId === context.data?.changeId ? implementation.value : null;
+    this.hasRelease = moduleHasGeneratedSources(context.project, context.moduleName, Object.values(mls.stor.files).filter(file => !!file));
+    const candidateImplementation = implementation.value ?? (!context.data?.resultCurrent && !context.data?.diffs.some(diff => diff.entries.length)
+      ? await readLatestCompletedL4Implementation(context.project, context.moduleName) : null);
+    if (token !== this.loadToken) return;
+    this.implementation = reviewImplementationVisible(candidateImplementation, context.data) ? candidateImplementation : null;
     if (implementation.error) this.actionError = 'review.implementation.error.load';
     this.menuRead = menuRead;
     this.backendRead = backendRead;
@@ -216,12 +228,21 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.reviewRunLoadError = persistedRun.errorCode;
     await this.loadChannelRun(context, token);
     if (token !== this.loadToken) return;
+    if (!this.effortCurrent && context.version === 'tobe' && context.data?.resultCurrent && context.data.changeId && context.data.revisionId) {
+      const root = `${context.moduleName}/pipeline/changes/${context.data.changeId}/revisions/${context.data.revisionId}/l4`;
+      const effort = await this.readCandidateChangeEffort(context.project, context.moduleName, root);
+      const fresh = effort.read.status === 'ok' && await effortMatchesCurrent(context.project, context.moduleName, effort.read.value);
+      if (token !== this.loadToken) return;
+      this.changeEffortRead = effort.read;
+      this.effortCurrent = fresh;
+      this.implementationHashes = { changeEffort: fresh ? effort.hash : '' };
+    }
     if (!this.isConnected || context.project !== this.project || context.moduleName !== this.moduleName
       || context.version !== this.version || context.data !== this.data) return;
     this.loadedFor = context;
     this.loading = false;
     if (this.implementationPending()) void this.advanceImplementation(token);
-    else if (this.implementationComplete()) void this.loadImplementationDiff(token);
+    else if (this.implementationComplete()) void this.finalizeImplementation(token);
   }
 
   private selectActor(actor: string) {
@@ -501,7 +522,10 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.readCandidateChangeEffort(run.binding.project, run.binding.moduleName, root),
     ]);
     if (token !== this.loadToken) return;
-    this.implementationHashes = { changeEffort: changeEffort.hash };
+    const fresh = changeEffort.read.status === 'ok' && await effortMatchesCurrent(run.binding.project, run.binding.moduleName, changeEffort.read.value);
+    if (token !== this.loadToken) return;
+    this.effortCurrent = fresh;
+    this.implementationHashes = { changeEffort: fresh ? changeEffort.hash : '' };
     this.menuRead = menu;
     this.backendRead = backend;
     this.effortRead = effort;
@@ -536,10 +560,10 @@ export class NewReleaseReview102035 extends StateLitElement {
       if (!stored || stored.status === 'deleted') return { read: { status: 'missing', path: effortPath }, hash: '' };
       let source: string;
       try { source = await readSourceText(effortInfo); }
-      catch { return { read: { status: 'invalid', path: effortPath }, hash: '' }; }
+      catch (cause) { console.error('[newRelease] effort artifact could not be read', { effortPath, cause }); return { read: { status: 'invalid', path: effortPath }, hash: '' }; }
       let value: unknown;
       try { value = JSON.parse(source); }
-      catch { return { read: { status: 'invalid', path: effortPath }, hash: '' }; }
+      catch (cause) { console.error('[newRelease] effort artifact could not be read', { effortPath, cause }); return { read: { status: 'invalid', path: effortPath }, hash: '' }; }
       if (value === null) return { read: { status: 'invalid', path: effortPath }, hash: '' };
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
       return { read: { status: 'ok', path: effortPath, value },
@@ -612,8 +636,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   };
 
   private canImplement(): boolean {
-    return canAcceptImplementation({ project: this.project, moduleName: this.moduleName, data: this.data,
-      runStatus: this.channelRun?.status ?? this.reviewRun?.status ?? null,
+    return this.effortCurrent && canAcceptImplementation({ project: this.project, moduleName: this.moduleName, data: this.data,
+      runStatus: this.channelRun?.status ?? this.reviewRun?.status ?? (this.data?.resultCurrent ? 'ready' : null),
       changeEffort: this.changeEffortRead,
       hashes: this.implementationHashes, implementation: this.implementation });
   }
@@ -637,6 +661,11 @@ export class NewReleaseReview102035 extends StateLitElement {
     let accepted = false;
     let phase: 'seal' | 'promote' | 'accept' | 'restore' = 'seal';
     try {
+      if (!await effortMatchesCurrent(project, moduleName, this.changeEffortRead.value)) {
+        this.effortCurrent = false;
+        this.actionError = 'review.implementation.error.conflict';
+        return;
+      }
       await sealModuleLayers(project, moduleName, baseId);
       phase = 'promote';
       await promoteL4Revision(project, moduleName, changeId, revisionId);
@@ -664,7 +693,10 @@ export class NewReleaseReview102035 extends StateLitElement {
       if (current()) this.actionBusy = false;
     }
     // Execution failures must never roll back a successfully accepted revision.
-    if (accepted && current()) await this.advanceImplementation(token);
+    if (accepted && current()) {
+      await this.advanceImplementation(token);
+      if (current()) await this.finalizeImplementation(token);
+    }
   }
 
   private stopImplementationTimer(): void {
@@ -678,9 +710,8 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private implementationPending(): boolean {
     const record = this.implementation;
-    return !!record && record.changeId === this.data?.changeId && this.version === 'tobe' && !record.phases.some(phase => phase.status === 'failed')
-      && !record.merged.materialize.length
-      && record.merged.runAgents.some((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
+    return !!record && record.changeId === this.data?.changeId && record.revisionId === this.data?.revisionId && this.version === 'tobe' && !record.phases.some(phase => phase.status === 'failed')
+      && implementationCommands(record, this.project, this.moduleName).some((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
   }
 
   private async advanceImplementation(token = this.loadToken, retry?: string): Promise<void> {
@@ -709,7 +740,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         : await this.implementationRunner.runNext(project, moduleName);
       if (!this.implementationContextCurrent(token)) return;
       this.implementation = record.changeId === this.data?.changeId ? record : null;
-      if (this.implementationComplete()) await this.loadImplementationDiff(token);
+      if (this.implementationComplete()) await this.finalizeImplementation(token);
       if (!this.implementationContextCurrent(token)) return;
       // A synchronous completion can leave the next phase absent, with none running.
       if (this.implementationPending()) {
@@ -718,8 +749,8 @@ export class NewReleaseReview102035 extends StateLitElement {
           if (this.implementationContextCurrent(token)) void this.advanceImplementation(token);
         }, POLL_INTERVAL_MS);
       }
-    } catch {
-      if (this.implementationContextCurrent(token)) this.actionError = 'review.implementation.error.run';
+    } catch (error) {
+      if (this.implementationContextCurrent(token)) this.actionError = error instanceof Error ? error.message : 'review.implementation.error.run';
     } finally {
       this.implementationBusy = false;
     }
@@ -727,12 +758,22 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private hasImplementation(): boolean {
     return this.version === 'tobe' && this.isCurrentLoad() && !!this.implementation
-      && this.implementation.changeId === this.data?.changeId;
+      && reviewImplementationVisible(this.implementation, this.data);
   }
 
   private implementationComplete(): boolean {
-    return this.hasImplementation() && !this.implementation!.merged.materialize.length && implementationProgress(this.implementation, this.data?.changeId ?? null)
+    return this.hasImplementation() && implementationProgress(this.implementation, this.implementation?.changeId ?? null, this.project, this.moduleName)
       .every(phase => phase.status === 'concluido');
+  }
+
+  private async finalizeImplementation(token: number): Promise<void> {
+    if (!this.implementationContextCurrent(token) || !this.implementationComplete() || !this.data?.changeId) return;
+    const record = this.implementation!;
+    if (record.changeId !== this.data.changeId || record.revisionId !== this.data.revisionId) return;
+    await this.loadImplementationDiff(token);
+    if (!this.implementationContextCurrent(token)) return;
+    try { await completeTobeImplementation(this.project, this.moduleName, record.changeId, record.revisionId); }
+    catch (error) { if (this.implementationContextCurrent(token)) this.actionError = error instanceof Error ? error.message : 'review.implementation.error.run'; }
   }
 
   private async loadImplementationDiff(token: number): Promise<void> {
@@ -768,7 +809,8 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private renderImplementation(placement: 'top' | 'bottom') {
     if (!this.hasImplementation()) return nothing;
-    const phases = implementationProgress(this.implementation, this.data?.changeId ?? null);
+    if (this.implementationComplete()) return html`<section class="nr-review__run">${this.actionError ? html`<p role="alert">${this.tStoredReviewError(this.actionError)}</p>` : nothing}${this.implementation!.phases.filter(phase => phase.report).map(phase => html`<article><strong>${phase.agent}</strong><pre>${phase.report}</pre></article>`)}</section>`;
+    const phases = implementationProgress(this.implementation, this.implementation?.changeId ?? null, this.project, this.moduleName);
     const materialize = this.implementation!.merged.materialize;
     return html`
       <section class=${`nr-review__run nr-review__implementation is-${placement}`} aria-live=${placement === 'top' ? 'polite' : 'off'}>
@@ -782,11 +824,12 @@ export class NewReleaseReview102035 extends StateLitElement {
           ${phases.map(phase => html`
             <li class=${`is-${phase.status}`}>
               <div class="nr-review__phase-heading">
-                <strong>${this.implementation!.merged.runAgents[Number(phase.name.split(':')[1])]?.agent}</strong>
+                <strong>${implementationCommands(this.implementation!, this.project, this.moduleName)[Number(phase.name.split(':')[1])]?.agent}</strong>
                 <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
                 ${phase.attempt ? html`<small>${this.t('review.implementation.attempt', { attempt: phase.attempt })}</small>` : nothing}
               </div>
-              ${phase.error ? html`<p class="nr-review__implementation-error">${phase.error}</p>` : nothing}
+              ${this.implementation?.phases.find(item => item.name === phase.name)?.report ? html`<pre>${this.implementation.phases.find(item => item.name === phase.name)!.report}</pre>` : nothing}
+              ${phase.error ? html`<p class="nr-review__implementation-error">${this.tStoredReviewError(phase.error)}</p>` : nothing}
               ${phase.previousAttempts?.length ? html`<details>
                 <summary>${this.t('review.implementation.previousAttempts')}</summary>
                 ${phase.previousAttempts.map(previous => html`<p>${this.t('review.implementation.attempt', { attempt: previous.attempt })}: ${previous.error || this.t('review.implementation.status.falhou')}</p>`)}
@@ -861,18 +904,17 @@ export class NewReleaseReview102035 extends StateLitElement {
       && this.implementation?.revisionId === this.data?.revisionId && !!this.implementation;
     const changeEffort = buildChangeEffortView(this.changeEffortRead);
     if (this.version === 'tobe' && current && changeEffort.kind !== 'missing'
-      && this.data?.resultCurrent) {
+      && this.data?.resultCurrent && this.effortCurrent) {
       const reason = changeEffort.kind !== 'ready' ? 'review.effort.invalid'
         : changeEffort.status === 'blocked' ? 'review.effort.status.blocked'
-          : changeEffort.merged.regenerateDefs.length ? 'review.implementation.error.regenerateUnsupported'
-            : 'review.implementation.body';
+          : 'review.implementation.body';
       return { ...action, kind: 'continue',
         labelKey: this.actionBusy ? 'review.actionBusy' : accepted ? 'review.implementation.accepted' : 'review.implementation.accept',
         descriptionKey: accepted ? 'review.implementation.acceptedBody' : reason,
         availabilityKey: '', disabled: this.actionBusy || this.loading || accepted || !getUserId() || !this.canImplement(),
       };
     }
-    if (this.version === 'tobe' && current && (accepted || action.kind === 'continue')) {
+    if (this.version === 'tobe' && current && accepted) {
       return { ...action, kind: 'continue',
         labelKey: this.actionBusy ? 'review.actionBusy' : accepted ? 'review.implementation.accepted' : 'review.implementation.accept',
         descriptionKey: accepted ? 'review.implementation.acceptedBody' : 'review.implementation.body',
@@ -880,6 +922,11 @@ export class NewReleaseReview102035 extends StateLitElement {
         disabled: this.actionBusy || this.loading || accepted || !getUserId() || !this.canImplement(),
       };
     }
+    if (this.version === 'tobe' && current && !this.effortCurrent && !active && !retry) return {
+      ...action, kind: 'calculate', labelKey: this.actionBusy ? 'review.actionBusy' : 'review.calculate',
+      descriptionKey: 'review.actionCalculateBody', availabilityKey: '',
+      disabled: this.actionBusy || this.loading || !getUserId() || !this.data?.sealedRevision,
+    };
     return action;
   }
 
@@ -1075,13 +1122,13 @@ export class NewReleaseReview102035 extends StateLitElement {
       <header><h3>${this.t('review.effort.title')}</h3>
         ${view.kind === 'invalid' ? html`<p class="nr-review__effort-abend" role="alert">${this.t('review.effort.invalid')}</p>` : html`
           <p class=${view.status === 'blocked' ? 'nr-review__effort-abend' : ''}>${this.t(`review.effort.status.${view.status}`)}</p>
-          <p>${this.t('review.effort.untouched', { count: view.untouched!.count })}</p>
+          <p>${this.t('review.effort.untouched', { count: view.untouched!.count })}</p><p>${this.t('review.effort.costUnavailable')}</p>
         `}
       </header>
       ${view.items.map(({ item, answers }) => html`<details class="nr-review__effort-item">
         <summary><strong>${item.kind} · ${item.op} · ${item.entity}</strong><code>${item.id}</code></summary>
         <div>${answers.map(answer => html`<article class="nr-review__effort-master">
-          <h4>${this.t('review.effort.master', { project: answer.master.project, kind: answer.master.kind, device: answer.master.device })}</h4>
+          <h4>${this.t('review.effort.master', { project: answer.master.project, kind: answer.master.kind, device: answer.master.device })}</h4><p>${this.t('review.effort.contract')}: ${answer.contract}</p>
           ${answer.abend ? html`<p class="nr-review__effort-abend"><strong>${this.t('review.effort.abend')}</strong> ${answer.abend.reason}</p>` : nothing}
           ${this.renderChangeEffortUnits('review.effort.regenerateDefs', answer.regenerateDefs)}
           ${this.renderChangeEffortUnits('review.effort.materialize', answer.materialize)}
@@ -1226,6 +1273,18 @@ export class NewReleaseReview102035 extends StateLitElement {
     const action = this.actionPresentation(view, current);
     const actions = buildReviewActionPlacements(action, this.version);
     const resultVisible = reviewResultVisible({ version: this.version, loading: this.loading, current, resultCurrent: this.data?.resultCurrent === true });
+    const lifecycle = reviewReleaseState({ hasRelease: this.hasRelease,
+      changed: !!this.data?.diffs.some(diff => diff.entries.length),
+      effortCurrent: this.data?.resultCurrent === true && changeEffort.kind === 'ready' && this.effortCurrent,
+      implementationComplete: this.implementationComplete(),
+    });
+    if (current && !this.loading && lifecycle !== 'new') return html`<section class="nr-review">
+      <header class="nr-review__hero"><h2>${this.t(`review.release.${lifecycle}`)}</h2></header>
+      ${this.hasImplementation() ? this.renderImplementation('top') : lifecycle !== 'unchanged' ? actions.map(block => this.renderPrimaryAction(block)) : nothing}
+      ${this.renderReviewRun()}
+      ${lifecycle === 'calculate' ? html`<ul>${this.data?.diffs.filter(diff => diff.entries.length).map(diff => html`<li><code>${diff.path}</code></li>`)}</ul>` : nothing}
+      ${lifecycle === 'apply' ? this.renderChangeEffort(changeEffort) : nothing}
+    </section>`;
     return html`
       <section class="nr-review">
         ${resultVisible ? html`<header class="nr-review__hero">

@@ -1,9 +1,11 @@
+import { completeTobeImplementation } from '../tobe.js';
+import { readActiveL4Change } from '../../solution/candidate/moduleRevision.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createImplementationRunner } from './implementationRunner.js';
-import { acceptL4Implementation, readL4Implementation, recordL4ImplementationPhase } from '../../solution/candidate/moduleImplementation.js';
+import { acceptL4Implementation, readL4Implementation, readLatestCompletedL4Implementation, recordL4ImplementationPhase } from '../../solution/candidate/moduleImplementation.js';
 import type { Ns5FileInfo } from '../../solution/fs.js';
 import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { mergeChangeEffort } from '../../solution/gates/changeEffort/gate.js';
@@ -34,7 +36,7 @@ function fixture(work: 'materialize' | 'both' | 'agents' | 'twoAgents' | 'unknow
     first.add(info); contents.set(key(info), JSON.stringify(value));
   };
   json('pipeline/changes', 'active', { changeId: 'change1' });
-  json('pipeline/changes/change1', 'change', { project, moduleName, baseId: 'base1', changeId: 'change1', activeRevisionId: 'rev1', resultRevisionId: 'rev1' });
+  json('pipeline/changes/change1', 'change', { project, moduleName, baseId: 'base1', changeId: 'change1', activeRevisionId: 'rev1', resultRevisionId: 'rev1', promotedRevisionId: 'rev1' });
   const effort = JSON.parse(readFileSync(new URL('../../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
   effort.module = moduleName;
   const command = '@@agentAddLanguage ' + JSON.stringify([{ languages: [{ code: 'pt-BR', name: 'pt-BR' }], projectId: project, moduleName }]);
@@ -78,23 +80,24 @@ function fixture(work: 'materialize' | 'both' | 'agents' | 'twoAgents' | 'unknow
       ctx.task = task(String(dispatched.length));
     },
     task: async (user: string, id: string, message: string) => { reads.push([user, id, message]); return task(id); },
-    message: async () => null,
+    message: async () => ({ taskResults: ['@@agentMaterializeL1 {\"scope\":\"fixture\"}', command] } as any),
   };
   return { accept, dependencies, dispatched, reads, makeTab, first, task, command,
     status: (value: TaskData['status']) => { status = value; }, beforeExecute: (value: () => Promise<void>) => { beforeExecute = value; },
     restore: () => { (globalThis as any).mls = previous; } };
 }
 
-test('materialize is recorded and blocks every dispatch', async () => {
+test('mr39 s10: structural effort executes L2 then L1 then returned commands', async () => {
   for (const work of ['materialize', 'both'] as const) {
     const f = fixture(work);
     try {
       const accepted = await f.accept();
       assert.ok(accepted.merged.materialize.length);
       assert.equal(accepted.merged.runAgents.length, work === 'both' ? 1 : 0);
-      const result = await createImplementationRunner(f.dependencies).runNext(project, moduleName);
-      assert.deepEqual(result.phases, []);
-      assert.deepEqual(f.dispatched, []);
+      const runner = createImplementationRunner(f.dependencies);
+      for (let index = 0; index < 6; index++) await runner.runNext(project, moduleName);
+      assert.deepEqual(f.dispatched.slice(0, 5), ['@@agentNewReleaseL2 fixture', '@@agentNewReleaseL1 fixture', '@@agentDefsL1 fixture /run', '@@agentNewReleaseL1 fixture /compare', '@@agentMaterializeL1 {\"scope\":\"fixture\"}']);
+      assert.equal(f.dispatched.length, work === 'both' ? 6 : 5);
     } finally { f.restore(); }
   }
 });
@@ -253,5 +256,69 @@ test('done captures changed defs and running or done cannot be retried', async (
       { path: 'web/sample.defs.ts', status: 'added', level: 2 },
     ]);
     await assert.rejects(runner.retryPhase(project, moduleName, 'runAgents:0'), /implementation.retry_not_allowed/);
+  } finally { f.restore(); }
+});
+
+test('mr39 s10: failure in each structural phase stops every later dispatch', async () => {
+  for (let failed = 0; failed < 5; failed++) {
+    const f = fixture('both');
+    try {
+      await f.accept();
+      const runner = createImplementationRunner(f.dependencies);
+      for (let index = 0; index < failed; index++) await runner.runNext(project, moduleName);
+      f.status('failed');
+      await runner.runNext(project, moduleName);
+      await runner.runNext(project, moduleName);
+      assert.equal(f.dispatched.length, failed + 1);
+      assert.equal((await readL4Implementation(project, moduleName))?.phases.at(-1)?.error, 'reason');
+    } finally { f.restore(); }
+  }
+});
+
+for (const failed of [1, 3]) test(`mr39 s10: done task with refusal at L1 phase ${failed} stops the chain`, async () => {
+  const f = fixture('both');
+  try {
+    await f.accept();
+    const runner = createImplementationRunner(f.dependencies);
+    for (let index = 0; index < failed; index++) await runner.runNext(project, moduleName);
+    f.dependencies.message = async () => ({ taskResults: [failed === 1 ? 'refused: no matching effort' : 'failed: source outside effort'] } as any);
+    const observing = createImplementationRunner(f.dependencies);
+    const record = await observing.runNext(project, moduleName);
+    assert.equal(record.phases.at(-1)?.status, 'failed');
+    assert.match(record.phases.at(-1)?.error || '', /^(refused|failed):/u);
+    await observing.runNext(project, moduleName);
+    assert.equal(f.dispatched.length, failed + 1);
+  } finally { f.restore(); }
+});
+test('mr39 s10: only a completed implementation retires the active change and retains its fechos', async () => {
+  const f = fixture('both');
+  try {
+    await f.accept();
+    await assert.rejects(completeTobeImplementation(project, moduleName, 'change1', 'rev1'), /implementation.not_complete/u);
+    assert.ok(await readActiveL4Change(project, moduleName));
+    const runner = createImplementationRunner(f.dependencies);
+    for (let index = 0; index < 6; index++) await runner.runNext(project, moduleName);
+    await assert.rejects(completeTobeImplementation(project, moduleName, 'change1', 'other'), /l4.implementation_conflict/u);
+    await completeTobeImplementation(project, moduleName, 'change1', 'rev1');
+    assert.equal(await readActiveL4Change(project, moduleName), null);
+    const history = await readLatestCompletedL4Implementation(project, moduleName);
+    assert.equal(history?.phases.length, 6);
+    assert.ok(history?.phases[0].report);
+  } finally { f.restore(); }
+});
+
+test('mr39 s10: a missing returned command is persisted and cannot be dispatched by retry', async () => {
+  const f = fixture('both');
+  try {
+    await f.accept();
+    const runner = createImplementationRunner(f.dependencies);
+    for (let index = 0; index < 4; index++) await runner.runNext(project, moduleName);
+    const stored = await readL4Implementation(project, moduleName);
+    await recordL4ImplementationPhase(project, moduleName, { ...stored!.phases[3], report: 'done: comparison completed without a command' });
+    const record = await runner.runNext(project, moduleName);
+    assert.equal(record.phases[4].status, 'failed');
+    assert.equal(record.phases[4].error, 'review.implementation.error.missingCommand');
+    assert.equal(f.dispatched.length, 4);
+    await assert.rejects(runner.retryPhase(project, moduleName, 'runAgents:4'), /implementation.retry_not_allowed/u);
   } finally { f.restore(); }
 });

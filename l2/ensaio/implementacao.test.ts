@@ -1,3 +1,6 @@
+import { completeTobeImplementation, readNs5Overlay } from '../newRelease/tobe.js';
+import { readLatestCompletedL4Implementation } from '../solution/candidate/moduleImplementation.js';
+import { reviewImplementationVisible } from '../newRelease/widgets/reviewModel.js';
 /// <mls fileReference="_102035_/l2/ensaio/implementacao.test.ts" enhancement="_blank" />
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,29 +92,48 @@ async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L
   }));
 }
 
-test('accepted rule keeps materialization list and dispatches no phase', async () => {
+test('mr39 s10: accepted rule keeps materialization list and runs the ordered chain', async () => {
   await acceptedScenario('rule', async (accepted, changeEffort) => {
     const golden = JSON.parse(readFileSync(new URL('../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
     assert.deepEqual(accepted.merged.materialize, golden.merged.materialize);
     assert.deepEqual(accepted.merged.runAgents, []);
-    const host = createSimulatedDefsHost();
-    const record = await createImplementationRunner(host.dependencies).runNext(PROJECT, MODULE);
-    assert.deepEqual(record.phases, []);
-    assert.deepEqual(host.dispatched, []);
-    captureQa('implementation-materialize', record, changeEffort);
+    const host = createSimulatedDefsHost('done', true);
+    captureQa('implementation-materialize', accepted, changeEffort);
+    const runner = createImplementationRunner(host.dependencies);
+    let record = accepted;
+    for (let index = 0; index < 5; index++) record = await runner.runNext(PROJECT, MODULE);
+    assert.deepEqual(record.phases.map(phase => phase.status), Array(5).fill('done'));
+    assert.deepEqual(host.dispatched, [`@@agentNewReleaseL2 ${MODULE}`, `@@agentNewReleaseL1 ${MODULE}`, `@@agentDefsL1 ${MODULE} /run`, `@@agentNewReleaseL1 ${MODULE} /compare`, '@@agentMaterializeL1 ' + JSON.stringify({ scope: MODULE })]);
     assert.deepEqual(await readL4Implementation(PROJECT, MODULE), record);
+    const events = mls.events;
+    const dispatch = window.dispatchEvent;
+    window.dispatchEvent = () => true;
+    mls.events = { fireFileAction: () => {} } as any;
+    try {
+      await completeTobeImplementation(PROJECT, MODULE, record.changeId, record.revisionId);
+      const reloaded = await readNs5Overlay(PROJECT, MODULE, 'tobe');
+      assert.notEqual(reloaded.changeId, record.changeId);
+      assert.equal(reloaded.diffs.some(diff => diff.entries.length), false);
+      const history = await readLatestCompletedL4Implementation(PROJECT, MODULE);
+      assert.equal(history?.changeId, record.changeId);
+      assert.equal(reviewImplementationVisible(history, { changeId: reloaded.changeId, revisionId: reloaded.revisionId, diffs: reloaded.diffs, resultCurrent: false }), true);
+      await assert.rejects(completeTobeImplementation(PROJECT, MODULE, record.changeId, record.revisionId), /l4.implementation_conflict/u);
+      assert.equal(host.dispatched.length, 5);
+    } finally { mls.events = events; window.dispatchEvent = dispatch; }
   });
 });
 
-test('accepted materialization and language instruction wait without dispatch', async () => {
+test('mr39 s10: materialization precedes the returned language command', async () => {
   await acceptedScenario('both', async (accepted, changeEffort) => {
     assert.equal(accepted.merged.materialize.length, 4);
     assert.deepEqual(accepted.merged.runAgents, [{ agent: 'agentAddLanguage', command: languageCommand }]);
-    const host = createSimulatedDefsHost();
-    const record = await createImplementationRunner(host.dependencies).runNext(PROJECT, MODULE);
-    assert.deepEqual(record.phases, []);
-    assert.deepEqual(host.dispatched, []);
-    captureQa('implementation-materialize-agent', record, changeEffort);
+    const host = createSimulatedDefsHost('done', true);
+    captureQa('implementation-materialize-agent', accepted, changeEffort);
+    const runner = createImplementationRunner(host.dependencies);
+    for (let index = 0; index < 6; index++) await runner.runNext(PROJECT, MODULE);
+    assert.equal(host.dispatched.length, 6);
+    assert.equal(host.dispatched[4], '@@agentMaterializeL1 ' + JSON.stringify({ scope: MODULE }));
+    assert.equal(host.dispatched[5], languageCommand);
   });
 });
 

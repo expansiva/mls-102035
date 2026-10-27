@@ -27,7 +27,7 @@ import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { L4SealedCandidateError, markL4Result, readActiveL4Change, readChangeRequest, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { historicalReleaseId } from './helpers/context.js';
 import { readNs5Module } from './helpers/l4Reader.js';
-import { ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
+import { bindStructuredEditsRequest, ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
 
 test('v3 ontology index resolves descriptor rows to entity file ids without changing v2 ids', () => {
   const v3 = {
@@ -751,4 +751,38 @@ test('save with incomplete validation coverage writes nothing', async () => {
   });
   assert.deepEqual([...fixture.contents], before);
   assert.deepEqual(Object.keys(fixture.files), keys);
+});
+
+
+test('structured values without request bind a valid review preflight without changing sourcePrompt', async () => {
+  const project = 102047, moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const saved = await saveTobeArtifact(project, moduleName, 'module.defs.ts', { ...fixture.source.module, title: 'Edited values' },
+    { expectedRevisionId: null, author: 'tester' });
+  const bound = await bindStructuredEditsRequest(project, moduleName, saved.changeId!, saved.revisionId!, 'Review values already edited.');
+  const overlay = await readNs5Overlay(project, moduleName, 'tobe');
+  const { canStartReviewRun } = await import('./widgets/reviewModel.js');
+  assert.equal(canStartReviewRun({ project, moduleName, changeId: bound.changeId, revisionId: bound.revisionId,
+    request: bound.text, userId: 'tester', sealedRevision: overlay.sealedRevision, hasRun: false }), true);
+  assert.equal(overlay.sources.module.value?.sourcePrompt, fixture.source.module.sourcePrompt);
+  const again = await bindStructuredEditsRequest(project, moduleName, bound.changeId, bound.revisionId, 'Do not replace');
+  assert.deepEqual(again, bound);
+});
+
+test('accepted application rejects structured saves and requests without writing; cleanup releases the next cycle', async () => {
+  const project = 102047, moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const first = await saveChangeRequest(project, moduleName, 'First cycle', null, null);
+  const info = { project, level: 4 as const, folder: `${moduleName}/pipeline/changes/${first.changeId}`, shortName: 'implementation', extension: '.json' };
+  const { writeJson } = await import('/_102035_/l2/solution/fs.js');
+  await writeJson(info, { changeId: first.changeId, revisionId: first.revisionId, acceptedAt: 'now', phases: [] });
+  const before = [...fixture.contents.entries()];
+  await assert.rejects(saveTobeArtifact(project, moduleName, 'module.defs.ts', fixture.source.module,
+    { expectedRevisionId: first.revisionId, expectedChangeId: first.changeId }), /application_active/);
+  await assert.rejects(saveChangeRequest(project, moduleName, 'Forbidden', first.changeId, first.revisionId), /application_active/);
+  assert.deepEqual([...fixture.contents.entries()], before);
+  const { deactivateL4Change } = await import('/_102035_/l2/solution/candidate/moduleRevision.js');
+  await deactivateL4Change(project, moduleName);
+  const next = await saveChangeRequest(project, moduleName, 'Second cycle', null, null);
+  assert.notEqual(next.changeId, first.changeId);
 });

@@ -180,7 +180,7 @@ test('mr_28 s1 rejects missing, invalid, blocked and regeneration', async () => 
     regenerate.merged.regenerateDefs = [{ project: '102020', ...unit }];
     regenerate.merged.materialize = regenerate.merged.materialize.filter((item: { project: string; id: string }) => item.project !== '102020' || item.id !== unit.id);
     fixture.contents.set(key, JSON.stringify(regenerate));
-    await assert.rejects(acceptL4Implementation(project, moduleName, { ...input, hashes: { changeEffort: hash(JSON.stringify(regenerate)) } }), /l4.implementation_regenerate_unsupported/);
-    assert.equal(fixture.writes(), 0);
+    assert.ok((await acceptL4Implementation(project, moduleName, { ...input, hashes: { changeEffort: hash(JSON.stringify(regenerate)) } })).merged.regenerateDefs.length);
+    assert.equal(fixture.writes(), 2);
   } finally { fixture.restore(); }
 });

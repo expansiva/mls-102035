@@ -1,4 +1,5 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
+import { summarizeNewReleaseRequest, runNewReleaseRequest } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 
 import { html, nothing, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -20,8 +21,8 @@ import {
   observeNewReleaseLanguage,
   type NewReleaseTranslate,
 } from '/_102035_/l2/newRelease/helpers/i18n.js';
-import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
-import { ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
+import { sealL4Revision, readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { bindStructuredEditsRequest, ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import { discardTobe, saveTobeArtifact, NewReleaseSaveValidationError } from '/_102035_/l2/newRelease/tobe.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
 import { type NewReleaseValidationIssue, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
@@ -60,6 +61,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private savedRequest = '';
   @state() private requestBusy = false;
   @state() private requestError = '';
+  @state() private requestResult = '';
+  @state() private requestNeedsRetry = false;
 
   @state() private presentation: 'graph' | 'text' = 'graph';
   @state() private textSearch = '';
@@ -87,6 +90,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (error instanceof NewReleaseSaveValidationError) return this.t(`common.validation.${error.reason}`) + (error.reason === 'invalid' ? ` ${error.issues.map(issue => issue.message).join(' · ')}` : '');
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('revision conflict') || message.includes('change conflict')) return this.t('request.conflict');
+    if (message === 'new-release.application_active') return this.t('request.applicationActive');
+    if (message === 'new-release.request_empty') return this.t('request.empty');
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
     if (message.includes('Historical inventory differs')) return this.t('request.historyIncompatible');
     if (message.includes('Discard the active candidate')) return this.t('request.activeCandidate');
@@ -379,6 +384,18 @@ export class NewReleaseIndex102035 extends StateLitElement {
           expectedChangeId: this.changeByModule.has(moduleKey) ? this.changeByModule.get(moduleKey)! : initialChange,
           expectedRevisionId: this.revisionByModule.has(moduleKey) ? this.revisionByModule.get(moduleKey)! : initialRevision,
         });
+        if (manifest.changeId && manifest.revisionId) {
+          const bound = await bindStructuredEditsRequest(project, moduleName, manifest.changeId, manifest.revisionId,
+            this.t('request.structuredEdits'));
+          manifest.revisionId = bound.revisionId;
+          if (this.project === project && this.moduleName === moduleName) {
+            const draft = this.requestText;
+            const dirty = draft !== this.savedRequest;
+            this.savedRequest = bound.text;
+            if (!dirty) this.requestText = bound.text;
+            else this.requestDrafts.remember(ChangeRequestDrafts.key(project, moduleName, bound.changeId), draft, bound.text);
+          }
+        }
         detail.complete?.();
         if (initialChange === null && manifest.changeId) {
           this.requestDrafts.move(
@@ -405,13 +422,16 @@ export class NewReleaseIndex102035 extends StateLitElement {
   };
 
   private async saveRequest() {
-    if (this.requestBusy || this.changing || this.requestText === this.savedRequest) return;
+    if (this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)) return;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
-    const text = this.requestText;
+    const text = this.requestText.trim();
+    if (!text) { this.requestError = this.t('request.empty'); return; }
     const expectedChange = this.expectedChangeId;
     const expectedRevision = this.expectedRevisionId;
     this.requestBusy = true;
     this.requestError = '';
+    this.requestResult = '';
+    this.requestNeedsRetry = false;
     try {
       const saved = await saveChangeRequest(context.project, context.moduleName, text, expectedChange, expectedRevision);
       if (!contextStillCurrent(context, this)) return;
@@ -420,12 +440,26 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.changeByModule.set(`${context.project}/${context.moduleName}`, saved.changeId);
       this.revisionByModule.set(`${context.project}/${context.moduleName}`, saved.revisionId);
       this.savedRequest = text;
+      const outcome = await runNewReleaseRequest(context.moduleName, text, task => {
+        if (contextStillCurrent(context, this)) this.requestResult = this.t('request.running');
+      });
+      if (!contextStillCurrent(context, this)) return;
+      const summary = summarizeNewReleaseRequest(outcome.results, outcome.task.status);
+      this.requestResult = this.t(summary.key, summary.values);
+      this.requestNeedsRetry = summary.retry;
+      if (outcome.task.status === 'failed') throw new Error(this.requestResult);
+      const written = outcome.results.some(result => { try { return JSON.parse(result).written === true; } catch { return false; } });
+      if (written) {
+        const revision = await sealL4Revision(context.project, context.moduleName, saved.revisionId, text);
+        this.expectedRevisionId = revision.revisionId;
+        this.revisionByModule.set(`${context.project}/${context.moduleName}`, revision.revisionId);
+      }
       this.requestDrafts.forget(this.requestKey);
       this.version = 'tobe';
       window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
       await this.loadModule();
     } catch (error) {
-      if (contextStillCurrent(context, this)) this.requestError = this.revisionError(error);
+      if (contextStillCurrent(context, this)) { this.requestNeedsRetry = true; this.requestError = this.revisionError(error); }
     } finally {
       if (this.project === context.project && this.moduleName === context.moduleName) this.requestBusy = false;
     }
@@ -752,11 +786,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
+          ${this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
           ${this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
           <div class="nr-index__request-actions">
-            <button type="button" ?disabled=${this.requestBusy || this.changing || this.requestText === this.savedRequest} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
-            <button type="button" disabled title=${this.t('request.calculateUnavailable')}>${this.t('request.calculate')}</button>
-            <small>${this.t('request.calculateUnavailable')}</small>
+            <button type="button" ?disabled=${this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
           </div>
         </div>
       </details>

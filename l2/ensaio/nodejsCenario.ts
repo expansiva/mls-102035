@@ -26,7 +26,7 @@ export const PROJECT = 102047;
 export const MODULE = 'controleEstoque';
 
 /** Simulated language agent; tasks survive runner recreation. */
-export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' = 'done') {
+export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' = 'done', structural = false) {
   const dispatched: string[] = [];
   const tasks = new Map<string, TaskData>();
   const pending = new Map<string, () => Promise<void>>();
@@ -40,8 +40,14 @@ export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' =
     context: (threadId, senderId, content) => ({ isTest: true, task: undefined,
       message: { threadId, senderId, content, createAt: `message-${++sequence}`, orderAt: '' } }),
     execute: async (name, context) => {
-      assert.equal(name, expected.agent);
-      assert.equal(context.message.content, expected.command);
+      const allowed = [expected, ...(structural ? [
+        { agent: 'agentNewReleaseL2', command: `@@agentNewReleaseL2 ${MODULE}` },
+        { agent: 'agentNewReleaseL1', command: `@@agentNewReleaseL1 ${MODULE}` },
+        { agent: 'agentDefsL1', command: `@@agentDefsL1 ${MODULE} /run` },
+        { agent: 'agentNewReleaseL1', command: `@@agentNewReleaseL1 ${MODULE} /compare` },
+        { agent: 'agentMaterializeL1', command: '@@agentMaterializeL1 ' + JSON.stringify({ scope: MODULE }) },
+      ] : [])];
+      assert.ok(allowed.some(ref => ref.agent === name && ref.command === context.message.content));
       dispatched.push(context.message.content);
       const id = `defs-${dispatched.length}`;
       const status = outcome;
@@ -59,7 +65,7 @@ export function createSimulatedDefsHost(outcome: 'done' | 'failed' | 'running' =
       assert.equal(messageId, task.messageid_created);
       return structuredClone(task);
     },
-    message: async () => null,
+    message: async () => structural ? { taskResults: ['@@agentMaterializeL1 ' + JSON.stringify({ scope: MODULE }), command] } as any : null,
   };
   return { dependencies, dispatched, command, async complete(id: string) {
     const write = pending.get(id);

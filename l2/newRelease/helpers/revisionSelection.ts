@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/revisionSelection.ts" enhancement="_blank" />
 
+import { readL4Implementation } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { readJson, readSourceText, writeSourceText } from '/_102035_/l2/solution/fs.js';
 import { historicalReleaseId, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import {
@@ -8,6 +9,7 @@ import {
   originalL4FileInfo,
   prepareL4Change,
   readActiveL4Change,
+  readChangeRequest,
   readL4Release,
   sealL4Revision,
   type L4ReleaseCatalog,
@@ -82,6 +84,21 @@ export async function listReleaseChoices(project: number, moduleName: string): P
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.baseId.localeCompare(b.baseId));
 }
 
+/** An accepted implementation owns the active change until its successful cleanup. */
+export async function assertNewReleaseEditable(project: number, moduleName: string): Promise<void> {
+  const implementation = await readL4Implementation(project, moduleName);
+  if (implementation) throw new Error('new-release.application_active');
+}
+
+/** Bind values already edited in the UI; never ask the prompt agent to repeat them. */
+export async function bindStructuredEditsRequest(project: number, moduleName: string,
+  changeId: string, revisionId: string, description: string): Promise<{ changeId: string; revisionId: string; text: string }> {
+  const request = await readChangeRequest(project, moduleName);
+  if (request?.text.trim()) return { changeId, revisionId, text: request.text };
+  const saved = await saveChangeRequest(project, moduleName, description, changeId, revisionId);
+  return { ...saved, text: description };
+}
+
 export async function saveChangeRequest(
   project: number,
   moduleName: string,
@@ -89,6 +106,7 @@ export async function saveChangeRequest(
   expectedChangeId: string | null,
   expectedRevisionId: string | null,
 ): Promise<{ changeId: string; revisionId: string }> {
+  await assertNewReleaseEditable(project, moduleName);
   const legacy = await readJson<Ns5TobeManifest>({ project, level: 4, folder: `${moduleName}/tobe/plan`, shortName: 'tobe', extension: '.json' });
   const prepared = await prepareL4Change(project, moduleName, legacy);
   if ((prepared.created && expectedChangeId !== null) || (!prepared.created && prepared.change.changeId !== expectedChangeId)) {

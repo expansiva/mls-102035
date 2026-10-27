@@ -21,6 +21,7 @@ export interface L4ImplementationPhase {
   startedAt: string;
   endedAt?: string;
   error?: string;
+  report?: string;
 }
 
 export function implementationPhaseCommand(ref: EffortAgentRef, project: number, moduleName: string): EffortAgentRef {
@@ -37,6 +38,22 @@ export function implementationPhaseCommand(ref: EffortAgentRef, project: number,
       && Object.keys(language).sort().join(',') === 'code,name'
       && typeof language.code === 'string' && typeof language.name === 'string')) throw new Error('implementation.invalid_command');
   return ref;
+}
+
+export interface MaterializeL1Request { scope: string }
+
+/** Ordered, persisted implementation phases derived only from accepted effort. */
+export function implementationCommands(record: Pick<L4ImplementationRecord, 'merged'>, project: number, moduleName: string): EffortAgentRef[] {
+  const structural = record.merged.create.length || record.merged.regenerateDefs.length || record.merged.remove.length || record.merged.materialize.length;
+  const materialize: MaterializeL1Request = { scope: moduleName };
+  const commands: EffortAgentRef[] = structural ? [
+    { agent: 'agentNewReleaseL2', command: `@@agentNewReleaseL2 ${moduleName}` },
+    { agent: 'agentNewReleaseL1', command: `@@agentNewReleaseL1 ${moduleName}` },
+    { agent: 'agentDefsL1', command: `@@agentDefsL1 ${moduleName} /run` },
+    { agent: 'agentNewReleaseL1', command: `@@agentNewReleaseL1 ${moduleName} /compare` },
+    { agent: 'agentMaterializeL1', command: '@@agentMaterializeL1 ' + JSON.stringify(materialize) },
+  ] : [];
+  return [...commands, ...record.merged.runAgents];
 }
 
 export interface L4ImplementationHashes {
@@ -73,9 +90,9 @@ export async function withL4ImplementationWriter<T>(project: number, moduleName:
     return work(record, async phase => {
       const index = Number(phase.name.slice('runAgents:'.length));
       if (!phase.name.startsWith('runAgents:') || !Number.isSafeInteger(index) || index < 0 || `runAgents:${index}` !== phase.name) throw new Error('implementation.invalid_phase');
-      const ref = record.merged.runAgents[index];
-      if (!ref || record.merged.materialize.length) throw new Error('implementation.invalid_phase');
-      const expected = implementationPhaseCommand(ref, project, moduleName);
+      const ref = implementationCommands(record, project, moduleName)[index];
+      if (!ref) throw new Error('implementation.invalid_phase');
+      const expected = ref.agent === 'agentAddLanguage' ? implementationPhaseCommand(ref, project, moduleName) : ref;
       if (phase.agent !== expected.agent || phase.command !== expected.command) throw new Error('implementation.invalid_command');
       const phaseIndex = record.phases.findIndex(item => item.name === phase.name);
       if (phaseIndex < 0) record.phases.push({ ...phase });
@@ -120,7 +137,6 @@ export async function acceptL4Implementation(
     const checked = validateChangeEffort(value);
     if (!checked.ok || checked.file.module !== moduleName) throw new Error('l4.implementation_not_ready');
     if (checked.file.status === 'blocked') throw new Error('l4.implementation_blocked');
-    if (checked.file.merged.regenerateDefs.length) throw new Error('l4.implementation_regenerate_unsupported');
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
     const hash = `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
     if (input.hashes.changeEffort !== hash) throw new Error('l4.implementation_conflict');
@@ -146,4 +162,14 @@ export async function acceptL4Implementation(
     await writeJson(info, record);
     return record;
   });
+}
+
+export async function readLatestCompletedL4Implementation(project: number, moduleName: string): Promise<L4ImplementationRecord | null> {
+  const records = await Promise.all(Object.values(mls.stor.files).filter(file => file && file.project === project && file.level === 4
+    && file.folder.startsWith(`${moduleName}/pipeline/changes/`) && file.shortName === 'implementation'
+    && file.extension === '.json' && file.status !== 'deleted').map(file => readJson<L4ImplementationRecord>(file)));
+  return records.filter((record): record is L4ImplementationRecord => !!record
+    && record.schemaVersion === L4_IMPLEMENTATION_SCHEMA
+    && implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done')))
+    .sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
 }

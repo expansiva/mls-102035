@@ -1,4 +1,5 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/reviewModel.ts" enhancement="_blank" />
+import { implementationCommands } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 
 import type { MenuReadStatus } from '/_102035_/l2/newRelease/helpers/menuReader.js';
 import type { ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
@@ -164,20 +165,22 @@ export interface ImplementationProgressPhase {
 export function implementationProgress(
   record: L4ImplementationRecord | null,
   currentChangeId: string | null,
+  project = 0,
+  moduleName = '',
 ): ImplementationProgressPhase[] {
   const current = currentChangeId && record?.changeId === currentChangeId ? record : null;
   const phases = current?.phases ?? [];
-  return (current?.merged.runAgents ?? []).map((_, index) => {
+  return (current ? implementationCommands(current, project, moduleName) : []).map((_, index) => {
     const name = `runAgents:${index}`;
     const phase = phases.find(item => item.name === name);
-    if (!phase) return { name, status: current?.merged.materialize.length ? 'depoisDaMaterializacao' : 'aguardando', podeTentarDeNovo: false };
+    if (!phase) return { name, status: 'aguardando', podeTentarDeNovo: false };
     return {
       name,
       status: phase.status === 'running' ? 'executando' : phase.status === 'done' ? 'concluido' : 'falhou',
       attempt: phase.attempt,
       ...(phase.status === 'done' ? { changedDefs: phase.changedDefs } : {}),
       ...(phase.status === 'failed' ? { error: phase.error, previousAttempts: phase.previousAttempts } : {}),
-      podeTentarDeNovo: phase.status === 'failed' && phase.attempt < 2,
+      podeTentarDeNovo: phase.status === 'failed' && phase.attempt < 2 && phase.error !== 'review.implementation.error.missingCommand',
     };
   });
 }
@@ -190,8 +193,7 @@ export function canAcceptImplementation(input: ReviewImplementationInput): boole
   const path = `l4/${input.moduleName}/pipeline/changes/${data.changeId}/revisions/${data.revisionId}/l4/pool/l4/changeEffort.json`;
   if (input.changeEffort.status !== 'ok' || input.changeEffort.path !== path || !hashes.changeEffort) return false;
   const checked = validateChangeEffort(input.changeEffort.value);
-  if (!checked.ok || checked.file.module !== input.moduleName || checked.file.status !== 'simple'
-    || checked.file.merged.regenerateDefs.length > 0) return false;
+  if (!checked.ok || checked.file.module !== input.moduleName || checked.file.status === 'blocked') return false;
   if (implementation && (implementation.changeId !== data.changeId
     || implementation.revisionId !== data.revisionId
     || implementation.hashes.changeEffort !== hashes.changeEffort)) return false;
@@ -598,4 +600,28 @@ export function buildReviewView(input: ReviewInput): ReviewView {
     showContinue: true,
     showCalculate: false,
   };
+}
+
+export type ReviewReleaseState = 'new' | 'unchanged' | 'calculate' | 'apply';
+export function reviewReleaseState(input: { hasRelease: boolean; changed: boolean; effortCurrent: boolean; implementationComplete: boolean }): ReviewReleaseState {
+  if (input.implementationComplete) return 'unchanged';
+  if (!input.hasRelease) return 'new';
+  if (!input.changed) return 'unchanged';
+  return input.effortCurrent ? 'apply' : 'calculate';
+}
+
+/** Product sources prove generation; a captured maintenance base alone does not. */
+export function moduleHasGeneratedSources(project: number, moduleName: string,
+  files: Array<{ project: number; level: number; folder: string; shortName: string; extension: string; status?: string }>): boolean {
+  return files.some(file => file.project === project && (file.level === 1 || file.level === 2)
+    && file.status !== 'deleted' && (file.folder === moduleName || file.folder.startsWith(`${moduleName}/`))
+    && !file.folder.startsWith(`${moduleName}/pipeline`) && file.extension === '.ts'
+    && !file.shortName.endsWith('.test') && !file.shortName.endsWith('.defs'));
+}
+
+/** A clean, newly captured editing base can still show the previous completion report. */
+export function reviewImplementationVisible(record: L4ImplementationRecord | null, data: Pick<NewReleaseModuleData, 'changeId' | 'revisionId' | 'diffs' | 'resultCurrent'> | null): boolean {
+  if (!record) return false;
+  if (record.changeId === data?.changeId && record.revisionId === data?.revisionId) return true;
+  return !data?.resultCurrent && !data?.diffs.some(diff => diff.entries.length);
 }

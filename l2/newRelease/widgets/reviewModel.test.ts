@@ -1,4 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/reviewModel.test.ts" enhancement="_blank" />
+import { moduleHasGeneratedSources } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { reviewReleaseState } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -60,11 +62,11 @@ test('mr_12: absent phases follow accepted runAgents order', () => {
   assert.deepEqual(implementationProgress(progressRecord(), 'change-one'), expected);
 });
 
-test('materialization keeps agents waiting for the team without claiming completion', () => {
+test('materialization schedules L2 and L1 before returned commands', () => {
   const record = progressRecord();
   record.merged.materialize = structuredClone(changeEffort.merged.materialize);
   assert.deepEqual(implementationProgress(record, 'change-one').map(phase => phase.status),
-    ['depoisDaMaterializacao', 'depoisDaMaterializacao']);
+    Array(7).fill('aguardando'));
 });
 
 test('mr_12: running phase exposes its attempt and never offers retry', () => {
@@ -151,7 +153,7 @@ test('mr_28 s1: effort must be valid and readable from the current revision with
   assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, value: {} } }), false);
 });
 
-test('mr_28 s1: blocked and regeneration effort cannot be accepted', () => {
+test('mr39 s10: blocked effort is refused and regeneration is accepted', () => {
   const input = implementationInput();
   const blocked = structuredClone(changeEffort);
   blocked.perItem[0].answers[0].status = 'abend';
@@ -165,7 +167,7 @@ test('mr_28 s1: blocked and regeneration effort cannot be accepted', () => {
   regenerate.perItem[0].answers[0].materialize = [];
   regenerate.merged.regenerateDefs = [{ project: '102020', ...unit }];
   regenerate.merged.materialize = regenerate.merged.materialize.filter((item: { project: string; id: string }) => item.project !== '102020' || item.id !== unit.id);
-  assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, value: regenerate } }), false);
+  assert.equal(canAcceptImplementation({ ...input, changeEffort: { ...input.changeEffort, value: regenerate } }), true);
 });
 
 test('mr_10 s2: identical acceptance is idempotent; different revision or hashes block it', () => {
@@ -615,4 +617,22 @@ test('mr_33: tobe results require current completed load; current blocked effort
     assert.equal(reviewResultVisible({ ...input, version, resultCurrent: false }), true);
     assert.equal(reviewResultVisible({ ...input, version, current: false }), false);
   }
+});
+
+test('mr39 s10: review release states invalidate calculated effort after another change', () => {
+  const state = { hasRelease: true, changed: true, effortCurrent: true, implementationComplete: false };
+  assert.equal(reviewReleaseState({ ...state, hasRelease: false }), 'new');
+  assert.equal(reviewReleaseState({ ...state, changed: false }), 'unchanged');
+  assert.equal(reviewReleaseState(state), 'apply');
+  assert.equal(reviewReleaseState({ ...state, effortCurrent: false }), 'calculate');
+  assert.equal(reviewReleaseState({ ...state, implementationComplete: true }), 'unchanged');
+});
+
+test('mr39 s10: generated product sources do not require a maintenance release catalog', () => {
+  const source = { project: 102047, level: 2, folder: 'tarefas/web', shortName: 'home', extension: '.ts' };
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [source]), true);
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, extension: '.defs.ts' }]), false);
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, level: 4, folder: 'tarefas/pool/l2/web' }]), false);
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, status: 'deleted' }]), false);
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, project: 102048 }]), false);
 });

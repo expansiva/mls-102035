@@ -167,12 +167,13 @@ test('mr_28 s1: component hashes the same changeEffort bytes it displays and kee
     blocked.merged = mergeChangeEffort(blocked.perItem);
     component.changeEffortRead = { status: 'ok', path: 'effort', value: blocked };
     component.canImplement = () => false;
+    component.effortCurrent = true;
     assert.equal(component.actionPresentation({ kind: 'ready' }, true).descriptionKey, 'review.effort.status.blocked');
     const regenerate = structuredClone(golden);
     regenerate.perItem[0].answers[0].regenerateDefs.push({ kind: 'page', id: 'page', path: 'l2/page.defs.ts' });
     regenerate.merged = mergeChangeEffort(regenerate.perItem);
     component.changeEffortRead = { status: 'ok', path: 'effort', value: regenerate };
-    assert.equal(component.actionPresentation({ kind: 'ready' }, true).descriptionKey, 'review.implementation.error.regenerateUnsupported');
+    assert.equal(component.actionPresentation({ kind: 'ready' }, true).descriptionKey, 'review.implementation.body');
   } finally {
     globalThis.mls = priorMls;
     if (priorStorage) Object.defineProperty(globalThis, 'localStorage', priorStorage);

@@ -1,11 +1,12 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/implementationRunner.ts" enhancement="_blank" />
+import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
 import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
-import { implementationPhaseCommand, withL4ImplementationWriter, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { implementationCommands, implementationPhaseCommand, withL4ImplementationWriter, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { diffModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 
@@ -45,7 +46,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
   async function observed(project: number, moduleName: string, phase: L4ImplementationPhase, value: TaskData): Promise<L4ImplementationPhase> {
     const id = taskId(value.PK);
     if (!id || (phase.taskId && phase.taskId !== id)) throw new Error('implementation.task_mismatch');
-    const status = value.status === 'done' ? 'done' : value.status === 'failed' || value.status === 'paused' ? 'failed' : 'running';
+    let status: L4ImplementationPhase['status'] = value.status === 'done' ? 'done' : value.status === 'failed' || value.status === 'paused' ? 'failed' : 'running';
     let changedDefs = phase.changedDefs;
     if (status === 'done') {
       const change = await readActiveL4Change(project, moduleName);
@@ -53,9 +54,15 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
       changedDefs = (await diffModuleLayers(project, moduleName, change.baseId))
         .map(({ path, status, level }) => ({ path, status, level }));
     }
+    const result = status === 'done' ? await message(userId()!, phase.threadId, value.messageid_created || phase.messageId) : null;
+    const report = taskResultTexts(value).join('\n') || result?.taskResults?.join('\n') || '';
+    const refusal = report.split('\n').find(line => /^(?:refused|failed):/u.test(line.trim()));
+    const missingReport = status === 'done' && (phase.agent === 'agentNewReleaseL1' || phase.agent === 'agentNewReleaseL2') && !report;
+    if (status === 'done' && (refusal || missingReport)) status = 'failed';
     return { ...phase, ...(changedDefs ? { changedDefs } : {}), taskId: id, messageId: value.messageid_created || phase.messageId, status,
       ...(status === 'running' ? {} : { endedAt: now() }),
-      ...(status === 'failed' ? { error: value.last_update_log ?? undefined } : {}),
+      ...(report ? { report } : {}),
+      ...(status === 'failed' ? { error: refusal || (missingReport ? 'review.implementation.error.missingReport' : value.last_update_log ?? undefined) } : {}),
     };
   }
 
@@ -74,6 +81,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
     } catch (error) {
       // The server may already have created a task: keep its identity for observation.
       if (ctx.task?.PK) await save(await observed(project, moduleName, phase, ctx.task));
+      else await save({ ...phase, status: 'failed', endedAt: now(), error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
     if (ctx.task?.PK) await save(await observed(project, moduleName, phase, ctx.task));
@@ -82,12 +90,12 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
   return {
     async runNext(project: number, moduleName: string) {
       return withL4ImplementationWriter(project, moduleName, async (record, save) => {
-        for (const ref of record.merged.runAgents) implementationPhaseCommand(ref, project, moduleName);
-        if (record.merged.materialize.length) return record;
-        const index = record.merged.runAgents.findIndex((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
+        record.merged.runAgents.forEach(ref => implementationPhaseCommand(ref, project, moduleName));
+        const commands = implementationCommands(record, project, moduleName);
+        const index = commands.findIndex((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
         if (index < 0) return record;
         const name = `runAgents:${index}`;
-        const command = implementationPhaseCommand(record.merged.runAgents[index], project, moduleName);
+        const command = commands[index];
         let phase = record.phases.find(phase => phase.name === name);
         if (phase?.status === 'failed') return record;
         const user = userId();
@@ -101,19 +109,29 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
           await save(await observed(project, moduleName, phase, await task(user, phase.taskId, phase.messageId)));
           return record;
         }
+        const structural = commands.length > record.merged.runAgents.length;
+        if (structural && (command.agent === 'agentMaterializeL1' || command.agent === 'agentAddLanguage')) {
+          const producer = command.agent === 'agentMaterializeL1' ? 'runAgents:3' : 'runAgents:0';
+          if (!record.phases.find(item => item.name === producer && item.status === 'done')?.report?.split('\n').includes(command.command)) {
+            await save({ name, ...command, attempt: 1, taskId: '', threadId: '', messageId: '',
+              status: 'failed', startedAt: now(), endedAt: now(), error: 'review.implementation.error.missingCommand' });
+            return record;
+          }
+        }
         await dispatch(project, moduleName, name, command, 1, save);
         return record;
       });
     },
     async retryPhase(project: number, moduleName: string, name: L4ImplementationPhase['name']) {
       return withL4ImplementationWriter(project, moduleName, async (record, save) => {
-        if (record.merged.materialize.length) throw new Error('implementation.retry_not_allowed');
+        record.merged.runAgents.forEach(ref => implementationPhaseCommand(ref, project, moduleName));
+        const commands = implementationCommands(record, project, moduleName);
         const index = Number(name.slice('runAgents:'.length));
-        const ref = record.merged.runAgents[index];
+        const ref = commands[index];
         if (!name.startsWith('runAgents:') || !Number.isSafeInteger(index) || `runAgents:${index}` !== name || !ref) throw new Error('implementation.retry_not_allowed');
-        const command = implementationPhaseCommand(ref, project, moduleName);
+        const command = ref;
         const phase = record.phases.find(item => item.name === name);
-        if (!phase || phase.status !== 'failed' || phase.attempt !== 1) throw new Error('implementation.retry_not_allowed');
+        if (!phase || phase.status !== 'failed' || phase.attempt !== 1 || phase.error === 'review.implementation.error.missingCommand') throw new Error('implementation.retry_not_allowed');
         const { previousAttempts, ...previous } = phase;
         await dispatch(project, moduleName, name, command, 2, save, [...(previousAttempts ?? []), previous]);
         return record;

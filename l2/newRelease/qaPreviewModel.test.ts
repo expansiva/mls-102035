@@ -163,8 +163,8 @@ test('mr_12: rehearsal JSON renders the accepted phase, retry limit and stale re
   assert.deepEqual(view('success').map(phase => phase.status), ['concluido']);
   assert.deepEqual(view('success')[0].changedDefs, []);
   assert.deepEqual(view('stale').map(phase => phase.status), []);
-  assert.deepEqual(view('materialize'), []);
-  assert.deepEqual(view('materialize-agent').map(phase => phase.status), ['depoisDaMaterializacao']);
+  assert.deepEqual(view('materialize').map(phase => phase.status), Array(5).fill('aguardando'));
+  assert.deepEqual(view('materialize-agent').map(phase => phase.status), Array(6).fill('aguardando'));
   const golden = JSON.parse(readFileSync(new URL('../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8'));
   assert.deepEqual(snapshots['implementation-materialize'].record.merged.materialize, golden.merged.materialize);
   assert.deepEqual(snapshots['implementation-materialize-agent'].record.merged.materialize, golden.merged.materialize);
