@@ -28,7 +28,8 @@ import {
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { normalizeNrpEdit, nrpFileScope, NrpEditRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import { nrpReport, planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
-import { NRP_ARTIFACT_KINDS } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
+import { NRP_ARTIFACT_KINDS, recordNrpTriageRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
+import { pipelineJsonFileForProject, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
 import type {
@@ -164,7 +165,7 @@ void test('the tarefas fixture has no new gate error, and an edit that keeps it 
   assert.equal(after.some(issue => issue.baseline), baseline.length > 0);
 });
 
-void test('a twin repair sees both journeys, and an index-only repair is refused', () => {
+void test('a twin repair sees both journeys, and an index-only repair is refused', async () => {
   const artifacts = tarefasModule();
   const source = artifacts.journeys.find(journey => journey.journeyId === 'revisarTarefa');
   if (!source) throw new Error('revisarTarefa is missing from the tarefas fixture.');
@@ -199,6 +200,16 @@ void test('a twin repair sees both journeys, and an index-only repair is refused
   assert.match(human, /cancelarTarefa, duplicarTarefa/);
   assert.match(human, /"journeyId":"cancelarTarefa"/);
   assert.match(human, /"journeyId":"duplicarTarefa"/);
+  assert.match(human, /locate, inspect, act, decide, or handoff/);
+  assert.match(human, /Do not invent a step kind/);
+  let stored: unknown;
+  const info = pipelineJsonFileForProject(1, 'sample', 'newReleasePrompt-refused');
+  await recordNrpTriageRefusal(info, 'Pointer /journeys/14/business does not exist.', { operations: [] }, async (_file: Ns5FileInfo, value: unknown) => {
+    stored = value;
+  }, human);
+  const recordedPrompt = (stored as { prompt: string }).prompt;
+  assert.equal(recordedPrompt.includes('duplicarTarefa'), true);
+  assert.equal(recordedPrompt.includes('Do not invent a step kind'), true);
   assert.equal(human.includes('Abrir uma tarefa e passar a vez para a execução.'), false);
   const recorded = {
     operations: [{

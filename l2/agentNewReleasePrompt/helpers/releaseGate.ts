@@ -11,7 +11,7 @@ import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
-import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
 export type NrpGateKind = NrpArtifactKind | 'coherence';
 
@@ -367,6 +367,9 @@ export function buildNrpRepairHumanPrompt(
     parts.push(`Earlier verification:\n${earlier.join('\n')}\nThe error set changed since the previous repair of this kind.`);
   }
   if (allowed.length) parts.push(`Allowed files: ${allowed.join(', ')}`);
+  if (issues.some(issue => issue.code === 'NS5_JOURNEY_TWIN' || issue.code === 'NS5_JOURNEY_STEP_KIND')) {
+    parts.push(NRP_JOURNEY_RULES);
+  }
   if (shape) {
     parts.push(`${shape.rule}\nSibling ${shape.file.id} (reference only):\n${JSON.stringify(shape.file.artifact)}`);
   }
@@ -410,7 +413,7 @@ Repair the L4 files named in the message. The full user request is in the messag
 Call submitNrpEdit. Return small operations. Do not repeat a file.
 operations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Every field is required. Use an empty string when a field does not apply.
 op is set, add, remove, or create.
-pointer is an RFC 6901 pointer. add on a list ends with /-. add on an object ends with the new key.
+pointer is an RFC 6901 pointer. add on a list ends with /- or with an index from 0 through the list length, which inserts before that item. add on an object ends with the new key.
 valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.
 A uniqueness or twin error asks you to change the actor, the entity, or the operations of one cited file, or to remove the redundant file.
 A reference error asks you to create or correct the file the error names.

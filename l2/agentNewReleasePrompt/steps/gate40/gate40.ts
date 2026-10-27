@@ -25,7 +25,7 @@ import {
   type NrpRepairFile,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { applyNrpMechanical } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
-import { pipelineJsonFileForProject, setModuleRoot } from '/_102035_/l2/solution/fs.js';
+import { pipelineJsonFileForProject, setModuleRoot, writeJson } from '/_102035_/l2/solution/fs.js';
 import { unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import {
   NrpEditRefusal,
@@ -128,12 +128,6 @@ export async function beforeNrpGateStep(
       ];
     }
     const tool = buildNrpRepairTool();
-    const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
-    const scope = repairScope(merged, decision.kind, cursor.triage, marks, issues);
-    const reference = scope.creates.length ? nrpShapeReference(merged, decision.kind) : null;
-    const shape = reference
-      ? { rule: decision.kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE, file: reference }
-      : null;
     return [{
       type: 'prompt_ready',
       args: String(step.prompt || ''),
@@ -143,15 +137,7 @@ export async function beforeNrpGateStep(
       hookSequential,
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_REPAIR_SYSTEM_PROMPT,
-      humanPrompt: buildNrpRepairHumanPrompt(
-        cursor.request,
-        decision.kind,
-        issues,
-        nrpKindCatalog(merged, decision.kind),
-        nrpAllowed(scope),
-        shape,
-        earlierLines(cursor.repaired, decision.kind),
-      ),
+      humanPrompt: repairHumanPrompt(cursor, baseArtifacts),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
     }];
@@ -209,13 +195,36 @@ async function citeRepairRefusal(step: mls.msg.AIAgentStep, error: unknown): Pro
     const project = mls.actualProject || 0;
     const cursor = readCursor(String(step.prompt || ''), project);
     const info = pipelineJsonFileForProject(project, cursor.moduleName, 'newReleasePrompt-refused');
-    const citation = await recordNrpTriageRefusal(info, error.message, error.raw);
+    const baseArtifacts = await loadNrpArtifacts(cursor.moduleName);
+    const citation = await recordNrpTriageRefusal(info, error.message, error.raw, writeJson, repairHumanPrompt(cursor, baseArtifacts));
     return new NrpEditRefusal(`${error.message} See ${citation}.`, error.raw);
   } catch (writeError) {
     console.error('[agentNewReleasePrompt] gate40 could not record the refused response', writeError);
     const writeMessage = writeError instanceof Error ? writeError.message : String(writeError);
     return new NrpEditRefusal(`${error.message} The refused response was not recorded: ${writeMessage}.`, error.raw);
   }
+}
+
+function repairHumanPrompt(cursor: NrpGateCursor, baseArtifacts: NrpModuleArtifacts): string {
+  const merged = overlayNrpEdits(baseArtifacts, cursor.applied);
+  const issues = gateIssues(baseArtifacts, merged);
+  const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
+  if (!decision.kind) return '';
+  const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
+  const scope = repairScope(merged, decision.kind, cursor.triage, marks, issues);
+  const reference = scope.creates.length ? nrpShapeReference(merged, decision.kind) : null;
+  const shape = reference
+    ? { rule: decision.kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE, file: reference }
+    : null;
+  return buildNrpRepairHumanPrompt(
+    cursor.request,
+    decision.kind,
+    issues,
+    nrpKindCatalog(merged, decision.kind),
+    nrpAllowed(scope),
+    shape,
+    earlierLines(cursor.repaired, decision.kind),
+  );
 }
 
 function repairScope(

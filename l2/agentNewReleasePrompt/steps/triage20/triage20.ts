@@ -154,14 +154,19 @@ export function clipNrpClarification(text: string): { text: string; clipped: boo
   return { text: trimmed.slice(0, cut).trim(), clipped: true };
 }
 
+export const NRP_REFUSAL_PROMPT_LIMIT = 6000;
+
 export async function recordNrpTriageRefusal(
   info: Ns5FileInfo,
   reason: string,
   raw: unknown,
   writer: (file: Ns5FileInfo, value: unknown) => Promise<unknown> = writeJson,
+  prompt?: string,
 ): Promise<string> {
   const citation = displayPath(info);
-  await writer(info, { reason, raw: redact(raw) });
+  const body: Record<string, unknown> = { reason, raw: redact(raw) };
+  if (prompt !== undefined) body.prompt = prompt.slice(0, NRP_REFUSAL_PROMPT_LIMIT);
+  await writer(info, body);
   return citation;
 }
 

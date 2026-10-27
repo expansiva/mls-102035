@@ -38,6 +38,8 @@ export interface NrpEditCursor extends NrpEditOrder {
 
 export const NRP_JOURNEY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, journeyId, business with actorRef, title, goal, entry, steps and outcome).';
 export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, moduleName, entityId, and the same sections the sibling uses).';
+/** Step kinds the journey gate accepts, and the twin rule it enforces. The gate constant is not exported. */
+export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. To tell them apart, change the actor, the entity, or the operations (for example, replace locate plus act with one act step that has an effect). Do not invent a step kind.';
 
 export const NRP_EDIT_OPS = ['set', 'add', 'remove', 'create'] as const;
 export type NrpEditOp = typeof NRP_EDIT_OPS[number];
@@ -79,7 +81,7 @@ operations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Ev
 op is set, add, remove, or create.
 file is the id you were given: the entity id or the journey id, index for that kind's index, or the kind name for a single file: rules, access, workflows, integration.
 A file is allowed when triage named it, when the message marks it so its text stops citing a term, or when triage creates it. Stay inside that list.
-pointer is an RFC 6901 pointer inside that file. add on a list ends with /-. add on an object ends with the new key.
+pointer is an RFC 6901 pointer inside that file. add on a list ends with /- or with an index from 0 through the list length, which inserts before that item. add on an object ends with the new key.
 valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.
 create adds a journey file or an ontology entity when Creates lists that id, or when this same list adds that id to the index. Its pointer is empty. When the message includes a sibling, the new file uses that shape. The sibling is a reference, not an example module.
 Change only what the request requires. Keep every other value.
@@ -119,6 +121,7 @@ export function buildNrpEditHumanPrompt(
     lines.push(`Marked texts:\n${marked.map(mark => `${mark.path} — adjust the text so it does not cite ${mark.item}: ${JSON.stringify(mark.text)}`).join('\n')}`);
   }
   lines.push(`Allowed files:\n${files.map(file => `${file.id} — ${nrpFileReason(file, kind, marked, creates)}`).join('\n')}`);
+  if (kind === 'journeys' && creates.length) lines.push(NRP_JOURNEY_RULES);
   if (creates.length && reference) {
     const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
     lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);
@@ -417,15 +420,17 @@ function addAt(root: unknown, tokens: readonly string[], value: unknown): unknow
   const parentTokens = tokens.slice(0, -1);
   const leaf = tokens[tokens.length - 1];
   const parent = parentTokens.length ? requireAt(root, parentTokens) : root;
-  if (leaf === '-') {
+  if (leaf === '-' || /^(0|[1-9]\d*)$/.test(leaf)) {
     if (!Array.isArray(parent)) throw new Error(`Pointer ${formatPointer(parentTokens)} is not a list.`);
+    const index = leaf === '-' ? parent.length : Number(leaf);
+    if (index > parent.length) throw new Error(`List index ${index} is outside 0..${parent.length}.`);
     const next = cloneJson(root);
     const list = requireAt(next, parentTokens);
     if (!Array.isArray(list)) throw new Error(`Pointer ${formatPointer(parentTokens)} is not a list.`);
-    list.push(value);
+    list.splice(index, 0, value);
     return next;
   }
-  if (Array.isArray(parent)) throw new Error('add on a list ends with /-.');
+  if (Array.isArray(parent)) throw new Error(`List index ${leaf} is outside 0..${parent.length}.`);
   if (!parent || typeof parent !== 'object') throw new Error(`Pointer ${formatPointer(parentTokens)} does not exist.`);
   if (Object.prototype.hasOwnProperty.call(parent, leaf)) throw new Error(`Key ${leaf} is not free.`);
   const next = cloneJson(root);

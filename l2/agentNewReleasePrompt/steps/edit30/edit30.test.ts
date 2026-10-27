@@ -10,6 +10,7 @@ import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/help
 import { applyNrpMechanical, nrpModelKinds } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import {
   NRP_EDIT_SYSTEM_PROMPT,
+  NRP_JOURNEY_RULES,
   NRP_JOURNEY_SHAPE,
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
@@ -236,6 +237,21 @@ void test('operations set text, add a details field, append a list, and remove',
     operations: [op({ op: 'add', pointer: '/tags/-', expectedJson: '', valueJson: '"closed"', reason: 'append' })],
   }, scope);
   assert.deepEqual((listed.files[0].artifact as { tags: string[] }).tags, ['open', 'closed']);
+  const two = {
+    present: scope.present,
+    creates: scope.creates,
+    files: [{ id: 'WorkItem', artifact: { ...(scope.files[0].artifact as object), tags: ['open', 'shut'] } }],
+  };
+  const inserted = normalizeNrpEdit('ontology', {
+    operations: [op({ op: 'add', pointer: '/tags/1', expectedJson: '', valueJson: '"mid"', reason: 'insert' })],
+  }, two);
+  assert.deepEqual((inserted.files[0].artifact as { tags: string[] }).tags, ['open', 'mid', 'shut']);
+  assert.throws(
+    () => normalizeNrpEdit('ontology', {
+      operations: [op({ op: 'add', pointer: '/tags/4', expectedJson: '', valueJson: '"late"', reason: 'out' })],
+    }, two),
+    /outside 0\.\.2/,
+  );
   const removed = normalizeNrpEdit('ontology', {
     operations: [op({
       op: 'remove',
@@ -499,6 +515,8 @@ void test('a new journey prompt carries one sibling and the real shape', () => {
   assert.equal(sibling?.id, 'memberList');
   const prompt = buildNrpEditHumanPrompt('The manager can copy a task.', ask, 'journeys', scope.files, [], scope.creates, [], sibling);
   assert.match(prompt, new RegExp(NRP_JOURNEY_SHAPE.replace(/[()]/g, match => `\\${match}`)));
+  assert.match(prompt, new RegExp(NRP_JOURNEY_RULES.replace(/[()]/g, match => `\\${match}`)));
+  assert.equal(/tarefas/i.test(NRP_JOURNEY_RULES), false);
   assert.match(prompt, /Sibling memberList/);
   assert.match(prompt, /memberList/);
   assert.equal(/tarefas/i.test(prompt), false);
