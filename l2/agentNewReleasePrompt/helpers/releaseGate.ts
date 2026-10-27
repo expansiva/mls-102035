@@ -78,6 +78,27 @@ export function nrpFreshIssues(issues: readonly NrpGateIssue[]): NrpGateIssue[] 
   return issues.filter(issue => !issue.baseline);
 }
 
+const PATH_OWNER: Record<string, NrpArtifactKind> = {
+  journeys: 'journeys',
+  journeyIndex: 'journeys',
+  ontology: 'ontology',
+  ontologyIndex: 'ontology',
+  entities: 'ontology',
+  rules: 'rules',
+  access: 'access',
+  grants: 'access',
+  actors: 'access',
+  workflows: 'workflows',
+  integration: 'integration',
+};
+
+/** The artifact kind that owns an error. Coherence uses the path prefix, including an index path. */
+export function nrpIssueOwner(issue: NrpGateIssue): NrpArtifactKind | null {
+  if (issue.kind !== 'coherence') return issue.kind;
+  const head = issue.path.split(/[./[]/u)[0];
+  return PATH_OWNER[head] || null;
+}
+
 export function nrpGateAction(
   issues: readonly NrpGateIssue[],
   changed: readonly NrpArtifactKind[],
@@ -85,11 +106,12 @@ export function nrpGateAction(
 ): NrpGateAction {
   const fresh = nrpFreshIssues(issues);
   if (!fresh.length) return { action: 'write', kind: null };
-  const pending = changed.filter(kind => !repaired.includes(kind));
-  const kindFailure = pending.find(kind => fresh.some(issue => issue.kind === kind));
-  if (kindFailure) return { action: 'repair', kind: kindFailure };
-  if (fresh.some(issue => issue.kind === 'coherence') && pending.length) {
-    return { action: 'repair', kind: pending[0] };
+  const touched = new Set<NrpArtifactKind>(changed);
+  for (const issue of fresh) {
+    const owner = nrpIssueOwner(issue);
+    if (!owner || repaired.includes(owner)) continue;
+    if (!touched.has(owner) && issue.kind !== 'coherence') continue;
+    return { action: 'repair', kind: owner };
   }
   return { action: 'stop', kind: null };
 }
@@ -103,16 +125,23 @@ export function buildNrpRepairHumanPrompt(
   kind: NrpArtifactKind,
   issues: readonly NrpGateIssue[],
   artifact: unknown,
+  allowed: readonly string[] = [],
+  shape: { rule: string; file: { id: string; artifact: unknown } } | null = null,
 ): string {
   const lines = nrpFreshIssues(issues)
-    .filter(issue => issue.kind === kind || issue.kind === 'coherence')
+    .filter(issue => nrpIssueOwner(issue) === kind)
     .map(issue => `${issue.code} ${issue.path}: ${issue.message}`);
-  return [
+  const parts = [
     `Kind: ${kind}`,
     `Request:\n${request}`,
     `Verification:\n${lines.join('\n')}`,
-    `Artifact:\n${JSON.stringify(artifact)}`,
-  ].join('\n\n');
+  ];
+  if (allowed.length) parts.push(`Allowed files: ${allowed.join(', ')}`);
+  if (shape) {
+    parts.push(`${shape.rule}\nSibling ${shape.file.id} (reference only):\n${JSON.stringify(shape.file.artifact)}`);
+  }
+  parts.push(`Artifact:\n${JSON.stringify(artifact)}`);
+  return parts.join('\n\n');
 }
 
 export const NRP_REPAIR_SYSTEM_PROMPT = `<!-- modelType: reasoning -->

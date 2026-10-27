@@ -15,9 +15,11 @@ import {
   classifyNrpGateIssues,
   nrpFreshIssues,
   nrpGateAction,
+  nrpIssueOwner,
   nrpMayWrite,
   type NrpGateIssue,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
+import { nrpFileScope } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import { planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { NRP_ARTIFACT_KINDS } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
@@ -118,5 +120,33 @@ void test('the tarefas fixture has no new gate error, and an edit that keeps it 
   const after = classifyNrpGateIssues(baseline, checkNrpGates(edited, NRP_ARTIFACT_KINDS));
   assert.equal(nrpFreshIssues(after).length, 0);
   assert.equal(nrpGateAction(after, ['ontology'], []).action, 'write');
+  const journeyError: NrpGateIssue = {
+    kind: 'coherence',
+    code: 'I1',
+    message: 'Unknown journey duplicarTarefa.',
+    path: 'journeys/index.duplicarTarefa',
+  };
+  assert.equal(nrpIssueOwner(journeyError), 'journeys');
+  const repairJourney = nrpGateAction([journeyError], ['rules', 'journeys'], []);
+  assert.equal(repairJourney.action, 'repair');
+  assert.equal(repairJourney.kind, 'journeys');
+  const broken = tarefasModule();
+  (broken.rules as { rules: Record<string, string> }).rules = { edicaoNaoMudaSituacao: 'Editar não muda a situação.' };
+  broken.journeyIndex = {
+    ...broken.journeyIndex,
+    journeys: [...broken.journeyIndex.journeys, { journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'Duplicar' }],
+  } as NrpModuleArtifacts['journeyIndex'];
+  const scope = nrpFileScope(broken, 'journeys', {
+    valid: true, reason: null, clarification: null, artifacts: ['rules', 'journeys'],
+    targets: ['Tarefa', 'edicaoNaoMudaSituacao', 'duplicarTarefa'],
+    intent: 'Duplicate a task.', mechanical: [], mechanicalOnly: false,
+  });
+  const allowed = [...scope.present, ...scope.creates.filter(id => !scope.present.includes(id))];
+  assert.equal(allowed.includes('duplicarTarefa'), true);
+  assert.equal(allowed.includes('index'), true);
+  assert.equal(allowed.includes('edicaoNaoMudaSituacao'), false);
+  const human = buildNrpRepairHumanPrompt('Duplicate a task.', 'journeys', [journeyError], scope.files, allowed);
+  assert.match(human, /Allowed files: .*duplicarTarefa/);
+  assert.equal(human.includes('edicaoNaoMudaSituacao'), false);
   assert.equal(after.some(issue => issue.baseline), baseline.length > 0);
 });

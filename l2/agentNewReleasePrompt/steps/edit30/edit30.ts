@@ -33,7 +33,11 @@ export interface NrpEditCursor extends NrpEditOrder {
   applied: NrpAppliedEdit[];
   attempts?: number;
   editErrors?: string[];
+  pendingCreates?: string[];
 }
+
+export const NRP_JOURNEY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, journeyId, business with actorRef, title, goal, entry, steps and outcome).';
+export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, moduleName, entityId, and the same sections the sibling uses).';
 
 export const NRP_EDIT_OPS = ['set', 'add', 'remove', 'create'] as const;
 export type NrpEditOp = typeof NRP_EDIT_OPS[number];
@@ -77,7 +81,7 @@ file is the id you were given: the entity id or the journey id, index for that k
 A file is allowed when triage named it, when the message marks it so its text stops citing a term, or when triage creates it. Stay inside that list.
 pointer is an RFC 6901 pointer inside that file. add on a list ends with /-. add on an object ends with the new key.
 valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.
-create adds a new journey file only when the message lists that id under Creates. Its valueJson is the new journey and its pointer is empty.
+create adds a journey file or an ontology entity when Creates lists that id, or when this same list adds that id to the index. Its pointer is empty. When the message includes a sibling, the new file uses that shape. The sibling is a reference, not an example module.
 Change only what the request requires. Keep every other value.
 When the message lists marked texts, rewrite only those texts so they no longer cite the named item.
 Do not invent an example module.`;
@@ -101,6 +105,7 @@ export function buildNrpEditHumanPrompt(
   textMarks: readonly NrpTextMark[] = [],
   creates: readonly string[] = [],
   editErrors: readonly string[] = [],
+  reference: NrpEditFile | null = null,
 ): string {
   const marked = textMarks.filter(mark => mark.kind === kind);
   const lines = [
@@ -114,6 +119,10 @@ export function buildNrpEditHumanPrompt(
     lines.push(`Marked texts:\n${marked.map(mark => `${mark.path} — adjust the text so it does not cite ${mark.item}: ${JSON.stringify(mark.text)}`).join('\n')}`);
   }
   lines.push(`Allowed files:\n${files.map(file => `${file.id} — ${nrpFileReason(file, kind, marked, creates)}`).join('\n')}`);
+  if (creates.length && reference) {
+    const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
+    lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);
+  }
   if (editErrors.length) {
     lines.push(`Previous operations were refused:\n${editErrors.join('\n')}\nSubmit a corrected list. The request is unchanged.`);
   }
@@ -135,11 +144,13 @@ const SINGLE_FILE: Partial<Record<NrpArtifactKind, true>> = {
 
 export class NrpEditRefusal extends Error {
   readonly raw: unknown;
+  readonly createIds: string[];
 
-  constructor(message: string, raw: unknown) {
+  constructor(message: string, raw: unknown, createIds: readonly string[] = []) {
     super(message);
     this.name = 'NrpEditRefusal';
     this.raw = raw;
+    this.createIds = [...createIds];
   }
 }
 
@@ -149,13 +160,27 @@ export function nrpFileScope(
   kind: NrpArtifactKind,
   triage: NrpTriage,
   textMarks: readonly NrpTextMark[] = [],
+  pendingCreates: readonly string[] = [],
 ): NrpFileScope {
   if (SINGLE_FILE[kind]) {
     const id = kind;
     return { present: [id], creates: [], files: [{ id, artifact: artifactSlice(artifacts, kind) }] };
   }
-  if (kind === 'ontology') return ontologyScope(artifacts, triage, textMarks);
-  return journeyScope(artifacts, triage, textMarks);
+  if (kind === 'ontology') return ontologyScope(artifacts, triage, textMarks, pendingCreates);
+  return journeyScope(artifacts, triage, textMarks, pendingCreates);
+}
+
+/** One existing file of this kind, used as the shape of a file the edit creates. */
+export function nrpShapeReference(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind): NrpEditFile | null {
+  if (kind === 'journeys') {
+    const journey = artifacts.journeys[0];
+    return journey ? { id: journey.journeyId, artifact: journey } : null;
+  }
+  if (kind === 'ontology') {
+    const entity = artifacts.entities[0];
+    return entity ? { id: entity.entityId, artifact: entity } : null;
+  }
+  return null;
 }
 
 /** File id of a text mark. The path is the one `applyNrpMechanical` recorded on the same module. */
@@ -210,9 +235,45 @@ export interface NrpEditOperation {
 }
 
 /** One more model call after a refused operation list. A second refusal stops the edit. */
-export function nextNrpEditAfterRefusal(order: NrpEditCursor, message: string): NrpEditCursor | null {
+export function nextNrpEditAfterRefusal(
+  order: NrpEditCursor,
+  message: string,
+  createIds: readonly string[] = [],
+): NrpEditCursor | null {
   if ((order.attempts || 0) >= 1) return null;
-  return { ...order, attempts: 1, editErrors: [message] };
+  const pendingCreates = [...(order.pendingCreates || [])];
+  for (const id of createIds) if (!pendingCreates.includes(id)) pendingCreates.push(id);
+  return { ...order, attempts: 1, editErrors: [message], pendingCreates };
+}
+
+/**
+ * A new index id needs a new file, and a new file needs an index id.
+ * The caller retries the edit once with `createIds` before the gate runs.
+ */
+export function nrpIndexFileGaps(
+  kind: NrpArtifactKind,
+  scope: NrpFileScope,
+  edited: readonly NrpEditFile[],
+): { messages: string[]; createIds: string[] } {
+  if (kind !== 'journeys' && kind !== 'ontology') return { messages: [], createIds: [] };
+  const after = new Map(scope.files.map(file => [file.id, file.artifact]));
+  const beforeIds = indexIdSet(kind, after.get('index'));
+  const beforeFiles = new Set([...after.keys()].filter(id => id !== 'index'));
+  for (const file of edited) after.set(file.id, file.artifact);
+  const afterIds = indexIdSet(kind, after.get('index'));
+  const afterFiles = new Set([...after.keys()].filter(id => id !== 'index'));
+  const messages: string[] = [];
+  const createIds: string[] = [];
+  for (const id of afterIds) {
+    if (beforeIds.has(id) || afterFiles.has(id)) continue;
+    messages.push(`Index lists ${id} but the file was not created.`);
+    createIds.push(id);
+  }
+  for (const id of afterFiles) {
+    if (beforeFiles.has(id) || afterIds.has(id)) continue;
+    messages.push(`File ${id} was created but the index does not list it.`);
+  }
+  return { messages, createIds };
 }
 
 export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: NrpFileScope): { files: NrpEditFile[] } {
@@ -220,7 +281,11 @@ export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: N
     const operations = readOperations(value);
     const working = new Map<string, { artifact: unknown; created: boolean }>();
     for (const file of scope.files) working.set(file.id, { artifact: cloneJson(file.artifact), created: false });
-    for (const operation of operations) applyOperation(kind, scope, working, operation);
+    const creates = operations.filter(operation => operation.op === 'create');
+    for (const operation of operations) {
+      if (operation.op !== 'create') applyOperation(kind, scope, working, operation);
+    }
+    for (const operation of creates) applyOperation(kind, scope, working, operation);
     const files: NrpEditFile[] = [];
     for (const [id, item] of working) {
       const before = scope.files.find(file => file.id === id);
@@ -290,13 +355,43 @@ function createFile(
   working: Map<string, { artifact: unknown; created: boolean }>,
   operation: NrpEditOperation,
 ): void {
-  if (kind !== 'journeys') throw new Error('create only adds a journey file.');
-  if (!scope.creates.includes(operation.file)) throw new Error(`Edit file ${operation.file} is not a target. Allowed: ${nrpAllowedFiles(scope)}.`);
+  if (kind !== 'journeys' && kind !== 'ontology') throw new Error('create only adds a journey file or an ontology entity.');
+  const indexed = indexIdSet(kind, working.get('index')?.artifact);
+  if (!scope.creates.includes(operation.file) && !indexed.has(operation.file)) {
+    throw new Error(`Edit file ${operation.file} is not a target. Allowed: ${nrpAllowedFiles(scope)}.`);
+  }
   if (operation.pointer !== '') throw new Error('create uses an empty pointer.');
   if (working.has(operation.file)) throw new Error(`Edit file ${operation.file} already exists.`);
   const artifact = parseJsonText(operation.valueJson, 'valueJson');
   assertFile(kind, operation.file, artifact);
+  if (kind === 'journeys') assertNewJourney(artifact);
   working.set(operation.file, { artifact, created: true });
+}
+
+function assertNewJourney(value: unknown): void {
+  const business = record(record(value, 'Edited file').business, 'Journey business');
+  for (const key of ['actorRef', 'title', 'goal', 'entry', 'steps', 'outcome']) {
+    if (business[key] === undefined) {
+      throw new Error(`A new journey file needs business.${key}, the same shape as the sibling.`);
+    }
+  }
+  if (!Array.isArray(business.steps)) throw new Error('A new journey file needs business.steps, the same shape as the sibling.');
+}
+
+function indexIdSet(kind: NrpArtifactKind, index: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!index || typeof index !== 'object' || Array.isArray(index)) return ids;
+  const key = kind === 'journeys' ? 'journeys' : 'entities';
+  const idKey = kind === 'journeys' ? 'journeyId' : 'entityId';
+  const rows = (index as Record<string, unknown>)[key];
+  if (!Array.isArray(rows)) return ids;
+  for (const row of rows) {
+    if (typeof row === 'string') ids.add(row);
+    else if (row && typeof row === 'object' && typeof (row as Record<string, unknown>)[idKey] === 'string') {
+      ids.add((row as Record<string, unknown>)[idKey] as string);
+    }
+  }
+  return ids;
 }
 
 const FROZEN_TOKENS = new Set(['schemaVersion', 'moduleName', 'entityId', 'journeyId']);
@@ -473,25 +568,93 @@ function markedFileIds(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind, tex
   return ids;
 }
 
-function ontologyScope(artifacts: NrpModuleArtifacts, triage: NrpTriage, textMarks: readonly NrpTextMark[]): NrpFileScope {
+function fileCreates(
+  artifacts: NrpModuleArtifacts,
+  kind: NrpArtifactKind,
+  known: ReadonlySet<string>,
+  targets: readonly string[],
+  pendingCreates: readonly string[],
+): string[] {
+  const creates: string[] = [];
+  const push = (id: string) => {
+    if (id && !creates.includes(id)) creates.push(id);
+  };
+  for (const id of targets) {
+    if (!known.has(id) && !existsOutside(artifacts, kind, id)) push(id);
+  }
+  for (const id of idsMissingFiles(artifacts, kind)) push(id);
+  for (const id of pendingCreates) push(id);
+  return creates;
+}
+
+function idsMissingFiles(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind): string[] {
+  if (kind === 'journeys') {
+    const have = new Set(artifacts.journeys.map(journey => journey.journeyId));
+    return (artifacts.journeyIndex.journeys || []).map(entry => entry.journeyId).filter(id => id && !have.has(id));
+  }
+  const have = new Set(artifacts.entities.map(entity => entity.entityId));
+  return [...indexIdSet('ontology', artifacts.ontologyIndex)].filter(id => !have.has(id));
+}
+
+function existsOutside(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind, id: string): boolean {
+  if (kind !== 'rules') {
+    const rules = artifacts.rules as { rules?: unknown };
+    if (Array.isArray(rules.rules) && rules.rules.some(item => isRecord(item) && item.ruleId === id)) return true;
+    if (isRecord(rules.rules) && Object.prototype.hasOwnProperty.call(rules.rules, id)) return true;
+  }
+  if (kind !== 'journeys') {
+    for (const journey of artifacts.journeys) {
+      if (journey.journeyId === id) return true;
+      if ((journey.business?.steps || []).some(step => step.stepId === id)) return true;
+    }
+  }
+  if (kind !== 'ontology' && ontologyIds(artifacts).has(id)) return true;
+  if (kind !== 'access') {
+    if ((artifacts.access.actors || []).some(actor => actor.actorId === id)) return true;
+    if ((artifacts.access.grants || []).some(grant => grant.grantId === id)) return true;
+  }
+  if (kind !== 'workflows') {
+    for (const process of artifacts.workflows.processes || []) {
+      if (process.processId === id) return true;
+      if ((process.tasks || []).some(task => task.taskId === id)) return true;
+    }
+  }
+  return false;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function ontologyScope(
+  artifacts: NrpModuleArtifacts,
+  triage: NrpTriage,
+  textMarks: readonly NrpTextMark[],
+  pendingCreates: readonly string[],
+): NrpFileScope {
   const known = ontologyIds(artifacts);
   const marked = markedFileIds(artifacts, 'ontology', textMarks);
   const selected = artifacts.entities.filter(entity =>
     triage.targets.includes(entity.entityId) || ownsAny(entity, triage.targets) || marked.has(entity.entityId),
   );
-  const creates = triage.targets.filter(id => !known.has(id));
+  const creates = fileCreates(artifacts, 'ontology', known, triage.targets, pendingCreates);
   const removesFile = triage.mechanical.some(mark =>
     mark.op === 'remove' && artifacts.entities.some(entity => entity.entityId === mark.targetId),
   );
   const files: NrpEditFile[] = selected.map(entity => ({ id: entity.entityId, artifact: entity }));
-  if (creates.length || removesFile || !files.length) {
+  if (creates.length || removesFile || !files.length || triage.targets.some(id => !known.has(id))) {
     files.push({ id: 'index', artifact: artifacts.ontologyIndex });
   }
   const present = files.map(file => file.id);
   return { present, creates, files };
 }
 
-function journeyScope(artifacts: NrpModuleArtifacts, triage: NrpTriage, textMarks: readonly NrpTextMark[]): NrpFileScope {
+function journeyScope(
+  artifacts: NrpModuleArtifacts,
+  triage: NrpTriage,
+  textMarks: readonly NrpTextMark[],
+  pendingCreates: readonly string[],
+): NrpFileScope {
   const known = new Set<string>();
   for (const journey of artifacts.journeys) {
     known.add(journey.journeyId);
@@ -504,12 +667,12 @@ function journeyScope(artifacts: NrpModuleArtifacts, triage: NrpTriage, textMark
     || (journey.business?.steps || []).some(step => triage.targets.includes(step.stepId))
     || marked.has(journey.journeyId),
   );
-  const creates = triage.targets.filter(id => !known.has(id));
+  const creates = fileCreates(artifacts, 'journeys', known, triage.targets, pendingCreates);
   const removesFile = triage.mechanical.some(mark =>
     mark.op === 'remove' && artifacts.journeys.some(journey => journey.journeyId === mark.targetId),
   );
   const files: NrpEditFile[] = selected.map(journey => ({ id: journey.journeyId, artifact: journey }));
-  if (creates.length || removesFile || !files.length) {
+  if (creates.length || removesFile || !files.length || triage.targets.some(id => !known.has(id)) || pendingCreates.length) {
     files.push({ id: 'index', artifact: artifacts.journeyIndex });
   }
   return { present: files.map(file => file.id), creates, files };
@@ -644,8 +807,9 @@ export async function beforeNrpEditStep(
     }
     const kind = parsed.order.kind;
     if (!kind) throw new Error('A model edit needs an artifact kind.');
-    const scope = nrpFileScope(edited.artifacts, kind, parsed.order.triage, edited.textMarks);
+    const scope = nrpFileScope(edited.artifacts, kind, parsed.order.triage, edited.textMarks, parsed.order.pendingCreates || []);
     const tool = buildNrpEditTool();
+    const reference = scope.creates.length ? nrpShapeReference(edited.artifacts, kind) : null;
     return [{
       type: 'prompt_ready',
       args: String(step.prompt || ''),
@@ -656,7 +820,7 @@ export async function beforeNrpEditStep(
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_EDIT_SYSTEM_PROMPT,
       humanPrompt: buildNrpEditHumanPrompt(
-        parsed.request, parsed.order.triage, kind, scope.files, edited.textMarks, scope.creates, parsed.order.editErrors || [],
+        parsed.request, parsed.order.triage, kind, scope.files, edited.textMarks, scope.creates, parsed.order.editErrors || [], reference,
       ),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
@@ -685,8 +849,12 @@ export async function afterNrpEditStep(
     const payload = unwrapNs4FlexibleWorkerPayload(step.interaction.payload[0]);
     setModuleRoot(parsed.moduleName, `${parsed.moduleName}/${NRP_CANDIDATE_REL}`);
     const loaded = applyNrpMechanical(await loadNrpArtifacts(parsed.moduleName), parsed.order.triage.mechanical);
-    const scope = nrpFileScope(loaded.artifacts, parsed.order.kind, parsed.order.triage, loaded.textMarks);
+    const scope = nrpFileScope(loaded.artifacts, parsed.order.kind, parsed.order.triage, loaded.textMarks, parsed.order.pendingCreates || []);
     const artifact = normalizeNrpEdit(parsed.order.kind, payload, scope);
+    const gaps = nrpIndexFileGaps(parsed.order.kind, scope, artifact.files);
+    if (gaps.messages.length) {
+      throw new NrpEditRefusal(gaps.messages.join('\n'), payload, gaps.createIds);
+    }
     const pendingTextMarks = nrpUnresolvedTextMarks(parsed.order.kind, scope, loaded.textMarks, artifact.files, loaded.artifacts);
     const applied: NrpAppliedEdit[] = [
       ...parsed.order.applied,
@@ -738,7 +906,7 @@ function retryEdit(step: mls.msg.AIAgentStep, error: unknown): mls.msg.AIAgentSt
   try {
     const project = mls.actualProject || 0;
     const parsed = parseNrpEditPrompt(String(step.prompt || ''), project);
-    const next = nextNrpEditAfterRefusal(parsed.order, error.message);
+    const next = nextNrpEditAfterRefusal(parsed.order, error.message, error.createIds);
     if (!next) return null;
     return createEdit30Step(parsed.moduleName, parsed.request, next);
   } catch (retryError) {
@@ -754,11 +922,11 @@ async function citeEditRefusal(step: mls.msg.AIAgentStep, error: unknown): Promi
     const parsed = parseNrpEditPrompt(String(step.prompt || ''), project);
     const info = pipelineJsonFileForProject(project, parsed.moduleName, 'newReleasePrompt-refused');
     const citation = await recordNrpTriageRefusal(info, error.message, error.raw);
-    return new NrpEditRefusal(`${error.message} See ${citation}.`, error.raw);
+    return new NrpEditRefusal(`${error.message} See ${citation}.`, error.raw, error.createIds);
   } catch (writeError) {
     console.error('[agentNewReleasePrompt] edit30 could not record the refused response', writeError);
     const writeMessage = writeError instanceof Error ? writeError.message : String(writeError);
-    return new NrpEditRefusal(`${error.message} The refused response was not recorded: ${writeMessage}.`, error.raw);
+    return new NrpEditRefusal(`${error.message} The refused response was not recorded: ${writeMessage}.`, error.raw, error.createIds);
   }
 }
 
@@ -792,6 +960,7 @@ function readOrder(value: unknown): NrpEditCursor {
     applied: appliedEdits(root.applied),
     attempts: readAttempts(root.attempts),
     editErrors: readErrors(root.editErrors),
+    pendingCreates: readErrors(root.pendingCreates),
   };
 }
 

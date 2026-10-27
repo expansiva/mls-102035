@@ -10,12 +10,15 @@ import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/help
 import { applyNrpMechanical, nrpModelKinds } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import {
   NRP_EDIT_SYSTEM_PROMPT,
+  NRP_JOURNEY_SHAPE,
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
   nextNrpEditAfterRefusal,
   assertFile,
   normalizeNrpEdit,
   nrpFileScope,
+  nrpIndexFileGaps,
+  nrpShapeReference,
   nrpUnresolvedTextMarks,
   planNrpEditOrders,
   type NrpEditCursor,
@@ -253,14 +256,18 @@ void test('create adds a journey only when triage asked for it', () => {
       op: 'create',
       pointer: '',
       expectedJson: '',
-      valueJson: '{"journeyId":"gestorCopia","business":{"title":"Copy","actorRef":"gestor","steps":[]}}',
+      valueJson: '{"schemaVersion":"2026-09-10-ns5-journey-v1","journeyId":"gestorCopia","business":{"actorRef":"gestor","title":"Copy","goal":"Copy","entry":{"mode":"coldStart"},"steps":[],"outcome":{"statement":"Copied"}}}',
       reason: 'new journey',
     }],
   }, { present: [], creates: ['gestorCopia'], files: [] });
   assert.equal((created.files[0].artifact as { journeyId: string }).journeyId, 'gestorCopia');
-  assert.throws(() => normalizeNrpEdit('ontology', {
-    operations: [{ file: 'NewThing', op: 'create', pointer: '', expectedJson: '', valueJson: '{"entityId":"NewThing"}', reason: 'no' }],
-  }, { present: [], creates: ['NewThing'], files: [] }), /only adds a journey/);
+  const entity = normalizeNrpEdit('ontology', {
+    operations: [{ file: 'NewThing', op: 'create', pointer: '', expectedJson: '', valueJson: '{"entityId":"NewThing","schemaVersion":"v"}', reason: 'new entity' }],
+  }, { present: [], creates: ['NewThing'], files: [] });
+  assert.equal((entity.files[0].artifact as { entityId: string }).entityId, 'NewThing');
+  assert.throws(() => normalizeNrpEdit('journeys', {
+    operations: [{ file: 'other', op: 'create', pointer: '', expectedJson: '', valueJson: '{"journeyId":"other"}', reason: 'no' }],
+  }, { present: ['index'], creates: [], files: [{ id: 'index', artifact: { journeys: [] } }] }), /not a target/);
 });
 
 void test('a mismatched expectedJson and a missing pointer are refused and the mismatch is recorded', async () => {
@@ -481,4 +488,123 @@ void test('a journey named only by a text mark is an allowed file, and an empty 
   assert.equal(pending[0].term, 'etiquetas');
   const cleared = nrpUnresolvedTextMarks('journeys', scope, marked.textMarks, edited.files, marked.artifacts);
   assert.deepEqual(cleared, []);
+});
+
+void test('a new journey prompt carries one sibling and the real shape', () => {
+  const artifacts = sample();
+  const ask = { ...triage, artifacts: ['journeys'] as NrpTriage['artifacts'], targets: ['gestorCopia'], mechanical: [] };
+  const scope = nrpFileScope(artifacts, 'journeys', ask);
+  assert.deepEqual(scope.creates, ['gestorCopia']);
+  const sibling = nrpShapeReference(artifacts, 'journeys');
+  assert.equal(sibling?.id, 'memberList');
+  const prompt = buildNrpEditHumanPrompt('The manager can copy a task.', ask, 'journeys', scope.files, [], scope.creates, [], sibling);
+  assert.match(prompt, new RegExp(NRP_JOURNEY_SHAPE.replace(/[()]/g, match => `\\${match}`)));
+  assert.match(prompt, /Sibling memberList/);
+  assert.match(prompt, /memberList/);
+  assert.equal(/tarefas/i.test(prompt), false);
+  assert.equal(prompt.includes('"journeyId":"memberList"') || prompt.includes('"journeyId": "memberList"'), true);
+});
+
+void test('an index id without a file is retried once', () => {
+  const index = { schemaVersion: 'v', journeys: [{ journeyId: 'memberList', actorRef: 'member', title: 'List' }] };
+  const scope: NrpFileScope = { present: ['index', 'memberList'], creates: [], files: [
+    { id: 'index', artifact: index },
+    { id: 'memberList', artifact: { journeyId: 'memberList', business: { actorRef: 'member', title: 'List', goal: 'g', entry: {}, steps: [], outcome: {} } } },
+  ] };
+  const edited = normalizeNrpEdit('journeys', {
+    operations: [{
+      file: 'index', op: 'add', pointer: '/journeys/-', expectedJson: '',
+      valueJson: '{"journeyId":"duplicarTarefa","actorRef":"gestor","title":"Duplicar"}',
+      reason: 'list the new journey',
+    }],
+  }, scope);
+  const gaps = nrpIndexFileGaps('journeys', scope, edited.files);
+  assert.match(gaps.messages.join('\n'), /duplicarTarefa/);
+  assert.deepEqual(gaps.createIds, ['duplicarTarefa']);
+  const order: NrpEditCursor = { mode: 'model', kind: 'journeys', triage, rest: [], applied: [], attempts: 0 };
+  const again = nextNrpEditAfterRefusal(order, gaps.messages.join('\n'), gaps.createIds);
+  assert.equal(again?.attempts, 1);
+  assert.deepEqual(again?.pendingCreates, ['duplicarTarefa']);
+  assert.equal(nextNrpEditAfterRefusal(again || order, 'still missing', ['duplicarTarefa']), null);
+});
+
+const DUPLICAR = {
+  schemaVersion: '2026-09-10-ns5-journey-v1',
+  moduleName: 'tarefas',
+  journeyId: 'duplicarTarefa',
+  business: {
+    actorRef: 'gestor',
+    title: 'Duplicar tarefa mantendo o responsável',
+    goal: 'O gestor cria uma cópia de uma tarefa existente, mantendo o mesmo responsável.',
+    entry: { mode: 'coldStart' },
+    steps: [
+      { stepId: 'selecionarTarefa', kind: 'act', entity: 'Tarefa', effect: 'update', actorRef: 'gestor', title: 'Selecionar', description: 'O gestor escolhe a tarefa que quer duplicar.' },
+      { stepId: 'duplicar', kind: 'act', entity: 'Tarefa', effect: 'create', actorRef: 'gestor', title: 'Duplicar', description: 'O gestor confirma a duplicação.' },
+      { stepId: 'ligarLista', kind: 'act', entity: 'Lista', effect: 'update', actorRef: 'gestor', title: 'Lista', description: 'A cópia entra na mesma lista.' },
+    ],
+    outcome: { statement: 'A cópia existe com o mesmo responsável.', evidence: ['A tarefa nova tem o mesmo responsável.'] },
+  },
+};
+
+void test('the recorded duplicate-journey response, rewritten with business, passes the gates', () => {
+  const fixture = path.join(HERE, '../../../solution/fixtures/finalize80/tarefas');
+  const defs = <T>(name: string): T => {
+    const json = extractNs4ClassicJsonObject(readFileSync(path.join(fixture, name), 'utf8'));
+    if (!json) throw new Error(`no JSON in ${name}`);
+    return JSON.parse(json) as T;
+  };
+  const journeyIndex = defs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
+  const ontologyIndex = defs<Ns5OntologyAnyIndex>('ontology/index.defs.ts');
+  const artifacts = {
+    module: defs<Ns5ModuleArtifact>('module.defs.ts'),
+    journeyIndex,
+    journeys: journeyIndex.journeys.map(entry => defs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`)),
+    ontologyIndex,
+    entities: ns5OntologyEntityIds(ontologyIndex).map(entityId => defs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`)),
+    rules: {
+      schemaVersion: '2026-09-10-ns5-rules-v1',
+      moduleName: 'tarefas',
+      rules: [{ ruleId: 'responsavelAceitaTarefas', description: 'O responsável aceita tarefas.' }],
+    },
+    workflows: defs<Ns5WorkflowsArtifact>('workflows.defs.ts'),
+    access: defs<Ns5AccessArtifact>('access.defs.ts'),
+    integration: defs<Ns5IntegrationArtifact>('integration.defs.ts'),
+  } as unknown as NrpModuleArtifacts;
+  const ask: NrpTriage = {
+    ...triage,
+    artifacts: ['rules', 'journeys'],
+    targets: ['Tarefa', 'responsavelId', 'responsavelAceitaTarefas', 'duplicarTarefa'],
+    intent: 'The manager can duplicate a task and keep the same assignee.',
+    mechanical: [],
+    mechanicalOnly: false,
+  };
+  const scope = nrpFileScope(artifacts, 'journeys', ask);
+  assert.equal(scope.creates.includes('duplicarTarefa'), true);
+  assert.equal(scope.creates.includes('responsavelAceitaTarefas'), false);
+  assert.equal(scope.present.includes('index'), true);
+  const sibling = nrpShapeReference(artifacts, 'journeys');
+  const prompt = buildNrpEditHumanPrompt(ask.intent || '', ask, 'journeys', scope.files, [], scope.creates, [], sibling);
+  assert.match(prompt, /business with actorRef, title, goal, entry, steps and outcome/);
+  assert.match(prompt, /Sibling /);
+  const index = JSON.parse(JSON.stringify(journeyIndex)) as { journeys: Array<{ journeyId: string }> };
+  const edited = normalizeNrpEdit('journeys', {
+    operations: [
+      {
+        file: 'index', op: 'add', pointer: '/journeys/-', expectedJson: '',
+        valueJson: JSON.stringify({ journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'Duplicar tarefa mantendo o responsável' }),
+        reason: 'list the journey',
+      },
+      {
+        file: 'duplicarTarefa', op: 'create', pointer: '', expectedJson: '',
+        valueJson: JSON.stringify(DUPLICAR),
+        reason: 'create the journey file',
+      },
+    ],
+  }, scope);
+  assert.equal(nrpIndexFileGaps('journeys', scope, edited.files).messages.length, 0);
+  const merged = overlayNrpEdits(artifacts, [{ mode: 'model', kind: 'journeys', artifact: edited }]);
+  const baseline = checkNrpGates(artifacts, [...NRP_ARTIFACT_KINDS]);
+  const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(merged, [...NRP_ARTIFACT_KINDS])));
+  assert.deepEqual(fresh, [], fresh.map(issue => `${issue.code} ${issue.path} ${issue.message}`).join('; '));
+  assert.equal(index.journeys.some(entry => entry.journeyId === 'duplicarTarefa'), false);
 });
