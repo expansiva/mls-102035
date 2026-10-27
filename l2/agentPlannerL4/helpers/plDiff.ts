@@ -217,6 +217,7 @@ function textAttrs(source: object): { title: string; description: string } {
   const record = source as Record<string, unknown>;
   const out = { title: '', description: '' };
   for (const key of L4_TEXT_ATTRIBUTES) {
+    if (key !== 'title' && key !== 'description') continue;
     const value = record[key];
     if (typeof value === 'string') out[key] = value;
   }

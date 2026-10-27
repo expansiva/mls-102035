@@ -38,6 +38,18 @@ test('p4_35 added enum value is not text only', () => {
   assert.equal(isTextOnlyChange(item), false);
 });
 
+test('p4_74 a step whose only change is icon is text', () => {
+  const before = { journeyId: 'j1', stepId: 's1', kind: 'act', title: 'Enviar', icon: 'send' };
+  const after = { ...before, icon: 'clipboard-check' };
+  assert.equal(isTextOnlyChange(fieldChange(before, after)), true);
+  assert.equal(isTextOnlyChange(fieldChange({ ...before, icon: undefined }, { ...before, icon: 'send' })), true);
+});
+
+test('p4_74 decisionRef is not text', () => {
+  const before = { journeyId: 'j1', stepId: 's2', kind: 'act', decisionRef: 'd1' };
+  assert.equal(isTextOnlyChange(fieldChange(before, { ...before, decisionRef: 'd2' })), false);
+});
+
 test('p4_35 derived, required and a non-field item are not text only', () => {
   assert.equal(isTextOnlyChange(fieldChange({ derived: true }, { derived: false })), false);
   assert.equal(isTextOnlyChange(fieldChange({ required: true }, {})), false);

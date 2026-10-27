@@ -82,6 +82,8 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     title: { reader: 'planner / UI', since: '2026-09-10' },
     description: { reader: 'planner / UI', since: '2026-09-10' },
     handoffTo: { reader: 'steps/journeys20/gate.ts, steps/workflows50, finalize80 I6', since: '2026-09-10' },
+    icon: { reader: 'solution/poolPlan.ts (L4_TEXT_ATTRIBUTES), newRelease screen', since: '2026-10-27' },
+    decisionRef: { reader: 'steps/journeys20/gate.ts (branch of a decide step)', since: '2026-10-27' },
   },
   Ns5JourneyArtifact: {
     schemaVersion: { reader: 'steps/journeys20/gate.ts', since: '2026-09-10' },
@@ -279,6 +281,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     transitionRef: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I2', since: '2026-09-12' },
     next: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/workflows50/gate.ts, executor LLM', since: '2026-09-10' },
+    icon: { reader: 'solution/poolPlan.ts (L4_TEXT_ATTRIBUTES), newRelease screen', since: '2026-10-27' },
     wake: { reader: 'steps/workflows50/gate.ts, agentPlannerL4/helpers/plDiff.ts, newRelease/widgets/workflowsModel.ts, L1 workflow engine (How)', since: '2026-10-19' },
   },
   Ns5WorkflowProcess: {

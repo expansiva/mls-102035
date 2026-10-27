@@ -123,6 +123,13 @@ export interface Ns5JourneyStep {
   description: string;
   /** workflows50 requires a process covering this handoff; must be an actorId. */
   handoffTo?: string;
+  /** Optional Lucide name (`lucide-static` catalog). Presentation only; absent keeps the screen default. */
+  icon?: string;
+  /**
+   * On a branch step, the `stepId` of the `kind: 'decide'` step this branch belongs to.
+   * A later step without `decisionRef` is the continuation. journeys20 rejects an unknown or non-decide target.
+   */
+  decisionRef?: string;
 }
 
 export interface Ns5JourneyArtifact {
@@ -137,6 +144,8 @@ export interface Ns5JourneyArtifact {
     title: string;
     /** Planner / UI. */
     goal: string;
+    /** Optional Lucide name (`lucide-static` catalog). Presentation only; absent keeps the screen default. */
+    icon?: string;
     entry: {
       /** journeys20 gate; no screen meaning. */
       mode: 'coldStart' | 'contextOrLookup' | 'fromNotification';
@@ -618,6 +627,8 @@ export interface Ns5WorkflowTask {
   next: string[];
   /** Planner / UI. Wait: the pause (time or event) in prose. */
   description: string;
+  /** Optional Lucide name (`lucide-static` catalog). Presentation only; absent keeps the screen default. */
+  icon?: string;
   /**
    * Whether the process routine asks to be woken while this stage waits (plan §6). Only on kind 'wait'.
    * The routine decides what to do; waking is not a message to a person. Optional only for recorded

@@ -381,8 +381,9 @@ export interface L4DiffItem {
  * Prose on a v3 field and on an enum value (`Ns5OntologyFieldV3` / `Ns5OntologyValueV3`):
  * `title` and `description` only. `type`, `derived`, `required` and the value code are not text.
  * `values` is not in this list: a label edit is text, an added or removed code is not.
+ * `icon` is presentation (Lucide name on a journey, a step or a workflow task). `decisionRef` is not text.
  */
-export const L4_TEXT_ATTRIBUTES = ['title', 'description'] as const;
+export const L4_TEXT_ATTRIBUTES = ['title', 'description', 'icon'] as const;
 export type L4TextAttribute = (typeof L4_TEXT_ATTRIBUTES)[number];
 
 function isL4TextAttribute(key: string): key is L4TextAttribute {
@@ -430,7 +431,7 @@ function enumValuesTextOnly(before: unknown, after: unknown): boolean {
 }
 
 /**
- * True when every difference on a `changed` item is text (`title` / `description`, or an enum label).
+ * True when every difference on a `changed` item is text (`title` / `description` / `icon`, or an enum label).
  * A `rule` is never text: its description is the rule. Any other key is not text.
  */
 export function isTextOnlyChange(item: L4DiffItem): boolean {
