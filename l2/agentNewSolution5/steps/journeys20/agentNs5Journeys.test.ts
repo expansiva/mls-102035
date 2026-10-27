@@ -18,6 +18,7 @@ import {
   hashNs5Journey,
   normalizeNs5JourneysPayload,
   NS5_JOURNEY_DROP_TRANSITION_REF,
+  NS5_JOURNEY_DROP_UNKNOWN_ICON,
   type Ns5JourneyDraft,
 } from '/_102035_/l2/solution/gates/journeys20/contracts.js';
 import {
@@ -565,6 +566,109 @@ void test('act requires effect; transitionRef only with effect transition', () =
   assert.match(prompt, /"effect": "update"/);
   assert.doesNotMatch(prompt, /creates: true/);
   assert.doesNotMatch(prompt, /ACT_INTENT_BOTH/);
+});
+
+void test('icon null is absent and an unknown Lucide name is dropped and recorded', () => {
+  const normalized = normalizeNs5JourneysPayload({
+    journeys: [validJourney({
+      business: {
+        actorRef: 'caixa',
+        title: 'Close the order',
+        goal: 'Take payment and free the table.',
+        icon: 'not-a-lucide-name',
+        entry: { mode: 'contextOrLookup' },
+        steps: [
+          actStep({ icon: null, decisionRef: null }),
+          actStep({ stepId: 'pay', icon: 'clipboard-check', decisionRef: null }),
+        ],
+        outcome: {
+          statement: 'The order is closed and the table is free.',
+          evidence: ['Payment is recorded.'],
+        },
+      },
+    })],
+  });
+  const journey = normalized.journeys[0];
+  assert.equal('icon' in journey.business, false);
+  assert.equal('icon' in journey.business.steps[0], false);
+  assert.equal('decisionRef' in journey.business.steps[0], false);
+  assert.equal(journey.business.steps[1].icon, 'clipboard-check');
+  assert.ok(normalized.normalizations.some(item =>
+    item.kind === NS5_JOURNEY_DROP_UNKNOWN_ICON && item.stepId === '' && item.detail.includes('not-a-lucide-name'),
+  ));
+  assert.equal(validateNs5Journeys(normalized.journeys, { actors: ACTORS }).ok, true);
+});
+
+void test('decisionRef must name a decide step in the same journey', () => {
+  const business = {
+    actorRef: 'caixa',
+    title: 'Close the order',
+    goal: 'Take payment and free the table.',
+    icon: null,
+    entry: { mode: 'contextOrLookup' },
+    steps: [
+      {
+        stepId: 'approve',
+        kind: 'decide',
+        entity: 'Comanda',
+        title: 'Approve or reject.',
+        description: 'The person chooses.',
+        icon: 'scale',
+        decisionRef: null,
+      },
+      actStep({ stepId: 'accept', decisionRef: 'approve', icon: null }),
+      actStep({ stepId: 'continueAfter', decisionRef: null, icon: null }),
+    ],
+    outcome: { statement: 'Chosen.', evidence: ['A choice is recorded.'] },
+  };
+  const ok = drafts({ journeys: [validJourney({ business })] });
+  assert.equal(ok[0].business.steps[1].decisionRef, 'approve');
+  assert.equal(ok[0].business.icon, undefined);
+  assert.equal(validateNs5Journeys(ok, { actors: ACTORS }).ok, true);
+
+  const missing = drafts({
+    journeys: [validJourney({
+      business: { ...business, steps: [actStep({ decisionRef: 'missingDecide', icon: null })] },
+    })],
+  });
+  const gate = validateNs5Journeys(missing, { actors: ACTORS });
+  const issue = gate.issues.find(item => item.code === 'NS5_JOURNEY_DECISION_REF');
+  assert.ok(issue);
+  assert.match(issue.message, /closeOrder/);
+  assert.match(formatNs5JourneyGate(gate.issues), /steps\[0\]\.decisionRef/);
+
+  const notDecide = drafts({
+    journeys: [validJourney({
+      business: {
+        ...business,
+        steps: [
+          actStep({ stepId: 'locateFirst', kind: 'locate', effect: undefined, icon: null, decisionRef: null }),
+          actStep({ decisionRef: 'locateFirst', icon: null }),
+        ],
+      },
+    })],
+  });
+  assert.ok(validateNs5Journeys(notDecide, { actors: ACTORS }).issues.some(item => item.code === 'NS5_JOURNEY_DECISION_REF'));
+});
+
+void test('journeys20 prompt states icon and decisionRef as intention', () => {
+  const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
+  assert.match(prompt, /`icon` is a Lucide icon name/);
+  assert.match(prompt, /Send `null` when none fits/);
+  assert.match(prompt, /`decisionRef` names the branch/);
+  assert.doesNotMatch(prompt, /clipboard-check|scale|comanda|garcom/i);
+  const schema = loadSchema() as {
+    $defs: {
+      business: { required: string[]; properties: { icon: { type: string } } };
+      step: { required: string[]; properties: { icon: { type: string }; decisionRef: { type: string } } };
+    };
+  };
+  assert.equal(schema.$defs.business.required.includes('icon'), false);
+  assert.equal(schema.$defs.business.properties.icon.type, 'string');
+  assert.equal(schema.$defs.step.required.includes('icon'), false);
+  assert.equal(schema.$defs.step.required.includes('decisionRef'), false);
+  assert.equal(schema.$defs.step.properties.icon.type, 'string');
+  assert.equal(schema.$defs.step.properties.decisionRef.type, 'string');
 });
 
 void test('afterPrompt records journeys20 form normalizations on the draft', () => {

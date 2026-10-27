@@ -26,6 +26,8 @@ A journey is what a person does to reach an outcome. It is not a screen and not 
 - Counter-example (placeholders — use only ids that exist in the module): `{ "stepId": "<stepId>", "kind": "act", "entity": "<Entity>", "handoffTo": "<actorRef>" }` is wrong. Remove the field. A valid handoff is `{ "stepId": "<stepId>", "kind": "handoff", "entity": "<Entity>", "handoffTo": "<otherActor>" }`. `{ "kind": "act", "effect": "update", "transitionRef": "<id>" }` is wrong.
 - A journey that only locates and inspects (a consultation) is valid. `act` and `decide` are
   required only when the request names a change or a human choice.
+- `icon` is a Lucide icon name for the journey and for each step, so the person can recognize them. Send `null` when none fits. Do not invent a name; an unknown name is dropped.
+- `decisionRef` names the branch of a human choice. On a step that is one outcome of a `decide`, set it to that decide step's `stepId`. On every other step, including the step that continues after the branches and every step of a journey with no `decide`, send `null`.
 - `stepId` and `journeyId` are lowerCamel. `journeyId` is not `index`.
 
 ## Entry

@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/gates/journeys20/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
+import { isLucideIcon } from '/_102035_/l2/solution/lucideIcons.js';
 import {
   NS5_JOURNEY_SCHEMA_VERSION,
   type Ns5JourneyArtifact,
@@ -20,11 +21,13 @@ export const NS5_JOURNEY_ACT_EFFECTS = ['create', 'update', 'transition'] as con
 export type Ns5JourneyActEffect = typeof NS5_JOURNEY_ACT_EFFECTS[number];
 
 export const NS5_JOURNEY_DROP_TRANSITION_REF = 'dropTransitionRef' as const;
+export const NS5_JOURNEY_DROP_UNKNOWN_ICON = 'dropUnknownIcon' as const;
 
 /** Same shape as access60 / ontology30 `draft.normalizations[]`. */
 export interface Ns5JourneysFormNormalization {
-  kind: typeof NS5_JOURNEY_DROP_TRANSITION_REF;
+  kind: typeof NS5_JOURNEY_DROP_TRANSITION_REF | typeof NS5_JOURNEY_DROP_UNKNOWN_ICON;
   journeyId: string;
+  /** Empty when the dropped icon belonged to the journey, not a step. */
   stepId: string;
   detail: string;
 }
@@ -96,12 +99,14 @@ function normalizeJourney(value: unknown, normalizations: Ns5JourneysFormNormali
   const outcome = record(business.outcome);
   const mode = text(entry.mode);
   const journeyId = memberId(text(source.journeyId) || text(business.title), '');
+  const icon = optionalIcon(business.icon, journeyId, '', normalizations);
   return {
     journeyId,
     business: {
       actorRef: memberId(text(business.actorRef), ''),
       title: text(business.title),
       goal: text(business.goal),
+      ...(icon ? { icon } : {}),
       entry: {
         mode: mode as Ns5JourneyArtifact['business']['entry']['mode'],
       },
@@ -137,6 +142,9 @@ function normalizeStep(
     });
   }
   const transitionRef = effect === 'transition' ? rawTransitionRef : '';
+  const icon = optionalIcon(step.icon, journeyId, stepId, normalizations);
+  const decisionRaw = text(step.decisionRef);
+  const decisionRef = decisionRaw ? memberId(decisionRaw, decisionRaw) : '';
   return {
     stepId,
     kind,
@@ -147,7 +155,29 @@ function normalizeStep(
     title: text(step.title),
     description: text(step.description),
     ...(handoffTo ? { handoffTo } : {}),
+    ...(icon ? { icon } : {}),
+    ...(decisionRef ? { decisionRef } : {}),
   };
+}
+
+/** `null` and blank become absent. A name outside the Lucide catalog is dropped and recorded. */
+function optionalIcon(
+  value: unknown,
+  journeyId: string,
+  stepId: string,
+  normalizations: Ns5JourneysFormNormalization[],
+): string | undefined {
+  if (value == null) return undefined;
+  const name = text(value);
+  if (!name) return undefined;
+  if (isLucideIcon(name)) return name;
+  normalizations.push({
+    kind: NS5_JOURNEY_DROP_UNKNOWN_ICON,
+    journeyId,
+    stepId,
+    detail: `icon ${name} is not in the Lucide catalog; dropped.`,
+  });
+  return undefined;
 }
 
 function actEffect(value: unknown): Ns5JourneyActEffect | undefined {

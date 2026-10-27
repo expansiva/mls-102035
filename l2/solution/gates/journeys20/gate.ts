@@ -88,6 +88,7 @@ export function validateNs5Journeys(
     }
 
     const stepIds = new Set<string>();
+    const decideIds = new Set<string>();
     journey.business.steps.forEach((step, stepPosition) => {
       const path = `${base}.business.steps[${stepPosition}]`;
       if (!MEMBER_ID.test(step.stepId)) {
@@ -97,6 +98,7 @@ export function validateNs5Journeys(
         error(issues, 'NS5_JOURNEY_STEP_ID_DUPLICATE', `Duplicate stepId ${step.stepId}.`, `${path}.stepId`);
       }
       if (step.stepId) stepIds.add(step.stepId);
+      if (step.kind === 'decide' && step.stepId) decideIds.add(step.stepId);
       if (!STEP_KINDS.has(step.kind)) {
         error(issues, 'NS5_JOURNEY_STEP_KIND', `Unknown step kind ${step.kind || '(empty)'}. Use locate, inspect, act, decide or handoff.`, `${path}.kind`);
       }
@@ -175,6 +177,17 @@ export function validateNs5Journeys(
           }
         });
       }
+    });
+    journey.business.steps.forEach((step, stepPosition) => {
+      if (!step.decisionRef || decideIds.has(step.decisionRef)) return;
+      const path = `${base}.business.steps[${stepPosition}]`;
+      const stepName = step.stepId || `index ${stepPosition}`;
+      error(
+        issues,
+        'NS5_JOURNEY_DECISION_REF',
+        `Step ${stepName}: decisionRef must be the stepId of a decide step in this journey. Use null when this step is not a branch.`,
+        `${path}.decisionRef`,
+      );
     });
   });
 
