@@ -1,0 +1,36 @@
+{
+  "flowId": "agentNewReleasePrompt",
+  "schemaVersion": "2026-10-27-nrp-flow-v1",
+  "status": "entry10-index10",
+  "visibility": "private",
+  "description": "Deterministic index of the L4 in editing, then triage and per-artifact edits. s1 ships entry10 and index10 only.",
+  "invocation": {
+    "cli": "@@agentNewReleasePrompt {\"moduleName\":\"...\",\"request\":\"...\"}",
+    "project": "Required from mls.actualProject",
+    "editRoot": "l4/<module>/tobe/plan, copied from canonical L4 when missing"
+  },
+  "executableSteps": [
+    {
+      "id": "entry10",
+      "agentName": "agentNewReleasePrompt",
+      "kind": "deterministic",
+      "modelAlias": null,
+      "dependsOn": [],
+      "doneAnchor": "entry10-done",
+      "reads": ["canonical l4/<module>/*.defs.ts"],
+      "writes": ["l4/<module>/tobe/plan when missing"],
+      "goal": "Point the run at the version in editing."
+    },
+    {
+      "id": "index10",
+      "agentName": "agentNewReleasePrompt",
+      "kind": "deterministic",
+      "modelAlias": null,
+      "dependsOn": ["entry10-done"],
+      "doneAnchor": "index10-done",
+      "reads": ["tobe/plan artifacts"],
+      "writes": ["compact index in the step result"],
+      "goal": "List entities, fields, rules, journeys, grants, processes and events for triage."
+    }
+  ]
+}

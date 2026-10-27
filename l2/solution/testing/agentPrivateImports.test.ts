@@ -22,6 +22,11 @@ const RULES: { forbidden: string; scope: string; allowed: string }[] = [
     allowed: 'l2/agentNewSolution5/',
   },
   {
+    forbidden: ['/_102035_/l2/', 'agentNewReleasePrompt/'].join(''),
+    scope: 'mls-102035/l2',
+    allowed: 'l2/agentNewReleasePrompt/',
+  },
+  {
     forbidden: ['list', 'Folder'].join(''),
     scope: 'newRelease/,agentReviewSolution/,agentPlannerL4/,solution/',
     allowed: '*.test.ts',
