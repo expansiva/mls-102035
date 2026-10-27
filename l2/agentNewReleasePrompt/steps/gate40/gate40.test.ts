@@ -15,11 +15,13 @@ import {
   classifyNrpGateIssues,
   nrpFreshIssues,
   nrpGateAction,
+  nrpIndexOnlyRepairMessage,
   nrpIssueOwner,
+  nrpKindCatalog,
   nrpMayWrite,
   type NrpGateIssue,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
-import { nrpFileScope } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { normalizeNrpEdit, nrpFileScope } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import { planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { NRP_ARTIFACT_KINDS } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
@@ -61,7 +63,7 @@ void test('a failing artifact is not written, and the repair sees the whole requ
   const repair = nrpGateAction(issues, ['rules'], []);
   assert.equal(repair.action, 'repair');
   assert.equal(repair.kind, 'rules');
-  const human = buildNrpRepairHumanPrompt(REQUEST, 'rules', issues, failingRules().rules);
+  const human = buildNrpRepairHumanPrompt(REQUEST, 'rules', issues, [{ id: 'rules', artifact: failingRules().rules }]);
   assert.equal(human.includes(REQUEST), true);
   const tool = buildNrpRepairTool();
   assert.equal(tool.function.name, 'submitNrpEdit');
@@ -149,4 +151,77 @@ void test('the tarefas fixture has no new gate error, and an edit that keeps it 
   assert.match(human, /Allowed files: .*duplicarTarefa/);
   assert.equal(human.includes('edicaoNaoMudaSituacao'), false);
   assert.equal(after.some(issue => issue.baseline), baseline.length > 0);
+});
+
+void test('a twin repair sees both journeys, and an index-only repair is refused', () => {
+  const artifacts = tarefasModule();
+  const source = artifacts.journeys.find(journey => journey.journeyId === 'revisarTarefa');
+  if (!source) throw new Error('revisarTarefa is missing from the tarefas fixture.');
+  const clone = (id: string): Ns5JourneyArtifact => {
+    const journey = JSON.parse(JSON.stringify(source)) as Ns5JourneyArtifact;
+    journey.journeyId = id;
+    journey.business.title = id;
+    journey.business.steps = [
+      ...journey.business.steps,
+      { stepId: 'ver', kind: 'locate', entity: 'Tarefa', title: 'Ver', description: 'Localiza a tarefa.' },
+    ];
+    return journey;
+  };
+  artifacts.journeys.push(clone('cancelarTarefa'), clone('duplicarTarefa'));
+  artifacts.journeyIndex = {
+    ...artifacts.journeyIndex,
+    journeys: [
+      ...artifacts.journeyIndex.journeys,
+      { journeyId: 'cancelarTarefa', actorRef: 'gestor', title: 'cancelarTarefa' },
+      { journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'duplicarTarefa' },
+    ],
+  };
+  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS);
+  const issues = classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS));
+  const twin = nrpFreshIssues(issues).find(issue => issue.code === 'NS5_JOURNEY_TWIN');
+  assert.ok(twin, nrpFreshIssues(issues).map(issue => `${issue.code} ${issue.message}`).join('; '));
+  assert.match(twin.message, /cancelarTarefa/);
+  assert.match(twin.message, /duplicarTarefa/);
+  const catalog = nrpKindCatalog(artifacts, 'journeys');
+  const human = buildNrpRepairHumanPrompt('The manager can duplicate a task.', 'journeys', issues, catalog);
+  assert.match(human, /NS5_JOURNEY_TWIN/);
+  assert.match(human, /cancelarTarefa, duplicarTarefa/);
+  assert.match(human, /"journeyId":"cancelarTarefa"/);
+  assert.match(human, /"journeyId":"duplicarTarefa"/);
+  assert.equal(human.includes('Abrir uma tarefa e passar a vez para a execução.'), false);
+  const recorded = {
+    operations: [{
+      file: 'duplicarTarefa',
+      op: 'set',
+      pointer: '/business/steps/2/entity',
+      expectedJson: '"Tarefa"',
+      valueJson: '"Lista"',
+      reason: 'Change one cited journey so the pair no longer shares operations.',
+    }],
+  };
+  const scope = { present: catalog.map(file => file.id), creates: [] as string[], files: catalog };
+  const edited = normalizeNrpEdit('journeys', recorded, scope);
+  assert.equal(edited.files.some(file => file.id === 'duplicarTarefa'), true);
+  const next = {
+    ...artifacts,
+    journeys: artifacts.journeys.map(journey => {
+      const hit = edited.files.find(file => file.id === journey.journeyId);
+      return (hit ? hit.artifact : journey) as Ns5JourneyArtifact;
+    }),
+  };
+  const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(next, NRP_ARTIFACT_KINDS)));
+  assert.deepEqual(fresh.map(issue => `${issue.code} ${issue.path}: ${issue.message}`), []);
+  const indexOnly = normalizeNrpEdit('journeys', {
+    operations: [{
+      file: 'index',
+      op: 'add',
+      pointer: '/journeys/-',
+      expectedJson: '',
+      valueJson: '{"journeyId":"outra","actorRef":"gestor","title":"Outra"}',
+      reason: 'Repeat an index entry.',
+    }],
+  }, scope);
+  const refusal = nrpIndexOnlyRepairMessage('journeys', [twin], indexOnly.files);
+  assert.match(refusal || '', /Repair changed only the index/);
+  assert.match(refusal || '', /one cited file/);
 });

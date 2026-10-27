@@ -9,10 +9,14 @@ import {
   checkNrpGates,
   classifyNrpGateIssues,
   nrpGateAction,
+  nrpIndexOnlyRepairMessage,
+  nrpKindCatalog,
+  nrpRepairPromptFiles,
   NRP_REPAIR_SYSTEM_PROMPT,
   overlayNrpEdits,
   type NrpAppliedEdit,
   type NrpGateIssue,
+  type NrpRepairFile,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { applyNrpMechanical } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import { pipelineJsonFileForProject, setModuleRoot } from '/_102035_/l2/solution/fs.js';
@@ -21,6 +25,7 @@ import {
   NrpEditRefusal,
   normalizeNrpEdit,
   nrpFileScope,
+  nrpIndexFileGaps,
   nrpShapeReference,
   NRP_JOURNEY_SHAPE,
   NRP_ONTOLOGY_SHAPE,
@@ -109,7 +114,7 @@ export async function beforeNrpGateStep(
     }
     const tool = buildNrpRepairTool();
     const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
-    const scope = nrpFileScope(merged, decision.kind, cursor.triage, marks);
+    const scope = repairScope(merged, decision.kind, cursor.triage, marks, issues);
     const reference = scope.creates.length ? nrpShapeReference(merged, decision.kind) : null;
     const shape = reference
       ? { rule: decision.kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE, file: reference }
@@ -123,7 +128,7 @@ export async function beforeNrpGateStep(
       hookSequential,
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_REPAIR_SYSTEM_PROMPT,
-      humanPrompt: buildNrpRepairHumanPrompt(cursor.request, decision.kind, issues, scope.files, nrpAllowed(scope), shape),
+      humanPrompt: buildNrpRepairHumanPrompt(cursor.request, decision.kind, issues, nrpKindCatalog(merged, decision.kind), nrpAllowed(scope), shape),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
     }];
@@ -154,8 +159,9 @@ export async function afterNrpGateStep(
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action !== 'repair' || !decision.kind) return [];
     const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
-    const scope = nrpFileScope(merged, decision.kind, cursor.triage, marks);
-    const artifact = normalizeNrpEdit(decision.kind, unwrapNs4FlexibleWorkerPayload(step.interaction.payload[0]), scope);
+    const scope = repairScope(merged, decision.kind, cursor.triage, marks, issues);
+    const payload = unwrapNs4FlexibleWorkerPayload(step.interaction.payload[0]);
+    const artifact = acceptNrpRepair(decision.kind, issues, scope, payload);
     const next: NrpGateCursor = {
       ...cursor,
       applied: [...cursor.applied, { mode: 'model', kind: decision.kind, artifact }],
@@ -186,6 +192,39 @@ async function citeRepairRefusal(step: mls.msg.AIAgentStep, error: unknown): Pro
     const writeMessage = writeError instanceof Error ? writeError.message : String(writeError);
     return new NrpEditRefusal(`${error.message} The refused response was not recorded: ${writeMessage}.`, error.raw);
   }
+}
+
+function repairScope(
+  artifacts: NrpModuleArtifacts,
+  kind: NrpArtifactKind,
+  triage: NrpTriage,
+  marks: ReturnType<typeof applyNrpMechanical>['textMarks'],
+  issues: readonly NrpGateIssue[],
+) {
+  const scope = nrpFileScope(artifacts, kind, triage, marks);
+  const extras = nrpRepairPromptFiles(kind, issues, nrpKindCatalog(artifacts, kind));
+  const files = scope.files.slice();
+  const present = scope.present.slice();
+  for (const extra of extras) {
+    if (files.some(file => file.id === extra.id)) continue;
+    files.push(extra);
+    present.push(extra.id);
+  }
+  return { ...scope, files, present };
+}
+
+function acceptNrpRepair(
+  kind: NrpArtifactKind,
+  issues: readonly NrpGateIssue[],
+  scope: { present: string[]; creates: string[]; files: NrpRepairFile[] },
+  payload: unknown,
+): { files: NrpRepairFile[] } {
+  const artifact = normalizeNrpEdit(kind, payload, scope);
+  const indexOnly = nrpIndexOnlyRepairMessage(kind, issues, artifact.files);
+  if (indexOnly) throw new NrpEditRefusal(indexOnly, payload);
+  const gaps = nrpIndexFileGaps(kind, scope, artifact.files);
+  if (gaps.messages.length) throw new NrpEditRefusal(gaps.messages.join('\n'), payload);
+  return artifact;
 }
 
 function nrpAllowed(scope: { present: string[]; creates: string[] }): string[] {

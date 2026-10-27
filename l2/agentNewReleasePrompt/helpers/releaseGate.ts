@@ -120,17 +120,95 @@ export function nrpMayWrite(action: NrpGateActionName): boolean {
   return action === 'write';
 }
 
+export interface NrpRepairFile {
+  id: string;
+  artifact: unknown;
+}
+
+/** Every file of one kind. The repair prompt keeps the index and the files an error names. */
+export function nrpKindCatalog(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind): NrpRepairFile[] {
+  if (kind === 'journeys') {
+    return [
+      { id: 'index', artifact: artifacts.journeyIndex },
+      ...artifacts.journeys.map(journey => ({ id: journey.journeyId, artifact: journey })),
+    ];
+  }
+  if (kind === 'ontology') {
+    return [
+      { id: 'index', artifact: artifacts.ontologyIndex },
+      ...artifacts.entities.map(entity => ({ id: entity.entityId, artifact: entity })),
+    ];
+  }
+  const slice = kind === 'rules' ? artifacts.rules
+    : kind === 'access' ? artifacts.access
+      : kind === 'workflows' ? artifacts.workflows
+        : artifacts.integration;
+  return [{ id: kind, artifact: slice }];
+}
+
+/** File ids named in an error message or path. Longer ids win, so one id is not a piece of another. */
+export function nrpCitedFileIds(
+  issues: readonly NrpGateIssue[],
+  kind: NrpArtifactKind,
+  ids: readonly string[],
+): string[] {
+  const haystacks = nrpFreshIssues(issues)
+    .filter(issue => nrpIssueOwner(issue) === kind)
+    .map(issue => `${issue.path}\n${issue.message}`);
+  const cited: string[] = [];
+  const ranked = [...ids].filter(id => id && id !== 'index').sort((a, b) => b.length - a.length);
+  for (const id of ranked) {
+    if (haystacks.some(hay => idInText(hay, id))) cited.push(id);
+  }
+  return cited;
+}
+
+/** Index of the kind, plus the files the errors cite. A single-file kind stays that one file. */
+export function nrpRepairPromptFiles(
+  kind: NrpArtifactKind,
+  issues: readonly NrpGateIssue[],
+  catalog: readonly NrpRepairFile[],
+): NrpRepairFile[] {
+  const cited = new Set(nrpCitedFileIds(issues, kind, catalog.map(file => file.id)));
+  const chosen: NrpRepairFile[] = [];
+  const index = catalog.find(file => file.id === 'index');
+  if (index && (kind === 'journeys' || kind === 'ontology')) chosen.push(index);
+  for (const file of catalog) {
+    if (file.id === 'index') continue;
+    if (cited.has(file.id) || (!cited.size && catalog.length === 1)) chosen.push(file);
+  }
+  return chosen;
+}
+
+/**
+ * A repair that edits only the index does not answer an error about a file.
+ * Returns the refusal, or null when the edit touches a cited file or the error is about the index.
+ */
+export function nrpIndexOnlyRepairMessage(
+  kind: NrpArtifactKind,
+  issues: readonly NrpGateIssue[],
+  edited: readonly { id: string }[],
+): string | null {
+  if (!edited.length || edited.some(file => file.id !== 'index')) return null;
+  const owned = nrpFreshIssues(issues).filter(issue => nrpIssueOwner(issue) === kind);
+  if (owned.length && owned.every(issue => issue.path.split(/[./[\]]/u).includes('index') || issue.path.includes('Index'))) {
+    return null;
+  }
+  return `Repair changed only the index. ${nrpRepairAsk(owned)}`;
+}
+
 export function buildNrpRepairHumanPrompt(
   request: string,
   kind: NrpArtifactKind,
   issues: readonly NrpGateIssue[],
-  artifact: unknown,
+  catalog: readonly NrpRepairFile[],
   allowed: readonly string[] = [],
   shape: { rule: string; file: { id: string; artifact: unknown } } | null = null,
 ): string {
   const lines = nrpFreshIssues(issues)
     .filter(issue => nrpIssueOwner(issue) === kind)
     .map(issue => `${issue.code} ${issue.path}: ${issue.message}`);
+  const files = nrpRepairPromptFiles(kind, issues, catalog);
   const parts = [
     `Kind: ${kind}`,
     `Request:\n${request}`,
@@ -140,8 +218,25 @@ export function buildNrpRepairHumanPrompt(
   if (shape) {
     parts.push(`${shape.rule}\nSibling ${shape.file.id} (reference only):\n${JSON.stringify(shape.file.artifact)}`);
   }
-  parts.push(`Artifact:\n${JSON.stringify(artifact)}`);
+  parts.push(`Files:\n${files.map(file => `${file.id}\n${JSON.stringify(file.artifact)}`).join('\n')}`);
   return parts.join('\n\n');
+}
+
+function nrpRepairAsk(issues: readonly NrpGateIssue[]): string {
+  const text = issues.map(issue => `${issue.code} ${issue.message}`).join('\n');
+  if (/twin|unique/iu.test(text)) {
+    return 'A uniqueness or twin error asks you to change the actor, the entity, or the operations of one cited file, or to remove the redundant file.';
+  }
+  if (/unknown|reference|not found|missing/iu.test(text)) {
+    return 'A reference error asks you to create or correct the file the error names.';
+  }
+  if (!issues.length) return 'Change one of the files the error names.';
+  return issues.map(issue => `${issue.code}: ${issue.message}`).join(' ');
+}
+
+function idInText(hay: string, id: string): boolean {
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^A-Za-z0-9_])${escaped}([^A-Za-z0-9_]|$)`, 'u').test(hay);
 }
 
 export const NRP_REPAIR_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
@@ -150,7 +245,10 @@ Call submitNrpEdit. Return small operations. Do not repeat a file.
 operations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Every field is required. Use an empty string when a field does not apply.
 op is set, add, remove, or create.
 pointer is an RFC 6901 pointer. add on a list ends with /-. add on an object ends with the new key.
-valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.`;
+valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.
+A uniqueness or twin error asks you to change the actor, the entity, or the operations of one cited file, or to remove the redundant file.
+A reference error asks you to create or correct the file the error names.
+An error that is not about the index is not fixed by editing only the index.`;
 
 export function buildNrpRepairTool(): mls.msg.LLMTool {
   return createNs4FlexibleWorkerTool(
