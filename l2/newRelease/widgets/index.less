@@ -392,3 +392,52 @@ new-release--widgets--index-102035 {
     }
   }
 }
+
+new-release--widgets--index-102035 {
+  .nr-index {
+    color-scheme: dark;
+    --page-bg: #0d1117; --surface-bg: #161b22; --surface-alt-bg: #1c2330;
+    --text-default: #d8dee9; --text-strong: #f0f4fc; --text-muted: #98a6ba;
+    --border-subtle: #30394a; --selected-text: #a8c7ff; --selected-border: #79aaff;
+    --focus-ring: #9ec5ff; --link-text: #9ec5ff;
+    --status-error-bg: #371d28; --status-error-text: #ffadb5;
+    --status-warning-bg: #342c1d; --status-warning-text: #e7c988;
+    --status-info-bg: #17283c; --status-info-text: #a3cbff; --status-success-text: #9bd4aa;
+    color: var(--text-default);
+  }
+  .nr-common__toolbar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: .6rem;
+    padding: .8rem 1.2rem; border-bottom: 1px solid var(--border-subtle);
+    > div { display: flex; gap: .2rem; }
+    button, summary {
+      min-height: 2.25rem; padding: .45rem .7rem; color: var(--text-default);
+      background: var(--surface-bg); border: 1px solid var(--border-subtle);
+      border-radius: .5rem; cursor: pointer; font: inherit; font-size: .75rem;
+    }
+    button[aria-pressed='true'] { color: var(--selected-text); border-color: var(--selected-border); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+  }
+  .nr-common__hint {
+    position: relative; margin-left: auto;
+    summary { list-style: none; }
+    p {
+      position: absolute; z-index: 5; top: 100%; right: 0; width: min(18rem, 70vw);
+      padding: .8rem; border: 1px solid var(--border-subtle); border-radius: .5rem;
+      background: var(--surface-bg); color: var(--text-default); box-shadow: 0 .5rem 1.5rem #0008; font-size: .8rem;
+    }
+  }
+  .nr-common__hint:focus-within p { outline: 1px solid var(--focus-ring); }
+  .nr-common__graph { overflow: auto; max-width: 100%; }
+  .nr-common__graph[hidden] { display: none; }
+  .nr-common__text {
+    padding: 1rem; display: flex; flex-wrap: wrap; gap: .8rem;
+    label { display: grid; gap: .3rem; font-size: .8rem; }
+    input, select { padding: .55rem; border: 1px solid var(--border-subtle); border-radius: .4rem; color: var(--text-default); background: var(--surface-bg); max-width: 100%; }
+    > ul { flex-basis: 100%; padding-left: 0; }
+    ul { list-style: none; margin: 0; padding-left: 1rem; }
+    li { padding: .35rem 0; overflow-wrap: anywhere; }
+    li > strong { font-size: .8rem; color: var(--text-muted); margin-right: .6rem; }
+    li > span { white-space: pre-wrap; font-size: .85rem; }
+    summary { padding: .35rem 0; cursor: pointer; color: var(--selected-text); }
+  }
+}

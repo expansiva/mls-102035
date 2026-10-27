@@ -17,6 +17,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
@@ -191,7 +192,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
         this.editMessage = this.t('rules.gateBlocked');
         return;
       }
-      announceNewReleaseChange(this, { path: 'rules.defs.ts', jsonPath: '$', value: structuredClone(this.rulesDraft) });
+      await announceNewReleaseChange(this, { path: 'rules.defs.ts', jsonPath: '$', value: structuredClone(this.rulesDraft) });
       this.cancelEdit();
     } catch (error) {
       this.editMessage = this.t('rules.gateUnavailable', { message: error instanceof Error ? error.message : String(error) });
@@ -233,7 +234,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
       this.gateIssues = result.issues.map(issue => ({ severity: issue.severity, code: issue.code, message: issue.message }));
       const next = editRulesV2Text(draft, ruleId, draft.rules[ruleId]);
       if (!result.ok || !next) { this.editMessage = this.t('rules.gateBlocked'); return; }
-      announceNewReleaseChange(this, { path: 'rules.defs.ts', jsonPath: `$.rules.${ruleId}`, value: next });
+      await announceNewReleaseChange(this, { path: 'rules.defs.ts', jsonPath: `$.rules.${ruleId}`, value: next });
       this.cancelV2Edit();
     } catch (error) {
       if (this.v2Draft === draft && context === this.editContext()) this.editMessage = this.t('rules.gateUnavailable', { message: error instanceof Error ? error.message : String(error) });
@@ -295,7 +296,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
     const citations = this.citations();
     const orphanCount = artifact.rules.filter(rule => !citationsForRule(citations, rule.ruleId).length).length;
     const rule = this.rule();
-    return html`<section class="nr-rules"><header class="nr-rules__hero"><div><span>${this.t('rules.eyebrow')}</span><h2>${this.t('rules.title')}</h2><p>${this.t('rules.description')}</p></div><dl><div><dt>${this.t('rules.plural')}</dt><dd>${artifact.rules.length}</dd></div><div><dt>${this.t('rules.citations')}</dt><dd>${citations.length}</dd></div><div><dt>${this.t('rules.orphans')}</dt><dd>${orphanCount}</dd></div></dl></header><div class="nr-rules__workspace">${this.renderRuleList(artifact, citations)}${rule ? this.renderDetail(rule, citations) : html`<section class="nr-rules__empty-detail"><h2>${this.t('rules.noSelection')}</h2><p>${this.t('rules.noSelectionDescription')}</p></section>`}</div>${this.mode === 'edit' ? html`<footer class="nr-rules__edit-footer"><span>${this.dirty ? this.t('rules.unsaved') : this.t('rules.noChanges')}</span><div><button type="button" @click=${() => this.cancelEdit()}>${this.t('rules.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('rules.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-rules"><header class="nr-rules__hero"><div><span>${this.t('rules.eyebrow')}</span><h2>${this.t('rules.title')}</h2><p>${this.t('rules.description')}</p></div><dl><div><dt>${this.t('rules.plural')}</dt><dd>${artifact.rules.length}</dd></div><div><dt>${this.t('rules.citations')}</dt><dd>${citations.length}</dd></div><div><dt>${this.t('rules.orphans')}</dt><dd>${orphanCount}</dd></div></dl></header><div class="nr-rules__workspace">${this.renderRuleList(artifact, citations)}${rule ? this.renderDetail(rule, citations) : html`<section class="nr-rules__empty-detail"><h2>${this.t('rules.noSelection')}</h2><p>${this.t('rules.noSelectionDescription')}</p></section>`}</div>${this.mode === 'edit' ? html`<footer class="nr-rules__edit-footer"><span>${this.dirty ? this.t('rules.unsaved') : this.t('rules.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('rules.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('rules.save')}</button></div></footer>` : nothing}</section>`;
   }
 }
 

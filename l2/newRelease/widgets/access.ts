@@ -15,6 +15,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
@@ -269,7 +270,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
         this.editMessage = this.t('access.gateBlocked');
         return;
       }
-      announceNewReleaseChange(this, { path: 'access.defs.ts', jsonPath: '$', value: structuredClone(this.accessDraft) });
+      await announceNewReleaseChange(this, { path: 'access.defs.ts', jsonPath: '$', value: structuredClone(this.accessDraft) });
       this.cancelEdit();
     } catch (error) {
       this.editMessage = this.t('access.gateUnavailable', { message: error instanceof Error ? error.message : String(error) });
@@ -331,7 +332,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
     const actor = this.actor();
     if (!access || !actor) return html`<section class="nr-access__empty"><h2>${this.t('access.emptyTitle')}</h2><p>${this.t('access.emptyBody')}</p></section>`;
     const grant = this.grant();
-    return html`<section class="nr-access"><header class="nr-access__hero"><div><span>${this.t('access.eyebrow')}</span><h2>${this.t('access.title')}</h2><p>${this.t('access.description')}</p></div><dl><div><dt>${this.t('access.actors')}</dt><dd>${access.actors.length}</dd></div><div><dt>${this.t('access.grants')}</dt><dd>${access.grants.length}</dd></div><div><dt>${this.t('access.entities')}</dt><dd>${this.entities().length}</dd></div></dl></header>${this.renderMatrix(access)}${this.renderIssues()}<div class="nr-access__workspace">${this.renderActor(access, actor)}${grant ? (this.mode === 'edit' ? this.renderGrantEdit(grant) : this.renderGrantView(grant)) : html`<section class="nr-access__grant-empty"><span aria-hidden="true">+</span><h2>${this.t('access.noGrantTitle')}</h2><p>${this.t('access.noGrantBody')}</p><button type="button" @click=${() => this.addGrant()}>${this.t('access.addGrant')}</button></section>`}</div>${this.mode === 'edit' ? html`<footer class="nr-access__edit-footer"><span>${this.dirty ? this.t('access.unsaved') : this.t('access.noChanges')}</span><div><button type="button" @click=${() => this.cancelEdit()}>${this.t('access.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('access.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-access"><header class="nr-access__hero"><div><span>${this.t('access.eyebrow')}</span><h2>${this.t('access.title')}</h2><p>${this.t('access.description')}</p></div><dl><div><dt>${this.t('access.actors')}</dt><dd>${access.actors.length}</dd></div><div><dt>${this.t('access.grants')}</dt><dd>${access.grants.length}</dd></div><div><dt>${this.t('access.entities')}</dt><dd>${this.entities().length}</dd></div></dl></header>${this.renderMatrix(access)}${this.renderIssues()}<div class="nr-access__workspace">${this.renderActor(access, actor)}${grant ? (this.mode === 'edit' ? this.renderGrantEdit(grant) : this.renderGrantView(grant)) : html`<section class="nr-access__grant-empty"><span aria-hidden="true">+</span><h2>${this.t('access.noGrantTitle')}</h2><p>${this.t('access.noGrantBody')}</p><button type="button" @click=${() => this.addGrant()}>${this.t('access.addGrant')}</button></section>`}</div>${this.mode === 'edit' ? html`<footer class="nr-access__edit-footer"><span>${this.dirty ? this.t('access.unsaved') : this.t('access.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('access.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('access.save')}</button></div></footer>` : nothing}</section>`;
   }
 }
 

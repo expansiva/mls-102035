@@ -37,6 +37,7 @@ import {
   type NewReleaseArtifact,
   type NewReleaseOverlaySources,
   type NewReleaseOverlayValidation,
+  type NewReleaseValidationIssue,
   type Ns5TobeArtifactPath,
   type Ns5TobeManifest,
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
@@ -138,6 +139,13 @@ function announceTobeUpdated(project: number, moduleName: string): void {
   window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project, moduleName } }));
 }
 
+export class NewReleaseSaveValidationError extends Error {
+  constructor(readonly reason: 'unavailable' | 'invalid' | 'missing', readonly issues: NewReleaseValidationIssue[]) {
+    super(`new-release.save.${reason}`);
+    this.name = 'NewReleaseSaveValidationError';
+  }
+}
+
 export async function saveTobeArtifact(
   project: number,
   moduleName: string,
@@ -146,6 +154,19 @@ export async function saveTobeArtifact(
   options: { expectedRevisionId: string | null; expectedChangeId?: string | null; jsonPath?: string; author?: string; now?: string },
 ): Promise<Ns5TobeManifest> {
   const path = normalizeTobeArtifactPath(pathValue);
+  const active = await readActiveL4Change(project, moduleName);
+  const reading = active ? 'tobe' : 'asis';
+  const currentOverlay = await readNs5Overlay(project, moduleName, reading);
+  if (!currentOverlay.sources.all.some(artifact => artifact.path === path)) throw new NewReleaseSaveValidationError('missing', []);
+  const proposedOverlay = await readNs5Overlay(project, moduleName, reading, undefined, { path, value });
+  const validation = proposedOverlay.validation;
+  if (Object.values(validation.coverage).some(area => area.status === 'unsupported')) {
+    throw new NewReleaseSaveValidationError('unavailable', validation.issues);
+  }
+  const identity = (issue: NewReleaseValidationIssue) => `${issue.artifact}:${issue.path}:${issue.code}:${issue.message}`;
+  const previousErrors = new Set(currentOverlay.validation.issues.filter(issue => issue.severity === 'error').map(identity));
+  const newErrors = validation.issues.filter(issue => issue.severity === 'error' && !previousErrors.has(identity(issue)));
+  if (newErrors.length) throw new NewReleaseSaveValidationError('invalid', newErrors);
   const oldManifest = await readManifest(project, moduleName);
   const prepared = await prepareL4Change(project, moduleName, oldManifest);
   if (options.expectedChangeId !== undefined && options.expectedChangeId !== prepared.change.changeId && !(options.expectedChangeId === null && prepared.created)) {
@@ -319,6 +340,7 @@ export async function readNs5Overlay(
   moduleName: string,
   version: NewReleaseVersion = 'asis',
   context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[] },
+  proposed?: { path: Ns5TobeArtifactPath; value: unknown },
 ): Promise<NewReleaseOverlayResult> {
   const errors: Array<{ path: string; message: string }> = [];
   const historicalId = historicalReleaseId(version);
@@ -341,6 +363,11 @@ export async function readNs5Overlay(
     readArtifact<Ns5AccessArtifact>(project, moduleName, 'access.defs.ts', reading, errors, baseId),
     readArtifact<Ns5IntegrationArtifact>(project, moduleName, 'integration.defs.ts', reading, errors, baseId),
   ]);
+  if (proposed) {
+    const candidates: NewReleaseArtifact<unknown>[] = [module, journeyIndex, ...journeys, ontologyIndex, ...entities, rules, workflows, access, integration];
+    const artifact = candidates.find(item => item.path === proposed.path);
+    if (artifact) { artifact.value = structuredClone(proposed.value); artifact.source = 'tobe'; }
+  }
   const all: NewReleaseArtifact<unknown>[] = [module, journeyIndex, ...journeys, ontologyIndex, ...entities, rules, workflows, access, integration];
   const sources: NewReleaseOverlaySources = { module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration, all };
   const ontologyPlan = !historicalId && isNs5OntologyV3(ontologyIndex.value)

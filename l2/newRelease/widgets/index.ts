@@ -22,14 +22,16 @@ import {
 } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import { readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
-import { discardTobe, saveTobeArtifact } from '/_102035_/l2/newRelease/tobe.js';
+import { discardTobe, saveTobeArtifact, NewReleaseSaveValidationError } from '/_102035_/l2/newRelease/tobe.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
 import { type NewReleaseValidationIssue, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   NEW_RELEASE_CHANGED_EVENT,
   tabForArtifactPath,
   type NewReleaseChangedDetail,
+  type NewReleaseTabPresentation,
 } from '/_102035_/l2/newRelease/editContract.js';
+import { textTree, filterTextTree, hasDraftChanges, type TextTreeNode } from '/_102035_/l2/newRelease/widgets/commonModel.js';
 import '/_102035_/l2/newRelease/widgets/general.js';
 import '/_102035_/l2/newRelease/widgets/access.js';
 import '/_102035_/l2/newRelease/widgets/journeys.js';
@@ -59,6 +61,12 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private requestBusy = false;
   @state() private requestError = '';
 
+  @state() private presentation: 'graph' | 'text' = 'graph';
+  @state() private textSearch = '';
+  @state() private textFilter = '';
+  @state() private graphZoom = 1;
+  @state() private tabDetail = false;
+
   private t: NewReleaseTranslate = key => key;
   private languageObserver?: MutationObserver;
   private loadToken = 0;
@@ -76,6 +84,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   createRenderRoot() { return this; }
 
   private revisionError(error: unknown): string {
+    if (error instanceof NewReleaseSaveValidationError) return this.t(`common.validation.${error.reason}`) + (error.reason === 'invalid' ? ` ${error.issues.map(issue => issue.message).join(' · ')}` : '');
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('revision conflict') || message.includes('change conflict')) return this.t('request.conflict');
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
@@ -88,6 +97,12 @@ export class NewReleaseIndex102035 extends StateLitElement {
     super.connectedCallback();
     this.project = this.project || Number(mls.actualProject || 0);
     this.languageObserver = observeNewReleaseLanguage(() => this.loadLanguage());
+    this.addEventListener('nr-before-discard', this.beforeDiscard);
+    this.addEventListener('nr-view-state', this.onViewState);
+    this.addEventListener('nr-request-change', this.openChangeRequest);
+    this.addEventListener('input', this.refreshControls);
+    this.addEventListener('change', this.refreshControls);
+    this.addEventListener('click', this.refreshControls);
     this.addEventListener('nr-navigate', this.onNavigate as EventListener);
     this.addEventListener(NEW_RELEASE_CHANGED_EVENT, this.onArtifactChanged as EventListener);
     window.addEventListener(NEW_RELEASE_CONTEXT_EVENT, this.onContextChange as EventListener);
@@ -98,6 +113,12 @@ export class NewReleaseIndex102035 extends StateLitElement {
   disconnectedCallback() {
     this.languageObserver?.disconnect();
     if (this.validationTimer) window.clearTimeout(this.validationTimer);
+    this.removeEventListener('nr-before-discard', this.beforeDiscard);
+    this.removeEventListener('nr-view-state', this.onViewState);
+    this.removeEventListener('nr-request-change', this.openChangeRequest);
+    this.removeEventListener('input', this.refreshControls);
+    this.removeEventListener('change', this.refreshControls);
+    this.removeEventListener('click', this.refreshControls);
     this.removeEventListener('nr-navigate', this.onNavigate as EventListener);
     this.removeEventListener(NEW_RELEASE_CHANGED_EVENT, this.onArtifactChanged as EventListener);
     window.removeEventListener(NEW_RELEASE_CONTEXT_EVENT, this.onContextChange as EventListener);
@@ -184,14 +205,112 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private onNavigate = (event: Event) => {
     const tab = (event as CustomEvent<{ tab?: NewReleaseTab }>).detail?.tab;
-    if (tab && TABS.includes(tab)) this.activeTab = tab;
+    if (tab && TABS.includes(tab)) void this.activateTab(tab);
   };
 
   private async activateTab(tab: NewReleaseTab, focus = false) {
+    if (tab !== this.activeTab && !this.canLeaveTab()) return;
+    const previous = this.activeEditor();
+    if (previous && tab !== this.activeTab) { previous.mode = 'view'; previous.dirty = false; }
     this.activeTab = tab;
+    this.tabDetail = false;
+    this.tabPresentation = undefined;
+    this.textSearch = '';
+    this.textFilter = '';
+    this.graphZoom = 1;
     if (!focus) return;
     await this.updateComplete;
     this.querySelector<HTMLButtonElement>(`#nr-tab-${tab}`)?.focus();
+  }
+
+  private tabPresentation?: NewReleaseTabPresentation;
+
+  private editSnapshots = new WeakMap<HTMLElement, unknown>();
+
+  private refreshControls = () => { queueMicrotask(() => {
+    const editor = this.activeEditor();
+    if (editor?.mode === 'edit' && !editor.dirty && editor.getDraft) this.editSnapshots.set(editor, structuredClone(editor.getDraft()));
+    if (editor?.mode !== 'edit' && editor) this.editSnapshots.delete(editor);
+    this.requestUpdate();
+  }); };
+
+  // Tabs can announce detail navigation without coupling their models to the container.
+  private onViewState = (event: Event) => {
+    this.tabPresentation = (event as CustomEvent<NewReleaseTabPresentation>).detail;
+    this.tabDetail = !!this.tabPresentation?.detail;
+  };
+
+  private activeEditor() {
+    return this.querySelector<HTMLElement & { mode?: string; dirty?: boolean; getDraft?: () => unknown }>(
+      `.nr-index__revision-content new-release--widgets--${this.activeTab}-102035`,
+    );
+  }
+
+  private beforeDiscard = (event: Event) => { if (!this.canLeaveTab()) event.preventDefault(); };
+
+  private canLeaveTab(): boolean {
+    const editor = this.activeEditor();
+    if (!editor || editor.mode !== 'edit' || !editor.dirty) return true;
+    if (editor.getDraft && this.editSnapshots.has(editor) && !hasDraftChanges(this.editSnapshots.get(editor), editor.getDraft())) return true;
+    return window.confirm(this.t('common.discardChanges'));
+  }
+
+  private openChangeRequest = async (event?: Event) => {
+    if (historicalReleaseId(this.version)) return;
+    const text = (event as CustomEvent<{ text?: string }> | undefined)?.detail?.text;
+    if (!this.requestText.trim()) this.requestText = text || this.t('common.requestTemplate', { tab: this.t(`tab.${this.activeTab}`) });
+    await this.updateComplete;
+    const panel = this.querySelector<HTMLDetailsElement>('.nr-index__request');
+    if (panel) panel.open = true;
+    this.querySelector<HTMLTextAreaElement>('#nr-change-request')?.focus();
+    panel?.scrollIntoView({ block: 'nearest' });
+  };
+
+  private treeNodes(): TextTreeNode[] {
+    if (this.tabPresentation) return this.tabPresentation.nodes;
+    return (this.data?.artifacts.all ?? [])
+      .filter(artifact => tabForArtifactPath(artifact.path) === this.activeTab)
+      .map(artifact => textTree(artifact.path, artifact.value));
+  }
+
+  private renderTreeNode(node: TextTreeNode): unknown {
+    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); this.tabDetail = true; }}>${node.label}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
+    return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); this.tabDetail = true; }}>${node.label}</button>` : nothing}<details ?open=${!!this.textSearch}><summary>${node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
+  }
+
+  private renderCommonControls() {
+    if (this.activeTab === 'general' || this.activeTab === 'review') return nothing;
+    const editing = this.activeEditor()?.mode === 'edit';
+    const nested = this.tabDetail || editing;
+    return html`<div class="nr-common__toolbar">
+      ${nested ? html`<button type="button" @click=${() => {
+        if (!this.canLeaveTab()) return;
+        this.tabPresentation?.back();
+        const editor = this.activeEditor();
+        if (editor?.mode === 'edit') { editor.mode = 'view'; editor.dirty = false; }
+        editor?.dispatchEvent(new CustomEvent('nr-back'));
+        this.tabDetail = false;
+      }}>${this.t('common.back')}</button>` : html`<div role="group" aria-label=${this.t('common.presentation')}>
+        ${(['graph', 'text'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
+      </div>`}
+      ${this.presentation === 'graph' && !nested ? html`<div role="group" aria-label=${this.t('common.zoom')}>
+        <button type="button" aria-label=${this.t('common.zoomOut')} ?disabled=${this.graphZoom <= .5} @click=${() => { this.graphZoom = Math.max(.5, this.graphZoom - .1); }}>−</button>
+        <button type="button" aria-label=${this.t('common.zoomReset')} @click=${() => { this.graphZoom = 1; }}>${Math.round(this.graphZoom * 100)}%</button>
+        <button type="button" aria-label=${this.t('common.zoomIn')} ?disabled=${this.graphZoom >= 2} @click=${() => { this.graphZoom = Math.min(2, this.graphZoom + .1); }}>+</button>
+      </div>` : nothing}
+      <button type="button" ?disabled=${!!historicalReleaseId(this.version)} @click=${this.openChangeRequest}>${this.t('common.requestChange')}</button>
+      <details class="nr-common__hint"><summary aria-label=${this.t('common.help')}>?</summary><p>${this.t('common.hint')}</p></details>
+    </div>`;
+  }
+
+  private renderTextTree() {
+    const roots = this.treeNodes();
+    const nodes = filterTextTree(roots, this.textSearch, this.textFilter);
+    return html`<section class="nr-common__text">
+      <label>${this.t('common.search')}<input type="search" .value=${this.textSearch} @input=${(event: Event) => { this.textSearch = (event.target as HTMLInputElement).value; }}></label>
+      <label>${this.t('common.filter')}<select .value=${this.textFilter} @change=${(event: Event) => { this.textFilter = (event.target as HTMLSelectElement).value; }}><option value="">${this.t('common.all')}</option>${roots.map(root => html`<option value=${root.id}>${root.label}</option>`)}</select></label>
+      ${nodes.length ? html`<ul>${nodes.map(node => this.renderTreeNode(node))}</ul>` : html`<p role="status">${this.t('common.noResults')}</p>`}
+    </section>`;
   }
 
   private onTabKeydown = (event: KeyboardEvent) => {
@@ -225,6 +344,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const source = event.target as HTMLElement & { project?: number; moduleName?: string; version?: NewReleaseVersion };
     if (!detail?.path || historicalReleaseId(this.version)
       || source.project !== this.project || source.moduleName !== this.moduleName || source.version !== this.version) return;
+    event.preventDefault();
     const project = this.project;
     const moduleName = this.moduleName;
     const version = this.version;
@@ -237,12 +357,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.mutationError = '';
     this.mutationQueue = this.mutationQueue.then(async () => {
       try {
-        if (!contextStillCurrent({ project, moduleName, version }, this)) return;
+        if (!contextStillCurrent({ project, moduleName, version }, this)) { detail.complete?.(new Error(this.t('request.conflict'))); return; }
         const manifest = await saveTobeArtifact(project, moduleName, detail.path, detail.value, {
           jsonPath: detail.jsonPath,
           expectedChangeId: this.changeByModule.has(moduleKey) ? this.changeByModule.get(moduleKey)! : initialChange,
           expectedRevisionId: this.revisionByModule.has(moduleKey) ? this.revisionByModule.get(moduleKey)! : initialRevision,
         });
+        detail.complete?.();
         if (initialChange === null && manifest.changeId) {
           this.requestDrafts.move(
             ChangeRequestDrafts.key(project, moduleName, null),
@@ -258,6 +379,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           this.scheduleOverlayReload();
         }
       } catch (error) {
+        detail.complete?.(new Error(this.revisionError(error)));
         if (this.project === project && this.moduleName === moduleName) this.mutationError = this.revisionError(error);
       } finally {
         this.pendingMutations -= 1;
@@ -668,7 +790,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
             aria-labelledby=${`nr-tab-${this.activeTab}`}
             tabindex="0"
           ><fieldset class="nr-index__revision-content" ?disabled=${historical}>
-            ${this.renderTabContent()}
+            ${this.renderCommonControls()}
+            <div class="nr-common__graph" ?hidden=${this.presentation === 'text' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit'}>
+              <div style=${`zoom: ${this.activeTab === 'general' || this.activeTab === 'review' || this.tabDetail || this.activeEditor()?.mode === 'edit' ? 1 : this.graphZoom}`}>
+                ${this.renderTabContent()}
+              </div>
+            </div>
+            ${this.presentation === 'text' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit' ? this.renderTextTree() : nothing}
           </fieldset></section>
           ${this.renderDiffs()}
         `}

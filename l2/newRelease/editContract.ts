@@ -16,16 +16,35 @@ export interface NewReleaseChangedDetail {
   path: Ns5TobeArtifactPath;
   jsonPath: string;
   value: unknown;
+  complete?: (error?: unknown) => void;
 }
+
 
 export const NEW_RELEASE_CHANGED_EVENT = 'nr-changed';
 
-export function announceNewReleaseChange(target: EventTarget, detail: NewReleaseChangedDetail): void {
-  target.dispatchEvent(new CustomEvent<NewReleaseChangedDetail>(NEW_RELEASE_CHANGED_EVENT, {
-    bubbles: true,
-    composed: true,
-    detail,
-  }));
+export function announceNewReleaseChange(target: EventTarget, detail: NewReleaseChangedDetail): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const complete = (error?: unknown) => error ? reject(error) : resolve();
+    const accepted = !target.dispatchEvent(new CustomEvent<NewReleaseChangedDetail>(NEW_RELEASE_CHANGED_EVENT, {
+      bubbles: true, composed: true, cancelable: true, detail: { ...detail, complete },
+    }));
+    if (!accepted) reject(new Error('new-release.save.unhandled'));
+  });
+}
+
+/** Shared navigation contract: tabs provide semantic nodes and handle their IDs. */
+export interface NewReleaseTextNode {
+  id: string;
+  label: string;
+  value: string;
+  children: NewReleaseTextNode[];
+}
+
+export interface NewReleaseTabPresentation {
+  nodes: NewReleaseTextNode[];
+  detail: boolean;
+  select: (id: string) => void;
+  back: () => void;
 }
 
 export function tabForArtifactPath(path: string): NewReleaseTabId {
@@ -38,3 +57,8 @@ export function tabForArtifactPath(path: string): NewReleaseTabId {
   return 'integration';
 }
 
+
+/** Ask the common container before discarding a tab's draft. */
+export function canDiscardNewReleaseDraft(target: EventTarget): boolean {
+  return target.dispatchEvent(new CustomEvent('nr-before-discard', { bubbles: true, cancelable: true }));
+}

@@ -9,6 +9,7 @@ import {
   recordTobeDiscard,
   recordTobeSave,
   saveTobeArtifact,
+  NewReleaseSaveValidationError,
   tobeManifestFileInfo,
 } from './tobe.js';
 import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
@@ -715,4 +716,39 @@ test('fixed millisecond clock cannot reuse a change or revision id', async () =>
   } finally {
     Date.now = actualNow;
   }
+});
+
+
+test('save rejects a new candidate error before any file or revision is written', async () => {
+  const fixture = installStorFixture(102047, 'ordenServicio5');
+  const before = [...fixture.contents];
+  const keys = Object.keys(fixture.files);
+  await assert.rejects(saveTobeArtifact(102047, 'ordenServicio5', 'module.defs.ts', {
+    ...fixture.source.module, title: '', description: '',
+  }, { expectedRevisionId: null }), (error: unknown) => {
+    assert.ok(error instanceof NewReleaseSaveValidationError);
+    assert.equal(error.reason, 'invalid');
+    assert.ok(error.issues.some(issue => issue.severity === 'error'));
+    return true;
+  });
+  assert.deepEqual([...fixture.contents], before);
+  assert.deepEqual(Object.keys(fixture.files), keys);
+});
+
+test('save with incomplete validation coverage writes nothing', async () => {
+  const fixture = installStorFixture(102047, 'ordenServicio5');
+  const info = tobeArtifactFileInfo(102047, 'ordenServicio5', 'integration.defs.ts', 'asis');
+  fixture.contents.delete(fixture.keyOf(info));
+  delete fixture.files[fixture.keyOf(info)];
+  const before = [...fixture.contents];
+  const keys = Object.keys(fixture.files);
+  await assert.rejects(saveTobeArtifact(102047, 'ordenServicio5', 'module.defs.ts', {
+    ...fixture.source.module, title: 'Valid title',
+  }, { expectedRevisionId: null }), (error: unknown) => {
+    assert.ok(error instanceof NewReleaseSaveValidationError);
+    assert.equal(error.reason, 'unavailable');
+    return true;
+  });
+  assert.deepEqual([...fixture.contents], before);
+  assert.deepEqual(Object.keys(fixture.files), keys);
 });

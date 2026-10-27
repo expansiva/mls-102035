@@ -10,6 +10,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
   type NewReleaseTabId,
@@ -82,9 +83,10 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     this.editMessage = '';
   }
 
-  private saveEdit() {
+  private async saveEdit() {
     if (!this.draft || !this.dirty) return;
-    announceNewReleaseChange(this, {
+    try {
+    await announceNewReleaseChange(this, {
       path: 'module.defs.ts',
       jsonPath: '$',
       value: structuredClone(this.draft),
@@ -93,6 +95,7 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     this.dirty = false;
     this.draft = null;
     this.newDetailName = '';
+    } catch (error) { this.editMessage = error instanceof Error ? error.message : String(error); }
   }
 
   private addLanguage(code: string) {
@@ -370,7 +373,7 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     return html`
       <div class="nr-general__edit-actions">
         <span>${this.dirty ? this.t('general.unsaved') : this.t('general.noChanges')}</span>
-        <div><button type="button" class="nr-button nr-button--secondary" @click=${this.cancelEdit}>${this.t('general.cancel')}</button><button type="button" class="nr-button nr-button--primary" ?disabled=${!this.dirty} @click=${this.saveEdit}>${this.t('general.save')}</button></div>
+        <div><button type="button" class="nr-button nr-button--secondary" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('general.cancel')}</button><button type="button" class="nr-button nr-button--primary" ?disabled=${!this.dirty} @click=${this.saveEdit}>${this.t('general.save')}</button></div>
       </div>
     `;
   }

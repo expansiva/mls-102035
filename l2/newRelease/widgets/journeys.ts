@@ -15,6 +15,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
@@ -274,8 +275,8 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
         business: structuredClone(this.journeyDraft.business),
       });
       const index = syncJourneyIndex(this.indexDraft, hashed);
-      if (this.journeyDirty) announceNewReleaseChange(this, { path: journeyPath(hashed.journeyId), jsonPath: '$', value: hashed });
-      if (this.indexDirty) announceNewReleaseChange(this, { path: 'journeys/index.defs.ts', jsonPath: '$', value: index });
+      if (this.journeyDirty) await announceNewReleaseChange(this, { path: journeyPath(hashed.journeyId), jsonPath: '$', value: hashed });
+      if (this.indexDirty) await announceNewReleaseChange(this, { path: 'journeys/index.defs.ts', jsonPath: '$', value: index });
       this.cancelEdit();
     } catch (error) {
       this.editMessage = this.t('journeys.gateUnavailable', { message: error instanceof Error ? error.message : String(error) });
@@ -356,7 +357,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     const journey = this.currentJourney();
     const index = this.currentIndex();
     if (!journey || !index) return html`<section class="nr-journeys__empty"><h2>${this.t('journeys.emptyTitle')}</h2><p>${this.t('journeys.emptyBody')}</p></section>`;
-    return html`<section class="nr-journeys"><header class="nr-journeys__hero"><div><span>${this.t('journeys.eyebrow')}</span><h2>${this.t('journeys.title')}</h2><p>${this.t('journeys.description')}</p></div><div><strong>${index.journeys.length}</strong><span>${this.t('journeys.plural')}</span></div></header>${this.renderFilters()}${this.renderJourneyList()}${this.renderDetail(journey)}${this.mode === 'edit' ? html`<footer class="nr-journeys__edit-footer"><span>${this.dirty ? this.t('journeys.unsaved') : this.t('journeys.noChanges')}</span><div><button type="button" @click=${() => this.cancelEdit()}>${this.t('journeys.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('journeys.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-journeys"><header class="nr-journeys__hero"><div><span>${this.t('journeys.eyebrow')}</span><h2>${this.t('journeys.title')}</h2><p>${this.t('journeys.description')}</p></div><div><strong>${index.journeys.length}</strong><span>${this.t('journeys.plural')}</span></div></header>${this.renderFilters()}${this.renderJourneyList()}${this.renderDetail(journey)}${this.mode === 'edit' ? html`<footer class="nr-journeys__edit-footer"><span>${this.dirty ? this.t('journeys.unsaved') : this.t('journeys.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('journeys.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('journeys.save')}</button></div></footer>` : nothing}</section>`;
   }
 }
 

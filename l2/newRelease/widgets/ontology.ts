@@ -28,6 +28,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import {
   announceNewReleaseChange,
+  canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
@@ -326,14 +327,14 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     }
 
     if (this.entityDirty) {
-      announceNewReleaseChange(this, {
+      await announceNewReleaseChange(this, {
         path: ontologyEntityPath(this.entityDraft.entityId),
         jsonPath: '$',
         value: structuredClone(this.entityDraft),
       });
     }
     if (this.indexDirty) {
-      announceNewReleaseChange(this, {
+      await announceNewReleaseChange(this, {
         path: 'ontology/index.defs.ts',
         jsonPath: '$',
         value: structuredClone(this.indexDraft),
@@ -931,7 +932,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
         <header class="nr-ontology__hero"><div><span>${this.t('ontology.eyebrow')}</span><h2>${this.t('ontology.title')}</h2><p>${index.businessDomain}</p></div><div class="nr-ontology__actions"><div class="nr-ontology__toggle" role="group" aria-label=${this.t('ontology.view')}><button type="button" class=${this.view === 'text' ? 'is-active' : ''} @click=${() => { this.view = 'text'; }}>${this.t('ontology.view.text')}</button><button type="button" class=${this.view === 'graph' ? 'is-active' : ''} @click=${() => { this.view = 'graph'; }}>${this.t('ontology.view.graph')}</button></div>${this.mode === 'view' ? html`<button class="nr-button nr-button--secondary" type="button" @click=${() => { this.view = 'text'; this.beginEdit(); }}>${this.t('ontology.edit')}</button>` : html`<span>${this.t('ontology.editing')}</span>`}</div></header>
         <div class="nr-ontology__summary"><span><strong>${this.currentEntities().length}</strong>${this.t('ontology.entities')}</span><span><strong>${index.relationships.length}</strong>${this.t('ontology.relationships')}</span><span title=${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}><strong>${counts.total}</strong>${this.t('ontology.fields')}</span></div>
         ${this.view === 'graph' ? this.renderGraph(entity) : this.renderText(entity)}
-        ${this.mode === 'edit' ? html`<footer class="nr-ontology__edit-footer"><span>${this.dirty ? this.t('ontology.unsaved') : this.t('ontology.noChanges')}</span><div><button type="button" @click=${this.cancelEdit}>${this.t('ontology.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('ontology.save')}</button></div></footer>` : nothing}
+        ${this.mode === 'edit' ? html`<footer class="nr-ontology__edit-footer"><span>${this.dirty ? this.t('ontology.unsaved') : this.t('ontology.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('ontology.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('ontology.save')}</button></div></footer>` : nothing}
       </section>
     `;
   }
