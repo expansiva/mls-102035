@@ -365,3 +365,47 @@ new-release--widgets--ontology-102035 {
     .nr-v3__entity-panel, .nr-v3__entity-panel > summary, .nr-v3__entity-panel > summary::before, .nr-v3__entity-reveal { transition: none; }
   }
 }
+
+new-release--widgets--ontology-102035 {
+ .nr-ontology-panels {
+  color: #e2e8f0;
+  &__scroll { overflow: auto; padding: 20px; }
+  &__board { position: relative; display: grid; grid-template-columns: repeat(3, 320px); gap: 64px; width: max-content; min-height: 360px; align-items: start; }
+  article { position: relative; z-index: 1; width: 320px; background: #151f30; border: 1px solid #344256; border-radius: 12px; overflow: hidden; }
+  header button { padding: 14px; width: 100%; display: flex; flex-direction: column; text-align: left; background: #1c2940; border: 0; color: inherit; cursor: pointer; }
+  code, small { color: #99acc5; }
+  &__fields { max-height: 320px; overflow: auto; scrollbar-gutter: stable; }
+  &__fields button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 32px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0 12px; }
+  &__fields button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__fields button:hover, &__fields button:focus-visible { background: #293b56; }
+  &__fields details > div { padding-left: 14px; }
+  &__fields summary { display: flex; align-items: center; }
+  &__fields summary::before { content: '▾'; padding-left: 8px; }
+  &__fields details:not([open]) > summary::before { content: '▸'; }
+  &__links { position: absolute; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  &__links path { fill: none; stroke: #6c97cd; stroke-width: 2; }
+  &__links path.is-clipped { stroke-dasharray: 5 4; opacity: .6; }
+  &__editor { max-width: 800px; margin: auto; padding: 24px; color: #e2e8f0; background: #151f30; border-radius: 12px; }
+  &__editor label { display: grid; gap: 6px; margin: 16px 0; }
+  &__editor input, &__editor textarea, &__editor select { padding: 10px; background: #0e1726; color: inherit; border: 1px solid #344256; border-radius: 6px; }
+  &__editor textarea { min-height: 72px; }
+  &__editor pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  &__editor footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+ }
+}
+
+new-release--widgets--ontology-102035 .nr-ontology-panels {
+ &__row { display: flex; align-items: center; min-width: 0; width: 100%; height: 32px; }
+ &__row > button { min-width: 0; flex: 1; }
+ &__hint { position: relative; flex: 0 0 auto; margin-right: 8px; }
+ &__hint > summary { padding: 4px; cursor: pointer; }
+ &__hint > summary::before { content: none; }
+ &__hint > p { position: fixed; inset: auto; z-index: 4; max-width: min(360px, 80vw); overflow-wrap: anywhere; padding: 10px; border: 1px solid #6c97cd; border-radius: 6px; background: #0e1726; color: #e2e8f0; }
+}
+
+new-release--widgets--ontology-102035 .nr-ontology-panels {
+ &__branch { position: relative; }
+ &__branch > .nr-ontology-panels__row { padding-left: 20px; box-sizing: border-box; }
+ &__branch > details > summary { position: absolute; top: 0; left: 0; height: 32px; width: 20px; padding: 0; cursor: pointer; }
+ &__branch > details > summary:focus-visible { outline: 2px solid #6c97cd; }
+}

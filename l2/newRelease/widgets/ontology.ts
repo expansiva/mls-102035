@@ -1,10 +1,12 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/ontology.ts" enhancement="_102027_/l2/enhancementLit" />
 
-import { html, nothing, type PropertyValues } from 'lit';
+import { html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import { chart, type EChartsCoreOption } from '/_102033_/l2/shared/chartRuntimeLocal.js';
 import type {
+  Ns5OntologyAnyEntity,
+  Ns5OntologyFieldV3,
   Ns5OntologyDetail,
   Ns5OntologyEntityArtifact,
   Ns5OntologyEntityV3,
@@ -29,6 +31,7 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
+  type NewReleaseTabPresentation,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
@@ -49,6 +52,7 @@ import {
   updateOntologyField,
   updateOntologyRelationship,
 } from '/_102035_/l2/newRelease/widgets/ontologyModel.js';
+import { ontologyPanelFields, patchOntologyPanelField, type OntologyPanelField, type OntologyPanelPatch, type OntologyPanelValue, patchOntologyPanelValue, ontologyPanelPropertyOptions, ontologyPanelConnector, ontologyPanelMapKey, ONTOLOGY_V3_FIELD_TYPES } from '/_102035_/l2/newRelease/widgets/ontologyPanelModel.js';
 import {
   buildOntologyV3Graph,
   isOntologyV3Entity,
@@ -63,7 +67,7 @@ type OntologyView = 'text' | 'graph';
 type ReachedBy = Ns5OntologyEntityArtifact['lifecycleStates'][number]['reachedBy'];
 
 @customElement('new-release--widgets--ontology-102035')
-export class NewReleaseOntology102035 extends StateLitElement implements NewReleaseEditableTab<Ns5OntologyEntityArtifact | null> {
+export class NewReleaseOntology102035 extends StateLitElement implements NewReleaseEditableTab<Ns5OntologyAnyEntity | null> {
   @property({ type: Number }) project = 0;
   @property({ type: String, attribute: 'module-name' }) moduleName = '';
   @property({ type: String }) version: NewReleaseVersion = 'asis';
@@ -100,9 +104,42 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   private v3LoadToken = 0;
   private v3ScrollToken = 0;
 
+  @state() private panelEntityId = '';
+  @state() private panelFieldPath = '';
+  @state() private panelDraft: Ns5OntologyAnyEntity | null = null;
+  @state() private panelLinks: Array<{id: string; d: string; clipped: boolean}> = [];
+  private panelResize?: ResizeObserver;
+  private panelZoom?: MutationObserver;
+
+  connectedCallback() {
+    super.connectedCallback();
+    if (typeof ResizeObserver !== 'undefined') {
+      this.panelResize = new ResizeObserver(() => this.measurePanelLinks());
+      this.panelResize.observe(this);
+    }
+  }
+
+  disconnectedCallback() { this.panelResize?.disconnect(); this.panelZoom?.disconnect(); super.disconnectedCallback(); }
+
   createRenderRoot() { return this; }
 
   updated(changed: PropertyValues) {
+    if (['data', 'panelEntityId', 'panelFieldPath', 'mode', 'v3Views'].some(key => changed.has(key))) {
+      const presentation: NewReleaseTabPresentation = {
+        nodes: [...new Set(this.panelEntities().map(entity => entity.kind))].map(kind => ({id: `kind:${kind}`, label: this.t(`ontology.kind.${kind}`), value: '',
+          children: this.panelEntities().filter(entity => entity.kind === kind).map(entity => ({id: entity.entityId, label: entity.title, value: entity.entityId, children: this.panelFields(entity).map(field => ({id: `${entity.entityId}/${field.path}`, label: field.title, value: field.path, children: []}))}))})),
+        detail: !!this.panelEntityId,
+        select: id => { const [entityId, path = ''] = id.split('/'); this.openPanelEditor(entityId, path); },
+        back: () => this.closePanelEditor(),
+      };
+      this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
+    }
+    if (!this.panelZoom && this.parentElement) {
+      this.panelZoom = new MutationObserver(() => this.measurePanelLinks());
+      let parent: HTMLElement | null = this.parentElement;
+      while (parent && !parent.tagName.startsWith('NEW-RELEASE--WIDGETS--INDEX')) { this.panelZoom.observe(parent, {attributes: true, attributeFilter: ['style', 'class']}); parent = parent.parentElement; }
+    }
+    if (!changed.has('panelLinks')) this.measurePanelLinks();
     if (changed.has('data')) {
       if (this.v3Index()) {
         void this.loadV3();
@@ -115,7 +152,8 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     }
   }
 
-  getDraft(): Ns5OntologyEntityArtifact | null {
+  getDraft(): Ns5OntologyAnyEntity | null {
+    if (this.panelDraft) return structuredClone(this.panelDraft);
     const entity = this.currentEntity();
     return entity ? structuredClone(entity) : null;
   }
@@ -518,7 +556,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
               ${this.mode === 'edit' ? html`
                 <div class="nr-field__edit-grid">
                   <label><span>${this.t('ontology.title')}</span><input .value=${field.title} @input=${(event: Event) => this.setField(field.fieldId, { title: (event.currentTarget as HTMLInputElement).value })}></label>
-                  <label><span>${this.t('ontology.type')}</span><select .value=${field.type} @change=${(event: Event) => this.setField(field.fieldId, { type: (event.currentTarget as HTMLSelectElement).value as Ns5OntologyField['type'] })}>${ONTOLOGY_FIELD_TYPES.map(type => html`<option value=${type} ?selected=${field.type === type}>${type}</option>`)}</select></label>
+                  <label><span>${this.t('ontology.panel.type')}</span><select .value=${field.type} @change=${(event: Event) => this.setField(field.fieldId, { type: (event.currentTarget as HTMLSelectElement).value as Ns5OntologyField['type'] })}>${ONTOLOGY_FIELD_TYPES.map(type => html`<option value=${type} ?selected=${field.type === type}>${type}</option>`)}</select></label>
                   <label class="nr-field__description"><span>${this.t('ontology.description')}</span><textarea .value=${field.description} @input=${(event: Event) => this.setField(field.fieldId, { description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>
                   <label class="nr-check"><input type="checkbox" .checked=${field.required} @change=${(event: Event) => this.setField(field.fieldId, { required: (event.currentTarget as HTMLInputElement).checked })}><span>${this.t('ontology.required')}</span></label>
                   <label class="nr-check"><input type="checkbox" .checked=${!!field.unique} @change=${(event: Event) => this.setField(field.fieldId, { unique: (event.currentTarget as HTMLInputElement).checked })}><span>${this.t('ontology.unique')}</span></label>
@@ -917,25 +955,169 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     return html`<section class="nr-ontology nr-v3"><header class="nr-ontology__hero"><div><span>${this.t('ontology.v3.eyebrow')}</span><h2>${this.t('ontology.title')}</h2><p>${index.businessDomain}</p></div><div class="nr-ontology__actions"><div class="nr-ontology__toggle" role="group" aria-label=${this.t('ontology.view')}><button type="button" class=${this.view === 'text' ? 'is-active' : ''} @click=${() => { this.view = 'text'; }}>${this.t('ontology.view.text')}</button><button type="button" class=${this.view === 'graph' ? 'is-active' : ''} @click=${() => { this.view = 'graph'; }}>${this.t('ontology.view.graph')}</button></div><span class="nr-v3__edit-note">${this.t('ontology.v3.editNote')}</span><button class="nr-button nr-button--secondary" type="button" disabled title=${this.t('ontology.v3.editNote')}>${this.t('ontology.edit')}</button></div></header><div class="nr-ontology__summary"><span><strong>${this.v3Views.length}</strong>${this.t('ontology.entities')}</span><span><strong>${index.relationships.length}</strong>${this.t('ontology.relationships')}</span><span title=${this.t('ontology.v3.fieldCountHelp')}><strong>${fields}</strong>${this.t('ontology.fields')}</span></div>${this.view === 'graph' ? this.renderV3Graph(index, selected) : this.renderV3Text(index, selected)}</section>`;
   }
 
-  render() {
-    const v3Index = this.v3Index();
-    if (v3Index) return this.renderV3(v3Index);
-    const entity = this.currentEntity();
-    const index = this.currentIndex();
-    if (!entity || !index) return html`<section class="nr-ontology__empty"><h2>${this.t('ontology.emptyTitle')}</h2><p>${this.t('ontology.emptyBody')}</p></section>`;
-    const counts = this.currentEntities().reduce((result, item) => {
-      const current = ontologyFieldCounts(item);
-      return { namespace: result.namespace + current.namespace, base: result.base + current.base, total: result.total + current.total };
-    }, { namespace: 0, base: 0, total: 0 });
-    return html`
-      <section class="nr-ontology">
-        <header class="nr-ontology__hero"><div><span>${this.t('ontology.eyebrow')}</span><h2>${this.t('ontology.title')}</h2><p>${index.businessDomain}</p></div><div class="nr-ontology__actions"><div class="nr-ontology__toggle" role="group" aria-label=${this.t('ontology.view')}><button type="button" class=${this.view === 'text' ? 'is-active' : ''} @click=${() => { this.view = 'text'; }}>${this.t('ontology.view.text')}</button><button type="button" class=${this.view === 'graph' ? 'is-active' : ''} @click=${() => { this.view = 'graph'; }}>${this.t('ontology.view.graph')}</button></div>${this.mode === 'view' ? html`<button class="nr-button nr-button--secondary" type="button" @click=${() => { this.view = 'text'; this.beginEdit(); }}>${this.t('ontology.edit')}</button>` : html`<span>${this.t('ontology.editing')}</span>`}</div></header>
-        <div class="nr-ontology__summary"><span><strong>${this.currentEntities().length}</strong>${this.t('ontology.entities')}</span><span><strong>${index.relationships.length}</strong>${this.t('ontology.relationships')}</span><span title=${this.t('ontology.fieldCountBreakdown', { namespace: counts.namespace, base: counts.base })}><strong>${counts.total}</strong>${this.t('ontology.fields')}</span></div>
-        ${this.view === 'graph' ? this.renderGraph(entity) : this.renderText(entity)}
-        ${this.mode === 'edit' ? html`<footer class="nr-ontology__edit-footer"><span>${this.dirty ? this.t('ontology.unsaved') : this.t('ontology.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('ontology.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('ontology.save')}</button></div></footer>` : nothing}
-      </section>
-    `;
+  private panelEntities(): Ns5OntologyAnyEntity[] {
+    return this.data?.artifacts.entities.map(item => item.value).filter((item): item is Ns5OntologyAnyEntity => !!item) || [];
   }
+
+  private panelFields(entity: Ns5OntologyAnyEntity): OntologyPanelField[] {
+    return ontologyPanelFields(entity, this.v3Views.find(view => view.entityId === entity.entityId));
+  }
+
+  private openPanelEditor(entityId: string, path = '') {
+    if (!canDiscardNewReleaseDraft(this)) return;
+    const entity = this.panelEntities().find(item => item.entityId === entityId);
+    if (!entity) return;
+    this.panelEntityId = entityId; this.panelFieldPath = path;
+    this.panelDraft = structuredClone(entity); this.mode = 'edit'; this.dirty = false; this.editMessage = '';
+  }
+
+  private closePanelEditor() {
+    if (!canDiscardNewReleaseDraft(this)) return;
+    this.panelEntityId = ''; this.panelFieldPath = ''; this.panelDraft = null; this.mode = 'view'; this.dirty = false;
+  }
+
+  private changePanel(patch: OntologyPanelPatch) {
+    if (!this.panelDraft) return;
+    this.panelDraft = this.panelFieldPath
+      ? patchOntologyPanelField(this.panelDraft, this.panelFieldPath, patch, this.v3Views.find(view => view.entityId === this.panelEntityId))
+      : {...this.panelDraft, ...(typeof patch.title === 'string' ? {title: patch.title} : {}), ...(typeof patch.description === 'string' ? {description: patch.description} : {})};
+    this.dirty = JSON.stringify(this.panelDraft) !== JSON.stringify(this.panelEntities().find(item => item.entityId === this.panelEntityId));
+    this.editMessage = '';
+  }
+
+  private changePanelEntity(key: 'displayField' | 'writer' | 'class' | 'initialData', value: string) {
+    if (!this.panelDraft) return;
+    if (key === 'displayField') this.panelDraft = {...this.panelDraft, displayField: value};
+    if (key === 'writer' && ['journey', 'crud', 'inbound'].includes(value)) this.panelDraft = {...this.panelDraft, writer: value as 'journey' | 'crud' | 'inbound'};
+    if (isOntologyV3Entity(this.panelDraft) && this.panelDraft.kind === 'entity') {
+      if (key === 'class' && ['core', 'event', 'supporting'].includes(value)) this.panelDraft = {...this.panelDraft, class: value as 'core' | 'event' | 'supporting'};
+      if (key === 'initialData') this.panelDraft = {...this.panelDraft, initialData: value};
+    }
+    this.dirty = JSON.stringify(this.panelDraft) !== JSON.stringify(this.panelEntities().find(item => item.entityId === this.panelEntityId));
+  }
+
+  private async savePanel() {
+    if (!this.panelDraft || !this.dirty) return;
+    try {
+      await announceNewReleaseChange(this, {path: ontologyEntityPath(this.panelDraft.entityId), jsonPath: '$', value: structuredClone(this.panelDraft)});
+      this.dirty = false; this.closePanelEditor();
+    } catch (error) { this.editMessage = error instanceof Error ? error.message : String(error); }
+  }
+
+  private panelFieldTree(fields: OntologyPanelField[], parent = ''): unknown {
+    return fields.filter(field => field.parent === parent).map(field => {
+      const button = html`<span class="nr-ontology-panels__row" data-field=${field.path}><button type="button" @click=${() => this.openPanelEditor(field.entityId, field.path)}><span>${field.path.split('.').at(-1)}</span></button><details class="nr-common__hint nr-ontology-panels__hint"><summary aria-label=${this.t('ontology.panel.fieldHint', {path: field.path})}>ⓘ</summary><p>${field.path}</p></details></span>`;
+      return fields.some(child => child.parent === field.path)
+        ? html`<div class="nr-ontology-panels__branch">${button}<details open @toggle=${() => this.measurePanelLinks()}><summary aria-label=${this.t('ontology.panel.toggleFields', {path: field.path})}></summary><div>${this.panelFieldTree(fields, field.path)}</div></details></div>` : button;
+    });
+  }
+
+  private measurePanelLinks() {
+    const board = this.querySelector<HTMLElement>('.nr-ontology-panels__board');
+    if (!board) return;
+    const bounds = board.getBoundingClientRect();
+    const scale = bounds.width / board.offsetWidth || 1;
+    const rawIndex = this.data?.artifacts.ontologyIndex.value;
+    const links = (rawIndex?.relationships || []).flatMap(link => {
+      const sourceId = 'from' in link ? link.from : link.fromEntity;
+      const targetId = 'to' in link ? link.to : link.toEntity;
+      const panels = [...board.querySelectorAll<HTMLElement>('[data-entity]')];
+      const source = panels.find(panel => panel.dataset.entity === sourceId);
+      const target = panels.find(panel => panel.dataset.entity === targetId);
+      if (!source || !target) return [];
+      const box = source.getBoundingClientRect(), to = target.getBoundingClientRect();
+      let y = box.top + 22 * scale, clipped = false;
+      if ('field' in link && link.field) {
+        const path = link.field.startsWith(`${sourceId}.`) ? link.field.slice(sourceId.length + 1) : link.field;
+        const row = [...source.querySelectorAll<HTMLElement>('[data-field]')].find(item => item.dataset.field === path);
+        const scroll = source.querySelector<HTMLElement>('.nr-ontology-panels__fields');
+        if (row && scroll) {
+          const r = row.getBoundingClientRect(), clip = scroll.getBoundingClientRect();
+          y = Math.max(clip.top + 4 * scale, Math.min(clip.bottom - 4 * scale, r.top + r.height / 2));
+          clipped = !row.checkVisibility() || r.top < clip.top || r.bottom > clip.bottom;
+        } else clipped = true;
+      }
+      const targetY = to.top + 22 * scale;
+      // Self relations return to the title's right edge; header-to-header uses distinct ports.
+      const targetX = source === target && y !== targetY ? to.right : to.left;
+      const d = ontologyPanelConnector(box.right - bounds.left, y - bounds.top, targetX - bounds.left, targetY - bounds.top, scale, source === target);
+      return [{id: link.relationshipId, clipped, d}];
+    });
+    if (JSON.stringify(links) !== JSON.stringify(this.panelLinks)) this.panelLinks = links;
+  }
+
+  private changeExtraValue(path: string[], value: string | number | boolean) {
+    if (!this.panelDraft) return;
+    let base: string[] = [];
+    if (this.panelFieldPath) base = isOntologyV3Entity(this.panelDraft)
+      ? ['record', 'fields', ...this.panelFieldPath.split('.').flatMap((part,index) => index ? ['fields',part] : [part])]
+      : ['fields', String(this.panelDraft.fields.findIndex(field => field.fieldId === this.panelFieldPath))];
+    this.panelDraft = patchOntologyPanelValue(this.panelDraft, [...base, ...path], value, this.v3Views.find(view => view.entityId === this.panelEntityId));
+    this.dirty = JSON.stringify(this.panelDraft) !== JSON.stringify(this.panelEntities().find(item => item.entityId === this.panelEntityId));
+    this.editMessage = '';
+  }
+
+  private renderExtraValues(value: OntologyPanelValue, path: string[] = [], readOnly = false): unknown {
+    if (value === null) return nothing;
+    if (typeof value === 'object') return Object.entries(value).map(([key, child]) => {
+      const protectedKeys = ['schemaVersion','moduleName','entityId','fieldId','relationshipId','transitionId','derived','storageTarget','storage','source','subtype','roleTag','owner','open','kind','class','type','of','party','mutability','reachedBy','mode','direction','writer'];
+      if (!path.length && ['title','description','record','fields','fieldsBase','displayField','initialData','writer','class'].includes(key)) return nothing;
+      if (path.length === 0 && this.panelFieldPath && ['title','description','type','required','nullable','collection','unique','indexed','fields','min','max','maxLength'].includes(key)) return nothing;
+      const mapKey = ontologyPanelMapKey([...path,key]);
+      const options = this.panelDraft && !mapKey ? ontologyPanelPropertyOptions(this.panelDraft, key) : undefined;
+      const locked = readOnly || (!mapKey && protectedKeys.includes(key) && !options);
+      if (child && typeof child === 'object') return html`<details><summary>${this.t(`ontology.panel.property.${key}`) === `ontology.panel.property.${key}` ? key : this.t(`ontology.panel.property.${key}`)}</summary>${this.renderExtraValues(child, [...path, key], locked)}</details>`;
+      if (child === null) return nothing;
+      if (options) return html`<label><span>${this.t(`ontology.panel.property.${key}`)}</span><select ?disabled=${locked} .value=${String(child)} @change=${(event: Event) => {
+        if (locked || !this.panelDraft) return;
+        this.changeExtraValue([...path,key], (event.target as HTMLSelectElement).value);
+      }}>${options.map(option => html`<option value=${option}>${this.t(key === 'type' ? `ontology.panel.type.${option}` : `ontology.panel.option.${option}`)}</option>`)}</select></label>`;
+      return html`<label><span>${this.t(`ontology.panel.property.${key}`) === `ontology.panel.property.${key}` ? key : this.t(`ontology.panel.property.${key}`)}</span><input type=${typeof child === 'boolean' ? 'checkbox' : typeof child === 'number' ? 'number' : 'text'} ?readonly=${locked} ?disabled=${locked && typeof child === 'boolean'} .checked=${child === true} .value=${String(child)} @input=${(event: Event) => {
+        if (locked || !this.panelDraft) return;
+        const input = event.target as HTMLInputElement;
+        const next = typeof child === 'boolean' ? input.checked : typeof child === 'number' ? Number(input.value) : input.value;
+        this.changeExtraValue([...path,key], next);
+      }}></label>`;
+    });
+    return nothing;
+  }
+
+  private renderPanelEditor() {
+    const entity = this.panelDraft;
+    if (!entity) return nothing;
+    const field = this.panelFieldPath ? this.panelFields(entity).find(item => item.path === this.panelFieldPath) : null;
+    const value = field?.value;
+    const readOnly = !!field?.readOnly;
+    const types = isOntologyV3Entity(entity) ? ONTOLOGY_V3_FIELD_TYPES : ONTOLOGY_FIELD_TYPES;
+    const text = (key: 'title' | 'description') => html`<label><span>${this.t(`ontology.panel.${key}`)}</span><textarea ?readonly=${readOnly} .value=${String(value?.[key] ?? (field ? '' : entity[key]))} @input=${(event: Event) => this.changePanel({[key]: (event.target as HTMLTextAreaElement).value})}></textarea></label>`;
+    return html`<section class="nr-ontology-panels__editor"><header><h2>${field?.title || entity.title}</h2><code>${entity.entityId}${field ? ` / ${field.path}` : ''}</code></header>
+      <p>${this.t(readOnly ? 'ontology.panel.inherited' : 'ontology.panel.identity')}</p>
+      ${text('title')}${text('description')}
+      ${!field ? html`<label><span>${this.t('ontology.displayField')}</span><select .value=${entity.displayField} @change=${(event: Event) => this.changePanelEntity('displayField', (event.target as HTMLSelectElement).value)}>${this.panelFields(entity).map(row => html`<option value=${row.path}>${row.path}</option>`)}</select></label>
+        <label><span>${this.t('ontology.panel.writer')}</span><select .value=${entity.writer || 'journey'} @change=${(event: Event) => this.changePanelEntity('writer', (event.target as HTMLSelectElement).value)}>${(['journey', 'crud', 'inbound'] as const).map(writer => html`<option value=${writer}>${this.t(`ontology.panel.writer.${writer}`)}</option>`)}</select></label>
+        ${isOntologyV3Entity(entity) && entity.kind === 'entity' ? html`<label><span>${this.t('ontology.panel.class')}</span><select .value=${entity.class} @change=${(event: Event) => this.changePanelEntity('class', (event.target as HTMLSelectElement).value)}>${(['core', 'event', 'supporting'] as const).map(kind => html`<option value=${kind}>${this.t(`ontology.kind.${kind}`)}</option>`)}</select></label><label><span>${this.t('ontology.panel.initialData')}</span><textarea .value=${entity.initialData || ''} @input=${(event: Event) => this.changePanelEntity('initialData', (event.target as HTMLTextAreaElement).value)}></textarea></label>` : nothing}
+      ` : nothing}
+      ${field && value ? html`<label><span>${this.t('ontology.panel.type')}</span><select ?disabled=${readOnly} .value=${value.type} @change=${(event: Event) => this.changePanel({type: (event.target as HTMLSelectElement).value as Ns5OntologyFieldV3['type']})}>${types.map(type => html`<option value=${type}>${this.t(`ontology.panel.type.${type}`)}</option>`)}</select></label>
+        ${(['required', 'nullable', 'collection', 'unique', 'indexed'] as const).filter(key => isOntologyV3Entity(entity) || key === 'required' || key === 'unique').map(key => html`<label><span>${this.t(`ontology.panel.${key}`)}</span><input type="checkbox" ?disabled=${readOnly} .checked=${!!value[key as keyof typeof value]} @change=${(event: Event) => this.changePanel({[key]: (event.target as HTMLInputElement).checked})}></label>`)}
+        ${(['min', 'max', 'maxLength'] as const).filter(key => key === 'maxLength' ? ['string', 'text'].includes(value.type) : ['integer', 'number', 'money'].includes(value.type)).map(key => html`<label><span>${this.t(`ontology.constraint.${key}`)}</span><input type="number" ?readonly=${readOnly} .value=${String(isOntologyV3Entity(entity) ? (value as Ns5OntologyFieldV3)[key] ?? '' : (value as Ns5OntologyField).constraints?.[key] ?? '')} @input=${(event: Event) => {const input = (event.target as HTMLInputElement).value; this.changePanel({[key]: input === '' ? undefined : Number(input)});}}></label>`)}
+      ` : nothing}
+      ${this.renderExtraValues((value || entity) as unknown as OntologyPanelValue, [], readOnly)}
+      <details><summary>${this.t('ontology.panel.definition')}</summary><pre>${JSON.stringify(value || entity, null, 2)}</pre></details>
+      ${this.editMessage ? html`<p role="alert">${this.editMessage}</p>` : nothing}
+      <footer><button type="button" @click=${() => this.closePanelEditor()}>${this.t('ontology.cancel')}</button><button type="button" ?disabled=${!this.dirty || readOnly} @click=${() => void this.savePanel()}>${this.t('ontology.save')}</button></footer>
+    </section>`;
+  }
+
+  render() {
+    if (this.panelEntityId) return this.renderPanelEditor();
+    const entities = this.panelEntities();
+    if (!entities.length) return html`<section class="nr-ontology__empty"><h2>${this.t('ontology.emptyTitle')}</h2><p>${this.t('ontology.emptyBody')}</p></section>`;
+    return html`<section class="nr-ontology-panels"><div class="nr-ontology-panels__scroll" @scroll=${() => this.measurePanelLinks()}><div class="nr-ontology-panels__board">
+      <svg class="nr-ontology-panels__links" aria-label=${this.t('ontology.relationships')}>${this.panelLinks.map(link => svg`<path d=${link.d} class=${link.clipped ? 'is-clipped' : ''}><title>${link.id}${link.clipped ? ` — ${this.t('ontology.panel.offscreen')}` : ''}</title></path>`)}</svg>
+      ${entities.map(entity => html`<article data-entity=${entity.entityId}><header><button type="button" @click=${() => this.openPanelEditor(entity.entityId)}><strong>${entity.title}</strong><code>${entity.entityId}</code></button></header><div class="nr-ontology-panels__fields" @scroll=${() => this.measurePanelLinks()}>${this.panelFieldTree(this.panelFields(entity))}</div></article>`)}
+    </div></div>${this.v3Loading ? html`<p>${this.t('ontology.v3.loading')}</p>` : nothing}${this.v3Error ? html`<p role="alert">${this.v3Error}</p>` : nothing}</section>`;
+  }
+
 }
 
 declare global {

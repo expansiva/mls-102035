@@ -97,6 +97,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     super.connectedCallback();
     this.project = this.project || Number(mls.actualProject || 0);
     this.languageObserver = observeNewReleaseLanguage(() => this.loadLanguage());
+    this.addEventListener('scroll', this.closeHintsOnScroll, true);
     this.addEventListener('nr-before-discard', this.beforeDiscard);
     this.addEventListener('nr-view-state', this.onViewState);
     this.addEventListener('nr-request-change', this.openChangeRequest);
@@ -113,6 +114,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   disconnectedCallback() {
     this.languageObserver?.disconnect();
     if (this.validationTimer) window.clearTimeout(this.validationTimer);
+    this.removeEventListener('scroll', this.closeHintsOnScroll, true);
     this.removeEventListener('nr-before-discard', this.beforeDiscard);
     this.removeEventListener('nr-view-state', this.onViewState);
     this.removeEventListener('nr-request-change', this.openChangeRequest);
@@ -274,9 +276,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderTreeNode(node: TextTreeNode): unknown {
-    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${node.label}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
-    return html`<li>${this.tabPresentation ? html`<button type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${node.label}</button>` : nothing}<details ?open=${!!this.textSearch}><summary>${node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
+    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${node.label}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
+    return html`<li><details ?open=${!!this.textSearch}><summary>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${(event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); this.tabPresentation?.select(node.id); }}>${node.label}</button>` : node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
   }
+
+  private closeHintsOnScroll = () => {
+    this.querySelectorAll<HTMLDetailsElement>('details.nr-common__hint[open]').forEach(hint => { hint.open = false; });
+  };
 
   private renderCommonControls() {
     if (this.activeTab === 'general' || this.activeTab === 'review') return nothing;
