@@ -1037,5 +1037,8 @@
   "workflows.wake.none": "Nenhum",
   "workflows.wake.periodic": "Periódico",
   "workflows.wakeEvery": "Intervalo (ISO 8601)",
-  "workflows.connections": "Conexões declaradas entre etapas"
+  "workflows.connections": "Conexões declaradas entre etapas",
+  "integration.id": "ID",
+  "integration.entityRefs": "Entidades",
+  "integration.transitionRef": "Transição"
 }

@@ -1,6 +1,28 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/review.less" enhancement="enhancementStyle"/>
 
 new-release--widgets--review-102035 {
+  color-scheme: dark;
+  --page-bg: #0d1117;
+  --surface-bg: #161b22;
+  --surface-alt-bg: #1c2330;
+  --text-strong: #f0f4fc;
+  --text-default: #d0d8e8;
+  --text-muted: #92a0b8;
+  --border-subtle: #303b50;
+  --border-default: #46546d;
+  --link-text: #8fb9ff;
+  --selected-bg: #223854;
+  --selected-text: #bdd6ff;
+  --selected-border: #6198e8;
+  --focus-ring: #83b4ff;
+  background: var(--page-bg);
+  color: var(--text-default);
+  font-family: var(--font-family, system-ui, sans-serif);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  button, input, select, textarea { font: inherit; }
+  button:focus-visible, summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+
   display: block;
 
   * { box-sizing: border-box; }

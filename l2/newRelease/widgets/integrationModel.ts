@@ -10,6 +10,15 @@ import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/
 
 export type IntegrationSchemaKind = 'v1' | 'v2' | 'unknown';
 
+/** Every contract field has a translated detail label, including optional fields. */
+export const INTEGRATION_ITEM_LABELS = {
+  id: 'integration.id', kind: 'integration.kind', from: 'integration.from',
+  to: 'integration.to', event: 'integration.event', writes: 'integration.writes',
+  effect: 'integration.effect', transitionRef: 'integration.transition',
+  on: 'integration.on', description: 'integration.itemDescription',
+  entityRefs: 'integration.entities',
+} as const satisfies Record<keyof Ns5IntegrationItem, string>;
+
 export interface IntegrationPluginView {
   pluginId: string;
   description: string;
@@ -118,3 +127,16 @@ export function pluginFromView(plugin: IntegrationPluginView): Ns5IntegrationPlu
   return { pluginId: plugin.pluginId, description: plugin.description, usedBy: [...plugin.usedBy] };
 }
 
+
+/** Preserve the full artifact and protected identities while changing existing values. */
+export function patchIntegrationItem(
+  artifact: Ns5IntegrationArtifact,
+  lane: 'inbound' | 'outbound',
+  index: number,
+  patch: Partial<Omit<Ns5IntegrationItem, 'id' | 'event'>>,
+): Ns5IntegrationArtifact {
+  const {id: _id, event: _event, ...values} = patch as Partial<Ns5IntegrationItem>;
+  return {...artifact, [lane]: artifact[lane].map((item, position) => position === index
+    ? {...item, ...values}
+    : item)};
+}
