@@ -360,11 +360,11 @@
   "access.actor": "Actor",
   "access.entities": "Entities",
   "access.grants": "Grants",
-  "access.matrix": "Coverage by actor and entity",
-  "access.matrixDescription": "Each cell shows the broadest effective grant and its disclosure level.",
-  "access.matrixHint": "Select a cell to inspect its details",
+  "access.matrix": "Access matrix",
+  "access.matrixDescription": "Declared grants by role. Select a grant to edit its properties.",
+  "access.matrixHint": "The check opens details; it does not change access.",
   "access.matrixCreate": "Create a grant for this combination",
-  "access.matrixCell": "{{actor}} and {{entity}}: {{access}}",
+  "access.matrixCell": "Open {{grant}} for {{actor}}",
   "access.none": "No access",
   "access.selectedActor": "Selected actor",
   "access.selectedGrant": "Selected grant",
@@ -1020,5 +1020,11 @@
   "ontology.panel.option.N:1": "N:1",
   "ontology.panel.option.N:N": "N:N",
   "ontology.panel.fieldHint": "Field path: {path}",
-  "ontology.panel.toggleFields": "Expand or collapse fields: {path}"
+  "ontology.panel.toggleFields": "Expand or collapse fields: {path}",
+  "access.editActor": "Edit role {{actor}}",
+  "access.actorTitle": "Role name",
+  "access.grantTitle": "Grant name",
+  "access.personEntity": "Person entity",
+  "access.noPersonEntity": "No person entity",
+  "access.unassigned": "Unknown role"
 }

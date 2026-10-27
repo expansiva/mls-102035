@@ -360,11 +360,11 @@
   "access.actor": "Ator",
   "access.entities": "Entidades",
   "access.grants": "Permissões",
-  "access.matrix": "Cobertura por ator e entidade",
-  "access.matrixDescription": "Cada célula mostra a permissão efetiva de maior alcance e o seu nível de exposição.",
-  "access.matrixHint": "Selecione uma célula para ver os detalhes",
+  "access.matrix": "Matriz de acesso",
+  "access.matrixDescription": "Concessões declaradas por papel. Selecione uma concessão para editar suas propriedades.",
+  "access.matrixHint": "O indicador abre os detalhes; não altera o acesso.",
   "access.matrixCreate": "Criar uma permissão para esta combinação",
-  "access.matrixCell": "{{actor}} e {{entity}}: {{access}}",
+  "access.matrixCell": "Abrir {{grant}} de {{actor}}",
   "access.none": "Sem acesso",
   "access.selectedActor": "Ator selecionado",
   "access.selectedGrant": "Permissão selecionada",
@@ -1020,5 +1020,11 @@
   "ontology.panel.option.N:1": "N:1",
   "ontology.panel.option.N:N": "N:N",
   "ontology.panel.fieldHint": "Caminho do campo: {path}",
-  "ontology.panel.toggleFields": "Expandir ou recolher campos: {path}"
+  "ontology.panel.toggleFields": "Expandir ou recolher campos: {path}",
+  "access.editActor": "Editar papel {{actor}}",
+  "access.actorTitle": "Nome do papel",
+  "access.grantTitle": "Nome da concessão",
+  "access.personEntity": "Entidade de pessoa",
+  "access.noPersonEntity": "Sem entidade de pessoa",
+  "access.unassigned": "Papel desconhecido"
 }

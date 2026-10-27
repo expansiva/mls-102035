@@ -1,14 +1,15 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/access.ts" enhancement="_102027_/l2/enhancementLit" />
 
-import { html, nothing, svg, type PropertyValues } from 'lit';
+import { html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import type {
   Ns5AccessArtifact,
   Ns5AccessGrant,
-  Ns5ModuleActor,
-  Ns5OntologyEntityArtifact,
+  Ns5AccessActor,
+  Ns5OntologyAnyEntity,
   Ns5OntologyIndexArtifact,
+  Ns5OntologyIndexV3,
 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
@@ -16,19 +17,22 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
+  type NewReleaseTabPresentation,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
 } from '/_102035_/l2/newRelease/editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
-  accessAnchorPaths,
+  patchAccessActor,
+  patchAccessGrant,
+  accessMatrixRows,
+  accessTextNodes,
+  accessIsPerson,
   accessFieldLabel,
   accessFieldRefs,
   accessGrantsForActor,
   accessJourneyCount,
   accessOracleIssues,
-  bestAccessGrant,
-  newAccessGrant,
   reachablePersonAnchors,
 } from '/_102035_/l2/newRelease/widgets/accessModel.js';
 
@@ -36,7 +40,8 @@ const SCOPE_MODES: Ns5AccessGrant['dataScope']['mode'][] = ['own', 'assigned', '
 const DISCLOSURE_MODES: Ns5AccessGrant['disclosure']['mode'][] = ['fullRecord', 'fieldsOnly', 'summaryOnly', 'aggregateOnly'];
 const PERSON_SCOPE_MODES: Ns5AccessGrant['dataScope']['mode'][] = ['own', 'assigned', 'related'];
 const LIMITED_DISCLOSURE_MODES: Ns5AccessGrant['disclosure']['mode'][] = ['fieldsOnly', 'summaryOnly'];
-const ACTOR_KINDS: Ns5ModuleActor['kind'][] = ['internal', 'external', 'system'];
+const ACTOR_ORIGINS: Ns5AccessActor['origin'][] = ['named', 'inferred'];
+const ACTOR_KINDS: Ns5AccessActor['kind'][] = ['internal', 'external', 'system'];
 
 interface AccessIssueView {
   severity: 'error' | 'warning';
@@ -54,6 +59,8 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   @property({ type: String }) mode: NewReleaseEditMode = 'view';
   @property({ type: Boolean }) dirty = false;
 
+  @state() private detailKind: 'actor' | 'grant' | '' = '';
+  private editSnapshot = '';
   @state() private selectedActorId = '';
   @state() private selectedGrantId = '';
   @state() private accessDraft: Ns5AccessArtifact | null = null;
@@ -64,16 +71,23 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   createRenderRoot() { return this; }
 
   updated(changed: PropertyValues) {
-    if (!changed.has('data') || this.mode === 'edit') return;
+    if (changed.has('data') || changed.has('mode') || changed.has('detailKind') || changed.has('accessDraft') || changed.has('t')) {
+      this.publishPresentation();
+    }
+  }
+
+  private publishPresentation() {
     const access = this.currentAccess();
-    if (!access) return;
-    if (!access.actors.some(actor => actor.actorId === this.selectedActorId)) {
-      this.selectedActorId = access.actors[0]?.actorId || '';
-    }
-    const grants = accessGrantsForActor(access, this.selectedActorId);
-    if (!grants.some(grant => grant.grantId === this.selectedGrantId)) {
-      this.selectedGrantId = grants[0]?.grantId || '';
-    }
+    const presentation: NewReleaseTabPresentation = {
+      nodes: access ? accessTextNodes(access, this.t('access.unassigned')) : [],
+      detail: !!this.detailKind,
+      select: id => {
+        if (id.startsWith('actor:')) this.selectActor(id.slice(6));
+        if (id.startsWith('grant:')) this.selectGrant(id.slice(6));
+      },
+      back: () => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); },
+    };
+    this.dispatchEvent(new CustomEvent('nr-view-state', { bubbles: true, composed: true, detail: presentation }));
   }
 
   getDraft(): Ns5AccessArtifact | null {
@@ -91,14 +105,13 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
       : this.data?.artifacts.access.value || null;
   }
 
-  private entities(): Ns5OntologyEntityArtifact[] {
+  private entities(): Ns5OntologyAnyEntity[] {
     return this.data?.artifacts.entities.map(item => item.value)
-      .filter((item): item is Ns5OntologyEntityArtifact => item?.schemaVersion === '2026-09-11-ns5-ontology-v2') || [];
+      .filter((item): item is Ns5OntologyAnyEntity => !!item) || [];
   }
 
-  private index(): Ns5OntologyIndexArtifact | null {
-    const value = this.data?.artifacts.ontologyIndex.value;
-    return value?.schemaVersion === '2026-09-11-ns5-ontology-v2' ? value : null;
+  private index(): (Ns5OntologyIndexArtifact | Ns5OntologyIndexV3) | null {
+    return this.data?.artifacts.ontologyIndex.value || null;
   }
 
   private journeys() {
@@ -106,7 +119,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
       .filter((item): item is NonNullable<typeof item> => !!item) || [];
   }
 
-  private actor(): Ns5ModuleActor | null {
+  private actor(): Ns5AccessActor | null {
     return this.currentAccess()?.actors.find(actor => actor.actorId === this.selectedActorId) || null;
   }
 
@@ -119,21 +132,29 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   }
 
   private selectActor(actorId: string) {
+    if (!canDiscardNewReleaseDraft(this)) return;
+    this.cancelEdit();
     this.selectedActorId = actorId;
-    this.selectedGrantId = accessGrantsForActor(this.currentAccess()!, actorId)[0]?.grantId || '';
+    this.detailKind = 'actor';
+    this.beginEdit();
   }
 
   private selectGrant(grantId: string) {
+    if (!canDiscardNewReleaseDraft(this)) return;
+    this.cancelEdit();
     const grant = this.currentAccess()?.grants.find(item => item.grantId === grantId);
     if (!grant) return;
     this.selectedActorId = grant.actorRef;
     this.selectedGrantId = grantId;
+    this.detailKind = 'grant';
+    this.beginEdit();
   }
 
   private beginEdit() {
     const access = this.currentAccess();
     if (!access) return;
     this.accessDraft = structuredClone(access);
+    this.editSnapshot = JSON.stringify(access);
     this.mode = 'edit';
     this.dirty = false;
     this.gateIssues = [];
@@ -141,6 +162,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   }
 
   private cancelEdit() {
+    this.detailKind = '';
     this.accessDraft = null;
     this.mode = 'view';
     this.dirty = false;
@@ -153,25 +175,19 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   private updateAccess(next: Ns5AccessArtifact) {
     this.accessDraft = next;
-    this.dirty = true;
+    this.dirty = JSON.stringify(next) !== this.editSnapshot;
     this.gateIssues = [];
     this.editMessage = '';
   }
 
-  private updateActor(patch: Partial<Pick<Ns5ModuleActor, 'title' | 'description' | 'kind'>>) {
+  private updateActor(patch: Partial<Omit<Ns5AccessActor, 'actorId'>>) {
     if (!this.accessDraft) return;
-    this.updateAccess({
-      ...this.accessDraft,
-      actors: this.accessDraft.actors.map(actor => actor.actorId === this.selectedActorId ? { ...actor, ...patch } : actor),
-    });
+    this.updateAccess(patchAccessActor(this.accessDraft, this.selectedActorId, patch));
   }
 
-  private updateGrant(patch: Partial<Ns5AccessGrant>) {
+  private updateGrant(patch: Partial<Omit<Ns5AccessGrant, 'grantId'>>) {
     if (!this.accessDraft) return;
-    this.updateAccess({
-      ...this.accessDraft,
-      grants: this.accessDraft.grants.map(grant => grant.grantId === this.selectedGrantId ? { ...grant, ...patch } : grant),
-    });
+    this.updateAccess(patchAccessGrant(this.accessDraft, this.selectedGrantId, patch));
   }
 
   private updateScope(patch: Partial<Ns5AccessGrant['dataScope']>) {
@@ -202,74 +218,13 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   }
 
   private updateEntities(entityRefs: string[]) {
-    const grant = this.grant();
-    if (!grant) return;
-    const validFieldPrefixes = new Set(entityRefs.map(entityId => `${entityId}.`));
-    const disclosure = {
-      ...grant.disclosure,
-      ...(grant.disclosure.allowedFields
-        ? { allowedFields: grant.disclosure.allowedFields.filter(ref => [...validFieldPrefixes].some(prefix => ref.startsWith(prefix))) }
-        : {}),
-      ...(grant.disclosure.deniedFields
-        ? { deniedFields: grant.disclosure.deniedFields.filter(ref => [...validFieldPrefixes].some(prefix => ref.startsWith(prefix))) }
-        : {}),
-    };
-    const anchors = reachablePersonAnchors(entityRefs, this.entities(), this.index());
-    const dataScope = { ...grant.dataScope };
-    if (dataScope.anchorEntity && !anchors.some(anchor => anchor.entityId === dataScope.anchorEntity)) delete dataScope.anchorEntity;
-    if (PERSON_SCOPE_MODES.includes(dataScope.mode) && !dataScope.anchorEntity) dataScope.anchorEntity = anchors[0]?.entityId;
-    this.updateGrant({ entityRefs, dataScope, disclosure });
-  }
-
-  private addGrant(entityId = '') {
-    const access = this.currentAccess();
-    const actor = this.actor();
-    if (!access || !actor) return;
-    if (this.mode !== 'edit') this.beginEdit();
-    const draft = this.accessDraft!;
-    const grant = newAccessGrant(draft, actor, entityId || this.entities()[0]?.entityId || '', {
-      title: this.t('access.newGrantTitle'),
-      description: this.t('access.newGrantDescription'),
-      scopeDescription: this.t('access.newScopeDescription'),
-      disclosureDescription: this.t('access.newDisclosureDescription'),
-    });
-    this.selectedGrantId = grant.grantId;
-    this.updateAccess({ ...draft, grants: [...draft.grants, grant] });
-  }
-
-  private removeGrant() {
-    if (!this.accessDraft || !this.selectedGrantId) return;
-    const grants = this.accessDraft.grants.filter(grant => grant.grantId !== this.selectedGrantId);
-    const next = { ...this.accessDraft, grants };
-    this.selectedGrantId = accessGrantsForActor(next, this.selectedActorId)[0]?.grantId || '';
-    this.updateAccess(next);
-  }
-
-  private clickMatrix(actor: Ns5ModuleActor, entityId: string, grant: Ns5AccessGrant | null) {
-    if (grant) {
-      this.selectGrant(grant.grantId);
-      return;
-    }
-    this.selectedActorId = actor.actorId;
-    this.addGrant(entityId);
+    // References elsewhere in the grant are preserved for candidate validation to assess.
+    this.updateGrant({ entityRefs });
   }
 
   private async saveEdit() {
     if (!this.accessDraft || !this.dirty) return;
     try {
-      const gate = await import('/_102035_/l2/solution/gates/access60/gate.js');
-      const result = gate.validateNs5Access(this.accessDraft.grants, {
-        moduleName: this.moduleName,
-        actors: this.accessDraft.actors,
-        entities: this.entities(),
-        relationships: this.index()?.relationships || [],
-        journeys: this.journeys(),
-      });
-      this.gateIssues = result.issues.map(issue => ({ severity: issue.severity, code: issue.code, message: issue.message }));
-      if (!result.ok) {
-        this.editMessage = this.t('access.gateBlocked');
-        return;
-      }
       await announceNewReleaseChange(this, { path: 'access.defs.ts', jsonPath: '$', value: structuredClone(this.accessDraft) });
       this.cancelEdit();
     } catch (error) {
@@ -277,42 +232,36 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
     }
   }
 
-  private disclosureIcon(mode: Ns5AccessGrant['disclosure']['mode']) {
-    if (mode === 'fullRecord') return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h8"/></svg>`;
-    if (mode === 'aggregateOnly') return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V9M12 18V5M19 18v-6"/></svg>`;
-    return svg`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h9M5 18h6"/><path d="m17 15 2 2 3-4"/></svg>`;
-  }
-
   private renderMatrix(access: Ns5AccessArtifact) {
-    const entities = this.entities();
-    return html`<section class="nr-access__matrix"><header><div><span>${this.t('access.matrix')}</span><p>${this.t('access.matrixDescription')}</p></div><small>${this.t('access.matrixHint')}</small></header><div class="nr-access__matrix-scroll"><table><thead><tr><th>${this.t('access.actor')}</th>${entities.map(entity => html`<th title=${entity.entityId}>${entity.title}</th>`)}</tr></thead><tbody>${access.actors.map(actor => html`<tr class=${actor.actorId === this.selectedActorId ? 'is-selected' : ''}><th><button type="button" @click=${() => this.selectActor(actor.actorId)}><strong>${actor.title}</strong><code>${actor.actorId}</code></button></th>${entities.map(entity => {
-      const grant = bestAccessGrant(access.grants, actor.actorId, entity.entityId);
-      const accessLabel = grant
-        ? `${this.t(`access.scope.${grant.dataScope.mode}`)} · ${this.t(`access.disclosure.${grant.disclosure.mode}`)}`
-        : this.t('access.none');
-      return html`<td><button type="button" class=${grant ? `has-grant scope-${grant.dataScope.mode}` : 'is-empty'} title=${grant ? `${grant.title} · ${accessLabel}` : this.t('access.matrixCreate')} aria-label=${this.t('access.matrixCell', { actor: actor.title, entity: entity.title, access: accessLabel })} @click=${() => this.clickMatrix(actor, entity.entityId, grant)}>${grant ? html`<span>${this.t(`access.scope.${grant.dataScope.mode}`)}</span><i title=${this.t(`access.disclosure.${grant.disclosure.mode}`)}>${this.disclosureIcon(grant.disclosure.mode)}</i>` : html`<span aria-hidden="true">+</span><small>${this.t('access.none')}</small>`}</button></td>`;
-    })}</tr>`)}</tbody></table></div></section>`;
+    return html`<section class="nr-access__matrix"><header><div><span>${this.t('access.matrix')}</span><p>${this.t('access.matrixDescription')}</p></div><small>${this.t('access.matrixHint')}</small></header>
+      <div class="nr-access__matrix-scroll"><table><thead><tr><th scope="col">${this.t('access.grants')}</th>${access.actors.map((actor, index) => html`<th scope="col"><button type="button" class="nr-access__role-number" popovertarget=${`nr-access-role-${index}`} aria-label=${actor.title} @pointerenter=${(event: PointerEvent) => { if (event.pointerType === 'mouse') ((event.currentTarget as HTMLElement).nextElementSibling as HTMLElement | null)?.showPopover(); }}>#${index + 1}</button><div id=${`nr-access-role-${index}`} class="nr-access__role-popover" popover data-nr-hint @beforetoggle=${(event: Event) => {
+        const popup = event.currentTarget as HTMLElement;
+        const rect = popup.previousElementSibling!.getBoundingClientRect();
+        popup.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 248))}px`;
+        popup.style.top = `${rect.bottom + 6}px`;
+      }}><span>${actor.title}</span><button type="button" class="nr-access__role-edit" aria-label=${this.t('access.editActor', { actor: actor.title })} @click=${() => this.selectActor(actor.actorId)}>${this.t('access.edit')}</button></div></th>`)}</tr></thead>
+      <tbody>${accessMatrixRows(access).map(({ grant, cells }) => html`<tr><th scope="row"><button type="button" @click=${() => this.selectGrant(grant.grantId)}><strong>${grant.title}</strong><code>${grant.grantId}</code></button></th>${cells.map((checked, index) => html`<td>${checked ? html`<button type="button" class="nr-access__indicator" aria-label=${this.t('access.matrixCell', { actor: access.actors[index].title, grant: grant.title })} @click=${() => this.selectGrant(grant.grantId)}><span aria-hidden="true">✓</span></button>` : html`<span class="nr-access__absent" aria-label=${this.t('access.none')}>—</span>`}</td>`)}</tr>`)}</tbody></table></div></section>`;
   }
 
-  private renderActor(access: Ns5AccessArtifact, actor: Ns5ModuleActor) {
-    const grants = accessGrantsForActor(access, actor.actorId);
-    const journeyCount = accessJourneyCount(this.journeys(), actor.actorId);
-    return html`<aside class="nr-access__actor"><header><span>${this.t('access.selectedActor')}</span><code>${actor.actorId}</code></header><div class="nr-access__actor-title">${this.mode === 'edit' ? html`<input .value=${actor.title} @input=${(event: Event) => this.updateActor({ title: (event.currentTarget as HTMLInputElement).value })}>` : html`<h2>${actor.title}</h2>`}<span class=${`kind-${actor.kind}`}>${this.t(`access.kind.${actor.kind}`)}</span></div>${this.mode === 'edit' ? html`<label><span>${this.t('access.kind')}</span><select .value=${actor.kind} @change=${(event: Event) => this.updateActor({ kind: (event.currentTarget as HTMLSelectElement).value as Ns5ModuleActor['kind'] })}>${ACTOR_KINDS.map(kind => html`<option value=${kind} ?selected=${actor.kind === kind}>${this.t(`access.kind.${kind}`)}</option>`)}</select></label><label><span>${this.t('access.actorDescription')}</span><textarea .value=${actor.description} @input=${(event: Event) => this.updateActor({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>` : html`<p>${actor.description}</p>`}<dl><div><dt>${this.t('access.origin')}</dt><dd>${this.t(`access.origin.${actor.origin}`)}</dd></div><div><dt>${this.t('access.journeys')}</dt><dd>${journeyCount}</dd></div><div><dt>${this.t('access.grants')}</dt><dd>${grants.length}</dd></div></dl><section class="nr-access__grant-list"><header><strong>${this.t('access.actorGrants')}</strong><button type="button" @click=${() => this.addGrant()}>+ ${this.t('access.addGrant')}</button></header>${grants.length ? grants.map(grant => html`<button type="button" class=${grant.grantId === this.selectedGrantId ? 'is-active' : ''} @click=${() => this.selectGrant(grant.grantId)}><span><strong>${grant.title}</strong><code>${grant.grantId}</code></span><i>${this.t(`access.scope.${grant.dataScope.mode}`)}</i></button>`) : html`<p class="nr-access__no-grants">${this.t('access.noGrants')}</p>`}</section></aside>`;
-  }
-
-  private renderGrantView(grant: Ns5AccessGrant) {
-    const paths = accessAnchorPaths(grant, this.index());
-    const allowed = grant.disclosure.allowedFields || [];
-    const denied = grant.disclosure.deniedFields || [];
-    const fieldChip = (ref: string) => html`<span class="nr-access__field-chip"><strong>${accessFieldLabel(ref, this.entities())}</strong><code>${ref}</code></span>`;
-    return html`<article class="nr-access__grant-detail"><header><div><span>${this.t('access.selectedGrant')}</span><h2>${grant.title}</h2><code>${grant.grantId}</code></div><button class="nr-button" type="button" @click=${() => this.beginEdit()}>${this.t('access.edit')}</button></header><p class="nr-access__lead">${grant.description}</p><div class="nr-access__entities"><strong>${this.t('access.entities')}</strong>${grant.entityRefs.map(entityId => html`<button type="button" @click=${() => this.dispatchEvent(new CustomEvent('nr-navigate', { bubbles: true, composed: true, detail: { tab: 'ontology', entityId } }))}>${this.entityTitle(entityId)}</button>`)}</div><div class="nr-access__boundary"><section><span>${this.t('access.scope')}</span><h3>${this.t(`access.scope.${grant.dataScope.mode}`)}</h3><p>${grant.dataScope.description}</p>${grant.dataScope.anchorEntity ? html`<div class="nr-access__anchor"><strong>${this.t('access.anchor')}</strong><code>${grant.dataScope.anchorEntity}</code>${paths.map(path => html`<p><span>${path.entities.join(' → ')}</span><small>${path.relationships.length ? path.relationships.join(' · ') : this.t('access.sameEntity')}</small></p>`)}</div>` : nothing}</section><section><span>${this.t('access.disclosure')}</span><h3>${this.t(`access.disclosure.${grant.disclosure.mode}`)}</h3><p>${grant.disclosure.description}</p>${allowed.length || denied.length ? html`<div class="nr-access__field-groups">${allowed.length ? html`<div><strong>${this.t('access.allowedFields')}</strong>${allowed.map(fieldChip)}</div>` : nothing}${denied.length ? html`<div class="is-denied"><strong>${this.t('access.deniedFields')}</strong>${denied.map(fieldChip)}</div>` : nothing}</div>` : nothing}</section></div></article>`;
+  private renderActor(access: Ns5AccessArtifact, actor: Ns5AccessActor) {
+    const people = this.entities().filter(accessIsPerson);
+    const peopleIds = [...new Set([...(actor.personEntity ? [actor.personEntity] : []), ...people.map(entity => entity.entityId)])];
+    return html`<article class="nr-access__actor"><header><span>${this.t('access.selectedActor')}</span><code>${actor.actorId}</code></header>
+      <label><span>${this.t('access.actorTitle')}</span><input .value=${actor.title} @input=${(event: Event) => this.updateActor({ title: (event.currentTarget as HTMLInputElement).value })}></label>
+      <label><span>${this.t('access.actorDescription')}</span><textarea .value=${actor.description} @input=${(event: Event) => this.updateActor({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>
+      <label><span>${this.t('access.kind')}</span><select .value=${actor.kind} @change=${(event: Event) => this.updateActor({ kind: (event.currentTarget as HTMLSelectElement).value as Ns5AccessActor['kind'] })}>${ACTOR_KINDS.map(kind => html`<option value=${kind} ?selected=${actor.kind === kind}>${this.t(`access.kind.${kind}`)}</option>`)}</select></label>
+      <label><span>${this.t('access.origin')}</span><select .value=${actor.origin} @change=${(event: Event) => this.updateActor({ origin: (event.currentTarget as HTMLSelectElement).value as Ns5AccessActor['origin'] })}>${ACTOR_ORIGINS.map(origin => html`<option value=${origin} ?selected=${actor.origin === origin}>${this.t(`access.origin.${origin}`)}</option>`)}</select></label>
+      <label><span>${this.t('access.personEntity')}</span><select .value=${actor.personEntity || ''} @change=${(event: Event) => this.updateActor({ personEntity: (event.currentTarget as HTMLSelectElement).value })}><option value="" ?selected=${!actor.personEntity}>${this.t('access.noPersonEntity')}</option>${peopleIds.map(id => html`<option value=${id} ?selected=${actor.personEntity === id}>${this.entityTitle(id)}</option>`)}</select></label>
+      <dl><div><dt>${this.t('access.journeys')}</dt><dd>${accessJourneyCount(this.journeys(), actor.actorId)}</dd></div><div><dt>${this.t('access.grants')}</dt><dd>${accessGrantsForActor(access, actor.actorId).length}</dd></div></dl></article>`;
   }
 
   private renderGrantEdit(grant: Ns5AccessGrant) {
     const anchors = reachablePersonAnchors(grant.entityRefs, this.entities(), this.index());
-    const fields = accessFieldRefs(grant, this.entities());
+    const fields = [...new Set([...accessFieldRefs(grant, this.entities()), ...(grant.disclosure.allowedFields || []), ...(grant.disclosure.deniedFields || [])])];
+    const entityIds = [...new Set([...grant.entityRefs, ...this.entities().map(entity => entity.entityId)])];
+    const anchorIds = [...new Set([...(grant.dataScope.anchorEntity ? [grant.dataScope.anchorEntity] : []), ...anchors.map(anchor => anchor.entityId)])];
     const fieldOption = (ref: string) => `${accessFieldLabel(ref, this.entities())} — ${ref}`;
-    return html`<article class="nr-access__grant-detail is-editing"><header><div><span>${this.t('access.editing')}</span><input class="nr-access__title-input" .value=${grant.title} @input=${(event: Event) => this.updateGrant({ title: (event.currentTarget as HTMLInputElement).value })}><code>${grant.grantId}</code></div><button class="nr-button is-danger" type="button" @click=${() => this.removeGrant()}>${this.t('access.removeGrant')}</button></header><label class="is-wide"><span>${this.t('access.grantDescription')}</span><textarea .value=${grant.description} @input=${(event: Event) => this.updateGrant({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label><div class="nr-access__edit-grid"><label><span>${this.t('access.entities')}</span><select multiple @change=${(event: Event) => this.updateEntities(this.multiValues(event))}>${this.entities().map(entity => html`<option value=${entity.entityId} ?selected=${grant.entityRefs.includes(entity.entityId)}>${entity.title}</option>`)}</select></label><label><span>${this.t('access.scope')}</span><select .value=${grant.dataScope.mode} @change=${(event: Event) => this.updateScope({ mode: (event.currentTarget as HTMLSelectElement).value as Ns5AccessGrant['dataScope']['mode'] })}>${SCOPE_MODES.map(mode => html`<option value=${mode} ?selected=${grant.dataScope.mode === mode} ?disabled=${this.actor()?.kind === 'external' && mode !== 'own'}>${this.t(`access.scope.${mode}`)}</option>`)}</select></label>${PERSON_SCOPE_MODES.includes(grant.dataScope.mode) ? html`<label><span>${this.t('access.anchor')}</span><select .value=${grant.dataScope.anchorEntity || ''} @change=${(event: Event) => this.updateScope({ anchorEntity: (event.currentTarget as HTMLSelectElement).value || undefined })}><option value="" ?selected=${!grant.dataScope.anchorEntity}>${this.t('access.chooseAnchor')}</option>${anchors.map(anchor => html`<option value=${anchor.entityId} ?selected=${grant.dataScope.anchorEntity === anchor.entityId}>${anchor.title}</option>`)}</select><small>${anchors.length ? this.t('access.anchorReachable') : this.t('access.anchorUnavailable')}</small></label>` : nothing}<label class="is-wide"><span>${this.t('access.scopeDescription')}</span><textarea .value=${grant.dataScope.description} @input=${(event: Event) => this.updateScope({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label><label><span>${this.t('access.disclosure')}</span><select .value=${grant.disclosure.mode} @change=${(event: Event) => this.updateDisclosure({ mode: (event.currentTarget as HTMLSelectElement).value as Ns5AccessGrant['disclosure']['mode'] })}>${DISCLOSURE_MODES.map(mode => html`<option value=${mode} ?selected=${grant.disclosure.mode === mode}>${this.t(`access.disclosure.${mode}`)}</option>`)}</select></label><label class="is-wide"><span>${this.t('access.disclosureDescription')}</span><textarea .value=${grant.disclosure.description} @input=${(event: Event) => this.updateDisclosure({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>${LIMITED_DISCLOSURE_MODES.includes(grant.disclosure.mode) ? html`<label><span>${this.t('access.allowedFields')}</span><select multiple @change=${(event: Event) => this.updateDisclosure({ allowedFields: this.multiValues(event) })}>${fields.map(ref => html`<option value=${ref} ?selected=${grant.disclosure.allowedFields?.includes(ref)}>${fieldOption(ref)}</option>`)}</select></label><label><span>${this.t('access.deniedFields')}</span><select multiple @change=${(event: Event) => this.updateDisclosure({ deniedFields: this.multiValues(event) })}>${fields.map(ref => html`<option value=${ref} ?selected=${grant.disclosure.deniedFields?.includes(ref)}>${fieldOption(ref)}</option>`)}</select></label>` : nothing}</div></article>`;
+    return html`<article class="nr-access__grant-detail is-editing"><header><div><span>${this.t('access.editing')}</span><input aria-label=${this.t('access.grantTitle')} class="nr-access__title-input" .value=${grant.title} @input=${(event: Event) => this.updateGrant({ title: (event.currentTarget as HTMLInputElement).value })}><code>${grant.grantId}</code></div></header><label class="is-wide"><span>${this.t('access.grantDescription')}</span><textarea .value=${grant.description} @input=${(event: Event) => this.updateGrant({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label><div class="nr-access__edit-grid"><label><span>${this.t('access.actor')}</span><select .value=${grant.actorRef} @change=${(event: Event) => this.updateGrant({ actorRef: (event.currentTarget as HTMLSelectElement).value })}>${[...new Set([grant.actorRef, ...(this.currentAccess()?.actors.map(actor => actor.actorId) || [])])].map(id => html`<option value=${id} ?selected=${grant.actorRef === id}>${this.currentAccess()?.actors.find(actor => actor.actorId === id)?.title || id}</option>`)}</select></label><label><span>${this.t('access.entities')}</span><select multiple @change=${(event: Event) => this.updateEntities(this.multiValues(event))}>${entityIds.map(id => html`<option value=${id} ?selected=${grant.entityRefs.includes(id)}>${this.entityTitle(id)}</option>`)}</select></label><label><span>${this.t('access.scope')}</span><select .value=${grant.dataScope.mode} @change=${(event: Event) => this.updateScope({ mode: (event.currentTarget as HTMLSelectElement).value as Ns5AccessGrant['dataScope']['mode'] })}>${SCOPE_MODES.map(mode => html`<option value=${mode} ?selected=${grant.dataScope.mode === mode} ?disabled=${this.currentAccess()?.actors.find(actor => actor.actorId === grant.actorRef)?.kind === 'external' && mode !== 'own'}>${this.t(`access.scope.${mode}`)}</option>`)}</select></label>${PERSON_SCOPE_MODES.includes(grant.dataScope.mode) ? html`<label><span>${this.t('access.anchor')}</span><select .value=${grant.dataScope.anchorEntity || ''} @change=${(event: Event) => this.updateScope({ anchorEntity: (event.currentTarget as HTMLSelectElement).value || undefined })}><option value="" ?selected=${!grant.dataScope.anchorEntity}>${this.t('access.chooseAnchor')}</option>${anchorIds.map(id => html`<option value=${id} ?selected=${grant.dataScope.anchorEntity === id}>${this.entityTitle(id)}</option>`)}</select><small>${anchors.length ? this.t('access.anchorReachable') : this.t('access.anchorUnavailable')}</small></label>` : nothing}<label class="is-wide"><span>${this.t('access.scopeDescription')}</span><textarea .value=${grant.dataScope.description} @input=${(event: Event) => this.updateScope({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label><label><span>${this.t('access.disclosure')}</span><select .value=${grant.disclosure.mode} @change=${(event: Event) => this.updateDisclosure({ mode: (event.currentTarget as HTMLSelectElement).value as Ns5AccessGrant['disclosure']['mode'] })}>${DISCLOSURE_MODES.map(mode => html`<option value=${mode} ?selected=${grant.disclosure.mode === mode}>${this.t(`access.disclosure.${mode}`)}</option>`)}</select></label><label class="is-wide"><span>${this.t('access.disclosureDescription')}</span><textarea .value=${grant.disclosure.description} @input=${(event: Event) => this.updateDisclosure({ description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>${LIMITED_DISCLOSURE_MODES.includes(grant.disclosure.mode) ? html`<label><span>${this.t('access.allowedFields')}</span><select multiple @change=${(event: Event) => this.updateDisclosure({ allowedFields: this.multiValues(event) })}>${fields.map(ref => html`<option value=${ref} ?selected=${grant.disclosure.allowedFields?.includes(ref)}>${fieldOption(ref)}</option>`)}</select></label><label><span>${this.t('access.deniedFields')}</span><select multiple @change=${(event: Event) => this.updateDisclosure({ deniedFields: this.multiValues(event) })}>${fields.map(ref => html`<option value=${ref} ?selected=${grant.disclosure.deniedFields?.includes(ref)}>${fieldOption(ref)}</option>`)}</select></label>` : nothing}</div></article>`;
   }
 
   private issues(): AccessIssueView[] {
@@ -329,10 +278,10 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   render() {
     const access = this.currentAccess();
+    if (!access) return html`<section class="nr-access__empty"><h2>${this.t('access.emptyTitle')}</h2><p>${this.t('access.emptyBody')}</p></section>`;
     const actor = this.actor();
-    if (!access || !actor) return html`<section class="nr-access__empty"><h2>${this.t('access.emptyTitle')}</h2><p>${this.t('access.emptyBody')}</p></section>`;
     const grant = this.grant();
-    return html`<section class="nr-access"><header class="nr-access__hero"><div><span>${this.t('access.eyebrow')}</span><h2>${this.t('access.title')}</h2><p>${this.t('access.description')}</p></div><dl><div><dt>${this.t('access.actors')}</dt><dd>${access.actors.length}</dd></div><div><dt>${this.t('access.grants')}</dt><dd>${access.grants.length}</dd></div><div><dt>${this.t('access.entities')}</dt><dd>${this.entities().length}</dd></div></dl></header>${this.renderMatrix(access)}${this.renderIssues()}<div class="nr-access__workspace">${this.renderActor(access, actor)}${grant ? (this.mode === 'edit' ? this.renderGrantEdit(grant) : this.renderGrantView(grant)) : html`<section class="nr-access__grant-empty"><span aria-hidden="true">+</span><h2>${this.t('access.noGrantTitle')}</h2><p>${this.t('access.noGrantBody')}</p><button type="button" @click=${() => this.addGrant()}>${this.t('access.addGrant')}</button></section>`}</div>${this.mode === 'edit' ? html`<footer class="nr-access__edit-footer"><span>${this.dirty ? this.t('access.unsaved') : this.t('access.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('access.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('access.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-access">${this.renderIssues()}${this.detailKind ? html`<div class="nr-access__workspace">${this.detailKind === 'actor' && actor ? this.renderActor(access, actor) : this.detailKind === 'grant' && grant ? this.renderGrantEdit(grant) : nothing}</div>` : this.renderMatrix(access)}${this.mode === 'edit' ? html`<footer class="nr-access__edit-footer"><span>${this.dirty ? this.t('access.unsaved') : this.t('access.noChanges')}</span><div><button type="button" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('access.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('access.save')}</button></div></footer>` : nothing}</section>`;
   }
 }
 

@@ -282,6 +282,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private closeHintsOnScroll = () => {
     this.querySelectorAll<HTMLDetailsElement>('details.nr-common__hint[open]').forEach(hint => { hint.open = false; });
+    this.querySelectorAll<HTMLElement>('[popover][data-nr-hint]:popover-open').forEach(hint => hint.hidePopover());
   };
 
   private renderCommonControls() {

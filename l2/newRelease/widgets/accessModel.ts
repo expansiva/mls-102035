@@ -3,10 +3,14 @@
 import type {
   Ns5AccessArtifact,
   Ns5AccessGrant,
+  Ns5AccessActor,
   Ns5ModuleActor,
-  Ns5OntologyEntityArtifact,
+  Ns5OntologyAnyEntity,
+  Ns5OntologyFieldsV3,
   Ns5OntologyIndexArtifact,
+  Ns5OntologyIndexV3,
 } from '../../solution/types.js';
+import type { NewReleaseTextNode } from '../editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 const SCOPE_RANK: Record<Ns5AccessGrant['dataScope']['mode'], number> = {
@@ -60,20 +64,42 @@ export function accessJourneyCount(
   return journeys.filter(journey => journey.business.actorRef === actorId).length;
 }
 
-function neighbors(index: Ns5OntologyIndexArtifact, entityId: string) {
-  return index.relationships
-    .filter(relationship => relationship.required
-      && (relationship.fromEntity === entityId || relationship.toEntity === entityId))
-    .map(relationship => ({
-      entityId: relationship.fromEntity === entityId ? relationship.toEntity : relationship.fromEntity,
-      relationshipId: relationship.relationshipId,
-    }));
+function neighbors(index: (Ns5OntologyIndexArtifact | Ns5OntologyIndexV3), entityId: string) {
+  return index.relationships.filter(relationship => relationship.required).flatMap(relationship => {
+    const from = 'from' in relationship ? relationship.from : relationship.fromEntity;
+    const to = 'to' in relationship ? relationship.to : relationship.toEntity;
+    return from === entityId || to === entityId
+      ? [{ entityId: from === entityId ? to : from, relationshipId: relationship.relationshipId }]
+      : [];
+  });
+}
+
+export function accessIsPerson(entity: Ns5OntologyAnyEntity): boolean {
+  return 'record' in entity ? entity.kind === 'role' && entity.subtype === 'Person' : entity.party === 'person';
+}
+
+/** Every declared grant remains a row, including overlapping grants and unknown actor refs. */
+export function accessMatrixRows(access: Ns5AccessArtifact) {
+  return access.grants.map(grant => ({ grant, cells: access.actors.map(actor => grant.actorRef === actor.actorId) }));
+}
+
+export function accessTextNodes(access: Ns5AccessArtifact, unassigned: string): NewReleaseTextNode[] {
+  const grantNode = (grant: Ns5AccessGrant): NewReleaseTextNode => ({
+    id: `grant:${grant.grantId}`, label: grant.title, value: `${grant.grantId} ${grant.description} ${grant.entityRefs.join(' ')}`, children: [],
+  });
+  const nodes = access.actors.map(actor => ({
+    id: `actor:${actor.actorId}`, label: actor.title, value: `${actor.actorId} ${actor.description}`,
+    children: accessGrantsForActor(access, actor.actorId).map(grantNode),
+  }));
+  const unknown = access.grants.filter(grant => !access.actors.some(actor => actor.actorId === grant.actorRef));
+  if (unknown.length) nodes.push({ id: 'unassigned', label: unassigned, value: '', children: unknown.map(grantNode) });
+  return nodes;
 }
 
 export function accessAnchorPath(
   fromEntity: string,
   anchorEntity: string,
-  index: Ns5OntologyIndexArtifact,
+  index: (Ns5OntologyIndexArtifact | Ns5OntologyIndexV3),
   maxHops = 6,
 ): AccessAnchorPath | null {
   if (!fromEntity || !anchorEntity) return null;
@@ -99,17 +125,17 @@ export function accessAnchorPath(
 
 export function reachablePersonAnchors(
   entityRefs: readonly string[],
-  entities: readonly Ns5OntologyEntityArtifact[],
-  index: Ns5OntologyIndexArtifact | null,
-): Ns5OntologyEntityArtifact[] {
+  entities: readonly Ns5OntologyAnyEntity[],
+  index: (Ns5OntologyIndexArtifact | Ns5OntologyIndexV3) | null,
+): Ns5OntologyAnyEntity[] {
   if (!entityRefs.length || !index) return [];
-  return entities.filter(entity => entity.party === 'person'
+  return entities.filter(entity => accessIsPerson(entity)
     && entityRefs.every(entityRef => accessAnchorPath(entityRef, entity.entityId, index) !== null));
 }
 
 export function accessAnchorPaths(
   grant: Ns5AccessGrant,
-  index: Ns5OntologyIndexArtifact | null,
+  index: (Ns5OntologyIndexArtifact | Ns5OntologyIndexV3) | null,
 ): AccessAnchorPath[] {
   const anchor = grant.dataScope.anchorEntity;
   if (!anchor || !index) return [];
@@ -120,11 +146,15 @@ export function accessAnchorPaths(
 
 export function accessFieldRefs(
   grant: Pick<Ns5AccessGrant, 'entityRefs'>,
-  entities: readonly Ns5OntologyEntityArtifact[],
+  entities: readonly Ns5OntologyAnyEntity[],
 ): string[] {
   const result: string[] = [];
   for (const entity of entities) {
     if (!grant.entityRefs.includes(entity.entityId)) continue;
+    if ('record' in entity) {
+      result.push(...accessV3Fields(entity.record.fields).map(field => `${entity.entityId}.${field.path}`));
+      continue;
+    }
     const own = [...entity.fields, ...(entity.fieldsBase || [])]
       .map(field => `${entity.entityId}.${field.fieldId}`);
     const details = Object.keys(entity.details || {}).map(name => `${entity.entityId}.details.${name}`);
@@ -136,13 +166,21 @@ export function accessFieldRefs(
   return [...new Set(result)];
 }
 
+function accessV3Fields(fields: Ns5OntologyFieldsV3, parent = ''): Array<{path: string; title: string}> {
+  return Object.entries(fields).flatMap(([key, field]) => {
+    const path = parent ? `${parent}.${key}` : key;
+    return [{ path, title: field.title || key }, ...(field.fields ? accessV3Fields(field.fields, path) : [])];
+  });
+}
+
 export function accessFieldLabel(
   ref: string,
-  entities: readonly Ns5OntologyEntityArtifact[],
+  entities: readonly Ns5OntologyAnyEntity[],
 ): string {
   const [entityId, member, detailName] = ref.split('.');
   const entity = entities.find(item => item.entityId === entityId);
   if (!entity) return ref;
+  if ('record' in entity) return accessV3Fields(entity.record.fields).find(field => `${entityId}.${field.path}` === ref)?.title || ref;
   if (member === 'details' && detailName) return entity.details?.[detailName]?.description || detailName;
   if (member === entity.storage.idField) return member;
   return [...entity.fields, ...(entity.fieldsBase || [])]
@@ -188,4 +226,18 @@ export function accessOracleIssues(issues: readonly NewReleaseValidationIssue[])
   return issues.filter(issue => issue.artifact === 'access.defs.ts'
     || checks.has(issue.code)
     || [...checks].some(check => issue.code.endsWith(`_${check}`)));
+}
+
+/** Identity and unrelated rows survive every property edit. */
+export function patchAccessActor(access: Ns5AccessArtifact, actorId: string, patch: Partial<Omit<Ns5AccessActor, 'actorId'>>): Ns5AccessArtifact {
+  return { ...access, actors: access.actors.map(actor => {
+    if (actor.actorId !== actorId) return actor;
+    const next = { ...actor, ...patch, actorId: actor.actorId };
+    if ('personEntity' in patch && !patch.personEntity) delete next.personEntity;
+    return next;
+  }) };
+}
+
+export function patchAccessGrant(access: Ns5AccessArtifact, grantId: string, patch: Partial<Omit<Ns5AccessGrant, 'grantId'>>): Ns5AccessArtifact {
+  return { ...access, grants: access.grants.map(grant => grant.grantId === grantId ? { ...grant, ...patch, grantId: grant.grantId } : grant) };
 }
