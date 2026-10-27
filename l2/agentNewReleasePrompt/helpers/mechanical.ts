@@ -3,6 +3,19 @@
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import type { NrpArtifactKind, NrpMechanicalMark } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
+/** Free text that still names a removed item. The model rewrites it; this code does not. */
+export interface NrpTextMark {
+  kind: NrpArtifactKind;
+  path: string;
+  text: string;
+  item: string;
+}
+
+export interface NrpMechanicalResult {
+  artifacts: NrpModuleArtifacts;
+  textMarks: NrpTextMark[];
+}
+
 const ID_KEYS = [
   'entityId', 'ruleId', 'journeyId', 'grantId', 'processId', 'taskId',
   'stepId', 'transitionId', 'relationshipId', 'fieldId', 'id',
@@ -11,24 +24,31 @@ const ID_KEYS = [
 export function applyNrpMechanical(
   artifacts: NrpModuleArtifacts,
   marks: NrpMechanicalMark[],
-): NrpModuleArtifacts {
+): NrpMechanicalResult {
   let next = clone(artifacts);
+  const textMarks: NrpTextMark[] = [];
   for (const mark of marks) {
     if (mark.op === 'setOptional' || mark.op === 'setRequired') {
       next = setFieldRequired(next, mark.targetId, mark.fieldId, mark.op === 'setRequired');
     } else if (mark.op === 'setScalar') {
       next = setScalar(next, mark);
     } else {
-      next = removeItem(next, mark.targetId);
+      next = removeItem(next, mark.targetId, textMarks);
     }
   }
-  return next;
+  return { artifacts: next, textMarks };
 }
 
-/** A kind listed by triage skips the model when a mechanical mark already covers it. */
+/**
+ * A kind the mechanical marks already cover skips the model, unless a free text in that kind
+ * still cites a removed item. Those kinds, and any other kind that holds such a text, come back.
+ */
 export function nrpModelKinds(artifacts: NrpModuleArtifacts, marks: NrpMechanicalMark[], listed: NrpArtifactKind[]): NrpArtifactKind[] {
   const covered = new Set(marks.map(mark => kindOfMark(artifacts, mark)));
-  return listed.filter(kind => !covered.has(kind));
+  const cited = new Set(applyNrpMechanical(artifacts, marks).textMarks.map(mark => mark.kind));
+  const kinds = listed.filter(kind => !covered.has(kind) || cited.has(kind));
+  for (const kind of cited) if (!kinds.includes(kind)) kinds.push(kind);
+  return kinds;
 }
 
 function kindOfMark(artifacts: NrpModuleArtifacts, mark: NrpMechanicalMark): NrpArtifactKind {
@@ -134,25 +154,56 @@ function setScalar(artifacts: NrpModuleArtifacts, mark: NrpMechanicalMark): NrpM
   return next;
 }
 
-function removeItem(artifacts: NrpModuleArtifacts, targetId: string): NrpModuleArtifacts {
+const SECTION_KIND: Record<string, NrpArtifactKind> = {
+  ontologyIndex: 'ontology',
+  entities: 'ontology',
+  rules: 'rules',
+  journeyIndex: 'journeys',
+  journeys: 'journeys',
+  access: 'access',
+  workflows: 'workflows',
+  integration: 'integration',
+};
+
+function removeItem(artifacts: NrpModuleArtifacts, targetId: string, textMarks: NrpTextMark[]): NrpModuleArtifacts {
   if (!targetId.trim()) throw new Error('remove needs a targetId.');
   kindOfTarget(artifacts, targetId);
-  return prune(clone(artifacts), targetId) as NrpModuleArtifacts;
+  const next: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(artifacts)) {
+    const pruned = prune(child, targetId, `$.${key}`, SECTION_KIND[key] ?? null, textMarks);
+    if (pruned !== undefined) next[key] = pruned;
+  }
+  return next as unknown as NrpModuleArtifacts;
 }
 
-function prune(value: unknown, targetId: string): unknown {
-  if (typeof value === 'string') return mentions(value, targetId) ? strip(value, targetId) : value;
+/** Drops the item and structural citations. A longer string that names the item is marked and left as-is. */
+function prune(
+  value: unknown,
+  targetId: string,
+  path: string,
+  kind: NrpArtifactKind | null,
+  textMarks: NrpTextMark[],
+): unknown {
+  if (typeof value === 'string') {
+    if (value === targetId) return undefined;
+    if (kind && mentions(value, targetId)) textMarks.push({ kind, path, text: value, item: targetId });
+    return value;
+  }
   if (Array.isArray(value)) {
-    return value
-      .filter(item => !(typeof item === 'string' && mentions(item, targetId) && strip(item, targetId) === ''))
-      .filter(item => !(isRecord(item) && identifies(item, targetId)))
-      .map(item => prune(item, targetId));
+    const kept: unknown[] = [];
+    value.forEach((item, index) => {
+      if (isRecord(item) && identifies(item, targetId)) return;
+      const pruned = prune(item, targetId, `${path}[${index}]`, kind, textMarks);
+      if (pruned !== undefined) kept.push(pruned);
+    });
+    return kept;
   }
   if (!isRecord(value)) return value;
   const next: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
     if (key === targetId) continue;
-    next[key] = prune(child, targetId);
+    const pruned = prune(child, targetId, `${path}.${key}`, kind, textMarks);
+    if (pruned !== undefined) next[key] = pruned;
   }
   return next;
 }
@@ -163,14 +214,6 @@ function identifies(node: Record<string, unknown>, targetId: string): boolean {
 
 function mentions(text: string, token: string): boolean {
   return tokenPattern(token).test(text);
-}
-
-function strip(text: string, token: string): string {
-  return text
-    .replace(tokenPattern(token), '$1')
-    .replace(/\s+[.,;:](?=\s|$)/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
 }
 
 function tokenPattern(token: string): RegExp {

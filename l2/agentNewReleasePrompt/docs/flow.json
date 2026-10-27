@@ -1,9 +1,9 @@
 {
   "flowId": "agentNewReleasePrompt",
   "schemaVersion": "2026-10-27-nrp-flow-v1",
-  "status": "entry10-index10-triage20-edit30",
+  "status": "entry10-index10-triage20-edit30-gate40-write50",
   "visibility": "private",
-  "description": "Index, triage, then one edit call per artifact kind that the code cannot apply.",
+  "description": "Index, triage, edit, verify, then write the version in editing only when verification passes.",
   "invocation": {
     "cli": "@@agentNewReleasePrompt {\"moduleName\":\"...\",\"request\":\"...\"}",
     "project": "Required from mls.actualProject",
@@ -53,6 +53,28 @@
       "reads": ["one artifact kind", "intent", "target ids", "mechanical marks"],
       "writes": ["edited artifact in the step result; mechanical marks are applied without a model"],
       "goal": "Apply mechanical edits in code and ask the model once per remaining artifact kind."
+    },
+    {
+      "id": "gate40",
+      "agentName": "agentNewReleasePrompt",
+      "kind": "model",
+      "modelAlias": null,
+      "dependsOn": ["edit30-done"],
+      "doneAnchor": "gate40-done",
+      "reads": ["edited artifacts", "the full user request"],
+      "writes": ["verification issues; one repair call per failing artifact kind"],
+      "goal": "Run the NS5 check for each changed kind and the cross-artifact check. A second failure writes nothing."
+    },
+    {
+      "id": "write50",
+      "agentName": "agentNewReleasePrompt",
+      "kind": "deterministic",
+      "modelAlias": null,
+      "dependsOn": ["gate40-done"],
+      "doneAnchor": "write50-done",
+      "reads": ["verified artifacts"],
+      "writes": ["l4/<module>/tobe/plan", "l4/<module>/pipeline/newReleasePrompt.json"],
+      "goal": "Record the edited version and the report only after verification passes."
     }
   ]
 }

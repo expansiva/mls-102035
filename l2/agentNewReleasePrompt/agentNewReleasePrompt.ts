@@ -10,6 +10,8 @@ import { beforeNrpEntryStep } from '/_102035_/l2/agentNewReleasePrompt/steps/ent
 import { beforeNrpIndexStep } from '/_102035_/l2/agentNewReleasePrompt/steps/index10/index10.js';
 import { afterNrpTriageStep, beforeNrpTriageStep } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { afterNrpEditStep, beforeNrpEditStep } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { afterNrpGateStep, beforeNrpGateStep } from '/_102035_/l2/agentNewReleasePrompt/steps/gate40/gate40.js';
+import { beforeNrpWriteStep } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
 export function createAgent(): IAgentAsync {
   return {
@@ -75,6 +77,8 @@ export async function beforePromptStep(
   if (step.planning?.planId === 'index10') return beforeNrpIndexStep(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'triage20') return beforeNrpTriageStep(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'edit30') return beforeNrpEditStep(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'gate40') return beforeNrpGateStep(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'write50') return beforeNrpWriteStep(context, parentStep, step, hookSequential);
   if (!step.planning?.planId) {
     return [update(context, parentStep, step, hookSequential, 'completed', 'Root bootstrap completed without LLM.')];
   }
@@ -90,6 +94,7 @@ export async function afterPromptStep(
 ): Promise<mls.msg.AgentIntent[]> {
   if (step.planning?.planId === 'triage20') return afterNrpTriageStep(context, parentStep, step, hookSequential);
   if (step.planning?.planId === 'edit30') return afterNrpEditStep(context, parentStep, step, hookSequential);
+  if (step.planning?.planId === 'gate40') return afterNrpGateStep(context, parentStep, step, hookSequential);
   return [];
 }
 

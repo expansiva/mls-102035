@@ -181,7 +181,16 @@ export async function afterNrpTriageStep(
       const invocation = parseNrpInvocation(String(step.prompt || ''), project);
       setModuleRoot(invocation.moduleName, `${invocation.moduleName}/${NRP_CANDIDATE_REL}`);
       const orders = planNrpEditOrders(await loadNrpArtifacts(invocation.moduleName), triage);
-      for (const order of orders) intents.push({ type: 'add-step', ...base, step: createEdit30Step(invocation.moduleName, invocation.request, order) });
+      const [first, ...rest] = orders;
+      if (first) {
+        intents.push({
+          type: 'add-step', ...base, step: createEdit30Step(invocation.moduleName, invocation.request, {
+            ...first,
+            rest: rest.map(order => ({ mode: order.mode, kind: order.kind })),
+            applied: [],
+          }),
+        });
+      }
     }
     intents.push({
       type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
