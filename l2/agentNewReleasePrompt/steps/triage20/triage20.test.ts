@@ -7,11 +7,15 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import type { NrpCompactIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
+import { pipelineJsonFileForProject } from '/_102035_/l2/solution/fs.js';
 import {
   NRP_TRIAGE_SYSTEM_PROMPT,
+  NrpTriageRefusal,
   buildNrpTriageHumanPrompt,
   buildNrpTriageTool,
   normalizeNrpTriage,
+  nrpTriageNotes,
+  recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -54,4 +58,80 @@ void test('a recorded triage response normalizes and stops when it cannot edit',
     { op: 'setOptional', targetId: 'WorkItem', fieldId: 'priority', value: '' },
   ]);
   assert.throws(() => normalizeNrpTriage({ ...recorded.fieldOptional, reason: 'extra' }), /null reason/);
+});
+
+void test('a clarification with extra fields becomes a clean question', () => {
+  const cleaned = normalizeNrpTriage({
+    valid: true,
+    reason: 'kept by mistake',
+    clarification: 'Which actor should lose cancel?',
+    artifacts: ['rules'],
+    targets: ['cancelar'],
+    intent: 'Only the manager cancels.',
+    mechanical: [{ op: 'setScalar', targetId: 'cancelar', fieldId: 'by', value: 'gestor' }],
+  });
+  assert.equal(cleaned.valid, false);
+  assert.equal(cleaned.reason, null);
+  assert.equal(cleaned.clarification, 'Which actor should lose cancel?');
+  assert.equal(cleaned.intent, null);
+  assert.deepEqual(cleaned.artifacts, []);
+  assert.deepEqual(cleaned.targets, []);
+  assert.deepEqual(cleaned.mechanical, []);
+  assert.deepEqual(nrpTriageNotes(cleaned), ['Discarded fields.']);
+});
+
+void test('a long clarification is cut to a whole sentence', () => {
+  const sentence = 'Which actor should cancel the work item? ';
+  const long = `${sentence}${'Extra detail. '.repeat(80)}`;
+  assert.ok(long.length > 1000);
+  const cleaned = normalizeNrpTriage({
+    valid: false,
+    reason: null,
+    clarification: long,
+    artifacts: [],
+    targets: [],
+    intent: null,
+    mechanical: [],
+  });
+  assert.ok((cleaned.clarification || '').length <= 1000);
+  assert.ok(long.startsWith(cleaned.clarification || ''));
+  assert.match(cleaned.clarification || '', /Extra detail\.$/u);
+  assert.deepEqual(nrpTriageNotes(cleaned), ['clarification exceeded 1000 characters and was cut to a whole sentence']);
+});
+
+void test('an invalid request drops change fields and keeps the reason', () => {
+  const cleaned = normalizeNrpTriage({
+    valid: false,
+    reason: 'Button color is outside the specification.',
+    clarification: null,
+    artifacts: ['ontology'],
+    targets: ['WorkItem'],
+    intent: 'Paint the button.',
+    mechanical: [],
+  });
+  assert.equal(cleaned.valid, false);
+  assert.equal(cleaned.reason, 'Button color is outside the specification.');
+  assert.equal(cleaned.intent, null);
+  assert.deepEqual(cleaned.artifacts, []);
+  assert.deepEqual(nrpTriageNotes(cleaned), ['Discarded fields.']);
+});
+
+void test('a malformed triage is refused and the raw answer is recorded without secrets', async () => {
+  const raw = { valid: 'yes', token: 'sk-secret' };
+  assert.throws(() => normalizeNrpTriage(raw), NrpTriageRefusal);
+  const info = pipelineJsonFileForProject(1, 'sample', 'newReleasePrompt-refused');
+  let stored: { reason?: string; raw?: { token?: string } } | undefined;
+  const citation = await recordNrpTriageRefusal(info, 'Triage valid must be a boolean.', raw, async (_file, value) => {
+    stored = value as { reason?: string; raw?: { token?: string } };
+  });
+  assert.equal(citation, 'l4/sample/pipeline/newReleasePrompt-refused.json');
+  assert.equal(stored?.reason, 'Triage valid must be a boolean.');
+  assert.equal(stored?.raw?.token, '[redacted]');
+  assert.throws(
+    () => normalizeNrpTriage({ valid: true, reason: null, clarification: null, artifacts: [], targets: [], intent: null, mechanical: [] }),
+    /at least one artifact/,
+  );
+  assert.throws(() => normalizeNrpTriage({
+    valid: true, reason: null, clarification: null, artifacts: ['button'], targets: [], intent: 'Add a button.', mechanical: [],
+  }), /Unknown artifact kind/);
 });

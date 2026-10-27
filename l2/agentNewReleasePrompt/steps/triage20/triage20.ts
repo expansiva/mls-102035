@@ -3,11 +3,25 @@
 import { NRP_AGENT_NAME, NRP_CANDIDATE_REL, parseNrpInvocation } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
 import { loadNrpArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/artifacts.js';
 import { buildNrpIndex, type NrpCompactIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
-import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
+import { displayPath, pipelineJsonFileForProject, setModuleRoot, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { createNs4FlexibleWorkerTool, unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { createEdit30Step, planNrpEditOrders } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
 export const NRP_TRIAGE_TOOL = 'submitNrpTriage' as const;
+export const NRP_TRIAGE_CLARIFICATION_MAX = 1000;
+
+const SECRET_KEY = /token|secret|password|authorization|api[-_]?key|credential/iu;
+const triageNotes = new WeakMap<NrpTriage, string[]>();
+
+export class NrpTriageRefusal extends Error {
+  readonly raw: unknown;
+
+  constructor(message: string, raw: unknown) {
+    super(message);
+    this.name = 'NrpTriageRefusal';
+    this.raw = raw;
+  }
+}
 
 export const NRP_ARTIFACT_KINDS = ['ontology', 'rules', 'journeys', 'access', 'workflows', 'integration'] as const;
 export type NrpArtifactKind = typeof NRP_ARTIFACT_KINDS[number];
@@ -92,19 +106,58 @@ export function buildNrpTriageTool(): mls.msg.LLMTool {
   );
 }
 
+export function nrpTriageNotes(triage: NrpTriage): string[] {
+  return triageNotes.get(triage) || [];
+}
+
 export function normalizeNrpTriage(value: unknown): NrpTriage {
-  const root = record(value);
-  const valid = root.valid;
-  if (typeof valid !== 'boolean') throw new Error('Triage valid must be a boolean.');
-  const reason = nullableText(root.reason, 'reason');
-  const clarification = nullableText(root.clarification, 'clarification');
-  const intent = nullableText(root.intent, 'intent');
-  const artifacts = kinds(root.artifacts);
-  const targets = texts(root.targets, 'targets');
-  const mechanical = marks(root.mechanical);
-  const triage: NrpTriage = { valid, reason, clarification, artifacts, targets, intent, mechanical };
-  assertShape(triage);
-  return triage;
+  try {
+    const root = record(value);
+    const valid = root.valid;
+    if (typeof valid !== 'boolean') throw new Error('Triage valid must be a boolean.');
+    const reason = nullableText(root.reason, 'reason');
+    const clarification = nullableText(root.clarification, 'clarification');
+    const intent = nullableText(root.intent, 'intent');
+    const artifacts = kinds(root.artifacts);
+    const targets = texts(root.targets, 'targets');
+    const mechanical = marks(root.mechanical);
+    const triage: NrpTriage = { valid, reason, clarification, artifacts, targets, intent, mechanical };
+    const notes = settleShape(triage);
+    if (notes.length) triageNotes.set(triage, notes);
+    return triage;
+  } catch (error) {
+    if (error instanceof NrpTriageRefusal) throw error;
+    throw new NrpTriageRefusal(error instanceof Error ? error.message : String(error), value);
+  }
+}
+
+/** Last whole sentence that fits, otherwise the last word, otherwise a hard cut. */
+export function clipNrpClarification(text: string): { text: string; clipped: boolean } {
+  const trimmed = text.trim();
+  if (trimmed.length <= NRP_TRIAGE_CLARIFICATION_MAX) return { text: trimmed, clipped: false };
+  let end = -1;
+  const limit = Math.min(trimmed.length, NRP_TRIAGE_CLARIFICATION_MAX);
+  for (let index = 0; index < limit; index += 1) {
+    const mark = trimmed[index];
+    if ((mark === '.' || mark === '?' || mark === '!') && (index + 1 === trimmed.length || /\s/u.test(trimmed[index + 1]))) {
+      end = index + 1;
+    }
+  }
+  if (end > 0) return { text: trimmed.slice(0, end).trim(), clipped: true };
+  const space = trimmed.lastIndexOf(' ', NRP_TRIAGE_CLARIFICATION_MAX);
+  const cut = space > 0 ? space : NRP_TRIAGE_CLARIFICATION_MAX;
+  return { text: trimmed.slice(0, cut).trim(), clipped: true };
+}
+
+export async function recordNrpTriageRefusal(
+  info: Ns5FileInfo,
+  reason: string,
+  raw: unknown,
+  writer: (file: Ns5FileInfo, value: unknown) => Promise<unknown> = writeJson,
+): Promise<string> {
+  const citation = displayPath(info);
+  await writer(info, { reason, raw: redact(raw) });
+  return citation;
 }
 
 export function createTriage20Step(prompt: string): mls.msg.AIAgentStep {
@@ -172,7 +225,7 @@ export async function afterNrpTriageStep(
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
           stepTitle: stopped ? 'Triage stopped' : 'Triage accepted',
-          result: JSON.stringify({ triage, nextStep: stopped ? null : 'edit30' }),
+          result: JSON.stringify({ triage, nextStep: stopped ? null : 'edit30', notes: nrpTriageNotes(triage) }),
           planning: { planId: 'triage20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
@@ -203,7 +256,23 @@ export async function afterNrpTriageStep(
     return intents;
   } catch (error) {
     console.error('[agentNewReleasePrompt] triage20 result rejected', error);
-    return [fail(context, parentStep, step, hookSequential, error)];
+    const cited = await citeRefusal(step, error);
+    return [fail(context, parentStep, step, hookSequential, cited)];
+  }
+}
+
+async function citeRefusal(step: mls.msg.AIAgentStep, error: unknown): Promise<unknown> {
+  if (!(error instanceof NrpTriageRefusal)) return error;
+  try {
+    const project = mls.actualProject || 0;
+    const invocation = parseNrpInvocation(String(step.prompt || ''), project);
+    const info = pipelineJsonFileForProject(project, invocation.moduleName, 'newReleasePrompt-refused');
+    const citation = await recordNrpTriageRefusal(info, error.message, error.raw);
+    return new NrpTriageRefusal(`${error.message} See ${citation}.`, error.raw);
+  } catch (writeError) {
+    console.error('[agentNewReleasePrompt] triage20 could not record the refused response', writeError);
+    const writeMessage = writeError instanceof Error ? writeError.message : String(writeError);
+    return new NrpTriageRefusal(`${error.message} The refused response was not recorded: ${writeMessage}.`, error.raw);
   }
 }
 
@@ -223,22 +292,54 @@ function fail(
   };
 }
 
-function assertShape(triage: NrpTriage): void {
+function settleShape(triage: NrpTriage): string[] {
+  const notes: string[] = [];
   if (triage.clarification) {
-    if (triage.valid || triage.reason || triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length) {
-      throw new Error('A clarification ends triage: valid is false and the other fields are empty.');
-    }
-    return;
+    const clipped = clipNrpClarification(triage.clarification);
+    triage.clarification = clipped.text;
+    if (clipped.clipped) notes.push(`clarification exceeded ${NRP_TRIAGE_CLARIFICATION_MAX} characters and was cut to a whole sentence`);
+    if (!triage.clarification) throw new Error('A clarification needs a question.');
+    if (hasChangeFields(triage) || triage.valid || triage.reason) notes.push('Discarded fields.');
+    triage.valid = false;
+    triage.reason = null;
+    clearChanges(triage);
+    return notes;
   }
   if (!triage.valid) {
-    if (!triage.reason || triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length) {
-      throw new Error('An invalid request needs a reason and empty change fields.');
-    }
-    return;
+    if (!triage.reason) throw new Error('An invalid request needs a reason.');
+    if (hasChangeFields(triage)) notes.push('Discarded fields.');
+    clearChanges(triage);
+    return notes;
   }
   if (triage.reason || !triage.intent || !triage.artifacts.length) {
     throw new Error('A valid request needs an intent, at least one artifact, and a null reason.');
   }
+  return notes;
+}
+
+function hasChangeFields(triage: NrpTriage): boolean {
+  return !!(triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length);
+}
+
+function clearChanges(triage: NrpTriage): void {
+  triage.intent = null;
+  triage.artifacts = [];
+  triage.targets = [];
+  triage.mechanical = [];
+}
+
+function redact(value: unknown, depth = 0): unknown {
+  if (depth > 8) return null;
+  if (Array.isArray(value)) return value.slice(0, 64).map(item => redact(item, depth + 1));
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = SECRET_KEY.test(key) ? '[redacted]' : redact(item, depth + 1);
+    }
+    return out;
+  }
+  if (typeof value === 'string' && value.length > 20_000) return `${value.slice(0, 20_000)}…`;
+  return value;
 }
 
 function kinds(value: unknown): NrpArtifactKind[] {
