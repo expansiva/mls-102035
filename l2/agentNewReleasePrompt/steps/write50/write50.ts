@@ -5,9 +5,11 @@ import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/help
 import {
   nrpFreshIssues,
   nrpMayWrite,
+  nrpRepairRoundCounts,
   type NrpAppliedEdit,
   type NrpGateIssue,
   type NrpGateKind,
+  type NrpRepairRound,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { nrpFreeTextHits } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
@@ -40,6 +42,7 @@ export interface NrpWritePayload {
   issues: NrpGateIssue[];
   allowWrite: boolean;
   modelCalls: number;
+  repairRounds?: NrpRepairRound[];
 }
 
 export interface NrpPersistPlan {
@@ -492,6 +495,7 @@ export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Re
     checks: nrpCheckRows(payload.issues),
     freshIssues: nrpFreshIssues(payload.issues),
     calls: payload.modelCalls,
+    repairRounds: nrpRepairRoundCounts(payload.repairRounds || []),
     costUsd: null,
     written: planned.written,
     reason: planned.reason,

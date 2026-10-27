@@ -16,13 +16,17 @@ import {
   nrpFreshIssues,
   nrpGateAction,
   nrpIndexOnlyRepairMessage,
+  nrpIssueKey,
+  nrpIssueLines,
   nrpIssueOwner,
+  nrpRepairRoundCounts,
+  type NrpRepairRound,
   nrpKindCatalog,
   nrpMayWrite,
   type NrpGateIssue,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { normalizeNrpEdit, nrpFileScope } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
-import { planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { nrpReport, planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { NRP_ARTIFACT_KINDS } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
@@ -68,8 +72,14 @@ void test('a failing artifact is not written, and the repair sees the whole requ
   const tool = buildNrpRepairTool();
   assert.equal(tool.function.name, 'submitNrpEdit');
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
-  const second = nrpGateAction(issues, ['rules'], ['rules']);
+  const sameRound: NrpRepairRound = {
+    kind: 'rules',
+    keys: issues.filter(issue => issue.kind === 'rules').map(nrpIssueKey),
+    lines: nrpIssueLines(issues, 'rules'),
+  };
+  const second = nrpGateAction(issues, ['rules'], [sameRound]);
   assert.equal(second.action, 'stop');
+  assert.match(second.reason, /same errors/);
   assert.equal(nrpMayWrite(second.action), false);
   const plan = planNrpPersistence(false, ['rules.defs.ts', 'pipeline/newReleasePrompt.json']);
   assert.equal(plan.written, false);
@@ -225,3 +235,131 @@ void test('a twin repair sees both journeys, and an index-only repair is refused
   assert.match(refusal || '', /Repair changed only the index/);
   assert.match(refusal || '', /one cited file/);
 });
+
+function repairRound(kind: NrpRepairRound['kind'], issues: readonly NrpGateIssue[]): NrpRepairRound {
+  const owned = issues.filter(issue => nrpIssueOwner(issue) === kind);
+  return { kind, keys: owned.map(nrpIssueKey), lines: nrpIssueLines(issues, kind) };
+}
+
+void test('a new error gets a second repair, the same error stops, and a third round never runs', () => {
+  const twin: NrpGateIssue = {
+    kind: 'coherence', code: 'NS5_JOURNEY_TWIN', message: 'Journeys are twins.', path: 'journeys',
+  };
+  const stepKind: NrpGateIssue = {
+    kind: 'journeys', code: 'NS5_JOURNEY_STEP_KIND', message: 'Unknown step kind view.', path: 'journeys[0].steps[2].kind',
+  };
+  const changed: NrpGateIssue = {
+    kind: 'journeys', code: 'NS5_OTHER', message: 'A different error.', path: 'journeys[0]',
+  };
+  assert.equal(nrpGateAction([stepKind], ['journeys'], [repairRound('journeys', [twin])]).action, 'repair');
+  const same = nrpGateAction([stepKind], ['journeys'], [repairRound('journeys', [stepKind])]);
+  assert.equal(same.action, 'stop');
+  assert.match(same.reason, /same errors/);
+  const third = nrpGateAction([changed], ['journeys'], [
+    repairRound('journeys', [twin]),
+    repairRound('journeys', [stepKind]),
+  ]);
+  assert.equal(third.action, 'stop');
+  assert.match(third.reason, /2 rounds/);
+  const kindCap = nrpGateAction(
+    [{ kind: 'access', code: 'NS5_ACCESS', message: 'Grant is wrong.', path: 'grants[0]' }],
+    ['rules', 'journeys', 'access'],
+    [repairRound('rules', [twin]), repairRound('journeys', [stepKind])],
+  );
+  assert.equal(kindCap.action, 'stop');
+  assert.match(kindCap.reason, /2 artifact kinds/);
+  const human = buildNrpRepairHumanPrompt(
+    'The manager can duplicate a task.',
+    'journeys',
+    [stepKind],
+    [{ id: 'duplicarTarefa', artifact: { journeyId: 'duplicarTarefa' } }],
+    [],
+    null,
+    nrpIssueLines([twin], 'journeys'),
+  );
+  assert.match(human, /NS5_JOURNEY_TWIN/);
+  assert.match(human, /NS5_JOURNEY_STEP_KIND/);
+  assert.match(human, /error set changed/);
+  const report = nrpReport({
+    moduleName: 'tarefas', project: 1, request: 'Duplicate.',
+    triage: {
+      valid: true, reason: null, clarification: null, artifacts: ['journeys'], targets: [],
+      intent: 'Duplicate.', mechanical: [], mechanicalOnly: false,
+    },
+    artifacts: tarefasModule(), applied: [], issues: [], allowWrite: true, modelCalls: 2,
+    repairRounds: [repairRound('journeys', [twin]), repairRound('journeys', [stepKind])],
+  }, { written: true, reason: null, files: [] });
+  assert.deepEqual(report.repairRounds, { journeys: 2 });
+  assert.deepEqual(nrpRepairRoundCounts([repairRound('rules', [twin])]), { rules: 1 });
+
+  const artifacts = tarefasModule();
+  const source = artifacts.journeys.find(journey => journey.journeyId === 'revisarTarefa');
+  if (!source) throw new Error('revisarTarefa is missing from the tarefas fixture.');
+  const clone = (id: string): Ns5JourneyArtifact => {
+    const journey = JSON.parse(JSON.stringify(source)) as Ns5JourneyArtifact;
+    journey.journeyId = id;
+    journey.business.title = id;
+    journey.business.steps = [
+      ...journey.business.steps,
+      { stepId: 'ver', kind: 'locate', entity: 'Tarefa', title: 'Ver', description: 'Localiza a tarefa.' },
+    ];
+    return journey;
+  };
+  artifacts.journeys.push(clone('cancelarTarefa'), clone('duplicarTarefa'));
+  artifacts.journeyIndex = {
+    ...artifacts.journeyIndex,
+    journeys: [
+      ...artifacts.journeyIndex.journeys,
+      { journeyId: 'cancelarTarefa', actorRef: 'gestor', title: 'cancelarTarefa' },
+      { journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'duplicarTarefa' },
+    ],
+  };
+  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS);
+  const catalog = nrpKindCatalog(artifacts, 'journeys');
+  const scope = { present: catalog.map(file => file.id), creates: [] as string[], files: catalog };
+  const withView = applyJourneyOps(artifacts, scope, [{
+    file: 'duplicarTarefa', op: 'set', pointer: '/business/steps/2/kind',
+    expectedJson: '"locate"', valueJson: '"view"', reason: 'A first repair that trades the twin for a bad kind.',
+  }]);
+  const afterView = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(withView, NRP_ARTIFACT_KINDS)));
+  assert.equal(afterView.some(issue => issue.code === 'NS5_JOURNEY_STEP_KIND'), true);
+  assert.equal(afterView.some(issue => issue.code === 'NS5_JOURNEY_TWIN'), false);
+  const round2 = nrpGateAction(afterView, ['journeys'], [repairRound('journeys', [twin])]);
+  assert.equal(round2.action, 'repair');
+  const viewed = nrpKindCatalog(withView, 'journeys');
+  const fixed = applyJourneyOps(withView, {
+    present: viewed.map(file => file.id),
+    creates: [],
+    files: viewed,
+  }, [
+    {
+      file: 'duplicarTarefa', op: 'set', pointer: '/business/steps/2/kind',
+      expectedJson: '"view"', valueJson: '"locate"', reason: 'Restore a known step kind.',
+    },
+    {
+      file: 'duplicarTarefa', op: 'set', pointer: '/business/steps/2/entity',
+      expectedJson: '"Tarefa"', valueJson: '"Lista"', reason: 'Separate the operations of one cited journey.',
+    },
+  ]);
+  const left = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(fixed, NRP_ARTIFACT_KINDS)));
+  assert.deepEqual(left.map(issue => `${issue.code} ${issue.path}`), []);
+  assert.equal(nrpGateAction(left, ['journeys'], [
+    repairRound('journeys', [twin]),
+    repairRound('journeys', afterView),
+  ]).action, 'write');
+});
+
+function applyJourneyOps(
+  artifacts: NrpModuleArtifacts,
+  scope: { present: string[]; creates: string[]; files: { id: string; artifact: unknown }[] },
+  operations: Array<{ file: string; op: string; pointer: string; expectedJson: string; valueJson: string; reason: string }>,
+): NrpModuleArtifacts {
+  const edited = normalizeNrpEdit('journeys', { operations }, scope);
+  return {
+    ...artifacts,
+    journeys: artifacts.journeys.map(journey => {
+      const hit = edited.files.find(file => file.id === journey.journeyId);
+      return (hit ? hit.artifact : journey) as Ns5JourneyArtifact;
+    }),
+  };
+}

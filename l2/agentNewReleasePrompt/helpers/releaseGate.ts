@@ -35,7 +35,19 @@ export type NrpGateActionName = 'write' | 'repair' | 'stop';
 export interface NrpGateAction {
   action: NrpGateActionName;
   kind: NrpArtifactKind | null;
+  /** Why a repair stops. Empty when the gate writes or asks for a repair. */
+  reason: string;
 }
+
+/** One repair round already spent on a kind, with the errors it saw. */
+export interface NrpRepairRound {
+  kind: NrpArtifactKind;
+  keys: string[];
+  lines: string[];
+}
+
+export const NRP_REPAIR_ROUNDS = 2;
+export const NRP_REPAIR_KINDS = 2;
 
 export function overlayNrpEdits(base: NrpModuleArtifacts, applied: NrpAppliedEdit[]): NrpModuleArtifacts {
   let next = clone(base);
@@ -99,21 +111,65 @@ export function nrpIssueOwner(issue: NrpGateIssue): NrpArtifactKind | null {
   return PATH_OWNER[head] || null;
 }
 
+export function nrpIssueLines(issues: readonly NrpGateIssue[], kind: NrpArtifactKind): string[] {
+  return nrpFreshIssues(issues)
+    .filter(issue => nrpIssueOwner(issue) === kind)
+    .map(issue => `${issue.code} ${issue.path}: ${issue.message}`);
+}
+
+export function nrpRepairRoundCounts(rounds: readonly NrpRepairRound[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const round of rounds) counts[round.kind] = (counts[round.kind] || 0) + 1;
+  return counts;
+}
+
+function sameKeySet(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false;
+  const ranked = [...right].sort();
+  return [...left].sort().every((key, index) => key === ranked[index]);
+}
+
+/**
+ * Up to two repair rounds per kind, and two kinds per run.
+ * A second round runs only when the kind's error set changed.
+ */
 export function nrpGateAction(
   issues: readonly NrpGateIssue[],
   changed: readonly NrpArtifactKind[],
-  repaired: readonly NrpArtifactKind[],
+  rounds: readonly NrpRepairRound[],
 ): NrpGateAction {
   const fresh = nrpFreshIssues(issues);
-  if (!fresh.length) return { action: 'write', kind: null };
+  if (!fresh.length) return { action: 'write', kind: null, reason: '' };
   const touched = new Set<NrpArtifactKind>(changed);
+  const owners: NrpArtifactKind[] = [];
   for (const issue of fresh) {
     const owner = nrpIssueOwner(issue);
-    if (!owner || repaired.includes(owner)) continue;
+    if (!owner || owners.includes(owner)) continue;
     if (!touched.has(owner) && issue.kind !== 'coherence') continue;
-    return { action: 'repair', kind: owner };
+    owners.push(owner);
   }
-  return { action: 'stop', kind: null };
+  const spentKinds = new Set(rounds.map(round => round.kind));
+  let stalled = '';
+  let capped = '';
+  for (const owner of owners) {
+    const spent = rounds.filter(round => round.kind === owner);
+    const keys = nrpFreshIssues(issues).filter(issue => nrpIssueOwner(issue) === owner).map(nrpIssueKey);
+    if (spent.length >= NRP_REPAIR_ROUNDS) {
+      capped = `Repair of ${owner} already used ${NRP_REPAIR_ROUNDS} rounds.`;
+      continue;
+    }
+    const previous = spent[spent.length - 1];
+    if (previous && sameKeySet(previous.keys, keys)) {
+      stalled = `Repair of ${owner} left the same errors.`;
+      continue;
+    }
+    if (!spentKinds.has(owner) && spentKinds.size >= NRP_REPAIR_KINDS) {
+      capped = `Repair already covered ${NRP_REPAIR_KINDS} artifact kinds.`;
+      continue;
+    }
+    return { action: 'repair', kind: owner, reason: '' };
+  }
+  return { action: 'stop', kind: null, reason: stalled || capped };
 }
 
 export function nrpMayWrite(action: NrpGateActionName): boolean {
@@ -204,16 +260,18 @@ export function buildNrpRepairHumanPrompt(
   catalog: readonly NrpRepairFile[],
   allowed: readonly string[] = [],
   shape: { rule: string; file: { id: string; artifact: unknown } } | null = null,
+  earlier: readonly string[] = [],
 ): string {
-  const lines = nrpFreshIssues(issues)
-    .filter(issue => nrpIssueOwner(issue) === kind)
-    .map(issue => `${issue.code} ${issue.path}: ${issue.message}`);
+  const lines = nrpIssueLines(issues, kind);
   const files = nrpRepairPromptFiles(kind, issues, catalog);
   const parts = [
     `Kind: ${kind}`,
     `Request:\n${request}`,
     `Verification:\n${lines.join('\n')}`,
   ];
+  if (earlier.length) {
+    parts.push(`Earlier verification:\n${earlier.join('\n')}\nThe error set changed since the previous repair of this kind.`);
+  }
   if (allowed.length) parts.push(`Allowed files: ${allowed.join(', ')}`);
   if (shape) {
     parts.push(`${shape.rule}\nSibling ${shape.file.id} (reference only):\n${JSON.stringify(shape.file.artifact)}`);

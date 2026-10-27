@@ -10,8 +10,13 @@ import {
   classifyNrpGateIssues,
   nrpGateAction,
   nrpIndexOnlyRepairMessage,
+  nrpIssueKey,
+  nrpIssueLines,
+  nrpIssueOwner,
   nrpKindCatalog,
   nrpRepairPromptFiles,
+  nrpRepairRoundCounts,
+  type NrpRepairRound,
   NRP_REPAIR_SYSTEM_PROMPT,
   overlayNrpEdits,
   type NrpAppliedEdit,
@@ -44,7 +49,7 @@ export interface NrpGateCursor {
   request: string;
   triage: NrpTriage;
   applied: NrpAppliedEdit[];
-  repaired: NrpArtifactKind[];
+  repaired: NrpRepairRound[];
   modelCalls: number;
 }
 
@@ -56,7 +61,7 @@ export function createGate40Step(cursor: NrpGateCursor): mls.msg.AIAgentStep {
     nextSteps: [],
     status: 'waiting_human_input',
     agentName: NRP_AGENT_NAME,
-    stepTitle: cursor.repaired.length ? `Repair ${cursor.repaired[cursor.repaired.length - 1]}` : 'Verify the edit',
+    stepTitle: cursor.repaired.length ? `Repair ${cursor.repaired[cursor.repaired.length - 1].kind}` : 'Verify the edit',
     prompt: JSON.stringify({ moduleName: cursor.moduleName, request: cursor.request, nrpGate: cursor }),
     rags: [],
     planning: { planId: 'gate40', dependsOn: ['edit30-done'], executionMode: 'sequential', executionHost: 'client' },
@@ -94,22 +99,31 @@ export async function beforeNrpGateStep(
             issues,
             allowWrite: true,
             modelCalls: cursor.modelCalls,
+            repairRounds: cursor.repaired,
           }),
         },
-        done(base, step, hookSequential, 'gate40 passed. write50 will record the version.'),
+        done(base, step, hookSequential, `gate40 passed. write50 will record the version. Rounds: ${roundNote(cursor.repaired)}.`),
       ];
     }
     if (decision.action === 'stop' || !decision.kind) {
+      const reason = decision.reason
+        ? `${decision.reason} Nothing was written.`
+        : 'Verification failed. Nothing was written.';
       return [
         {
           type: 'add-step', ...base, step: {
             type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
             stepTitle: 'Verification failed',
-            result: JSON.stringify({ written: false, reason: 'Verification failed. Nothing was written.', issues }),
+            result: JSON.stringify({
+              written: false,
+              reason,
+              issues,
+              repairRounds: nrpRepairRoundCounts(cursor.repaired),
+            }),
             planning: { planId: 'gate40-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
           } as mls.msg.AIResultStep,
         },
-        done(base, step, hookSequential, 'gate40 failed again. Nothing was written.'),
+        done(base, step, hookSequential, `${reason} Rounds: ${roundNote(cursor.repaired)}.`),
       ];
     }
     const tool = buildNrpRepairTool();
@@ -128,7 +142,15 @@ export async function beforeNrpGateStep(
       hookSequential,
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_REPAIR_SYSTEM_PROMPT,
-      humanPrompt: buildNrpRepairHumanPrompt(cursor.request, decision.kind, issues, nrpKindCatalog(merged, decision.kind), nrpAllowed(scope), shape),
+      humanPrompt: buildNrpRepairHumanPrompt(
+        cursor.request,
+        decision.kind,
+        issues,
+        nrpKindCatalog(merged, decision.kind),
+        nrpAllowed(scope),
+        shape,
+        earlierLines(cursor.repaired, decision.kind),
+      ),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
     }];
@@ -165,12 +187,13 @@ export async function afterNrpGateStep(
     const next: NrpGateCursor = {
       ...cursor,
       applied: [...cursor.applied, { mode: 'model', kind: decision.kind, artifact }],
-      repaired: [...cursor.repaired, decision.kind],
+      repaired: [...cursor.repaired, roundOf(decision.kind, issues)],
       modelCalls: cursor.modelCalls + 1,
     };
+    const spent = next.repaired.filter(round => round.kind === decision.kind).length;
     return [
       { type: 'add-step', ...base, step: createGate40Step(next) },
-      done(base, step, hookSequential, `gate40 repair returned ${decision.kind}.`),
+      done(base, step, hookSequential, `gate40 repair round ${spent} of ${decision.kind}.`),
     ];
   } catch (error) {
     console.error('[agentNewReleasePrompt] gate40 repair rejected', error);
@@ -233,6 +256,26 @@ function nrpAllowed(scope: { present: string[]; creates: string[] }): string[] {
   return ids;
 }
 
+function roundOf(kind: NrpArtifactKind, issues: readonly NrpGateIssue[]): NrpRepairRound {
+  const owned = issues.filter(issue => !issue.baseline && nrpIssueOwner(issue) === kind);
+  return {
+    kind,
+    keys: owned.map(nrpIssueKey),
+    lines: nrpIssueLines(issues, kind),
+  };
+}
+
+function earlierLines(rounds: readonly NrpRepairRound[], kind: NrpArtifactKind): string[] {
+  const prior = rounds.filter(round => round.kind === kind);
+  return prior.length ? prior[prior.length - 1].lines : [];
+}
+
+function roundNote(rounds: readonly NrpRepairRound[]): string {
+  const counts = nrpRepairRoundCounts(rounds);
+  const text = Object.entries(counts).map(([kind, count]) => `${kind}=${count}`).join(', ');
+  return text || 'none';
+}
+
 function gateIssues(base: NrpModuleArtifacts, merged: NrpModuleArtifacts): NrpGateIssue[] {
   const kinds = NRP_ARTIFACT_KINDS;
   return classifyNrpGateIssues(checkNrpGates(base, kinds), checkNrpGates(merged, kinds));
@@ -248,7 +291,7 @@ function readCursor(prompt: string, project: number): NrpGateCursor {
   }
   const root = record(raw, 'Gate step prompt');
   const body = record(root.nrpGate, 'Gate cursor');
-  const repaired = texts(body.repaired, 'repaired');
+  const repaired = roundsOf(body.repaired);
   const modelCalls = body.modelCalls;
   if (typeof modelCalls !== 'number' || modelCalls < 0) throw new Error('Gate modelCalls must be a number.');
   return {
@@ -275,14 +318,27 @@ function appliedOf(value: unknown): NrpAppliedEdit[] {
   });
 }
 
-function texts(value: unknown, label: string): NrpArtifactKind[] {
-  if (!Array.isArray(value)) throw new Error(`Gate ${label} must be an array.`);
+function roundsOf(value: unknown): NrpRepairRound[] {
+  if (!Array.isArray(value)) throw new Error('Gate repaired must be an array.');
   return value.map(item => {
-    if (typeof item !== 'string' || !NRP_ARTIFACT_KINDS.includes(item as NrpArtifactKind)) {
-      throw new Error(`Gate ${label} has an unknown kind.`);
+    const root = record(item, 'Repair round');
+    const kind = root.kind;
+    if (typeof kind !== 'string' || !NRP_ARTIFACT_KINDS.includes(kind as NrpArtifactKind)) {
+      throw new Error('Repair round has an unknown kind.');
     }
-    return item as NrpArtifactKind;
+    return {
+      kind: kind as NrpArtifactKind,
+      keys: stringList(root.keys, 'Repair round keys'),
+      lines: stringList(root.lines, 'Repair round lines'),
+    };
   });
+}
+
+function stringList(value: unknown, label: string): string[] {
+  if (!Array.isArray(value) || value.some(item => typeof item !== 'string')) {
+    throw new Error(`${label} must be a list of strings.`);
+  }
+  return value as string[];
 }
 
 function strip(value: string): string {
