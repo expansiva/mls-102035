@@ -407,6 +407,30 @@ void test('remove of a details field keeps the entity and drops only that field'
   assert.deepEqual(entity.rules, []);
   assert.match(entity.description, /details\.etiquetas/);
   assert.equal(removed.textMarks.some(mark => mark.item === 'details.etiquetas' && mark.kind === 'ontology'), true);
+  const cited = JSON.parse(JSON.stringify(seeded)) as NrpModuleArtifacts;
+  const citedEntity = cited.entities.find(item => item.entityId === 'Tarefa') as unknown as {
+    record: { fields: { details: { fields: Record<string, unknown> } } };
+  };
+  citedEntity.record.fields.details.fields.etiquetas = { type: 'text', title: 'Etiquetas' };
+  const citedJourney = cited.journeys.find(item => item.journeyId === 'criarTarefa') as unknown as {
+    business: { steps: Array<{ description: string }> };
+  };
+  citedJourney.business.steps[0].description = 'Grava a tarefa com etiquetas.';
+  (cited.rules as { rules: Record<string, string> }).rules = {
+    edicaoNaoMudaSituacao: 'A edição não mexe em etiquetas.',
+    outra: 'etiquetario permanece.',
+  };
+  const marked = applyNrpMechanical(cited, [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }]);
+  assert.equal(marked.textMarks.some(mark => mark.kind === 'journeys' && mark.item === 'etiquetas' && mark.text.includes('etiquetas')), true);
+  assert.equal(marked.textMarks.some(mark => mark.kind === 'rules' && mark.text.includes('edicao') === false && mark.item === 'etiquetas'), true);
+  assert.equal(marked.textMarks.some(mark => mark.text.includes('etiquetario')), false);
+  const orders = planNrpEditOrders(cited, {
+    valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
+    intent: 'Drop labels.', mechanicalOnly: true,
+    mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
+  });
+  assert.equal(orders.some(order => order.mode === 'model' && order.kind === 'journeys'), true);
+  assert.equal(orders.some(order => order.mode === 'model' && order.kind === 'rules'), true);
   assert.equal(entityRefs(removed.artifacts), refsBefore);
   const after = classifyNrpGateIssues(baseline, checkNrpGates(removed.artifacts, [...NRP_ARTIFACT_KINDS]));
   assert.deepEqual(nrpFreshIssues(after), []);

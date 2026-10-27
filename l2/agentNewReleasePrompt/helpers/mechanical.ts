@@ -189,10 +189,12 @@ function removeField(
     return copy as unknown as NrpModuleArtifacts['entities'][number];
   });
   if (!found) throw new Error(`Field ${entityId}.${fieldId} was not found.`);
-  const tokens = [fieldId, `${entityId}.${fieldId}`];
+  const structural = [fieldId, `${entityId}.${fieldId}`];
+  const leaf = fieldId.slice(fieldId.lastIndexOf('.') + 1);
+  const terms = [...new Set([leaf, ...structural].filter(term => term.length > 0))];
   const pruned: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(next)) {
-    pruned[key] = pruneFieldCitations(child, tokens, `$.${key}`, SECTION_KIND[key] ?? null, textMarks);
+    pruned[key] = pruneFieldCitations(child, structural, terms, `$.${key}`, SECTION_KIND[key] ?? null, textMarks);
   }
   return pruned as unknown as NrpModuleArtifacts;
 }
@@ -228,15 +230,16 @@ function dropField(entity: Record<string, unknown>, fieldId: string): boolean {
 
 function pruneFieldCitations(
   value: unknown,
-  tokens: string[],
+  structural: string[],
+  terms: string[],
   path: string,
   kind: NrpArtifactKind | null,
   textMarks: NrpTextMark[],
 ): unknown {
   if (typeof value === 'string') {
-    if (tokens.includes(value)) return undefined;
+    if (structural.includes(value)) return undefined;
     if (kind) {
-      const item = tokens.find(token => mentions(value, token));
+      const item = longestTerm(value, terms);
       if (item) textMarks.push({ kind, path, text: value, item });
     }
     return value;
@@ -244,7 +247,7 @@ function pruneFieldCitations(
   if (Array.isArray(value)) {
     const kept: unknown[] = [];
     value.forEach((item, index) => {
-      const pruned = pruneFieldCitations(item, tokens, `${path}[${index}]`, kind, textMarks);
+      const pruned = pruneFieldCitations(item, structural, terms, `${path}[${index}]`, kind, textMarks);
       if (pruned !== undefined) kept.push(pruned);
     });
     return kept;
@@ -252,10 +255,36 @@ function pruneFieldCitations(
   if (!isRecord(value)) return value;
   const next: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    const pruned = pruneFieldCitations(child, tokens, `${path}.${key}`, kind, textMarks);
+    const pruned = pruneFieldCitations(child, structural, terms, `${path}.${key}`, kind, textMarks);
     if (pruned !== undefined) next[key] = pruned;
   }
   return next;
+}
+
+/** Free text that names a removed field. `module` is reported and not edited. */
+export function nrpFreeTextHits(value: unknown, terms: readonly string[]): Array<{ path: string; text: string; term: string }> {
+  const hits: Array<{ path: string; text: string; term: string }> = [];
+  const visitHit = (node: unknown, path: string): void => {
+    if (typeof node === 'string') {
+      const term = longestTerm(node, terms);
+      if (term) hits.push({ path, text: node, term });
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => visitHit(item, `${path}[${index}]`));
+      return;
+    }
+    if (!isRecord(node)) return;
+    for (const [key, child] of Object.entries(node)) visitHit(child, `${path}.${key}`);
+  };
+  visitHit(value, '$');
+  return hits;
+}
+
+function longestTerm(text: string, terms: readonly string[]): string | null {
+  const matches = terms.filter(term => mentions(text, term));
+  matches.sort((left, right) => right.length - left.length);
+  return matches[0] || null;
 }
 
 function removeItem(artifacts: NrpModuleArtifacts, targetId: string, textMarks: NrpTextMark[]): NrpModuleArtifacts {

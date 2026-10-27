@@ -9,6 +9,7 @@ import {
   type NrpGateIssue,
   type NrpGateKind,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
+import { nrpFreeTextHits } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import {
   accessFile,
@@ -82,20 +83,22 @@ export async function beforeNrpWriteStep(
   try {
     const payload = readPayload(step.prompt);
     const planned = planNrpPersistence(payload.allowWrite, fileNames(payload));
-    const writtenFiles = planned.written ? await persistNrp(payload, planned.files) : [];
+    const persisted = planned.written ? await persistNrp(payload) : { files: [] as string[], reason: planned.reason };
+    const written = persisted.files.length > 0;
+    const outcome = { written, reason: persisted.reason, files: persisted.files };
     return [
       {
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
-          stepTitle: planned.written ? 'Version written' : 'Version not written',
-          result: JSON.stringify({ written: planned.written, reason: planned.reason, files: writtenFiles, report: nrpReport(payload, planned) }),
+          stepTitle: written ? 'Version written' : 'Version not written',
+          result: JSON.stringify({ written, reason: outcome.reason, files: persisted.files, report: nrpReport(payload, outcome) }),
           planning: { planId: 'write50-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
       {
         type: 'update-status', ...base, stepId: step.stepId, hookSequential,
         status: 'completed', cleaner: 'input_output',
-        traceMsg: planned.written ? `write50 wrote ${writtenFiles.length} files.` : 'write50 wrote nothing: verification failed.',
+        traceMsg: written ? `write50 wrote ${persisted.files.length} files.` : `write50 wrote nothing: ${persisted.reason || 'verification failed.'}`,
       },
     ];
   } catch (error) {
@@ -108,7 +111,7 @@ export async function beforeNrpWriteStep(
   }
 }
 
-async function persistNrp(payload: NrpWritePayload, _files: readonly string[]): Promise<string[]> {
+async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; reason: string | null }> {
   setModuleRoot(payload.moduleName, `${payload.moduleName}/${NRP_CANDIDATE_REL}`);
   const written: string[] = [];
   const moduleName = payload.moduleName;
@@ -130,6 +133,7 @@ async function persistNrp(payload: NrpWritePayload, _files: readonly string[]): 
   jobs.push({ info: integrationFile(moduleName), value: payload.artifacts.integration, newId: null });
   const siblings = new Map<string, string>();
   const missing: typeof jobs = [];
+  const pending: Array<{ info: Ns5FileInfo; text: string; label: string }> = [];
   for (const job of jobs) {
     let current = '';
     try { current = await readSourceText(job.info); }
@@ -137,28 +141,38 @@ async function persistNrp(payload: NrpWritePayload, _files: readonly string[]): 
       console.error('[agentNewReleasePrompt] write50 read failed', error);
       current = '';
     }
+    const label = `${job.info.folder}/${job.info.shortName}${job.info.extension}`;
     if (!current) {
       missing.push(job);
       continue;
     }
     if (!siblings.has(job.info.folder)) siblings.set(job.info.folder, current);
     if (sameDefsJson(current, job.value)) continue;
-    await writeSourceText(job.info, replaceDefsJsonLiteral(current, job.value));
-    written.push(`${job.info.folder}/${job.info.shortName}${job.info.extension}`);
+    const text = replaceDefsJsonLiteral(current, job.value);
+    const mismatch = nrpDefsRoundTripError(text, job.value);
+    if (mismatch) return { files: [], reason: `${label}: ${mismatch}` };
+    pending.push({ info: job.info, text, label });
   }
   for (const job of missing) {
     const siblingSource = siblings.get(job.info.folder) || '';
+    const label = `${job.info.folder}/${job.info.shortName}${job.info.extension}`;
     if (!siblingSource) throw new Error(`No sibling defs file to copy for ${job.info.shortName}.`);
     const nextId = job.newId || job.info.shortName;
-    await writeSourceText(job.info, defsSourceFromSibling(siblingSource, siblingIdOf(siblingSource, nextId), nextId, job.value));
-    written.push(`${job.info.folder}/${job.info.shortName}${job.info.extension}`);
+    const text = defsSourceFromSibling(siblingSource, siblingIdOf(siblingSource, nextId), nextId, job.value);
+    const mismatch = nrpDefsRoundTripError(text, job.value);
+    if (mismatch) return { files: [], reason: `${label}: ${mismatch}` };
+    pending.push({ info: job.info, text, label });
+  }
+  for (const job of pending) {
+    await writeSourceText(job.info, job.text);
+    written.push(job.label);
   }
   const reportFile = pipelineJsonFileForProject(payload.project, payload.moduleName, 'newReleasePrompt');
   if (reportFile.folder.startsWith(`${payload.moduleName}/${NRP_CANDIDATE_REL}`)) {
     reportFile.folder = `${payload.moduleName}/pipeline`;
   }
   written.push(await writeJson(reportFile, nrpReport(payload, { written: true, reason: null, files: written })));
-  return written;
+  return { files: written, reason: null };
 }
 
 function sameDefsJson(source: string, value: unknown): boolean {
@@ -201,6 +215,34 @@ export function nrpCheckRows(issues: readonly NrpGateIssue[]): Array<{ kind: Nrp
   });
 }
 
+/** Reads the JSON literal back from the text the way `readDefsJson` does, and compares it to the gated value. */
+export function nrpDefsRoundTripError(source: string, value: unknown): string | null {
+  const bounds = scanNs4ClassicJsonObject(source);
+  if (!bounds) return 'the text has no JSON object';
+  let parsed: unknown;
+  try { parsed = JSON.parse(source.slice(bounds.start, bounds.end)); }
+  catch (error) {
+    console.error('[agentNewReleasePrompt] write50 rewritten JSON does not parse', error);
+    return 'the JSON does not parse';
+  }
+  if (!sameValue(parsed, value)) return 'the JSON differs from the gated artifact';
+  return null;
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((item, index) => sameValue(item, right[index]));
+  }
+  if (isRecord(left) && isRecord(right)) {
+    const keys = Object.keys(left);
+    if (keys.length !== Object.keys(right).length) return false;
+    return keys.every(key => Object.prototype.hasOwnProperty.call(right, key) && sameValue(left[key], right[key]));
+  }
+  return false;
+}
+
 /** Replaces the JSON literal and leaves the file header and the export names as they are. */
 export function replaceDefsJsonLiteral(source: string, value: unknown): string {
   const bounds = scanNs4ClassicJsonObject(source);
@@ -226,13 +268,27 @@ function patchJsonText(source: string, current: unknown, next: unknown): string 
 
 function patchObject(source: string, current: Record<string, unknown>, next: Record<string, unknown>): string {
   const entries = objectEntries(source);
+  const dropped = entries.some(entry => !Object.prototype.hasOwnProperty.call(next, entry.key));
+  if (dropped) {
+    const pieces: string[] = [];
+    for (const entry of entries) {
+      if (!Object.prototype.hasOwnProperty.call(next, entry.key)) continue;
+      const valueText = patchJsonText(source.slice(entry.valueStart, entry.valueEnd), current[entry.key], next[entry.key]);
+      pieces.push(`${source.slice(entry.keyStart, entry.valueStart)}${valueText}`);
+    }
+    for (const key of Object.keys(next)) {
+      if (!Object.prototype.hasOwnProperty.call(current, key)) pieces.push(`${JSON.stringify(key)}: ${JSON.stringify(next[key])}`);
+    }
+    const open = source.indexOf('{');
+    const close = source.lastIndexOf('}');
+    const body = pieces.length ? pieces.join(',') : '';
+    return `${source.slice(0, open + 1)}${body}${source.slice(close)}`;
+  }
   let cursor = 0;
   let out = '';
   for (const entry of entries) {
     out += source.slice(cursor, entry.valueStart);
-    const before = current[entry.key];
-    const after = Object.prototype.hasOwnProperty.call(next, entry.key) ? next[entry.key] : undefined;
-    out += patchJsonText(source.slice(entry.valueStart, entry.valueEnd), before, after);
+    out += patchJsonText(source.slice(entry.valueStart, entry.valueEnd), current[entry.key], next[entry.key]);
     cursor = entry.valueEnd;
   }
   out += source.slice(cursor);
@@ -258,20 +314,21 @@ function patchArray(source: string, current: unknown[], next: unknown[]): string
   return out;
 }
 
-function objectEntries(source: string): Array<{ key: string; valueStart: number; valueEnd: number }> {
-  const entries: Array<{ key: string; valueStart: number; valueEnd: number }> = [];
+function objectEntries(source: string): Array<{ key: string; keyStart: number; valueStart: number; valueEnd: number }> {
+  const entries: Array<{ key: string; keyStart: number; valueStart: number; valueEnd: number }> = [];
   let index = skipSpace(source, 0);
   if (source[index] !== '{') return entries;
   index += 1;
   while (index < source.length) {
     index = skipSpace(source, index);
     if (source[index] === '}') break;
+    const keyStart = index;
     const key = readString(source, index);
     index = skipSpace(source, key.end);
     if (source[index] !== ':') break;
     const valueStart = skipSpace(source, index + 1);
     const valueEnd = scanValue(source, valueStart);
-    entries.push({ key: key.value, valueStart, valueEnd });
+    entries.push({ key: key.value, keyStart, valueStart, valueEnd });
     index = skipSpace(source, valueEnd);
     if (source[index] === ',') index += 1;
   }
@@ -397,7 +454,26 @@ export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Re
     costUsd: null,
     written: planned.written,
     reason: planned.reason,
+    notEdited: nrpFreeTextHits(payload.artifacts.module, removedFieldTerms(payload.triage)).map(hit => ({
+      kind: 'module',
+      path: hit.path,
+      text: hit.text,
+      term: hit.term,
+      note: 'não editado',
+    })),
   };
+}
+
+function removedFieldTerms(triage: NrpTriage): string[] {
+  const terms = new Set<string>();
+  for (const mark of triage.mechanical) {
+    if (mark.op !== 'remove' || !mark.fieldId) continue;
+    const leaf = mark.fieldId.slice(mark.fieldId.lastIndexOf('.') + 1);
+    if (leaf) terms.add(leaf);
+    terms.add(mark.fieldId);
+    if (mark.targetId) terms.add(`${mark.targetId}.${mark.fieldId}`);
+  }
+  return [...terms];
 }
 
 function readPayload(prompt: unknown): NrpWritePayload {
