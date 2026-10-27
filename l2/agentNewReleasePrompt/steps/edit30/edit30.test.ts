@@ -36,7 +36,7 @@ import type {
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
-import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
+import { NRP_ARTIFACT_KINDS, type NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -357,4 +357,68 @@ void test('assertFile accepts every tarefas fixture file and a rules map', () =>
     rules: { edicaoNaoMudaSituacao: 'Editar não muda a situação.' },
   });
   assert.throws(() => assertFile('rules', 'rules', { rules: { edicaoNaoMudaSituacao: { description: 'no' } } }), /wrong shape/);
+});
+
+void test('remove of a details field keeps the entity and drops only that field', () => {
+  const fixture = path.join(HERE, '../../../solution/fixtures/finalize80/tarefas');
+  const defs = <T>(name: string): T => {
+    const json = extractNs4ClassicJsonObject(readFileSync(path.join(fixture, name), 'utf8'));
+    if (!json) throw new Error(`no JSON in ${name}`);
+    return JSON.parse(json) as T;
+  };
+  const journeyIndex = defs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
+  const ontologyIndex = defs<Ns5OntologyAnyIndex>('ontology/index.defs.ts');
+  const artifacts = {
+    module: defs<Ns5ModuleArtifact>('module.defs.ts'),
+    journeyIndex,
+    journeys: journeyIndex.journeys.map(entry => defs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`)),
+    ontologyIndex,
+    entities: ns5OntologyEntityIds(ontologyIndex).map(entityId => defs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`)),
+    rules: defs<Ns5RulesAny>('rules.defs.ts'),
+    workflows: defs<Ns5WorkflowsArtifact>('workflows.defs.ts'),
+    access: defs<Ns5AccessArtifact>('access.defs.ts'),
+    integration: defs<Ns5IntegrationArtifact>('integration.defs.ts'),
+  } as unknown as NrpModuleArtifacts;
+  const baseline = checkNrpGates(artifacts, [...NRP_ARTIFACT_KINDS]);
+  const entityRefs = (module: NrpModuleArtifacts) => module.journeys.reduce((count, journey) => {
+    const steps = (journey as unknown as { business: { steps: Array<{ entity?: string }> } }).business.steps;
+    return count + steps.filter(step => step.entity === 'Tarefa').length;
+  }, 0);
+  const refsBefore = entityRefs(artifacts);
+  const seeded = JSON.parse(JSON.stringify(artifacts)) as NrpModuleArtifacts;
+  const tarefa = seeded.entities.find(entity => entity.entityId === 'Tarefa') as unknown as {
+    description: string;
+    rules: string[];
+    record: { fields: { details: { fields: Record<string, unknown> } } };
+  };
+  tarefa.record.fields.details.fields.etiquetas = { type: 'text', title: 'Etiquetas' };
+  tarefa.rules.push('details.etiquetas', 'Tarefa.details.etiquetas');
+  tarefa.description = `${tarefa.description} O campo details.etiquetas sai.`;
+  const removed = applyNrpMechanical(seeded, [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }]);
+  const entity = removed.artifacts.entities.find(item => item.entityId === 'Tarefa') as unknown as {
+    entityId: string;
+    description: string;
+    rules: string[];
+    record: { fields: { details: { fields: Record<string, unknown> } } };
+  };
+  assert.equal(entity.entityId, 'Tarefa');
+  assert.equal(entity.record.fields.details.fields.etiquetas, undefined);
+  assert.equal(entity.record.fields.details.fields.descricao !== undefined, true);
+  assert.deepEqual(entity.rules, []);
+  assert.match(entity.description, /details\.etiquetas/);
+  assert.equal(removed.textMarks.some(mark => mark.item === 'details.etiquetas' && mark.kind === 'ontology'), true);
+  assert.equal(entityRefs(removed.artifacts), refsBefore);
+  const after = classifyNrpGateIssues(baseline, checkNrpGates(removed.artifacts, [...NRP_ARTIFACT_KINDS]));
+  assert.deepEqual(nrpFreshIssues(after), []);
+  assert.throws(
+    () => applyNrpMechanical(artifacts, [{ op: 'remove', targetId: 'Tarefa', fieldId: '', value: '' }]),
+    /not a mechanical mark/,
+  );
+  const withRule = {
+    ...artifacts,
+    rules: { schemaVersion: '2026-09-10-ns5-rules-v1', moduleName: 'tarefas', rules: { edicaoNaoMudaSituacao: 'Editar não muda a situação.' } },
+  } as unknown as NrpModuleArtifacts;
+  const dropped = applyNrpMechanical(withRule, [{ op: 'remove', targetId: 'edicaoNaoMudaSituacao', fieldId: '', value: '' }]);
+  assert.equal(Object.prototype.hasOwnProperty.call((dropped.artifacts.rules as { rules: Record<string, string> }).rules, 'edicaoNaoMudaSituacao'), false);
+  assert.equal(dropped.artifacts.entities.some(item => item.entityId === 'Tarefa'), true);
 });

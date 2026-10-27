@@ -41,6 +41,9 @@ void test('triage schema is strict and the prompt states intention only', () => 
   assert.equal(/tarefas/i.test(NRP_TRIAGE_SYSTEM_PROMPT), false);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /making a field optional or required/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /removing an item/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /targetId is the owner of the item/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /dotted path/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /Removing a whole entity is not a mechanical mark/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /replacing one scalar/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /default value/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /new rule/);

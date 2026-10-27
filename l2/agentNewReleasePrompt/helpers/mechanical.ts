@@ -32,6 +32,8 @@ export function applyNrpMechanical(
       next = setFieldRequired(next, mark.targetId, mark.fieldId, mark.op === 'setRequired');
     } else if (mark.op === 'setScalar') {
       next = setScalar(next, mark);
+    } else if (mark.fieldId) {
+      next = removeField(next, mark.targetId, mark.fieldId, textMarks);
     } else {
       next = removeItem(next, mark.targetId, textMarks);
     }
@@ -171,8 +173,96 @@ const SECTION_KIND: Record<string, NrpArtifactKind> = {
   integration: 'integration',
 };
 
+function removeField(
+  artifacts: NrpModuleArtifacts,
+  entityId: string,
+  fieldId: string,
+  textMarks: NrpTextMark[],
+): NrpModuleArtifacts {
+  if (!fieldId.trim()) throw new Error('remove of a field needs a fieldId.');
+  const next = clone(artifacts);
+  let found = false;
+  next.entities = next.entities.map(entity => {
+    if (entity.entityId !== entityId) return entity;
+    const copy = clone(entity) as unknown as Record<string, unknown>;
+    if (dropField(copy, fieldId)) found = true;
+    return copy as unknown as NrpModuleArtifacts['entities'][number];
+  });
+  if (!found) throw new Error(`Field ${entityId}.${fieldId} was not found.`);
+  const tokens = [fieldId, `${entityId}.${fieldId}`];
+  const pruned: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(next)) {
+    pruned[key] = pruneFieldCitations(child, tokens, `$.${key}`, SECTION_KIND[key] ?? null, textMarks);
+  }
+  return pruned as unknown as NrpModuleArtifacts;
+}
+
+/** details.etiquetas is record.fields.details.fields.etiquetas. A v2 field is the list item with that fieldId. */
+function dropField(entity: Record<string, unknown>, fieldId: string): boolean {
+  let found = false;
+  const record = entity.record;
+  if (isRecord(record) && isRecord(record.fields)) {
+    if (fieldId.startsWith('details.')) {
+      const leaf = fieldId.slice('details.'.length);
+      if (!leaf || leaf.includes('.')) throw new Error(`Field path ${fieldId} must be one field under details.`);
+      const details = record.fields.details;
+      if (isRecord(details) && isRecord(details.fields) && Object.prototype.hasOwnProperty.call(details.fields, leaf)) {
+        delete details.fields[leaf];
+        found = true;
+      }
+    } else if (!fieldId.includes('.') && Object.prototype.hasOwnProperty.call(record.fields, fieldId)) {
+      delete record.fields[fieldId];
+      found = true;
+    }
+  }
+  const fields = entity.fields;
+  if (Array.isArray(fields)) {
+    const kept = fields.filter(field => !(isRecord(field) && field.fieldId === fieldId));
+    if (kept.length !== fields.length) {
+      entity.fields = kept;
+      found = true;
+    }
+  }
+  return found;
+}
+
+function pruneFieldCitations(
+  value: unknown,
+  tokens: string[],
+  path: string,
+  kind: NrpArtifactKind | null,
+  textMarks: NrpTextMark[],
+): unknown {
+  if (typeof value === 'string') {
+    if (tokens.includes(value)) return undefined;
+    if (kind) {
+      const item = tokens.find(token => mentions(value, token));
+      if (item) textMarks.push({ kind, path, text: value, item });
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const kept: unknown[] = [];
+    value.forEach((item, index) => {
+      const pruned = pruneFieldCitations(item, tokens, `${path}[${index}]`, kind, textMarks);
+      if (pruned !== undefined) kept.push(pruned);
+    });
+    return kept;
+  }
+  if (!isRecord(value)) return value;
+  const next: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    const pruned = pruneFieldCitations(child, tokens, `${path}.${key}`, kind, textMarks);
+    if (pruned !== undefined) next[key] = pruned;
+  }
+  return next;
+}
+
 function removeItem(artifacts: NrpModuleArtifacts, targetId: string, textMarks: NrpTextMark[]): NrpModuleArtifacts {
   if (!targetId.trim()) throw new Error('remove needs a targetId.');
+  if (artifacts.entities.some(entity => entity.entityId === targetId)) {
+    throw new Error(`Removing the entity ${targetId} is not a mechanical mark. Send it to the model.`);
+  }
   kindOfTarget(artifacts, targetId);
   const next: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(artifacts)) {
