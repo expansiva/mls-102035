@@ -597,15 +597,26 @@ const WRITTEN_KIND: Array<[prefix: string, kind: string]> = [
   ['integration', 'integration'],
 ];
 
-/** Kinds whose written file differs from the original. The pipeline report is not one of the six kinds. */
+/** Kinds whose file was written because it differed before the write. The pipeline report is not one of the six kinds. */
 export function kindsOfWrittenFiles(files: readonly string[]): string[] {
   const kinds: string[] = [];
   for (const file of files) {
-    if (file.includes('pipeline/')) continue;
-    const found = WRITTEN_KIND.find(([prefix]) => file.startsWith(prefix));
-    if (found && !kinds.includes(found[1])) kinds.push(found[1]);
+    const kind = kindOfWrittenPath(file);
+    if (kind && !kinds.includes(kind)) kinds.push(kind);
   }
   return kinds;
+}
+
+function kindOfWrittenPath(file: string): string | null {
+  const path = file.replaceAll('\\', '/');
+  if (path.includes('pipeline/')) return null;
+  const prefixed = WRITTEN_KIND.find(([prefix]) => path.startsWith(prefix));
+  if (prefixed) return prefixed[1];
+  const nested = WRITTEN_KIND.find(([prefix]) => prefix.endsWith('/') && path.includes(`/${prefix}`));
+  if (nested) return nested[1];
+  const base = path.split('/').pop() || '';
+  const named = WRITTEN_KIND.find(([prefix]) => !prefix.endsWith('/') && base.startsWith(prefix));
+  return named ? named[1] : null;
 }
 
 export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Record<string, unknown> {

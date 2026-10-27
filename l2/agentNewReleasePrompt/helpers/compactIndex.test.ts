@@ -17,7 +17,7 @@ import type {
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
-import { buildNrpIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
+import { buildNrpIndex, type NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { parseNrpInvocation } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
 import { createAgent, beforePromptImplicit } from '/_102035_/l2/agentNewReleasePrompt/agentNewReleasePrompt.js';
 
@@ -54,8 +54,12 @@ void test('compact index of the tarefas fixture lists triage targets and stays s
   });
   const bytes = new TextEncoder().encode(JSON.stringify(index)).length;
   assert.ok(bytes < 8_192, `index is ${bytes} bytes`);
+  console.log(`tarefas index ${bytes} bytes`);
   const tarefa = index.entities.find(entity => entity.entityId === 'Tarefa');
   assert.ok(tarefa?.fields.some(field => field.id === 'prioridade' && field.required));
+  const prioridade = tarefa?.fields.find(field => field.id === 'prioridade');
+  assert.deepEqual(prioridade?.values, ['baixa', 'media', 'alta']);
+  assert.equal(prioridade?.valueCount, undefined);
   assert.ok(tarefa?.fields.some(field => field.id === 'details.descricao'));
   assert.ok(tarefa?.fields.some(field => field.id === 'details.checklist'));
   assert.equal(tarefa?.fields.some(field => field.id === 'details'), false);
@@ -71,6 +75,27 @@ void test('compact index of the tarefas fixture lists triage targets and stays s
   assert.ok(index.processes.some(process => process.processId === 'cicloTarefa' && process.trigger.includes('manual')));
   assert.equal(Array.isArray(index.rules), true);
   assert.equal(Array.isArray(index.events), true);
+});
+
+void test('an enum past 12 values keeps only the count', () => {
+  const values = Array.from({ length: 13 }, (_, index) => ({ value: `v${index}`, title: `t${index}` }));
+  const index = buildNrpIndex({
+    module: { moduleName: 'm' },
+    journeyIndex: { journeys: [] },
+    journeys: [],
+    ontologyIndex: { entities: ['Item'] },
+    entities: [{
+      entityId: 'Item',
+      record: { fields: { wide: { type: 'enum', required: false, values } } },
+    }],
+    rules: { rules: [] },
+    workflows: { processes: [] },
+    access: { grants: [] },
+    integration: { inbound: [], outbound: [] },
+  } as unknown as NrpModuleArtifacts);
+  const wide = index.entities[0]?.fields.find(field => field.id === 'wide');
+  assert.equal(wide?.values, undefined);
+  assert.equal(wide?.valueCount, 13);
 });
 
 void test('malformed invocation creates no model step', async () => {

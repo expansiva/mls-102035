@@ -209,6 +209,43 @@ void test('an add keeps the rest of the file and the report names every written 
   }, { written: true, reason: null, files: ['ontology/Tarefa.defs.ts', 'journeys/criarTarefa.defs.ts'] });
   assert.deepEqual(report.changed, ['ontology', 'journeys']);
   assert.deepEqual(report.modelKinds, ['journeys']);
+
+  const optional = nrpReport({
+    moduleName: 'tarefas', project: 1, request: 'Make priority optional.',
+    triage: {
+      valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
+      intent: 'Make priority optional.', mechanicalOnly: true,
+      mechanical: [{ op: 'setOptional', targetId: 'Tarefa', fieldId: 'prioridade', value: '' }],
+    },
+    artifacts: { entities: [] } as unknown as NrpModuleArtifacts,
+    applied: [],
+    issues: [], allowWrite: true, modelCalls: 1,
+  }, { written: true, reason: null, files: ['tarefas/tarefas/tobe/plan/ontology/Tarefa.defs.ts'] });
+  assert.deepEqual(optional.changed, ['ontology']);
+
+  const three = nrpReport({
+    moduleName: 'tarefas', project: 1, request: 'Priority, a rule, and a journey.',
+    triage: {
+      valid: true, reason: null, clarification: null, artifacts: ['ontology', 'rules', 'journeys'], targets: ['Tarefa'],
+      intent: 'Priority, a rule, and a journey.', mechanicalOnly: false, mechanical: [],
+    },
+    artifacts: { entities: [] } as unknown as NrpModuleArtifacts,
+    applied: [
+      { mode: 'model', kind: 'rules', artifact: { files: [] } },
+      { mode: 'model', kind: 'journeys', artifact: { files: [] } },
+    ],
+    issues: [], allowWrite: true, modelCalls: 3,
+  }, {
+    written: true, reason: null,
+    files: [
+      'tarefas/tobe/plan/ontology/Tarefa.defs.ts',
+      'tarefas/tobe/plan/rules.defs.ts',
+      'tarefas/tobe/plan/journeys/criarTarefa.defs.ts',
+      'tarefas/pipeline/newReleasePrompt.json',
+    ],
+  });
+  assert.deepEqual(three.changed, ['ontology', 'rules', 'journeys']);
+  assert.deepEqual(three.modelKinds, ['rules', 'journeys']);
 });
 
 function changedSpan(before: string, after: string): string[] {

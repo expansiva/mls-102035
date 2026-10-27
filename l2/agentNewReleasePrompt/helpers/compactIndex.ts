@@ -17,6 +17,10 @@ export interface NrpFieldIndex {
   id: string;
   type: string;
   required: boolean;
+  /** Present when an enum has at most 12 values. */
+  values?: string[];
+  /** Present when an enum has more than 12 values. */
+  valueCount?: number;
 }
 
 export interface NrpTransitionIndex {
@@ -90,13 +94,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+const ENUM_VALUE_LIST_MAX = 12;
+
+function enumValueIds(field: Record<string, unknown>): string[] | null {
+  if (field.type !== 'enum' || !Array.isArray(field.values)) return null;
+  const values: string[] = [];
+  for (const item of field.values) {
+    if (typeof item === 'string') values.push(item);
+    else if (isRecord(item) && typeof item.value === 'string') values.push(item.value);
+  }
+  return values;
+}
+
 function fieldIndex(id: string, field: unknown): NrpFieldIndex {
   const item = isRecord(field) ? field : {};
-  return {
+  const row: NrpFieldIndex = {
     id,
     type: typeof item.type === 'string' ? item.type : '',
     required: item.required === true,
   };
+  const values = enumValueIds(item);
+  if (!values) return row;
+  if (values.length <= ENUM_VALUE_LIST_MAX) row.values = values;
+  else row.valueCount = values.length;
+  return row;
 }
 
 /** One level of `details.fields`, named `details.<id>`. The container itself stays out of the index. */
