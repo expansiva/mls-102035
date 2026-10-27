@@ -1,4 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
+import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
+import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { summarizeNewReleaseRequest, runNewReleaseRequest } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 
 import { html, nothing, svg } from 'lit';
@@ -21,7 +23,7 @@ import {
   observeNewReleaseLanguage,
   type NewReleaseTranslate,
 } from '/_102035_/l2/newRelease/helpers/i18n.js';
-import { sealL4Revision, readChangeRequest } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { sealL4Revision, readChangeRequest, readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { bindStructuredEditsRequest, ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import { discardTobe, saveTobeArtifact, NewReleaseSaveValidationError } from '/_102035_/l2/newRelease/tobe.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
@@ -57,6 +59,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private loading = true;
   @state() private changing = false;
   @state() private mutationError = '';
+  @state() private languagePending = false;
   @state() private requestText = '';
   @state() private savedRequest = '';
   @state() private requestBusy = false;
@@ -90,6 +93,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (error instanceof NewReleaseSaveValidationError) return this.t(`common.validation.${error.reason}`) + (error.reason === 'invalid' ? ` ${error.issues.map(issue => issue.message).join(' · ')}` : '');
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('revision conflict') || message.includes('change conflict')) return this.t('request.conflict');
+    if (message.startsWith('general.languages')) return this.t(message);
     if (message === 'new-release.application_active') return this.t('request.applicationActive');
     if (message === 'new-release.request_empty') return this.t('request.empty');
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
@@ -183,7 +187,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
       return;
     }
     if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
+    const languagePending = !historicalReleaseId(context.version) && await hasPendingLanguages(context.project, context.moduleName);
+    if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
     this.data = data;
+    this.languagePending = languagePending;
     this.expectedChangeId = data.changeId;
     this.expectedRevisionId = data.revisionId;
     this.changeByModule.set(`${this.project}/${this.moduleName}`, data.changeId);
@@ -379,6 +386,22 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.mutationQueue = this.mutationQueue.then(async () => {
       try {
         if (!contextStillCurrent({ project, moduleName, version }, this)) { detail.complete?.(new Error(this.t('request.conflict'))); return; }
+        if (detail.path === 'module.defs.ts' && this.data?.module) {
+          const value = detail.value as Ns5ModuleArtifact;
+          const before = this.data.module;
+          const revisionId = await applyDirectLanguages(project, moduleName, value, {
+            changeId: this.changeByModule.has(moduleKey) ? this.changeByModule.get(moduleKey)! : initialChange,
+            revisionId: this.revisionByModule.has(moduleKey) ? this.revisionByModule.get(moduleKey)! : initialRevision,
+          }, key => { this.mutationError = this.t(key); });
+          this.revisionByModule.set(moduleKey, revisionId);
+          this.expectedRevisionId = revisionId;
+          const normalized = { ...before, productLanguages: value.productLanguages, defaultLanguage: value.defaultLanguage };
+          if (JSON.stringify(normalized) === JSON.stringify(value)) {
+            detail.complete?.();
+            await this.loadModule();
+            return;
+          }
+        }
         const manifest = await saveTobeArtifact(project, moduleName, detail.path, detail.value, {
           jsonPath: detail.jsonPath,
           expectedChangeId: this.changeByModule.has(moduleKey) ? this.changeByModule.get(moduleKey)! : initialChange,
@@ -413,7 +436,15 @@ export class NewReleaseIndex102035 extends StateLitElement {
         }
       } catch (error) {
         detail.complete?.(new Error(this.revisionError(error)));
-        if (this.project === project && this.moduleName === moduleName) this.mutationError = this.revisionError(error);
+        if (this.project === project && this.moduleName === moduleName) {
+          this.mutationError = this.revisionError(error);
+          if (detail.path === 'module.defs.ts') {
+            const active = await readActiveL4Change(project, moduleName);
+            this.expectedRevisionId = active?.activeRevisionId ?? null;
+            this.revisionByModule.set(moduleKey, this.expectedRevisionId);
+            this.languagePending = await hasPendingLanguages(project, moduleName);
+          }
+        }
       } finally {
         this.pendingMutations -= 1;
         this.changing = this.pendingMutations > 0;
@@ -463,6 +494,21 @@ export class NewReleaseIndex102035 extends StateLitElement {
     } finally {
       if (this.project === context.project && this.moduleName === context.moduleName) this.requestBusy = false;
     }
+  }
+
+  private async retryLanguages() {
+    if (!this.data?.module || this.changing || this.requestBusy || this.activeEditor()?.dirty || historicalReleaseId(this.version)) return;
+    this.changing = true;
+    try {
+      await applyDirectLanguages(this.project, this.moduleName, this.data.module,
+        { changeId: this.expectedChangeId, revisionId: this.expectedRevisionId }, key => { this.mutationError = this.t(key); });
+      await this.loadModule();
+    } catch (error) {
+      this.mutationError = this.revisionError(error);
+      const active = await readActiveL4Change(this.project, this.moduleName);
+      this.expectedRevisionId = active?.activeRevisionId ?? null;
+      this.revisionByModule.set(`${this.project}/${this.moduleName}`, this.expectedRevisionId);
+    } finally { this.changing = false; }
   }
 
   private async reuseHistory() {
@@ -825,6 +871,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         ${this.renderTobeStatus()}
 
         ${this.loading ? this.renderLoading() : !this.data?.module ? this.renderEmpty() : html`
+          ${this.languagePending ? html`<button type="button" class="nr-button" ?disabled=${this.changing || this.requestBusy || !!this.activeEditor()?.dirty} @click=${this.retryLanguages}>${this.t('general.languagesRetry')}</button>` : nothing}
           ${this.data.errors.length || this.mutationError ? html`
             <section class="nr-index__errors">
               <strong>${this.t('state.errorTitle')}</strong>

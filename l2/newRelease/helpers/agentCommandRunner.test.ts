@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/agentCommandRunner.test.ts" enhancement="_blank" />
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { summarizeNewReleaseRequest, runNewReleaseRequest, taskResultTexts } from './agentCommandRunner.js';
+import { summarizeNewReleaseRequest, runNewReleaseRequest, runNewReleaseCommand, taskResultTexts } from './agentCommandRunner.js';
 import type { TaskData } from '/_102036_/l2/shared/interfaces.js';
 const task = (status: TaskData['status']): TaskData => ({ PK: 'task/#one', SK: 'metadata', title: '', owner: 'user', team: null,
   status, last_updated: 0, last_update_log: null, messageid_created: 'thread/canonical' });
@@ -66,4 +66,17 @@ test('empty request never resolves a thread or invokes an agent', async () => {
 test('entry refusal in the producer plain-text status result remains visible', () => {
   assert.deepEqual(summarizeNewReleaseRequest(['Invalid module name.'], 'done'),
     { key: 'request.refused', values: { reason: 'Invalid module name.' }, retry: true });
+});
+
+
+test('language commands dispatch the existing scoped array protocol and preserve failure status', async () => {
+  for (const agent of ['agentAddLanguage', 'agentRemoveLanguage'] as const) {
+    const payload = JSON.stringify([{ languages: [{ code: 'fr', name: 'French' }], projectId: 102047, moduleName: 'ordenServicio5' }]);
+    const outcome = await runNewReleaseCommand(agent, payload, () => {}, {
+      userId: () => 'user', thread: async () => ({ threadId: 'thread' }),
+      context: (threadId, senderId, content) => ({ isTest: true, task: undefined, message: { threadId, senderId, content, createAt: '', orderAt: '' } }),
+      execute: async (name, context) => { assert.equal(name, agent); assert.equal(context.message.content, '@@' + agent + ' ' + payload); context.task = task('failed'); },
+    });
+    assert.equal(outcome.task.status, 'failed');
+  }
 });

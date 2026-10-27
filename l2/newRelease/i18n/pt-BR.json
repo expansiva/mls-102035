@@ -1056,5 +1056,13 @@
   "request.question": "Pergunta: {{question}}",
   "request.refused": "Nenhuma mudança foi gravada: {{reason}}",
   "request.failed": "O pedido falhou. Confira os detalhes da execução.",
-  "request.success": "Alterações salvas em {{count}} arquivos."
+  "request.success": "Alterações salvas em {{count}} arquivos.",
+  "general.languagesRetry": "Tentar atualização de idiomas novamente",
+  "general.languagesSaving": "Salvando configuração de idiomas…",
+  "general.languagesRunning": "Atualizando traduções do produto…",
+  "general.languagesDone": "Configuração de idiomas aplicada.",
+  "general.languagesFailed": "Falha ao atualizar idiomas. Salve novamente para tentar de novo.",
+  "general.languagesInvalid": "Selecione ao menos um idioma e um idioma padrão da lista.",
+  "general.languagesConflict": "O módulo mudou. Recarregue antes de salvar idiomas.",
+  "general.languagesPending": "Conclua a atualização de idiomas pendente antes de selecionar outros idiomas."
 }

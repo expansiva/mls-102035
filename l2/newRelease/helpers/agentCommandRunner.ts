@@ -62,15 +62,20 @@ export interface NewReleasePromptRequest { moduleName: string; request: string }
 export async function runNewReleaseRequest(moduleName: string, request: string,
   progress: (task: TaskData) => void, dependencies: ImplementationRunnerDependencies & { wait?: () => Promise<void> } = {}): Promise<{ task: TaskData; results: string[] }> {
   if (!request.trim()) throw new Error('new-release.request_empty');
+  const payload: NewReleasePromptRequest = { moduleName, request };
+  return runNewReleaseCommand('agentNewReleasePrompt', JSON.stringify(payload), progress, dependencies);
+}
+
+export async function runNewReleaseCommand(agent: 'agentNewReleasePrompt' | 'agentAddLanguage' | 'agentRemoveLanguage', payload: string,
+  progress: (task: TaskData) => void, dependencies: ImplementationRunnerDependencies & { wait?: () => Promise<void> } = {}): Promise<{ task: TaskData; results: string[] }> {
   const user = (dependencies.userId ?? getUserId)();
   if (!user) throw new Error('implementation.user_unavailable');
   const threadName = '_102035_/l2/newRelease/requests';
   const resolved = await (dependencies.thread ?? (async () => await getThreadByName(threadName) ?? await createThread(threadName, [], 'company')))();
   if (!resolved?.threadId) throw new Error('implementation.thread_unavailable');
-  const payload: NewReleasePromptRequest = { moduleName, request };
-  const prompt = '@@agentNewReleasePrompt ' + JSON.stringify(payload);
+  const prompt = '@@' + agent + ' ' + payload;
   const context = (dependencies.context ?? getTemporaryContext)(resolved.threadId, user, prompt);
-  await (dependencies.execute ?? ((agent, ctx) => environment.agents.executeAgent(agent, ctx)))('agentNewReleasePrompt', context);
+  await (dependencies.execute ?? ((agent, ctx) => environment.agents.executeAgent(agent, ctx)))(agent, context);
   if (!context.task?.PK) throw new Error('implementation.task_unavailable');
   let task = context.task;
   const identity = task.PK;

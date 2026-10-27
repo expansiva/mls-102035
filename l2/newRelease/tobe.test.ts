@@ -1,9 +1,12 @@
 /// <mls fileReference="_102035_/l2/newRelease/tobe.test.ts" enhancement="_blank" />
 
+import { applyDirectLanguages, languageCommands } from './helpers/directLanguages.js';
+import { readDefsJson } from '/_102035_/l2/solution/fs.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadNs5Entities, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
+  saveDirectLanguageMetadata,
   discardTobe,
   readNs5Overlay,
   recordTobeDiscard,
@@ -785,4 +788,75 @@ test('accepted application rejects structured saves and requests without writing
   await deactivateL4Change(project, moduleName);
   const next = await saveChangeRequest(project, moduleName, 'Second cycle', null, null);
   assert.notEqual(next.changeId, first.changeId);
+});
+
+
+test('direct languages preserve published and candidate business edits, reseal and leave history intact', async () => {
+  const project = 102047, moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const initial = await readNs5Overlay(project, moduleName, 'tobe');
+  const first = await sealL4Revision(project, moduleName, initial.revisionId);
+  const original = await readL4Release(project, moduleName, first.baseId);
+  const candidate = { ...fixture.source.module, title: 'Business draft' };
+  const { editL4Candidate } = await import('/_102035_/l2/solution/candidate/moduleRevision.js');
+  const { writeDefs } = await import('/_102035_/l2/solution/fs.js');
+  const edited = await editL4Candidate(project, moduleName, first.revisionId, first.changeId, async () => {
+    await writeDefs(tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'tobe'), 'fixture', candidate, 'Ns5ModuleArtifact');
+  });
+  const revisionId = await saveDirectLanguageMetadata(project, moduleName, { productLanguages: ['en', 'fr'], defaultLanguage: 'fr' },
+    { changeId: first.changeId, revisionId: edited.revision.revisionId });
+  assert.notEqual(revisionId, edited.revision.revisionId);
+  const published = await readDefsJson<any>(tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'asis'));
+  assert.equal(published.title, fixture.source.module.title);
+  assert.deepEqual(published.productLanguages, ['en', 'fr']);
+  const overlay = await readNs5Overlay(project, moduleName, 'tobe');
+  assert.equal(overlay.sources.module.value?.title, 'Business draft');
+  assert.equal(overlay.sources.module.value?.defaultLanguage, 'fr');
+  assert.deepEqual(overlay.diffs.find(diff => diff.path === 'module.defs.ts')?.entries.map(entry => entry.jsonPath), ['$.title']);
+  assert.deepEqual(await readL4Release(project, moduleName, first.baseId), original);
+  assert.ok(await readSealedL4Candidate(project, moduleName, first.changeId, edited.revision.revisionId));
+});
+
+test('direct default-only metadata creates no candidate and invokes no producer; command deltas are scoped', async () => {
+  const project = 102047, moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const target = { ...fixture.source.module, productLanguages: ['en', 'fr'], defaultLanguage: 'en' };
+  fixture.add('module.defs.ts', target);
+  let calls = 0;
+  await applyDirectLanguages(project, moduleName, { ...target, defaultLanguage: 'fr' }, { changeId: null, revisionId: null }, () => {}, async () => { calls++; throw new Error('unexpected'); });
+  assert.equal(calls, 0);
+  assert.equal(await readActiveL4Change(project, moduleName), null);
+  assert.deepEqual(languageCommands(project, moduleName, ['en', 'pt'], ['en', 'fr']).map(command => [command.agent, JSON.parse(command.payload)[0].languages.map((item: any) => item.code)]), [['agentAddLanguage', ['fr']], ['agentRemoveLanguage', ['pt']]]);
+});
+
+test('failed language producer is retained for retry without sending completed work again', async () => {
+  const project = 102047, moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  fixture.add('module.defs.ts', { ...fixture.source.module, productLanguages: ['en', 'pt'], defaultLanguage: 'en' });
+  const target = { ...fixture.source.module, productLanguages: ['en', 'fr'], defaultLanguage: 'en' };
+  const commands: string[] = [];
+  const execute = async (agent: string) => {
+    commands.push(agent);
+    return { task: { status: agent === 'agentRemoveLanguage' ? 'failed' : 'done', last_update_log: 'Producer failed' } as any, results: [] };
+  };
+  await assert.rejects(applyDirectLanguages(project, moduleName, target, { changeId: null, revisionId: null }, () => {}, execute), /Producer failed/);
+  await applyDirectLanguages(project, moduleName, target, { changeId: null, revisionId: null }, () => {}, async agent => {
+    commands.push(agent); return { task: { status: 'done' } as any, results: [] };
+  });
+  assert.deepEqual(commands, ['agentAddLanguage', 'agentRemoveLanguage', 'agentRemoveLanguage']);
+  assert.equal((await readNs5Overlay(project, moduleName)).diffs.length, 0);
+});
+
+
+test('language-only change with an existing candidate leaves no review diff', async () => {
+  const project = 102047, moduleName = 'ordenServicio5';
+  installStorFixture(project, moduleName);
+  const initial = await readNs5Overlay(project, moduleName, 'tobe');
+  const revisionId = await saveDirectLanguageMetadata(project, moduleName, { productLanguages: ['en', 'fr'], defaultLanguage: 'fr' },
+    { changeId: initial.changeId, revisionId: initial.revisionId });
+  const overlay = await readNs5Overlay(project, moduleName, 'tobe');
+  assert.equal(overlay.revisionId, revisionId);
+  assert.equal(overlay.sources.module.source, 'asis');
+  assert.deepEqual(overlay.diffs, []);
+  assert.deepEqual(overlay.stalePaths, []);
 });

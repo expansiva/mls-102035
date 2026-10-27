@@ -1056,5 +1056,13 @@
   "request.question": "Question: {{question}}",
   "request.refused": "No change was written: {{reason}}",
   "request.failed": "The request failed. Check the execution details.",
-  "request.success": "Changes saved in {{count}} files."
+  "request.success": "Changes saved in {{count}} files.",
+  "general.languagesRetry": "Retry language update",
+  "general.languagesSaving": "Saving language configuration…",
+  "general.languagesRunning": "Updating product translations…",
+  "general.languagesDone": "Language configuration applied.",
+  "general.languagesFailed": "Language update failed. Save again to retry.",
+  "general.languagesInvalid": "Select at least one product language and a default language from that list.",
+  "general.languagesConflict": "The module changed. Reload before saving languages.",
+  "general.languagesPending": "Complete the pending language update before selecting different languages."
 }

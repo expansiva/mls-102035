@@ -45,7 +45,7 @@ import {
   type Ns5TobeManifest,
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
-import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, withModuleWriter, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
 export { NEW_RELEASE_TOBE_UPDATED_EVENT } from '/_102035_/l2/newRelease/helpers/context.js';
@@ -287,7 +287,8 @@ async function readArtifact<T>(
   try {
     const value = await readDefsJson<T>(info);
     const originalValue = hasPlanned ? await readDefsJson<T>(original) : value;
-    const source = hasPlanned && value !== null && await sha256Tobe(value) !== await sha256Tobe(originalValue) ? 'tobe' : 'asis';
+    const published = path === 'module.defs.ts' ? await readDefsJson<Ns5ModuleArtifact>(tobeArtifactFileInfo(project, moduleName, path, 'asis')) : null;
+    const source = hasPlanned && value !== null && await sha256Tobe(value) !== await sha256Tobe(moduleLanguageBaseline(originalValue, value, published)) ? 'tobe' : 'asis';
     if (hasPlanned && value === null) errors.push({ path, message: 'Prepared artifact is unreadable; captured data was not substituted.' });
     return { path, source, value };
   } catch (error) {
@@ -322,6 +323,50 @@ async function staleManifestPaths(
   return stale.sort();
 }
 
+
+/** Match only language metadata already applied directly to the published module. */
+export function moduleLanguageBaseline(base: unknown, candidate: unknown, published: Ns5ModuleArtifact | null): unknown {
+  if (!base || !candidate || !published || typeof base !== 'object' || typeof candidate !== 'object') return base;
+  const next = candidate as Ns5ModuleArtifact;
+  return JSON.stringify(next.productLanguages) === JSON.stringify(published.productLanguages) && next.defaultLanguage === published.defaultLanguage
+    ? { ...base, productLanguages: published.productLanguages, defaultLanguage: published.defaultLanguage } : base;
+}
+
+export async function saveDirectLanguageMetadata(project: number, moduleName: string,
+  languages: Pick<Ns5ModuleArtifact, 'productLanguages' | 'defaultLanguage'>,
+  expected: { changeId: string | null; revisionId: string | null }): Promise<string | null> {
+  await assertNewReleaseEditable(project, moduleName);
+  if (!languages.productLanguages.length || new Set(languages.productLanguages).size !== languages.productLanguages.length
+    || !languages.productLanguages.includes(languages.defaultLanguage)) throw new Error('general.languagesInvalid');
+  const write = async () => {
+    await assertNewReleaseEditable(project, moduleName);
+    const publishedInfo = tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'asis');
+    const published = await readDefsJson<Ns5ModuleArtifact>(publishedInfo);
+    if (!published) throw new Error('general.languagesInvalid');
+    const plannedInfo = tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'tobe');
+    const planned = fileExists(plannedInfo) ? await readDefsJson<Ns5ModuleArtifact>(plannedInfo) : null;
+    if (fileExists(plannedInfo) && !planned) throw new Error('general.languagesInvalid');
+    const manifest = await readManifest(project, moduleName);
+    if (manifest?.base['module.defs.ts'] && manifest.base['module.defs.ts'] !== await sha256Tobe(published)) throw new Error('general.languagesConflict');
+    const next = { ...published, ...languages };
+    if (planned) await writeDefs(plannedInfo, `${moduleName}Module`, { ...planned, ...languages }, 'Ns5ModuleArtifact');
+    await writeDefs(publishedInfo, `${moduleName}Module`, next, 'Ns5ModuleArtifact');
+    if (manifest?.base['module.defs.ts']) {
+      manifest.base['module.defs.ts'] = await sha256Tobe(next);
+      await writeJson(tobeManifestFileInfo(project, moduleName), manifest);
+    }
+  };
+  if (expected.changeId) {
+    const result = await editL4Candidate(project, moduleName, expected.revisionId, expected.changeId, write);
+    return result.revision.revisionId;
+  }
+  return withModuleWriter(project, moduleName, async () => {
+    if (await readActiveL4Change(project, moduleName)) throw new Error('general.languagesConflict');
+    await write();
+    return null;
+  });
+}
+
 async function overlayDiffs(
   project: number,
   moduleName: string,
@@ -333,7 +378,8 @@ async function overlayDiffs(
     if (artifact.source !== 'tobe' || artifact.value === null) continue;
     const asis = await readDefsJson<unknown>(baseId ? originalL4FileInfo(project, moduleName, baseId, artifact.path) : tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis'));
     if (asis === null) continue;
-    const entries = tobeDiff(asis, artifact.value);
+    const published = artifact.path === 'module.defs.ts' ? await readDefsJson<Ns5ModuleArtifact>(tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis')) : null;
+    const entries = tobeDiff(moduleLanguageBaseline(asis, artifact.value, published), artifact.value);
     if (entries.length) result.push({ path: artifact.path, entries });
   }
   return result;
