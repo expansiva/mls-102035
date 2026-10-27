@@ -276,7 +276,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderTreeNode(node: TextTreeNode): unknown {
-    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${node.label}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
+    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}><span class="nr-common__tree-name">${node.label}</span>${node.suffix ? html`<span class="nr-common__tree-suffix">${node.suffix}</span>` : nothing}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
     return html`<li><details ?open=${!!this.textSearch}><summary>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${(event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); this.tabPresentation?.select(node.id); }}>${node.label}</button>` : node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
   }
 

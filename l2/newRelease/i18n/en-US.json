@@ -430,7 +430,7 @@
   "rules.search": "Search rules",
   "rules.searchPlaceholder": "ID, description, entity or journey",
   "rules.noResults": "No rule matches this search.",
-  "rules.orphanGroup": "No cited entity",
+  "rules.orphanGroup": "Unreferenced",
   "rules.citationCount": "{{count}} citations",
   "rules.newRuleId": "New rule ID",
   "rules.newRulePlaceholder": "exampleRule",
@@ -1026,5 +1026,7 @@
   "access.grantTitle": "Grant name",
   "access.personEntity": "Person entity",
   "access.noPersonEntity": "No person entity",
-  "access.unassigned": "Unknown role"
+  "access.unassigned": "Unknown role",
+  "rules.key": "Rule key",
+  "rules.usedIn": "Used in"
 }

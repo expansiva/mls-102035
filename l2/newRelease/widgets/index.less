@@ -444,3 +444,14 @@ new-release--widgets--index-102035 {
     .nr-common__tree-select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
   }
 }
+
+// Rules groups keep the same ten-row window in the shared semantic tree.
+new-release--widgets--index-102035:has(new-release--widgets--rules-102035) .nr-common__text > ul > li > details > ul {
+  max-height: 30rem;
+  overflow-y: auto;
+  > li { height: 3rem; overflow: hidden; padding: .35rem 0; }
+  .nr-common__tree-select { display: flex; align-items: center; gap: .5rem; width: 100%; height: 100%; }
+  .nr-common__tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-common__tree-suffix { flex: 0 0 auto; }
+  li > span { display: none; }
+}

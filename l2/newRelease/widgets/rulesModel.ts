@@ -156,3 +156,40 @@ export function rulesOracleIssues(issues: readonly NewReleaseValidationIssue[]):
     || issue.code === 'I4'
     || issue.code === 'NS5_FINALIZE_I4');
 }
+
+/** Presentation only: never persisted into the rules artifact. */
+export function humanizeRuleKey(key: string): string {
+  const text = key.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').toLocaleLowerCase();
+  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+}
+
+export function ontologyRuleCitations(rules: readonly Ns5Rule[], entities: readonly (Ns5OntologyEntityArtifact | import('../../solution/types.js').Ns5OntologyEntityV3)[]): RuleCitation[] {
+  const known = new Set(rules.map(rule => rule.ruleId));
+  const result: RuleCitation[] = [];
+  for (const entity of entities) {
+    for (const ruleId of new Set('rules' in entity ? entity.rules : [])) {
+      if (known.has(ruleId)) result.push({ruleId, kind: 'detail', entityId: entity.entityId, label: entity.title});
+    }
+    for (const transition of entity.transitions || []) {
+      for (const ruleId of new Set(transition.ruleRefs || [])) {
+        if (known.has(ruleId)) result.push({ruleId, kind: 'transition', entityId: entity.entityId, transitionId: transition.transitionId, label: transition.description || transition.transitionId});
+      }
+    }
+  }
+  return result;
+}
+
+export function rulePresentationGroups(rules: readonly Ns5Rule[], citations: readonly RuleCitation[], entities: readonly {entityId: string; title: string}[], orphanLabel: string) {
+  return groupRulesByEntity(rules, citations).map(group => ({...group, title: group.entityId ? entities.find(entity => entity.entityId === group.entityId)?.title || group.entityId : orphanLabel,
+    rules: [...group.rules].sort((a, b) => humanizeRuleKey(a.ruleId).localeCompare(humanizeRuleKey(b.ruleId))),
+  })).sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/** Value-only edit: no insertion, deletion, rename, or wrapper normalization. */
+export function patchRuleText(artifact: import('../../solution/types.js').Ns5RulesAny, ruleId: string, description: string): import('../../solution/types.js').Ns5RulesAny {
+  if (artifact.schemaVersion === '2026-09-16-ns5-rules-v2') {
+    if (!Object.hasOwn(artifact.rules, ruleId)) return structuredClone(artifact);
+    return {...structuredClone(artifact), rules: {...artifact.rules, [ruleId]: description}};
+  }
+  return {...structuredClone(artifact), rules: artifact.rules.map(rule => rule.ruleId === ruleId ? {...rule, description} : structuredClone(rule))};
+}

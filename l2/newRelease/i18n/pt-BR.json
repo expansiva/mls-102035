@@ -430,7 +430,7 @@
   "rules.search": "Buscar regras",
   "rules.searchPlaceholder": "ID, descrição, entidade ou jornada",
   "rules.noResults": "Nenhuma regra corresponde à busca.",
-  "rules.orphanGroup": "Sem entidade citada",
+  "rules.orphanGroup": "Sem referência",
   "rules.citationCount": "{{count}} citações",
   "rules.newRuleId": "ID da nova regra",
   "rules.newRulePlaceholder": "exemploDeRegra",
@@ -1026,5 +1026,7 @@
   "access.grantTitle": "Nome da concessão",
   "access.personEntity": "Entidade de pessoa",
   "access.noPersonEntity": "Sem entidade de pessoa",
-  "access.unassigned": "Papel desconhecido"
+  "access.unassigned": "Papel desconhecido",
+  "rules.key": "Chave da regra",
+  "rules.usedIn": "Usada em"
 }

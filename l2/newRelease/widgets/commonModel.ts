@@ -3,6 +3,7 @@
 export interface TextTreeNode {
   id: string;
   label: string;
+  suffix?: string;
   value: string;
   children: TextTreeNode[];
 }
@@ -18,7 +19,7 @@ export function textTree(label: string, value: unknown, id = label): TextTreeNod
 export function filterTextTree(roots: TextTreeNode[], search: string, rootId = ''): TextTreeNode[] {
   const query = search.trim().toLocaleLowerCase();
   const match = (node: TextTreeNode): TextTreeNode | null => {
-    if (!query || `${node.label} ${node.value}`.toLocaleLowerCase().includes(query)) return node;
+    if (!query || `${node.label} ${node.suffix || ''} ${node.value}`.toLocaleLowerCase().includes(query)) return node;
     const children = node.children.map(match).filter((child): child is TextTreeNode => child !== null);
     return children.length ? { ...node, children } : null;
   };

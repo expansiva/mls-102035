@@ -37,3 +37,11 @@ test('save notification waits for persistence and forwards refusal to the editor
   await refused;
   assert.equal(finished, true);
 });
+
+
+test('tree search and filtering preserve shared-rule count independently of the name', () => {
+  const node = {id: 'rule:shared', label: 'Shared rule with a long name', suffix: '(2)', value: 'Business statement', children: []};
+  const roots = [{id: 'entity:Order', label: 'Order', value: '', children: [node]}];
+  assert.deepEqual(filterTextTree(roots, 'long name')[0].children, [node]);
+  assert.deepEqual(filterTextTree(roots, '(2)', 'entity:Order')[0].children, [node]);
+});
