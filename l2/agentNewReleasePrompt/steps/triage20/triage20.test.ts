@@ -39,6 +39,12 @@ void test('triage schema is strict and the prompt states intention only', () => 
     'valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical',
   ]);
   assert.equal(/tarefas/i.test(NRP_TRIAGE_SYSTEM_PROMPT), false);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /making a field optional or required/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /removing an item/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /replacing one scalar/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /default value/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /new rule/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /Put that kind in artifacts and describe that part in intent/);
   const human = buildNrpTriageHumanPrompt('Make priority optional.', index);
   assert.match(human, /Make priority optional\./);
   assert.match(human, /"entityId":"WorkItem"/);

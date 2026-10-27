@@ -13,8 +13,12 @@ import {
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
   normalizeNrpEdit,
+  nrpFileScope,
   planNrpEditOrders,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import { ns5OntologyEntityIds, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
+import type { Ns5OntologyAnyEntity } from '/_102035_/l2/solution/types.js';
 import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -58,16 +62,21 @@ void test('edit schema is strict and the prompt names no sample module', () => {
   assert.equal(tool.function.name, 'submitNrpEdit');
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
   assert.equal(/tarefas/i.test(NRP_EDIT_SYSTEM_PROMPT), false);
-  const human = buildNrpEditHumanPrompt('Add a rule.', triage, 'rules', { rules: [] });
+  const human = buildNrpEditHumanPrompt('Add a rule.', triage, 'rules', [{ id: 'rules', artifact: { rules: [] } }]);
   assert.match(human, /Kind: rules/);
   assert.match(human, /Add a rule\./);
 });
 
-void test('a recorded edit response is the whole artifact', () => {
+void test('a recorded edit response is the changed file only', () => {
   const recorded = JSON.parse(readFileSync(path.join(HERE, 'fixtures/recorded.json'), 'utf8')) as { rulesReplace: unknown };
-  const artifact = normalizeNrpEdit('rules', recorded.rulesReplace) as { rules: Array<{ ruleId: string }> };
+  const scope = { present: ['rules'], creates: [], files: [] };
+  const edited = normalizeNrpEdit('rules', recorded.rulesReplace, scope);
+  const artifact = edited.files[0].artifact as { rules: Array<{ ruleId: string }> };
+  assert.equal(edited.files[0].id, 'rules');
   assert.equal(artifact.rules[0].ruleId, 'defaultPriority');
-  assert.throws(() => normalizeNrpEdit('rules', { artifactJson: '{"journeys":[]}' }), /wrong shape/);
+  assert.throws(() => normalizeNrpEdit('rules', { artifactJson: '{"rules":[]}' }, scope), /list files/);
+  assert.throws(() => normalizeNrpEdit('rules', { files: [{ id: 'rules', artifactJson: '{"journeys":[]}' }] }, scope), /wrong shape/);
+  assert.throws(() => normalizeNrpEdit('ontology', { files: [{ id: 'NewThing', artifactJson: '{"entityId":"NewThing"}' }] }, { present: ['WorkItem'], creates: [], files: [] }), /not a target/);
 });
 
 void test('mechanical marks change the artifact and leave the other kind to the model', () => {
@@ -121,7 +130,7 @@ void test('remove leaves a free-text citation intact and sends that kind back to
     ...triage,
     artifacts: ['ontology'],
     mechanical: [{ op: 'remove', targetId: 'etiquetas', value: '', fieldId: '' }],
-  }, 'ontology', { entities: [] }, removed.textMarks);
+  }, 'ontology', [{ id: 'WorkItem', artifact: { entityId: 'WorkItem' } }], removed.textMarks);
   assert.match(prompt, /does not cite etiquetas/);
   assert.equal(/tarefas/i.test(prompt), false);
   const orders = planNrpEditOrders(artifacts, {
@@ -130,4 +139,31 @@ void test('remove leaves a free-text citation intact and sends that kind back to
     mechanical: [{ op: 'remove', targetId: 'etiquetas', value: '', fieldId: '' }],
   });
   assert.deepEqual(orders.map(order => `${order.mode}:${order.kind}`), ['apply:null', 'model:ontology']);
+});
+
+void test('an ontology edit prompt sends the target file, not the whole kind', () => {
+  const fixture = path.join(HERE, '../../../solution/fixtures/finalize80/tarefas');
+  const defs = <T>(name: string): T => JSON.parse(extractNs4ClassicJsonObject(readFileSync(path.join(fixture, name), 'utf8'))) as T;
+  const ontologyIndex = defs<Ns5OntologyAnyIndex>('ontology/index.defs.ts');
+  const entities = ns5OntologyEntityIds(ontologyIndex).map(entityId => defs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`));
+  const artifacts = {
+    ...sample(),
+    ontologyIndex,
+    entities,
+  };
+  const ask = { ...triage, artifacts: ['ontology'] as NrpTriage['artifacts'], targets: ['Tarefa', 'prioridade'], mechanical: [] };
+  const scope = nrpFileScope(artifacts, 'ontology', ask);
+  assert.deepEqual(scope.files.map(file => file.id), ['Tarefa']);
+  const one = buildNrpEditHumanPrompt('Make priority optional.', ask, 'ontology', scope.files);
+  const whole = buildNrpEditHumanPrompt('Make priority optional.', ask, 'ontology', [
+    { id: 'index', artifact: ontologyIndex },
+    ...entities.map(entity => ({ id: entity.entityId, artifact: entity })),
+  ]);
+  const oneBytes = new TextEncoder().encode(one).length;
+  const wholeBytes = new TextEncoder().encode(whole).length;
+  assert.equal(oneBytes, 2891);
+  assert.equal(wholeBytes, 4103);
+  assert.ok(oneBytes < wholeBytes);
+  assert.equal(one.includes('Tarefa'), true);
+  assert.equal(one.includes('"entityId":"Lista"') || one.includes('"entityId": "Lista"'), false);
 });

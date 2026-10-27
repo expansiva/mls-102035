@@ -3,9 +3,11 @@
 import { NRP_AGENT_NAME, NRP_CANDIDATE_REL } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import {
+  nrpFreshIssues,
   nrpMayWrite,
   type NrpAppliedEdit,
   type NrpGateIssue,
+  type NrpGateKind,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import {
@@ -16,15 +18,16 @@ import {
   ontologyEntityFile,
   ontologyIndexFile,
   pipelineJsonFileForProject,
+  readSourceText,
   rulesFile,
   setModuleRoot,
   workflowsFile,
-  writeDefs,
   writeJson,
+  writeSourceText,
+  type Ns5FileInfo,
 } from '/_102035_/l2/solution/fs.js';
+import { scanNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds } from '/_102035_/l2/solution/ontologyView.js';
-import { isNs5RulesV2 } from '/_102035_/l2/solution/rulesView.js';
-import { isNs5OntologyV3Version } from '/_102035_/l2/solution/types.js';
 
 export interface NrpWritePayload {
   moduleName: string;
@@ -85,7 +88,7 @@ export async function beforeNrpWriteStep(
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
           stepTitle: planned.written ? 'Version written' : 'Version not written',
-          result: JSON.stringify({ written: planned.written, reason: planned.reason, files: writtenFiles, report: reportOf(payload, planned) }),
+          result: JSON.stringify({ written: planned.written, reason: planned.reason, files: writtenFiles, report: nrpReport(payload, planned) }),
           planning: { planId: 'write50-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
@@ -105,46 +108,73 @@ export async function beforeNrpWriteStep(
   }
 }
 
-async function persistNrp(payload: NrpWritePayload, files: readonly string[]): Promise<string[]> {
+async function persistNrp(payload: NrpWritePayload, _files: readonly string[]): Promise<string[]> {
   setModuleRoot(payload.moduleName, `${payload.moduleName}/${NRP_CANDIDATE_REL}`);
   const written: string[] = [];
-  const artifacts = payload.artifacts;
-  const kinds = new Set(payload.triage.artifacts);
-  if (kinds.has('rules') && files.includes('rules.defs.ts')) {
-    const typeName = isNs5RulesV2(artifacts.rules) ? 'Ns5RulesArtifactV2' : 'Ns5RulesArtifact';
-    written.push(await writeDefs(rulesFile(payload.moduleName), `${payload.moduleName}Rules`, artifacts.rules, typeName));
+  const moduleName = payload.moduleName;
+  const jobs: Array<{ info: Ns5FileInfo; value: unknown; newId: string | null }> = [];
+  const entities = payload.artifacts.entities;
+  for (const entityId of ns5OntologyEntityIds(payload.artifacts.ontologyIndex)) {
+    const entity = entities.find(item => item.entityId === entityId);
+    if (!entity) continue;
+    jobs.push({ info: ontologyEntityFile(moduleName, entityId), value: entity, newId: entityId });
   }
-  if (kinds.has('access') && files.includes('access.defs.ts')) {
-    written.push(await writeDefs(accessFile(payload.moduleName), `${payload.moduleName}Access`, artifacts.access, 'Ns5AccessArtifact'));
+  jobs.push({ info: ontologyIndexFile(moduleName), value: payload.artifacts.ontologyIndex, newId: null });
+  for (const journey of payload.artifacts.journeys) {
+    jobs.push({ info: journeyFile(moduleName, journey.journeyId), value: journey, newId: journey.journeyId });
   }
-  if (kinds.has('workflows') && files.includes('workflows.defs.ts')) {
-    written.push(await writeDefs(workflowsFile(payload.moduleName), `${payload.moduleName}Workflows`, artifacts.workflows, 'Ns5WorkflowsArtifact'));
-  }
-  if (kinds.has('integration') && files.includes('integration.defs.ts')) {
-    written.push(await writeDefs(integrationFile(payload.moduleName), `${payload.moduleName}Integration`, artifacts.integration, 'Ns5IntegrationArtifact'));
-  }
-  if (kinds.has('journeys')) {
-    for (const journey of artifacts.journeys) {
-      written.push(await writeDefs(journeyFile(payload.moduleName, journey.journeyId), `${journey.journeyId}Journey`, journey, 'Ns5JourneyArtifact'));
+  jobs.push({ info: journeyIndexFile(moduleName), value: payload.artifacts.journeyIndex, newId: null });
+  jobs.push({ info: rulesFile(moduleName), value: payload.artifacts.rules, newId: null });
+  jobs.push({ info: accessFile(moduleName), value: payload.artifacts.access, newId: null });
+  jobs.push({ info: workflowsFile(moduleName), value: payload.artifacts.workflows, newId: null });
+  jobs.push({ info: integrationFile(moduleName), value: payload.artifacts.integration, newId: null });
+  const siblings = new Map<string, string>();
+  const missing: typeof jobs = [];
+  for (const job of jobs) {
+    let current = '';
+    try { current = await readSourceText(job.info); }
+    catch (error) {
+      console.error('[agentNewReleasePrompt] write50 read failed', error);
+      current = '';
     }
-    written.push(await writeDefs(journeyIndexFile(payload.moduleName), `${payload.moduleName}JourneyIndex`, artifacts.journeyIndex, 'Ns5JourneyIndexArtifact'));
-  }
-  if (kinds.has('ontology')) {
-    const indexType = isNs5OntologyV3Version(artifacts.ontologyIndex.schemaVersion) ? 'Ns5OntologyIndexV3' : 'Ns5OntologyIndex';
-    for (const entityId of ns5OntologyEntityIds(artifacts.ontologyIndex)) {
-      const entity = artifacts.entities.find(item => item.entityId === entityId);
-      if (!entity) continue;
-      const entityType = isNs5OntologyV3Version(entity.schemaVersion) ? 'Ns5OntologyEntityV3' : 'Ns5OntologyEntityArtifact';
-      written.push(await writeDefs(ontologyEntityFile(payload.moduleName, entityId), entityId, entity, entityType));
+    if (!current) {
+      missing.push(job);
+      continue;
     }
-    written.push(await writeDefs(ontologyIndexFile(payload.moduleName), `${payload.moduleName}OntologyIndex`, artifacts.ontologyIndex, indexType));
+    if (!siblings.has(job.info.folder)) siblings.set(job.info.folder, current);
+    if (sameDefsJson(current, job.value)) continue;
+    await writeSourceText(job.info, replaceDefsJsonLiteral(current, job.value));
+    written.push(`${job.info.folder}/${job.info.shortName}${job.info.extension}`);
+  }
+  for (const job of missing) {
+    const siblingSource = siblings.get(job.info.folder) || '';
+    if (!siblingSource) throw new Error(`No sibling defs file to copy for ${job.info.shortName}.`);
+    const nextId = job.newId || job.info.shortName;
+    await writeSourceText(job.info, defsSourceFromSibling(siblingSource, siblingIdOf(siblingSource, nextId), nextId, job.value));
+    written.push(`${job.info.folder}/${job.info.shortName}${job.info.extension}`);
   }
   const reportFile = pipelineJsonFileForProject(payload.project, payload.moduleName, 'newReleasePrompt');
   if (reportFile.folder.startsWith(`${payload.moduleName}/${NRP_CANDIDATE_REL}`)) {
     reportFile.folder = `${payload.moduleName}/pipeline`;
   }
-  written.push(await writeJson(reportFile, reportOf(payload, { written: true, reason: null, files: written })));
+  written.push(await writeJson(reportFile, nrpReport(payload, { written: true, reason: null, files: written })));
   return written;
+}
+
+function sameDefsJson(source: string, value: unknown): boolean {
+  const bounds = scanNs4ClassicJsonObject(source);
+  if (!bounds) return false;
+  try {
+    return JSON.stringify(JSON.parse(source.slice(bounds.start, bounds.end))) === JSON.stringify(value);
+  } catch (error) {
+    console.error('[agentNewReleasePrompt] write50 defs JSON is not readable', error);
+    return false;
+  }
+}
+
+function siblingIdOf(source: string, fallback: string | null): string {
+  const match = source.match(/fileReference="[^"]+\/([A-Za-z0-9_]+)\.defs\.ts"/u);
+  return match?.[1] || fallback || '';
 }
 
 function fileNames(payload: NrpWritePayload): string[] {
@@ -158,7 +188,202 @@ function fileNames(payload: NrpWritePayload): string[] {
   return names;
 }
 
-function reportOf(payload: NrpWritePayload, planned: NrpPersistPlan): Record<string, unknown> {
+const CHECK_KINDS: NrpGateKind[] = ['rules', 'journeys', 'access', 'workflows', 'integration', 'coherence'];
+
+export function nrpCheckRows(issues: readonly NrpGateIssue[]): Array<{ kind: NrpGateKind; result: 'passed' | 'failed'; baseline: boolean }> {
+  return CHECK_KINDS.map(kind => {
+    const rows = issues.filter(issue => issue.kind === kind);
+    return {
+      kind,
+      result: rows.some(issue => !issue.baseline) ? 'failed' as const : 'passed' as const,
+      baseline: rows.some(issue => issue.baseline === true),
+    };
+  });
+}
+
+/** Replaces the JSON literal and leaves the file header and the export names as they are. */
+export function replaceDefsJsonLiteral(source: string, value: unknown): string {
+  const bounds = scanNs4ClassicJsonObject(source);
+  if (!bounds) throw new Error('Defs file has no JSON object.');
+  const objectSource = source.slice(bounds.start, bounds.end);
+  let current: unknown;
+  try { current = JSON.parse(objectSource); }
+  catch (error) {
+    console.error('[agentNewReleasePrompt] write50 defs JSON is not readable', error);
+    throw new Error('Defs JSON is not readable.');
+  }
+  const next = patchJsonText(objectSource, current, value);
+  return `${source.slice(0, bounds.start)}${next}${source.slice(bounds.end)}`;
+}
+
+/** Keeps every unchanged token. A changed scalar replaces only its literal. */
+function patchJsonText(source: string, current: unknown, next: unknown): string {
+  if (JSON.stringify(current) === JSON.stringify(next)) return source;
+  if (isRecord(current) && isRecord(next)) return patchObject(source, current, next);
+  if (Array.isArray(current) && Array.isArray(next) && current.length === next.length) return patchArray(source, current, next);
+  return JSON.stringify(next);
+}
+
+function patchObject(source: string, current: Record<string, unknown>, next: Record<string, unknown>): string {
+  const entries = objectEntries(source);
+  let cursor = 0;
+  let out = '';
+  for (const entry of entries) {
+    out += source.slice(cursor, entry.valueStart);
+    const before = current[entry.key];
+    const after = Object.prototype.hasOwnProperty.call(next, entry.key) ? next[entry.key] : undefined;
+    out += patchJsonText(source.slice(entry.valueStart, entry.valueEnd), before, after);
+    cursor = entry.valueEnd;
+  }
+  out += source.slice(cursor);
+  const extra = Object.keys(next).filter(key => !Object.prototype.hasOwnProperty.call(current, key));
+  if (!extra.length) return out;
+  const inserted = extra.map(key => `${JSON.stringify(key)}: ${JSON.stringify(next[key])}`).join(', ');
+  const close = out.lastIndexOf('}');
+  const pad = entries.length ? ', ' : '';
+  return `${out.slice(0, close)}${pad}${inserted}${out.slice(close)}`;
+}
+
+function patchArray(source: string, current: unknown[], next: unknown[]): string {
+  const items = arrayItems(source);
+  let cursor = 0;
+  let out = '';
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    out += source.slice(cursor, item.start);
+    out += patchJsonText(source.slice(item.start, item.end), current[index], next[index]);
+    cursor = item.end;
+  }
+  out += source.slice(cursor);
+  return out;
+}
+
+function objectEntries(source: string): Array<{ key: string; valueStart: number; valueEnd: number }> {
+  const entries: Array<{ key: string; valueStart: number; valueEnd: number }> = [];
+  let index = skipSpace(source, 0);
+  if (source[index] !== '{') return entries;
+  index += 1;
+  while (index < source.length) {
+    index = skipSpace(source, index);
+    if (source[index] === '}') break;
+    const key = readString(source, index);
+    index = skipSpace(source, key.end);
+    if (source[index] !== ':') break;
+    const valueStart = skipSpace(source, index + 1);
+    const valueEnd = scanValue(source, valueStart);
+    entries.push({ key: key.value, valueStart, valueEnd });
+    index = skipSpace(source, valueEnd);
+    if (source[index] === ',') index += 1;
+  }
+  return entries;
+}
+
+function arrayItems(source: string): Array<{ start: number; end: number }> {
+  const items: Array<{ start: number; end: number }> = [];
+  let index = skipSpace(source, 0);
+  if (source[index] !== '[') return items;
+  index += 1;
+  while (index < source.length) {
+    index = skipSpace(source, index);
+    if (source[index] === ']') break;
+    const end = scanValue(source, index);
+    items.push({ start: index, end });
+    index = skipSpace(source, end);
+    if (source[index] === ',') index += 1;
+  }
+  return items;
+}
+
+function scanValue(source: string, start: number): number {
+  const char = source[start];
+  if (char === '"') return readString(source, start).end;
+  if (char === '{' || char === '[') {
+    const open = char;
+    const close = char === '{' ? '}' : ']';
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < source.length; index += 1) {
+      const item = source[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (item === '\\') escaped = true;
+        else if (item === '"') inString = false;
+        continue;
+      }
+      if (item === '"') { inString = true; continue; }
+      if (item === open) depth += 1;
+      else if (item === close) {
+        depth -= 1;
+        if (depth === 0) return index + 1;
+      }
+    }
+    return source.length;
+  }
+  let index = start;
+  while (index < source.length && !/[\s,\]}]/u.test(source[index])) index += 1;
+  return index;
+}
+
+function readString(source: string, start: number): { value: string; end: number } {
+  let value = '';
+  let escaped = false;
+  for (let index = start + 1; index < source.length; index += 1) {
+    const char = source[index];
+    if (escaped) {
+      value += char;
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') { escaped = true; continue; }
+    if (char === '"') return { value, end: index + 1 };
+    value += char;
+  }
+  return { value, end: source.length };
+}
+
+function skipSpace(source: string, index: number): number {
+  while (index < source.length && /\s/u.test(source[index])) index += 1;
+  return index;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** A new file copies a sibling wrapper and swaps the id inside that wrapper. */
+export function defsSourceFromSibling(siblingSource: string, siblingId: string, nextId: string, value: unknown): string {
+  const bounds = scanNs4ClassicJsonObject(siblingSource);
+  if (!bounds) throw new Error('Sibling defs file has no JSON object.');
+  const prefix = siblingSource.slice(0, bounds.start).split(siblingId).join(nextId);
+  const suffix = siblingSource.slice(bounds.end).split(siblingId).join(nextId);
+  return `${prefix}${JSON.stringify(value, null, 2)}${suffix}`;
+}
+
+export function changedNrpPaths(before: NrpModuleArtifacts, after: NrpModuleArtifacts): string[] {
+  const paths: string[] = [];
+  const beforeEntities = new Map((before.entities || []).map(entity => [entity.entityId, entity]));
+  for (const entity of after.entities || []) {
+    if (stable(beforeEntities.get(entity.entityId)) !== stable(entity)) paths.push(`ontology/${entity.entityId}.defs.ts`);
+  }
+  if (stable(before.ontologyIndex) !== stable(after.ontologyIndex)) paths.push('ontology/index.defs.ts');
+  const beforeJourneys = new Map((before.journeys || []).map(journey => [journey.journeyId, journey]));
+  for (const journey of after.journeys || []) {
+    if (stable(beforeJourneys.get(journey.journeyId)) !== stable(journey)) paths.push(`journeys/${journey.journeyId}.defs.ts`);
+  }
+  if (stable(before.journeyIndex) !== stable(after.journeyIndex)) paths.push('journeys/index.defs.ts');
+  if (stable(before.rules) !== stable(after.rules)) paths.push('rules.defs.ts');
+  if (stable(before.access) !== stable(after.access)) paths.push('access.defs.ts');
+  if (stable(before.workflows) !== stable(after.workflows)) paths.push('workflows.defs.ts');
+  if (stable(before.integration) !== stable(after.integration)) paths.push('integration.defs.ts');
+  return paths;
+}
+
+function stable(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Record<string, unknown> {
   const modelKinds = payload.applied.filter(edit => edit.mode === 'model').map(edit => edit.kind);
   return {
     request: payload.request,
@@ -166,9 +391,10 @@ function reportOf(payload: NrpWritePayload, planned: NrpPersistPlan): Record<str
     changed: payload.triage.artifacts,
     mechanical: payload.triage.mechanical,
     modelKinds,
-    checks: payload.issues,
+    checks: nrpCheckRows(payload.issues),
+    freshIssues: nrpFreshIssues(payload.issues),
     calls: payload.modelCalls,
-    costUsd: 0,
+    costUsd: null,
     written: planned.written,
     reason: planned.reason,
   };

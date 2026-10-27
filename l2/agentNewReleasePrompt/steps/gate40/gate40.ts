@@ -14,13 +14,19 @@ import {
   type NrpAppliedEdit,
   type NrpGateIssue,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
-import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
+import { pipelineJsonFileForProject, setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import { unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
+import {
+  NrpEditRefusal,
+  normalizeNrpEdit,
+  nrpFileScope,
+} from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import {
   NRP_ARTIFACT_KINDS,
   type NrpArtifactKind,
   type NrpTriage,
   normalizeNrpTriage,
+  recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { createWrite50Step } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
@@ -98,6 +104,7 @@ export async function beforeNrpGateStep(
       ];
     }
     const tool = buildNrpRepairTool();
+    const scope = nrpFileScope(merged, decision.kind, cursor.triage);
     return [{
       type: 'prompt_ready',
       args: String(step.prompt || ''),
@@ -107,7 +114,7 @@ export async function beforeNrpGateStep(
       hookSequential,
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_REPAIR_SYSTEM_PROMPT,
-      humanPrompt: buildNrpRepairHumanPrompt(cursor.request, decision.kind, issues, sliceOf(merged, decision.kind)),
+      humanPrompt: buildNrpRepairHumanPrompt(cursor.request, decision.kind, issues, scope.files),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
     }];
@@ -137,7 +144,8 @@ export async function afterNrpGateStep(
     const issues = gateIssues(baseArtifacts, merged);
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action !== 'repair' || !decision.kind) return [];
-    const artifact = readRepairArtifact(decision.kind, unwrapNs4FlexibleWorkerPayload(step.interaction.payload[0]));
+    const scope = nrpFileScope(merged, decision.kind, cursor.triage);
+    const artifact = normalizeNrpEdit(decision.kind, unwrapNs4FlexibleWorkerPayload(step.interaction.payload[0]), scope);
     const next: NrpGateCursor = {
       ...cursor,
       applied: [...cursor.applied, { mode: 'model', kind: decision.kind, artifact }],
@@ -150,48 +158,29 @@ export async function afterNrpGateStep(
     ];
   } catch (error) {
     console.error('[agentNewReleasePrompt] gate40 repair rejected', error);
-    return [fail(context, parentStep, step, hookSequential, error)];
+    const cited = await citeRepairRefusal(step, error);
+    return [fail(context, parentStep, step, hookSequential, cited)];
+  }
+}
+
+async function citeRepairRefusal(step: mls.msg.AIAgentStep, error: unknown): Promise<unknown> {
+  if (!(error instanceof NrpEditRefusal)) return error;
+  try {
+    const project = mls.actualProject || 0;
+    const cursor = readCursor(String(step.prompt || ''), project);
+    const info = pipelineJsonFileForProject(project, cursor.moduleName, 'newReleasePrompt-refused');
+    const citation = await recordNrpTriageRefusal(info, error.message, error.raw);
+    return new NrpEditRefusal(`${error.message} See ${citation}.`, error.raw);
+  } catch (writeError) {
+    console.error('[agentNewReleasePrompt] gate40 could not record the refused response', writeError);
+    const writeMessage = writeError instanceof Error ? writeError.message : String(writeError);
+    return new NrpEditRefusal(`${error.message} The refused response was not recorded: ${writeMessage}.`, error.raw);
   }
 }
 
 function gateIssues(base: NrpModuleArtifacts, merged: NrpModuleArtifacts): NrpGateIssue[] {
   const kinds = NRP_ARTIFACT_KINDS;
   return classifyNrpGateIssues(checkNrpGates(base, kinds), checkNrpGates(merged, kinds));
-}
-
-function sliceOf(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind): unknown {
-  if (kind === 'ontology') return { ontologyIndex: artifacts.ontologyIndex, entities: artifacts.entities };
-  if (kind === 'rules') return artifacts.rules;
-  if (kind === 'journeys') return { journeyIndex: artifacts.journeyIndex, journeys: artifacts.journeys };
-  if (kind === 'access') return artifacts.access;
-  if (kind === 'workflows') return artifacts.workflows;
-  return artifacts.integration;
-}
-
-function readRepairArtifact(kind: NrpArtifactKind, value: unknown): unknown {
-  const root = record(value, 'Repair payload');
-  const raw = root.artifactJson;
-  if (typeof raw !== 'string' || raw.trim().length < 2) throw new Error('Repair artifactJson must be JSON text.');
-  let parsed: unknown;
-  try { parsed = JSON.parse(raw); }
-  catch (error) {
-    console.error('[agentNewReleasePrompt] repair artifactJson is not JSON', error);
-    throw new Error('Repair artifactJson must be JSON text.');
-  }
-  const artifact = record(parsed, 'Repaired artifact');
-  const ok = kind === 'ontology'
-    ? Array.isArray(artifact.entities)
-    : kind === 'rules'
-      ? 'rules' in artifact
-      : kind === 'journeys'
-        ? Array.isArray(artifact.journeys)
-        : kind === 'access'
-          ? Array.isArray(artifact.grants)
-          : kind === 'workflows'
-            ? Array.isArray(artifact.processes)
-            : Array.isArray(artifact.inbound) && Array.isArray(artifact.outbound);
-  if (!ok) throw new Error(`Repaired ${kind} artifact has the wrong shape.`);
-  return parsed;
 }
 
 function readCursor(prompt: string, project: number): NrpGateCursor {

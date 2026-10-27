@@ -117,20 +117,33 @@ export function buildNrpRepairHumanPrompt(
 }
 
 export const NRP_REPAIR_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
-Repair one L4 artifact kind that failed verification.
-The full user request is in the message. Keep every rule and value the request does not change.
-Call submitNrpEdit. artifactJson is the whole artifact after the repair, as one JSON object serialized to text.`;
+Repair the L4 files named in the message. The full user request is in the message. Keep every rule and value the request does not change.
+Call submitNrpEdit. Return only the files you changed: files is a list of {id, artifactJson}. artifactJson is that one file as JSON text.
+id is the entity id or the journey id, index for that kind's index, or the kind name for a single file: rules, access, workflows, integration.`;
 
 export function buildNrpRepairTool(): mls.msg.LLMTool {
   return createNs4FlexibleWorkerTool(
     REPAIR_TOOL,
-    'Return the repaired artifact as JSON text. One kind only.',
+    'Return the repaired files as JSON text. Only the files you change.',
     {
-      $id: 'https://collab.codes/schemas/agentNewReleasePrompt/repair/2026-10-27-nrp-repair-v1',
+      $id: 'https://collab.codes/schemas/agentNewReleasePrompt/repair/2026-10-27-nrp-repair-files-v1',
       type: 'object',
       additionalProperties: false,
-      required: ['artifactJson'],
-      properties: { artifactJson: { type: 'string', minLength: 2 } },
+      required: ['files'],
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['id', 'artifactJson'],
+            properties: {
+              id: { type: 'string', minLength: 1 },
+              artifactJson: { type: 'string', minLength: 2 },
+            },
+          },
+        },
+      },
     },
   );
 }
@@ -239,29 +252,31 @@ function mapIssues(
 function replaceKind(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind, slice: unknown): NrpModuleArtifacts {
   const next = clone(artifacts);
   const root = record(slice, 'Edited artifact');
-  if (kind === 'ontology') {
-    next.ontologyIndex = root.ontologyIndex as NrpModuleArtifacts['ontologyIndex'];
-    next.entities = root.entities as NrpModuleArtifacts['entities'];
-    return next;
+  if (!Array.isArray(root.files)) throw new Error('A model edit lists files.');
+  for (const item of root.files) {
+    const file = record(item, 'Edited file');
+    const id = file.id;
+    if (typeof id !== 'string' || !id) throw new Error('An edited file needs an id.');
+    const body = file.artifact;
+    if (kind === 'ontology') {
+      if (id === 'index') next.ontologyIndex = body as NrpModuleArtifacts['ontologyIndex'];
+      else next.entities = upsert(next.entities, 'entityId', id, body);
+    } else if (kind === 'journeys') {
+      if (id === 'index') next.journeyIndex = body as NrpModuleArtifacts['journeyIndex'];
+      else next.journeys = upsert(next.journeys, 'journeyId', id, body);
+    } else if (kind === 'rules') next.rules = body as NrpModuleArtifacts['rules'];
+    else if (kind === 'access') next.access = body as NrpModuleArtifacts['access'];
+    else if (kind === 'workflows') next.workflows = body as NrpModuleArtifacts['workflows'];
+    else next.integration = body as NrpModuleArtifacts['integration'];
   }
-  if (kind === 'rules') {
-    next.rules = root as unknown as NrpModuleArtifacts['rules'];
-    return next;
-  }
-  if (kind === 'journeys') {
-    next.journeyIndex = root.journeyIndex as NrpModuleArtifacts['journeyIndex'];
-    next.journeys = root.journeys as NrpModuleArtifacts['journeys'];
-    return next;
-  }
-  if (kind === 'access') {
-    next.access = root as unknown as NrpModuleArtifacts['access'];
-    return next;
-  }
-  if (kind === 'workflows') {
-    next.workflows = root as unknown as NrpModuleArtifacts['workflows'];
-    return next;
-  }
-  next.integration = root as unknown as NrpModuleArtifacts['integration'];
+  return next;
+}
+
+function upsert<T>(items: T[], key: keyof T, id: string, body: unknown): T[] {
+  const next = items.slice();
+  const index = next.findIndex(item => (item as Record<string, unknown>)[key as string] === id);
+  if (index < 0) next.push(body as T);
+  else next[index] = body as T;
   return next;
 }
 

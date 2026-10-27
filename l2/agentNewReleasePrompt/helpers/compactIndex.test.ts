@@ -54,7 +54,11 @@ void test('compact index of the tarefas fixture lists triage targets and stays s
   });
   const bytes = new TextEncoder().encode(JSON.stringify(index)).length;
   assert.ok(bytes < 8_192, `index is ${bytes} bytes`);
-  assert.ok(index.entities.some(entity => entity.entityId === 'Tarefa' && entity.fields.some(field => field.id === 'prioridade' && field.required)));
+  const tarefa = index.entities.find(entity => entity.entityId === 'Tarefa');
+  assert.ok(tarefa?.fields.some(field => field.id === 'prioridade' && field.required));
+  assert.ok(tarefa?.fields.some(field => field.id === 'details.descricao'));
+  assert.ok(tarefa?.fields.some(field => field.id === 'details.checklist'));
+  assert.equal(tarefa?.fields.some(field => field.id === 'details'), false);
   const cancelar = index.entities.find(entity => entity.entityId === 'Tarefa')?.transitions.find(item => item.id === 'cancelar');
   assert.deepEqual(cancelar, {
     id: 'cancelar',

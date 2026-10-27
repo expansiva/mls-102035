@@ -1,5 +1,5 @@
 {
   "rulesReplace": {
-    "artifactJson": "{\"schemaVersion\":\"recorded\",\"moduleName\":\"sample\",\"rules\":[{\"ruleId\":\"defaultPriority\",\"description\":\"When priority is omitted, it is medium.\"}]}"
+    "files": [{ "id": "rules", "artifactJson": "{\"schemaVersion\":\"recorded\",\"moduleName\":\"sample\",\"rules\":[{\"ruleId\":\"defaultPriority\",\"description\":\"When priority is omitted, it is medium.\"}]}" }]
   }
 }

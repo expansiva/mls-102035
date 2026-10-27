@@ -90,31 +90,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function fieldIndex(id: string, field: unknown): NrpFieldIndex {
+  const item = isRecord(field) ? field : {};
+  return {
+    id,
+    type: typeof item.type === 'string' ? item.type : '',
+    required: item.required === true,
+  };
+}
+
+/** One level of `details.fields`, named `details.<id>`. The container itself stays out of the index. */
+function detailFields(field: unknown): NrpFieldIndex[] {
+  if (!isRecord(field) || !isRecord(field.fields)) return [];
+  return Object.entries(field.fields).map(([id, child]) => fieldIndex(`details.${id}`, child));
+}
+
 function fieldsOf(entity: Ns5OntologyAnyEntity): NrpFieldIndex[] {
   const source = entity as unknown as Record<string, unknown>;
   const record = source.record;
   if (isRecord(record) && isRecord(record.fields)) {
-    return Object.entries(record.fields)
-      .filter(([id]) => id !== 'details')
-      .map(([id, field]) => {
-        const item = isRecord(field) ? field : {};
-        return {
-          id,
-          type: typeof item.type === 'string' ? item.type : '',
-          required: item.required === true,
-        };
-      });
+    const fields: NrpFieldIndex[] = [];
+    for (const [id, field] of Object.entries(record.fields)) {
+      if (id === 'details') fields.push(...detailFields(field));
+      else fields.push(fieldIndex(id, field));
+    }
+    return fields;
   }
   const fields = source.fields;
   if (!Array.isArray(fields)) return [];
-  return fields.map(field => {
+  const listed: NrpFieldIndex[] = [];
+  for (const field of fields) {
     const item = isRecord(field) ? field : {};
-    return {
-      id: typeof item.fieldId === 'string' ? item.fieldId : '',
-      type: typeof item.type === 'string' ? item.type : '',
-      required: item.required === true,
-    };
-  });
+    const id = typeof item.fieldId === 'string' ? item.fieldId : '';
+    if (id === 'details') listed.push(...detailFields(item));
+    else listed.push(fieldIndex(id, item));
+  }
+  return listed;
 }
 
 function stringList(value: unknown): string[] {

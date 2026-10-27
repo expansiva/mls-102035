@@ -136,7 +136,7 @@ void test('a hook that plants a step closes itself last', async () => {
     {
       planId: 'edit30', stepId: 7, when: 'after',
       prompt: encodeNrpEditPrompt(MODULE, REQUEST, { mode: 'model', kind: 'rules', triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'] }, rest: [], applied: [] }),
-      payload: { artifactJson: JSON.stringify({ schemaVersion: 'recorded', moduleName: MODULE, rules: [] }) },
+      payload: { files: [{ id: 'rules', artifactJson: JSON.stringify({ schemaVersion: 'recorded', moduleName: MODULE, rules: [] }) }] },
       plants: true,
     },
     {
@@ -154,11 +154,11 @@ void test('a hook that plants a step closes itself last', async () => {
         nrpGate: {
           moduleName: MODULE, request: REQUEST,
           triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'] },
-          applied: [{ mode: 'model', kind: 'rules', artifact: { schemaVersion: '2026-09-16-ns5-rules-v2', moduleName: MODULE, rules: { BadId: '' } } }],
+          applied: [{ mode: 'model', kind: 'rules', artifact: { files: [{ id: 'rules', artifact: { schemaVersion: '2026-09-16-ns5-rules-v2', moduleName: MODULE, rules: { BadId: '' } } }] } }],
           repaired: [], modelCalls: 1,
         },
       }),
-      payload: { artifactJson: JSON.stringify({ schemaVersion: '2026-09-16-ns5-rules-v2', moduleName: MODULE, rules: { okRule: 'Keep the catalog.' } }) },
+      payload: { files: [{ id: 'rules', artifactJson: JSON.stringify({ schemaVersion: '2026-09-16-ns5-rules-v2', moduleName: MODULE, rules: { okRule: 'Keep the catalog.' } }) }] },
       plants: true,
     },
     {

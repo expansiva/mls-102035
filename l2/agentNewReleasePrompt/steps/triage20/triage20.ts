@@ -89,8 +89,8 @@ Call submitNrpTriage. Every property is required.
 - artifacts lists the kinds the change would touch. Use [] when the request stops here. Kinds: ontology, rules, journeys, access, workflows, integration.
 - targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.
 - intent is one sentence of the change to apply. Use null when the request stops here.
-- mechanical lists changes the code can apply without a model: setOptional, setRequired, remove, or setScalar. Use [] when a model must write the artifact, or when the request stops here.
-  Each mark has op, targetId, fieldId (empty string when the mark is not a field), and value (empty string when the op carries no new scalar).
+- mechanical lists changes the code can apply without a model. A mark covers only making a field optional or required (setOptional, setRequired), removing an item (remove), or replacing one scalar (setScalar). Each mark has op, targetId, fieldId (empty string when the mark is not a field), and value (empty string when the op carries no new scalar).
+  Any other part of the request goes to the model. A default value, a notice, or a new rule is not a mechanical mark. Put that kind in artifacts and describe that part in intent. Use [] when the request stops here, or when every part needs the model and no mark applies.
 
 Do not restate the index. Do not invent an example module.`;
 
