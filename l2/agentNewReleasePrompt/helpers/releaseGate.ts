@@ -11,7 +11,7 @@ import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
-import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES, nrpOccupiedSignatureBlock } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
 export type NrpGateKind = NrpArtifactKind | 'coherence';
 
@@ -370,6 +370,9 @@ export function buildNrpRepairHumanPrompt(
   if (issues.some(issue => issue.code === 'NS5_JOURNEY_TWIN' || issue.code === 'NS5_JOURNEY_STEP_KIND')) {
     parts.push(NRP_JOURNEY_RULES);
   }
+  if (issues.some(issue => issue.code === 'NS5_JOURNEY_TWIN')) {
+    parts.push(nrpOccupiedSignatureBlock(catalog, twinActors(issues)));
+  }
   if (shape) {
     parts.push(`${shape.rule}\nSibling ${shape.file.id} (reference only):\n${JSON.stringify(shape.file.artifact)}`);
   }
@@ -389,6 +392,16 @@ function nrpRepairIssueLines(
       if (!located) return `${issue.code} ${issue.path}: ${issue.message}`;
       return `${issue.code} file: ${located.file} pointer: ${located.pointer}: ${issue.message}`;
     });
+}
+
+function twinActors(issues: readonly NrpGateIssue[]): string[] {
+  const actors: string[] = [];
+  for (const issue of issues) {
+    if (issue.code !== 'NS5_JOURNEY_TWIN') continue;
+    const match = /same actor \(([^)]+)\)/u.exec(issue.message);
+    if (match && !actors.includes(match[1])) actors.push(match[1]);
+  }
+  return actors;
 }
 
 function nrpRepairAsk(issues: readonly NrpGateIssue[]): string {

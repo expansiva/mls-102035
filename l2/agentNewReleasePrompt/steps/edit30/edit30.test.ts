@@ -12,20 +12,23 @@ import {
   NRP_EDIT_SYSTEM_PROMPT,
   NRP_JOURNEY_RULES,
   NRP_JOURNEY_SHAPE,
+  NRP_NEW_SIGNATURE_RULE,
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
   nextNrpEditAfterRefusal,
   assertFile,
   normalizeNrpEdit,
+  nrpCreatedTwinMessage,
   nrpFileScope,
   nrpIndexFileGaps,
   nrpShapeReference,
   nrpUnresolvedTextMarks,
   planNrpEditOrders,
   type NrpEditCursor,
+  type NrpEditFile,
   type NrpFileScope,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
-import { checkNrpGates, classifyNrpGateIssues, nrpFreshIssues, overlayNrpEdits } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
+import { buildNrpRepairHumanPrompt, checkNrpGates, classifyNrpGateIssues, nrpFreshIssues, overlayNrpEdits } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { recordNrpTriageRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { pipelineJsonFileForProject } from '/_102035_/l2/solution/fs.js';
 import type { Ns5FileInfo } from '/_102035_/l2/solution/types.js';
@@ -521,6 +524,86 @@ void test('a new journey prompt carries one sibling and the real shape', () => {
   assert.match(prompt, /memberList/);
   assert.equal(/tarefas/i.test(prompt), false);
   assert.equal(prompt.includes('"journeyId":"memberList"') || prompt.includes('"journeyId": "memberList"'), true);
+});
+
+function gestorJourney(id: string, kinds: Array<'locate' | 'act'>): NrpEditFile {
+  return {
+    id,
+    artifact: {
+      journeyId: id,
+      business: {
+        actorRef: 'gestor',
+        title: id,
+        goal: 'g',
+        entry: { mode: 'coldStart' },
+        steps: kinds.map(kind => ({ stepId: kind, kind, entity: 'Tarefa', title: kind, description: kind })),
+        outcome: { statement: 's', evidence: ['e'] },
+      },
+    },
+  };
+}
+
+void test('a new gestor journey shows occupied signatures and retries once before the gate', () => {
+  const occupied = [
+    gestorJourney('reatribuirTarefa', ['locate', 'act']),
+    gestorJourney('cancelarTarefa', ['locate', 'act']),
+    gestorJourney('acompanharTarefas', ['inspect']),
+  ];
+  const index = { journeys: occupied.map(file => ({ journeyId: file.id, actorRef: 'gestor', title: file.id })) };
+  const scope: NrpFileScope = {
+    present: ['index'],
+    creates: ['duplicarTarefa'],
+    files: [{ id: 'index', artifact: index }, ...occupied],
+  };
+  const ask = { ...triage, artifacts: ['journeys'] as NrpTriage['artifacts'], targets: ['duplicarTarefa'], mechanical: [], mechanicalOnly: false };
+  const prompt = buildNrpEditHumanPrompt('The manager duplicates a task.', ask, 'journeys', scope.files, [], scope.creates, [], null, occupied);
+  assert.match(prompt, /gestor: act:Tarefa\+locate:Tarefa em reatribuirTarefa, cancelarTarefa/);
+  assert.match(prompt, /gestor: inspect:Tarefa em acompanharTarefas/);
+  assert.match(prompt, new RegExp(NRP_NEW_SIGNATURE_RULE));
+  const twinBody = gestorJourney('duplicarTarefa', ['locate', 'act']).artifact;
+  const edited = normalizeNrpEdit('journeys', {
+    operations: [
+      {
+        file: 'index', op: 'add', pointer: '/journeys/-', expectedJson: '',
+        valueJson: '{"journeyId":"duplicarTarefa","actorRef":"gestor","title":"Duplicar"}',
+        reason: 'list the new journey',
+      },
+      { file: 'duplicarTarefa', op: 'create', pointer: '', expectedJson: '', valueJson: JSON.stringify(twinBody), reason: 'new journey' },
+    ],
+  }, scope);
+  assert.deepEqual(nrpIndexFileGaps('journeys', scope, edited.files), { messages: [], createIds: [] });
+  const clash = nrpCreatedTwinMessage(scope, edited.files);
+  assert.match(clash || '', /duplicarTarefa/);
+  assert.match(clash || '', /act:Tarefa\+locate:Tarefa/);
+  assert.match(clash || '', new RegExp(NRP_NEW_SIGNATURE_RULE));
+  const order: NrpEditCursor = { mode: 'model', kind: 'journeys', triage: ask, rest: [], applied: [], attempts: 0 };
+  const again = nextNrpEditAfterRefusal(order, clash || '');
+  assert.equal(again?.attempts, 1);
+  const retryPrompt = buildNrpEditHumanPrompt('The manager duplicates a task.', ask, 'journeys', scope.files, [], scope.creates, again?.editErrors || [], null, occupied);
+  assert.match(retryPrompt, /Occupied signatures:/);
+  assert.match(retryPrompt, /repeats the occupied signature/);
+  assert.equal(nextNrpEditAfterRefusal(again || order, clash || ''), null);
+  const freeBody = gestorJourney('duplicarTarefa', ['act']).artifact;
+  const free = normalizeNrpEdit('journeys', {
+    operations: [
+      {
+        file: 'index', op: 'add', pointer: '/journeys/-', expectedJson: '',
+        valueJson: '{"journeyId":"duplicarTarefa","actorRef":"gestor","title":"Duplicar"}',
+        reason: 'list the new journey',
+      },
+      { file: 'duplicarTarefa', op: 'create', pointer: '', expectedJson: '', valueJson: JSON.stringify(freeBody), reason: 'new journey' },
+    ],
+  }, scope);
+  assert.equal(nrpCreatedTwinMessage(scope, free.files), null);
+  const repair = buildNrpRepairHumanPrompt(
+    'The manager duplicates a task.',
+    'journeys',
+    [{ kind: 'journeys', code: 'NS5_JOURNEY_TWIN', message: 'Journeys reatribuirTarefa, duplicarTarefa are twins: same actor (gestor) and same operations (act:Tarefa,locate:Tarefa).', path: 'journeys' }],
+    [{ id: 'index', artifact: index }, ...occupied, gestorJourney('duplicarTarefa', ['locate', 'act'])],
+  );
+  assert.match(repair, /gestor: act:Tarefa\+locate:Tarefa em reatribuirTarefa, cancelarTarefa, duplicarTarefa/);
+  assert.match(repair, new RegExp(NRP_NEW_SIGNATURE_RULE));
+  assert.equal(repair.includes('acompanharTarefas'), true);
 });
 
 void test('an index id without a file is retried once', () => {

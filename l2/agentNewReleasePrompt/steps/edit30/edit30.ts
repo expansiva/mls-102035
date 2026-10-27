@@ -40,6 +40,8 @@ export const NRP_JOURNEY_SHAPE = 'The new file has the same shape as the sibling
 export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, moduleName, entityId, and the same sections the sibling uses).';
 /** Step kinds the journey gate accepts, and the twin rule it enforces. The gate constant is not exported. */
 export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. To tell them apart, change the actor, the entity, or the operations (for example, replace locate plus act with one act step that has an effect). Do not invent a step kind.';
+/** Shown with the signatures the code already measured for the actor. */
+export const NRP_NEW_SIGNATURE_RULE = 'a jornada nova precisa de uma assinatura que não esteja na lista';
 
 export const NRP_EDIT_OPS = ['set', 'add', 'remove', 'create'] as const;
 export type NrpEditOp = typeof NRP_EDIT_OPS[number];
@@ -108,6 +110,7 @@ export function buildNrpEditHumanPrompt(
   creates: readonly string[] = [],
   editErrors: readonly string[] = [],
   reference: NrpEditFile | null = null,
+  occupied: readonly NrpEditFile[] | null = null,
 ): string {
   const marked = textMarks.filter(mark => mark.kind === kind);
   const lines = [
@@ -121,7 +124,10 @@ export function buildNrpEditHumanPrompt(
     lines.push(`Marked texts:\n${marked.map(mark => `${mark.path} — adjust the text so it does not cite ${mark.item}: ${JSON.stringify(mark.text)}`).join('\n')}`);
   }
   lines.push(`Allowed files:\n${files.map(file => `${file.id} — ${nrpFileReason(file, kind, marked, creates)}`).join('\n')}`);
-  if (kind === 'journeys' && creates.length) lines.push(NRP_JOURNEY_RULES);
+  if (kind === 'journeys' && creates.length) {
+    lines.push(NRP_JOURNEY_RULES);
+    lines.push(nrpOccupiedSignatureBlock(occupied ?? files));
+  }
   if (creates.length && reference) {
     const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
     lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);
@@ -277,6 +283,84 @@ export function nrpIndexFileGaps(
     messages.push(`File ${id} was created but the index does not list it.`);
   }
   return { messages, createIds };
+}
+
+export interface NrpJourneySignature {
+  journeyId: string;
+  actorRef: string;
+  signature: string;
+}
+
+/** Ordered `kind:entity` set, joined with `+`. Empty when the journey has no operation. */
+export function nrpJourneySignature(file: { id: string; artifact: unknown }): NrpJourneySignature | null {
+  if (!isRecord(file.artifact)) return null;
+  const business = file.artifact.business;
+  if (!isRecord(business) || typeof business.actorRef !== 'string' || !business.actorRef) return null;
+  if (!Array.isArray(business.steps)) return null;
+  const parts = [...new Set(business.steps.map(step => {
+    if (!isRecord(step) || typeof step.kind !== 'string' || typeof step.entity !== 'string') return '';
+    return step.kind && step.entity ? `${step.kind}:${step.entity}` : '';
+  }).filter(Boolean))].sort();
+  if (!parts.length) return null;
+  const journeyId = typeof file.artifact.journeyId === 'string' && file.artifact.journeyId
+    ? file.artifact.journeyId
+    : file.id;
+  return { journeyId, actorRef: business.actorRef, signature: parts.join('+') };
+}
+
+/** Signatures already used, grouped by actor. `actors` limits the list to the journey being repaired. */
+export function nrpOccupiedSignatureBlock(
+  files: readonly { id: string; artifact: unknown }[],
+  actors: readonly string[] = [],
+): string {
+  const wanted = actors.length ? new Set(actors) : null;
+  const groups = new Map<string, Map<string, string[]>>();
+  for (const file of files) {
+    if (file.id === 'index') continue;
+    const signature = nrpJourneySignature(file);
+    if (!signature) continue;
+    if (wanted && !wanted.has(signature.actorRef)) continue;
+    const bySignature = groups.get(signature.actorRef) || new Map<string, string[]>();
+    const ids = bySignature.get(signature.signature) || [];
+    if (!ids.includes(signature.journeyId)) ids.push(signature.journeyId);
+    bySignature.set(signature.signature, ids);
+    groups.set(signature.actorRef, bySignature);
+  }
+  const lines: string[] = [];
+  for (const actor of [...groups.keys()].sort()) {
+    const bySignature = groups.get(actor);
+    if (!bySignature) continue;
+    for (const signature of [...bySignature.keys()].sort()) {
+      lines.push(`${actor}: ${signature} em ${bySignature.get(signature)?.join(', ')}`);
+    }
+  }
+  return `Occupied signatures:\n${lines.join('\n') || '(none)'}\n${NRP_NEW_SIGNATURE_RULE}`;
+}
+
+/**
+ * A created journey that repeats an occupied signature of the same actor.
+ * The caller retries the edit once with this text before the gate runs.
+ */
+export function nrpCreatedTwinMessage(scope: NrpFileScope, edited: readonly NrpEditFile[]): string | null {
+  const created = new Set(edited.filter(file => scope.creates.includes(file.id)).map(file => file.id));
+  if (!created.size) return null;
+  const merged = new Map(scope.files.map(file => [file.id, file.artifact]));
+  for (const file of edited) merged.set(file.id, file.artifact);
+  const signatures = [...merged.entries()]
+    .filter(([id]) => id !== 'index')
+    .map(([id, artifact]) => nrpJourneySignature({ id, artifact }))
+    .filter((item): item is NrpJourneySignature => !!item);
+  const clashes = signatures.filter(item =>
+    created.has(item.journeyId)
+    && signatures.some(other => other.journeyId !== item.journeyId && other.actorRef === item.actorRef && other.signature === item.signature),
+  );
+  if (!clashes.length) return null;
+  const occupied = [...merged.entries()]
+    .filter(([id]) => id !== 'index' && !created.has(id))
+    .map(([id, artifact]) => ({ id, artifact }));
+  const actors = [...new Set(clashes.map(item => item.actorRef))];
+  const why = clashes.map(item => `Journey ${item.journeyId} repeats the occupied signature ${item.signature} of ${item.actorRef}.`).join('\n');
+  return `${why}\n${nrpOccupiedSignatureBlock(occupied, actors)}`;
 }
 
 export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: NrpFileScope): { files: NrpEditFile[] } {
@@ -815,6 +899,9 @@ export async function beforeNrpEditStep(
     const scope = nrpFileScope(edited.artifacts, kind, parsed.order.triage, edited.textMarks, parsed.order.pendingCreates || []);
     const tool = buildNrpEditTool();
     const reference = scope.creates.length ? nrpShapeReference(edited.artifacts, kind) : null;
+    const occupied = kind === 'journeys'
+      ? edited.artifacts.journeys.map(journey => ({ id: journey.journeyId, artifact: journey }))
+      : null;
     return [{
       type: 'prompt_ready',
       args: String(step.prompt || ''),
@@ -825,7 +912,7 @@ export async function beforeNrpEditStep(
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_EDIT_SYSTEM_PROMPT,
       humanPrompt: buildNrpEditHumanPrompt(
-        parsed.request, parsed.order.triage, kind, scope.files, edited.textMarks, scope.creates, parsed.order.editErrors || [], reference,
+        parsed.request, parsed.order.triage, kind, scope.files, edited.textMarks, scope.creates, parsed.order.editErrors || [], reference, occupied,
       ),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
@@ -859,6 +946,10 @@ export async function afterNrpEditStep(
     const gaps = nrpIndexFileGaps(parsed.order.kind, scope, artifact.files);
     if (gaps.messages.length) {
       throw new NrpEditRefusal(gaps.messages.join('\n'), payload, gaps.createIds);
+    }
+    if (parsed.order.kind === 'journeys') {
+      const twin = nrpCreatedTwinMessage(scope, artifact.files);
+      if (twin) throw new NrpEditRefusal(twin, payload);
     }
     const pendingTextMarks = nrpUnresolvedTextMarks(parsed.order.kind, scope, loaded.textMarks, artifact.files, loaded.artifacts);
     const applied: NrpAppliedEdit[] = [
