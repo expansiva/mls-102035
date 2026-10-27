@@ -42,7 +42,8 @@ export const NRP_EDIT_SCHEMA: Record<string, unknown> = {
   },
 };
 
-export const NRP_EDIT_SYSTEM_PROMPT = `Edit one L4 artifact kind for the request.
+export const NRP_EDIT_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
+Edit one L4 artifact kind for the request.
 You receive that kind only, the intent, and the target ids.
 Call submitNrpEdit. artifactJson is the whole artifact after the change, as one JSON object serialized to text.
 Change only what the request requires. Keep every other value.

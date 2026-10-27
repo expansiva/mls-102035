@@ -62,7 +62,8 @@ export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
   },
 };
 
-export const NRP_TRIAGE_SYSTEM_PROMPT = `Decide whether one free-text request can change the L4 specification that is being edited.
+export const NRP_TRIAGE_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
+Decide whether one free-text request can change the L4 specification that is being edited.
 The index you receive lists only that specification: entities and their fields, rules, journeys, access grants, workflows, and integration events.
 You do not edit anything. You only classify the request.
 

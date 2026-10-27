@@ -116,7 +116,8 @@ export function buildNrpRepairHumanPrompt(
   ].join('\n\n');
 }
 
-export const NRP_REPAIR_SYSTEM_PROMPT = `Repair one L4 artifact kind that failed verification.
+export const NRP_REPAIR_SYSTEM_PROMPT = `<!-- modelType: reasoning -->
+Repair one L4 artifact kind that failed verification.
 The full user request is in the message. Keep every rule and value the request does not change.
 Call submitNrpEdit. artifactJson is the whole artifact after the repair, as one JSON object serialized to text.`;
 
