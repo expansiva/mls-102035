@@ -33,12 +33,12 @@ export async function beforeNrpIndexStep(
           planning: { planId: 'index10-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
+      { type: 'add-step', ...base, step: createTriage20Step(String(step.prompt || '')) },
       {
         type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
         cleaner: 'input_output',
         traceMsg: `index10: ${index.entities.length} entities, ${index.rules.length} rules, ${bytes} bytes.`,
       },
-      { type: 'add-step', ...base, step: createTriage20Step(String(step.prompt || '')) },
     ];
   } catch (error) {
     console.error('[agentNewReleasePrompt] index10 failed', error);
