@@ -49,6 +49,7 @@ Every process has a trigger:
 - `kind: alert` — a recurring duty of a person: the schedule is on `trigger.schedule`, the
   instruction is the `description`, and when that person usually runs a listed journey, name that
   journey in the description. Requires `actorRef`. It carries no `journeyRef` and no `entityRef`.
+- `icon` is a Lucide icon name for the task, so the person can recognize the stage. Send `null` when none fits. Do not invent a name; an unknown name is dropped.
 
 ## Functions
 

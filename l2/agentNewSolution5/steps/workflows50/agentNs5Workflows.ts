@@ -223,7 +223,7 @@ export async function afterNs5WorkflowsPromptStep(
     }
 
     const journeyIds = (await readJourneys(moduleName)).map(journey => journey.journeyId);
-    const { processes, journeyDecisions, systemDecisions } = normalizeNs5WorkflowsPayload(payload, { journeyIds });
+    const { processes, journeyDecisions, systemDecisions, normalizations } = normalizeNs5WorkflowsPayload(payload, { journeyIds });
     const moduleArtifact = await readModule(moduleName);
     const [journeys, entities, actors] = await Promise.all([
       readJourneys(moduleName),
@@ -239,6 +239,7 @@ export async function afterNs5WorkflowsPromptStep(
       processes,
       journeyDecisions,
       ...(systemDecisions.length ? { systemDecisions } : {}),
+      ...(normalizations.length ? { normalizations } : {}),
     });
     const gate = validateNs5Workflows(processes, {
       moduleName,
@@ -271,6 +272,7 @@ export async function afterNs5WorkflowsPromptStep(
       systemDecisions,
       pipeline,
       false,
+      normalizations,
     );
     if (compile.status === 'errors') {
       const feedback = formatNs5CompileFeedback(compile);
@@ -303,10 +305,14 @@ async function persistArtifacts(
   systemDecisions: Ns5SystemDecision[],
   pipeline: Ns5PipelineState,
   noProcessSignal: boolean,
+  normalizations: { kind: string; detail: string; taskId?: string }[] = [],
 ): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
   const artifact = buildNs5WorkflowsArtifactV3(moduleName, processes, journeyDecisions, systemDecisions);
   const artifactPath = await writeDefs(workflowsFile(moduleName), `${moduleName}Workflows`, artifact, 'Ns5WorkflowsArtifact');
-  await writeJson(draftFile(moduleName, 'workflows50'), artifact);
+  await writeJson(draftFile(moduleName, 'workflows50'), {
+    ...artifact,
+    ...(normalizations.length ? { normalizations } : {}),
+  });
   // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
   const compile = await compileNs5Defs([workflowsFile(moduleName)]);
   await writeStepState(pipeline, {
@@ -315,6 +321,7 @@ async function persistArtifacts(
     artifactPaths: [artifactPath],
     compile,
     ...(noProcessSignal ? { noProcessSignal: true } : {}),
+    ...(normalizations.length ? { normalizations } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
   });
   return { artifactPath, compile };

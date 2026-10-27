@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/gates/workflows50/contracts.ts" enhancement="_blank"/>
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
+import { isLucideIcon } from '/_102035_/l2/solution/lucideIcons.js';
 import { splitNs5EntityRef } from '/_102035_/l2/solution/ontologyView.js';
 import {
   NS5_WORKFLOWS_SCHEMA_VERSION,
@@ -23,10 +24,21 @@ const WAKE_MODES = new Set(['none', 'periodic']);
 /** Deterministic extract of time/event phrases from sourcePrompt. Not in the prompt. Accents are folded first. */
 const TIME_EVENT_MARKER = /\b(?:todo|cada|quando|automaticamente|a cada|mensal|diario)\b/;
 
+export const NS5_WORKFLOW_DROP_UNKNOWN_ICON = 'dropUnknownIcon' as const;
+
+/** Same shape as journeys20 `draft.normalizations[]`. Unknown icon is not a gate error. */
+export interface Ns5WorkflowsFormNormalization {
+  kind: typeof NS5_WORKFLOW_DROP_UNKNOWN_ICON;
+  processId: string;
+  taskId: string;
+  detail: string;
+}
+
 export interface Ns5WorkflowsNormalization {
   processes: Ns5WorkflowProcess[];
   journeyDecisions: Ns5JourneyDecision[];
   systemDecisions: Ns5SystemDecision[];
+  normalizations: Ns5WorkflowsFormNormalization[];
 }
 
 export interface Ns5WorkflowsJourneyView {
@@ -72,12 +84,14 @@ export function normalizeNs5WorkflowsPayload(
 ): Ns5WorkflowsNormalization {
   const root = record(value);
   const dropped: Ns5SystemDecision[] = [];
-  const rawProcesses = list(root.processes).map(item => normalizeProcess(item, dropped)).filter(process => process.processId || process.tasks.length);
+  const normalizations: Ns5WorkflowsFormNormalization[] = [];
+  const rawProcesses = list(root.processes).map(item => normalizeProcess(item, dropped, normalizations)).filter(process => process.processId || process.tasks.length);
   const processes = rawProcesses.map(process => dropDuplicateTasks(process, dropped));
   return {
     processes,
     journeyDecisions: completeJourneyDecisions(list(root.journeyDecisions).map(normalizeDecision), processes, options?.journeyIds),
     systemDecisions: dropped,
+    normalizations,
   };
 }
 
@@ -316,12 +330,17 @@ export function collectNs5WorkflowsRefCatalog(
   };
 }
 
-function normalizeProcess(value: unknown, dropped: Ns5SystemDecision[]): Ns5WorkflowProcess {
+function normalizeProcess(
+  value: unknown,
+  dropped: Ns5SystemDecision[],
+  normalizations: Ns5WorkflowsFormNormalization[],
+): Ns5WorkflowProcess {
   const source = record(value);
-  const tasks = list(source.tasks).map(item => normalizeTask(item, dropped)).filter(task => task.taskId || task.description);
+  const processId = memberId(text(source.processId) || text(source.id), '');
+  const tasks = list(source.tasks).map(item => normalizeTask(item, dropped, processId, normalizations)).filter(task => task.taskId || task.description);
   const room = text(source.room);
   const process: Ns5WorkflowProcess = {
-    processId: memberId(text(source.processId) || text(source.id), ''),
+    processId,
     title: text(source.title),
     description: text(source.description),
     trigger: normalizeTrigger(source.trigger),
@@ -346,7 +365,12 @@ function normalizeTrigger(value: unknown): Ns5WorkflowTrigger {
   return actorRef ? { kind: 'manual', actorRef } : { kind: 'manual' };
 }
 
-function normalizeTask(value: unknown, dropped: Ns5SystemDecision[]): Ns5WorkflowTask {
+function normalizeTask(
+  value: unknown,
+  dropped: Ns5SystemDecision[],
+  processId: string,
+  normalizations: Ns5WorkflowsFormNormalization[],
+): Ns5WorkflowTask {
   const source = record(value);
   const kind = text(source.kind);
   const resolved = TASK_KINDS.has(kind) ? kind as Ns5WorkflowTask['kind'] : 'human';
@@ -355,8 +379,10 @@ function normalizeTask(value: unknown, dropped: Ns5SystemDecision[]): Ns5Workflo
   const entityRef = entityId(text(source.entityRef));
   const effect = text(source.effect);
   const transitionRef = memberId(text(source.transitionRef), '');
+  const taskId = memberId(text(source.taskId) || text(source.id), '');
+  const icon = optionalIcon(source.icon, processId, taskId, normalizations);
   const task: Ns5WorkflowTask = {
-    taskId: memberId(text(source.taskId) || text(source.id), ''),
+    taskId,
     kind: resolved,
     ...((resolved === 'human' || resolved === 'alert') && actorRef ? { actorRef } : {}),
     // An alert carries no journeyRef/entityRef, but normalize KEEPS what the model wrote so the gate
@@ -371,6 +397,7 @@ function normalizeTask(value: unknown, dropped: Ns5SystemDecision[]): Ns5Workflo
     ...((resolved === 'mechanical' || resolved === 'llm') && transitionRef ? { transitionRef } : {}),
     next: unique(strings(source.next).map(item => memberId(item, '')).filter(Boolean)),
     description: text(source.description),
+    ...(icon ? { icon } : {}),
   };
   const wake = normalizeWake(source.wake);
   if (wake) {
@@ -385,6 +412,26 @@ function normalizeTask(value: unknown, dropped: Ns5SystemDecision[]): Ns5Workflo
     }
   }
   return task;
+}
+
+/** `null` and blank become absent. A name outside the Lucide catalog is dropped and recorded. */
+function optionalIcon(
+  value: unknown,
+  processId: string,
+  taskId: string,
+  normalizations: Ns5WorkflowsFormNormalization[],
+): string | undefined {
+  if (value == null) return undefined;
+  const name = text(value);
+  if (!name) return undefined;
+  if (isLucideIcon(name)) return name;
+  normalizations.push({
+    kind: NS5_WORKFLOW_DROP_UNKNOWN_ICON,
+    processId,
+    taskId,
+    detail: `icon ${name} is not in the Lucide catalog; dropped.`,
+  });
+  return undefined;
 }
 
 /** Keeps a wake the gate can still reject: a periodic wake may arrive without a valid `every`. */

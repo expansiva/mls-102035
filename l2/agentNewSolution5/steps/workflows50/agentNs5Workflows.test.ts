@@ -29,6 +29,7 @@ import {
   collectNs5TimeEventPhrases,
   collectNs5WorkflowsRefCatalog,
   normalizeNs5WorkflowsPayload,
+  NS5_WORKFLOW_DROP_UNKNOWN_ICON,
   ns5WorkflowsNeedsLlm,
   type Ns5WorkflowsEntityView,
   type Ns5WorkflowsJourneyView,
@@ -663,7 +664,7 @@ void test('workflows schema declares the alert branch with all five keys require
   assert.ok(alert);
   assert.equal(alert.additionalProperties, false);
   assert.deepEqual(alert.required, ['taskId', 'kind', 'actorRef', 'next', 'description']);
-  assert.deepEqual(Object.keys(alert.properties).sort(), ['actorRef', 'description', 'kind', 'next', 'taskId']);
+  assert.deepEqual(Object.keys(alert.properties).sort(), ['actorRef', 'description', 'icon', 'kind', 'next', 'taskId']);
 });
 
 void test('buildNs5WorkflowsArtifact keeps schemaVersion and process order', () => {
@@ -1070,4 +1071,39 @@ void test('ns5_49: the human prompt no longer carries the entity lifecycle block
   assert.equal(prompt.includes('## Entities with lifecycle'), false);
   assert.match(prompt, /## Valid reference ids/);
   assert.match(prompt, /ServiceOrder\.publishBudget/);
+});
+
+void test('icon null is absent and an unknown Lucide name is dropped and recorded', () => {
+  const normalized = drafts({
+    processes: [validProcess({
+      tasks: [
+        { ...humanTask('receive', 'recepcionista', 'abrirOrdenServicio', [], 'Reception opens the order.'), icon: null },
+        { ...humanTask('analyze', 'tecnico', 'prepararPresupuestoServicio', [], 'Technician publishes the budget.'), icon: 'not-a-lucide-name' },
+        { ...humanTask('repair', 'tecnico', 'repararAparato', [], 'Technician marks the order ready.'), icon: 'clipboard-check' },
+      ],
+    })],
+  });
+  const tasks = normalized.processes[0].tasks;
+  assert.equal('icon' in tasks[0], false);
+  assert.equal('icon' in tasks[1], false);
+  assert.equal(tasks[2].icon, 'clipboard-check');
+  assert.equal(normalized.normalizations.length, 1);
+  assert.equal(normalized.normalizations[0].kind, NS5_WORKFLOW_DROP_UNKNOWN_ICON);
+  assert.equal(normalized.normalizations[0].taskId, 'analyze');
+  assert.equal(normalized.systemDecisions.some(decision => decision.decisionId.includes('icon')), false);
+});
+
+void test('workflows50 prompt and schema state task icon as intention', () => {
+  const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
+  assert.match(prompt, /`icon` is a Lucide icon name for the task/);
+  const schema = loadSchema() as {
+    $defs: { task: { oneOf: Array<{ required: string[]; properties: { icon?: { type: string } } }> } };
+  };
+  assert.equal(schema.$defs.task.oneOf.length, 4);
+  for (const branch of schema.$defs.task.oneOf) {
+    assert.equal(branch.required.includes('icon'), false);
+    assert.equal(branch.properties.icon?.type, 'string');
+  }
+  const source = readFileSync(path.join(HERE, 'agentNs5Workflows.ts'), 'utf8');
+  assert.match(source, /normalizations/);
 });
