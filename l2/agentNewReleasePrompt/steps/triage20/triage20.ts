@@ -45,13 +45,15 @@ export interface NrpTriage {
   targets: string[];
   intent: string | null;
   mechanical: NrpMechanicalMark[];
+  /** True only when the marks alone fulfill the request. */
+  mechanicalOnly: boolean;
 }
 
 export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
   $id: 'https://collab.codes/schemas/agentNewReleasePrompt/triage/2026-10-27-nrp-triage-v1',
   type: 'object',
   additionalProperties: false,
-  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical'],
+  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly'],
   properties: {
     valid: { type: 'boolean' },
     reason: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
@@ -73,6 +75,7 @@ export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
         },
       },
     },
+    mechanicalOnly: { type: 'boolean' },
   },
 };
 
@@ -90,7 +93,8 @@ Call submitNrpTriage. Every property is required.
 - targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.
 - intent is one sentence of the change to apply. Use null when the request stops here.
 - mechanical lists changes the code can apply without a model. A mark covers only making a field optional or required (setOptional, setRequired), removing an item (remove), or replacing one scalar (setScalar). Each mark has op, targetId, fieldId (empty string when the mark is not a field), and value (empty string when the op carries no new scalar).
-  Any other part of the request goes to the model. A default value, a notice, or a new rule is not a mechanical mark. Put that kind in artifacts and describe that part in intent. Use [] when the request stops here, or when every part needs the model and no mark applies.
+  Any other part of the request goes to the model. A default value, a notice, a new rule, or new text is not a mechanical mark. Put that kind in artifacts and describe that part in intent. Use [] when the request stops here, or when every part needs the model and no mark applies.
+- mechanicalOnly is true only when those marks, by themselves, fulfill the whole request. A default value, a notice, a new rule, or new text makes mechanicalOnly false, and the kind that records that part goes in artifacts and in intent.
 
 Do not restate the index. Do not invent an example module.`;
 
@@ -121,7 +125,8 @@ export function normalizeNrpTriage(value: unknown): NrpTriage {
     const artifacts = kinds(root.artifacts);
     const targets = texts(root.targets, 'targets');
     const mechanical = marks(root.mechanical);
-    const triage: NrpTriage = { valid, reason, clarification, artifacts, targets, intent, mechanical };
+    if (typeof root.mechanicalOnly !== 'boolean') throw new Error('Triage mechanicalOnly must be a boolean.');
+    const triage: NrpTriage = { valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly };
     const notes = settleShape(triage);
     if (notes.length) triageNotes.set(triage, notes);
     return triage;
@@ -314,11 +319,14 @@ function settleShape(triage: NrpTriage): string[] {
   if (triage.reason || !triage.intent || !triage.artifacts.length) {
     throw new Error('A valid request needs an intent, at least one artifact, and a null reason.');
   }
+  if (triage.mechanicalOnly && !triage.mechanical.length) {
+    throw new Error('mechanicalOnly needs at least one mechanical mark.');
+  }
   return notes;
 }
 
 function hasChangeFields(triage: NrpTriage): boolean {
-  return !!(triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length);
+  return !!(triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length || triage.mechanicalOnly);
 }
 
 function clearChanges(triage: NrpTriage): void {
@@ -326,6 +334,7 @@ function clearChanges(triage: NrpTriage): void {
   triage.artifacts = [];
   triage.targets = [];
   triage.mechanical = [];
+  triage.mechanicalOnly = false;
 }
 
 function redact(value: unknown, depth = 0): unknown {

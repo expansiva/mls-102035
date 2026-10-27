@@ -13,6 +13,7 @@ import {
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
   nextNrpEditAfterRefusal,
+  assertFile,
   normalizeNrpEdit,
   nrpFileScope,
   planNrpEditOrders,
@@ -71,6 +72,7 @@ const triage: NrpTriage = {
   targets: ['WorkItem', 'priority'],
   intent: 'Priority becomes optional and a default rule is added.',
   mechanical: [{ op: 'setOptional', targetId: 'WorkItem', fieldId: 'priority', value: '' }],
+  mechanicalOnly: true,
 };
 
 void test('edit schema is strict and the prompt names no sample module', () => {
@@ -131,6 +133,8 @@ void test('mechanical marks change the artifact and leave the other kind to the 
   const orders = planNrpEditOrders(artifacts, triage);
   assert.deepEqual(orders.map(order => order.mode), ['apply', 'model']);
   assert.equal(orders[1].kind, 'rules');
+  const keepOntology = planNrpEditOrders(artifacts, { ...triage, mechanicalOnly: false });
+  assert.deepEqual(keepOntology.map(order => `${order.mode}:${order.kind}`), ['apply:null', 'model:ontology', 'model:rules']);
   assert.throws(() => applyNrpMechanical(artifacts, [{ op: 'setOptional', targetId: 'WorkItem', fieldId: 'missing', value: '' }]), /not found/);
 });
 
@@ -328,4 +332,29 @@ void test('the recorded hour-estimate operations apply to Tarefa and pass the ga
   const before = checkNrpGates(artifacts, ['ontology']);
   const after = classifyNrpGateIssues(before, checkNrpGates(merged, ['ontology']));
   assert.deepEqual(nrpFreshIssues(after), []);
+});
+
+void test('assertFile accepts every tarefas fixture file and a rules map', () => {
+  const fixture = path.join(HERE, '../../../solution/fixtures/finalize80/tarefas');
+  const defs = (name: string): unknown => JSON.parse(extractNs4ClassicJsonObject(readFileSync(path.join(fixture, name), 'utf8')));
+  const files: Array<[Parameters<typeof assertFile>[0], string, string]> = [
+    ['rules', 'rules', 'rules.defs.ts'],
+    ['access', 'access', 'access.defs.ts'],
+    ['workflows', 'workflows', 'workflows.defs.ts'],
+    ['integration', 'integration', 'integration.defs.ts'],
+    ['ontology', 'index', 'ontology/index.defs.ts'],
+    ['ontology', 'Tarefa', 'ontology/Tarefa.defs.ts'],
+    ['ontology', 'Lista', 'ontology/Lista.defs.ts'],
+    ['journeys', 'index', 'journeys/index.defs.ts'],
+  ];
+  for (const journey of ['criarTarefa', 'executarTarefa', 'gerenciarTarefas', 'manterListas', 'manterTarefa', 'revisarTarefa']) {
+    files.push(['journeys', journey, `journeys/${journey}.defs.ts`]);
+  }
+  for (const [kind, id, name] of files) assertFile(kind, id, defs(name));
+  assertFile('rules', 'rules', {
+    schemaVersion: '2026-09-10-ns5-rules-v2',
+    moduleName: 'tarefas',
+    rules: { edicaoNaoMudaSituacao: 'Editar não muda a situação.' },
+  });
+  assert.throws(() => assertFile('rules', 'rules', { rules: { edicaoNaoMudaSituacao: { description: 'no' } } }), /wrong shape/);
 });

@@ -40,13 +40,19 @@ export function applyNrpMechanical(
 }
 
 /**
- * A kind the mechanical marks already cover skips the model, unless a free text in that kind
- * still cites a removed item. Those kinds, and any other kind that holds such a text, come back.
+ * When mechanicalOnly is true, a kind the marks already cover skips the model, unless a free text
+ * in that kind still cites a removed item. When it is false, every listed kind still goes to the
+ * model after the marks. A kind that holds a marked text comes back either way.
  */
-export function nrpModelKinds(artifacts: NrpModuleArtifacts, marks: NrpMechanicalMark[], listed: NrpArtifactKind[]): NrpArtifactKind[] {
+export function nrpModelKinds(
+  artifacts: NrpModuleArtifacts,
+  marks: NrpMechanicalMark[],
+  listed: NrpArtifactKind[],
+  mechanicalOnly = true,
+): NrpArtifactKind[] {
   const covered = new Set(marks.map(mark => kindOfMark(artifacts, mark)));
   const cited = new Set(applyNrpMechanical(artifacts, marks).textMarks.map(mark => mark.kind));
-  const kinds = listed.filter(kind => !covered.has(kind) || cited.has(kind));
+  const kinds = listed.filter(kind => !mechanicalOnly || !covered.has(kind) || cited.has(kind));
   for (const kind of cited) if (!kinds.includes(kind)) kinds.push(kind);
   return kinds;
 }

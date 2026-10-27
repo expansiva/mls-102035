@@ -34,7 +34,7 @@ void test('a field change rewrites one defs file and only that field line', () =
   assert.deepEqual(changed, ['        "required": false,']);
   const report = nrpReport({
     moduleName: 'tarefas', project: 1, request: 'Make priority optional.',
-    triage: { valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'], intent: 'Optional.', mechanical: [] },
+    triage: { valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'], intent: 'Optional.', mechanical: [], mechanicalOnly: false },
     artifacts: after, applied: [], issues: [], allowWrite: true, modelCalls: 2,
   }, { written: true, reason: null, files: ['ontology/Tarefa.defs.ts'] });
   assert.equal(report.calls, 2);

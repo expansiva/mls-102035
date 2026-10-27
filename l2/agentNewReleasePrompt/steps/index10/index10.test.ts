@@ -23,6 +23,7 @@ const TRIAGE: NrpTriage = {
   targets: ['Tarefa'],
   intent: 'Make the priority field optional.',
   mechanical: [{ op: 'setOptional', targetId: 'Tarefa', fieldId: 'prioridade', value: '' }],
+  mechanicalOnly: true,
 };
 
 type Stored = {
@@ -120,7 +121,7 @@ void test('a hook that plants a step closes itself last', async () => {
   const meta = { agentName: 'agentNewReleasePrompt' } as IAgentMeta;
   const stopped = {
     valid: false, reason: 'Outside the specification.', clarification: null,
-    artifacts: [], targets: [], intent: null, mechanical: [],
+    artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false,
   };
   const cases: Array<{ planId: string; stepId: number; when: 'before' | 'after'; prompt: string; payload?: unknown; plants: boolean }> = [
     { planId: 'entry10', stepId: 2, when: 'before', prompt: invocation, plants: true },
@@ -135,7 +136,7 @@ void test('a hook that plants a step closes itself last', async () => {
     },
     {
       planId: 'edit30', stepId: 7, when: 'after',
-      prompt: encodeNrpEditPrompt(MODULE, REQUEST, { mode: 'model', kind: 'rules', triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'] }, rest: [], applied: [] }),
+      prompt: encodeNrpEditPrompt(MODULE, REQUEST, { mode: 'model', kind: 'rules', triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'], mechanicalOnly: false }, rest: [], applied: [] }),
       payload: { operations: [{ file: 'rules', op: 'add', pointer: '/rules/-', expectedJson: '', valueJson: '{"ruleId":"keep","description":"Keep the catalog."}', reason: 'Add a rule.' }] },
       plants: true,
     },
@@ -143,7 +144,7 @@ void test('a hook that plants a step closes itself last', async () => {
       planId: 'gate40', stepId: 8, when: 'before',
       prompt: JSON.stringify({
         moduleName: MODULE, request: REQUEST,
-        nrpGate: { moduleName: MODULE, request: REQUEST, triage: { ...TRIAGE, mechanical: [] }, applied: [], repaired: [], modelCalls: 0 },
+        nrpGate: { moduleName: MODULE, request: REQUEST, triage: { ...TRIAGE, mechanical: [], mechanicalOnly: false }, applied: [], repaired: [], modelCalls: 0 },
       }),
       plants: true,
     },
@@ -153,7 +154,7 @@ void test('a hook that plants a step closes itself last', async () => {
         moduleName: MODULE, request: REQUEST,
         nrpGate: {
           moduleName: MODULE, request: REQUEST,
-          triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'] },
+          triage: { ...TRIAGE, mechanical: [], artifacts: ['rules'], mechanicalOnly: false },
           applied: [{ mode: 'model', kind: 'rules', artifact: { files: [{ id: 'rules', artifact: { schemaVersion: '2026-09-16-ns5-rules-v2', moduleName: MODULE, rules: { BadId: '' } } }] } }],
           repaired: [], modelCalls: 1,
         },
@@ -166,7 +167,7 @@ void test('a hook that plants a step closes itself last', async () => {
       prompt: JSON.stringify({
         nrpWrite: {
           moduleName: MODULE, project: PROJECT, request: REQUEST,
-          triage: { ...TRIAGE, mechanical: [] }, artifacts: {}, applied: [], issues: [],
+          triage: { ...TRIAGE, mechanical: [], mechanicalOnly: false }, artifacts: {}, applied: [], issues: [],
           allowWrite: false, modelCalls: 0,
         },
       }),

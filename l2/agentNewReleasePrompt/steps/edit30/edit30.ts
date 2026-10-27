@@ -515,7 +515,7 @@ export function createEdit30Step(moduleName: string, request: string, order: Nrp
 export function planNrpEditOrders(artifacts: NrpModuleArtifacts, triage: NrpTriage): NrpEditOrder[] {
   const orders: NrpEditOrder[] = [];
   if (triage.mechanical.length) orders.push({ mode: 'apply', kind: null, triage });
-  for (const kind of nrpModelKinds(artifacts, triage.mechanical, triage.artifacts)) {
+  for (const kind of nrpModelKinds(artifacts, triage.mechanical, triage.artifacts, triage.mechanicalOnly)) {
     orders.push({ mode: 'model', kind, triage });
   }
   return orders;
@@ -778,9 +778,9 @@ function nextAfterEdit(
   };
 }
 
-function assertFile(kind: NrpArtifactKind, id: string, value: unknown): void {
+export function assertFile(kind: NrpArtifactKind, id: string, value: unknown): void {
   const root = record(value, 'Edited file');
-  if (kind === 'rules' && id === 'rules' && Array.isArray(root.rules)) return;
+  if (kind === 'rules' && id === 'rules' && rulesShape(root.rules)) return;
   if (kind === 'access' && id === 'access' && Array.isArray(root.grants)) return;
   if (kind === 'workflows' && id === 'workflows' && Array.isArray(root.processes)) return;
   if (kind === 'integration' && id === 'integration' && Array.isArray(root.inbound) && Array.isArray(root.outbound)) return;
@@ -791,6 +791,19 @@ function assertFile(kind: NrpArtifactKind, id: string, value: unknown): void {
     if (named === id) return;
   }
   throw new Error(`Edited ${kind} file ${id} has the wrong shape.`);
+}
+
+/** v1 is a list of {ruleId, description}. v2 is a map of ruleId to one sentence. */
+function rulesShape(rules: unknown): boolean {
+  if (Array.isArray(rules)) {
+    return rules.every(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+      const row = item as Record<string, unknown>;
+      return typeof row.ruleId === 'string' && typeof row.description === 'string';
+    });
+  }
+  if (!rules || typeof rules !== 'object') return false;
+  return Object.values(rules as Record<string, unknown>).every(item => typeof item === 'string');
 }
 
 function fail(

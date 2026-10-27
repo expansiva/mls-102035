@@ -6,7 +6,8 @@
     "artifacts": [],
     "targets": [],
     "intent": null,
-    "mechanical": []
+    "mechanical": [],
+    "mechanicalOnly": false
   },
   "vague": {
     "valid": false,
@@ -15,7 +16,8 @@
     "artifacts": [],
     "targets": [],
     "intent": null,
-    "mechanical": []
+    "mechanical": [],
+    "mechanicalOnly": false
   },
   "fieldOptional": {
     "valid": true,
@@ -26,6 +28,7 @@
     "intent": "Make the priority field optional.",
     "mechanical": [
       { "op": "setOptional", "targetId": "WorkItem", "fieldId": "priority", "value": "" }
-    ]
+    ],
+    "mechanicalOnly": true
   }
 }

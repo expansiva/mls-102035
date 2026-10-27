@@ -36,7 +36,7 @@ void test('triage schema is strict and the prompt states intention only', () => 
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
   const parameters = tool.function.parameters as { required: string[]; properties: { result: { required: string[] } } };
   assert.deepEqual(parameters.properties.result.required, [
-    'valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical',
+    'valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly',
   ]);
   assert.equal(/tarefas/i.test(NRP_TRIAGE_SYSTEM_PROMPT), false);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /making a field optional or required/);
@@ -45,6 +45,8 @@ void test('triage schema is strict and the prompt states intention only', () => 
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /default value/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /new rule/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /Put that kind in artifacts and describe that part in intent/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /mechanicalOnly is true only when those marks, by themselves, fulfill the whole request/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /new text makes mechanicalOnly false/);
   const human = buildNrpTriageHumanPrompt('Make priority optional.', index);
   assert.match(human, /Make priority optional\./);
   assert.match(human, /"entityId":"WorkItem"/);
@@ -63,6 +65,7 @@ void test('a recorded triage response normalizes and stops when it cannot edit',
   assert.deepEqual(optional.mechanical, [
     { op: 'setOptional', targetId: 'WorkItem', fieldId: 'priority', value: '' },
   ]);
+  assert.equal(optional.mechanicalOnly, true);
   assert.throws(() => normalizeNrpTriage({ ...recorded.fieldOptional, reason: 'extra' }), /null reason/);
 });
 
@@ -75,6 +78,7 @@ void test('a clarification with extra fields becomes a clean question', () => {
     targets: ['cancelar'],
     intent: 'Only the manager cancels.',
     mechanical: [{ op: 'setScalar', targetId: 'cancelar', fieldId: 'by', value: 'gestor' }],
+    mechanicalOnly: true,
   });
   assert.equal(cleaned.valid, false);
   assert.equal(cleaned.reason, null);
@@ -98,6 +102,7 @@ void test('a long clarification is cut to a whole sentence', () => {
     targets: [],
     intent: null,
     mechanical: [],
+    mechanicalOnly: false,
   });
   assert.ok((cleaned.clarification || '').length <= 1000);
   assert.ok(long.startsWith(cleaned.clarification || ''));
@@ -114,6 +119,7 @@ void test('an invalid request drops change fields and keeps the reason', () => {
     targets: ['WorkItem'],
     intent: 'Paint the button.',
     mechanical: [],
+    mechanicalOnly: false,
   });
   assert.equal(cleaned.valid, false);
   assert.equal(cleaned.reason, 'Button color is outside the specification.');
@@ -134,10 +140,31 @@ void test('a malformed triage is refused and the raw answer is recorded without 
   assert.equal(stored?.reason, 'Triage valid must be a boolean.');
   assert.equal(stored?.raw?.token, '[redacted]');
   assert.throws(
-    () => normalizeNrpTriage({ valid: true, reason: null, clarification: null, artifacts: [], targets: [], intent: null, mechanical: [] }),
+    () => normalizeNrpTriage({ valid: true, reason: null, clarification: null, artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false }),
     /at least one artifact/,
   );
   assert.throws(() => normalizeNrpTriage({
-    valid: true, reason: null, clarification: null, artifacts: ['button'], targets: [], intent: 'Add a button.', mechanical: [],
+    valid: true, reason: null, clarification: null, artifacts: ['button'], targets: [], intent: 'Add a button.', mechanical: [], mechanicalOnly: false,
   }), /Unknown artifact kind/);
+});
+
+void test('mechanicalOnly is true only when marks fulfill the request', () => {
+  const base = {
+    valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['WorkItem'], intent: 'Make priority optional and record the medium default.',
+  };
+  const both = normalizeNrpTriage({
+    ...base,
+    mechanical: [{ op: 'setOptional', targetId: 'WorkItem', fieldId: 'priority', value: '' }],
+    mechanicalOnly: false,
+  });
+  assert.equal(both.mechanicalOnly, false);
+  assert.deepEqual(both.artifacts, ['ontology']);
+  assert.throws(
+    () => normalizeNrpTriage({ ...base, mechanical: [], mechanicalOnly: true }),
+    /mechanicalOnly needs at least one mechanical mark/,
+  );
+  assert.throws(
+    () => normalizeNrpTriage({ ...base, mechanical: [], mechanicalOnly: 'no' }),
+    /mechanicalOnly must be a boolean/,
+  );
 });
