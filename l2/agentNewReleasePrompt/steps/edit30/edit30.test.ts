@@ -16,6 +16,7 @@ import {
   assertFile,
   normalizeNrpEdit,
   nrpFileScope,
+  nrpUnresolvedTextMarks,
   planNrpEditOrders,
   type NrpEditCursor,
   type NrpFileScope,
@@ -189,8 +190,8 @@ void test('an ontology edit prompt sends the target file, not the whole kind', (
   ]);
   const oneBytes = new TextEncoder().encode(one).length;
   const wholeBytes = new TextEncoder().encode(whole).length;
-  assert.equal(oneBytes, 2891);
-  assert.equal(wholeBytes, 4103);
+  assert.equal(oneBytes, 2934);
+  assert.equal(wholeBytes, 4198);
   assert.ok(oneBytes < wholeBytes);
   assert.equal(one.includes('Tarefa'), true);
   assert.equal(one.includes('"entityId":"Lista"') || one.includes('"entityId": "Lista"'), false);
@@ -445,4 +446,39 @@ void test('remove of a details field keeps the entity and drops only that field'
   const dropped = applyNrpMechanical(withRule, [{ op: 'remove', targetId: 'edicaoNaoMudaSituacao', fieldId: '', value: '' }]);
   assert.equal(Object.prototype.hasOwnProperty.call((dropped.artifacts.rules as { rules: Record<string, string> }).rules, 'edicaoNaoMudaSituacao'), false);
   assert.equal(dropped.artifacts.entities.some(item => item.entityId === 'Tarefa'), true);
+});
+
+void test('a journey named only by a text mark is an allowed file, and an empty edit stays pending', () => {
+  const artifacts = sample();
+  const journey = artifacts.journeys[0] as unknown as { business: { steps: Array<{ text: string }> } };
+  journey.business.steps[0].text = 'The member sees etiquetas on the list.';
+  const marked = applyNrpMechanical(artifacts, [{ op: 'remove', targetId: 'etiquetas', fieldId: '', value: '' }]);
+  const ask = {
+    ...triage,
+    artifacts: ['journeys'] as NrpTriage['artifacts'],
+    targets: [],
+    mechanical: [{ op: 'remove', targetId: 'etiquetas', fieldId: '', value: '' }],
+  };
+  const scope = nrpFileScope(marked.artifacts, 'journeys', ask, marked.textMarks);
+  assert.deepEqual(scope.files.map(file => file.id), ['memberList']);
+  const prompt = buildNrpEditHumanPrompt('Drop labels.', ask, 'journeys', scope.files, marked.textMarks);
+  assert.match(prompt, /memberList — marked: adjust the text so it does not cite etiquetas/);
+  const edited = normalizeNrpEdit('journeys', {
+    operations: [{
+      file: 'memberList', op: 'set', pointer: '/business/steps/0/text',
+      expectedJson: JSON.stringify('The member sees etiquetas on the list.'),
+      valueJson: JSON.stringify('The member sees the list.'),
+      reason: 'Drop the removed field name.',
+    }],
+  }, scope);
+  assert.equal(edited.files[0].id, 'memberList');
+  assert.throws(() => normalizeNrpEdit('journeys', {
+    operations: [{ file: 'other', op: 'set', pointer: '/title', expectedJson: '"a"', valueJson: '"b"', reason: 'no' }],
+  }, scope), /Allowed: memberList/);
+  const pending = nrpUnresolvedTextMarks('journeys', scope, marked.textMarks, [], marked.artifacts);
+  assert.equal(pending.length > 0, true);
+  assert.equal(pending[0].file, 'memberList');
+  assert.equal(pending[0].term, 'etiquetas');
+  const cleared = nrpUnresolvedTextMarks('journeys', scope, marked.textMarks, edited.files, marked.artifacts);
+  assert.deepEqual(cleared, []);
 });

@@ -262,28 +262,27 @@ export function replaceDefsJsonLiteral(source: string, value: unknown): string {
 function patchJsonText(source: string, current: unknown, next: unknown): string {
   if (JSON.stringify(current) === JSON.stringify(next)) return source;
   if (isRecord(current) && isRecord(next)) return patchObject(source, current, next);
-  if (Array.isArray(current) && Array.isArray(next) && current.length === next.length) return patchArray(source, current, next);
+  if (Array.isArray(current) && Array.isArray(next)) return patchArray(source, current, next);
   return JSON.stringify(next);
 }
 
 function patchObject(source: string, current: Record<string, unknown>, next: Record<string, unknown>): string {
   const entries = objectEntries(source);
-  const dropped = entries.some(entry => !Object.prototype.hasOwnProperty.call(next, entry.key));
-  if (dropped) {
-    const pieces: string[] = [];
-    for (const entry of entries) {
-      if (!Object.prototype.hasOwnProperty.call(next, entry.key)) continue;
-      const valueText = patchJsonText(source.slice(entry.valueStart, entry.valueEnd), current[entry.key], next[entry.key]);
-      pieces.push(`${source.slice(entry.keyStart, entry.valueStart)}${valueText}`);
+  const dropped = entries.filter(entry => !Object.prototype.hasOwnProperty.call(next, entry.key));
+  let working = source;
+  let currentNow = current;
+  if (dropped.length) {
+    working = omitSpans(source, dropped.map(entry => removalSpan(source, entry.keyStart, entry.valueEnd)));
+    currentNow = {};
+    for (const key of Object.keys(current)) {
+      if (Object.prototype.hasOwnProperty.call(next, key)) currentNow[key] = current[key];
     }
-    for (const key of Object.keys(next)) {
-      if (!Object.prototype.hasOwnProperty.call(current, key)) pieces.push(`${JSON.stringify(key)}: ${JSON.stringify(next[key])}`);
-    }
-    const open = source.indexOf('{');
-    const close = source.lastIndexOf('}');
-    const body = pieces.length ? pieces.join(',') : '';
-    return `${source.slice(0, open + 1)}${body}${source.slice(close)}`;
   }
+  return patchObjectKept(working, currentNow, next);
+}
+
+function patchObjectKept(source: string, current: Record<string, unknown>, next: Record<string, unknown>): string {
+  const entries = objectEntries(source);
   let cursor = 0;
   let out = '';
   for (const entry of entries) {
@@ -301,6 +300,12 @@ function patchObject(source: string, current: Record<string, unknown>, next: Rec
 }
 
 function patchArray(source: string, current: unknown[], next: unknown[]): string {
+  if (current.length !== next.length) {
+    const drop = pureDrops(current, next);
+    if (!drop) return JSON.stringify(next);
+    const items = arrayItems(source);
+    return omitSpans(source, drop.map(index => removalSpan(source, items[index].start, items[index].end)));
+  }
   const items = arrayItems(source);
   let cursor = 0;
   let out = '';
@@ -311,6 +316,42 @@ function patchArray(source: string, current: unknown[], next: unknown[]): string
     cursor = item.end;
   }
   out += source.slice(cursor);
+  return out;
+}
+
+/** Indexes in `current` that are absent from `next`, when every kept item is unchanged and in order. */
+function pureDrops(current: unknown[], next: unknown[]): number[] | null {
+  const drop: number[] = [];
+  let matched = 0;
+  for (let index = 0; index < current.length; index += 1) {
+    if (matched < next.length && JSON.stringify(current[index]) === JSON.stringify(next[matched])) matched += 1;
+    else drop.push(index);
+  }
+  return matched === next.length ? drop : null;
+}
+
+/** Deletes one property or list item: its own lines, and the neighbor comma when it was last. */
+function removalSpan(source: string, valueStart: number, valueEnd: number): [number, number] {
+  const lineBreak = source.lastIndexOf('\n', valueStart - 1);
+  const startOfLine = lineBreak >= 0 ? lineBreak : valueStart;
+  const after = skipSpace(source, valueEnd);
+  if (source[after] === ',') return [startOfLine, after + 1];
+  let probe = startOfLine;
+  while (probe > 0 && /\s/u.test(source[probe - 1])) probe -= 1;
+  const start = probe > 0 && source[probe - 1] === ',' ? probe - 1 : startOfLine;
+  return [start, valueEnd];
+}
+
+function omitSpans(source: string, spans: Array<[number, number]>): string {
+  const ordered = spans.filter(([start, end]) => end > start).sort((left, right) => right[0] - left[0]);
+  let out = source;
+  let cursor = out.length;
+  for (const [start, end] of ordered) {
+    const to = Math.min(end, cursor);
+    if (start >= to) continue;
+    out = `${out.slice(0, start)}${out.slice(to)}`;
+    cursor = start;
+  }
   return out;
 }
 
@@ -461,7 +502,38 @@ export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Re
       term: hit.term,
       note: 'não editado',
     })),
+    pendingTextMarks: nrpPendingTextMarks(payload.artifacts, payload.triage),
   };
+}
+
+/** Citations of a removed term that are still in a file of the six kinds. */
+export function nrpPendingTextMarks(
+  artifacts: NrpModuleArtifacts,
+  triage: NrpTriage,
+): Array<{ file: string; path: string; term: string; text: string }> {
+  const terms = citationTerms(triage);
+  if (!terms.length) return [];
+  const rows: Array<{ file: string; path: string; term: string; text: string }> = [];
+  const push = (file: string, value: unknown): void => {
+    for (const hit of nrpFreeTextHits(value, terms)) rows.push({ file, path: hit.path, term: hit.term, text: hit.text });
+  };
+  for (const entity of artifacts.entities || []) push(entity.entityId, entity);
+  push('ontology/index', artifacts.ontologyIndex);
+  for (const journey of artifacts.journeys || []) push(journey.journeyId, journey);
+  push('journeys/index', artifacts.journeyIndex);
+  push('rules', artifacts.rules);
+  push('access', artifacts.access);
+  push('workflows', artifacts.workflows);
+  push('integration', artifacts.integration);
+  return rows;
+}
+
+function citationTerms(triage: NrpTriage): string[] {
+  const terms = new Set<string>(removedFieldTerms(triage));
+  for (const mark of triage.mechanical) {
+    if (mark.op === 'remove' && !mark.fieldId && mark.targetId) terms.add(mark.targetId);
+  }
+  return [...terms];
 }
 
 function removedFieldTerms(triage: NrpTriage): string[] {

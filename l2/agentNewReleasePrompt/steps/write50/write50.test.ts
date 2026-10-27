@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
-import { changedNrpPaths, defsSourceFromSibling, nrpDefsRoundTripError, nrpReport, replaceDefsJsonLiteral } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { changedNrpPaths, defsSourceFromSibling, nrpDefsRoundTripError, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
 const TAREFA = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -87,4 +87,53 @@ void test('rewritten defs text matches the gated value for remove, replace and a
   assert.equal(notEdited[0].kind, 'module');
   assert.equal(notEdited[0].term, 'etiquetas');
   assert.equal(notEdited[0].note, 'não editado');
+});
+
+void test('removing a details field touches only that field line, and a leftover citation is pending', () => {
+  const source = readFileSync(TAREFA, 'utf8');
+  const needle = '          "descricao": { "type": "text", "title": "Descrição" },\n';
+  const planted = source.replace(needle, `${needle}          "etiquetas": { "type": "text", "title": "Etiquetas" },\n`);
+  const entity = JSON.parse(extractNs4ClassicJsonObject(planted)) as {
+    record: { fields: { details: { fields: Record<string, unknown> } } };
+    lifecycleStates: Array<{ state: string }>;
+  };
+  delete entity.record.fields.details.fields.etiquetas;
+  const patched = replaceDefsJsonLiteral(planted, entity);
+  assert.equal(patched, planted.replace('          "etiquetas": { "type": "text", "title": "Etiquetas" },\n', ''));
+  assert.equal(nrpDefsRoundTripError(patched, entity), null);
+
+  const droppedState = JSON.parse(JSON.stringify(entity)) as typeof entity;
+  droppedState.lifecycleStates = droppedState.lifecycleStates.filter(state => state.state !== 'emAndamento');
+  const listText = replaceDefsJsonLiteral(patched, droppedState);
+  assert.match(listText, /"state": "aFazer"/);
+  assert.match(listText, /"state": "emRevisao"/);
+  assert.equal(listText.includes('"state": "emAndamento"'), false);
+  assert.equal(listText.includes('{"state":"aFazer"'), false);
+  assert.equal(nrpDefsRoundTripError(listText, droppedState), null);
+
+  const pending = nrpPendingTextMarks({
+    entities: [],
+    journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ description: 'Grava a tarefa com etiquetas.' }] } }],
+  } as unknown as NrpModuleArtifacts, {
+    valid: true, reason: null, clarification: null, artifacts: ['ontology', 'journeys'], targets: ['Tarefa'],
+    intent: 'Drop labels.', mechanicalOnly: false,
+    mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
+  });
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].file, 'criarTarefa');
+  assert.equal(pending[0].term, 'etiquetas');
+  const report = nrpReport({
+    moduleName: 'tarefas', project: 1, request: 'Drop labels.',
+    triage: {
+      valid: true, reason: null, clarification: null, artifacts: ['journeys'], targets: ['Tarefa'],
+      intent: 'Drop labels.', mechanicalOnly: false,
+      mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
+    },
+    artifacts: {
+      journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ description: 'Grava a tarefa com etiquetas.' }] } }],
+    } as unknown as NrpModuleArtifacts,
+    applied: [{ mode: 'model', kind: 'journeys', artifact: { files: [] } }],
+    issues: [], allowWrite: true, modelCalls: 2,
+  }, { written: true, reason: null, files: [] });
+  assert.equal((report.pendingTextMarks as unknown[]).length, 1);
 });
