@@ -11,6 +11,8 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
+  requestNewReleaseEdit,
+  NEW_RELEASE_GENERAL_INDICATORS_EDIT_ID,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
   type NewReleaseTabId,
@@ -69,10 +71,18 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
 
   private beginEdit() {
     if (!this.data?.module || this.version.startsWith('release:')) return;
+    if (this.version === 'asis') {
+      if (canDiscardNewReleaseDraft(this)) requestNewReleaseEdit(this, NEW_RELEASE_GENERAL_INDICATORS_EDIT_ID);
+      return;
+    }
     this.draft = structuredClone(this.data.module);
     this.detailsDirty = false;
     this.syncEditState();
     this.editMessage = '';
+  }
+
+  openIndicatorsForEdit() {
+    if (this.version === 'tobe') this.beginEdit();
   }
 
   private cancelEdit() {

@@ -30,6 +30,7 @@ import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
 import { type NewReleaseValidationIssue, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   NEW_RELEASE_CHANGED_EVENT,
+  NEW_RELEASE_GENERAL_INDICATORS_EDIT_ID,
   tabForArtifactPath,
   type NewReleaseChangedDetail,
   type NewReleaseEditRequest,
@@ -219,6 +220,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
     await editor?.updateComplete;
     if (token !== this.loadToken || !contextStillCurrent(context, this) || this.activeTab !== pending.tab || this.pendingEdit !== pending) return;
     this.pendingEdit = undefined;
+    if (pending.tab === 'general' && pending.id === NEW_RELEASE_GENERAL_INDICATORS_EDIT_ID) {
+      (editor as (HTMLElement & { openIndicatorsForEdit?: () => void }) | null)?.openIndicatorsForEdit?.();
+      return;
+    }
     this.tabPresentation?.select(pending.id);
   }
 

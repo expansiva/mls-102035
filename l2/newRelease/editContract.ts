@@ -74,6 +74,7 @@ export function requestNewReleasePresentation(target: EventTarget, mode: NewRele
 }
 
 export interface NewReleaseEditRequest { id: string }
+export const NEW_RELEASE_GENERAL_INDICATORS_EDIT_ID = 'general:indicators';
 export function requestNewReleaseEdit(target: EventTarget, id: string) {
   target.dispatchEvent(new CustomEvent<NewReleaseEditRequest>('nr-request-edit', {bubbles: true, composed: true, detail: {id}}));
 }
