@@ -96,6 +96,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (message.startsWith('general.languages')) return this.t(message);
     if (message === 'new-release.application_active') return this.t('request.applicationActive');
     if (message === 'new-release.request_empty') return this.t('request.empty');
+    if (message === 'implementation.user_unavailable') return this.t('request.userUnavailable');
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
     if (message.includes('Historical inventory differs')) return this.t('request.historyIncompatible');
     if (message.includes('Discard the active candidate')) return this.t('request.activeCandidate');

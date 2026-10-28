@@ -924,7 +924,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
     if (this.version === 'tobe' && current && !this.effortCurrent && !active && !retry) return {
       ...action, kind: 'calculate', labelKey: this.actionBusy ? 'review.actionBusy' : 'review.calculate',
-      descriptionKey: 'review.actionCalculateBody', availabilityKey: '',
+      descriptionKey: 'review.actionCalculateBody', availabilityKey: getUserId() ? '' : 'request.userUnavailable',
       disabled: this.actionBusy || this.loading || !getUserId() || !this.data?.sealedRevision,
     };
     return action;
