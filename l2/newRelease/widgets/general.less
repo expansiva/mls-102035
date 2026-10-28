@@ -382,6 +382,18 @@ new-release--widgets--general-102035 {
   .nr-general__languages p strong button:disabled { cursor: not-allowed; opacity: .38; }
   .nr-general__add-language { display: grid; gap: .3rem; margin-top: .7rem; }
 
+  .nr-general__language-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
+    padding: .7rem .9rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .nr-general__language-actions > span { color: var(--text-muted); font-size: .68rem; }
+  .nr-general__language-actions > div { display: flex; flex-wrap: wrap; gap: .5rem; }
+
   .nr-general__metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
   .nr-general__metric strong {

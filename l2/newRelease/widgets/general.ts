@@ -42,6 +42,10 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
 
   @state() private issues: NewReleaseValidationIssue[] = [];
   @state() private draft: Ns5ModuleArtifact | null = null;
+  @state() private languageDraft: Ns5ModuleArtifact | null = null;
+  @state() private languageBusy = false;
+  @state() private languageMessage = '';
+  private detailsDirty = false;
   @state() private newDetailName = '';
   @state() private newDetailType: Ns5OntologyDetail['type'] = 'number';
   @state() private editMessage = '';
@@ -50,7 +54,9 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
 
   getDraft(): Ns5ModuleArtifact | null {
     const source = this.draft || this.data?.module;
-    return source ? structuredClone(source) : null;
+    return source ? { ...structuredClone(source),
+      productLanguages: [...(this.languageDraft?.productLanguages || this.data?.module?.productLanguages || source.productLanguages)],
+      defaultLanguage: this.languageDraft?.defaultLanguage || this.data?.module?.defaultLanguage || source.defaultLanguage } : null;
   }
 
   setIssues(issues: NewReleaseValidationIssue[]) {
@@ -62,59 +68,109 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
   }
 
   private beginEdit() {
-    if (!this.data?.module) return;
+    if (!this.data?.module || this.version.startsWith('release:')) return;
     this.draft = structuredClone(this.data.module);
-    this.mode = 'edit';
-    this.dirty = false;
+    this.detailsDirty = false;
+    this.syncEditState();
     this.editMessage = '';
   }
 
   private cancelEdit() {
     this.draft = null;
-    this.mode = 'view';
-    this.dirty = false;
+    this.detailsDirty = false;
+    this.syncEditState();
     this.newDetailName = '';
     this.editMessage = '';
   }
 
   private updateDraft(next: Ns5ModuleArtifact) {
     this.draft = next;
-    this.dirty = true;
+    this.detailsDirty = true;
+    this.syncEditState();
     this.editMessage = '';
   }
 
+  private languagesChanged(): boolean {
+    const source = this.data?.module;
+    const draft = this.languageDraft;
+    return !!source && !!draft && (JSON.stringify(source.productLanguages) !== JSON.stringify(draft.productLanguages)
+      || source.defaultLanguage !== draft.defaultLanguage);
+  }
+
+  private syncEditState() {
+    this.mode = this.draft || this.languageDraft ? 'edit' : 'view';
+    this.dirty = this.detailsDirty || this.languagesChanged();
+  }
+
   private async saveEdit() {
-    if (!this.draft || !this.dirty) return;
+    if (!this.draft || !this.detailsDirty || !this.data?.module || this.languagesChanged()) return;
     try {
     await announceNewReleaseChange(this, {
       path: 'module.defs.ts',
       jsonPath: '$',
-      value: structuredClone(this.draft),
+      value: { ...structuredClone(this.draft),
+        productLanguages: [...this.data.module.productLanguages], defaultLanguage: this.data.module.defaultLanguage },
     });
-    this.mode = 'view';
-    this.dirty = false;
     this.draft = null;
+    this.detailsDirty = false;
+    this.syncEditState();
     this.newDetailName = '';
     } catch (error) { this.editMessage = error instanceof Error ? error.message : String(error); }
   }
 
+  private beginLanguageEdit() {
+    if (!this.data?.module || this.version.startsWith('release:')) return;
+    this.languageDraft = structuredClone(this.data.module);
+    this.languageMessage = '';
+    this.syncEditState();
+  }
+
+  private cancelLanguageEdit() {
+    if (this.languageBusy) return;
+    this.languageDraft = null;
+    this.languageMessage = '';
+    this.syncEditState();
+  }
+
+  private async executeLanguages() {
+    if (!this.languageDraft || !this.languagesChanged() || !this.data?.module || this.languageBusy || this.version.startsWith('release:')) return;
+    this.languageBusy = true;
+    this.languageMessage = '';
+    try {
+      await announceNewReleaseChange(this, {
+        path: 'module.defs.ts', jsonPath: '$', languageOnly: true,
+        value: { ...structuredClone(this.data.module),
+          productLanguages: [...this.languageDraft.productLanguages], defaultLanguage: this.languageDraft.defaultLanguage },
+      });
+      this.languageDraft = null;
+      this.syncEditState();
+    } catch (error) { this.languageMessage = error instanceof Error ? error.message : String(error); }
+    finally { this.languageBusy = false; }
+  }
+
   private addLanguage(code: string) {
-    if (!this.draft || !code || this.draft.productLanguages.includes(code)) return;
-    this.updateDraft(setGeneralLanguages(this.draft, [...this.draft.productLanguages, code], this.draft.defaultLanguage));
+    if (!this.languageDraft || !code || this.languageDraft.productLanguages.includes(code)) return;
+    this.languageDraft = setGeneralLanguages(this.languageDraft, [...this.languageDraft.productLanguages, code], this.languageDraft.defaultLanguage);
+    this.languageMessage = '';
+    this.syncEditState();
   }
 
   private removeLanguage(code: string) {
-    if (!this.draft || this.draft.productLanguages.length <= 1) return;
-    this.updateDraft(setGeneralLanguages(
-      this.draft,
-      this.draft.productLanguages.filter(language => language !== code),
-      this.draft.defaultLanguage,
-    ));
+    if (!this.languageDraft || this.languageDraft.productLanguages.length <= 1) return;
+    this.languageDraft = setGeneralLanguages(
+      this.languageDraft,
+      this.languageDraft.productLanguages.filter(language => language !== code),
+      this.languageDraft.defaultLanguage,
+    );
+    this.languageMessage = '';
+    this.syncEditState();
   }
 
   private setDefaultLanguage(code: string) {
-    if (!this.draft || !this.draft.productLanguages.includes(code)) return;
-    this.updateDraft(setGeneralLanguages(this.draft, this.draft.productLanguages, code));
+    if (!this.languageDraft || !this.languageDraft.productLanguages.includes(code)) return;
+    this.languageDraft = setGeneralLanguages(this.languageDraft, this.languageDraft.productLanguages, code);
+    this.languageMessage = '';
+    this.syncEditState();
   }
 
   private setDetailType(name: string, type: Ns5OntologyDetail['type']) {
@@ -216,33 +272,35 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
   }
 
   private renderLanguagePanel(module: Ns5ModuleArtifact) {
-    const available = LANGUAGE_OPTIONS.filter(option => !module.productLanguages.includes(option.code));
+    const languagesModule = this.languageDraft || this.data?.module || module;
+    const editing = !!this.languageDraft;
+    const available = LANGUAGE_OPTIONS.filter(option => !languagesModule.productLanguages.includes(option.code));
     return html`
       <section class="nr-general__language-panel" aria-label=${this.t('general.languageScope')}>
         <header>
           <div><span>${this.t('general.languageConfig')}</span><small>${this.t('general.languageScope')}</small></div>
-          ${this.mode === 'view'
-            ? html`<button type="button" class="nr-button nr-button--secondary" @click=${this.beginEdit}>${this.t('general.edit')}</button>`
-            : html`<span class="nr-general__editing">${this.t('general.editing')}</span>`}
+          ${!editing && !this.version.startsWith('release:')
+            ? html`<button type="button" class="nr-button nr-button--secondary" @click=${this.beginLanguageEdit}>${this.t('general.editLanguages')}</button>`
+            : editing ? html`<span class="nr-general__editing">${this.t('general.editing')}</span>` : nothing}
         </header>
         <div class="nr-general__languages">
-          <div><span>${this.t('general.userLanguage')}</span><strong>${module.userLanguage || '—'}</strong><small>${this.t('general.readonly')}</small></div>
+          <div><span>${this.t('general.userLanguage')}</span><strong>${languagesModule.userLanguage || '—'}</strong><small>${this.t('general.readonly')}</small></div>
           <div>
             <label for="nr-general-default">${this.t('general.language')}</label>
-            ${this.mode === 'edit' ? html`
-              <select id="nr-general-default" .value=${module.defaultLanguage} @change=${(event: Event) => this.setDefaultLanguage((event.target as HTMLSelectElement).value)}>
-                ${module.productLanguages.map(language => html`<option value=${language}>${language}</option>`)}
+            ${editing ? html`
+              <select id="nr-general-default" .value=${languagesModule.defaultLanguage} ?disabled=${this.languageBusy} @change=${(event: Event) => this.setDefaultLanguage((event.target as HTMLSelectElement).value)}>
+                ${languagesModule.productLanguages.map(language => html`<option value=${language}>${language}</option>`)}
               </select>
-            ` : html`<strong>${module.defaultLanguage || '—'}</strong>`}
+            ` : html`<strong>${languagesModule.defaultLanguage || '—'}</strong>`}
           </div>
           <div class="nr-general__product-languages">
             <span>${this.t('general.languages')}</span>
-            <p>${module.productLanguages.map(language => html`
-              <strong>${language}${this.mode === 'edit' ? html`<button type="button" aria-label=${this.t('general.removeLanguage', { language })} ?disabled=${module.productLanguages.length <= 1} @click=${() => this.removeLanguage(language)}>&times;</button>` : nothing}</strong>
+            <p>${languagesModule.productLanguages.map(language => html`
+              <strong>${language}${editing ? html`<button type="button" aria-label=${this.t('general.removeLanguage', { language })} ?disabled=${this.languageBusy || languagesModule.productLanguages.length <= 1} @click=${() => this.removeLanguage(language)}>&times;</button>` : nothing}</strong>
             `)}</p>
-            ${this.mode === 'edit' ? html`
+            ${editing ? html`
               <label class="nr-general__add-language"><span>${this.t('general.addLanguage')}</span>
-                <select @change=${(event: Event) => {
+                <select ?disabled=${this.languageBusy} @change=${(event: Event) => {
                   const select = event.target as HTMLSelectElement;
                   this.addLanguage(select.value);
                   select.value = '';
@@ -254,6 +312,12 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
             ` : nothing}
           </div>
         </div>
+        ${editing ? html`<div class="nr-general__language-actions">
+          <span>${this.languagesChanged() ? this.t('general.unsaved') : this.t('general.noChanges')}</span>
+          <div><button type="button" class="nr-button nr-button--secondary" ?disabled=${this.languageBusy} @click=${this.cancelLanguageEdit}>${this.t('general.cancel')}</button>
+            <button type="button" class="nr-button nr-button--primary" ?disabled=${!this.languagesChanged() || this.languageBusy} @click=${this.executeLanguages}>${this.t('general.executeNow')}</button></div>
+        </div>` : nothing}
+        ${this.languageMessage ? html`<p class="nr-general__edit-message" role="alert">${this.languageMessage}</p>` : nothing}
       </section>
     `;
   }
@@ -262,13 +326,13 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
     const details = Object.entries(module.details || {});
     return html`
       <section class="nr-general__details-section">
-        <header><div><span class="nr-general__section-title">${this.t('general.detailsTitle')}</span><p>${this.t('general.detailsDescription')}</p></div><strong>${this.t('general.detailsCount', { count: details.length })}</strong></header>
+        <header><div><span class="nr-general__section-title">${this.t('general.detailsTitle')}</span><p>${this.t('general.detailsDescription')}</p></div><strong>${this.t('general.detailsCount', { count: details.length })}</strong>${!this.draft && !this.version.startsWith('release:') ? html`<button type="button" class="nr-button nr-button--secondary" @click=${this.beginEdit}>${this.t('general.editDetails')}</button>` : nothing}</header>
         ${details.length ? html`
           <div class="nr-general__detail-grid">
             ${details.map(([name, detail]) => html`
               <article class="nr-general__detail-card">
-                <div><code>${name}</code>${this.mode === 'edit' ? html`<button type="button" class="nr-general__remove-detail" aria-label=${this.t('general.removeDetail', { name })} @click=${() => this.removeDetail(name)}>&times;</button>` : nothing}</div>
-                ${this.mode === 'edit' ? html`
+                <div><code>${name}</code>${this.draft ? html`<button type="button" class="nr-general__remove-detail" aria-label=${this.t('general.removeDetail', { name })} @click=${() => this.removeDetail(name)}>&times;</button>` : nothing}</div>
+                ${this.draft ? html`
                   <label>${this.t('general.detailType')}<select .value=${detail.type} @change=${(event: Event) => this.setDetailType(name, (event.target as HTMLSelectElement).value as Ns5OntologyDetail['type'])}>${GENERAL_DETAIL_TYPES.map(type => html`<option value=${type}>${type}</option>`)}</select></label>
                 ` : html`<span class="nr-general__detail-type">${detail.type}</span>`}
                 <p>${detail.description}</p>
@@ -276,7 +340,7 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
             `)}
           </div>
         ` : html`<div class="nr-general__empty-section">${this.t('general.detailsEmpty')}</div>`}
-        ${this.mode === 'edit' ? html`
+        ${this.draft ? html`
           <div class="nr-general__add-detail">
             <label>${this.t('general.detailName')}<input type="text" .value=${this.newDetailName} placeholder="totalDoMes" @input=${(event: Event) => { this.newDetailName = (event.target as HTMLInputElement).value; this.editMessage = ''; }}></label>
             <label>${this.t('general.detailType')}<select .value=${this.newDetailType} @change=${(event: Event) => { this.newDetailType = (event.target as HTMLSelectElement).value as Ns5OntologyDetail['type']; }}>${GENERAL_DETAIL_TYPES.map(type => html`<option value=${type}>${type}</option>`)}</select></label>
@@ -369,11 +433,11 @@ export class NewReleaseGeneral102035 extends StateLitElement implements NewRelea
   }
 
   private renderEditActions() {
-    if (this.mode !== 'edit') return nothing;
+    if (!this.draft) return nothing;
     return html`
       <div class="nr-general__edit-actions">
-        <span>${this.dirty ? this.t('general.unsaved') : this.t('general.noChanges')}</span>
-        <div><button type="button" class="nr-button nr-button--secondary" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('general.cancel')}</button><button type="button" class="nr-button nr-button--primary" ?disabled=${!this.dirty} @click=${this.saveEdit}>${this.t('general.save')}</button></div>
+        <span>${this.languagesChanged() ? this.t('general.executeLanguagesFirst') : this.detailsDirty ? this.t('general.unsaved') : this.t('general.noChanges')}</span>
+        <div><button type="button" class="nr-button nr-button--secondary" @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('general.cancel')}</button><button type="button" class="nr-button nr-button--primary" ?disabled=${!this.detailsDirty || this.languagesChanged()} @click=${this.saveEdit}>${this.t('general.save')}</button></div>
       </div>
     `;
   }

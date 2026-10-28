@@ -16,6 +16,7 @@ export interface NewReleaseChangedDetail {
   path: Ns5TobeArtifactPath;
   jsonPath: string;
   value: unknown;
+  languageOnly?: boolean;
   complete?: (error?: unknown) => void;
 }
 

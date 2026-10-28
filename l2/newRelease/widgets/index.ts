@@ -387,21 +387,25 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.mutationQueue = this.mutationQueue.then(async () => {
       try {
         if (!contextStillCurrent({ project, moduleName, version }, this)) { detail.complete?.(new Error(this.t('request.conflict'))); return; }
-        if (detail.path === 'module.defs.ts' && this.data?.module) {
+        if (detail.languageOnly && detail.path === 'module.defs.ts' && this.data?.module) {
           const value = detail.value as Ns5ModuleArtifact;
           const before = this.data.module;
+          const normalized = { ...before, productLanguages: value.productLanguages, defaultLanguage: value.defaultLanguage };
+          if (JSON.stringify(normalized) !== JSON.stringify(value)) throw new Error(this.t('general.languagesInvalid'));
           const revisionId = await applyDirectLanguages(project, moduleName, value, {
             changeId: this.changeByModule.has(moduleKey) ? this.changeByModule.get(moduleKey)! : initialChange,
             revisionId: this.revisionByModule.has(moduleKey) ? this.revisionByModule.get(moduleKey)! : initialRevision,
           }, key => { this.mutationError = this.t(key); });
           this.revisionByModule.set(moduleKey, revisionId);
+          if (!contextStillCurrent({ project, moduleName, version }, this)) { detail.complete?.(new Error(this.t('request.conflict'))); return; }
+          const refreshed = await readNs5Module(project, moduleName, version);
+          const languagePending = await hasPendingLanguages(project, moduleName);
+          if (!contextStillCurrent({ project, moduleName, version }, this)) { detail.complete?.(new Error(this.t('request.conflict'))); return; }
           this.expectedRevisionId = revisionId;
-          const normalized = { ...before, productLanguages: value.productLanguages, defaultLanguage: value.defaultLanguage };
-          if (JSON.stringify(normalized) === JSON.stringify(value)) {
-            detail.complete?.();
-            await this.loadModule();
-            return;
-          }
+          this.data = refreshed;
+          this.languagePending = languagePending;
+          detail.complete?.();
+          return;
         }
         const manifest = await saveTobeArtifact(project, moduleName, detail.path, detail.value, {
           jsonPath: detail.jsonPath,
