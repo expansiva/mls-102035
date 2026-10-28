@@ -145,7 +145,7 @@ function reasonsFor(validation: NewReleaseOverlayValidation, affected: readonly 
     const coverage = validation.coverage[area];
     if (coverage.status !== 'checked') reasons.push(`${area}: ${coverage.status}${coverage.reason ? ` — ${coverage.reason}` : ''}`);
   }
-  for (const issue of validation.issues.filter(item => item.severity === 'error' && !item.baseline)) reasons.push(`${issue.code} ${issue.path}: ${issue.message}`);
+  for (const issue of validation.issues.filter(item => item.severity === 'error')) reasons.push(`${issue.code} ${issue.path}: ${issue.message}`);
   return [...new Set(reasons)];
 }
 
@@ -169,15 +169,14 @@ export async function validate40Private(input: Validate40Input): Promise<Validat
   let validation: NewReleaseOverlayValidation;
   try {
     const sources = validate40Sources(input.base, input.proposal);
-    const baseSources = validate40Sources(input.base, input.base);
     if (schemaFamily === 'v3') {
-      validation = validateV3Candidate(sources, input.context.v3 || {}, baseSources);
+      validation = validateV3Candidate(sources, input.context.v3 || {});
       if (!input.context.v3?.registryModuleNames) {
         validation = { ...validation, ok: false, coverage: { ...validation.coverage,
           integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
       }
     } else if (schemaFamily === 'v2') {
-      validation = await validateNs5Overlay(sources, input.context.v2, baseSources);
+      validation = await validateNs5Overlay(sources, input.context.v2);
       if (!input.context.v2?.registryModuleNames) {
         validation = { ...validation, ok: false, coverage: { ...validation.coverage,
           integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
