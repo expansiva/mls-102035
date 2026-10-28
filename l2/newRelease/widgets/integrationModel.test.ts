@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { loadNewReleaseMessages } from '../helpers/i18n.js';
 import { comprasIntegration } from './fixtures/compras-integration.defs.js';
 import {
   INTEGRATION_ITEM_LABELS,
@@ -74,12 +74,12 @@ test('identity fields remain protected even from an untyped caller, including an
 });
 
 
-test('every integration field label is translated in English and Portuguese', () => {
+test('every integration field label is translated in English and Portuguese', async () => {
   assert.equal(INTEGRATION_ITEM_LABELS.entityRefs, 'integration.entities');
   assert.equal(INTEGRATION_ITEM_LABELS.transitionRef, 'integration.transition');
   assert.equal(INTEGRATION_ITEM_LABELS.description, 'integration.itemDescription');
-  for (const language of ['en-US', 'pt-BR']) {
-    const messages = JSON.parse(readFileSync(new URL(`../i18n/${language}.json`, import.meta.url), 'utf8'));
+  for (const language of ['en', 'pt']) {
+    const [messages] = await loadNewReleaseMessages(102035, language);
     for (const key of Object.values(INTEGRATION_ITEM_LABELS)) assert.ok(messages[key]?.trim(), `${language}: ${key}`);
   }
 });
