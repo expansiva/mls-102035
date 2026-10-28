@@ -37,7 +37,8 @@ import {
 } from '/_102035_/l2/newRelease/widgets/journeysModel.js';
 
 import { renderNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconPicker.js';
-import { changedDot, hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
+import { hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
+import { changedDot } from '/_102035_/l2/newRelease/helpers/changedDot.js';
 import { JOURNEY_ICON_DEFAULTS, iconNeedsFallback, withNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconModel.js';
 
 type JourneyView = 'cards' | 'table';

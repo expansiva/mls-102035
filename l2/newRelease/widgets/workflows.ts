@@ -13,7 +13,8 @@ import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
-import { changedDot, hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
+import { hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
+import { changedDot } from '/_102035_/l2/newRelease/helpers/changedDot.js';
 import {
   announceNewReleaseChange,
   requestNewReleasePresentation,

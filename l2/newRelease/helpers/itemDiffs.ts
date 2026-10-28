@@ -1,8 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/itemDiffs.ts" enhancement="_blank" />
 
 import type { NewReleaseTobeDiff } from '/_102035_/l2/newRelease/tobe.js';
-import { html, nothing } from 'lit';
-import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 
 /** Match a JSON member boundary, so `taskId=one` never marks `taskId=oneMore`. */
 export function hasItemDiff(diffs: readonly NewReleaseTobeDiff[], path: string, selectors?: string | readonly string[]): boolean {
@@ -46,8 +44,4 @@ export function hasPluginDiff(diffs: readonly NewReleaseTobeDiff[], plugins: rea
     if (entry.jsonPath === `$.plugins[${match[1]}].pluginId`) return entry.before === pluginId || entry.after === pluginId;
     return plugins[Number(match[1])]?.pluginId === pluginId;
   }));
-}
-
-export function changedDot(changed: boolean, t: NewReleaseTranslate) {
-  return changed ? html`<span class="nr-item__changed" role="img" aria-label=${t('tobe.itemChanged')} title=${t('tobe.itemChanged')}></span>` : nothing;
 }
