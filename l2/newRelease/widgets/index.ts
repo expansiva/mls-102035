@@ -616,8 +616,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return !!this.data?.artifacts.all.some(artifact => artifact.source === 'tobe' && tabForArtifactPath(artifact.path) === tab);
   }
 
+  private hasPreparedChanges(): boolean {
+    return !!this.data?.changeId || !!this.data?.manifest?.changes.length;
+  }
+
   private async cancelChanges() {
-    if (this.version !== 'tobe' || this.loading || this.changing || this.requestBusy) return;
+    if (this.version !== 'tobe' || !this.hasPreparedChanges() || this.loading || this.changing || this.requestBusy) return;
+    if (!window.confirm(this.t('review.clearConfirm'))) return;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
     const moduleKey = `${context.project}/${context.moduleName}`;
     const requestKeys = [this.requestKey,
@@ -681,7 +686,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const errors = this.validationIssues().filter(issue => issue.severity === 'error').length;
     const warnings = this.validationIssues().filter(issue => issue.severity === 'warning').length;
     return html`
-      <section class="nr-index__tobe" aria-label=${this.t('tobe.statusLabel')} aria-live="polite">
+      ${this.activeTab === 'review' ? html`<section class="nr-index__tobe" aria-label=${this.t('tobe.statusLabel')} aria-live="polite">
         <div class="nr-index__tobe-main">
           <strong>${this.t('status.tobe', { count: manifest.changes.length })}</strong>
           <span>${this.t('tobe.byline', {
@@ -693,7 +698,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <span class=${errors ? 'has-errors' : ''}>${this.t('summary.errors', { count: errors })}</span>
           <span class=${warnings ? 'has-warnings' : ''}>${this.t('summary.warnings', { count: warnings })}</span>
         </div>
-      </section>
+      </section>` : nothing}
       ${this.data?.stalePaths.length ? html`
         <section class="nr-index__stale" role="alert">
           <div><strong>${this.t('tobe.staleTitle')}</strong><p>${this.t('tobe.staleBody')}</p></div>
@@ -705,6 +710,18 @@ export class NewReleaseIndex102035 extends StateLitElement {
         </section>
       ` : nothing}
     `;
+  }
+
+  private renderValidationLog() {
+    if (this.activeTab !== 'review' || this.version !== 'tobe' || !this.hasPreparedChanges()) return nothing;
+    const issues = this.validationIssues();
+    return html`<section class="nr-index__log" aria-label=${this.t('review.log.title')}>
+      <h2>${this.t('review.log.title')}</h2>
+      ${issues.length ? html`<ul>${issues.map(issue => html`<li class=${`is-${issue.severity}`}>
+        <div><strong>${this.t(`review.log.${issue.severity}`)}</strong><code>${issue.artifact}${issue.path && issue.path !== '$' ? ` · ${issue.path}` : ''}</code></div>
+        <p>${issue.message}</p>
+      </li>`)}</ul>` : html`<p>${this.t('review.log.empty')}</p>`}
+    </section>`;
   }
 
   private renderDiffs() {
@@ -819,9 +836,9 @@ export class NewReleaseIndex102035 extends StateLitElement {
     }
     if (this.activeTab === 'review') {
       return html`
-        ${this.version === 'tobe' ? html`
+        ${this.version === 'tobe' && this.hasPreparedChanges() ? html`
           <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
-            @click=${() => void this.cancelChanges()}>${this.t('review.cancelChanges')}</button>
+            @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>
         ` : nothing}
         <new-release--widgets--review-102035
           .project=${this.project}
@@ -930,6 +947,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
             ${this.presentation === 'text' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit' ? this.renderTextTree() : nothing}
           </fieldset></section>
           ${this.renderDiffs()}
+          ${this.renderValidationLog()}
         `}
       </main>
     `;
