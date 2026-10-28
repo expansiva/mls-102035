@@ -14,6 +14,7 @@ import {
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
+import { changedDot, hasItemDiff, hasPluginDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
 import {
   readIntegrationWorkspace,
   type IntegrationWorkspace,
@@ -81,6 +82,11 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
   setIssues(issues: NewReleaseValidationIssue[]) { this.suppliedIssues = integrationOracleIssues(issues); }
 
   private sourceValue(): unknown { return this.data?.artifacts.integration.value || null; }
+  private changedItem(lane: 'inbound' | 'outbound' | 'plugins', id: string) {
+    if (!id) return false;
+    if (lane === 'plugins') return hasPluginDiff(this.data?.diffs || [], this.view().plugins, id);
+    return hasItemDiff(this.data?.diffs || [], 'integration.defs.ts', idScope(lane, 'id', id));
+  }
   private view() { return normalizeIntegration(this.mode === 'edit' && this.draft ? this.draft : this.sourceValue()); }
   private currentArtifact(): Ns5IntegrationArtifact | null {
     if (this.mode === 'edit' && this.draft) return this.draft;
@@ -210,7 +216,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
     }
     const trigger = lane === 'inbound' ? item.from : item.on;
     const destination = lane === 'inbound' ? (item.writes || item.entityRefs).join(', ') : item.to;
-    return html`<article class="nr-integration__flow"><span>${trigger || this.t('integration.notDeclared')}</span><span aria-hidden="true">→</span><button type="button" @click=${() => this.select(`${lane}:${index}`)}>${item.event || item.id}</button><span aria-hidden="true">→</span><span>${destination === 'any' ? this.t('integration.any') : destination || this.t('integration.notDeclared')}</span></article>`;
+    return html`<article class="nr-integration__flow"><span>${trigger || this.t('integration.notDeclared')}</span><span aria-hidden="true">→</span><button type="button" @click=${() => this.select(`${lane}:${index}`)}>${item.event || item.id}${changedDot(this.changedItem(lane, item.id), this.t)}</button><span aria-hidden="true">→</span><span>${destination === 'any' ? this.t('integration.any') : destination || this.t('integration.notDeclared')}</span></article>`;
   }
 
   private renderLane(lane: IntegrationLane, items: Ns5IntegrationItem[]) {
@@ -224,7 +230,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
       const options = [...new Set([...current.usedBy, ...this.usedByOptions()])];
       return html`<article class="nr-integration__plugin is-edit"><header><label>${this.t('integration.plugin')}<input readonly .value=${current.pluginId}></label></header><label>${this.t('integration.usedBy')}<select multiple @change=${(event: Event) => this.updatePlugin(index, {usedBy: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value)})}>${options.map(value => html`<option value=${value} ?selected=${current.usedBy.includes(value)}>${value}</option>`)}</select></label><label>${this.t('integration.itemDescription')}<textarea .value=${current.description} @input=${(event: Event) => this.updatePlugin(index, {description: (event.currentTarget as HTMLTextAreaElement).value})}></textarea></label></article>`;
     }
-    return html`<article class="nr-integration__plugin"><button type="button" @click=${() => this.select(`plugins:${index}`)}>${plugin.pluginId}</button><p>${plugin.description}</p>${(plugin.usedBy.length ? plugin.usedBy : plugin.legacyEntityRefs).map(value => html`<code>${value}</code>`)}</article>`;
+    return html`<article class="nr-integration__plugin"><button type="button" @click=${() => this.select(`plugins:${index}`)}>${plugin.pluginId}${changedDot(this.changedItem('plugins', plugin.pluginId), this.t)}</button><p>${plugin.description}</p>${(plugin.usedBy.length ? plugin.usedBy : plugin.legacyEntityRefs).map(value => html`<code>${value}</code>`)}</article>`;
   }
 
   private select(id: string) {
@@ -242,7 +248,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
     const view = this.view();
     const presentation: NewReleaseTabPresentation = {
       detail: !!this.selected, back: () => this.back(), select: id => { if (id.includes(':')) this.select(id); },
-      nodes: (['inbound', 'outbound', 'plugins'] as const).map(lane => ({id: lane, label: this.t(`integration.${lane}`), value: '', children: view[lane].map((item, index) => ({id: `${lane}:${index}`, label: 'pluginId' in item ? item.pluginId : item.event || item.id, value: item.description, children: []}))})),
+      nodes: (['inbound', 'outbound', 'plugins'] as const).map(lane => ({id: lane, label: this.t(`integration.${lane}`), value: '', children: view[lane].map((item, index) => ({id: `${lane}:${index}`, label: 'pluginId' in item ? item.pluginId : item.event || item.id, value: item.description, changed: this.changedItem(lane, 'pluginId' in item ? item.pluginId : item.id), children: []}))})),
     };
     this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
   }

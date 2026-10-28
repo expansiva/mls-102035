@@ -329,8 +329,9 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderTreeNode(node: TextTreeNode): unknown {
-    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}><span class="nr-common__tree-name">${node.label}</span>${node.suffix ? html`<span class="nr-common__tree-suffix">${node.suffix}</span>` : nothing}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
-    return html`<li><details ?open=${!!this.textSearch}><summary>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${(event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); this.tabPresentation?.select(node.id); }}>${node.label}</button>` : node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
+    const dot = node.changed ? html`<span class="nr-item__changed" role="img" aria-label=${this.t('tobe.itemChanged')} title=${this.t('tobe.itemChanged')}></span>` : nothing;
+    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}><span class="nr-common__tree-name">${node.label}</span>${dot}${node.suffix ? html`<span class="nr-common__tree-suffix">${node.suffix}</span>` : nothing}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
+    return html`<li><details ?open=${!!this.textSearch}><summary>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${(event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); this.tabPresentation?.select(node.id); }}>${node.label}${dot}</button>` : node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
   }
 
   private closeHintsOnScroll = () => {

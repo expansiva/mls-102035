@@ -14,6 +14,7 @@ import type {
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
+import { changedDot, hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
 import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
@@ -80,7 +81,10 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
   private publishPresentation() {
     const access = this.currentAccess();
     const presentation: NewReleaseTabPresentation = {
-      nodes: access ? accessTextNodes(access, this.t('access.unassigned')) : [],
+      nodes: access ? accessTextNodes(access, this.t('access.unassigned')).map(node => ({...node,
+        changed: node.id.startsWith('actor:') && this.changedActor(node.id.slice(6)),
+        children: node.children.map(child => ({...child, changed: this.changedGrant(child.id.slice(6))})),
+      })) : [],
       detail: !!this.detailKind,
       select: id => {
         if (id.startsWith('actor:')) this.selectActor(id.slice(6));
@@ -90,6 +94,9 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
     };
     this.dispatchEvent(new CustomEvent('nr-view-state', { bubbles: true, composed: true, detail: presentation }));
   }
+
+  private changedActor(id: string) { return hasItemDiff(this.data?.diffs || [], 'access.defs.ts', idScope('actors', 'actorId', id)); }
+  private changedGrant(id: string) { return hasItemDiff(this.data?.diffs || [], 'access.defs.ts', idScope('grants', 'grantId', id)); }
 
   getDraft(): Ns5AccessArtifact | null {
     const access = this.currentAccess();
@@ -237,13 +244,13 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   private renderMatrix(access: Ns5AccessArtifact) {
     return html`<section class="nr-access__matrix"><header><div><span>${this.t('access.matrix')}</span><p>${this.t('access.matrixDescription')}</p></div><small>${this.t('access.matrixHint')}</small></header>
-      <div class="nr-access__matrix-scroll"><table><thead><tr><th scope="col">${this.t('access.grants')}</th>${access.actors.map((actor, index) => html`<th scope="col"><button type="button" class="nr-access__role-number" popovertarget=${`nr-access-role-${index}`} aria-label=${actor.title} @pointerenter=${(event: PointerEvent) => { if (event.pointerType === 'mouse') ((event.currentTarget as HTMLElement).nextElementSibling as HTMLElement | null)?.showPopover(); }}>#${index + 1}</button><div id=${`nr-access-role-${index}`} class="nr-access__role-popover" popover data-nr-hint @beforetoggle=${(event: Event) => {
+      <div class="nr-access__matrix-scroll"><table><thead><tr><th scope="col">${this.t('access.grants')}</th>${access.actors.map((actor, index) => html`<th scope="col"><button type="button" class="nr-access__role-number" popovertarget=${`nr-access-role-${index}`} aria-label=${actor.title} @pointerenter=${(event: PointerEvent) => { if (event.pointerType === 'mouse') ((event.currentTarget as HTMLElement).nextElementSibling as HTMLElement | null)?.showPopover(); }}>#${index + 1}${changedDot(this.changedActor(actor.actorId), this.t)}</button><div id=${`nr-access-role-${index}`} class="nr-access__role-popover" popover data-nr-hint @beforetoggle=${(event: Event) => {
         const popup = event.currentTarget as HTMLElement;
         const rect = popup.previousElementSibling!.getBoundingClientRect();
         popup.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 248))}px`;
         popup.style.top = `${rect.bottom + 6}px`;
       }}><span>${actor.title}</span><button type="button" class="nr-access__role-edit" aria-label=${this.t('access.editActor', { actor: actor.title })} @click=${() => this.selectActor(actor.actorId)}>${this.t('access.edit')}</button></div></th>`)}</tr></thead>
-      <tbody>${accessMatrixRows(access).map(({ grant, cells }) => html`<tr><th scope="row"><button type="button" @click=${() => this.selectGrant(grant.grantId)}><strong>${grant.title}</strong><code>${grant.grantId}</code></button></th>${cells.map((checked, index) => html`<td>${checked ? html`<button type="button" class="nr-access__indicator" aria-label=${this.t('access.matrixCell', { actor: access.actors[index].title, grant: grant.title })} @click=${() => this.selectGrant(grant.grantId)}><span aria-hidden="true">✓</span></button>` : html`<span class="nr-access__absent" aria-label=${this.t('access.none')}>—</span>`}</td>`)}</tr>`)}</tbody></table></div></section>`;
+      <tbody>${accessMatrixRows(access).map(({ grant, cells }) => html`<tr><th scope="row"><button type="button" @click=${() => this.selectGrant(grant.grantId)}><strong>${grant.title}</strong>${changedDot(this.changedGrant(grant.grantId), this.t)}<code>${grant.grantId}</code></button></th>${cells.map((checked, index) => html`<td>${checked ? html`<button type="button" class="nr-access__indicator" aria-label=${this.t('access.matrixCell', { actor: access.actors[index].title, grant: grant.title })} @click=${() => this.selectGrant(grant.grantId)}><span aria-hidden="true">✓</span></button>` : html`<span class="nr-access__absent" aria-label=${this.t('access.none')}>—</span>`}</td>`)}</tr>`)}</tbody></table></div></section>`;
   }
 
   private renderActor(access: Ns5AccessArtifact, actor: Ns5AccessActor) {

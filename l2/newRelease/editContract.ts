@@ -37,6 +37,7 @@ export function announceNewReleaseChange(target: EventTarget, detail: NewRelease
 export interface NewReleaseTextNode {
   id: string;
   label: string;
+  changed?: boolean;
   suffix?: string;
   value: string;
   children: NewReleaseTextNode[];

@@ -37,6 +37,7 @@ import {
 } from '/_102035_/l2/newRelease/widgets/journeysModel.js';
 
 import { renderNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconPicker.js';
+import { changedDot, hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
 import { JOURNEY_ICON_DEFAULTS, iconNeedsFallback, withNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconModel.js';
 
 type JourneyView = 'cards' | 'table';
@@ -77,8 +78,8 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     if (['data', 'opened', 'mode', 'selectedStepId', 'creatingStep', 'journeyDraft'].some(key => changed.has(key))) {
       const presentation: NewReleaseTabPresentation = {
         filters: this.actors().map(actor => ({id: actor.actorId, label: actor.title, rootIds: this.journeys().filter(journey => journey.business.actorRef === actor.actorId).map(journey => journey.journeyId)})),
-        nodes: this.journeys().map(journey => ({ id: journey.journeyId, label: journey.business.title, value: journey.journeyId,
-          children: journey.business.steps.map(step => ({ id: `${journey.journeyId}/${step.stepId}`, label: step.title, value: step.stepId, children: [] })) })),
+        nodes: this.journeys().map(journey => ({ id: journey.journeyId, label: journey.business.title, value: journey.journeyId, changed: this.changedJourney(journey.journeyId),
+          children: journey.business.steps.map(step => ({ id: `${journey.journeyId}/${step.stepId}`, label: step.title, value: step.stepId, changed: this.changedStep(journey.journeyId, step.stepId), children: [] })) })),
         detail: this.mode === 'edit' || !!this.selectedStepId || this.creatingStep,
         select: id => {
           if (id.startsWith('edit:')) { if (this.selectJourney(id.slice(5))) this.openJourneyEdit(); return; }
@@ -133,6 +134,11 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
 
   private currentJourney(): Ns5JourneyArtifact | null {
     return this.journeys().find(item => item.journeyId === this.selectedJourneyId) || null;
+  }
+
+  private changedJourney(id: string) { return hasItemDiff(this.data?.diffs || [], `journeys/${id}.defs.ts`); }
+  private changedStep(journeyId: string, stepId: string) {
+    return hasItemDiff(this.data?.diffs || [], `journeys/${journeyId}.defs.ts`, idScope('business.steps', 'stepId', stepId));
   }
 
   private actorTitle(actorId: string): string {
@@ -338,7 +344,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
   private renderJourneyList() {
     const journeys = this.opened ? this.journeys().filter(j => j.journeyId === this.selectedJourneyId) : this.journeys();
     const actors = [...new Set(journeys.map(j => j.business.actorRef))];
-    return html`${actors.map(actor => html`<section class="nr-journeys__group"><h3>${this.actorTitle(actor)}</h3><div class="nr-journeys__cards">${journeys.filter(j => j.business.actorRef === actor).map(journey => html`<button type="button" class=${this.opened ? 'is-active' : ''} @click=${() => this.selectJourney(journey.journeyId)}><span>${renderNewReleaseIcon(journey.business.icon, 'route')}</span><div><strong>${journey.business.title}</strong></div></button>`)}</div></section>`)}`;
+    return html`${actors.map(actor => html`<section class="nr-journeys__group"><h3>${this.actorTitle(actor)}</h3><div class="nr-journeys__cards">${journeys.filter(j => j.business.actorRef === actor).map(journey => html`<button type="button" class=${this.opened ? 'is-active' : ''} @click=${() => this.selectJourney(journey.journeyId)}><span>${renderNewReleaseIcon(journey.business.icon, 'route')}</span><div><strong>${journey.business.title}</strong>${changedDot(this.changedJourney(journey.journeyId), this.t)}</div></button>`)}</div></section>`)}`;
   }
 
   private renderTransitions(step: Ns5JourneyStep, journey: Ns5JourneyArtifact) {
@@ -367,7 +373,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
   }
 
   private renderStepCard(step: Ns5JourneyStep, journeyId: string) {
-    return html`<button class=${`nr-step__open ${step.kind === 'decide' ? 'is-decision' : ''}`} type="button" @click=${() => this.openStep(journeyId, step.stepId)}><span>${renderNewReleaseIcon(step.icon, JOURNEY_ICON_DEFAULTS[step.kind])}</span><strong>${step.title}</strong></button>`;
+    return html`<button class=${`nr-step__open ${step.kind === 'decide' ? 'is-decision' : ''}`} type="button" @click=${() => this.openStep(journeyId, step.stepId)}><span>${renderNewReleaseIcon(step.icon, JOURNEY_ICON_DEFAULTS[step.kind])}</span><strong>${step.title}</strong>${changedDot(this.changedStep(journeyId, step.stepId), this.t)}</button>`;
   }
 
   private renderTimeline(journey: Ns5JourneyArtifact) {

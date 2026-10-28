@@ -3,6 +3,7 @@
 export interface TextTreeNode {
   id: string;
   label: string;
+  changed?: boolean;
   suffix?: string;
   value: string;
   children: TextTreeNode[];

@@ -172,6 +172,19 @@ new-release--widgets--index-102035 {
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-warning-text, #9a6700) 35%, transparent);
   }
 
+  .nr-item__changed {
+    display: inline-block;
+    flex: none;
+    width: .48rem;
+    height: .48rem;
+    margin-inline: .3rem;
+    border: .1rem solid var(--surface-bg, #fff);
+    border-radius: 50%;
+    background: var(--status-warning-text, #9a6700);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-warning-text, #9a6700) 35%, transparent);
+    vertical-align: middle;
+  }
+
   @container nr-index (max-width: 419px) {
     .nr-index__request--history { align-items: stretch; flex-direction: column; }
     .nr-index__tabs {

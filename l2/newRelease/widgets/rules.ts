@@ -7,6 +7,7 @@ import type { Ns5RulesAny } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
+import { changedDot, hasItemDiff, ruleScopes } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
 import { announceNewReleaseChange, canDiscardNewReleaseDraft, requestNewReleaseEdit, type NewReleaseEditMode, type NewReleaseEditableTab, type NewReleaseTabPresentation } from '/_102035_/l2/newRelease/editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { patchRuleText, humanizeRuleKey, ontologyRuleCitations, rulePresentationGroups, ruleEntityIds, citationsForRule, rulesOracleIssues } from '/_102035_/l2/newRelease/widgets/rulesModel.js';
@@ -42,12 +43,13 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
     const citations = this.citations();
     const presentation: NewReleaseTabPresentation = {
       detail: !!this.selected,
-      nodes: this.groups().map(group => ({id: `group:${group.entityId || ''}`, label: `${group.title} (${group.rules.length})`, value: '', children: group.rules.map(rule => ({id: `rule:${rule.ruleId}`, label: humanizeRuleKey(rule.ruleId), suffix: this.ruleSuffix(rule.ruleId, citations), value: rule.description, children: []}))})),
+      nodes: this.groups().map(group => ({id: `group:${group.entityId || ''}`, label: `${group.title} (${group.rules.length})`, value: '', children: group.rules.map(rule => ({id: `rule:${rule.ruleId}`, label: humanizeRuleKey(rule.ruleId), suffix: this.ruleSuffix(rule.ruleId, citations), changed: this.changedRule(rule.ruleId), value: rule.description, children: []}))})),
       select: id => { if (id.startsWith('rule:')) this.select(id.slice(5)); }, back: () => this.back(),
     };
     this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
   }
   private ruleSuffix(id: string, citations = this.citations()) { const count = ruleEntityIds(citations, id).length; return count > 1 ? `(${count})` : ''; }
+  private changedRule(id: string) { return hasItemDiff(this.data?.diffs || [], 'rules.defs.ts', ruleScopes(id)); }
   private select(id: string) {
     if (this.saving || !canDiscardNewReleaseDraft(this)) return;
     if (this.version === 'asis') { requestNewReleaseEdit(this, `rule:${id}`); return; }
@@ -78,7 +80,7 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
         <label>${this.t('rules.businessStatement')}${this.mode === 'edit' ? html`<textarea ?disabled=${this.saving} .value=${rule.description} @input=${(event: Event) => this.updateText((event.currentTarget as HTMLTextAreaElement).value)}></textarea>` : html`<p>${rule.description}</p>`}</label>
         <section><h3>${this.t('rules.usedIn')}</h3>${citationsForRule(citations, rule.ruleId).map(citation => html`<p>${this.entities().find(entity => entity.entityId === citation.entityId)?.title || citation.entityId}${citation.transitionId ? html` — ${citation.label} <code>(${citation.transitionId})</code>` : nothing}</p>`)}${!citationsForRule(citations, rule.ruleId).length ? html`<p>${this.t('rules.orphanGroup')}</p>` : nothing}</section>
         ${this.mode === 'edit' ? html`<footer><span>${this.t(this.dirty ? 'rules.unsaved' : 'rules.noChanges')}</span><button type="button" ?disabled=${this.saving} @click=${() => {if (canDiscardNewReleaseDraft(this)) this.reset();}}>${this.t('rules.cancel')}</button><button type="button" ?disabled=${!this.dirty || this.saving} @click=${this.save}>${this.t('rules.save')}</button></footer>` : nothing}
-      </article>` : html`<div class="nr-rules__panels">${this.groups().map(group => html`<section class="nr-rules__group"><h2>${group.title} (${group.rules.length})</h2><div>${group.rules.map(rule => html`<button type="button" @click=${() => this.select(rule.ruleId)}><span class="nr-rules__name">${humanizeRuleKey(rule.ruleId)}</span><span class="nr-rules__count">${this.ruleSuffix(rule.ruleId, citations)}</span></button>`)}</div></section>`)}</div>`}
+      </article>` : html`<div class="nr-rules__panels">${this.groups().map(group => html`<section class="nr-rules__group"><h2>${group.title} (${group.rules.length})</h2><div>${group.rules.map(rule => html`<button type="button" @click=${() => this.select(rule.ruleId)}><span class="nr-rules__name">${humanizeRuleKey(rule.ruleId)}</span>${changedDot(this.changedRule(rule.ruleId), this.t)}<span class="nr-rules__count">${this.ruleSuffix(rule.ruleId, citations)}</span></button>`)}</div></section>`)}</div>`}
       ${this.message || this.issues.length ? html`<div role="alert">${this.message}${this.issues.map(issue => html`<p>${issue.message}</p>`)}</div>` : nothing}
     </section>`;
   }

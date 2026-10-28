@@ -28,6 +28,7 @@ import {
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
+import { changedDot, hasItemDiff, idScope, ontologyFieldScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
 import {
   announceNewReleaseChange,
   requestNewReleasePresentation,
@@ -127,15 +128,15 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   updated(changed: PropertyValues) {
     if (['data', 'panelEntityId', 'panelFieldPath', 'mode', 'v3Views'].some(key => changed.has(key))) {
-      const fieldNodes = (fields: OntologyPanelField[], parent = ''): NewReleaseTabPresentation['nodes'] =>
+      const fieldNodes = (entity: Ns5OntologyAnyEntity, fields: OntologyPanelField[], parent = ''): NewReleaseTabPresentation['nodes'] =>
         fields.filter(field => field.parent === parent).map(field => ({
-          id: `${field.entityId}/${field.path}`, label: field.path, value: field.title,
-          children: fieldNodes(fields, field.path),
+          id: `${field.entityId}/${field.path}`, label: field.path, value: field.title, changed: this.changedField(entity, field.path),
+          children: fieldNodes(entity, fields, field.path),
         }));
       const presentation: NewReleaseTabPresentation = {
         nodes: this.panelEntities().filter(entity => entity.kind !== 'role').map(entity => ({
-          id: entity.entityId, label: entity.title, value: entity.entityId,
-          children: fieldNodes(this.panelFields(entity)),
+          id: entity.entityId, label: entity.title, value: entity.entityId, changed: this.changedEntity(entity.entityId),
+          children: fieldNodes(entity, this.panelFields(entity)),
         })),
         detail: !!this.panelEntityId,
         select: id => { const [entityId, path = ''] = id.split('/'); this.openPanelEditor(entityId, path); },
@@ -972,6 +973,14 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     return ontologyPanelFields(entity, this.v3Views.find(view => view.entityId === entity.entityId));
   }
 
+  private changedEntity(id: string) { return hasItemDiff(this.data?.diffs || [], ontologyEntityPath(id)); }
+  private changedField(entity: Ns5OntologyAnyEntity, fieldPath: string) {
+    const path = ontologyEntityPath(entity.entityId);
+    const v3 = isOntologyV3Entity(entity);
+    const scopes = v3 ? [ontologyFieldScope(fieldPath, true)] : [ontologyFieldScope(fieldPath, false), idScope('fieldsBase', 'fieldId', fieldPath)];
+    return hasItemDiff(this.data?.diffs || [], path, scopes);
+  }
+
   private openPanelEditor(entityId: string, path = '') {
     if (!canDiscardNewReleaseDraft(this)) return;
     if (this.version === 'asis') { requestNewReleaseEdit(this, path ? `${entityId}/${path}` : entityId); return; }
@@ -1017,7 +1026,8 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   private panelFieldTree(fields: OntologyPanelField[], parent = ''): unknown {
     return fields.filter(field => field.parent === parent).map(field => {
-      const button = html`<span class="nr-ontology-panels__row" data-field=${field.path}><button type="button" @click=${() => this.openPanelEditor(field.entityId, field.path)}><span>${field.path.split('.').at(-1)}</span></button></span>`;
+      const entity = this.panelEntities().find(item => item.entityId === field.entityId);
+      const button = html`<span class="nr-ontology-panels__row" data-field=${field.path}><button type="button" @click=${() => this.openPanelEditor(field.entityId, field.path)}><span>${field.path.split('.').at(-1)}</span>${entity ? changedDot(this.changedField(entity, field.path), this.t) : nothing}</button></span>`;
       return fields.some(child => child.parent === field.path)
         ? html`<div class="nr-ontology-panels__branch">${button}<details open @toggle=${() => this.measurePanelLinks()}><summary aria-label=${this.t('ontology.panel.toggleFields', {path: field.path})}></summary><div>${this.panelFieldTree(fields, field.path)}</div></details></div>` : button;
     });
@@ -1125,7 +1135,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     if (!entities.length) return html`<section class="nr-ontology__empty"><h2>${this.t('ontology.emptyTitle')}</h2><p>${this.t('ontology.emptyBody')}</p></section>`;
     return html`<section class="nr-ontology-panels"><div class="nr-ontology-panels__scroll" @scroll=${() => this.measurePanelLinks()}><div class="nr-ontology-panels__board">
       <svg class="nr-ontology-panels__links" aria-label=${this.t('ontology.relationships')}>${this.panelLinks.map(link => svg`<path d=${link.d} class=${link.clipped ? 'is-clipped' : ''}><title>${link.id}${link.clipped ? ` — ${this.t('ontology.panel.offscreen')}` : ''}</title></path>`)}</svg>
-      ${entities.map(entity => html`<article data-entity=${entity.entityId}><header><button type="button" @click=${() => this.openPanelEditor(entity.entityId)}><strong>${entity.title}</strong><code>${entity.entityId}</code></button></header><div class="nr-ontology-panels__fields" @scroll=${() => this.measurePanelLinks()}>${this.panelFieldTree(this.panelFields(entity))}</div></article>`)}
+      ${entities.map(entity => html`<article data-entity=${entity.entityId}><header><button type="button" @click=${() => this.openPanelEditor(entity.entityId)}><strong>${entity.title}</strong>${changedDot(this.changedEntity(entity.entityId), this.t)}<code>${entity.entityId}</code></button></header><div class="nr-ontology-panels__fields" @scroll=${() => this.measurePanelLinks()}>${this.panelFieldTree(this.panelFields(entity))}</div></article>`)}
     </div></div>${this.v3Loading ? html`<p>${this.t('ontology.v3.loading')}</p>` : nothing}${this.v3Error ? html`<p role="alert">${this.v3Error}</p>` : nothing}</section>`;
   }
 
