@@ -4,67 +4,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import {
-  createNewReleaseTranslator,
-  loadNewReleaseMessages,
-  newReleaseI18nCandidates,
-  newReleaseI18nFileFromUrl,
-  readNewReleaseI18nFromStor,
-  type NewReleaseI18nFile,
-  type NewReleaseMessages,
-} from './helpers/i18n.js';
-
-const MASTER_PT = '/_102035_/l2/newRelease/i18n/pt-BR.json';
-const PROJECT_PT = '/_102047_/l2/newRelease/i18n/pt-BR.json';
-const MASTER_PT_BASE = '/_102035_/l2/newRelease/i18n/pt.json';
-const MASTER_EN = '/_102035_/l2/newRelease/i18n/en-US.json';
-
-function keyOf(file: NewReleaseI18nFile): string {
-  return `${file.project}_${file.level}_${file.folder}/${file.shortName}${file.extension}`;
-}
-
-function httpMap(map: Record<string, unknown>): typeof fetch {
-  return (async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (!(url in map)) return { ok: false, json: async () => ({}) } as Response;
-    const body = map[url];
-    if (body === 'THROW') throw new SyntaxError('invalid json');
-    return { ok: true, json: async () => body } as Response;
-  }) as typeof fetch;
-}
-
-function storMap(map: Record<string, NewReleaseMessages | null | 'THROW'>): (file: NewReleaseI18nFile) => Promise<NewReleaseMessages | null> {
-  return async file => {
-    const url = `/_${file.project}_/l2/${file.folder}/${file.shortName}${file.extension}`;
-    if (!(url in map)) return null;
-    const value = map[url];
-    if (value === 'THROW') throw new Error('invalid stor');
-    return value;
-  };
-}
-
-async function translatorFor(
-  project: number,
-  language: string,
-  stor: Record<string, NewReleaseMessages | null | 'THROW'>,
-  http: Record<string, unknown>,
-) {
-  const bundles = await loadNewReleaseMessages(project, language, {
-    readStor: storMap(stor),
-    fetcher: httpMap(http),
-  });
-  return createNewReleaseTranslator(bundles);
-}
-
-test('i18n prioritizes client, master, base language, then master-US', () => {
-  assert.deepEqual(newReleaseI18nCandidates(102047, 'pt-BR'), [
-    '/_102047_/l2/newRelease/i18n/pt-BR.json',
-    '/_102035_/l2/newRelease/i18n/pt-BR.json',
-    '/_102047_/l2/newRelease/i18n/pt.json',
-    '/_102035_/l2/newRelease/i18n/pt.json',
-    '/_102035_/l2/newRelease/i18n/en-US.json',
-  ]);
-});
+import ts from 'typescript';
+import { createNewReleaseTranslator, loadNewReleaseMessages } from './helpers/i18n.js';
 
 test('translator falls through bundles, interpolates and exposes a missing key', () => {
   const t = createNewReleaseTranslator([
@@ -76,7 +17,7 @@ test('translator falls through bundles, interpolates and exposes a missing key',
   assert.equal(t('missing.key'), 'missing.key');
 });
 
-test('every widget keeps visible copy in external message bundles', () => {
+test('every widget keeps visible copy in compiled message bundles', async () => {
   const widgetSources = [
     'widgets/index.ts',
     'widgets/general.ts',
@@ -92,8 +33,8 @@ test('every widget keeps visible copy in external message bundles', () => {
   for (const source of widgetSources) {
     assert.doesNotMatch(source, /(?<!=)>[ \t]*\p{L}[^<${}\n]*</u);
   }
-  const pt = JSON.parse(readFileSync(new URL('i18n/pt-BR.json', import.meta.url), 'utf8'));
-  const en = JSON.parse(readFileSync(new URL('i18n/en-US.json', import.meta.url), 'utf8'));
+  const [pt] = await loadNewReleaseMessages(102035, 'pt');
+  const [en] = await loadNewReleaseMessages(102035, 'en');
   assert.deepEqual(Object.keys(pt).sort(), Object.keys(en).sort());
 });
 
@@ -107,10 +48,10 @@ function sourceFiles(dir: string): string[] {
   return files;
 }
 
-test('every literal t() key exists in both bundles', () => {
+test('every literal t() key exists in both bundles', async () => {
   const root = fileURLToPath(new URL('.', import.meta.url));
-  const pt = JSON.parse(readFileSync(new URL('i18n/pt-BR.json', import.meta.url), 'utf8')) as Record<string, unknown>;
-  const en = JSON.parse(readFileSync(new URL('i18n/en-US.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+  const [pt] = await loadNewReleaseMessages(102035, 'pt');
+  const [en] = await loadNewReleaseMessages(102035, 'en');
   const missing: string[] = [];
   const seen = new Set<string>();
   const pattern = /\bt\(\s*'([A-Za-z0-9_.-]+)'/g;
@@ -127,21 +68,21 @@ test('every literal t() key exists in both bundles', () => {
   assert.deepEqual(missing, []);
 });
 
-test('gapCount interpolates through the real translator in both bundles', () => {
-  for (const file of ['i18n/pt-BR.json', 'i18n/en-US.json']) {
-    const messages = JSON.parse(readFileSync(new URL(file, import.meta.url), 'utf8')) as Record<string, string>;
+test('gapCount interpolates through the real translator in both bundles', async () => {
+  for (const language of ['pt', 'en']) {
+    const [messages] = await loadNewReleaseMessages(102035, language);
     const text = createNewReleaseTranslator([messages])('review.backend.testSupport.gapCount', { count: 2 });
     assert.notEqual(text, 'review.backend.testSupport.gapCount');
     assert.match(String(text), /2/);
   }
 });
 
-test('mr_12 implementation values interpolate through the real translator in both languages', () => {
+test('mr_12 implementation values interpolate through the real translator in both languages', async () => {
   for (const [language, attemptLabel, countLabel, levelLabel] of [
     ['pt-BR', 'Tentativa', 'Definições alteradas', 'Nível'],
     ['en-US', 'Attempt', 'Changed definitions', 'Level'],
   ]) {
-    const messages = JSON.parse(readFileSync(new URL(`i18n/${language}.json`, import.meta.url), 'utf8'));
+    const [messages] = await loadNewReleaseMessages(102035, language);
     const t = createNewReleaseTranslator([messages]);
     for (const value of [1, 2]) {
       assert.equal(t('review.implementation.attempt', { attempt: value }),
@@ -152,106 +93,53 @@ test('mr_12 implementation values interpolate through the real translator in bot
   }
 });
 
-test('candidate URL maps to the Studio stor file of the same catalog', () => {
-  assert.deepEqual(newReleaseI18nFileFromUrl(MASTER_PT), {
-    project: 102035,
-    level: 2,
-    folder: 'newRelease/i18n',
-    shortName: 'pt-BR',
-    extension: '.json',
-  });
-  assert.equal(keyOf(newReleaseI18nFileFromUrl(MASTER_PT)!), '102035_2_newRelease/i18n/pt-BR.json');
+test('special i18n block contains parseable conventional catalogs and lowercase locale keys', () => {
+  const source = readFileSync(new URL('helpers/i18n.ts', import.meta.url), 'utf8');
+  const block = source.split('/// **collab_i18n_start**')[1]?.split('/// **collab_i18n_end**')[0];
+  assert.ok(block);
+  const result = ts.transpileModule(block, { reportDiagnostics: true });
+  assert.deepEqual(result.diagnostics, []);
+  const ast = ts.createSourceFile('i18n.ts', block, ts.ScriptTarget.Latest, true);
+  const declarations = ast.statements.flatMap(statement => ts.isVariableStatement(statement)
+    ? [...statement.declarationList.declarations] : []);
+  for (const name of ['message_en', 'message_pt', 'messages']) {
+    assert.ok(declarations.some(declaration => declaration.name.getText(ast) === name));
+  }
+  const locales = declarations.find(declaration => declaration.name.getText(ast) === 'messages')!;
+  assert.ok(locales.initializer && ts.isObjectLiteralExpression(locales.initializer));
+  assert.deepEqual(locales.initializer.properties.map(property => property.name?.getText(ast)), ['en', 'pt']);
+  assert.ok(ast.statements.some(statement => ts.isTypeAliasDeclaration(statement) && statement.name.text === 'MessageType'));
 });
 
-test('current master stor with an old static URL translates tab.review and review.title', async () => {
-  const t = await translatorFor(102047, 'pt-BR', {
-    [MASTER_PT]: {
-      'tab.review': 'Revisão',
-      'review.title': 'Menu que o ator vai ver',
-      'tab.general': 'Resumo atual',
-    },
-  }, {
-    [MASTER_PT]: { 'tab.general': 'Resumo antigo', 'tab.access': 'Matriz de acesso' },
-  });
-  assert.equal(t('tab.review'), 'Revisão');
-  assert.equal(t('review.title'), 'Menu que o ator vai ver');
-  assert.equal(t('tab.general'), 'Resumo atual');
-  assert.equal(t('tab.access'), 'Matriz de acesso');
-});
-
-test('project override stor stays ahead of master stor and HTTP', async () => {
-  const t = await translatorFor(102047, 'pt-BR', {
-    [PROJECT_PT]: { 'tab.general': 'Cliente' },
-    [MASTER_PT]: { 'tab.general': 'Master', 'tab.review': 'Revisão' },
-  }, {
-    [PROJECT_PT]: { 'tab.general': 'HTTP cliente' },
-    [MASTER_PT]: { 'tab.general': 'HTTP master' },
-  });
-  assert.equal(t('tab.general'), 'Cliente');
-  assert.equal(t('tab.review'), 'Revisão');
-});
-
-test('HTTP fills the candidate when stor is missing', async () => {
-  const t = await translatorFor(102047, 'pt-BR', {}, {
-    [MASTER_PT]: { 'tab.review': 'Revisão HTTP', 'review.title': 'Menu HTTP' },
-  });
-  assert.equal(t('tab.review'), 'Revisão HTTP');
-  assert.equal(t('review.title'), 'Menu HTTP');
-});
-
-test('base language and English follow the candidate chain', async () => {
-  const t = await translatorFor(102047, 'pt-BR', {
-    [MASTER_PT_BASE]: { 'tab.general': 'Geral' },
-  }, {
-    [MASTER_EN]: { 'tab.general': 'Overview', greeting: 'Hello' },
-  });
-  assert.equal(t('tab.general'), 'Geral');
-  assert.equal(t('greeting'), 'Hello');
-});
-
-test('invalid stor or HTTP JSON is skipped without breaking the tab', async () => {
-  const t = await translatorFor(102047, 'pt-BR', {
-    [PROJECT_PT]: 'THROW',
-    [MASTER_PT]: null,
-  }, {
-    [PROJECT_PT]: 'THROW',
-    [MASTER_PT]: ['not', 'an', 'object'],
-    [MASTER_EN]: { 'tab.review': 'Review' },
-  });
-  assert.equal(t('tab.review'), 'Review');
-  assert.equal(t('missing.key'), 'missing.key');
-});
-
-test('Studio getValueInfo content:null falls through to getContent', async () => {
-  const file = newReleaseI18nFileFromUrl(MASTER_PT)!;
-  const record = {
-    status: 'nochange',
-    getValueInfo: async () => ({ content: null }),
-    getContent: async () => JSON.stringify({
-      'tab.review': 'Revisão',
-      'review.title': 'Menu que o ator vai ver',
-    }),
-  };
-  const previous = (globalThis as unknown as { mls?: unknown }).mls;
-  (globalThis as unknown as { mls: unknown }).mls = {
-    stor: {
-      files: { [keyOf(file)]: record },
-      getKeyToFile: keyOf,
-    },
-  };
+test('loading compiled messages selects locale without fetching or accessing MLS storage', async t => {
+  const fetcher = t.mock.method(globalThis, 'fetch', async () => { throw new Error('unexpected HTTP'); });
+  const previousMls = Object.getOwnPropertyDescriptor(globalThis, 'mls');
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  let storageReads = 0;
+  Object.defineProperty(globalThis, 'mls', { configurable: true, get() {
+    storageReads++;
+    throw new Error('MLS must not be required');
+  } });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: { documentElement: { lang: '' } } });
   try {
-    const bundles = await loadNewReleaseMessages(102047, 'pt-BR', {
-      fetcher: httpMap({ [MASTER_PT]: { 'tab.general': 'Resumo antigo' } }),
-    });
-    const t = createNewReleaseTranslator(bundles);
-    assert.equal(t('tab.review'), 'Revisão');
-    assert.equal(t('review.title'), 'Menu que o ator vai ver');
-    assert.equal(t('tab.general'), 'Resumo antigo');
-    assert.deepEqual(await readNewReleaseI18nFromStor(file), {
-      'tab.review': 'Revisão',
-      'review.title': 'Menu que o ator vai ver',
-    });
+    const [en] = await loadNewReleaseMessages(102035, 'en');
+    const [pt] = await loadNewReleaseMessages(102035, 'pt');
+    assert.notEqual(en['tab.general'], pt['tab.general']);
+    for (const project of [102035, 102047, 102056]) {
+      for (const language of ['pt-BR', 'pt', ' PT-br ', 'pt-PT']) {
+        assert.deepEqual(await loadNewReleaseMessages(project, language), [pt, en]);
+      }
+      for (const language of ['en-US', 'en', 'EN-us', 'de-DE', '', 'unknown', 'constructor', '__proto__']) {
+        assert.deepEqual(await loadNewReleaseMessages(project, language), [en]);
+      }
+      assert.deepEqual(await loadNewReleaseMessages(project), [en]);
+    }
+    assert.equal(fetcher.mock.callCount(), 0);
+    assert.equal(storageReads, 0);
   } finally {
-    (globalThis as unknown as { mls?: unknown }).mls = previous;
+    if (previousMls) Object.defineProperty(globalThis, 'mls', previousMls);
+    else Reflect.deleteProperty(globalThis, 'mls');
+    if (previousDocument) Object.defineProperty(globalThis, 'document', previousDocument);
+    else Reflect.deleteProperty(globalThis, 'document');
   }
 });

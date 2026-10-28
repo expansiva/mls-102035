@@ -874,7 +874,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           ${this.languagePending ? html`<button type="button" class="nr-button" ?disabled=${this.changing || this.requestBusy || !!this.activeEditor()?.dirty} @click=${this.retryLanguages}>${this.t('general.languagesRetry')}</button>` : nothing}
           ${this.data.errors.length || this.mutationError ? html`
             <section class="nr-index__errors">
-              <strong>${this.t('state.errorTitle')}</strong>
+              ${this.data.errors.length ? html`<strong>${this.t('state.errorTitle')}</strong>` : nothing}
               ${this.mutationError ? html`<p>${this.mutationError}</p>` : nothing}
               ${this.data.errors.map(error => html`<p>${this.t('state.errorPath', { path: error.path, message: error.message })}</p>`)}
             </section>
