@@ -46,7 +46,8 @@ test('existing v3 fixture records every area and exposes its real access defect'
   assert.equal(result.coverage.access.status, 'error');
   assert.ok(result.issues.some(issue => issue.code === 'NS5_ACCESS_DISCLOSURE_PATH_UNKNOWN'));
   assert.equal(result.coverage.ontologyEntities.status, 'unsupported');
-  assert.equal(result.coverage.oracle.status, 'unsupported');
+  assert.equal(result.coverage.oracle.status, 'error', result.coverage.oracle.reason);
+  assert.match(result.coverage.oracle.reason || '', /attendanceNote/);
   assert.equal(result.ok, false);
   assert.equal(candidateCanPublish(result, ['oracle']), false);
   assert.equal(candidateCanPublish(result, ['rules']), false, 'an unrelated L4 error still blocks publication');
@@ -75,6 +76,34 @@ test('v3 grant, workflow and integration mutations cannot be silently approved',
     assert.notEqual(result.coverage[one.area].status, 'checked', one.area);
     assert.ok(result.issues.some(issue => issue.artifact === `${one.area}.defs.ts` && issue.severity === 'error'), one.area);
   }
+});
+
+test('a new rules error blocks publication and an error already on the module does not', () => {
+  const base = actualV3();
+  const broken = actualV3();
+  const rule = broken.rules.value!;
+  if (!('rules' in rule) || !Array.isArray(rule.rules)) throw new Error('Expected a rules catalog');
+  rule.rules[0].description = '';
+  const result = validateV3Candidate(broken, context, base);
+  assert.equal(result.coverage.rules.status, 'error');
+  assert.ok(result.issues.some(issue => issue.artifact === 'rules.defs.ts' && issue.severity === 'error' && !issue.baseline));
+  assert.equal(candidateCanPublish(result, ['rules']), false);
+
+  const same = validateV3Candidate(actualV3(), context, actualV3());
+  const oldErrors = same.issues.filter(issue => issue.severity === 'error');
+  assert.ok(oldErrors.length > 0);
+  assert.ok(oldErrors.every(issue => issue.baseline === true));
+  assert.equal(same.coverage.oracle.status, 'checked');
+  assert.equal(same.coverage.access.status, 'checked');
+  assert.equal(same.coverage.ontologyEntities.status, 'unsupported');
+  assert.equal(candidateCanPublish(same, ['rules']), true);
+  assert.equal(same.ok, false);
+
+  const noBase = validateV3Candidate(actualV3(), context);
+  assert.ok(noBase.issues.some(issue => issue.severity === 'error' && !issue.baseline));
+  assert.equal(noBase.coverage.oracle.status, 'error');
+  assert.equal(candidateCanPublish(noBase, ['oracle']), false);
+  assert.ok(noBase.issues.filter(issue => issue.severity === 'warning').every(issue => !issue.baseline));
 });
 
 test('missing platform catalog or transient plan is unsupported, not green', () => {

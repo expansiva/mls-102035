@@ -2,14 +2,11 @@
 
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import type { NrpArtifactKind } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
-import { validateNs5Journeys } from '/_102035_/l2/solution/gates/journeys20/gate.js';
-import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
-import { validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
-import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
-import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
-import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
-import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
-import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
+import {
+  assembleCandidateModule,
+  classifyCandidateIssues,
+  verifyCandidateModule,
+} from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES, nrpOccupiedSignatureBlock } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
@@ -50,27 +47,12 @@ export const NRP_REPAIR_ROUNDS = 2;
 export const NRP_REPAIR_KINDS = 2;
 
 export function overlayNrpEdits(base: NrpModuleArtifacts, applied: NrpAppliedEdit[]): NrpModuleArtifacts {
-  let next = clone(base);
-  for (const edit of applied) {
-    if (edit.mode === 'apply') {
-      next = clone(edit.artifact as NrpModuleArtifacts);
-      continue;
-    }
-    if (!edit.kind) throw new Error('A model edit needs an artifact kind.');
-    next = replaceKind(next, edit.kind, edit.artifact);
-  }
-  return next;
+  return assembleCandidateModule(base, applied);
 }
 
 /** Per-kind NS5 gate, then finalize80. Ontology v3 entity gates need platform catalogs this agent does not load. */
 export function checkNrpGates(artifacts: NrpModuleArtifacts, kinds: readonly NrpArtifactKind[]): NrpGateIssue[] {
-  const issues: NrpGateIssue[] = [];
-  for (const kind of kinds) {
-    if (kind === 'ontology') continue;
-    issues.push(...checkKind(artifacts, kind));
-  }
-  issues.push(...checkCoherence(artifacts));
-  return issues;
+  return verifyCandidateModule(artifacts, kinds);
 }
 
 export function nrpIssueKey(issue: NrpGateIssue): string {
@@ -82,8 +64,7 @@ export function classifyNrpGateIssues(
   baseline: readonly NrpGateIssue[],
   current: readonly NrpGateIssue[],
 ): NrpGateIssue[] {
-  const known = new Set(baseline.map(nrpIssueKey));
-  return current.map(issue => known.has(nrpIssueKey(issue)) ? { ...issue, baseline: true } : issue);
+  return classifyCandidateIssues(baseline, current);
 }
 
 export function nrpFreshIssues(issues: readonly NrpGateIssue[]): NrpGateIssue[] {
@@ -440,143 +421,4 @@ export function buildNrpRepairTool(): mls.msg.LLMTool {
   );
 }
 
-function checkKind(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind): NrpGateIssue[] {
-  try {
-    if (kind === 'rules') {
-      return mapIssues(kind, validateNs5Rules(ns5RuleRecord(artifacts.rules), { moduleName: artifacts.module.moduleName }).issues);
-    }
-    if (kind === 'journeys') {
-      const actors = artifacts.access.actors || [];
-      return mapIssues(kind, validateNs5Journeys(
-        artifacts.journeys.map(journey => ({ journeyId: journey.journeyId, business: journey.business })),
-        { actors, moduleName: artifacts.module.moduleName },
-      ).issues);
-    }
-    const views = ns5OntologyEntityViews(artifacts.entities);
-    if (kind === 'workflows') {
-      return mapIssues(kind, validateNs5Workflows(artifacts.workflows.processes, {
-        moduleName: artifacts.module.moduleName,
-        actorIds: (artifacts.access.actors || []).map(actor => actor.actorId),
-        journeys: artifacts.journeys,
-        entities: views,
-        journeyDecisions: artifacts.workflows.journeyDecisions,
-      }).issues);
-    }
-    if (kind === 'access') {
-      return mapIssues(kind, validateNs5Access(artifacts.access.grants, {
-        moduleName: artifacts.module.moduleName,
-        actors: artifacts.access.actors,
-        entities: views,
-        relationships: ns5OntologyEdges(artifacts.ontologyIndex),
-        journeys: artifacts.journeys,
-      }).issues);
-    }
-    return mapIssues(kind, validateNs5Integration(
-      artifacts.integration.inbound,
-      artifacts.integration.outbound,
-      artifacts.integration.plugins,
-      {
-        moduleName: artifacts.module.moduleName,
-        actors: artifacts.access.actors || [],
-        entities: views,
-        registryModuleNames: [artifacts.module.moduleName],
-        sourcePrompt: artifacts.module.sourcePrompt || '',
-        journeySteps: artifacts.journeys.map(journey => ({
-          journeyId: journey.journeyId,
-          stepIds: journey.business.steps.map(step => step.stepId),
-        })),
-        processTasks: artifacts.workflows.processes.map(process => ({
-          processId: process.processId,
-          taskIds: process.tasks.map(task => task.taskId),
-        })),
-      },
-    ).issues);
-  } catch (error) {
-    console.error(`[agentNewReleasePrompt] ${kind} verification failed`, error);
-    return [{
-      kind,
-      code: 'NRP_GATE_FAILED',
-      message: error instanceof Error ? error.message : String(error),
-      path: '$',
-    }];
-  }
-}
 
-function checkCoherence(artifacts: NrpModuleArtifacts): NrpGateIssue[] {
-  try {
-    const report = runNs5Oracle({
-      module: artifacts.module,
-      journeys: artifacts.journeys,
-      journeyIndex: artifacts.journeyIndex,
-      entities: ns5OntologyEntityViews(artifacts.entities),
-      ontologyIndex: artifacts.ontologyIndex,
-      rules: artifacts.rules,
-      workflows: artifacts.workflows,
-      access: artifacts.access,
-      integration: artifacts.integration,
-    });
-    return report.errors.map(error => ({
-      kind: 'coherence' as const,
-      code: error.code,
-      message: error.message,
-      path: error.path,
-    }));
-  } catch (error) {
-    console.error('[agentNewReleasePrompt] finalize80 rejected the candidate', error);
-    return [{
-      kind: 'coherence',
-      code: 'NRP_FINALIZE_FAILED',
-      message: error instanceof Error ? error.message : String(error),
-      path: '$',
-    }];
-  }
-}
-
-function mapIssues(
-  kind: NrpArtifactKind,
-  issues: ReadonlyArray<{ severity: 'error' | 'warning'; code: string; message: string; path?: string }>,
-): NrpGateIssue[] {
-  return issues
-    .filter(issue => issue.severity === 'error')
-    .map(issue => ({ kind, code: issue.code, message: issue.message, path: issue.path || '$' }));
-}
-
-function replaceKind(artifacts: NrpModuleArtifacts, kind: NrpArtifactKind, slice: unknown): NrpModuleArtifacts {
-  const next = clone(artifacts);
-  const root = record(slice, 'Edited artifact');
-  if (!Array.isArray(root.files)) throw new Error('A model edit lists files.');
-  for (const item of root.files) {
-    const file = record(item, 'Edited file');
-    const id = file.id;
-    if (typeof id !== 'string' || !id) throw new Error('An edited file needs an id.');
-    const body = file.artifact;
-    if (kind === 'ontology') {
-      if (id === 'index') next.ontologyIndex = body as NrpModuleArtifacts['ontologyIndex'];
-      else next.entities = upsert(next.entities, 'entityId', id, body);
-    } else if (kind === 'journeys') {
-      if (id === 'index') next.journeyIndex = body as NrpModuleArtifacts['journeyIndex'];
-      else next.journeys = upsert(next.journeys, 'journeyId', id, body);
-    } else if (kind === 'rules') next.rules = body as NrpModuleArtifacts['rules'];
-    else if (kind === 'access') next.access = body as NrpModuleArtifacts['access'];
-    else if (kind === 'workflows') next.workflows = body as NrpModuleArtifacts['workflows'];
-    else next.integration = body as NrpModuleArtifacts['integration'];
-  }
-  return next;
-}
-
-function upsert<T>(items: T[], key: keyof T, id: string, body: unknown): T[] {
-  const next = items.slice();
-  const index = next.findIndex(item => (item as Record<string, unknown>)[key as string] === id);
-  if (index < 0) next.push(body as T);
-  else next[index] = body as T;
-  return next;
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function record(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object.`);
-  return value as Record<string, unknown>;
-}

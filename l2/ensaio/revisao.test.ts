@@ -435,21 +435,16 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
 }
 
 
-test('mr_24 s3: base with an empty transition by fails publicly without publishing', async () => {
+test('mr_24 s3: an empty transition by already on the base does not block the recorded review', async () => {
   const originalSources = new Map<string, string>();
   await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async ({ before, context, replay, progress, fetchCalls }) => {
-    const errorCode = 'review.not_publishable:invalid:NS5_WORKFLOWS_TRANSITION_BY';
-    assert.equal(context.task?.status, 'failed');
-    const terminalLog = context.task?.last_update_log;
-    assert.match(terminalLog ?? '', /^Task failed at \d{4}-\d{2}-\d{2}T[\d:.]+Z \| reason: /);
-    assert.equal(terminalLog?.split(' | reason: ')[1], errorCode);
-    assert.deepEqual(replay.executedPlans, ['entry10', 'review20', 'reconcile30', 'validate40', 'correction45-attempt-1']);
-    assert.ok(!replay.executedPlans.includes('finalize50'));
+    assert.equal(context.task?.status, 'done');
+    assert.deepEqual(replay.executedPlans, ['entry10', 'review20', 'reconcile30', 'validate40', 'finalize50']);
     const after = await candidateRead({ project: PROJECT, moduleName: MODULE });
-    assert.deepEqual(after.pointer, before.pointer);
-    assert.deepEqual(after.snapshot, before.snapshot);
-    assert.equal(progress.status, 'failed');
-    assert.equal(progress.errorCode, terminalLog);
+    assert.ok(after.pointer);
+    assert.notDeepEqual(after.pointer, before.pointer);
+    assert.equal(progress.status, 'planning');
+    assert.equal(progress.errorCode, undefined);
     assert.equal(fetchCalls(), 0);
     for (const [path, source] of originalSources) {
       assert.equal(readFileSync(new URL(`l4/${path}`, FIXTURE), 'utf8'), source, path);
@@ -480,8 +475,9 @@ test('mr_24 s3: base with an empty transition by fails publicly without publishi
           });
         }
       }
-      assert.equal(review.reviewRunErrorKey(progress.errorCode!), 'review.run.error.notPublishable');
-      assert.deepEqual(JSON.parse(presentation.tReviewRunError(progress.errorCode!)), {
+      const errorCode = 'review.not_publishable:invalid:NS5_WORKFLOWS_TRANSITION_BY';
+      assert.equal(review.reviewRunErrorKey(errorCode), 'review.run.error.notPublishable');
+      assert.deepEqual(JSON.parse(presentation.tReviewRunError(errorCode)), {
         key: 'review.run.error.notPublishable', status: 'invalid', codes: 'NS5_WORKFLOWS_TRANSITION_BY',
       });
       for (const code of [errorCode + ':texto livre', errorCode + ',texto livre',

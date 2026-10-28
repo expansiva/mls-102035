@@ -421,7 +421,7 @@ function classify(result: Validate40Result): Validate40PrivateStatus {
     issue.code === 'REVIEW_VALIDATE40_EXCEPTION' || issue.code === 'NR_GATE_EXCEPTION') || false;
   if (affectedUnsupported || operational) return 'unsupported';
   const invalid = result.status === 'attempt-limit' || result.mayCorrect
-    || result.validation?.issues.some(issue => issue.severity === 'error');
+    || result.validation?.issues.some(issue => issue.severity === 'error' && !issue.baseline);
   if (invalid) return 'invalid';
   return 'clarification';
 }
@@ -429,7 +429,7 @@ function classify(result: Validate40Result): Validate40PrivateStatus {
 function allAffectedChecked(state: Pick<Validate40PrivateState, 'publishable' | 'affectedAreas' | 'unsupportedPaths' | 'validation'>): boolean {
   return state.publishable && state.affectedAreas.length > 0 && state.unsupportedPaths.length === 0 && !!state.validation
     && state.affectedAreas.every(area => state.validation!.coverage[area].status === 'checked')
-    && !state.validation.issues.some(issue => issue.severity === 'error');
+    && !state.validation.issues.some(issue => issue.severity === 'error' && !issue.baseline);
 }
 
 function changedPathsOf(base: Record<string, unknown>, draft: Record<string, unknown>): string[] {

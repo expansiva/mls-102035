@@ -474,7 +474,7 @@ function readPrivateValidateResult(context: mls.msg.ExecutionContext): Validate4
   if (state.status !== 'ready' || !state.publishable || !state.validation
     || state.affectedAreas.length < 1 || state.unsupportedPaths.length > 0
     || state.affectedAreas.some(area => state.validation!.coverage[area].status !== 'checked')
-    || state.validation.issues.some(issue => issue.severity === 'error')) {
+    || state.validation.issues.some(issue => issue.severity === 'error' && !issue.baseline)) {
     throw new Error('finalize50 requires a fully checked validate40 result.');
   }
   return state;

@@ -12,6 +12,7 @@ import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js'
 import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
+import { artifactForOraclePath, runCandidateOracle, type CandidateModule } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { isNs5OntologyV3Version, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
@@ -36,15 +37,54 @@ export function unavailableCandidateCoverage(reason: string): CandidateCoverage 
 export function candidateCanPublish(validation: NewReleaseOverlayValidation, affected: readonly CandidateArea[]): boolean {
   return affected.length > 0
     && affected.every(area => validation.coverage[area].status === 'checked')
-    && !validation.issues.some(issue => issue.severity === 'error');
+    && !validation.issues.some(issue => issue.severity === 'error' && !issue.baseline);
+}
+
+export function screenIssueKey(issue: Pick<NewReleaseValidationIssue, 'artifact' | 'path' | 'code'>): string {
+  return `${issue.artifact}\u0000${issue.path}\u0000${issue.code}`;
+}
+
+export interface ScreenBlame { area: CandidateArea; key: string }
+
+/** Errors already on `baselineIssues` do not fail `ok`. An area whose errors are all baseline becomes checked. */
+export function applyScreenBaseline(
+  current: NewReleaseOverlayValidation,
+  baselineIssues: readonly NewReleaseValidationIssue[] | undefined,
+  blame: readonly ScreenBlame[],
+): NewReleaseOverlayValidation {
+  if (!baselineIssues) return current;
+  const known = new Set(baselineIssues.filter(issue => issue.severity === 'error').map(screenIssueKey));
+  const issues = current.issues.map(issue =>
+    issue.severity === 'error' && known.has(screenIssueKey(issue)) ? { ...issue, baseline: true } : issue);
+  const fresh = new Set(issues.filter(issue => issue.severity === 'error' && !issue.baseline).map(screenIssueKey));
+  const coverage: CandidateCoverage = { ...current.coverage };
+  for (const area of AREAS) {
+    if (coverage[area].status !== 'error') continue;
+    const owned = blame.filter(row => row.area === area);
+    if (owned.length > 0 && owned.every(row => !fresh.has(row.key))) coverage[area] = { status: 'checked' };
+  }
+  const ok = AREAS.every(area => coverage[area].status === 'checked')
+    && !issues.some(issue => issue.severity === 'error' && !issue.baseline);
+  return { ok, issues, oracle: current.oracle, coverage };
 }
 
 export function validateV3Candidate(
   sources: NewReleaseOverlaySources,
   context: CandidateV3Context = {},
+  base?: NewReleaseOverlaySources,
 ): NewReleaseOverlayValidation {
+  const run = validateV3CandidateRun(sources, context);
+  if (!base) return run.validation;
+  return applyScreenBaseline(run.validation, validateV3Candidate(base, context).issues, run.blame);
+}
+
+function validateV3CandidateRun(
+  sources: NewReleaseOverlaySources,
+  context: CandidateV3Context,
+): { validation: NewReleaseOverlayValidation; blame: ScreenBlame[] } {
   const coverage = unavailableCandidateCoverage('Gate has not run.');
   const issues: NewReleaseValidationIssue[] = [];
+  const blame: ScreenBlame[] = [];
   const module = sources.module.value;
   const journeyIndex = sources.journeyIndex.value;
   const journeys = sources.journeys.map(item => item.value).filter((item): item is NonNullable<typeof item> => item !== null);
@@ -55,24 +95,30 @@ export function validateV3Candidate(
   const access = sources.access.value;
   const integration = sources.integration.value;
 
-  function issue(artifact: Ns5TobeArtifactPath | 'module', code: string, message: string, path = '$'): void {
-    issues.push({ artifact, path, severity: 'error', code, message, source: 'gate' });
+  function issue(area: CandidateArea, artifact: Ns5TobeArtifactPath | 'module', code: string, message: string, path = '$', source: 'gate' | 'oracle' = 'gate'): void {
+    const row: NewReleaseValidationIssue = { artifact, path, severity: 'error', code, message, source };
+    issues.push(row);
+    blame.push({ area, key: screenIssueKey(row) });
   }
   function check(area: CandidateArea, artifact: Ns5TobeArtifactPath, run: () => ReadonlyArray<{ severity: 'error' | 'warning'; code: string; message: string; path?: string }>,
     artifactOf?: (path: string) => Ns5TobeArtifactPath): void {
     try {
       const found = run();
-      for (const item of found) issues.push({ artifact: artifactOf?.(item.path || '') || artifact, path: item.path || '$', severity: item.severity, code: item.code, message: item.message, source: 'gate' });
+      for (const item of found) {
+        const row: NewReleaseValidationIssue = { artifact: artifactOf?.(item.path || '') || artifact, path: item.path || '$', severity: item.severity, code: item.code, message: item.message, source: 'gate' };
+        issues.push(row);
+        if (item.severity === 'error') blame.push({ area, key: screenIssueKey(row) });
+      }
       coverage[area] = { status: found.some(item => item.severity === 'error') ? 'error' : 'checked' };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       coverage[area] = { status: 'error', reason: message };
-      issue(artifact, 'NR_GATE_EXCEPTION', message);
+      issue(area, artifact, 'NR_GATE_EXCEPTION', message);
     }
   }
   function missing(area: CandidateArea, artifact: Ns5TobeArtifactPath, reason: string): void {
     coverage[area] = { status: 'error', reason };
-    issue(artifact, 'NR_ARTIFACT_MISSING', reason);
+    issue(area, artifact, 'NR_ARTIFACT_MISSING', reason);
   }
 
   if (module) check('module', 'module.defs.ts', () => validateNs5ModuleArtifact(module, { fixedModuleName: module.moduleName, actors: access?.actors }).issues);
@@ -133,7 +179,7 @@ export function validateV3Candidate(
   try {
     if (entities.length === sources.entities.length) views = ns5OntologyEntityViews(entities);
   } catch (error) {
-    issue('ontology/index.defs.ts', 'NR_ONTOLOGY_VIEW', error instanceof Error ? error.message : String(error));
+    issue('ontologyAssembly', 'ontology/index.defs.ts', 'NR_ONTOLOGY_VIEW', error instanceof Error ? error.message : String(error));
   }
   const hasViews = views.length > 0 && views.length === sources.entities.length && !!index;
   if (workflows && module && hasViews) check('workflows', 'workflows.defs.ts', () => validateNs5Workflows(workflows.processes, {
@@ -155,8 +201,46 @@ export function validateV3Candidate(
   ).issues);
   else missing('integration', 'integration.defs.ts', 'Integration, module or ontology context is missing.');
 
-  coverage.oracle = { status: 'unsupported', reason: 'The v2 oracle does not accept v3 ontology; no v3 oracle is available.' };
-  return { ok: AREAS.every(area => coverage[area].status === 'checked') && !issues.some(item => item.severity === 'error'), issues, oracle: null, coverage };
+  const oracleModule = candidateModule(module, journeyIndex, journeys, index, entities, rules, workflows, access, integration);
+  let oracle = null;
+  if (!oracleModule) {
+    coverage.oracle = { status: 'error', reason: 'Oracle context is missing.' };
+    issue('oracle', 'module.defs.ts', 'NR_ORACLE_CONTEXT', 'Module, journeys, ontology, rules, workflows, access or integration is missing.', '$', 'oracle');
+  } else {
+    const result = runCandidateOracle(oracleModule);
+    oracle = result.report;
+    for (const item of result.issues) {
+      issue('oracle', artifactForOraclePath(item.path), item.code, item.message, item.path, 'oracle');
+    }
+    if (result.report) {
+      for (const item of result.report.warnings) {
+        issues.push({ artifact: artifactForOraclePath(item.path), path: item.path, severity: 'warning', code: item.code, message: item.message, source: 'oracle' });
+      }
+    }
+    coverage.oracle = result.issues.length
+      ? { status: 'error', reason: result.issues[0]?.message }
+      : { status: 'checked' };
+  }
+  return {
+    validation: { ok: AREAS.every(area => coverage[area].status === 'checked') && !issues.some(item => item.severity === 'error'), issues, oracle, coverage },
+    blame,
+  };
+}
+
+function candidateModule(
+  module: NewReleaseOverlaySources['module']['value'],
+  journeyIndex: NewReleaseOverlaySources['journeyIndex']['value'],
+  journeys: NonNullable<NewReleaseOverlaySources['journeys'][number]['value']>[],
+  index: NewReleaseOverlaySources['ontologyIndex']['value'],
+  entities: NonNullable<NewReleaseOverlaySources['entities'][number]['value']>[],
+  rules: NewReleaseOverlaySources['rules']['value'],
+  workflows: NewReleaseOverlaySources['workflows']['value'],
+  access: NewReleaseOverlaySources['access']['value'],
+  integration: NewReleaseOverlaySources['integration']['value'],
+): CandidateModule | null {
+  if (!module || !journeyIndex || !index || !rules || !workflows || !access || !integration) return null;
+  if (journeys.length === 0 || entities.length === 0) return null;
+  return { module, journeyIndex, journeys, ontologyIndex: index, entities, rules, workflows, access, integration };
 }
 
 function planMatchesIndex(plan: Ns5OntologyV3PlanDraft, index: Ns5OntologyIndexV3): boolean {

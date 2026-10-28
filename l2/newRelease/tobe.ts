@@ -385,20 +385,14 @@ async function overlayDiffs(
   return result;
 }
 
-export async function readNs5Overlay(
+async function readOverlaySourceBundle(
   project: number,
   moduleName: string,
-  version: NewReleaseVersion = 'asis',
-  context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[] },
+  reading: 'asis' | 'tobe',
+  baseId: string | undefined,
   proposed?: { path: Ns5TobeArtifactPath; value: unknown },
-): Promise<NewReleaseOverlayResult> {
+): Promise<{ sources: NewReleaseOverlaySources; errors: Array<{ path: string; message: string }> }> {
   const errors: Array<{ path: string; message: string }> = [];
-  const historicalId = historicalReleaseId(version);
-  if (historicalId && !await readL4Release(project, moduleName, historicalId)) throw new Error('Historical release is incomplete.');
-  let active = version === 'tobe' ? await readActiveL4Change(project, moduleName) : null;
-  if (version === 'tobe' && !active) active = (await prepareL4Change(project, moduleName, await readManifest(project, moduleName))).change;
-  const baseId = historicalId ?? active?.baseId;
-  const reading = version === 'tobe' ? 'tobe' : 'asis';
   const module = await readArtifact<Ns5ModuleArtifact>(project, moduleName, 'module.defs.ts', reading, errors, baseId);
   const journeyIndex = await readArtifact<Ns5JourneyIndexArtifact>(project, moduleName, 'journeys/index.defs.ts', reading, errors, baseId);
   const journeyIds = journeyIndex.value?.journeys.map(item => item.journeyId) || idsFromFiles(project, moduleName, 'journeys');
@@ -420,7 +414,30 @@ export async function readNs5Overlay(
   }
   const all: NewReleaseArtifact<unknown>[] = [module, journeyIndex, ...journeys, ontologyIndex, ...entities, rules, workflows, access, integration];
   const sources: NewReleaseOverlaySources = { module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration, all };
-  const ontologyPlan = !historicalId && isNs5OntologyV3(ontologyIndex.value)
+  return { sources, errors };
+}
+
+export async function readNs5Overlay(
+  project: number,
+  moduleName: string,
+  version: NewReleaseVersion = 'asis',
+  context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[] },
+  proposed?: { path: Ns5TobeArtifactPath; value: unknown },
+): Promise<NewReleaseOverlayResult> {
+  const historicalId = historicalReleaseId(version);
+  if (historicalId && !await readL4Release(project, moduleName, historicalId)) throw new Error('Historical release is incomplete.');
+  let active = version === 'tobe' ? await readActiveL4Change(project, moduleName) : null;
+  if (version === 'tobe' && !active) active = (await prepareL4Change(project, moduleName, await readManifest(project, moduleName))).change;
+  const baseId = historicalId ?? active?.baseId;
+  const reading = version === 'tobe' ? 'tobe' : 'asis';
+  const loaded = await readOverlaySourceBundle(project, moduleName, reading, baseId, proposed);
+  const { sources, errors } = loaded;
+  let baseline: NewReleaseOverlaySources | undefined;
+  if (version === 'tobe') {
+    const base = await readOverlaySourceBundle(project, moduleName, 'asis', baseId);
+    if (base.errors.length === 0 && base.sources.all.every(artifact => artifact.value !== null)) baseline = base.sources;
+  }
+  const ontologyPlan = !historicalId && isNs5OntologyV3(sources.ontologyIndex.value)
     ? await readJson<Ns5OntologyV3PlanDraft>(pipelineJsonFileForProject(project, moduleName, 'ontology30-plan-draft'))
     : null;
   const storedManifest = version === 'tobe' ? await readManifest(project, moduleName) : null;
@@ -439,7 +456,7 @@ export async function readNs5Overlay(
     staleManifestPaths(project, moduleName, manifest),
     overlayDiffs(project, moduleName, sources, baseId),
   ]);
-  return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }), errors };
+  return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }, baseline), errors };
 }
 
 /** Retire only the successfully applied revision, keeping its immutable history. */

@@ -106,7 +106,30 @@ test('overlay reports an invalid prepared artifact before apply or execute', asy
   sources.module.value = { ...sources.module.value!, defaultLanguage: 'fr' };
   const result = await validateNs5Overlay(sources, { registryModuleNames: ['ordenServicio5'] });
   assert.equal(result.ok, false);
-  assert.ok(result.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE' && issue.artifact === 'module.defs.ts'));
+  assert.ok(result.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE' && issue.artifact === 'module.defs.ts' && !issue.baseline));
+});
+
+test('overlay baseline ignores an error already on the module and still blocks a new one', async () => {
+  const context = { registryModuleNames: ['ordenServicio5'] };
+  const base = realOverlay();
+  base.module.value = { ...base.module.value!, defaultLanguage: 'fr' };
+  const same = realOverlay();
+  same.module.value = { ...same.module.value!, defaultLanguage: 'fr' };
+  const kept = await validateNs5Overlay(same, context, base);
+  assert.ok(kept.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE' && issue.baseline === true));
+  assert.equal(kept.coverage.module.status, 'checked');
+  assert.equal(kept.ok, true, kept.issues.filter(issue => issue.severity === 'error' && !issue.baseline).map(issue => issue.code).join(','));
+
+  const freshSource = realOverlay();
+  freshSource.module.value = { ...freshSource.module.value!, defaultLanguage: 'fr' };
+  const fresh = await validateNs5Overlay(freshSource, context, realOverlay());
+  assert.ok(fresh.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE' && !issue.baseline));
+  assert.equal(fresh.coverage.module.status, 'error');
+  assert.equal(fresh.ok, false);
+
+  const unbased = await validateNs5Overlay(freshSource, context);
+  assert.equal(unbased.ok, false);
+  assert.ok(unbased.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE' && !issue.baseline));
 });
 
 function installStorFixture(project: number, moduleName: string) {
