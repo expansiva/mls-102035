@@ -7,7 +7,7 @@ import type { Ns5RulesAny } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
-import { announceNewReleaseChange, canDiscardNewReleaseDraft, type NewReleaseEditMode, type NewReleaseEditableTab, type NewReleaseTabPresentation } from '/_102035_/l2/newRelease/editContract.js';
+import { announceNewReleaseChange, canDiscardNewReleaseDraft, requestNewReleaseEdit, type NewReleaseEditMode, type NewReleaseEditableTab, type NewReleaseTabPresentation } from '/_102035_/l2/newRelease/editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { patchRuleText, humanizeRuleKey, ontologyRuleCitations, rulePresentationGroups, ruleEntityIds, citationsForRule, rulesOracleIssues } from '/_102035_/l2/newRelease/widgets/rulesModel.js';
 
@@ -48,7 +48,12 @@ export class NewReleaseRules102035 extends StateLitElement implements NewRelease
     this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
   }
   private ruleSuffix(id: string, citations = this.citations()) { const count = ruleEntityIds(citations, id).length; return count > 1 ? `(${count})` : ''; }
-  private select(id: string) { if (this.saving || !canDiscardNewReleaseDraft(this)) return; this.reset(); this.selected = id; }
+  private select(id: string) {
+    if (this.saving || !canDiscardNewReleaseDraft(this)) return;
+    if (this.version === 'asis') { requestNewReleaseEdit(this, `rule:${id}`); return; }
+    this.reset(); this.selected = id;
+    if (!this.version.startsWith('release:')) this.edit();
+  }
   private reset() { this.draft = null; this.snapshot = ''; this.mode = 'view'; this.dirty = false; this.message = ''; this.issues = []; }
   private back() { if (this.saving || !canDiscardNewReleaseDraft(this)) return; this.reset(); this.selected = ''; this.present(); }
   private edit() { if (this.version.startsWith('release:')) return; this.draft = this.getDraft(); this.snapshot = JSON.stringify(this.draft); this.mode = 'edit'; }

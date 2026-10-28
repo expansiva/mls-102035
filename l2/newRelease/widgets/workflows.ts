@@ -16,6 +16,7 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   requestNewReleasePresentation,
+  requestNewReleaseEdit,
   canDiscardNewReleaseDraft,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
@@ -81,15 +82,21 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
       canBack: !!this.selectedProcessId,
       filters: (['manual', 'scheduled', 'event'] as const).map(kind => ({id: kind, label: this.t(`workflows.trigger.${kind}`), rootIds: this.view().processes.filter(process => process.trigger?.kind === kind).map(process => JSON.stringify([process.processId]))})),
       nodes: this.view().processes.map(process => ({id: JSON.stringify([process.processId]), label: process.title, value: `${process.trigger?.kind || ''} ${process.description}`, children: process.tasks.map(task => ({id: JSON.stringify([process.processId, task.taskId]), label: this.taskTitle(task), value: `${task.taskId} ${task.description}`, children: []}))})),
-      select: id => { const [processId, taskId = ''] = JSON.parse(id) as string[]; this.select(processId, taskId); },
+      select: id => { const [processId, taskId = '', action] = JSON.parse(id) as string[]; if (action === 'new') { this.select(processId); this.openNewTask(); } else this.select(processId, taskId); },
       back: () => this.back(),
     };
     this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
   }
   private select(processId: string, taskId = '') {
     if (this.saving || !canDiscardNewReleaseDraft(this)) return;
+    if (taskId && this.version === 'asis' && this.currentArtifact()) { requestNewReleaseEdit(this, JSON.stringify([processId, taskId])); return; }
     this.cancelEdit(); this.selectedProcessId = processId; this.selectedTaskId = taskId;
+    if (taskId && !this.version.startsWith('release:')) this.beginEdit();
     requestNewReleasePresentation(this, 'graph');
+  }
+  private openNewTask() {
+    if (this.version === 'asis') { requestNewReleaseEdit(this, JSON.stringify([this.selectedProcessId, '', 'new'])); return; }
+    this.adding = true; this.newId = ''; this.beginEdit();
   }
   private back() {
     if (this.saving || !canDiscardNewReleaseDraft(this)) return;
@@ -299,7 +306,7 @@ export class NewReleaseWorkflows102035 extends StateLitElement implements NewRel
     const edges = workflowEdges(process);
     const width = Math.max(400, process.tasks.length * 260);
     const nodeHeight = 125;
-    return html`<main class="nr-workflows__detail"><header><div><h3>${process.title}</h3><code>${process.processId}</code><p>${process.description}</p><p>${this.t('workflows.trigger')}: ${this.triggerSummary(process)}</p><p>${this.t('workflows.room')}: ${this.t(`workflows.room.${process.room}`)}</p></div>${!this.version.startsWith('release:') && isEditableWorkflowSchema(this.view().schema) ? html`<button class="nr-button" @click=${() => {this.adding = true; this.newId = ''; this.beginEdit();}}>${this.t('workflows.addTask')}</button>` : nothing}</header>
+    return html`<main class="nr-workflows__detail"><header><div><h3>${process.title}</h3><code>${process.processId}</code><p>${process.description}</p><p>${this.t('workflows.trigger')}: ${this.triggerSummary(process)}</p><p>${this.t('workflows.room')}: ${this.t(`workflows.room.${process.room}`)}</p></div>${!this.version.startsWith('release:') && isEditableWorkflowSchema(this.view().schema) ? html`<button class="nr-button" @click=${this.openNewTask}>${this.t('workflows.addTask')}</button>` : nothing}</header>
       <section class="nr-workflows__graph" style=${`width:${width}px;min-height:${220 + edges.length * 22}px`}>
       <svg class="nr-workflows__edges" width=${width} height=${220 + edges.length * 22} aria-label=${this.t('workflows.connections')} role="img"><defs><marker id="nr-workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker></defs>${edges.map((edge, index) => {const x1 = edge.from * 260 + 115; const x2 = edge.to * 260 + 130; const y = 190 + index * 22; return svg`<path d=${`M ${x1} ${nodeHeight} C ${x1} ${y}, ${x2} ${y}, ${x2} ${nodeHeight}`} marker-end="url(#nr-workflow-arrow)"/><title>${process.tasks[edge.from].taskId} → ${edge.id}</title>`;})}</svg>
       ${process.tasks.map((item, index) => html`<button class=${`nr-workflows__node kind-${item.kind}`} style=${`left:${index * 260}px;height:${nodeHeight}px`} aria-label=${this.taskTitle(item)} @click=${() => this.select(process.processId, item.taskId)}><i>${renderNewReleaseIcon(item.icon, WORKFLOW_ICON_DEFAULTS[item.kind])}</i><strong>${this.taskTitle(item)}</strong><code>${item.taskId}</code><span>${this.t(`workflows.kind.${item.kind}`)}</span></button>`)}</section>${this.renderFunctions(process)}${this.renderIssues()}</main>`;

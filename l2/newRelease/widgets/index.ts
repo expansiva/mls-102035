@@ -32,6 +32,7 @@ import {
   NEW_RELEASE_CHANGED_EVENT,
   tabForArtifactPath,
   type NewReleaseChangedDetail,
+  type NewReleaseEditRequest,
   type NewReleaseTabPresentation,
 } from '/_102035_/l2/newRelease/editContract.js';
 import { textTree, filterTextTree, hasDraftChanges, type TextTreeNode } from '/_102035_/l2/newRelease/widgets/commonModel.js';
@@ -86,6 +87,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private revisionByModule = new Map<string, string | null>();
   private requestDrafts = new ChangeRequestDrafts();
   private requestKey: string | null = null;
+  private pendingEdit?: { project: number; moduleName: string; tab: NewReleaseTab; id: string };
 
   createRenderRoot() { return this; }
 
@@ -111,6 +113,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.addEventListener('nr-before-discard', this.beforeDiscard);
     this.addEventListener('nr-view-state', this.onViewState);
     this.addEventListener('nr-presentation-request', this.onPresentationRequest);
+    this.addEventListener('nr-request-edit', this.onEditRequested);
     this.addEventListener('nr-request-change', this.openChangeRequest);
     this.addEventListener('input', this.refreshControls);
     this.addEventListener('change', this.refreshControls);
@@ -129,6 +132,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.removeEventListener('nr-before-discard', this.beforeDiscard);
     this.removeEventListener('nr-view-state', this.onViewState);
     this.removeEventListener('nr-presentation-request', this.onPresentationRequest);
+    this.removeEventListener('nr-request-edit', this.onEditRequested);
     this.removeEventListener('nr-request-change', this.openChangeRequest);
     this.removeEventListener('input', this.refreshControls);
     this.removeEventListener('change', this.refreshControls);
@@ -182,6 +186,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       if (context.version === 'asis' || context.version === 'tobe') request = await readChangeRequest(context.project, context.moduleName);
     } catch (error) {
       if (token === this.loadToken && contextStillCurrent(context, this)) {
+        if (this.pendingEdit?.project === context.project && this.pendingEdit.moduleName === context.moduleName && context.version === 'tobe') this.pendingEdit = undefined;
         this.mutationError = this.revisionError(error);
         this.loading = false;
       }
@@ -202,15 +207,31 @@ export class NewReleaseIndex102035 extends StateLitElement {
       : null;
     this.requestText = this.requestKey ? this.requestDrafts.restore(this.requestKey, this.savedRequest) ?? this.savedRequest : '';
     this.loading = false;
+    if (this.pendingEdit && context.version === 'tobe') void this.resumePendingEdit(context, token);
+  }
+
+  private async resumePendingEdit(context: NewReleaseContext, token: number) {
+    const pending = this.pendingEdit;
+    if (!pending) return;
+    if (pending.project !== context.project || pending.moduleName !== context.moduleName || pending.tab !== this.activeTab) { this.pendingEdit = undefined; return; }
+    await this.updateComplete;
+    const editor = this.activeEditor() as (HTMLElement & { updateComplete?: Promise<boolean> }) | null;
+    await editor?.updateComplete;
+    if (token !== this.loadToken || !contextStillCurrent(context, this) || this.activeTab !== pending.tab || this.pendingEdit !== pending) return;
+    this.pendingEdit = undefined;
+    this.tabPresentation?.select(pending.id);
   }
 
   private onContextChange = (event: Event) => {
     const context = (event as CustomEvent<NewReleaseContext>).detail;
     if (!context?.project || !context.moduleName) return;
+    if (this.pendingEdit && (context.project !== this.pendingEdit.project || context.moduleName !== this.pendingEdit.moduleName || context.version !== 'tobe')) this.pendingEdit = undefined;
     const projectChanged = context.project !== this.project;
     this.project = context.project;
     this.moduleName = context.moduleName;
     this.version = context.version;
+    this.tabPresentation = undefined;
+    this.tabDetail = false;
     this.expectedChangeId = null;
     this.expectedRevisionId = null;
     this.mutationError = '';
@@ -227,6 +248,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private async activateTab(tab: NewReleaseTab, focus = false) {
     if (tab !== this.activeTab && !this.canLeaveTab()) return;
+    if (tab !== this.activeTab) this.pendingEdit = undefined;
     const previous = this.activeEditor();
     if (previous && tab !== this.activeTab) { previous.mode = 'view'; previous.dirty = false; }
     this.activeTab = tab;
@@ -255,6 +277,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private onPresentationRequest = (event: Event) => {
     const detail = (event as CustomEvent<import('/_102035_/l2/newRelease/editContract.js').NewReleasePresentationRequest>).detail;
     this.presentation = detail.mode;
+  };
+  private onEditRequested = (event: Event) => {
+    const source = event.target as HTMLElement & { project?: number; moduleName?: string; version?: NewReleaseVersion };
+    const id = (event as CustomEvent<NewReleaseEditRequest>).detail?.id;
+    if (!id || this.version !== 'asis' || source.project !== this.project || source.moduleName !== this.moduleName || source.version !== 'asis') return;
+    this.pendingEdit = { project: this.project, moduleName: this.moduleName, tab: this.activeTab, id };
+    window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: this.project, moduleName: this.moduleName } }));
   };
   private onViewState = (event: Event) => {
     this.tabPresentation = (event as CustomEvent<NewReleaseTabPresentation>).detail;
@@ -357,6 +386,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private onTobeUpdated = (event: Event) => {
     const detail = (event as CustomEvent<{ project?: number; moduleName?: string }>).detail;
     if (detail?.project !== this.project || detail?.moduleName !== this.moduleName) return;
+    if (this.pendingEdit && this.version === 'asis') return;
     this.scheduleOverlayReload();
   };
 

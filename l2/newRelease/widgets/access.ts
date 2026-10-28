@@ -17,6 +17,7 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
+  requestNewReleaseEdit,
   type NewReleaseTabPresentation,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
@@ -133,6 +134,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   private selectActor(actorId: string) {
     if (!canDiscardNewReleaseDraft(this)) return;
+    if (this.version === 'asis') { requestNewReleaseEdit(this, `actor:${actorId}`); return; }
     this.cancelEdit();
     this.selectedActorId = actorId;
     this.detailKind = 'actor';
@@ -141,6 +143,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   private selectGrant(grantId: string) {
     if (!canDiscardNewReleaseDraft(this)) return;
+    if (this.version === 'asis') { requestNewReleaseEdit(this, `grant:${grantId}`); return; }
     this.cancelEdit();
     const grant = this.currentAccess()?.grants.find(item => item.grantId === grantId);
     if (!grant) return;
@@ -152,7 +155,7 @@ export class NewReleaseAccess102035 extends StateLitElement implements NewReleas
 
   private beginEdit() {
     const access = this.currentAccess();
-    if (!access) return;
+    if (!access || this.version.startsWith('release:')) return;
     this.accessDraft = structuredClone(access);
     this.editSnapshot = JSON.stringify(access);
     this.mode = 'edit';

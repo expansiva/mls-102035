@@ -22,6 +22,7 @@ import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
   requestNewReleasePresentation,
+  requestNewReleaseEdit,
   type NewReleaseTabPresentation,
   type NewReleaseEditableTab,
   type NewReleaseEditMode,
@@ -228,7 +229,10 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
 
   private select(id: string) {
     if (this.saving || !canDiscardNewReleaseDraft(this)) return;
-    this.cancelEdit(); this.selected = id; this.present();
+    if (this.version === 'asis' && this.currentArtifact()) { requestNewReleaseEdit(this, id); return; }
+    this.cancelEdit(); this.selected = id;
+    if (!this.version.startsWith('release:')) this.beginEdit();
+    this.present();
   }
   private back() {
     if (this.saving || !canDiscardNewReleaseDraft(this)) return;

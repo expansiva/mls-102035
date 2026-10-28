@@ -16,6 +16,7 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   canDiscardNewReleaseDraft,
+  requestNewReleaseEdit,
   type NewReleaseEditableTab,
   type NewReleaseTabPresentation,
   type NewReleaseEditMode,
@@ -79,7 +80,13 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
         nodes: this.journeys().map(journey => ({ id: journey.journeyId, label: journey.business.title, value: journey.journeyId,
           children: journey.business.steps.map(step => ({ id: `${journey.journeyId}/${step.stepId}`, label: step.title, value: step.stepId, children: [] })) })),
         detail: this.mode === 'edit' || !!this.selectedStepId || this.creatingStep,
-        select: id => { const [journeyId, stepId] = id.split('/'); this.selectJourney(journeyId); this.selectedStepId = stepId || ''; },
+        select: id => {
+          if (id.startsWith('edit:')) { if (this.selectJourney(id.slice(5))) this.openJourneyEdit(); return; }
+          if (id.startsWith('add:')) { if (this.selectJourney(id.slice(4))) this.openNewStep(); return; }
+          const [journeyId, stepId] = id.split('/');
+          if (stepId) this.openStep(journeyId, stepId);
+          else this.selectJourney(journeyId);
+        },
         back: () => { if (!canDiscardNewReleaseDraft(this)) return; this.cancelEdit(); if (this.selectedStepId) this.selectedStepId = ''; else this.opened = false; },
       };
       this.dispatchEvent(new CustomEvent('nr-view-state', { bubbles: true, composed: true, detail: presentation }));
@@ -136,15 +143,37 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     return this.entities().find(entity => entity.entityId === entityId)?.title || entityId;
   }
 
-  private selectJourney(journeyId: string) {
-    if (!canDiscardNewReleaseDraft(this)) return;
+  private selectJourney(journeyId: string): boolean {
+    if (!canDiscardNewReleaseDraft(this)) return false;
     this.cancelEdit(); this.selectedJourneyId = journeyId; this.selectedStepId = ''; this.opened = true;
+    return true;
+  }
+
+  private openStep(journeyId: string, stepId: string) {
+    if (this.version === 'asis') {
+      if (canDiscardNewReleaseDraft(this)) requestNewReleaseEdit(this, `${journeyId}/${stepId}`);
+      return;
+    }
+    if (!this.selectJourney(journeyId)) return;
+    this.selectedStepId = stepId;
+    if (!this.version.startsWith('release:')) this.beginEdit();
+  }
+
+  private openJourneyEdit() {
+    if (this.version === 'asis') { requestNewReleaseEdit(this, `edit:${this.selectedJourneyId}`); return; }
+    this.beginEdit();
+  }
+
+  private openNewStep() {
+    if (this.version.startsWith('release:')) return;
+    if (this.version === 'asis') { requestNewReleaseEdit(this, `add:${this.selectedJourneyId}`); return; }
+    this.beginEdit(); this.creatingStep = true; this.newStepId = '';
   }
 
   private beginEdit() {
     const journey = this.currentJourney();
     const index = this.currentIndex();
-    if (!journey || !index) return;
+    if (!journey || !index || this.version.startsWith('release:')) return;
     this.journeyDraft = structuredClone(journey);
     this.indexDraft = structuredClone(index);
     this.mode = 'edit';
@@ -337,13 +366,13 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     </div>`;
   }
 
-  private renderStepCard(step: Ns5JourneyStep) {
-    return html`<button class=${`nr-step__open ${step.kind === 'decide' ? 'is-decision' : ''}`} type="button" @click=${() => { this.selectedStepId = step.stepId; }}><span>${renderNewReleaseIcon(step.icon, JOURNEY_ICON_DEFAULTS[step.kind])}</span><strong>${step.title}</strong></button>`;
+  private renderStepCard(step: Ns5JourneyStep, journeyId: string) {
+    return html`<button class=${`nr-step__open ${step.kind === 'decide' ? 'is-decision' : ''}`} type="button" @click=${() => this.openStep(journeyId, step.stepId)}><span>${renderNewReleaseIcon(step.icon, JOURNEY_ICON_DEFAULTS[step.kind])}</span><strong>${step.title}</strong></button>`;
   }
 
   private renderTimeline(journey: Ns5JourneyArtifact) {
     return html`<ol class="nr-journeys__timeline" aria-label=${this.t('journeys.path')}>${journeyStepGroups(journey).map(({ step, branches }) => {
-      return html`<li>${this.renderStepCard(step)}${branches.length ? html`<ol class="nr-journeys__branches">${branches.map(branch => html`<li>${this.renderStepCard(branch)}</li>`)}</ol>` : nothing}</li>`;
+      return html`<li>${this.renderStepCard(step, journey.journeyId)}${branches.length ? html`<ol class="nr-journeys__branches">${branches.map(branch => html`<li>${this.renderStepCard(branch, journey.journeyId)}</li>`)}</ol>` : nothing}</li>`;
     })}</ol>`;
   }
 
@@ -360,9 +389,9 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
     return html`<main class="nr-journeys__detail">
       ${this.renderIssues(journey)}
       ${this.creatingStep ? html`<label>${this.t('journeys.stepId')}<input .value=${this.newStepId} @input=${(e: Event) => { this.newStepId = (e.currentTarget as HTMLInputElement).value; }}></label><button class="nr-button" @click=${() => this.addStep()}>${this.t('journeys.addStep')}</button>`
-      : step ? html`<h2>${step.title}</h2>${this.mode === 'edit' ? this.renderStepEdit(step) : html`<code>${step.stepId}</code><p>${step.description}</p><p>${this.entityTitle(step.entity)} · ${this.t(`journeys.kind.${step.kind}`)}</p><button class="nr-button" @click=${() => this.beginEdit()}>${this.t('journeys.edit')}</button>`}${this.mode === 'edit' ? html`<button class="nr-button" @click=${() => this.removeStep(step.stepId)}>${this.t('journeys.removeStep')}</button>` : nothing}`
+      : step ? html`<h2>${step.title}</h2>${this.mode === 'edit' ? this.renderStepEdit(step) : html`<code>${step.stepId}</code><p>${step.description}</p><p>${this.entityTitle(step.entity)} · ${this.t(`journeys.kind.${step.kind}`)}</p>${!this.version.startsWith('release:') ? html`<button class="nr-button" @click=${this.openJourneyEdit}>${this.t('journeys.edit')}</button>` : nothing}`}${this.mode === 'edit' ? html`<button class="nr-button" @click=${() => this.removeStep(step.stepId)}>${this.t('journeys.removeStep')}</button>` : nothing}`
       : this.mode === 'edit' ? html`<new-release--widgets--icon-picker-102035 .value=${journey.business.icon || ''} fallback="route" .t=${this.t} @nr-icon-selected=${(event: CustomEvent<string>) => {if (this.journeyDraft) this.updateJourney({...this.journeyDraft, business: withNewReleaseIcon(this.journeyDraft.business, event.detail)});}}></new-release--widgets--icon-picker-102035><label>${this.t('journeys.journey')}<input .value=${journey.business.title} @input=${(e: Event) => this.updateBusiness({ title: (e.currentTarget as HTMLInputElement).value })}></label><label>${this.t('journeys.goal')}<textarea .value=${journey.business.goal} @input=${(e: Event) => this.updateBusiness({ goal: (e.currentTarget as HTMLTextAreaElement).value })}></textarea></label><code>${journey.journeyId}</code>`
-      : html`<p>${journey.business.goal}</p><button class="nr-button" @click=${() => this.beginEdit()}>${this.t('journeys.edit')}</button><button class="nr-button" @click=${() => { this.beginEdit(); this.creatingStep = true; this.newStepId = ''; }}>${this.t('journeys.addStep')}</button>${this.renderTimeline(journey)}<section class="nr-journeys__outcome"><h3>${journey.business.outcome.statement}</h3><div>${journey.business.outcome.evidence.map(e => html`<p>${e}</p>`)}</div></section>`}
+      : html`<p>${journey.business.goal}</p>${!this.version.startsWith('release:') ? html`<button class="nr-button" @click=${this.openJourneyEdit}>${this.t('journeys.edit')}</button><button class="nr-button" @click=${this.openNewStep}>${this.t('journeys.addStep')}</button>` : nothing}${this.renderTimeline(journey)}<section class="nr-journeys__outcome"><h3>${journey.business.outcome.statement}</h3><div>${journey.business.outcome.evidence.map(e => html`<p>${e}</p>`)}</div></section>`}
     </main>`;
   }
 

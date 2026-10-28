@@ -31,6 +31,7 @@ import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.j
 import {
   announceNewReleaseChange,
   requestNewReleasePresentation,
+  requestNewReleaseEdit,
   canDiscardNewReleaseDraft,
   type NewReleaseTabPresentation,
   type NewReleaseEditableTab,
@@ -966,10 +967,11 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   private openPanelEditor(entityId: string, path = '') {
     if (!canDiscardNewReleaseDraft(this)) return;
+    if (this.version === 'asis') { requestNewReleaseEdit(this, path ? `${entityId}/${path}` : entityId); return; }
     const entity = this.panelEntities().find(item => item.entityId === entityId);
     if (!entity) return;
     this.panelEntityId = entityId; this.panelFieldPath = path;
-    this.panelDraft = structuredClone(entity); this.mode = 'edit'; this.dirty = false; this.editMessage = '';
+    this.panelDraft = structuredClone(entity); this.mode = this.version.startsWith('release:') ? 'view' : 'edit'; this.dirty = false; this.editMessage = '';
   }
 
   private closePanelEditor() {
@@ -999,7 +1001,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   }
 
   private async savePanel() {
-    if (!this.panelDraft || !this.dirty) return;
+    if (!this.panelDraft || !this.dirty || this.version.startsWith('release:')) return;
     try {
       await announceNewReleaseChange(this, {path: ontologyEntityPath(this.panelDraft.entityId), jsonPath: '$', value: structuredClone(this.panelDraft)});
       this.dirty = false; this.closePanelEditor();
@@ -1089,15 +1091,15 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
     if (!entity) return nothing;
     const field = this.panelFieldPath ? this.panelFields(entity).find(item => item.path === this.panelFieldPath) : null;
     const value = field?.value;
-    const readOnly = !!field?.readOnly;
+    const readOnly = !!field?.readOnly || this.version.startsWith('release:');
     const types = isOntologyV3Entity(entity) ? ONTOLOGY_V3_FIELD_TYPES : ONTOLOGY_FIELD_TYPES;
     const text = (key: 'title' | 'description') => html`<label><span>${this.t(`ontology.panel.${key}`)}</span><textarea ?readonly=${readOnly} .value=${String(value?.[key] ?? (field ? '' : entity[key]))} @input=${(event: Event) => this.changePanel({[key]: (event.target as HTMLTextAreaElement).value})}></textarea></label>`;
     return html`<section class="nr-ontology-panels__editor"><header><h2>${field?.title || entity.title}</h2><code>${entity.entityId}${field ? ` / ${field.path}` : ''}</code></header>
       <p>${this.t(readOnly ? 'ontology.panel.inherited' : 'ontology.panel.identity')}</p>
       ${text('title')}${text('description')}
-      ${!field ? html`<label><span>${this.t('ontology.displayField')}</span><select .value=${entity.displayField} @change=${(event: Event) => this.changePanelEntity('displayField', (event.target as HTMLSelectElement).value)}>${this.panelFields(entity).map(row => html`<option value=${row.path}>${row.path}</option>`)}</select></label>
-        <label><span>${this.t('ontology.panel.writer')}</span><select .value=${entity.writer || 'journey'} @change=${(event: Event) => this.changePanelEntity('writer', (event.target as HTMLSelectElement).value)}>${(['journey', 'crud', 'inbound'] as const).map(writer => html`<option value=${writer}>${this.t(`ontology.panel.writer.${writer}`)}</option>`)}</select></label>
-        ${isOntologyV3Entity(entity) && entity.kind === 'entity' ? html`<label><span>${this.t('ontology.panel.class')}</span><select .value=${entity.class} @change=${(event: Event) => this.changePanelEntity('class', (event.target as HTMLSelectElement).value)}>${(['core', 'event', 'supporting'] as const).map(kind => html`<option value=${kind}>${this.t(`ontology.kind.${kind}`)}</option>`)}</select></label><label><span>${this.t('ontology.panel.initialData')}</span><textarea .value=${entity.initialData || ''} @input=${(event: Event) => this.changePanelEntity('initialData', (event.target as HTMLTextAreaElement).value)}></textarea></label>` : nothing}
+      ${!field ? html`<label><span>${this.t('ontology.displayField')}</span><select ?disabled=${readOnly} .value=${entity.displayField} @change=${(event: Event) => this.changePanelEntity('displayField', (event.target as HTMLSelectElement).value)}>${this.panelFields(entity).map(row => html`<option value=${row.path}>${row.path}</option>`)}</select></label>
+        <label><span>${this.t('ontology.panel.writer')}</span><select ?disabled=${readOnly} .value=${entity.writer || 'journey'} @change=${(event: Event) => this.changePanelEntity('writer', (event.target as HTMLSelectElement).value)}>${(['journey', 'crud', 'inbound'] as const).map(writer => html`<option value=${writer}>${this.t(`ontology.panel.writer.${writer}`)}</option>`)}</select></label>
+        ${isOntologyV3Entity(entity) && entity.kind === 'entity' ? html`<label><span>${this.t('ontology.panel.class')}</span><select ?disabled=${readOnly} .value=${entity.class} @change=${(event: Event) => this.changePanelEntity('class', (event.target as HTMLSelectElement).value)}>${(['core', 'event', 'supporting'] as const).map(kind => html`<option value=${kind}>${this.t(`ontology.kind.${kind}`)}</option>`)}</select></label><label><span>${this.t('ontology.panel.initialData')}</span><textarea ?readonly=${readOnly} .value=${entity.initialData || ''} @input=${(event: Event) => this.changePanelEntity('initialData', (event.target as HTMLTextAreaElement).value)}></textarea></label>` : nothing}
       ` : nothing}
       ${field && value ? html`<label><span>${this.t('ontology.panel.type')}</span><select ?disabled=${readOnly} .value=${value.type} @change=${(event: Event) => this.changePanel({type: (event.target as HTMLSelectElement).value as Ns5OntologyFieldV3['type']})}>${types.map(type => html`<option value=${type}>${this.t(`ontology.panel.type.${type}`)}</option>`)}</select></label>
         ${(['required', 'nullable', 'collection', 'unique', 'indexed'] as const).filter(key => isOntologyV3Entity(entity) || key === 'required' || key === 'unique').map(key => html`<label><span>${this.t(`ontology.panel.${key}`)}</span><input type="checkbox" ?disabled=${readOnly} .checked=${!!value[key as keyof typeof value]} @change=${(event: Event) => this.changePanel({[key]: (event.target as HTMLInputElement).checked})}></label>`)}

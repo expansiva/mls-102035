@@ -72,3 +72,8 @@ export interface NewReleasePresentationRequest { mode: 'graph' | 'text'; }
 export function requestNewReleasePresentation(target: EventTarget, mode: NewReleasePresentationRequest['mode']) {
   target.dispatchEvent(new CustomEvent<NewReleasePresentationRequest>('nr-presentation-request', {bubbles: true, composed: true, detail: {mode}}));
 }
+
+export interface NewReleaseEditRequest { id: string }
+export function requestNewReleaseEdit(target: EventTarget, id: string) {
+  target.dispatchEvent(new CustomEvent<NewReleaseEditRequest>('nr-request-edit', {bubbles: true, composed: true, detail: {id}}));
+}
