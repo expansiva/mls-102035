@@ -127,9 +127,16 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   updated(changed: PropertyValues) {
     if (['data', 'panelEntityId', 'panelFieldPath', 'mode', 'v3Views'].some(key => changed.has(key))) {
+      const fieldNodes = (fields: OntologyPanelField[], parent = ''): NewReleaseTabPresentation['nodes'] =>
+        fields.filter(field => field.parent === parent).map(field => ({
+          id: `${field.entityId}/${field.path}`, label: field.path, value: field.title,
+          children: fieldNodes(fields, field.path),
+        }));
       const presentation: NewReleaseTabPresentation = {
-        nodes: [...new Set(this.panelEntities().map(entity => entity.kind))].map(kind => ({id: `kind:${kind}`, label: this.t(`ontology.kind.${kind}`), value: '',
-          children: this.panelEntities().filter(entity => entity.kind === kind).map(entity => ({id: entity.entityId, label: entity.title, value: entity.entityId, children: this.panelFields(entity).map(field => ({id: `${entity.entityId}/${field.path}`, label: field.title, value: field.path, children: []}))}))})),
+        nodes: this.panelEntities().filter(entity => entity.kind !== 'role').map(entity => ({
+          id: entity.entityId, label: entity.title, value: entity.entityId,
+          children: fieldNodes(this.panelFields(entity)),
+        })),
         detail: !!this.panelEntityId,
         select: id => { const [entityId, path = ''] = id.split('/'); this.openPanelEditor(entityId, path); },
         back: () => this.closePanelEditor(),
@@ -1010,7 +1017,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
 
   private panelFieldTree(fields: OntologyPanelField[], parent = ''): unknown {
     return fields.filter(field => field.parent === parent).map(field => {
-      const button = html`<span class="nr-ontology-panels__row" data-field=${field.path}><button type="button" @click=${() => this.openPanelEditor(field.entityId, field.path)}><span>${field.path.split('.').at(-1)}</span></button><details class="nr-common__hint nr-ontology-panels__hint"><summary aria-label=${this.t('ontology.panel.fieldHint', {path: field.path})}>ⓘ</summary><p>${field.path}</p></details></span>`;
+      const button = html`<span class="nr-ontology-panels__row" data-field=${field.path}><button type="button" @click=${() => this.openPanelEditor(field.entityId, field.path)}><span>${field.path.split('.').at(-1)}</span></button></span>`;
       return fields.some(child => child.parent === field.path)
         ? html`<div class="nr-ontology-panels__branch">${button}<details open @toggle=${() => this.measurePanelLinks()}><summary aria-label=${this.t('ontology.panel.toggleFields', {path: field.path})}></summary><div>${this.panelFieldTree(fields, field.path)}</div></details></div>` : button;
     });
