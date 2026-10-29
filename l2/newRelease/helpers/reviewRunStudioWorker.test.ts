@@ -561,6 +561,38 @@ function phaseClaim(phase: 'review' | 'planner'): ReviewWorkerClaim {
   return { ...claim(), phase, command: phase === 'review' ? 'review' : 'plan' };
 }
 
+for (const phase of ['review', 'planner'] as const) {
+  for (const outcome of ['refused', 'failed']) {
+    test(`mr_41 s2 ${phase} task done com ${outcome} para antes de consumir artefatos`, async () => {
+      const reason = `${outcome}: edited L4 is invalid`;
+      const task = {
+        PK: 'task/20261006181434.1001', status: 'done',
+        iaCompressed: { nextSteps: [{
+          type: 'agent', nextSteps: [], interaction: { payload: [{
+            type: 'result', result: `Intermediate check complete.\n  ${reason}\n`, nextSteps: [],
+          }] },
+        }] },
+      } as TaskData;
+      const host = createReviewStudioHost({
+        storage: memoryStorage(), userId: () => 'user-mr15',
+        thread: async () => ({ threadId: THREAD_ID }), context: () => context(),
+        execute: async () => undefined, task: async () => task,
+        artifacts: async () => { assert.fail('Refused task must not consume planner artifacts'); },
+        candidateTransport: { fetchImpl: async () => { assert.fail('Refused task must not consume candidate'); } },
+        now: () => '2026-10-06T18:14:31.000Z',
+      });
+      const current = phaseClaim(phase);
+      const started = await host.startOrGet(current);
+      const progress = await host.observe(current, started);
+      assert.equal(progress.status, 'failed');
+      assert.equal(progress.executions[0]?.status, 'failed');
+      assert.equal(progress.errorCode, reason);
+      assert.equal(progress.candidateResult, undefined);
+      assert.equal(progress.plannerArtifacts, undefined);
+    });
+  }
+}
+
 function seedRunning(storage: KeyValueStorage, phase: 'review' | 'planner', taskId: string): void {
   const current = phaseClaim(phase);
   storage.setItem(`collab-new-release-review-worker-v1/${current.runId}/${current.attempt}/${phase}`, JSON.stringify({

@@ -22,6 +22,7 @@ import {
   type ReviewWorkerTransport,
 } from './reviewRunWorker.js';
 import { postReviewMessage } from './reviewRunMessageTransport.js';
+import { taskResultTexts } from './agentCommandRunner.js';
 
 interface ReviewRunResponse { statusCode: number; msg?: string; run?: PlatformReviewRun; work?: ReviewWorkerClaim | null; }
 type MsgPost = <T>(args: Record<string, unknown>) => Promise<T>;
@@ -418,6 +419,11 @@ async function progressFromTask(
   }
   if (task.status !== 'done') {
     return { status: claim.phase === 'review' ? 'reviewing' : 'planning', executions: [execution], fallbackUsed };
+  }
+  const refusal = taskResultTexts(task).flatMap(text => text.split('\n'))
+    .map(line => line.trim()).find(line => /^(?:refused|failed):/u.test(line));
+  if (refusal) {
+    return { status: 'failed', executions: [{ ...execution, status: 'failed' }], errorCode: refusal, fallbackUsed };
   }
   if (claim.phase === 'review') {
     const authoritative = await candidateRead(
