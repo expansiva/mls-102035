@@ -733,7 +733,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     const start = beginReviewPrimaryAction(action);
     if (!start.accepted) return;
     if (action.kind === 'continue') {
-      if (!this.hasRelease) { await this.acceptInitialImplementation(); return; }
+      if (this.isInitialGeneration()) { await this.acceptInitialImplementation(); return; }
       await this.acceptImplementation();
       return;
     }
@@ -766,8 +766,12 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
   };
 
+  private isInitialGeneration(): boolean {
+    return !this.hasRelease && !(this.data?.resultCurrent && this.changeEffortRead.status !== 'missing');
+  }
+
   private async acceptInitialImplementation(): Promise<void> {
-    if (this.actionBusy || !this.initialPlan || this.hasRelease || !this.isCurrentLoad()
+    if (this.actionBusy || !this.initialPlan || !this.isInitialGeneration() || !this.isCurrentLoad()
       || (this.version !== 'asis' && this.version !== 'tobe')) return;
     const { project, moduleName, version, data } = this;
     const token = this.loadToken;
@@ -1031,7 +1035,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private actionPresentation(view: ReviewView, current: boolean): ReviewPrimaryActionPresentation {
-    if (!this.hasRelease && (this.version === 'asis' || this.version === 'tobe')) {
+    if (this.isInitialGeneration() && (this.version === 'asis' || this.version === 'tobe')) {
       return { kind: 'continue', labelKey: this.actionBusy ? 'review.actionBusy' : 'review.implementation.accept',
         descriptionKey: 'review.panels.fullGenerationBody', availabilityKey: getUserId() ? '' : 'request.userUnavailable',
         disabled: !current || this.loading || this.actionBusy || !this.initialPlan || !!this.implementation || !getUserId()

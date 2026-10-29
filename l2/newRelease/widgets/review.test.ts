@@ -256,3 +256,34 @@ test('mr41 s3c reloading after L2 generation keeps initial lifecycle until L1 ma
   assert.match(templateText(review.render()), /review\.release\.new/);
   assert.doesNotMatch(templateText(review.render()), /review\.release\.unchanged/);
 });
+
+
+test('mr41 s3c maintenance result retains blocked reason and maintenance handler without generated source fixture', async () => {
+  const { mergeChangeEffort } = require('../../solution/gates/changeEffort/gate.ts') as typeof import('../../solution/gates/changeEffort/gate.ts');
+  const golden = structuredClone(require('./fixtures/changeEffort-agendaClinica-regra-anotacao.json'));
+  const blocked = structuredClone(golden);
+  blocked.status = 'blocked';
+  blocked.perItem[0].answers[0].status = 'abend';
+  blocked.perItem[0].answers[0].abend = { reason: 'master unavailable' };
+  blocked.merged = mergeChangeEffort(blocked.perItem);
+  const review = widget();
+  review.version = 'tobe'; review.data.resultCurrent = true; review.effortCurrent = true;
+  review.changeEffortRead = { status: 'ok', path: 'effort', value: blocked };
+  review.canImplement = () => false;
+  assert.equal(review.actionPresentation(review.view(), true).descriptionKey, 'review.effort.status.blocked');
+  let maintenance = 0;
+  review.changeEffortRead = { status: 'ok', path: 'effort', value: golden };
+  review.canImplement = () => true;
+  review.acceptImplementation = async () => { maintenance++; };
+  review.acceptInitialImplementation = async () => { assert.fail('Maintenance must retain its own handler'); };
+  review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
+  await review.runReviewPrimaryAction();
+  assert.equal(maintenance, 1);
+});
+
+test('mr41 s3c reviewer seal alone remains initial without maintenance effort', () => {
+  const review = widget();
+  review.version = 'tobe'; review.data.resultCurrent = true;
+  review.changeEffortRead = { status: 'missing', path: 'effort' };
+  assert.equal(review.actionPresentation(review.view(), true).descriptionKey, 'review.panels.fullGenerationBody');
+});
