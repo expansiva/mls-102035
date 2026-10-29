@@ -631,6 +631,8 @@ test('mr39 s10: review release states invalidate calculated effort after another
 test('mr39 s10: generated product sources do not require a maintenance release catalog', () => {
   const source = { project: 102047, level: 2, folder: 'tarefas/web', shortName: 'home', extension: '.ts' };
   assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [source]), true);
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, level: 1 }]), false);
+  assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, level: 1 }, source]), true);
   assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, extension: '.defs.ts' }]), false);
   assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, level: 4, folder: 'tarefas/pool/l2/web' }]), false);
   assert.equal(moduleHasGeneratedSources(102047, 'tarefas', [{ ...source, status: 'deleted' }]), false);

@@ -610,10 +610,10 @@ export function reviewReleaseState(input: { hasRelease: boolean; changed: boolea
   return input.effortCurrent ? 'apply' : 'calculate';
 }
 
-/** Product sources prove generation; a captured maintenance base alone does not. */
+/** L2 product sources prove first generation; L1 alone and a captured base do not. */
 export function moduleHasGeneratedSources(project: number, moduleName: string,
   files: Array<{ project: number; level: number; folder: string; shortName: string; extension: string; status?: string }>): boolean {
-  return files.some(file => file.project === project && (file.level === 1 || file.level === 2)
+  return files.some(file => file.project === project && file.level === 2
     && file.status !== 'deleted' && (file.folder === moduleName || file.folder.startsWith(`${moduleName}/`))
     && !file.folder.startsWith(`${moduleName}/pipeline`) && file.extension === '.ts'
     && !file.shortName.endsWith('.test') && !file.shortName.endsWith('.defs'));
