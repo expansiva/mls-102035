@@ -180,3 +180,11 @@ new-release--widgets--journeys-102035 {
   @keyframes nr-journey-steps { from { opacity: 0; transform: translateY(-2rem); } to { opacity: 1; transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .nr-journeys__timeline { animation: none; } }
 }
+
+new-release--widgets--journeys-102035 {
+  .nr-journeys__detail { background: var(--surface-bg, #fff); color: var(--text-default, #2f3a48); border-radius: .8rem; }
+  .nr-journeys__detail > .nr-button { justify-self: start; }
+  .nr-journeys__outcome > header { display: block; }
+  .nr-journeys__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .nr-journeys__cards > button:focus-visible, .nr-step__open:focus-visible { outline: 2px solid var(--focus-border, #1273d4); outline-offset: 3px; }
+}

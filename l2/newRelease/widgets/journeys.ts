@@ -39,7 +39,7 @@ import {
 import { renderNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconPicker.js';
 import { hasItemDiff, idScope } from '/_102035_/l2/newRelease/helpers/itemDiffs.js';
 import { changedDot } from '/_102035_/l2/newRelease/helpers/changedDot.js';
-import { JOURNEY_ICON_DEFAULTS, iconNeedsFallback, withNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconModel.js';
+import { JOURNEY_ICON_DEFAULTS, withNewReleaseIcon } from '/_102035_/l2/newRelease/widgets/iconModel.js';
 
 type JourneyView = 'cards' | 'table';
 
@@ -55,6 +55,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
 
   @state() private selectedJourneyId = '';
   @state() private opened = false;
+  @state() private journeyDetails = false;
   @state() private selectedStepId = '';
   @state() private newStepId = '';
   @state() private creatingStep = false;
@@ -74,14 +75,15 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
 
   updated(changed: PropertyValues) {
     if (changed.has('data') && !this.journeys().some(j => j.journeyId === this.selectedJourneyId)) {
-      this.selectedJourneyId = ''; this.opened = false; this.selectedStepId = '';
+      this.selectedJourneyId = ''; this.opened = false; this.journeyDetails = false; this.selectedStepId = '';
     }
-    if (['data', 'opened', 'mode', 'selectedStepId', 'creatingStep', 'journeyDraft'].some(key => changed.has(key))) {
+    if (['data', 'opened', 'journeyDetails', 'selectedJourneyId', 'mode', 'selectedStepId', 'creatingStep', 'journeyDraft', 't'].some(key => changed.has(key))) {
       const presentation: NewReleaseTabPresentation = {
         filters: this.actors().map(actor => ({id: actor.actorId, label: actor.title, rootIds: this.journeys().filter(journey => journey.business.actorRef === actor.actorId).map(journey => journey.journeyId)})),
         nodes: this.journeys().map(journey => ({ id: journey.journeyId, label: journey.business.title, value: journey.journeyId, changed: this.changedJourney(journey.journeyId),
           children: journey.business.steps.map(step => ({ id: `${journey.journeyId}/${step.stepId}`, label: step.title, value: step.stepId, changed: this.changedStep(journey.journeyId, step.stepId), children: [] })) })),
-        detail: this.mode === 'edit' || !!this.selectedStepId || this.creatingStep,
+        detail: this.journeyDetails || this.mode === 'edit' || !!this.selectedStepId || this.creatingStep,
+        canBack: this.opened,
         select: id => {
           if (id.startsWith('edit:')) { if (this.selectJourney(id.slice(5))) this.openJourneyEdit(); return; }
           if (id.startsWith('add:')) { if (this.selectJourney(id.slice(4))) this.openNewStep(); return; }
@@ -89,7 +91,14 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
           if (stepId) this.openStep(journeyId, stepId);
           else this.selectJourney(journeyId);
         },
-        back: () => { if (!canDiscardNewReleaseDraft(this)) return; this.cancelEdit(); if (this.selectedStepId) this.selectedStepId = ''; else this.opened = false; },
+        back: () => {
+          if (!canDiscardNewReleaseDraft(this)) return;
+          const nested = this.journeyDetails || !!this.selectedStepId || this.creatingStep || this.mode === 'edit';
+          this.cancelEdit();
+          this.selectedStepId = '';
+          this.journeyDetails = false;
+          if (!nested) this.opened = false;
+        },
       };
       this.dispatchEvent(new CustomEvent('nr-view-state', { bubbles: true, composed: true, detail: presentation }));
     }
@@ -152,7 +161,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
 
   private selectJourney(journeyId: string): boolean {
     if (!canDiscardNewReleaseDraft(this)) return false;
-    this.cancelEdit(); this.selectedJourneyId = journeyId; this.selectedStepId = ''; this.opened = true;
+    this.cancelEdit(); this.selectedJourneyId = journeyId; this.selectedStepId = ''; this.journeyDetails = false; this.opened = true;
     return true;
   }
 
@@ -345,7 +354,7 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
   private renderJourneyList() {
     const journeys = this.opened ? this.journeys().filter(j => j.journeyId === this.selectedJourneyId) : this.journeys();
     const actors = [...new Set(journeys.map(j => j.business.actorRef))];
-    return html`${actors.map(actor => html`<section class="nr-journeys__group"><h3>${this.actorTitle(actor)}</h3><div class="nr-journeys__cards">${journeys.filter(j => j.business.actorRef === actor).map(journey => html`<button type="button" class=${this.opened ? 'is-active' : ''} @click=${() => this.selectJourney(journey.journeyId)}><span>${renderNewReleaseIcon(journey.business.icon, 'route')}</span><div><strong>${journey.business.title}</strong>${changedDot(this.changedJourney(journey.journeyId), this.t)}</div></button>`)}</div></section>`)}`;
+    return html`${actors.map(actor => html`<section class="nr-journeys__group"><h3>${this.actorTitle(actor)}</h3><div class="nr-journeys__cards">${journeys.filter(j => j.business.actorRef === actor).map(journey => html`<button type="button" class=${this.opened ? 'is-active' : ''} @click=${() => { if (this.opened) this.journeyDetails = true; else this.selectJourney(journey.journeyId); }}><span>${renderNewReleaseIcon(journey.business.icon, 'route')}</span><div><strong>${journey.business.title}</strong>${changedDot(this.changedJourney(journey.journeyId), this.t)}</div></button>`)}</div></section>`)}`;
   }
 
   private renderTransitions(step: Ns5JourneyStep, journey: Ns5JourneyArtifact) {
@@ -398,13 +407,13 @@ export class NewReleaseJourneys102035 extends StateLitElement implements NewRele
       ${this.creatingStep ? html`<label>${this.t('journeys.stepId')}<input .value=${this.newStepId} @input=${(e: Event) => { this.newStepId = (e.currentTarget as HTMLInputElement).value; }}></label><button class="nr-button" @click=${() => this.addStep()}>${this.t('journeys.addStep')}</button>`
       : step ? html`<h2>${step.title}</h2>${this.mode === 'edit' ? this.renderStepEdit(step) : html`<code>${step.stepId}</code><p>${step.description}</p><p>${this.entityTitle(step.entity)} · ${this.t(`journeys.kind.${step.kind}`)}</p>${!this.version.startsWith('release:') ? html`<button class="nr-button" @click=${this.openJourneyEdit}>${this.t('journeys.edit')}</button>` : nothing}`}${this.mode === 'edit' ? html`<button class="nr-button" @click=${() => this.removeStep(step.stepId)}>${this.t('journeys.removeStep')}</button>` : nothing}`
       : this.mode === 'edit' ? html`<new-release--widgets--icon-picker-102035 .value=${journey.business.icon || ''} fallback="route" .t=${this.t} @nr-icon-selected=${(event: CustomEvent<string>) => {if (this.journeyDraft) this.updateJourney({...this.journeyDraft, business: withNewReleaseIcon(this.journeyDraft.business, event.detail)});}}></new-release--widgets--icon-picker-102035><label>${this.t('journeys.journey')}<input .value=${journey.business.title} @input=${(e: Event) => this.updateBusiness({ title: (e.currentTarget as HTMLInputElement).value })}></label><label>${this.t('journeys.goal')}<textarea .value=${journey.business.goal} @input=${(e: Event) => this.updateBusiness({ goal: (e.currentTarget as HTMLTextAreaElement).value })}></textarea></label><code>${journey.journeyId}</code>`
-      : html`<p>${journey.business.goal}</p>${!this.version.startsWith('release:') ? html`<button class="nr-button" @click=${this.openJourneyEdit}>${this.t('journeys.edit')}</button><button class="nr-button" @click=${this.openNewStep}>${this.t('journeys.addStep')}</button>` : nothing}${this.renderTimeline(journey)}<section class="nr-journeys__outcome"><h3>${journey.business.outcome.statement}</h3><div>${journey.business.outcome.evidence.map(e => html`<p>${e}</p>`)}</div></section>`}
+      : html`<header><h2>${journey.business.title}</h2></header><label><span>${this.t('journeys.goal')}</span><p>${journey.business.goal}</p></label><section class="nr-journeys__outcome"><header><div><small>${this.t('journeys.outcome')}</small><h3>${journey.business.outcome.statement}</h3></div></header><div><strong>${this.t('journeys.evidence')}</strong>${journey.business.outcome.evidence.map(e => html`<p>${e}</p>`)}</div></section>${!this.version.startsWith('release:') ? html`<div class="nr-journeys__actions"><button class="nr-button" @click=${this.openJourneyEdit}>${this.t('journeys.edit')}</button><button class="nr-button" @click=${this.openNewStep}>${this.t('journeys.addStep')}</button></div>` : nothing}`}
     </main>`;
   }
 
   render() {
     const journey = this.currentJourney();
-    return html`<section class="nr-journeys">${this.journeys().some(item => iconNeedsFallback(item.business.icon) || item.business.steps.some(step => iconNeedsFallback(step.icon))) ? html`<p role="status">${this.t('icons.fallbackNotice')}</p>` : nothing}${this.opened && !this.selectedStepId && this.mode !== 'edit' ? html`<button class="nr-button" @click=${() => { this.opened = false; }}>${this.t('common.back')}</button>` : nothing}${this.renderJourneyList()}${this.opened && journey ? this.renderDetail(journey) : nothing}${this.mode === 'edit' ? html`<footer class="nr-journeys__edit-footer"><span>${this.dirty ? this.t('journeys.unsaved') : this.t('journeys.noChanges')}</span><div><button @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('journeys.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('journeys.save')}</button></div></footer>` : nothing}</section>`;
+    return html`<section class="nr-journeys">${this.journeyDetails || this.selectedStepId || this.creatingStep || this.mode === 'edit' ? (journey ? this.renderDetail(journey) : nothing) : html`${this.renderJourneyList()}${this.opened && journey ? this.renderTimeline(journey) : nothing}`}${this.mode === 'edit' ? html`<footer class="nr-journeys__edit-footer"><span>${this.dirty ? this.t('journeys.unsaved') : this.t('journeys.noChanges')}</span><div><button @click=${() => { if (canDiscardNewReleaseDraft(this)) this.cancelEdit(); }}>${this.t('journeys.cancel')}</button><button class="is-primary" ?disabled=${!this.dirty} @click=${() => void this.saveEdit()}>${this.t('journeys.save')}</button></div></footer>` : nothing}</section>`;
   }
 
 }
