@@ -138,10 +138,10 @@ test('presentation environment badge is hidden while Studio is active', () => {
 });
 
 
-test('review composition hides its request and stale summary while other tabs retain scoped diffs', () => {
+test('review composition hides its request and places changes before its panels while other tabs retain scoped diffs', () => {
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
   assert.match(index, /this\.activeTab !== 'review' \? this\.renderRequest\(\)/);
-  assert.match(index, /this\.activeTab === 'review' && this\.version === 'tobe' && !this\.data\?\.resultCurrent\) return nothing/);
+  assert.match(index, /this\.renderDiffs\(\)\}\s*<new-release--widgets--review-102035/);
   assert.match(index, /visibleDiffs\(this\.data\?\.diffs \?\? \[\], this\.activeTab\)/);
   assert.match(index, /this\.renderTobeStatus\(\)/);
 });

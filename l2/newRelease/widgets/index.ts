@@ -278,6 +278,17 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.textSearch = '';
     this.textFilter = '';
     this.graphZoom = 1;
+    if (tab === 'review' && this.version === 'asis') {
+      const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+      try {
+        const candidate = await readActiveL4Change(context.project, context.moduleName);
+        if (candidate && this.activeTab === 'review' && contextStillCurrent(context, this)) {
+          window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { ...context, version: 'tobe' } }));
+        }
+      } catch (error) {
+        if (this.activeTab === 'review' && contextStillCurrent(context, this)) this.mutationError = this.revisionError(error);
+      }
+    }
     if (!focus) return;
     await this.updateComplete;
     this.querySelector<HTMLButtonElement>(`#nr-tab-${tab}`)?.focus();
@@ -406,8 +417,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
   };
 
   private onTobeUpdated = (event: Event) => {
-    const detail = (event as CustomEvent<{ project?: number; moduleName?: string }>).detail;
+    const detail = (event as CustomEvent<{ project?: number; moduleName?: string; version?: NewReleaseVersion }>).detail;
     if (detail?.project !== this.project || detail?.moduleName !== this.moduleName) return;
+    // The context owner will announce the selected version after refreshing its choices.
+    if (detail.version === 'tobe' && this.version === 'asis') return;
     if (this.pendingEdit && this.version === 'asis') return;
     this.scheduleOverlayReload();
   };
@@ -627,7 +640,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
               aria-controls=${`nr-panel-${tab}`}
               tabindex=${this.activeTab === tab ? '0' : '-1'}
               @click=${() => void this.activateTab(tab)}
-            ><span class="nr-tab__icon">${this.tabIcon(tab)}</span><span class="nr-tab__label">${label}</span>${this.tabHasTobe(tab) ? html`<i class="nr-tab__source" title=${this.t('tobe.tabSource')}></i>` : nothing}</button>
+            ><span class="nr-tab__icon">${this.tabIcon(tab)}${this.tabHasTobe(tab) ? html`<i class="nr-tab__source" title=${this.t('tobe.tabSource')}></i>` : nothing}</span><span class="nr-tab__label">${label}</span></button>
           `;
         })}
       </nav>
@@ -747,12 +760,15 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderDiffs() {
-    if (this.activeTab === 'review' && this.version === 'tobe' && !this.data?.resultCurrent) return nothing;
     const diffs = visibleDiffs(this.data?.diffs ?? [], this.activeTab);
     if (!diffs.length) return nothing;
     return html`
       <details class="nr-index__diff">
         <summary>${this.t('tobe.diffTitle', { count: diffs.reduce((total, item) => total + item.entries.length, 0) })}</summary>
+        ${this.activeTab === 'review' && this.version === 'tobe' && this.hasPreparedChanges() ? html`
+          <div class="nr-index__diff-actions"><button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
+            @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button></div>
+        ` : nothing}
         ${diffs.map(diff => html`
           <section>
             <header>
@@ -858,10 +874,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     }
     if (this.activeTab === 'review') {
       return html`
-        ${this.version === 'tobe' && this.hasPreparedChanges() ? html`
-          <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
-            @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>
-        ` : nothing}
+        ${this.renderDiffs()}
         <new-release--widgets--review-102035
           .identityError=${this.identityError}
           .project=${this.project}
@@ -970,7 +983,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
             </div>
             ${this.presentation === 'text' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit' ? this.renderTextTree() : nothing}
           </fieldset></section>
-          ${this.renderDiffs()}
+          ${this.activeTab !== 'review' ? this.renderDiffs() : nothing}
           ${this.renderValidationLog()}
         `}
       </main>
