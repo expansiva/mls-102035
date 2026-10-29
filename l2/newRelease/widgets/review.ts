@@ -15,13 +15,18 @@ import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import { readCandidateWorkerGate } from '/_102035_/l2/newRelease/helpers/candidateWorkerGate.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate, prepareL4Change, sealL4Revision, readActiveL4Change, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { sealModuleLayers, restoreModuleFromSeals, diffModuleLayers, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
-import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
-import { createImplementationRunner } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
-import { getUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes, readInitialImplementationPlan, type InitialImplementationPlan } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { createImplementationRunner, type ImplementationRunnerDependencies } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
+import { environment } from '/_102036_/l2/environmentContract.js';
+import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
+import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
+import { serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
+import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { getUserId, createThread, getTemporaryContext } from '/_102025_/l2/collabMessagesHelper.js';
 import {
   claimInputForRun,
   publishedCandidateMatchesRunRevision,
@@ -76,6 +81,118 @@ const POLL_INTERVAL_MS = 1500;
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
 const EMPTY_ARTIFACT: ReviewArtifactRead = { status: 'missing', path: '' };
 
+export interface InitialReviewInput {
+  project: number; moduleName: string; acceptedBy: string; changeId: string | null; revisionId: string | null;
+}
+export interface InitialReviewDependencies {
+  plan?: typeof readInitialImplementationPlan;
+  prepare?: typeof prepareL4Change;
+  seal?: typeof sealL4Revision;
+  readSealed?: typeof readSealedL4Candidate;
+  review?: (sealed: L4SealedCandidateSnapshot, userId: string) => Promise<L4SealedCandidateSnapshot>;
+  sealLayers?: typeof sealModuleLayers;
+  promote?: typeof promoteL4Revision;
+  accept?: typeof acceptL4Implementation;
+  current?: () => boolean;
+}
+
+/** Same reviewer seal as Calculate, followed by initial generation rather than candidate planning. */
+export interface InitialSealDependencies extends ImplementationRunnerDependencies {
+  wait?: () => Promise<void>;
+  prepare?: typeof prepareReviewStartInput;
+  candidate?: typeof candidateRead;
+  gate?: typeof readCandidateWorkerGate;
+  readSealed?: typeof readSealedL4Candidate;
+  adopt?: typeof adoptL4ReviewResult;
+  active?: typeof readActiveL4Change;
+}
+export async function reviewInitialCandidate(sealed: L4SealedCandidateSnapshot, userId: string,
+  dependencies: InitialSealDependencies = {}): Promise<L4SealedCandidateSnapshot> {
+  const { project, moduleName, changeId, revisionId, baseId } = sealed.manifest;
+  const prepared = await (dependencies.prepare ?? prepareReviewStartInput)({ project, moduleName, changeId, revisionId, request: sealed.request, userId, loaded: sealed });
+  const invocation: ReviewInvocation = { project, moduleName, baseId, request: sealed.request,
+    originalL4Path: `l4/${moduleName}/pipeline/releases/${baseId}/l4`, temporaryL4Path: `l4/${moduleName}/tobe/plan`, expectedRevisionId: revisionId };
+  const name = '_102035_/l2/newRelease/initialReview';
+  const thread = await (dependencies.thread?.() ?? (async () => await getThreadByName(name) ?? await createThread(name, [], 'company'))());
+  if (!thread?.threadId) throw new Error('implementation.thread_unavailable');
+  const ctx = (dependencies.context ?? getTemporaryContext)(thread.threadId, userId, '@@agentReviewSolution ' + serializeReviewInvocation(invocation));
+  await (dependencies.execute ?? ((agent, context) => environment.agents.executeAgent(agent, context)))('agentReviewSolution', ctx);
+  if (!ctx.task?.PK) throw new Error('implementation.task_unavailable');
+  let task = ctx.task;
+  const taskId = task.PK.replace(/^task(?:\/#?|#)/u, '');
+  const messageId = task.messageid_created || `${ctx.message.threadId}/${ctx.message.orderAt || ctx.message.createAt}`;
+  while (!['done', 'failed', 'paused'].includes(task.status)) {
+    await (dependencies.wait ?? (() => new Promise<void>(resolve => window.setTimeout(resolve, POLL_INTERVAL_MS))))();
+    if (dependencies.task) task = await dependencies.task(userId, taskId, messageId);
+    else {
+      const update = await msgGetTaskUpdate({ userId, taskId, messageId });
+      if (!update.success || !update.response?.task) throw new Error(update.error || 'implementation.task_unavailable');
+      task = update.response.task;
+    }
+    if (task.PK.replace(/^task(?:\/#?|#)/u, '') !== taskId) throw new Error('implementation.task_mismatch');
+  }
+  const message = dependencies.message ? await dependencies.message(userId, thread.threadId, messageId)
+    : (await msgGetMessage({ userId, threadId: thread.threadId, messageId })).response?.message;
+  const reports = [...taskResultTexts(task), ...(message?.taskResults ?? [])].join('\n');
+  const refusal = reports.split('\n').map(line => line.trim()).find(line => /^(?:refused|failed):/u.test(line));
+  if (refusal || task.status !== 'done') throw new Error(refusal || task.last_update_log || 'review.implementation.error.run');
+  const candidate = await (dependencies.candidate ?? candidateRead)({ project, moduleName });
+  const pointer = candidate.pointer;
+  const result = pointer && candidate.result;
+  if (!pointer || pointer.changeId !== changeId || !result
+    || result.resultRevisionId !== revisionId || result.resultSnapshotHash !== prepared.input.inputSnapshotHash.replace(/^sha256:/u, '')
+    || result.manifest.status !== 'completed') throw new Error('l4.implementation_conflict');
+  const gateRun: PlatformReviewRun = {
+    runId: taskId, status: 'reviewing', attempt: 1,
+    binding: { ...prepared.input, runId: taskId, inputRevisionNumber: result.resultRevisionNumber,
+      originalL4Path: invocation.originalL4Path, temporaryL4Path: invocation.temporaryL4Path },
+    candidateResult: { ...result }, executions: [], plannerArtifacts: [], errorCode: null, createdAt: '', updatedAt: '',
+  };
+  const outputRevisionId = outputRevisionIdForRun(gateRun);
+  const inputPointer = pointer.revisionId === revisionId && pointer.snapshotHash === result.resultSnapshotHash
+    && pointer.revisionNumber === result.resultRevisionNumber;
+  const publishedPointer = outputRevisionId && publishedCandidateMatchesRunRevision(gateRun, outputRevisionId, candidate)
+    && pointer.snapshotHash === result.manifest.outputSnapshotHash && pointer.source?.revisionId === revisionId
+    && pointer.source.snapshotHash === result.resultSnapshotHash && pointer.source.revisionNumber === result.resultRevisionNumber;
+  if (!inputPointer && !publishedPointer) throw new Error('l4.implementation_conflict');
+  const gate = await (dependencies.gate ?? readCandidateWorkerGate)(gateRun);
+  if (!outputRevisionId || !gate.pipelineComplete) throw new Error('l4.implementation_not_ready');
+  const output = await (dependencies.readSealed ?? readSealedL4Candidate)(project, moduleName, changeId, outputRevisionId);
+  if (!output) throw new Error('l4.implementation_not_ready');
+  const snapshot = await buildCandidateSnapshot({ baseId, requestRevision: output.manifest.requestRevision, request: output.request, sources: output.sources });
+  if (result.manifest.outputSnapshotHash !== snapshot.hash) throw new Error('l4.implementation_conflict');
+  await (dependencies.adopt ?? adoptL4ReviewResult)(project, moduleName, { inputRevisionId: revisionId, outputRevisionId });
+  const active = await (dependencies.active ?? readActiveL4Change)(project, moduleName);
+  if (active?.activeRevisionId !== outputRevisionId || active.resultRevisionId !== outputRevisionId) throw new Error('l4.implementation_conflict');
+  return output;
+}
+
+/** Exact Apply handler seam, including the neutral revision when no change is active. */
+export async function applyInitialReview(input: InitialReviewInput, dependencies: InitialReviewDependencies = {}): Promise<L4ImplementationRecord> {
+  const current = () => { if (dependencies.current && !dependencies.current()) throw new Error('l4.implementation_conflict'); };
+  current();
+  const { project, moduleName, acceptedBy } = input;
+  if (!acceptedBy) throw new Error('implementation.user_unavailable');
+  const plan = await (dependencies.plan ?? readInitialImplementationPlan)(project, moduleName);
+  current();
+  const prepared = await (dependencies.prepare ?? prepareL4Change)(project, moduleName);
+  if ((input.changeId ? prepared.change.changeId !== input.changeId : !prepared.created)
+    || prepared.change.activeRevisionId !== input.revisionId) throw new Error('l4.implementation_conflict');
+  current();
+  const revision = await (dependencies.seal ?? sealL4Revision)(project, moduleName, input.revisionId);
+  let sealed = await (dependencies.readSealed ?? readSealedL4Candidate)(project, moduleName, prepared.change.changeId, revision.revisionId);
+  if (!sealed) throw new Error('l4.implementation_not_ready');
+  current();
+  if (sealed.manifest.changedPaths.length) sealed = await (dependencies.review ?? reviewInitialCandidate)(sealed, acceptedBy);
+  current();
+  const { changeId, revisionId, baseId } = sealed.manifest;
+  await (dependencies.sealLayers ?? sealModuleLayers)(project, moduleName, baseId);
+  current();
+  await (dependencies.promote ?? promoteL4Revision)(project, moduleName, changeId, revisionId);
+  current();
+  return (dependencies.accept ?? acceptL4Implementation)(project, moduleName, { kind: 'initial', revisionId, acceptedBy, plan });
+}
+
 @customElement('new-release--widgets--review-102035')
 export class NewReleaseReview102035 extends StateLitElement {
   @property({ type: Number }) project = 0;
@@ -94,12 +211,14 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private loading = false;
   @state() private hasRelease = false;
   @state() private effortCurrent = false;
+  @state() private initialPlan: InitialImplementationPlan | null = null;
   @state() private selectedActor = '';
   @state() private selectedId = '';
   @state() private selectedScope: ReviewNodeScope = 'future';
   @state() private expandedKeys: string[] = [];
   @state() private actionBusy = false;
   @state() private actionError = '';
+  @state() private initialErrorDetail = '';
   @state() private publishNotice = false;
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
@@ -121,6 +240,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   private workerTimer?: number;
   private implementationTimer?: number;
   private readonly implementationRunner = createImplementationRunner();
+  private readonly initialApply = applyInitialReview;
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
 
   createRenderRoot() { return this; }
@@ -179,6 +299,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     const token = ++this.loadToken;
     this.changeEffortRead = EMPTY_ARTIFACT;
     this.effortCurrent = false;
+    this.initialPlan = null;
     this.stopImplementationTimer();
     this.implementationDiff = null;
     this.implementationRestored = false;
@@ -217,6 +338,11 @@ export class NewReleaseReview102035 extends StateLitElement {
     ]);
     if (token !== this.loadToken) return;
     this.hasRelease = moduleHasGeneratedSources(context.project, context.moduleName, Object.values(mls.stor.files).filter(file => !!file));
+    if (!this.hasRelease && (context.version === 'asis' || context.version === 'tobe')) {
+      try { this.initialPlan = await readInitialImplementationPlan(context.project, context.moduleName); }
+      catch (error) { console.error('[newRelease] initial planning unavailable', error); }
+      if (token !== this.loadToken) return;
+    }
     const candidateImplementation = implementation.value ?? (!context.data?.resultCurrent && !context.data?.diffs.some(diff => diff.entries.length)
       ? await readLatestCompletedL4Implementation(context.project, context.moduleName) : null);
     if (token !== this.loadToken) return;
@@ -607,6 +733,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     const start = beginReviewPrimaryAction(action);
     if (!start.accepted) return;
     if (action.kind === 'continue') {
+      if (!this.hasRelease) { await this.acceptInitialImplementation(); return; }
       await this.acceptImplementation();
       return;
     }
@@ -638,6 +765,32 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.actionBusy = false;
     }
   };
+
+  private async acceptInitialImplementation(): Promise<void> {
+    if (this.actionBusy || !this.initialPlan || this.hasRelease || !this.isCurrentLoad()
+      || (this.version !== 'asis' && this.version !== 'tobe')) return;
+    const { project, moduleName, version, data } = this;
+    const token = this.loadToken;
+    const current = () => this.isConnected && token === this.loadToken && this.project === project
+      && this.moduleName === moduleName && this.version === version && this.data === data;
+    this.actionBusy = true;
+    this.actionError = '';
+    this.initialErrorDetail = '';
+    try {
+      const record = await this.initialApply({ project, moduleName, acceptedBy: getUserId() ?? '',
+        changeId: data?.changeId ?? null, revisionId: data?.revisionId ?? null }, { current });
+      if (!current()) return;
+      this.implementation = record;
+      this.initialPlan = null;
+      // The context owner reloads the accepted revision in tobe; load() resumes its persisted phases.
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project, moduleName, version: 'tobe' } }));
+    } catch (error) {
+      if (current()) this.actionError = error instanceof Error && error.message === 'l4.implementation_conflict'
+        ? 'review.implementation.error.conflict' : 'review.implementation.error.run';
+      if (current()) this.initialErrorDetail = error instanceof Error ? error.message : String(error);
+      console.error('[newRelease] initial implementation failed', error);
+    } finally { if (current()) this.actionBusy = false; }
+  }
 
   private canImplement(): boolean {
     return this.effortCurrent && canAcceptImplementation({ project: this.project, moduleName: this.moduleName, data: this.data,
@@ -776,6 +929,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (record.changeId !== this.data.changeId || record.revisionId !== this.data.revisionId) return;
     await this.loadImplementationDiff(token);
     if (!this.implementationContextCurrent(token)) return;
+    if (record.initial) this.hasRelease = moduleHasGeneratedSources(this.project, this.moduleName, Object.values(mls.stor.files));
     try { await completeTobeImplementation(this.project, this.moduleName, record.changeId, record.revisionId); }
     catch (error) { if (this.implementationContextCurrent(token)) this.actionError = error instanceof Error ? error.message : 'review.implementation.error.run'; }
   }
@@ -877,6 +1031,13 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private actionPresentation(view: ReviewView, current: boolean): ReviewPrimaryActionPresentation {
+    if (!this.hasRelease && (this.version === 'asis' || this.version === 'tobe')) {
+      return { kind: 'continue', labelKey: this.actionBusy ? 'review.actionBusy' : 'review.implementation.accept',
+        descriptionKey: 'review.panels.fullGenerationBody', availabilityKey: getUserId() ? '' : 'request.userUnavailable',
+        disabled: !current || this.loading || this.actionBusy || !this.initialPlan || !!this.implementation || !getUserId()
+          || this.data?.pipeline?.status !== 'complete' || this.data?.validation.ok !== true,
+        busy: this.actionBusy, error: this.actionError ? [this.tStoredReviewError(this.actionError), this.initialErrorDetail].filter(Boolean).join(': ') : '' };
+    }
     const backend = buildBackendReview(this.backendRead, view.kind === 'pending', this.moduleName);
     const effort = parseEffortSummary(this.effortRead, this.moduleName);
     const active = !!this.channelRun && !['ready', 'failed', 'disputed'].includes(this.channelRun.status);
@@ -1298,9 +1459,10 @@ export class NewReleaseReview102035 extends StateLitElement {
     const current = this.isCurrentLoad();
     const changeEffort = buildChangeEffortView(this.changeEffortRead);
     const action = this.actionPresentation(view, current);
-    const actions = buildReviewActionPlacements(action, this.version);
-    const resultVisible = reviewResultVisible({ version: this.version, loading: this.loading, current, resultCurrent: this.data?.resultCurrent === true });
-    const lifecycle = reviewReleaseState({ hasRelease: this.hasRelease,
+    const actions = buildReviewActionPlacements(action, !this.hasRelease && this.version === 'asis' ? 'tobe' : this.version);
+    const resultVisible = (!this.hasRelease && !!this.initialPlan && !this.loading && current) || reviewResultVisible({ version: this.version, loading: this.loading, current, resultCurrent: this.data?.resultCurrent === true });
+    const initialPending = !!this.implementation?.initial && this.hasImplementation() && !this.implementationComplete();
+    const lifecycle = initialPending ? 'new' : reviewReleaseState({ hasRelease: this.hasRelease,
       changed: !!this.data?.diffs.some(diff => diff.entries.length),
       effortCurrent: this.data?.resultCurrent === true && changeEffort.kind === 'ready' && this.effortCurrent,
       implementationComplete: this.implementationComplete(),
