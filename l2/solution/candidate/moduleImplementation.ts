@@ -22,6 +22,8 @@ export interface L4ImplementationPhase {
   endedAt?: string;
   error?: string;
   report?: string;
+  /** Planner output or the immutable planning identity consumed by this phase. */
+  plan?: InitialImplementationPlan;
 }
 
 export function implementationPhaseCommand(ref: EffortAgentRef, project: number, moduleName: string): EffortAgentRef {

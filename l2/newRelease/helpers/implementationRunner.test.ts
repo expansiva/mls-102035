@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createImplementationRunner } from './implementationRunner.js';
-import { acceptL4Implementation, readL4Implementation, readLatestCompletedL4Implementation, recordL4ImplementationPhase } from '../../solution/candidate/moduleImplementation.js';
+import { acceptL4Implementation, readL4Implementation, readLatestCompletedL4Implementation, recordL4ImplementationPhase, readInitialImplementationPlan, INITIAL_PLAN_PATHS } from '../../solution/candidate/moduleImplementation.js';
 import type { Ns5FileInfo } from '../../solution/fs.js';
 import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { mergeChangeEffort } from '../../solution/gates/changeEffort/gate.js';
@@ -82,7 +82,7 @@ function fixture(work: 'materialize' | 'both' | 'agents' | 'twoAgents' | 'unknow
     task: async (user: string, id: string, message: string) => { reads.push([user, id, message]); return task(id); },
     message: async () => ({ taskResults: ['@@agentMaterializeL1 {\"scope\":\"fixture\"}', command] } as any),
   };
-  return { accept, dependencies, dispatched, reads, makeTab, first, task, command,
+  return { accept, dependencies, dispatched, reads, makeTab, first, task, command, contents, key,
     status: (value: TaskData['status']) => { status = value; }, beforeExecute: (value: () => Promise<void>) => { beforeExecute = value; },
     restore: () => { (globalThis as any).mls = previous; } };
 }
@@ -339,6 +339,206 @@ test('identity resolution is awaited and its original failure propagates before 
         return f.dependencies.context(threadId, senderId, content);
       },
     }).runNext(project, moduleName);
+    assert.equal(f.dispatched.length, 1);
+  } finally { f.restore(); }
+});
+
+
+async function initialRunnerFixture(replan = false) {
+  const f = fixture();
+  const record = await f.accept();
+  const promotedAt = '2026-10-29T10:01:00.000Z';
+  const start = '2026-10-29T10:02:00.000Z';
+  const writtenAt = '2026-10-29T10:03:00.000Z';
+  const put = (path: string, value: unknown, date = writtenAt) => {
+    const slash = path.lastIndexOf('/');
+    const defs = path.endsWith('.defs.ts');
+    const extension = defs ? '.defs.ts' : path.endsWith('.ts') ? '.ts' : '.json';
+    const info: Ns5FileInfo = { project, level: Number(path[1]), folder: path.slice(3, slash), shortName: path.slice(slash + 1, -extension.length), extension };
+    const file = f.first.add(info);
+    file.updatedAt = date;
+    f.contents.set(f.key(info), extension.endsWith('.ts') ? String(value) : JSON.stringify(value));
+    return file;
+  };
+  put(`l4/${moduleName}/module.defs.ts`, 'export const fixture = {};', '2026-10-29T10:00:00.000Z');
+  const plans = (date = writtenAt, generation = 1) => {
+    for (const path of INITIAL_PLAN_PATHS) put(`l4/${moduleName}/${path}`, { moduleName, generation }, date);
+    for (const side of ['l1', 'l2']) put(`l4/${moduleName}/pool/${side}/pipeline.json`, { moduleName, status: 'complete', thread: `plan-${generation}` }, date);
+    put(`l4/${moduleName}/pipeline/pipeline.json`, { moduleName, status: 'complete', plOrchestration: [{ l1: 'done', l2: 'done', effort: 'done' }] }, date);
+  };
+  plans('2026-10-29T10:00:30.000Z');
+  const plan = await readInitialImplementationPlan(project, moduleName);
+  record.hashes = { plans: plan.hashes };
+  record.merged = { create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [], abend: [] };
+  record.initial = { plan, promotedAt, replan };
+  record.phases = [];
+  put(`l4/${moduleName}/pipeline/changes/change1/implementation.json`, record);
+  let defect = '';
+  const output = async (agent: string) => {
+    if (agent === 'agentPlannerL4') {
+      plans(defect === 'old-plans' ? promotedAt : writtenAt, 2);
+      if (defect === 'planner') put(`l4/${moduleName}/pool/l1/pipeline.json`, { moduleName, status: 'partial', thread: 'plan-2' });
+      return;
+    }
+    const identity = { project, moduleName };
+    if (agent === 'agentDefsL2') {
+      const current = await readInitialImplementationPlan(project, moduleName);
+      put(`l2/${moduleName}/pipeline/agentDefsL2/input.json`, {
+        project, module: moduleName, snapshotHash: 'snapshot-d2', sources: INITIAL_PLAN_PATHS.map(path => ({ path: `l4/${moduleName}/${path}`, sha256: defect === 'input-plan' ? 'foreign' : current.hashes[path] })),
+      });
+      put(`l2/${moduleName}/pipeline/agentDefsL2/pipeline.json`, { project, module: moduleName, status: 'complete', steps: { finalize80: { status: defect === 'defs-l2' ? 'failed' : 'approved', snapshotHash: 'snapshot-d2' } } });
+      put(`l2/${moduleName}/pipeline/agentDefsL2/finalize80/report.json`, { project, module: moduleName, status: 'complete', snapshotHash: 'snapshot-d2', artifactPaths: [`l2/${moduleName}/web/contracts/home.defs.ts`] });
+      if (defect !== 'missing-defs') put(`l2/${moduleName}/web/contracts/home.defs.ts`, 'export const home = {};');
+    } else if (agent === 'agentDefsL1') {
+      put(`l1/${moduleName}/pipeline/agentDefsL1/pipeline.json`, { ...identity, status: 'complete', steps: { finalize80: { status: 'approved' } } });
+      put(`l1/${moduleName}/pipeline/agentDefsL1/report.json`, { ...identity, outcome: defect === 'defs-l1' ? 'blocked' : 'complete', defsStatus: 'complete' });
+    } else if (agent === 'agentMaterializeL2') {
+      put(`l2/${moduleName}/pipeline/agentMaterializeL2/finalize70.json`, { project, module: moduleName, notApproved: defect === 'materialize-l2' ? ['home'] : [] });
+      if (defect !== 'missing-product') put(`l2/${moduleName}/web/desktop/home.ts`, 'export const home = {};');
+    } else if (agent === 'agentMaterializeL1') {
+      put(`l1/${moduleName}/pipeline/agentMaterializeL1/report.json`, { ...identity, status: defect === 'materialize-l1' ? 'partial' : 'complete' });
+    }
+  };
+  f.dependencies.now = () => start;
+  f.dependencies.message = async () => ({ taskResults: [defect === 'refusal' ? 'failed: producer rejected input' : 'done'] } as any);
+  f.beforeExecute(async () => {
+    if (defect === 'no-output') return;
+    await output(f.dispatched.at(-1)!.split(' ')[0].slice(2));
+  });
+  return { ...f, put, plans, output, defect: (value: string) => { defect = value; }, start, writtenAt, promotedAt };
+}
+
+for (const replan of [false, true]) test(`mr41 s3b initial ${replan ? 'replanned' : 'fresh'} executes ordered barriers and persists D2 plan identity`, async () => {
+  const f = await initialRunnerFixture(replan);
+  try {
+    const runner = createImplementationRunner(f.dependencies);
+    for (let i = 0; i < 7; i++) await runner.runNext(project, moduleName);
+    const record = (await readL4Implementation(project, moduleName))!;
+    assert.deepEqual(f.dispatched, [
+      ...(replan ? ['@@agentPlannerL4 fixture'] : []), '@@agentDefsL2 fixture', '@@agentDefsL1 fixture /run', '@@agentMaterializeL2 fixture', '@@agentMaterializeL1 {"scope":"fixture"}',
+    ]);
+    assert.ok(record.phases.every(phase => phase.status === 'done'));
+    const d2 = record.phases.find(phase => phase.agent === 'agentDefsL2')!;
+    const planner = record.phases.find(phase => phase.agent === 'agentPlannerL4');
+    assert.deepEqual(d2.plan?.hashes, replan ? planner?.plan?.hashes : record.initial?.plan.hashes);
+    if (replan) assert.notDeepEqual(d2.plan?.hashes, record.initial?.plan.hashes);
+    assert.deepEqual(record.phases.at(-1)?.plan, d2.plan);
+  } finally { f.restore(); }
+});
+
+for (const [defect, index] of [['planner', 0], ['old-plans', 0], ['defs-l2', 1], ['missing-defs', 1], ['input-plan', 1], ['defs-l1', 2], ['materialize-l2', 3], ['missing-product', 3], ['materialize-l1', 4]] as const) {
+  test(`mr41 s3b ${defect} barrier persists failure and never dispatches following phase`, async () => {
+    const f = await initialRunnerFixture(true);
+    try {
+      const runner = createImplementationRunner(f.dependencies);
+      for (let i = 0; i < index; i++) await runner.runNext(project, moduleName);
+      f.defect(defect);
+      if (defect === 'missing-product') {
+        f.put('l2/fixture/pipeline/helper.ts', 'export {};');
+        f.put('l2/fixture/web/home.test.ts', 'export {};');
+        f.put('l2/other/web/home.ts', 'export {};');
+        f.put('l2/fixture/web/deleted.ts', 'export {};').status = 'deleted';
+      }
+      const result = await runner.runNext(project, moduleName);
+      assert.equal(result.phases[index].status, 'failed');
+      assert.equal(result.phases[index].error, 'review.implementation.error.run');
+      assert.match(result.phases[index].report!, /implementation\.barrier|implementation_not_ready/);
+      if (defect === 'missing-product') assert.match(result.phases[index].report!, /product_source_missing/);
+      await runner.runNext(project, moduleName);
+      assert.equal(f.dispatched.length, index + 1);
+    } finally { f.restore(); }
+  });
+}
+
+test('mr41 s3b task done without output or with textual refusal does not pass a barrier', async () => {
+  for (const defect of ['no-output', 'refusal']) {
+    const f = await initialRunnerFixture();
+    try {
+      f.defect(defect);
+      const runner = createImplementationRunner(f.dependencies);
+      const result = await runner.runNext(project, moduleName);
+      assert.equal(result.phases[0].status, 'failed');
+      if (defect === 'refusal') assert.equal(result.phases[0].error, 'failed: producer rejected input');
+      await runner.runNext(project, moduleName);
+      assert.equal(f.dispatched.length, 1);
+    } finally { f.restore(); }
+  }
+});
+
+test('mr41 s3b pool changed after planning blocks D2 before dispatch', async () => {
+  const f = await initialRunnerFixture(true);
+  try {
+    const runner = createImplementationRunner(f.dependencies);
+    await runner.runNext(project, moduleName);
+    f.put(`l4/${moduleName}/pool/l2/web/menu.json`, { moduleName, changed: true });
+    const result = await runner.runNext(project, moduleName);
+    assert.equal(result.phases[1].status, 'failed');
+    assert.match(result.phases[1].report!, /planning_changed/);
+    assert.equal(f.dispatched.length, 1);
+  } finally { f.restore(); }
+});
+
+test('mr41 s3b retry preserves failed attempt and reload observes without duplicate dispatch', async () => {
+  const f = await initialRunnerFixture();
+  try {
+    f.defect('defs-l2');
+    await createImplementationRunner(f.dependencies).runNext(project, moduleName);
+    f.defect('');
+    f.status('in progress');
+    await createImplementationRunner(f.dependencies).retryPhase(project, moduleName, 'runAgents:0');
+    f.status('done');
+    const record = await createImplementationRunner(f.dependencies).runNext(project, moduleName);
+    assert.equal(record.phases[0].status, 'done');
+    assert.equal(record.phases[0].attempt, 2);
+    assert.equal(record.phases[0].previousAttempts?.[0].status, 'failed');
+    assert.equal(record.phases[0].taskId, '2');
+    assert.equal(f.dispatched.length, 2);
+    assert.ok(record.phases[0].plan);
+  } finally { f.restore(); }
+});
+
+
+for (const [agent, path, index] of [
+  ['agentDefsL2', 'l2/fixture/pipeline/agentDefsL2/pipeline.json', 0],
+  ['agentDefsL1', 'l1/fixture/pipeline/agentDefsL1/report.json', 1],
+  ['agentMaterializeL2', 'l2/fixture/pipeline/agentMaterializeL2/finalize70.json', 2],
+  ['agentMaterializeL1', 'l1/fixture/pipeline/agentMaterializeL1/report.json', 3],
+] as const) {
+  test(`mr41 s3b ${agent} refuses an old complete receipt`, async () => {
+    const f = await initialRunnerFixture();
+    try {
+      const runner = createImplementationRunner(f.dependencies);
+      for (let i = 0; i < index; i++) await runner.runNext(project, moduleName);
+      f.beforeExecute(async () => {
+        await f.output(agent);
+        const slash = path.lastIndexOf('/');
+        const key = f.key({ project, level: Number(path[1]), folder: path.slice(3, slash), shortName: path.slice(slash + 1, -5), extension: '.json' });
+        f.first.stor.files[key].updatedAt = f.promotedAt;
+      });
+      const result = await runner.runNext(project, moduleName);
+      assert.equal(result.phases[index].status, 'failed');
+      assert.match(result.phases[index].report!, /stale/);
+      await runner.runNext(project, moduleName);
+      assert.equal(f.dispatched.length, index + 1);
+    } finally { f.restore(); }
+  });
+}
+
+
+test('mr41 s3b a revision changed during execution cannot complete the phase', async () => {
+  const f = await initialRunnerFixture();
+  try {
+    f.beforeExecute(async () => {
+      await f.output('agentDefsL2');
+      f.put(`l4/${moduleName}/pipeline/changes/change1/change.json`, {
+        project, moduleName, baseId: 'base1', changeId: 'change1', activeRevisionId: 'other', promotedRevisionId: 'other',
+      });
+    });
+    const runner = createImplementationRunner(f.dependencies);
+    const result = await runner.runNext(project, moduleName);
+    assert.equal(result.phases[0].status, 'failed');
+    assert.match(result.phases[0].report!, /revision:identity_changed/);
+    await runner.runNext(project, moduleName);
     assert.equal(f.dispatched.length, 1);
   } finally { f.restore(); }
 });

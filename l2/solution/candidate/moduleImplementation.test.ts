@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { acceptL4Implementation, L4_IMPLEMENTATION_SCHEMA, readL4Implementation, readInitialImplementationPlan, implementationCommands, INITIAL_PLAN_PATHS } from './moduleImplementation.js';
+import { acceptL4Implementation, L4_IMPLEMENTATION_SCHEMA, readL4Implementation, readInitialImplementationPlan, implementationCommands, INITIAL_PLAN_PATHS, recordL4ImplementationPhase } from './moduleImplementation.js';
 import { L4_REVISION_SCHEMA } from './moduleRevision.js';
 import type { Ns5FileInfo } from '../fs.js';
 
@@ -288,3 +288,16 @@ for (const invalid of ['revision', 'promotion', 'plan-bytes', 'foreign-plan', 's
     } finally { fixture.restore(); }
   });
 }
+
+
+test('mr41 s3b implementation phase persists planner hashes for safe resume', async () => {
+  const fixture = initialFixture();
+  try {
+    const plan = await readInitialImplementationPlan(project, moduleName);
+    await acceptL4Implementation(project, moduleName, { kind: 'initial', revisionId: 'rev1', acceptedBy: 'reviewer', plan });
+    const phase = { name: 'runAgents:0', attempt: 1 as const, agent: 'agentDefsL2', command: '@@agentDefsL2 fixture',
+      taskId: 'd2-task', threadId: 'thread', messageId: 'message', status: 'done' as const, startedAt: '2026-10-29T10:03:00.000Z', plan };
+    await recordL4ImplementationPhase(project, moduleName, phase);
+    assert.deepEqual((await readL4Implementation(project, moduleName))?.phases[0], phase);
+  } finally { fixture.restore(); }
+});
