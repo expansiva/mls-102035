@@ -100,6 +100,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private expandedKeys: string[] = [];
   @state() private actionBusy = false;
   @state() private actionError = '';
+  @state() private publishNotice = false;
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
@@ -139,6 +140,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.expandedKeys = [];
       this.actionBusy = false;
       this.actionError = '';
+      this.publishNotice = false;
       this.reviewRun = null;
       this.reviewRunLoadError = '';
       this.channelRun = null;
@@ -340,6 +342,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private renderMenu(view: ReviewView) {
+    if (!this.hasRelease) return nothing;
     if (view.kind === 'pending') {
       return html`
         <section class="nr-review__pending">
@@ -1159,7 +1162,6 @@ export class NewReleaseReview102035 extends StateLitElement {
         ${backend.kind === 'stale' ? html`<p class="nr-review__backend-message">${this.t('review.backend.stale')}</p>` : nothing}
         ${backend.kind === 'missing' ? html`<p class="nr-review__backend-message">${this.t('review.backend.missing')}</p>` : nothing}
         ${backend.kind === 'invalid' ? html`<p class="nr-review__backend-message" role="alert">${this.t(backend.errorCode)}</p>` : nothing}
-        ${backend.kind !== 'stale' ? this.renderEffort() : nothing}
         ${backend.kind === 'ready' ? html`
           <ul class="nr-review__backend-legend">
             ${(['new', 'change', 'keep', 'remove', 'unknown'] as const).map(tone => html`<li class=${`is-${tone}`}>${this.t(`review.backend.status.${tone}`)}</li>`)}
@@ -1269,6 +1271,28 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
+  private renderEffortPanel(view: ReviewView, changeEffort: ChangeEffortView, resultVisible: boolean, calculate: readonly ReviewPrimaryActionPlacement[]) {
+    const summary = parseEffortSummary(this.effortRead, this.moduleName);
+    return html`<details class="nr-review__panel nr-review__effort-panel">
+      <summary><strong>${this.t('review.panels.effort')}</strong>
+        <span>${!this.hasRelease ? this.t('review.panels.fullGeneration') : !resultVisible ? this.t('review.backend.notCalculated') : summary.kind === 'counts'
+          ? summary.counts.filter(item => item.category !== 'endpoints').map(item => `${this.t(`review.backend.count.${item.category}`)}: ${item.statuses.reduce((count, value) => count + value.count, 0)}`).join(' · ')
+          : this.t('review.backend.notCalculated')}</span>
+      </summary>
+      ${!this.hasRelease ? html`<p class="nr-review__panel-note">${this.t('review.panels.fullGenerationBody')}</p>` : nothing}
+      ${calculate.map(block => this.renderPrimaryAction(block))}
+      ${resultVisible ? html`${this.renderEffort()}${this.renderChangeEffort(changeEffort)}${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
+    </details>`;
+  }
+
+  private renderPublish() {
+    return html`<section class="nr-review__panel nr-review__publish" aria-label=${this.t('review.panels.publish')}>
+      <h3>${this.t('review.panels.publish')}</h3>
+      <button type="button" @click=${() => { this.publishNotice = true; }}>${this.t('review.panels.publish')}</button>
+      ${this.publishNotice ? html`<p role="status">${this.t('review.panels.inDevelopment')}</p>` : nothing}
+    </section>`;
+  }
+
   render() {
     const view = this.view();
     const current = this.isCurrentLoad();
@@ -1281,28 +1305,22 @@ export class NewReleaseReview102035 extends StateLitElement {
       effortCurrent: this.data?.resultCurrent === true && changeEffort.kind === 'ready' && this.effortCurrent,
       implementationComplete: this.implementationComplete(),
     });
-    if (current && !this.loading && lifecycle !== 'new') return html`<section class="nr-review">
+    const calculate = this.hasRelease && lifecycle === 'calculate' && !this.hasImplementation() ? actions : [];
+    return html`<section class="nr-review">
       <header class="nr-review__hero"><h2>${this.t(`review.release.${lifecycle}`)}</h2></header>
-      ${this.hasImplementation() ? this.renderImplementation('top') : lifecycle !== 'unchanged' ? actions.map(block => this.renderPrimaryAction(block)) : nothing}
+      ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`
+        ${this.renderEffortPanel(view, changeEffort, resultVisible, calculate)}
+        <section class="nr-review__panel nr-review__apply" aria-label=${this.t('review.panels.apply')}>
+          <h3>${this.t('review.panels.apply')}</h3>
+          ${!this.hasImplementation() && !calculate.length && lifecycle !== 'unchanged' && (this.hasRelease || action.kind === 'continue')
+            ? actions.map(block => this.renderPrimaryAction(block))
+            : html`<p class="nr-review__panel-note">${this.t(this.hasRelease ? 'review.actionUnavailableBody' : 'review.panels.generationPending')}</p>`}
+        </section>
+        ${this.renderPublish()}
+      `}
+      ${this.hasImplementation() ? this.renderImplementation('top') : nothing}
       ${this.renderReviewRun()}
-      ${lifecycle === 'calculate' ? html`<ul>${this.data?.diffs.filter(diff => diff.entries.length).map(diff => html`<li><code>${diff.path}</code></li>`)}</ul>` : nothing}
-      ${lifecycle === 'apply' ? this.renderChangeEffort(changeEffort) : nothing}
+      ${resultVisible && !this.version.startsWith('release:') ? this.renderPool() : nothing}
     </section>`;
-    return html`
-      <section class="nr-review">
-        ${resultVisible ? html`<header class="nr-review__hero">
-          <div>
-            <span>${this.t(changeEffort.kind === 'missing' ? 'review.eyebrow' : 'review.effort.eyebrow')}</span>
-            <h2>${this.t(changeEffort.kind === 'missing' ? 'review.title' : 'review.effort.title')}</h2>
-            <p>${this.t(changeEffort.kind === 'missing' ? 'review.description' : 'review.effort.description')}</p>
-          </div>
-        </header>` : nothing}
-        ${this.hasImplementation() ? this.renderImplementation('top') : actions.map(block => this.renderPrimaryAction(block))}
-        ${this.renderReviewRun()}
-        ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : resultVisible ? changeEffort.kind !== 'missing' ? this.renderChangeEffort(changeEffort) : html`${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
-        ${this.hasImplementation() ? this.renderImplementation('bottom') : nothing}
-        ${resultVisible && !this.version.startsWith('release:') ? this.renderPool() : nothing}
-      </section>
-    `;
   }
 }

@@ -195,3 +195,26 @@ test('workflow has three navigation levels and protects structural identities', 
   assert.match(ontology, /requestNewReleasePresentation\(this, 'graph'\)/);
   assert.match(index, /selected.rootIds.includes\(root.id\)/);
 });
+
+
+test('review panels put effort before apply and publish, with execution and logs after the actions', () => {
+  const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
+  const render = source.slice(source.lastIndexOf('  render() {'));
+  const order = ['this.renderEffortPanel(', 'nr-review__apply', 'this.renderPublish()', "this.renderImplementation('top')", 'this.renderReviewRun()'];
+  for (let index = 1; index < order.length; index++) assert.ok(render.indexOf(order[index - 1]) < render.indexOf(order[index]), order[index]);
+  assert.doesNotMatch(render, /renderImplementation\('bottom'\)/);
+  const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
+  assert.ok(index.lastIndexOf('this.renderTabContent()') < index.lastIndexOf('this.renderValidationLog()'));
+  assert.match(source, /<details class="nr-review__panel nr-review__effort-panel">/);
+  assert.match(source, /private renderMenu\(view: ReviewView\) \{\s*if \(!this.hasRelease\) return nothing/);
+  assert.match(render, /const calculate = this.hasRelease && lifecycle === 'calculate'/);
+});
+
+test('publish is an informational placeholder with no execution call', () => {
+  const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
+  const publish = source.slice(source.indexOf('  private renderPublish()'), source.lastIndexOf('  render() {'));
+  assert.match(publish, /@click=\$\{\(\) => \{ this.publishNotice = true; \}\}/);
+  assert.match(publish, /role="status"/);
+  assert.match(publish, /review.panels.inDevelopment/);
+  assert.doesNotMatch(publish, /fetch|transport|publishGit|startReviewRun|runReviewPrimaryAction/);
+});
