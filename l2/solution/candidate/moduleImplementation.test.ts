@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { acceptL4Implementation, L4_IMPLEMENTATION_SCHEMA, readL4Implementation } from './moduleImplementation.js';
+import { acceptL4Implementation, L4_IMPLEMENTATION_SCHEMA, readL4Implementation, readInitialImplementationPlan, implementationCommands, INITIAL_PLAN_PATHS } from './moduleImplementation.js';
 import { L4_REVISION_SCHEMA } from './moduleRevision.js';
 import type { Ns5FileInfo } from '../fs.js';
 
@@ -46,7 +46,7 @@ function installStorFixture() {
     json(`pipeline/changes/${changeId}/revisions/${resultRevisionId}/l4/pool/l4`, 'changeEffort', golden);
   };
   const effortKey = (changeId = 'change1', revisionId = 'rev1') => `${project}:4:${moduleName}/pipeline/changes/${changeId}/revisions/${revisionId}/l4/pool/l4:changeEffort.json`;
-  return { activate, contents, effortKey, writes: () => writes, restore: () => { (globalThis as any).mls = previous; } };
+  return { activate, add, json, files, contents, effortKey, writes: () => writes, restore: () => { (globalThis as any).mls = previous; } };
 }
 
 test('mr_10 s1 accepts the current result and persists the change record', async () => {
@@ -184,3 +184,107 @@ test('mr_28 s1 rejects missing, invalid, blocked and regeneration', async () => 
     assert.equal(fixture.writes(), 2);
   } finally { fixture.restore(); }
 });
+
+
+function initialFixture() {
+  const fixture = installStorFixture();
+  fixture.activate('change1', 'rev1', null);
+  const values: Array<[string, { schemaVersion: string; moduleName?: string; journeys?: unknown[]; entities?: unknown[] }]> = [
+    ['module.defs.ts', { schemaVersion: '2026-09-10-ns5-module-v2', moduleName }],
+    ['journeys/index.defs.ts', { schemaVersion: 'fixture', journeys: [] }],
+    ['ontology/index.defs.ts', { schemaVersion: 'fixture', entities: [] }],
+    ...['rules', 'workflows', 'access', 'integration'].map(name => [`${name}.defs.ts`, { schemaVersion: 'fixture' }] as [string, { schemaVersion: string }]),
+  ];
+  const sources = values.map(([path, value]) => ({ path, source: `export const fixture = ${JSON.stringify(value)} as const;\n` }));
+  const files = Object.fromEntries(sources.map(item => [item.path, hash(item.source)]));
+  const identity = { schemaVersion: L4_REVISION_SCHEMA, project, moduleName, baseId: 'base1' };
+  fixture.json('pipeline/releases', 'index', { releases: [{ baseId: 'base1' }] });
+  fixture.json('pipeline/releases/base1', 'manifest', { ...identity, files, schemas: Object.fromEntries(values.map(([path, value]) => [path, value.schemaVersion])) });
+  fixture.json('pipeline/changes/change1/revisions/rev1', 'manifest', {
+    ...identity, changeId: 'change1', revisionId: 'rev1', files, changedPaths: [], requestRevision: 0, requestHash: hash(''),
+  });
+  for (const { path, source } of sources) {
+    const slash = path.lastIndexOf('/');
+    const folder = slash < 0 ? '' : `/${path.slice(0, slash)}`;
+    const shortName = path.slice(slash + 1, -8);
+    for (const root of [moduleName, `${moduleName}/pipeline/releases/base1/l4`, `${moduleName}/pipeline/changes/change1/revisions/rev1/l4`]) {
+      fixture.add({ project, level: 4, folder: root + folder, shortName, extension: '.defs.ts' }, source).updatedAt = '2026-10-29T10:00:00.000Z';
+    }
+  }
+  for (const path of INITIAL_PLAN_PATHS) {
+    const slash = path.lastIndexOf('/');
+    fixture.json(path.slice(0, slash), path.slice(slash + 1, -5), { moduleName }).updatedAt = '2026-10-29T10:01:00.000Z';
+  }
+  for (const side of ['l1', 'l2']) {
+    fixture.json(`pool/${side}`, 'pipeline', { moduleName, status: 'complete', thread: 'initial-plan' }).updatedAt = '2026-10-29T10:01:00.000Z';
+  }
+  fixture.json('pipeline/changes/change1', 'change', {
+    ...identity, changeId: 'change1', activeRevisionId: 'rev1', resultRevisionId: null,
+    promotedRevisionId: 'rev1', promotedAt: '2026-10-29T10:02:00.000Z',
+  });
+  return fixture;
+}
+
+test('mr41 s3a initial acceptance binds neutral promoted revision and four plans without maintenance effort', async () => {
+  const fixture = initialFixture();
+  try {
+    const plan = await readInitialImplementationPlan(project, moduleName);
+    assert.equal(plan.fresh, true);
+    // Promotion re-stamps bytes: freshness comes from the verified pre-promotion snapshot.
+    fixture.files[`${project}:4:${moduleName}:module.defs.ts`].updatedAt = '2026-10-29T10:02:00.000Z';
+    const request = { kind: 'initial' as const, revisionId: 'rev1', acceptedBy: 'reviewer', plan };
+    const record = await acceptL4Implementation(project, moduleName, request);
+    assert.equal(record.initial?.replan, false);
+    assert.equal(record.hashes.changeEffort, undefined);
+    assert.deepEqual(record.hashes.plans, plan.hashes);
+    assert.deepEqual(implementationCommands(record, project, moduleName).map(ref => ref.command), [
+      '@@agentDefsL2 fixture', '@@agentDefsL1 fixture /run', '@@agentMaterializeL2 fixture', '@@agentMaterializeL1 {"scope":"fixture"}',
+    ]);
+    const writes = fixture.writes();
+    assert.deepEqual(await acceptL4Implementation(project, moduleName, request), record);
+    assert.equal(fixture.writes(), writes);
+    assert.deepEqual(await readL4Implementation(project, moduleName), record);
+  } finally { fixture.restore(); }
+});
+
+for (const stale of ['missing-date', 'old-plan', 'edited-revision'] as const) {
+  test(`mr41 s3a ${stale} requires ordinary PlannerL4 before generation`, async () => {
+    const fixture = initialFixture();
+    try {
+      if (stale === 'missing-date') delete fixture.files[`${project}:4:${moduleName}:module.defs.ts`].updatedAt;
+      if (stale === 'old-plan') fixture.files[`${project}:4:${moduleName}/pool/l2/web:menu.json`].updatedAt = '2026-10-29T09:59:00.000Z';
+      if (stale === 'edited-revision') {
+        const key = `${project}:4:${moduleName}/pipeline/changes/change1/revisions/rev1:manifest.json`;
+        const manifest = JSON.parse(fixture.contents.get(key)!);
+        manifest.changedPaths = ['module.defs.ts'];
+        fixture.contents.set(key, JSON.stringify(manifest));
+      }
+      const plan = await readInitialImplementationPlan(project, moduleName);
+      const record = await acceptL4Implementation(project, moduleName, { kind: 'initial', revisionId: 'rev1', acceptedBy: 'reviewer', plan });
+      assert.equal(record.initial?.replan, true);
+      assert.equal(implementationCommands(record, project, moduleName)[0].command, '@@agentPlannerL4 fixture');
+      assert.ok(implementationCommands(record, project, moduleName).every(ref => !ref.command.includes('/candidate') && !ref.agent.startsWith('agentNewRelease')));
+    } finally { fixture.restore(); }
+  });
+}
+
+for (const invalid of ['revision', 'promotion', 'plan-bytes', 'foreign-plan', 'sealed-source', 'pipeline'] as const) {
+  test(`mr41 s3a rejects ${invalid} without persisting acceptance`, async () => {
+    const fixture = initialFixture();
+    try {
+      const plan = await readInitialImplementationPlan(project, moduleName);
+      if (invalid === 'plan-bytes') fixture.contents.set(`${project}:4:${moduleName}/pool/l2/web:menu.json`, JSON.stringify({ moduleName, changed: true }));
+      if (invalid === 'foreign-plan') plan.moduleName = 'other';
+      if (invalid === 'sealed-source') fixture.contents.set(`${project}:4:${moduleName}/pipeline/changes/change1/revisions/rev1/l4:module.defs.ts`, 'tampered');
+      if (invalid === 'pipeline') fixture.contents.set(`${project}:4:${moduleName}/pool/l1:pipeline.json`, JSON.stringify({ moduleName, status: 'partial', thread: 'initial-plan' }));
+      if (invalid === 'promotion') {
+        const key = `${project}:4:${moduleName}/pipeline/changes/change1:change.json`;
+        const change = JSON.parse(fixture.contents.get(key)!);
+        delete change.promotedRevisionId;
+        fixture.contents.set(key, JSON.stringify(change));
+      }
+      await assert.rejects(acceptL4Implementation(project, moduleName, { kind: 'initial', revisionId: invalid === 'revision' ? 'other' : 'rev1', acceptedBy: 'reviewer', plan }));
+      assert.equal(fixture.writes(), 0);
+    } finally { fixture.restore(); }
+  });
+}
