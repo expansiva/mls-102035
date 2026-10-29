@@ -16,11 +16,13 @@ import {
 } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
 import type { Validate40CorrectionState } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
 import {
+  diffMaps,
   recordReview20Refusal,
   review20ClipNote,
   review20RefusalInfo,
   Review20ParseRefusal,
   stageReview20,
+  stageReview20Applied,
   type Review20Stage,
 } from '/_102035_/l2/agentReviewSolution/steps/review20/review20.js';
 
@@ -82,7 +84,16 @@ export async function beforeReview20PromptStep(
     const invocation = parseReviewInvocation(args, mls.actualProject || 0);
     const inventories = await runtime.load(invocation);
     assertReviewSnapshotMatches(reviewSnapshotFromContext(context), inventories.snapshot);
-    await reviewTaskStateFromContext(context, inventories.snapshot);
+    const taskState = await reviewTaskStateFromContext(context, inventories.snapshot);
+    if (Object.keys(diffMaps(inventories.base, inventories.candidate)).length > 0) {
+      const staged = stageReview20Applied(
+        inventories.snapshot,
+        inventories.persistedRequest,
+        inventories.base,
+        inventories.candidate,
+      );
+      return review20StagedIntents(context, parentStep, step, hookSequential, inventories, staged, taskState);
+    }
     const [systemPrompt, schema] = await Promise.all([runtime.readPrompt(), runtime.readSchema()]);
     const humanPrompt = buildReview20HumanPrompt(inventories);
     if (systemPrompt.length + humanPrompt.length > MAX_REVIEW20_PROMPT_CHARS) {
@@ -136,25 +147,7 @@ export async function afterReview20PromptStep(
         status(context, parentStep, step, hookSequential, 'completed', 'review20 requires human clarification; no proposal was approved or written.'),
       ];
     }
-    const privateState = buildPrivateState(inventories, staged, taskState);
-    const serialized = JSON.stringify(privateState);
-    if (serialized.length > MAX_REVIEW20_PRIVATE_STATE_CHARS) {
-      throw new Error('review20 proposal exceeds the private task-state size limit.');
-    }
-    parseReview20PrivateState(serialized);
-    return [
-      addStep(context, parentStep, {
-        type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
-        stepTitle: 'Private review proposal', result: serialized,
-        planning: { planId: 'review20-private-result', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
-      } as mls.msg.AIResultStep),
-      addStep(context, parentStep, {
-        type: 'agent', stepId: 0, interaction: null, nextSteps: [], status: 'waiting_dependency',
-        agentName: 'agentReviewSolution', stepTitle: 'Check private L4 dependencies', prompt: String(step.prompt || ''), rags: [],
-        planning: { planId: 'reconcile30', dependsOn: ['review20-private-result'], executionMode: 'sequential', executionHost: 'client' },
-      } as mls.msg.AIAgentStep),
-      status(context, parentStep, step, hookSequential, 'completed', 'review20 proposal validated and retained only in private task state.'),
-    ];
+    return review20StagedIntents(context, parentStep, step, hookSequential, inventories, staged, taskState);
   } catch (error) {
     return [status(context, parentStep, step, hookSequential, 'failed', errorMessage(error))];
   }
@@ -232,6 +225,36 @@ function buildReview20HumanPrompt(inventories: ReviewInventories): string {
     base: inventories.base,
     candidate: inventories.candidate,
   });
+}
+
+function review20StagedIntents(
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+  inventories: ReviewInventories,
+  staged: Review20Stage,
+  taskState: ReviewTaskState,
+): mls.msg.AgentIntent[] {
+  const privateState = buildPrivateState(inventories, staged, taskState);
+  const serialized = JSON.stringify(privateState);
+  if (serialized.length > MAX_REVIEW20_PRIVATE_STATE_CHARS) {
+    throw new Error('review20 proposal exceeds the private task-state size limit.');
+  }
+  parseReview20PrivateState(serialized);
+  return [
+    addStep(context, parentStep, {
+      type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
+      stepTitle: 'Private review proposal', result: serialized,
+      planning: { planId: 'review20-private-result', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
+    } as mls.msg.AIResultStep),
+    addStep(context, parentStep, {
+      type: 'agent', stepId: 0, interaction: null, nextSteps: [], status: 'waiting_dependency',
+      agentName: 'agentReviewSolution', stepTitle: 'Check private L4 dependencies', prompt: String(step.prompt || ''), rags: [],
+      planning: { planId: 'reconcile30', dependsOn: ['review20-private-result'], executionMode: 'sequential', executionHost: 'client' },
+    } as mls.msg.AIAgentStep),
+    status(context, parentStep, step, hookSequential, 'completed', 'review20 proposal validated and retained only in private task state.'),
+  ];
 }
 
 function buildPrivateState(

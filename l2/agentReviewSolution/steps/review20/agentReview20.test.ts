@@ -92,6 +92,36 @@ async function withProject<T>(fn: () => Promise<T>): Promise<T> {
   finally { (globalThis as { mls?: unknown }).mls = previous; }
 }
 
+test('review20 seals an already-edited candidate without calling the model', async () => withProject(async () => {
+  const loaded: ReviewInventories = {
+    ...inventories,
+    candidate: { 'module.defs.ts': { schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Edited title' } },
+  };
+  const intents = await beforeReview20PromptStep(await context(), parent(), step(), 7, runtime(loaded));
+  assert.deepEqual(intents.map(intent => intent.type), ['add-step', 'add-step', 'update-status']);
+  assert.equal(intents.some(intent => intent.type === 'prompt_ready'), false);
+  const result = (intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep;
+  assert.equal(result.planning?.planId, 'review20-private-result');
+  const reconcile = (intents[1] as mls.msg.AgentIntentAddStep).step as mls.msg.AIAgentStep;
+  assert.equal(reconcile.planning?.planId, 'reconcile30');
+  const state = parseReview20PrivateState(result.result);
+  assert.equal((state.proposal['module.defs.ts'] as Record<string, unknown>).title, 'Edited title');
+  assert.deepEqual(state.operationDiff, {});
+  assert.equal(state.status, 'staged');
+}));
+
+test('review20 refuses an invalid already-edited candidate with a reason', async () => withProject(async () => {
+  const loaded: ReviewInventories = {
+    ...inventories,
+    candidate: { 'module.defs.ts': { schemaVersion: 'v1', moduleName: 'otherModule', title: 'Edited title' } },
+  };
+  const intents = await beforeReview20PromptStep(await context(), parent(), step(), 7, runtime(loaded));
+  assert.equal(intents.length, 1);
+  assert.equal(intents[0].type, 'update-status');
+  assert.equal((intents[0] as mls.msg.AgentIntentUpdateStatus).status, 'failed');
+  assert.match(String((intents[0] as mls.msg.AgentIntentUpdateStatus).traceMsg), /another module/u);
+}));
+
 test('review20 prepares exactly one structured model call from the persisted private snapshot', async () => withProject(async () => {
   const intents = await beforeReview20PromptStep(await context(), parent(), step(), 7, runtime());
   assert.equal(intents.length, 1);

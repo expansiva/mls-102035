@@ -225,7 +225,7 @@ function atPointer(root: unknown, segments: string[]): { parent: Record<string, 
   return { parent, key, value: parent[key] };
 }
 
-function diffMaps(base: Record<string, unknown>, next: Record<string, unknown>): Record<string, NewReleaseDiffEntry[]> {
+export function diffMaps(base: Record<string, unknown>, next: Record<string, unknown>): Record<string, NewReleaseDiffEntry[]> {
   const result: Record<string, NewReleaseDiffEntry[]> = {};
   for (const path of [...new Set([...Object.keys(base), ...Object.keys(next)])].sort()) {
     const entries = tobeDiff(base[path], next[path]);
@@ -234,14 +234,12 @@ function diffMaps(base: Record<string, unknown>, next: Record<string, unknown>):
   return result;
 }
 
-/** Pure staging only. Neither a model call nor an L4 approval/publication. */
-export function stageReview20(
+function assertReview20Inventories(
   snapshot: Pick<ReviewEntrySnapshot, 'moduleName' | 'request' | 'requestRevision'>,
   persistedRequest: Review20PersistedRequest,
   base: Record<string, unknown>,
   candidate: Record<string, unknown>,
-  untrustedResponse: unknown,
-): Review20Stage {
+): void {
   const { moduleName, request } = snapshot;
   if (!/^[a-z][a-zA-Z0-9]*$/u.test(moduleName) || !request.trim()) throw new Error('module and request are required');
   if (!Number.isSafeInteger(snapshot.requestRevision) || snapshot.requestRevision < 1
@@ -262,6 +260,31 @@ export function stageReview20(
       if (Object.hasOwn(artifact, 'moduleName') && artifact.moduleName !== moduleName) throw new Error('artifact belongs to another module');
     }
   }
+}
+
+/** Seal an already-edited candidate without a model: proposal is the candidate, operations empty. */
+export function stageReview20Applied(
+  snapshot: Pick<ReviewEntrySnapshot, 'moduleName' | 'request' | 'requestRevision'>,
+  persistedRequest: Review20PersistedRequest,
+  base: Record<string, unknown>,
+  candidate: Record<string, unknown>,
+): Review20Stage {
+  assertReview20Inventories(snapshot, persistedRequest, base, candidate);
+  const proposal = cloneJson(candidate);
+  const explicitDiff = diffMaps(base, candidate);
+  return { status: 'staged', clarification: '', proposal, explicitDiff, operationDiff: {}, proposedDiff: explicitDiff };
+}
+
+/** Pure staging only. Neither a model call nor an L4 approval/publication. */
+export function stageReview20(
+  snapshot: Pick<ReviewEntrySnapshot, 'moduleName' | 'request' | 'requestRevision'>,
+  persistedRequest: Review20PersistedRequest,
+  base: Record<string, unknown>,
+  candidate: Record<string, unknown>,
+  untrustedResponse: unknown,
+): Review20Stage {
+  assertReview20Inventories(snapshot, persistedRequest, base, candidate);
+  const { moduleName } = snapshot;
   const parsed = parseResponse(untrustedResponse);
   const response = parsed.response;
   const proposal = cloneJson(candidate);
