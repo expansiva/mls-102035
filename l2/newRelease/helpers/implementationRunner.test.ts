@@ -322,3 +322,23 @@ test('mr39 s10: a missing returned command is persisted and cannot be dispatched
     await assert.rejects(runner.retryPhase(project, moduleName, 'runAgents:4'), /implementation.retry_not_allowed/u);
   } finally { f.restore(); }
 });
+
+
+test('identity resolution is awaited and its original failure propagates before dispatch', async () => {
+  const f = fixture();
+  try {
+    await f.accept();
+    const failure = new Error('collab_messages_user_unavailable: cm offline');
+    await assert.rejects(createImplementationRunner({ ...f.dependencies,
+      userId: async () => { throw failure; },
+    }).runNext(project, moduleName), error => error === failure);
+    assert.equal(f.dispatched.length, 0);
+    await createImplementationRunner({ ...f.dependencies, userId: async () => 'resolved-user',
+      context: (threadId, senderId, content) => {
+        assert.equal(senderId, 'resolved-user');
+        return f.dependencies.context(threadId, senderId, content);
+      },
+    }).runNext(project, moduleName);
+    assert.equal(f.dispatched.length, 1);
+  } finally { f.restore(); }
+});

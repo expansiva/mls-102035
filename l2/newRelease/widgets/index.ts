@@ -1,4 +1,5 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
+import { ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
 import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { summarizeNewReleaseRequest, runNewReleaseRequest } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
@@ -66,6 +67,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private savedRequest = '';
   @state() private requestBusy = false;
   @state() private requestError = '';
+  @state() private identityError = 'pending';
+  private identityFlight?: Promise<void>;
   @state() private requestResult = '';
   @state() private requestNeedsRetry = false;
 
@@ -99,6 +102,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (message.startsWith('general.languages')) return this.t(message);
     if (message === 'new-release.application_active') return this.t('request.applicationActive');
     if (message === 'new-release.request_empty') return this.t('request.empty');
+    if (message.startsWith('collab_messages_')) return this.t('request.identityUnavailable', { reason: message });
     if (message === 'implementation.user_unavailable') return this.t('request.userUnavailable');
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
     if (message.includes('Historical inventory differs')) return this.t('request.historyIncompatible');
@@ -106,8 +110,20 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return message;
   }
 
+  private async ensureIdentity(): Promise<void> {
+    try {
+      await ensureUserId();
+      this.identityError = '';
+    } catch (error) {
+      console.error(error);
+      this.identityError = error instanceof Error ? error.message : String(error);
+    }
+    this.requestUpdate();
+  }
+
   connectedCallback() {
     super.connectedCallback();
+    this.identityFlight ??= this.ensureIdentity();
     this.project = this.project || Number(mls.actualProject || 0);
     this.languageObserver = observeNewReleaseLanguage(() => this.loadLanguage());
     this.addEventListener('scroll', this.closeHintsOnScroll, true);
@@ -847,6 +863,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
             @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>
         ` : nothing}
         <new-release--widgets--review-102035
+          .identityError=${this.identityError}
           .project=${this.project}
           .moduleName=${this.moduleName}
           .version=${this.version}
@@ -891,6 +908,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
           ${this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
+          ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}
           ${this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
           <div class="nr-index__request-actions">
             <button type="button" ?disabled=${this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>

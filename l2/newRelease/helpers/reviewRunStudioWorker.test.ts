@@ -844,3 +844,19 @@ test('mr_30 s6 reload antes do task-change acha a mensagem e retoma sem segundo 
   assert.equal(resumes, 1);
   assert.deepEqual(reports.filter(status => status === 'failed'), []);
 });
+
+
+test('identity resolution is awaited and its original failure propagates before dispatch', async () => {
+  const failure = new Error('collab_messages_user_unavailable: cm offline');
+  await assert.rejects(createReviewStudioHost({ storage: memoryStorage(),
+    userId: async () => { throw failure; },
+    thread: async () => { assert.fail('must not create a conversation without identity'); },
+  }).startOrGet(claim()), error => error === failure);
+  const host = createReviewStudioHost({ storage: memoryStorage(), userId: async () => 'resolved-user',
+    thread: async () => ({ threadId: THREAD_ID }),
+    context: (_thread, userId) => { assert.equal(userId, 'resolved-user'); return context(); },
+    execute: async () => {},
+  });
+  const execution = await host.startOrGet(claim());
+  assert.ok(execution.taskId);
+});

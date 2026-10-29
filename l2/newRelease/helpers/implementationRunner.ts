@@ -5,7 +5,7 @@ import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
-import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { createThread, getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { implementationCommands, implementationPhaseCommand, withL4ImplementationWriter, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { diffModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
@@ -16,7 +16,7 @@ export interface ImplementationRunnerDependencies {
   execute?: (agentName: string, context: ExecutionContext) => Promise<void>;
   task?: (userId: string, taskId: string, messageId: string) => Promise<TaskData>;
   message?: (userId: string, threadId: string, messageId: string) => Promise<Message | null>;
-  userId?: () => string | null;
+  userId?: () => string | null | Promise<string | null>;
   now?: () => string;
 }
 
@@ -24,7 +24,7 @@ const THREAD = '_102035_/l2/newRelease/implementations';
 const taskId = (value: string) => value.replace(/^task(?:\/#?|#)/u, '');
 
 export function createImplementationRunner(dependencies: ImplementationRunnerDependencies = {}) {
-  const userId = dependencies.userId ?? getUserId;
+  const userId = dependencies.userId ?? ensureUserId;
   const now = dependencies.now ?? (() => new Date().toISOString());
   const context = dependencies.context ?? getTemporaryContext;
   const execute = dependencies.execute ?? ((agent, ctx) => environment.agents.executeAgent(agent, ctx));
@@ -54,7 +54,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
       changedDefs = (await diffModuleLayers(project, moduleName, change.baseId))
         .map(({ path, status, level }) => ({ path, status, level }));
     }
-    const result = status === 'done' ? await message(userId()!, phase.threadId, value.messageid_created || phase.messageId) : null;
+    const result = status === 'done' ? await message((await userId())!, phase.threadId, value.messageid_created || phase.messageId) : null;
     const report = taskResultTexts(value).join('\n') || result?.taskResults?.join('\n') || '';
     const refusal = report.split('\n').find(line => /^(?:refused|failed):/u.test(line.trim()));
     const missingReport = status === 'done' && (phase.agent === 'agentNewReleaseL1' || phase.agent === 'agentNewReleaseL2') && !report;
@@ -69,7 +69,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
   async function dispatch(project: number, moduleName: string, name: L4ImplementationPhase['name'], command: { agent: string; command: string },
     attempt: 1 | 2, save: (phase: L4ImplementationPhase) => Promise<void>,
     previousAttempts?: L4ImplementationPhase['previousAttempts']) {
-    const user = userId();
+    const user = await userId();
     if (!user) throw new Error('implementation.user_unavailable');
     const resolved = await thread();
     const ctx = context(resolved.threadId, user, command.command);
@@ -98,7 +98,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
         const command = commands[index];
         let phase = record.phases.find(phase => phase.name === name);
         if (phase?.status === 'failed') return record;
-        const user = userId();
+        const user = await userId();
         if (!user) throw new Error('implementation.user_unavailable');
         if (phase) {
           if (!phase.taskId) {

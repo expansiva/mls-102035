@@ -84,6 +84,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @property({ attribute: false }) data: NewReleaseModuleData | null = null;
   @property({ attribute: false }) t: NewReleaseTranslate = key => key;
   @property({ type: String }) request = '';
+  @property({ attribute: false }) identityError = '';
 
   @state() private menuRead: MenuReadResult = EMPTY_MENU;
   @state() private pool: ReviewPoolBoxView[] = [];
@@ -1028,13 +1029,15 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private renderPrimaryAction(block: ReviewPrimaryActionPlacement) {
-    const { action, placement } = block;
+    const { placement } = block;
+    const action = this.identityError ? { ...block.action, disabled: true,
+      availabilityKey: this.identityError === 'pending' ? 'request.identityPending' : 'request.identityUnavailable' } : block.action;
     return html`
       <section class=${`nr-review__primary-action is-${placement}`} aria-busy=${action.busy ? 'true' : 'false'}>
         <div>
           <span>${this.t('review.primaryActionTitle')}</span>
           <p>${this.t(action.descriptionKey)}</p>
-          ${action.availabilityKey ? html`<small>${this.t(action.availabilityKey)}</small>` : nothing}
+          ${action.availabilityKey ? html`<small>${this.t(action.availabilityKey, { reason: this.identityError })}</small>` : nothing}
           ${action.error ? html`<p class="nr-review__action-error" role=${block.announceError ? 'alert' : nothing}>${action.error}</p>` : nothing}
         </div>
         <button

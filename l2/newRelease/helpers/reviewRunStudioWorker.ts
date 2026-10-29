@@ -4,7 +4,7 @@ import { environment } from '/_102036_/l2/environmentContract.js';
 import { getPostError, post, msgGetMessage, msgGetMessagesAfter, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
-import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { createThread, getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { buildTaskStatistics } from '/_102025_/l2/collabMessagesTaskInfo.js';
 import { continuePoolingTask } from '/_102027_/l2/aiAgentOrchestration.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
@@ -91,7 +91,7 @@ interface SavedExecution {
 
 export interface ReviewStudioHostDependencies {
   storage?: KeyValueStorage;
-  userId?: () => string | null;
+  userId?: () => string | null | Promise<string | null>;
   thread?: () => Promise<{ threadId: string }>;
   context?: (threadId: string, userId: string, prompt: string) => ExecutionContext;
   execute?: (agentName: string, context: ExecutionContext) => Promise<void>;
@@ -122,7 +122,7 @@ const tasksOnThisPage = new Set<string>();
 /** Concrete Studio host. The pending marker is durable before execution and server evidence wins on reattach. */
 export function createReviewStudioHost(dependencies: ReviewStudioHostDependencies = {}): ReviewStudioHost {
   const storage = dependencies.storage ?? globalThis.localStorage;
-  const currentUserId = dependencies.userId ?? getUserId;
+  const currentUserId = dependencies.userId ?? ensureUserId;
   const resolveThread = dependencies.thread ?? (async () => {
     const existing = await getThreadByName(REVIEW_THREAD);
     const thread = existing ?? await createThread(REVIEW_THREAD, [], 'company');
@@ -209,7 +209,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
     const saved = read(claim);
     if (saved?.resumeError) throw new Error(`review-worker.execution_resume_failed:${saved.resumeError}`);
     if (tasksOnThisPage.has(execution.taskId)) return;
-    const userId = currentUserId();
+    const userId = await currentUserId();
     if (!userId) throw new Error('review-worker.user_unavailable');
     const task = await readTask(userId, execution.taskId, messageId);
     if (task.status !== 'in progress') return;
@@ -224,7 +224,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
 
   return {
     async adoptPublished(claim, published) {
-      const userId = currentUserId();
+      const userId = await currentUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
       const { threadId } = await resolveThread();
       let message = await findMessage(threadId, published.taskId);
@@ -247,7 +247,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
     },
     async startOrGet(claim) {
       const saved = read(claim);
-      const userId = currentUserId();
+      const userId = await currentUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
       if (saved?.execution) {
         await resumeIfOrphan(claim, saved.execution, saved.messageId);
@@ -335,7 +335,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
       if (!saved?.execution || saved.execution.taskId !== execution.taskId || saved.execution.threadId !== execution.threadId) {
         throw new Error('review-worker.execution_mismatch');
       }
-      const userId = currentUserId();
+      const userId = await currentUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
       const task = await readTask(userId, execution.taskId, saved.messageId);
       const observed = executionFromTask(execution.agentName, claim.attempt, task, execution.threadId, now());

@@ -80,3 +80,20 @@ test('language commands dispatch the existing scoped array protocol and preserve
     assert.equal(outcome.task.status, 'failed');
   }
 });
+
+
+test('identity resolution is awaited and its original failure propagates before dispatch', async () => {
+  const failure = new Error('collab_messages_user_unavailable: cm offline');
+  await assert.rejects(runNewReleaseRequest('fixture', 'Change title', () => {}, {
+    userId: async () => { throw failure; },
+    thread: async () => { assert.fail('must not create a conversation without identity'); },
+  }), error => error === failure);
+  await runNewReleaseRequest('fixture', 'Change title', () => {}, {
+    userId: async () => 'resolved-user', thread: async () => ({ threadId: 'thread' }),
+    context: (threadId, senderId, content) => {
+      assert.equal(senderId, 'resolved-user');
+      return { isTest: true, message: { threadId, senderId, content, createAt: '', orderAt: '' } };
+    },
+    execute: async (_agent, context) => { context.task = task('done'); },
+  });
+});

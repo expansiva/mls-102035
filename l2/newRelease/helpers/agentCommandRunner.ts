@@ -2,7 +2,7 @@
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
-import { createThread, getTemporaryContext, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { createThread, getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import type { AIPayload, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import type { ImplementationRunnerDependencies } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 
@@ -68,7 +68,7 @@ export async function runNewReleaseRequest(moduleName: string, request: string,
 
 export async function runNewReleaseCommand(agent: 'agentNewReleasePrompt' | 'agentAddLanguage' | 'agentRemoveLanguage', payload: string,
   progress: (task: TaskData) => void, dependencies: ImplementationRunnerDependencies & { wait?: () => Promise<void> } = {}): Promise<{ task: TaskData; results: string[] }> {
-  const user = (dependencies.userId ?? getUserId)();
+  const user = await (dependencies.userId ?? ensureUserId)();
   if (!user) throw new Error('implementation.user_unavailable');
   const threadName = '_102035_/l2/newRelease/requests';
   const resolved = await (dependencies.thread ?? (async () => await getThreadByName(threadName) ?? await createThread(threadName, [], 'company')))();
