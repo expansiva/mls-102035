@@ -261,7 +261,7 @@ export async function listNs5ModuleSummaries(project: number): Promise<NewReleas
 }
 
 export function failedStepOf(pipeline: Ns5PipelineState | null): Ns5StepId | null {
-  if (!pipeline) return null;
+  if (!pipeline || !isRecord(pipeline.steps)) return null;
   const entry = Object.entries(pipeline.steps).find(([, step]) => step?.status === 'failed');
   return (entry?.[0] as Ns5StepId | undefined) ?? null;
 }

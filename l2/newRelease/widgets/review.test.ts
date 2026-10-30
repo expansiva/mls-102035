@@ -287,3 +287,18 @@ test('mr41 s3c reviewer seal alone remains initial without maintenance effort', 
   review.changeEffortRead = { status: 'missing', path: 'effort' };
   assert.equal(review.actionPresentation(review.view(), true).descriptionKey, 'review.panels.fullGenerationBody');
 });
+
+test('review effort hides missing pool coverage but keeps invalid pool warning', () => {
+  const review = widget();
+  review.hasRelease = true;
+  review.renderChangeEffort = () => '';
+  review.renderMenu = () => '';
+  review.renderBackend = () => '';
+  const ready = { kind: 'ready', status: 'simple', items: [], merged: null, untouched: null, errorCode: '' };
+  review.effortRead = { status: 'missing', path: 'pool' };
+  assert.equal(templateText(review.renderEffort(ready)), '');
+  assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.effort\.status\.simple/);
+  review.effortRead = { status: 'invalid', path: 'pool' };
+  assert.match(templateText(review.renderEffort(ready)), /review\.backend\.effortInvalid/);
+  assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.backend\.effortInvalid/);
+});

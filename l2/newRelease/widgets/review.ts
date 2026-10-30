@@ -1280,8 +1280,9 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
-  private renderEffort() {
+  private renderEffort(changeEffort: ChangeEffortView) {
     const summary = parseEffortSummary(this.effortRead, this.moduleName);
+    if (summary.kind === 'missing' && changeEffort.kind === 'ready') return nothing;
     return html`
       <section class="nr-review__effort" aria-label=${this.t('review.backend.effortTitle')}>
         <header><strong>${this.t('review.backend.effortTitle')}</strong><span>${this.t(summary.kind === 'counts' ? 'review.backend.partial' : summary.kind === 'invalid' ? 'review.backend.effortInvalid' : 'review.backend.notCalculated')}</span></header>
@@ -1462,11 +1463,12 @@ export class NewReleaseReview102035 extends StateLitElement {
       <summary><strong>${this.t('review.panels.effort')}</strong>
         <span>${!this.hasRelease ? this.t('review.panels.fullGeneration') : !resultVisible ? this.t('review.backend.notCalculated') : summary.kind === 'counts'
           ? summary.counts.filter(item => item.category !== 'endpoints').map(item => `${this.t(`review.backend.count.${item.category}`)}: ${item.statuses.reduce((count, value) => count + value.count, 0)}`).join(' · ')
-          : this.t('review.backend.notCalculated')}</span>
+          : summary.kind === 'invalid' ? this.t('review.backend.effortInvalid')
+            : changeEffort.kind === 'ready' ? this.t(`review.effort.status.${changeEffort.status}`) : this.t('review.backend.notCalculated')}</span>
       </summary>
       ${!this.hasRelease ? html`<p class="nr-review__panel-note">${this.t('review.panels.fullGenerationBody')}</p>` : nothing}
       ${calculate.map(block => this.renderPrimaryAction(block))}
-      ${resultVisible ? html`${this.renderEffort()}${this.renderChangeEffort(changeEffort)}${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
+      ${resultVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
     </details>`;
   }
 

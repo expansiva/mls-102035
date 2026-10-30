@@ -33,6 +33,7 @@ test('failed step comes from the pipeline, not from module ordering', () => {
   } as Ns5PipelineState;
   assert.equal(failedStepOf(pipeline), 'ontology30');
   assert.equal(failedStepOf(null), null);
+  assert.equal(failedStepOf({ status: 'failed' } as Ns5PipelineState), null);
 });
 
 test('project eligibility requires its own module list in l5/config.json', () => {
