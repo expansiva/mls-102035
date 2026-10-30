@@ -264,6 +264,37 @@ test('non-initial publish requires and forwards the exact result permit', async 
     409, 'candidate.result_permit_mismatch');
 });
 
+test('supersede publish forwards the prior pointer and preserves its provenance', async () => {
+  const snap = await snapshot('supersede');
+  const supersede = { changeId: 'change-old', revisionId: 'rev-old' };
+  const input = {
+    ...scope, expectedRevisionId: 'rev-old', requestId: 'request-new',
+    changeId: 'change-new', revisionId: 'rev-new', snapshot: snap, supersede,
+  };
+  let body: Record<string, unknown> | undefined;
+  const result = await candidatePublish(input, { fetchImpl: async (_url, init) => {
+    body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return answer(200, { status: 'committed', pointer: {
+      changeId: 'change-new', revisionId: 'rev-new', snapshotHash: snap.hash,
+      revisionNumber: 2, supersedes: { ...supersede, revisionNumber: 1 },
+    } });
+  } });
+  assert.equal(body?.expectedRevisionId, 'rev-old');
+  assert.deepEqual(body?.supersede, supersede);
+  assert.equal(body?.permit, undefined);
+  assert.deepEqual(result.status === 'committed' ? result.pointer.supersedes : undefined,
+    { ...supersede, revisionNumber: 1 });
+  await rejectsCode(() => candidatePublish(input, { fetchImpl: async () => answer(409, {
+    status: 'error', msg: 'candidate.supersede_mismatch',
+  }) }), 409, 'candidate.supersede_mismatch');
+  await rejectsCode(() => candidatePublish({ ...input, expectedRevisionId: null }),
+    409, 'candidate.supersede_mismatch');
+  await rejectsCode(() => candidatePublish({ ...input, permit: {
+    resultId: 'result-one', resultHash: 'a'.repeat(64), inputRevisionId: 'rev-old',
+    inputSnapshotHash: 'b'.repeat(64), inputRevisionNumber: 1, outputSnapshotHash: snap.hash,
+  } }), 400, 'candidate.supersede_with_permit');
+});
+
 test('tampered bytes, file hash and snapshot hash are rejected', async () => {
   const snap = await snapshot();
   const tamperedBytes = structuredClone(snap);

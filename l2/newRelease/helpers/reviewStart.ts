@@ -58,24 +58,23 @@ export async function prepareReviewStartInput(
   });
   const candidate = await (dependencies.readCandidate ?? candidateRead)({ project, moduleName });
   const pointer = candidate.pointer;
-  if (!pointer) {
+  if (!pointer || pointer.changeId !== changeId || pointer.revisionId !== revisionId
+    || pointer.snapshotHash !== snapshot.hash) {
     const published = await (dependencies.publishCandidate ?? candidatePublish)({
       project,
       moduleName,
-      expectedRevisionId: null,
+      expectedRevisionId: pointer?.revisionId ?? null,
       requestId: `review-start-${revisionId}`,
       changeId,
       revisionId,
       snapshot,
+      ...(pointer ? { supersede: { changeId: pointer.changeId, revisionId: pointer.revisionId } } : {}),
     });
     if (published.status === 'conflict') throw new Error('review-run.hub_publish_conflict');
     if (published.status !== 'committed' || published.pointer?.revisionId !== revisionId
       || published.pointer.snapshotHash !== snapshot.hash) {
       throw new Error('review-run.hub_publish_conflict');
     }
-  } else if (pointer.changeId !== changeId || pointer.revisionId !== revisionId
-    || pointer.snapshotHash !== snapshot.hash) {
-    throw new Error('review-run.hub_revision_differs');
   }
   return {
     userId,

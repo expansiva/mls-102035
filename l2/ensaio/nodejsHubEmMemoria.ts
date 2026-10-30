@@ -4,6 +4,7 @@ import {
   candidateRead, candidatePublish, candidateMarkResult,
   type CandidatePersistence, type CandidateReadInput, type CandidatePublishInput, type CandidateMarkResultInput,
 } from '/_102034_/l1/server/layer_1_external/candidate/candidateStore.js';
+import { commitAllowed } from '/_102034_/l1/server/layer_1_external/candidate/candidatePostgres.js';
 
 class SharedTable implements CandidatePersistence {
   private records = new Map<string, { key: string; [field: string]: unknown }>();
@@ -15,14 +16,7 @@ class SharedTable implements CandidatePersistence {
   }
   async commit(input: Parameters<CandidatePersistence['commit']>[0]) {
     const current = this.records.get(input.pointerKey);
-    const revision = typeof current?.revisionNumber === 'number' ? current.revisionNumber : 0;
-    if ((current?.revisionId ?? null) !== input.expectedRevisionId || revision !== input.pointer.revisionNumber - 1
-      || (input.expectedRevisionId !== null && (!input.permit
-        || current?.snapshotHash !== input.permit.inputSnapshotHash
-        || current?.resultRevisionId !== input.permit.inputRevisionId
-        || current?.resultSnapshotHash !== input.permit.inputSnapshotHash
-        || current?.resultRevisionNumber !== input.permit.inputRevisionNumber
-        || current?.resultId !== input.permit.resultId || current?.resultHash !== input.permit.resultHash))
+    if (!commitAllowed(current, input)
       || this.records.has(input.snapshot.key) || this.records.has(input.request.key)) return false;
     this.records.set(input.pointerKey, structuredClone({ key: input.pointerKey, ...input.pointer }));
     this.records.set(input.snapshot.key, structuredClone({ ...input.snapshot }));

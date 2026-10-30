@@ -18,6 +18,7 @@ export interface CandidatePointer {
     snapshotHash: string;
     revisionNumber: number;
   };
+  supersedes?: { changeId: string; revisionId: string; revisionNumber: number };
 }
 
 export interface CandidateFile {
@@ -46,6 +47,7 @@ export interface CandidatePublishInput extends CandidateScope {
   revisionId: string;
   snapshot: CandidateSnapshot;
   permit?: CandidatePublishPermit;
+  supersede?: { changeId: string; revisionId: string };
 }
 
 export interface CandidateResultManifest {
@@ -272,6 +274,15 @@ function parsePointer(value: unknown): CandidatePointer | null {
     || Number(sourceRaw.revisionNumber) >= Number(pointer.revisionNumber))) {
     throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
   }
+  const supersedesRaw = pointer.supersedes === undefined ? undefined : record(pointer.supersedes);
+  if (pointer.supersedes !== undefined && (!supersedesRaw
+    || typeof supersedesRaw.changeId !== 'string' || !TOKEN.test(supersedesRaw.changeId)
+    || typeof supersedesRaw.revisionId !== 'string' || !TOKEN.test(supersedesRaw.revisionId)
+    || !Number.isSafeInteger(supersedesRaw.revisionNumber) || Number(supersedesRaw.revisionNumber) < 1
+    || Number(supersedesRaw.revisionNumber) >= Number(pointer.revisionNumber)
+    || supersedesRaw.revisionId === pointer.revisionId)) {
+    throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
+  }
   return {
     changeId: pointer.changeId,
     revisionId: pointer.revisionId,
@@ -293,6 +304,11 @@ function parsePointer(value: unknown): CandidatePointer | null {
         revisionNumber: Number(sourceRaw.revisionNumber),
       },
     } : {}),
+    ...(supersedesRaw ? { supersedes: {
+      changeId: supersedesRaw.changeId as string,
+      revisionId: supersedesRaw.revisionId as string,
+      revisionNumber: Number(supersedesRaw.revisionNumber),
+    } } : {}),
   };
 }
 
@@ -556,8 +572,14 @@ export async function candidatePublish(input: CandidatePublishInput, options: Ca
   requireToken(fixed.changeId);
   requireToken(fixed.revisionId);
   if (fixed.expectedRevisionId !== null) requireToken(fixed.expectedRevisionId);
+  if (fixed.supersede) {
+    requireToken(fixed.supersede.changeId);
+    requireToken(fixed.supersede.revisionId);
+    if (fixed.permit) throw new CandidateGatewayError(400, 'candidate.supersede_with_permit');
+    if (fixed.expectedRevisionId === null) throw new CandidateGatewayError(409, 'candidate.supersede_mismatch');
+  }
   const snapshot = await verifyCandidateSnapshot(fixed.snapshot);
-  const permit = normalizePermit(fixed.permit, fixed.expectedRevisionId !== null);
+  const permit = normalizePermit(fixed.permit, fixed.expectedRevisionId !== null && !fixed.supersede);
   if (permit && (permit.inputRevisionId !== fixed.expectedRevisionId
     || permit.outputSnapshotHash !== snapshot.hash)) {
     throw new CandidateGatewayError(409, 'candidate.result_permit_mismatch');
@@ -565,10 +587,14 @@ export async function candidatePublish(input: CandidatePublishInput, options: Ca
   const { httpStatus, payload } = await post({
     action: 'candidatePublish', project: fixed.project, moduleName: fixed.moduleName,
     expectedRevisionId: fixed.expectedRevisionId, requestId: fixed.requestId,
-    changeId: fixed.changeId, revisionId: fixed.revisionId, snapshot, ...(permit ? { permit } : {}),
+    changeId: fixed.changeId, revisionId: fixed.revisionId, snapshot,
+    ...(permit ? { permit } : {}), ...(fixed.supersede ? { supersede: fixed.supersede } : {}),
   }, transport);
   if (httpStatus === 409 && payload.status === 'conflict') {
     return { status: 'conflict', pointer: parsePointer(payload.pointer) };
+  }
+  if (httpStatus === 409 && payload.status === 'error' && payload.msg === 'candidate.supersede_mismatch') {
+    throw new CandidateGatewayError(409, 'candidate.supersede_mismatch');
   }
   if (httpStatus !== 200 || payload.status !== 'committed') throw new CandidateGatewayError(502, 'candidate.invalid_response');
   const pointer = parsePointer(payload.pointer);

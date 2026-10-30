@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executePreparedReviewStart, prepareReviewStartInput } from './reviewStart.js';
 import type { L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
-import type { CandidatePointer, CandidatePublishInput, CandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
+import { buildCandidateSnapshot, type CandidatePointer, type CandidatePublishInput, type CandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { canStartReviewRun } from '../widgets/reviewModel.js';
+import { createHubEmMemoria } from '../../ensaio/nodejsHubEmMemoria.js';
 
 const hash = `sha256:${'a'.repeat(64)}`;
 const loaded: L4SealedCandidateSnapshot = {
@@ -128,19 +129,102 @@ test('mr_13 matching pointer skips publish', async () => {
   assert.equal(publishes.length, 0);
 });
 
-test('mr_13 pointer on another revision throws hub_revision_differs without publish or start', async () => {
-  let starts = 0;
+test('mr_42 pointer on another revision publishes with the exact supersede', async () => {
   const { publishes, deps } = hubDeps({
     pointer: matchingPointer({ revisionId: 'revision-other' }),
   });
-  await assert.rejects(
-    executePreparedReviewStart(
-      () => prepareReviewStartInput(startContext, deps),
-      async () => { starts += 1; return { runId: 'must-not-start' }; },
-    ),
-    /review-run\.hub_revision_differs/u,
-  );
-  assert.equal(publishes.length, 0);
+  const prepared = await prepareReviewStartInput(startContext, deps);
+  assert.equal(publishes.length, 1);
+  assert.equal(publishes[0].expectedRevisionId, 'revision-other');
+  assert.deepEqual(publishes[0].supersede, { changeId: 'change-one', revisionId: 'revision-other' });
+  assert.equal(publishes[0].permit, undefined);
+  assert.equal(prepared.input.inputRevisionId, 'revision-one');
+});
+
+test('mr_42 another change publishes with supersede; a pointer race stops before start', async () => {
+  const prior = matchingPointer({ changeId: 'change-other', revisionId: 'revision-other' });
+  const { publishes, deps } = hubDeps({ pointer: prior });
+  await prepareReviewStartInput(startContext, deps);
+  assert.deepEqual(publishes[0].supersede, { changeId: prior.changeId, revisionId: prior.revisionId });
+
+  let starts = 0;
+  const raced = hubDeps({ pointer: prior, publish: async () => ({
+    status: 'conflict', pointer: matchingPointer({ changeId: 'change-winner', revisionId: 'revision-winner' }),
+  }) });
+  await assert.rejects(executePreparedReviewStart(
+    () => prepareReviewStartInput(startContext, raced.deps),
+    async () => { starts += 1; return { runId: 'must-not-start' }; },
+  ), /review-run\.hub_publish_conflict/u);
+  assert.equal(raced.publishes.length, 1);
+  assert.equal(starts, 0);
+});
+
+test('mr_42 real in-memory hub preserves the superseded pointer on a new change and revision', async () => {
+  const hub = createHubEmMemoria();
+  const sources = [
+    'module.defs.ts', 'journeys/index.defs.ts', 'ontology/index.defs.ts',
+    'rules.defs.ts', 'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts',
+  ].map(path => ({ path, source: 'export const value = 1;' }));
+  const fullSnapshot = await buildCandidateSnapshot({ baseId: 'base-one', requestRevision: 1, request: 'Add one field', sources });
+  const first = await hub.publish({
+    project: 102047, moduleName: 'agendaClinica', expectedRevisionId: null,
+    requestId: 'request-prior', changeId: 'change-prior', revisionId: 'revision-prior', snapshot: fullSnapshot,
+  });
+  assert.equal(first.status, 'committed');
+  let publishCalls = 0;
+  const deps = {
+    readActive: async () => structuredClone(loaded),
+    buildSnapshot: async () => fullSnapshot,
+    readCandidate: async () => ({ pointer: (await hub.read({ project: 102047, moduleName: 'agendaClinica' })).pointer ?? null }),
+    publishCandidate: async (input: CandidatePublishInput) => {
+      publishCalls += 1;
+      const result = await hub.publish(input);
+      if (result.status === 'committed' || result.status === 'conflict') return {
+        status: result.status, pointer: result.pointer ?? null,
+      };
+      throw new Error(result.msg || 'hub publish failed');
+    },
+  };
+  await prepareReviewStartInput(startContext, deps);
+  const current = await hub.read({ project: 102047, moduleName: 'agendaClinica' });
+  assert.equal(current.pointer?.revisionId, 'revision-one');
+  assert.deepEqual(current.pointer?.supersedes, {
+    changeId: 'change-prior', revisionId: 'revision-prior', revisionNumber: 1,
+  });
+  await prepareReviewStartInput(startContext, deps);
+  assert.equal(publishCalls, 1, 'matching pointer skips a second publish');
+  const later = structuredClone(loaded);
+  later.manifest.revisionId = 'revision-two';
+  await prepareReviewStartInput({ ...startContext, revisionId: 'revision-two', loaded: later }, {
+    ...deps, readActive: async () => later,
+  });
+  const newest = await hub.read({ project: 102047, moduleName: 'agendaClinica' });
+  assert.deepEqual(newest.pointer?.supersedes, {
+    changeId: 'change-one', revisionId: 'revision-one', revisionNumber: 2,
+  });
+
+  const raced = structuredClone(loaded);
+  raced.manifest.revisionId = 'revision-three';
+  let starts = 0;
+  await assert.rejects(executePreparedReviewStart(
+    () => prepareReviewStartInput({ ...startContext, revisionId: 'revision-three', loaded: raced }, {
+      ...deps,
+      readActive: async () => raced,
+      publishCandidate: async input => {
+        const winner = await hub.publish({
+          project: input.project, moduleName: input.moduleName,
+          expectedRevisionId: 'revision-two', requestId: 'request-winner',
+          changeId: 'change-winner', revisionId: 'revision-winner', snapshot: fullSnapshot,
+          supersede: { changeId: 'change-one', revisionId: 'revision-two' },
+        });
+        assert.equal(winner.status, 'committed');
+        const result = await hub.publish(input);
+        assert.equal(result.status, 'conflict');
+        return { status: 'conflict' as const, pointer: result.pointer ?? null };
+      },
+    }),
+    async () => { starts += 1; return { runId: 'must-not-start' }; },
+  ), /review-run\.hub_publish_conflict/u);
   assert.equal(starts, 0);
 });
 
