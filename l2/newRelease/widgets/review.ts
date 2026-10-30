@@ -16,7 +16,7 @@ import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewR
 import { readCandidateWorkerGate } from '/_102035_/l2/newRelease/helpers/candidateWorkerGate.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate, prepareL4Change, sealL4Revision, readActiveL4Change, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
-import { executePreparedReviewStart, prepareReviewStartInput } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
+import { executePreparedReviewStart, prepareReviewStartInput, type PreparedReviewStart } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { sealModuleLayers, restoreModuleFromSeals, diffModuleLayers, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes, readInitialImplementationPlan, type InitialImplementationPlan } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
@@ -218,6 +218,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private expandedKeys: string[] = [];
   @state() private actionBusy = false;
   @state() private actionError = '';
+  @state() private supersededRevisionId = '';
   @state() private initialErrorDetail = '';
   @state() private publishNotice = false;
   @state() private reviewRun: ReviewRunRecord | null = null;
@@ -253,6 +254,10 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   updated(changed: PropertyValues) {
+    const previousData = changed.get('data') as NewReleaseModuleData | null | undefined;
+    if (changed.has('project') || changed.has('moduleName')
+      || (changed.has('data') && (previousData?.changeId !== this.data?.changeId
+        || previousData?.revisionId !== this.data?.revisionId))) this.supersededRevisionId = '';
     if (changed.has('project') || changed.has('moduleName') || changed.has('version') || changed.has('data') || changed.has('request')) {
       this.selectedActor = '';
       this.selectedId = '';
@@ -522,7 +527,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
-  private async prepareStartInput(): Promise<{ input: ReviewRunStartInput; userId: string }> {
+  private async prepareStartInput(): Promise<PreparedReviewStart> {
     if (this.version !== 'tobe') throw new Error('review-run.invalid_request');
     return prepareReviewStartInput({
       project: this.project,
@@ -738,13 +743,16 @@ export class NewReleaseReview102035 extends StateLitElement {
       return;
     }
     if (!['calculate', 'retry'].includes(action.kind)) return;
+    const clicked = { project: this.project, moduleName: this.moduleName,
+      changeId: this.data?.changeId, revisionId: this.data?.revisionId };
     this.actionBusy = start.busy;
     this.actionError = '';
+    this.supersededRevisionId = '';
     try {
       const retry = this.channelRun?.status === 'failed' || this.channelRun?.status === 'disputed';
       const userId = getUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
-      let started: Awaited<ReturnType<typeof executePreparedReviewStart<PlatformReviewRun>>>;
+      let started: { prepared: PreparedReviewStart; run: PlatformReviewRun };
       if (retry && this.channelRun) {
         const input = this.retryStartInput(this.channelRun, userId);
         started = {
@@ -752,7 +760,14 @@ export class NewReleaseReview102035 extends StateLitElement {
           run: await startReviewRun({ ...input, retry: true }),
         };
       } else {
-        started = await executePreparedReviewStart(() => this.prepareStartInput(), startReviewRun);
+        started = await executePreparedReviewStart(async () => {
+          const prepared = await this.prepareStartInput();
+          if (this.project === clicked.project && this.moduleName === clicked.moduleName
+            && this.data?.changeId === clicked.changeId && this.data?.revisionId === clicked.revisionId) {
+            this.supersededRevisionId = prepared.supersededRevisionId ?? '';
+          }
+          return prepared;
+        }, startReviewRun);
       }
       const { prepared, run } = started;
       const identity: ReviewWorkerIdentity = { ...prepared.input, runId: run.runId };
@@ -1109,6 +1124,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
     if (code === 'review-run.invalid_terminal_result') return 'review.run.error.invalidResult';
     if (code === 'review-run.hub_publish_conflict') return 'review.run.error.hubConflict';
+    if (code === 'candidate.supersede_mismatch') return 'review.run.error.supersedeMismatch';
     if (code === 'review-run.hub_revision_differs') return 'review.run.error.hubRevisionDiffers';
     return code ? 'review.run.error.generic' : '';
   }
@@ -1473,7 +1489,10 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
     const calculate = this.hasRelease && lifecycle === 'calculate' && !this.hasImplementation() ? actions : [];
     return html`<section class="nr-review">
-      <header class="nr-review__hero"><h2>${this.t(`review.release.${lifecycle}`)}</h2></header>
+      <header class="nr-review__hero">
+        <h2>${this.t(`review.release.${lifecycle}`)}</h2>
+        ${this.supersededRevisionId ? html`<p role="status">${this.t('review.run.replacedPrevious', { revisionId: this.supersededRevisionId.slice(-8) })}</p>` : nothing}
+      </header>
       ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`
         ${this.renderEffortPanel(view, changeEffort, resultVisible, calculate)}
         <section class="nr-review__panel nr-review__apply" aria-label=${this.t('review.panels.apply')}>

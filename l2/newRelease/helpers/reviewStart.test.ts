@@ -104,7 +104,15 @@ function hubDeps(options: {
         publishes.push(input);
         return options.publish
           ? options.publish(input)
-          : { status: 'committed' as const, pointer: matchingPointer() };
+          : { status: 'committed' as const, pointer: matchingPointer({
+            changeId: input.changeId,
+            revisionId: input.revisionId,
+            snapshotHash: input.snapshot.hash,
+            revisionNumber: (options.pointer?.revisionNumber ?? 0) + 1,
+            ...(input.supersede && options.pointer ? { supersedes: {
+              ...input.supersede, revisionNumber: options.pointer.revisionNumber,
+            } } : {}),
+          }) };
       },
     },
   };
@@ -121,12 +129,14 @@ test('mr_13 pointer null publishes once with expectedRevisionId null and returns
   assert.equal(publishes[0].snapshot.hash, snapshotHash);
   assert.equal(prepared.input.inputRevisionId, 'revision-one');
   assert.equal(prepared.input.inputSnapshotHash, `sha256:${snapshotHash}`);
+  assert.equal(prepared.supersededRevisionId, undefined);
 });
 
 test('mr_13 matching pointer skips publish', async () => {
   const { publishes, deps } = hubDeps({ pointer: matchingPointer() });
-  await prepareReviewStartInput(startContext, deps);
+  const prepared = await prepareReviewStartInput(startContext, deps);
   assert.equal(publishes.length, 0);
+  assert.equal(prepared.supersededRevisionId, undefined);
 });
 
 test('mr_42 pointer on another revision publishes with the exact supersede', async () => {
@@ -139,13 +149,15 @@ test('mr_42 pointer on another revision publishes with the exact supersede', asy
   assert.deepEqual(publishes[0].supersede, { changeId: 'change-one', revisionId: 'revision-other' });
   assert.equal(publishes[0].permit, undefined);
   assert.equal(prepared.input.inputRevisionId, 'revision-one');
+  assert.equal(prepared.supersededRevisionId, 'revision-other');
 });
 
 test('mr_42 another change publishes with supersede; a pointer race stops before start', async () => {
   const prior = matchingPointer({ changeId: 'change-other', revisionId: 'revision-other' });
   const { publishes, deps } = hubDeps({ pointer: prior });
-  await prepareReviewStartInput(startContext, deps);
+  const prepared = await prepareReviewStartInput(startContext, deps);
   assert.deepEqual(publishes[0].supersede, { changeId: prior.changeId, revisionId: prior.revisionId });
+  assert.equal(prepared.supersededRevisionId, 'revision-other');
 
   let starts = 0;
   const raced = hubDeps({ pointer: prior, publish: async () => ({
@@ -157,6 +169,17 @@ test('mr_42 another change publishes with supersede; a pointer race stops before
   ), /review-run\.hub_publish_conflict/u);
   assert.equal(raced.publishes.length, 1);
   assert.equal(starts, 0);
+});
+
+test('mr_42 reports the prior ID only with matching committed hub provenance', async () => {
+  const prior = matchingPointer({ changeId: 'change-other', revisionId: 'revision-other', revisionNumber: 3 });
+  const wrong = hubDeps({ pointer: prior, publish: async () => ({
+    status: 'committed', pointer: matchingPointer({ revisionNumber: 4,
+      supersedes: { changeId: 'change-other', revisionId: 'revision-wrong', revisionNumber: 3 },
+    }),
+  }) });
+  await assert.rejects(prepareReviewStartInput(startContext, wrong.deps), /review-run\.hub_publish_conflict/u);
+  assert.equal(wrong.publishes.length, 1);
 });
 
 test('mr_42 real in-memory hub preserves the superseded pointer on a new change and revision', async () => {
@@ -185,13 +208,15 @@ test('mr_42 real in-memory hub preserves the superseded pointer on a new change 
       throw new Error(result.msg || 'hub publish failed');
     },
   };
-  await prepareReviewStartInput(startContext, deps);
+  const prepared = await prepareReviewStartInput(startContext, deps);
+  assert.equal(prepared.supersededRevisionId, 'revision-prior');
   const current = await hub.read({ project: 102047, moduleName: 'agendaClinica' });
   assert.equal(current.pointer?.revisionId, 'revision-one');
   assert.deepEqual(current.pointer?.supersedes, {
     changeId: 'change-prior', revisionId: 'revision-prior', revisionNumber: 1,
   });
-  await prepareReviewStartInput(startContext, deps);
+  const matching = await prepareReviewStartInput(startContext, deps);
+  assert.equal(matching.supersededRevisionId, undefined);
   assert.equal(publishCalls, 1, 'matching pointer skips a second publish');
   const later = structuredClone(loaded);
   later.manifest.revisionId = 'revision-two';

@@ -26,6 +26,7 @@ export interface ReviewStartContext {
 export interface PreparedReviewStart {
   input: ReviewRunStartInput;
   userId: string;
+  supersededRevisionId?: string;
 }
 
 export interface ReviewStartDependencies {
@@ -58,6 +59,7 @@ export async function prepareReviewStartInput(
   });
   const candidate = await (dependencies.readCandidate ?? candidateRead)({ project, moduleName });
   const pointer = candidate.pointer;
+  let supersededRevisionId: string | undefined;
   if (!pointer || pointer.changeId !== changeId || pointer.revisionId !== revisionId
     || pointer.snapshotHash !== snapshot.hash) {
     const published = await (dependencies.publishCandidate ?? candidatePublish)({
@@ -71,13 +73,21 @@ export async function prepareReviewStartInput(
       ...(pointer ? { supersede: { changeId: pointer.changeId, revisionId: pointer.revisionId } } : {}),
     });
     if (published.status === 'conflict') throw new Error('review-run.hub_publish_conflict');
-    if (published.status !== 'committed' || published.pointer?.revisionId !== revisionId
+    if (published.status !== 'committed' || published.pointer?.changeId !== changeId
+      || published.pointer.revisionId !== revisionId
       || published.pointer.snapshotHash !== snapshot.hash) {
       throw new Error('review-run.hub_publish_conflict');
+    }
+    if (pointer) {
+      const prior = published.pointer.supersedes;
+      if (!prior || prior.changeId !== pointer.changeId || prior.revisionId !== pointer.revisionId
+        || prior.revisionNumber !== pointer.revisionNumber) throw new Error('review-run.hub_publish_conflict');
+      supersededRevisionId = prior.revisionId;
     }
   }
   return {
     userId,
+    ...(supersededRevisionId ? { supersededRevisionId } : {}),
     input: {
       userId,
       project,
