@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/reviewModel.ts" enhancement="_blank" />
 import { implementationCommands } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 
-import type { MenuReadStatus } from '/_102035_/l2/newRelease/helpers/menuReader.js';
+import type { ConfigNavigationPage, MenuReadStatus } from '/_102035_/l2/newRelease/helpers/menuReader.js';
 import type { ReviewArtifactRead } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { L4ImplementationHashes, L4ImplementationPhase, L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
@@ -30,6 +30,7 @@ export interface ReviewMenu {
   tree: MenuStampedNode[];
   authorities: Record<string, string[]>;
   removed: MenuStampedNode[];
+  configPages: Record<string, ConfigNavigationPage>;
 }
 
 export interface ReviewActorOption {
@@ -54,6 +55,10 @@ export interface ReviewNodeDetail {
   text: string;
   context: string;
   organisms: MenuOrganism[];
+  href: string;
+  description: string;
+  actors: string[];
+  landing: boolean;
 }
 
 export interface ReviewView {
@@ -369,6 +374,30 @@ function parseForest(value: unknown): MenuStampedNode[] | null {
 
 export function parseReviewMenu(raw: unknown): { ok: true; menu: ReviewMenu } | { ok: false; errorCode: string } {
   if (!isRecord(raw)) return { ok: false, errorCode: 'review.error.invalid' };
+  if (raw.source === 'config') {
+    const moduleName = asNonEmpty(raw.moduleName);
+    if (!moduleName || !Array.isArray(raw.navigation)) return { ok: false, errorCode: 'review.error.invalid' };
+    const tree: MenuStampedNode[] = [];
+    const authorities: Record<string, string[]> = {};
+    const configPages: Record<string, ConfigNavigationPage> = Object.create(null);
+    for (const page of raw.navigation) {
+      if (!isRecord(page) || !asNonEmpty(page.id) || !asNonEmpty(page.label) || !asNonEmpty(page.href)
+        || typeof page.description !== 'string' || !Array.isArray(page.actors)
+        || page.actors.some(actor => !asNonEmpty(actor))
+        || (page.landing !== undefined && typeof page.landing !== 'boolean')
+        || Object.hasOwn(configPages, page.id as string)) return { ok: false, errorCode: 'review.error.invalid' };
+      const entry: ConfigNavigationPage = {
+        id: page.id as string, label: page.label as string, href: page.href as string,
+        description: page.description, actors: page.actors as string[],
+        ...(page.landing === undefined ? {} : { landing: page.landing as boolean }),
+      };
+      tree.push({ id: entry.id, kind: 'page', label: entry.label, action: 'keep', organisms: [] });
+      configPages[entry.id] = entry;
+      for (const actor of entry.actors) (authorities[`actor:${actor}`] ??= []).push(entry.id);
+    }
+    return { ok: true, menu: { schemaVersion: MENU_SCHEMA_VERSION, moduleName,
+      device: 'web', tree, authorities, removed: [], configPages } };
+  }
   if (raw.schemaVersion !== MENU_SCHEMA_VERSION) return { ok: false, errorCode: 'review.error.schema' };
   const moduleName = asNonEmpty(raw.moduleName);
   const device = asNonEmpty(raw.device);
@@ -379,7 +408,7 @@ export function parseReviewMenu(raw: unknown): { ok: true; menu: ReviewMenu } | 
   }
   const removed = raw.meta.removed === undefined ? [] : parseForest(raw.meta.removed);
   if (!removed) return { ok: false, errorCode: 'review.error.invalid' };
-  return { ok: true, menu: { schemaVersion: MENU_SCHEMA_VERSION, moduleName, device, tree, authorities, removed } };
+  return { ok: true, menu: { schemaVersion: MENU_SCHEMA_VERSION, moduleName, device, tree, authorities, removed, configPages: {} } };
 }
 
 export function actorIdFromKey(key: string): string {
@@ -511,7 +540,7 @@ export function toggleReviewExpansion(
   };
 }
 
-function detailOf(node: MenuStampedNode, scope: ReviewNodeScope): ReviewNodeDetail {
+function detailOf(node: MenuStampedNode, scope: ReviewNodeScope, configPage?: ConfigNavigationPage): ReviewNodeDetail {
   return {
     id: node.id,
     kind: node.kind,
@@ -521,6 +550,10 @@ function detailOf(node: MenuStampedNode, scope: ReviewNodeScope): ReviewNodeDeta
     text: node.kind === 'page' ? '' : node.text,
     context: node.kind === 'hub' ? node.context : '',
     organisms: node.kind === 'page' ? node.organisms : [],
+    href: configPage?.href ?? '',
+    description: configPage?.description ?? '',
+    actors: configPage?.actors ?? [],
+    landing: configPage?.landing === true,
   };
 }
 
@@ -549,6 +582,15 @@ export function buildReviewView(input: ReviewInput): ReviewView {
       ...EMPTY_VIEW,
       kind: 'empty',
       errorCode: 'review.emptyBody',
+      showContinue: false,
+      showCalculate: false,
+    };
+  }
+  if (input.readStatus === 'configMissing' || input.readStatus === 'moduleMissing') {
+    return {
+      ...EMPTY_VIEW,
+      kind: 'invalid',
+      errorCode: input.readStatus === 'configMissing' ? 'review.error.configMissing' : 'review.error.moduleMissing',
       showContinue: false,
       showCalculate: false,
     };
@@ -596,7 +638,7 @@ export function buildReviewView(input: ReviewInput): ReviewView {
     selectedScope,
     tree,
     removed,
-    selected: selectedNode ? detailOf(selectedNode, selectedScope) : null,
+    selected: selectedNode ? detailOf(selectedNode, selectedScope, parsed.menu.configPages[selectedNode.id]) : null,
     showContinue: true,
     showCalculate: false,
   };

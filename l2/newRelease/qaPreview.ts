@@ -21,7 +21,7 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 
 import type { L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import type { ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
-import { implementationProgress } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { implementationProgress, moduleHasGeneratedSources } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
 import { readReviewArtifact } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
 import { buildChangeEffortView } from '/_102035_/l2/newRelease/widgets/changeEffortModel.js';
@@ -97,10 +97,11 @@ function fixtureFile(
   moduleName: string,
   content: string | Promise<string>,
   path = 'pool/l2/web/menu',
+  level: 4 | 5 = 4,
 ): () => void {
   const parts = path.split('/');
   const shortName = parts.pop()!;
-  const info = { project, level: 4, folder: `${moduleName}/${parts.join('/')}`, shortName, extension: '.json' };
+  const info = { project, level, folder: level === 5 ? '' : `${moduleName}/${parts.join('/')}`, shortName, extension: '.json' };
   const key = mls.stor.getKeyToFile(info);
   const previous = mls.stor.files[key];
   mls.stor.files[key] = {
@@ -211,7 +212,17 @@ async function mountFixture(
       container.appendChild(element);
       await waitFor(() => element.querySelector('.nr-index')?.getAttribute('aria-busy') === 'false');
     } else {
-      cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify(buildNewReleaseQaMenuFixture(config.moduleName))));
+      const generated = moduleHasGeneratedSources(config.project, config.moduleName, Object.values(mls.stor.files).filter(file => !!file));
+      if (generated) {
+        cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify({ projects: {
+          [String(config.project)]: { modules: [{ moduleId: config.moduleName, navigation: [
+            { id: 'qa-home', label: 'QA home', href: '/qa/home', description: 'Stable summary.', actors: ['scheduler'] },
+            { id: 'qa-hub', label: 'QA agenda', href: '/qa/agenda', description: 'Stable hub.', actors: ['professional'], landing: true },
+          ] }] },
+        } }), 'config', 5));
+      } else {
+        cleanupFns.push(fixtureFile(config.project, config.moduleName, JSON.stringify(buildNewReleaseQaMenuFixture(config.moduleName))));
+      }
       if (isQaChangeEffortFixture(fixture)) {
         const response = await fetch('/_102035_/l2/newRelease/widgets/fixtures/changeEffort-agendaClinica-regra-anotacao.json');
         if (!response.ok) throw new Error('qa.changeEffortFixtureUnavailable');

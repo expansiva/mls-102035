@@ -324,6 +324,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       return;
     }
     this.loading = true;
+    const hasRelease = moduleHasGeneratedSources(context.project, context.moduleName, Object.values(mls.stor.files).filter(file => !!file));
     const runRead = context.version === 'tobe' && context.data?.changeId && context.data.revisionId
       ? this.reviewRunStore.read({
         project: context.project,
@@ -333,7 +334,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       }).then(run => ({ run, errorCode: '' }), () => ({ run: null, errorCode: 'review.run.storeError' }))
       : Promise.resolve({ run: null, errorCode: '' });
     const [menuRead, backendRead, effortRead, changeEffortRead, pool, persistedRun, implementation] = await Promise.all([
-      readModuleMenu(context.project, context.moduleName),
+      readModuleMenu(context.project, context.moduleName, { generated: hasRelease }),
       readReviewArtifact(context.project, context.moduleName, 'backend'),
       readReviewArtifact(context.project, context.moduleName, 'effort'),
       readReviewArtifact(context.project, context.moduleName, 'changeEffort'),
@@ -342,7 +343,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       (context.data?.changeId ? readL4Implementation(context.project, context.moduleName) : readLatestCompletedL4Implementation(context.project, context.moduleName)).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
     ]);
     if (token !== this.loadToken) return;
-    this.hasRelease = moduleHasGeneratedSources(context.project, context.moduleName, Object.values(mls.stor.files).filter(file => !!file));
+    this.hasRelease = hasRelease;
     if (!this.hasRelease && (context.version === 'asis' || context.version === 'tobe')) {
       try { this.initialPlan = await readInitialImplementationPlan(context.project, context.moduleName); }
       catch (error) { console.error('[newRelease] initial planning unavailable', error); }
@@ -457,6 +458,10 @@ export class NewReleaseReview102035 extends StateLitElement {
         </header>
         ${detail.context ? html`<p><span>${this.t('review.context')}</span><strong>${detail.context}</strong></p>` : nothing}
         ${detail.text ? html`<p class=${struck ? 'is-remove' : ''}>${detail.text}</p>` : nothing}
+        ${detail.href ? html`<p><span>${this.t('review.page')}</span><strong>${detail.href}</strong></p>` : nothing}
+        ${detail.description ? html`<p class=${struck ? 'is-remove' : ''}>${detail.description}</p>` : nothing}
+        ${detail.actors.length ? html`<p><span>${this.t('review.actors')}</span><strong>${detail.actors.map(actor => this.actorTitle(`actor:${actor}`)).join(', ')}</strong></p>` : nothing}
+        ${detail.landing ? html`<p><span>${this.t('review.landing')}</span></p>` : nothing}
         ${detail.organisms.length ? html`
           <section>
             <span>${this.t('review.organisms')}</span>
@@ -473,7 +478,6 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private renderMenu(view: ReviewView) {
-    if (!this.hasRelease) return nothing;
     if (view.kind === 'pending') {
       return html`
         <section class="nr-review__pending">
@@ -486,7 +490,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       return html`
         <section class="nr-review__empty">
           <h3>${this.t('review.emptyTitle')}</h3>
-          <p>${this.t('review.emptyBody')}</p>
+          <p>${this.t(view.errorCode || 'review.emptyBody')}</p>
         </section>
       `;
     }
@@ -651,7 +655,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (!revisionId) throw new Error('review-run.candidate_binding_mismatch');
     const root = `${run.binding.moduleName}/pipeline/changes/${run.binding.changeId}/revisions/${revisionId}/l4`;
     const [menu, backend, effort, changeEffort] = await Promise.all([
-      readModuleMenu(run.binding.project, run.binding.moduleName, root),
+      readModuleMenu(run.binding.project, run.binding.moduleName, { generated: this.hasRelease, root }),
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'backend', root),
       readReviewArtifact(run.binding.project, run.binding.moduleName, 'effort', root),
       this.readCandidateChangeEffort(run.binding.project, run.binding.moduleName, root),
