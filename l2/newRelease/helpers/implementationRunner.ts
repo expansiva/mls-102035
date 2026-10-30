@@ -132,6 +132,51 @@ async function initialBarrier(project: number, moduleName: string, record: L4Imp
   return plan;
 }
 
+function menuPoolFile(project: number, moduleName: string): Ns5FileInfo {
+  return { project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' };
+}
+
+/** End of both chains. A missing receipt keeps the pool copy and records why. */
+async function poolMenuClosingNote(project: number, moduleName: string, record: L4ImplementationRecord): Promise<string> {
+  if (record.initial) {
+    const finalizePath = `l2/${moduleName}/pipeline/agentMaterializeL2/finalize70.json`;
+    const finalizeInfo = initialFile(project, finalizePath);
+    const finalize = JSON.parse(await readSourceText(finalizeInfo)) as { notApproved?: unknown };
+    if (!Array.isArray(finalize.notApproved) || finalize.notApproved.length !== 0) return 'menu.json kept: finalize70 not approved';
+    const l1Path = `l1/${moduleName}/pipeline/agentMaterializeL1/report.json`;
+    const l1 = JSON.parse(await readSourceText(initialFile(project, l1Path))) as { status?: string };
+    if (l1.status !== 'complete') return 'menu.json kept: l1 incomplete';
+  }
+  const info = menuPoolFile(project, moduleName);
+  const file = mls.stor.files[mls.stor.getKeyToFile(info)];
+  if (!file || file.status === 'deleted') return 'menu.json kept: absent';
+  try {
+    const { deleteFile } = await import('/_102027_/l2/libStor.js');
+    await deleteFile(file);
+  } catch (error) {
+    console.error('[newRelease] menu.json removal failed', info.folder, error);
+    return `menu.json kept: ${error instanceof Error ? error.message : String(error)}`;
+  }
+  const still = mls.stor.files[mls.stor.getKeyToFile(info)];
+  if (still && still.status !== 'deleted') return 'menu.json kept: delete left the file';
+  return 'menu.json removed';
+}
+
+async function retirePoolMenu(project: number, moduleName: string, record: L4ImplementationRecord,
+  commands: { agent: string; command: string }[], save: (phase: L4ImplementationPhase) => Promise<void>): Promise<void> {
+  if (!commands.length || !commands.every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) return;
+  const last = record.phases.find(phase => phase.name === `runAgents:${commands.length - 1}` && phase.status === 'done');
+  if (!last || /(?:^|\n)menu\.json (?:removed|kept:)/u.test(last.report ?? '')) return;
+  let note: string;
+  try {
+    note = await poolMenuClosingNote(project, moduleName, record);
+  } catch (error) {
+    console.error('[newRelease] menu.json removal failed', moduleName, error);
+    note = `menu.json kept: ${error instanceof Error ? error.message : String(error)}`;
+  }
+  await save({ ...last, report: [last.report, note].filter(Boolean).join('\n') });
+}
+
 export function createImplementationRunner(dependencies: ImplementationRunnerDependencies = {}) {
   const userId = dependencies.userId ?? ensureUserId;
   const now = dependencies.now ?? (() => new Date().toISOString());
@@ -227,7 +272,10 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
         record.merged.runAgents.forEach(ref => implementationPhaseCommand(ref, project, moduleName));
         const commands = implementationCommands(record, project, moduleName);
         const index = commands.findIndex((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
-        if (index < 0) return record;
+        if (index < 0) {
+          await retirePoolMenu(project, moduleName, record, commands, save);
+          return record;
+        }
         const name = `runAgents:${index}`;
         const command = commands[index];
         let phase = record.phases.find(phase => phase.name === name);
@@ -241,6 +289,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
             phase = { ...phase, taskId: taskId(found.taskId) };
           }
           await save(await observed(project, moduleName, phase, await task(user, phase.taskId, phase.messageId), record));
+          await retirePoolMenu(project, moduleName, record, commands, save);
           return record;
         }
         const structural = commands.length > record.merged.runAgents.length;
@@ -253,6 +302,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
           }
         }
         await dispatch(project, moduleName, name, command, 1, record, save);
+        await retirePoolMenu(project, moduleName, record, commands, save);
         return record;
       });
     },
@@ -268,6 +318,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
         if (!phase || phase.status !== 'failed' || phase.attempt !== 1 || phase.error === 'review.implementation.error.missingCommand') throw new Error('implementation.retry_not_allowed');
         const { previousAttempts, ...previous } = phase;
         await dispatch(project, moduleName, name, command, 2, record, save, [...(previousAttempts ?? []), previous]);
+        await retirePoolMenu(project, moduleName, record, commands, save);
         return record;
       });
     },
