@@ -205,16 +205,18 @@ test('review panels put effort before apply and publish, with execution and logs
   assert.doesNotMatch(render, /renderImplementation\('bottom'\)/);
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
   assert.ok(index.lastIndexOf('this.renderTabContent()') < index.lastIndexOf('this.renderValidationLog()'));
-  assert.match(source, /<details class="nr-review__panel nr-review__effort-panel">/);
+  assert.match(source, /<section class="nr-review__panel nr-review__effort-panel"><details>/);
   assert.match(source, /private renderMenu\(view: ReviewView\) \{\s*if \(view.kind === 'pending'\)/);
   assert.match(source, /\$\{resultVisible \? html`[^`]*\$\{this.renderMenu\(view\)\}/);
-  assert.match(render, /const calculate = this.hasRelease && lifecycle === 'calculate'/);
+  assert.match(render, /const calculate = \[\{ placement: 'top'/);
+  assert.match(render, /const apply = \[\{ placement: 'top'/);
 });
 
 test('publish is an informational placeholder with no execution call', () => {
   const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
   const publish = source.slice(source.indexOf('  private renderPublish()'), source.lastIndexOf('  render() {'));
-  assert.match(publish, /@click=\$\{\(\) => \{ this.publishNotice = true; \}\}/);
+  assert.match(publish, /<button type="button" disabled>/);
+  assert.doesNotMatch(publish, /@click=/);
   assert.match(publish, /role="status"/);
   assert.match(publish, /review.panels.inDevelopment/);
   assert.doesNotMatch(publish, /fetch|transport|publishGit|startReviewRun|runReviewPrimaryAction/);

@@ -53,7 +53,6 @@ import {
   actorIdFromKey,
   beginReviewPrimaryAction,
   buildReviewActionPresentation,
-  buildReviewActionPlacements,
   buildReviewView,
   canStartReviewRun,
   canAcceptImplementation,
@@ -220,7 +219,6 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private actionError = '';
   @state() private supersededRevisionId = '';
   @state() private initialErrorDetail = '';
-  @state() private publishNotice = false;
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
@@ -265,7 +263,6 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.expandedKeys = [];
       this.actionBusy = false;
       this.actionError = '';
-      this.publishNotice = false;
       this.reviewRun = null;
       this.reviewRunLoadError = '';
       this.channelRun = null;
@@ -1223,7 +1220,6 @@ export class NewReleaseReview102035 extends StateLitElement {
     return html`
       <section class=${`nr-review__primary-action is-${placement}`} aria-busy=${action.busy ? 'true' : 'false'}>
         <div>
-          <span>${this.t('review.primaryActionTitle')}</span>
           <p>${this.t(action.descriptionKey)}</p>
           ${action.availabilityKey ? html`<small>${this.t(action.availabilityKey, { reason: this.identityError })}</small>` : nothing}
           ${action.error ? html`<p class="nr-review__action-error" role=${block.announceError ? 'alert' : nothing}>${action.error}</p>` : nothing}
@@ -1459,7 +1455,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private renderEffortPanel(view: ReviewView, changeEffort: ChangeEffortView, resultVisible: boolean, calculate: readonly ReviewPrimaryActionPlacement[]) {
     const summary = parseEffortSummary(this.effortRead, this.moduleName);
-    return html`<details class="nr-review__panel nr-review__effort-panel">
+    return html`<section class="nr-review__panel nr-review__effort-panel"><details>
       <summary><strong>${this.t('review.panels.effort')}</strong>
         <span>${!this.hasRelease ? this.t('review.panels.fullGeneration') : !resultVisible ? this.t('review.backend.notCalculated') : summary.kind === 'counts'
           ? summary.counts.filter(item => item.category !== 'endpoints').map(item => `${this.t(`review.backend.count.${item.category}`)}: ${item.statuses.reduce((count, value) => count + value.count, 0)}`).join(' · ')
@@ -1467,16 +1463,15 @@ export class NewReleaseReview102035 extends StateLitElement {
             : changeEffort.kind === 'ready' ? this.t(`review.effort.status.${changeEffort.status}`) : this.t('review.backend.notCalculated')}</span>
       </summary>
       ${!this.hasRelease ? html`<p class="nr-review__panel-note">${this.t('review.panels.fullGenerationBody')}</p>` : nothing}
-      ${calculate.map(block => this.renderPrimaryAction(block))}
       ${resultVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
-    </details>`;
+    </details>${calculate.map(block => this.renderPrimaryAction(block))}</section>`;
   }
 
   private renderPublish() {
     return html`<section class="nr-review__panel nr-review__publish" aria-label=${this.t('review.panels.publish')}>
       <h3>${this.t('review.panels.publish')}</h3>
-      <button type="button" @click=${() => { this.publishNotice = true; }}>${this.t('review.panels.publish')}</button>
-      ${this.publishNotice ? html`<p role="status">${this.t('review.panels.inDevelopment')}</p>` : nothing}
+      <button type="button" disabled>${this.t('review.panels.publish')}</button>
+      <p role="status">${this.t('review.panels.inDevelopment')}</p>
     </section>`;
   }
 
@@ -1485,7 +1480,6 @@ export class NewReleaseReview102035 extends StateLitElement {
     const current = this.isCurrentLoad();
     const changeEffort = buildChangeEffortView(this.changeEffortRead);
     const action = this.actionPresentation(view, current);
-    const actions = buildReviewActionPlacements(action, !this.hasRelease && this.version === 'asis' ? 'tobe' : this.version);
     const resultVisible = (!this.hasRelease && !!this.initialPlan && !this.loading && current) || reviewResultVisible({ version: this.version, loading: this.loading, current, resultCurrent: this.data?.resultCurrent === true });
     const initialPending = !!this.implementation?.initial && this.hasImplementation() && !this.implementationComplete();
     const lifecycle = initialPending ? 'new' : reviewReleaseState({ hasRelease: this.hasRelease,
@@ -1493,22 +1487,35 @@ export class NewReleaseReview102035 extends StateLitElement {
       effortCurrent: this.data?.resultCurrent === true && changeEffort.kind === 'ready' && this.effortCurrent,
       implementationComplete: this.implementationComplete(),
     });
-    const calculate = this.hasRelease && lifecycle === 'calculate' && !this.hasImplementation() ? actions : [];
+    const retryRun = this.channelRun?.status === 'failed' || this.channelRun?.status === 'disputed';
+    const calculate = [{ placement: 'top', announceError: action.kind === 'calculate' || action.kind === 'retry',
+      action: { ...action, labelKey: retryRun ? 'review.retry' : 'review.calculate',
+        disabled: action.disabled || !this.hasRelease || !['calculate', 'retry'].includes(action.kind),
+        descriptionKey: !this.hasRelease ? 'review.panels.generationPending'
+          : this.loading || !current ? 'review.actionLoading'
+            : action.kind === 'calculate' || action.kind === 'retry' || action.descriptionKey === 'review.actionRetryExhausted'
+              ? action.descriptionKey : 'review.actionLater',
+        availabilityKey: !this.loading && current && (action.kind === 'calculate' || action.kind === 'retry') ? action.availabilityKey : '',
+        error: action.kind === 'calculate' || action.kind === 'retry' ? action.error : '' } }] as const;
+    const apply = [{ placement: 'top', announceError: action.kind === 'continue',
+      action: { ...action, labelKey: 'review.panels.apply', disabled: action.disabled || action.kind !== 'continue',
+        descriptionKey: this.loading || !current ? 'review.actionLoading'
+          : action.kind === 'continue' ? action.descriptionKey
+            : !this.hasRelease ? 'review.panels.generationPending' : 'review.actionUnavailableBody',
+        availabilityKey: !this.loading && current && action.kind === 'continue' ? action.availabilityKey : '',
+        error: action.kind === 'continue' ? action.error : '' } }] as const;
     return html`<section class="nr-review">
       <header class="nr-review__hero">
         <h2>${this.t(`review.release.${lifecycle}`)}</h2>
         ${this.supersededRevisionId ? html`<p role="status">${this.t('review.run.replacedPrevious', { revisionId: this.supersededRevisionId.slice(-8) })}</p>` : nothing}
       </header>
-      ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : html`
+      ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : nothing}
         ${this.renderEffortPanel(view, changeEffort, resultVisible, calculate)}
         <section class="nr-review__panel nr-review__apply" aria-label=${this.t('review.panels.apply')}>
           <h3>${this.t('review.panels.apply')}</h3>
-          ${!this.hasImplementation() && !calculate.length && lifecycle !== 'unchanged' && (this.hasRelease || action.kind === 'continue')
-            ? actions.map(block => this.renderPrimaryAction(block))
-            : html`<p class="nr-review__panel-note">${this.t(this.hasRelease ? 'review.actionUnavailableBody' : 'review.panels.generationPending')}</p>`}
+          ${apply.map(block => this.renderPrimaryAction(block))}
         </section>
         ${this.renderPublish()}
-      `}
       ${this.hasImplementation() ? this.renderImplementation('top') : nothing}
       ${this.renderReviewRun()}
       ${resultVisible && !this.version.startsWith('release:') ? this.renderPool() : nothing}
