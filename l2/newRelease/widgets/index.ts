@@ -949,7 +949,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return html`
       <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
         ${this.renderTabs()}
-        ${pendingChanges !== null ? html`<p class="nr-index__changes-summary" role="status">${this.t(
+        ${pendingChanges !== null && (this.activeTab !== 'review' || pendingChanges === 0) ? html`<p class="nr-index__changes-summary" role="status">${this.t(
           pendingChanges === 0 ? 'tobe.noChanges' : pendingChanges === 1 ? 'tobe.onePendingChange' : 'tobe.pendingChanges',
           { count: pendingChanges },
         )}</p>` : nothing}
