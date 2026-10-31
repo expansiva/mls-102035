@@ -45,10 +45,25 @@ export interface NrpWritePayload {
   repairRounds?: NrpRepairRound[];
 }
 
+export interface NrpFileState {
+  path: string;
+  state: 'added' | 'changed' | 'removed';
+}
+
 export interface NrpPersistPlan {
   written: boolean;
   reason: string | null;
   files: string[];
+}
+
+/** Classify each written file, plus journeys or entities the new index no longer names. */
+export function nrpFileStates(
+  written: ReadonlyArray<{ path: string; existed: boolean }>,
+  removed: readonly string[],
+): NrpFileState[] {
+  const states: NrpFileState[] = written.map(item => ({ path: item.path, state: item.existed ? 'changed' : 'added' }));
+  for (const path of removed) states.push({ path, state: 'removed' });
+  return states;
 }
 
 export function planNrpPersistence(allowWrite: boolean, files: readonly string[]): NrpPersistPlan {
@@ -86,22 +101,23 @@ export async function beforeNrpWriteStep(
   try {
     const payload = readPayload(step.prompt);
     const planned = planNrpPersistence(payload.allowWrite, fileNames(payload));
-    const persisted = planned.written ? await persistNrp(payload) : { files: [] as string[], reason: planned.reason };
+    const persisted = planned.written ? await persistNrp(payload) : { files: [] as string[], fileStates: [] as NrpFileState[], reason: planned.reason };
     const written = persisted.files.length > 0;
     const outcome = { written, reason: persisted.reason, files: persisted.files };
+    const listed = persisted.fileStates.map(item => `${item.path} ${item.state}`).join(', ');
     return [
       {
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
           stepTitle: written ? 'Version written' : 'Version not written',
-          result: JSON.stringify({ written, reason: outcome.reason, files: persisted.files, report: nrpReport(payload, outcome) }),
+          result: JSON.stringify({ written, reason: outcome.reason, files: persisted.files, fileStates: persisted.fileStates, report: nrpReport(payload, outcome) }),
           planning: { planId: 'write50-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
       {
         type: 'update-status', ...base, stepId: step.stepId, hookSequential,
         status: 'completed', cleaner: 'input_output',
-        traceMsg: written ? `write50 wrote ${persisted.files.length} files.` : `write50 wrote nothing: ${persisted.reason || 'verification failed.'}`,
+        traceMsg: written ? `write50 wrote ${listed}.` : `write50 wrote nothing: ${persisted.reason || 'verification failed.'}`,
       },
     ];
   } catch (error) {
@@ -114,7 +130,7 @@ export async function beforeNrpWriteStep(
   }
 }
 
-async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; reason: string | null }> {
+async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; fileStates: NrpFileState[]; reason: string | null }> {
   setModuleRoot(payload.moduleName, `${payload.moduleName}/${NRP_CANDIDATE_REL}`);
   const written: string[] = [];
   const moduleName = payload.moduleName;
@@ -136,7 +152,8 @@ async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; 
   jobs.push({ info: integrationFile(moduleName), value: payload.artifacts.integration, newId: null });
   const siblings = new Map<string, string>();
   const missing: typeof jobs = [];
-  const pending: Array<{ info: Ns5FileInfo; text: string; label: string }> = [];
+  const pending: Array<{ info: Ns5FileInfo; text: string; label: string; existed: boolean }> = [];
+  const removed: string[] = [];
   for (const job of jobs) {
     let current = '';
     try { current = await readSourceText(job.info); }
@@ -150,11 +167,17 @@ async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; 
       continue;
     }
     if (!siblings.has(job.info.folder)) siblings.set(job.info.folder, current);
+    if (job.info.shortName === 'index' && job.info.folder.endsWith('/journeys')) {
+      removed.push(...droppedIndexIds(current, job.value, 'journeys', 'journeyId', 'journeys'));
+    }
+    if (job.info.shortName === 'index' && job.info.folder.endsWith('/ontology')) {
+      removed.push(...droppedIndexIds(current, job.value, 'entities', 'entityId', 'ontology'));
+    }
     if (sameDefsJson(current, job.value)) continue;
     const text = replaceDefsJsonLiteral(current, job.value);
     const mismatch = nrpDefsRoundTripError(text, job.value);
-    if (mismatch) return { files: [], reason: `${label}: ${mismatch}` };
-    pending.push({ info: job.info, text, label });
+    if (mismatch) return { files: [], fileStates: [], reason: `${label}: ${mismatch}` };
+    pending.push({ info: job.info, text, label, existed: true });
   }
   for (const job of missing) {
     const siblingSource = siblings.get(job.info.folder) || '';
@@ -163,8 +186,8 @@ async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; 
     const nextId = job.newId || job.info.shortName;
     const text = defsSourceFromSibling(siblingSource, siblingIdOf(siblingSource, nextId), nextId, job.value);
     const mismatch = nrpDefsRoundTripError(text, job.value);
-    if (mismatch) return { files: [], reason: `${label}: ${mismatch}` };
-    pending.push({ info: job.info, text, label });
+    if (mismatch) return { files: [], fileStates: [], reason: `${label}: ${mismatch}` };
+    pending.push({ info: job.info, text, label, existed: false });
   }
   for (const job of pending) {
     await writeSourceText(job.info, job.text);
@@ -175,7 +198,43 @@ async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; 
     reportFile.folder = `${payload.moduleName}/pipeline`;
   }
   written.push(await writeJson(reportFile, nrpReport(payload, { written: true, reason: null, files: written })));
-  return { files: written, reason: null };
+  const fileStates = nrpFileStates(pending.map(job => ({ path: candidateRelative(job.info, moduleName), existed: job.existed })), removed);
+  return { files: written, fileStates, reason: null };
+}
+
+function candidateRelative(info: Ns5FileInfo, moduleName: string): string {
+  const prefix = `${moduleName}/${NRP_CANDIDATE_REL}/`;
+  const folder = info.folder.startsWith(prefix) ? info.folder.slice(prefix.length) : info.folder;
+  return `${folder}/${info.shortName}${info.extension}`;
+}
+
+function droppedIndexIds(current: string, next: unknown, listKey: 'journeys' | 'entities', idKey: 'journeyId' | 'entityId', prefix: string): string[] {
+  if (!current || !isRecord(next) || !Array.isArray(next[listKey])) return [];
+  const bounds = scanNs4ClassicJsonObject(current);
+  if (!bounds) return [];
+  let parsed: unknown;
+  try { parsed = JSON.parse(current.slice(bounds.start, bounds.end)); }
+  catch (error) {
+    console.error('[agentNewReleasePrompt] write50 index JSON is not readable', error);
+    return [];
+  }
+  if (!isRecord(parsed) || !Array.isArray(parsed[listKey])) return [];
+  const nextIds = new Set(parsedIds(next[listKey], idKey));
+  const removed: string[] = [];
+  for (const id of parsedIds(parsed[listKey], idKey)) {
+    if (!nextIds.has(id)) removed.push(`${prefix}/${id}.defs.ts`);
+  }
+  return removed;
+}
+
+function parsedIds(rows: unknown, idKey: 'journeyId' | 'entityId'): string[] {
+  if (!Array.isArray(rows)) return [];
+  const ids: string[] = [];
+  for (const item of rows) {
+    const id = isRecord(item) ? item[idKey] : item;
+    if (typeof id === 'string' && id) ids.push(id);
+  }
+  return ids;
 }
 
 function sameDefsJson(source: string, value: unknown): boolean {

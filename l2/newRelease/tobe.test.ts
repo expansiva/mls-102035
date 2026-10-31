@@ -871,6 +871,55 @@ test('failed language producer is retained for retry without sending completed w
 });
 
 
+test('p4_81 s3 version 1 does not list a journey that exists only in tobe', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const onlyTobe = tobeArtifactFileInfo(project, moduleName, 'journeys/soNoTobe.defs.ts', 'tobe');
+  const source = 'export const fixture = {"journeyId":"soNoTobe"} as const;\n';
+  fixture.files[fixture.keyOf(onlyTobe)] = {
+    ...onlyTobe, status: 'unchanged',
+    getContent: async () => source,
+    getValueInfo: async () => ({ content: source }),
+  };
+  const indexInfo = tobeArtifactFileInfo(project, moduleName, 'journeys/index.defs.ts', 'asis');
+  delete fixture.files[fixture.keyOf(indexInfo)];
+  fixture.contents.delete(fixture.keyOf(indexInfo));
+  const asis = await readNs5Overlay(project, moduleName, 'asis');
+  assert.equal(asis.sources.journeys.some(item => item.path === 'journeys/soNoTobe.defs.ts'), false);
+});
+
+test('p4_81 s3 O que mudou shows an added journey and a removed one', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  await readNs5Overlay(project, moduleName, 'tobe');
+  const kept = fixture.source.journeys[0];
+  const removed = fixture.source.journeys[1];
+  assert.ok(kept && removed);
+  const index = {
+    ...fixture.source.journeyIndex,
+    journeys: [
+      ...fixture.source.journeyIndex.journeys.filter(item => item.journeyId !== removed.journeyId),
+      { ...fixture.source.journeyIndex.journeys[0], journeyId: 'soNoTobe', title: 'Nova' },
+    ],
+  };
+  const journey = { ...kept, journeyId: 'soNoTobe', title: 'Nova' };
+  const { writeDefs } = await import('/_102035_/l2/solution/fs.js');
+  await writeDefs(tobeArtifactFileInfo(project, moduleName, 'journeys/index.defs.ts', 'tobe'), 'fixture', index, 'Ns5JourneyIndexArtifact');
+  await writeDefs(tobeArtifactFileInfo(project, moduleName, 'journeys/soNoTobe.defs.ts', 'tobe'), 'fixture', journey, 'Ns5JourneyArtifact');
+  const overlay = await readNs5Overlay(project, moduleName, 'tobe');
+  const added = overlay.diffs.find(diff => diff.path === 'journeys/soNoTobe.defs.ts');
+  assert.ok(added);
+  assert.equal(added.entries.some(entry => entry.before !== undefined), false);
+  assert.ok(added.entries.some(entry => entry.after !== undefined));
+  const gone = overlay.diffs.find(diff => diff.path === `journeys/${removed.journeyId}.defs.ts`);
+  assert.ok(gone);
+  assert.ok(gone.entries.some(entry => entry.before !== undefined && entry.after === undefined));
+  const version1 = await readNs5Overlay(project, moduleName, 'asis');
+  assert.equal(version1.sources.journeys.some(item => item.path === 'journeys/soNoTobe.defs.ts'), false);
+});
+
 test('language-only change with an existing candidate leaves no review diff', async () => {
   const project = 102047, moduleName = 'ordenServicio5';
   installStorFixture(project, moduleName);

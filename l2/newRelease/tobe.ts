@@ -297,12 +297,12 @@ async function readArtifact<T>(
   }
 }
 
-function idsFromFiles(project: number, moduleName: string, kind: 'journeys' | 'ontology'): string[] {
-  const folders = new Set([`${moduleName}/${kind}`, `${moduleName}/tobe/plan/${kind}`]);
+function idsFromFiles(project: number, moduleName: string, kind: 'journeys' | 'ontology', reading: 'asis' | 'tobe'): string[] {
+  const folder = reading === 'tobe' ? `${moduleName}/tobe/plan/${kind}` : `${moduleName}/${kind}`;
   const names = new Set<string>();
   for (const file of Object.values(mls.stor.files as FileRecord)) {
     if (!file || file.status === 'deleted' || file.project !== project || file.level !== 4) continue;
-    if (!folders.has(String(file.folder || '')) || file.extension !== '.defs.ts' || file.shortName === 'index') continue;
+    if (String(file.folder || '') !== folder || file.extension !== '.defs.ts' || file.shortName === 'index') continue;
     names.add(String(file.shortName || ''));
   }
   return [...names].filter(Boolean).sort();
@@ -372,17 +372,25 @@ async function overlayDiffs(
   moduleName: string,
   sources: NewReleaseOverlaySources,
   baseId?: string,
+  baseline?: NewReleaseOverlaySources,
 ): Promise<NewReleaseTobeDiff[]> {
   const result: NewReleaseTobeDiff[] = [];
   for (const artifact of sources.all) {
     if (artifact.source !== 'tobe' || artifact.value === null) continue;
     const asis = await readDefsJson<unknown>(baseId ? originalL4FileInfo(project, moduleName, baseId, artifact.path) : tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis'));
-    if (asis === null) continue;
     const published = artifact.path === 'module.defs.ts' ? await readDefsJson<Ns5ModuleArtifact>(tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis')) : null;
-    const entries = tobeDiff(moduleLanguageBaseline(asis, artifact.value, published), artifact.value);
+    const entries = tobeDiff(asis === null ? undefined : moduleLanguageBaseline(asis, artifact.value, published), artifact.value);
     if (entries.length) result.push({ path: artifact.path, entries });
   }
-  return result;
+  if (baseline) {
+    const present = new Set(sources.all.filter(artifact => artifact.value !== null).map(artifact => artifact.path));
+    for (const artifact of baseline.all) {
+      if (artifact.value === null || present.has(artifact.path)) continue;
+      const entries = tobeDiff(artifact.value, undefined);
+      if (entries.length) result.push({ path: artifact.path, entries });
+    }
+  }
+  return result.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
 }
 
 async function readOverlaySourceBundle(
@@ -395,11 +403,11 @@ async function readOverlaySourceBundle(
   const errors: Array<{ path: string; message: string }> = [];
   const module = await readArtifact<Ns5ModuleArtifact>(project, moduleName, 'module.defs.ts', reading, errors, baseId);
   const journeyIndex = await readArtifact<Ns5JourneyIndexArtifact>(project, moduleName, 'journeys/index.defs.ts', reading, errors, baseId);
-  const journeyIds = journeyIndex.value?.journeys.map(item => item.journeyId) || idsFromFiles(project, moduleName, 'journeys');
+  const journeyIds = journeyIndex.value?.journeys.map(item => item.journeyId) || idsFromFiles(project, moduleName, 'journeys', reading);
   const journeys = await Promise.all(journeyIds.map(id => readArtifact<Ns5JourneyArtifact>(project, moduleName, `journeys/${id}.defs.ts`, reading, errors, baseId)));
   const ontologyIndex = await readArtifact<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>(project, moduleName, 'ontology/index.defs.ts', reading, errors, baseId);
   const entityIds = ns5OntologyEntityIds(ontologyIndex.value);
-  const resolvedEntityIds = entityIds.length ? entityIds : idsFromFiles(project, moduleName, 'ontology');
+  const resolvedEntityIds = entityIds.length ? entityIds : idsFromFiles(project, moduleName, 'ontology', reading);
   const entities = await Promise.all(resolvedEntityIds.map(id => readArtifact<Ns5OntologyAnyEntity>(project, moduleName, `ontology/${id}.defs.ts`, reading, errors, baseId)));
   const [rules, workflows, access, integration] = await Promise.all([
     readArtifact<Ns5RulesArtifact>(project, moduleName, 'rules.defs.ts', reading, errors, baseId),
@@ -454,7 +462,7 @@ export async function readNs5Overlay(
   }
   const [stalePaths, diffs] = await Promise.all([
     staleManifestPaths(project, moduleName, manifest),
-    overlayDiffs(project, moduleName, sources, baseId),
+    overlayDiffs(project, moduleName, sources, baseId, baseline),
   ]);
   return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }, baseline), errors };
 }

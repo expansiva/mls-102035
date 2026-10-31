@@ -247,11 +247,6 @@ function assertReview20Inventories(
     throw new Error('review request differs from the persisted candidate revision');
   }
   if (!isRecord(base) || !isRecord(candidate)) throw new Error('base and candidate inventories are required');
-  const basePaths = Object.keys(base).sort();
-  const candidatePaths = Object.keys(candidate).sort();
-  if (basePaths.length !== candidatePaths.length || basePaths.some((path, index) => path !== candidatePaths[index])) {
-    throw new Error('candidate inventory differs from the captured base');
-  }
   for (const [inventoryName, inventory] of [['base', base], ['candidate', candidate]] as const) {
     for (const [path, artifact] of Object.entries(inventory)) {
       assertArtifactPath(path);

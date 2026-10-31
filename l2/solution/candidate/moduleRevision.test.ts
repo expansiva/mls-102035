@@ -132,6 +132,32 @@ test('p4_81 s2 seals a removed journey and refuses a path outside the contract',
   } finally { fixture.restore(); }
 });
 
+test('p4_81 s3 seals an existing journey id as changed', async () => {
+  const fixture = installStorFixture();
+  try {
+    const active = installActiveChange(fixture);
+    const journey = { schemaVersion: 'fixture', journeyId: 'oldJourney' };
+    const journeySource = `export const fixture = ${JSON.stringify(journey)} as const;\n`;
+    const index = { schemaVersion: 'fixture', journeys: [{ journeyId: 'oldJourney', actorRef: 'actor', title: 'Antiga' }] };
+    const indexSource = `export const fixture = ${JSON.stringify(index)} as const;\n`;
+    fixture.add(originalL4FileInfo(project, moduleName, 'base1', 'journeys/oldJourney.defs.ts'), journeySource);
+    fixture.add(originalL4FileInfo(project, moduleName, 'base1', 'journeys/index.defs.ts'), indexSource);
+    const manifestKey = `${project}:4:${moduleName}/pipeline/releases/base1:manifest.json`;
+    const previous = JSON.parse(fixture.contents.get(manifestKey) || '{}');
+    previous.files['journeys/index.defs.ts'] = hash(indexSource);
+    previous.files['journeys/oldJourney.defs.ts'] = hash(journeySource);
+    previous.schemas['journeys/oldJourney.defs.ts'] = 'fixture';
+    fixture.add({ project, level: 4, folder: `${moduleName}/pipeline/releases/base1`, shortName: 'manifest', extension: '.json' }, JSON.stringify(previous));
+    copyReleaseToTobe(fixture);
+    const edited = { ...journey, title: 'Alterada' };
+    fixture.add(tobeArtifactFileInfo(project, moduleName, 'journeys/index.defs.ts', 'tobe'), indexSource);
+    fixture.add(tobeArtifactFileInfo(project, moduleName, 'journeys/oldJourney.defs.ts', 'tobe'), `export const fixture = ${JSON.stringify(edited)} as const;\n`);
+    const sealed = await sealL4Revision(project, moduleName, active.activeRevisionId);
+    assert.equal(sealed.fileStates?.['journeys/oldJourney.defs.ts'], 'changed');
+    assert.ok(sealed.changedPaths.includes('journeys/oldJourney.defs.ts'));
+  } finally { fixture.restore(); }
+});
+
 test('p4_81 s2 refuses an index whose journey id does not match the file', async () => {
   const fixture = installStorFixture();
   try {

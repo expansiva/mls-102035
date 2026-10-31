@@ -44,6 +44,18 @@ test('entry freezes the matching private snapshot without writing or changing th
   assert.equal(release.files['module.defs.ts'], 'sha256:base');
 });
 
+test('p4_81 s3 freezes a seal whose inventory adds a journey', () => {
+  const added: L4CandidateManifest = {
+    ...revision,
+    files: { ...revision.files, 'journeys/newJourney.defs.ts': 'sha256:new' },
+    changedPaths: ['module.defs.ts', 'journeys/newJourney.defs.ts'],
+    fileStates: { 'module.defs.ts': 'changed', 'journeys/newJourney.defs.ts': 'added' },
+  };
+  const frozen = freezeReviewEntry(invocation, change, release, added, added.files);
+  assert.equal(frozen.candidateHashes['journeys/newJourney.defs.ts'], 'sha256:new');
+  assert.equal(frozen.originalHashes['journeys/newJourney.defs.ts'], undefined);
+});
+
 test('entry refuses stale revision, other module, incomplete source inventory and unsealed bytes', () => {
   assert.throws(() => freezeReviewEntry(invocation, { ...change, activeRevisionId: 'rev-8' }, release, revision, revision.files), /revision conflict/);
   assert.throws(() => freezeReviewEntry(invocation, { ...change, moduleName: 'otherModule' }, release, revision, revision.files), /no matching active change/);
@@ -106,6 +118,32 @@ test('inventory parses the hashed bytes and revalidates the snapshot after readi
   assert.equal((result.base['module.defs.ts'] as { title: string }).title, 'Original title');
   assert.equal((result.candidate['module.defs.ts'] as { title: string }).title, 'Candidate title');
   assert.equal(snapshotReads, 2);
+});
+
+test('p4_81 s3 inventory reads an added journey from the candidate only', async () => {
+  const original = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Original title' });
+  const candidate = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Candidate title' });
+  const journey = defsSource({ schemaVersion: 'v1', moduleName: 'agendaClinica', journeyId: 'newJourney' });
+  const stable: ReviewEntrySnapshot = {
+    project: invocation.project, moduleName: invocation.moduleName,
+    originalL4Path: invocation.originalL4Path, temporaryL4Path: invocation.temporaryL4Path,
+    request: invocation.request, baseId: invocation.baseId, changeId: change.changeId,
+    revisionId: revision.revisionId, requestRevision: revision.requestRevision,
+    originalHashes: { 'module.defs.ts': await hash(original) },
+    candidateHashes: { 'module.defs.ts': await hash(candidate), 'journeys/newJourney.defs.ts': await hash(journey) },
+    changedPaths: ['module.defs.ts', 'journeys/newJourney.defs.ts'],
+  };
+  const result = await readReviewInventories(invocation, {
+    readSnapshot: async () => JSON.parse(JSON.stringify(stable)) as ReviewEntrySnapshot,
+    readRequest: async () => ({ changeId: stable.changeId, revisionId: stable.revisionId, text: stable.request, resultCurrent: false }),
+    readOriginalSource: async (_snapshot, path) => {
+      if (path !== 'module.defs.ts') throw new Error(`unexpected original read: ${path}`);
+      return original;
+    },
+    readCandidateSource: async (_snapshot, path) => path === 'journeys/newJourney.defs.ts' ? journey : candidate,
+  });
+  assert.equal(result.base['journeys/newJourney.defs.ts'], undefined);
+  assert.equal((result.candidate['journeys/newJourney.defs.ts'] as { journeyId: string }).journeyId, 'newJourney');
 });
 
 function defsSource(value: unknown): string {

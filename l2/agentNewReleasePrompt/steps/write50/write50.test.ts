@@ -7,12 +7,23 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
-import { changedNrpPaths, defsSourceFromSibling, nrpDefsRoundTripError, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { changedNrpPaths, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
 const TAREFA = join(
   dirname(fileURLToPath(import.meta.url)),
   '../../../solution/fixtures/finalize80/tarefas/ontology/Tarefa.defs.ts',
 );
+
+void test('p4_81 s3 lists each written file as added, changed or removed', () => {
+  assert.deepEqual(nrpFileStates(
+    [{ path: 'journeys/criarTarefa.defs.ts', existed: true }, { path: 'journeys/nova.defs.ts', existed: false }],
+    ['journeys/antiga.defs.ts'],
+  ), [
+    { path: 'journeys/criarTarefa.defs.ts', state: 'changed' },
+    { path: 'journeys/nova.defs.ts', state: 'added' },
+    { path: 'journeys/antiga.defs.ts', state: 'removed' },
+  ]);
+});
 
 void test('a field change rewrites one defs file and only that field line', () => {
   const source = readFileSync(TAREFA, 'utf8');

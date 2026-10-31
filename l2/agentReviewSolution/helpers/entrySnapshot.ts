@@ -42,6 +42,29 @@ function sameMap(left: L4HashMap, right: L4HashMap): boolean {
   return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
 }
 
+/** The candidate inventory is the seal. Without fileStates, the old path parity still holds. */
+function sealInventoryMatches(release: L4HashMap, revision: L4CandidateManifest): boolean {
+  const states = revision.fileStates;
+  if (!states) {
+    return Object.keys(release).sort().join('|') === Object.keys(revision.files).sort().join('|');
+  }
+  for (const path of Object.keys(revision.files)) {
+    const state = states[path];
+    if (state !== 'added' && state !== 'changed' && state !== 'same') return false;
+    if (state === 'added' && path in release) return false;
+    if ((state === 'changed' || state === 'same') && !(path in release)) return false;
+  }
+  for (const path of Object.keys(release)) {
+    if (path in revision.files) continue;
+    if (states[path] !== 'removed') return false;
+  }
+  for (const path of Object.keys(states)) {
+    if (path in revision.files || path in release) continue;
+    return false;
+  }
+  return true;
+}
+
 function sameStrings(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -92,7 +115,7 @@ export function freezeReviewEntry(
     || revision.requestRevision !== change.requestRevision) {
     throw new Error('Candidate snapshot is missing, stale or incomplete.');
   }
-  if (!sameMap(release.files, revision.files) && Object.keys(release.files).sort().join('|') !== Object.keys(revision.files).sort().join('|')) {
+  if (!sealInventoryMatches(release.files, revision)) {
     throw new Error('Candidate source inventory differs from the captured base.');
   }
   if (!sameMap(revision.files, temporaryHashes)) throw new Error('Temporary L4 bytes differ from the selected revision; save and retry.');
@@ -121,11 +144,13 @@ export async function readReviewEntrySnapshot(invocation: ReviewInvocation): Pro
   const revision = await readL4Revision(project, moduleName, change.changeId, change.activeRevisionId);
   if (!release || !revision) return freezeReviewEntry(invocation, change, release, revision, {});
   const temporaryHashes: L4HashMap = {};
-  for (const rawPath of Object.keys(release.files)) {
+  for (const rawPath of Object.keys(revision.files)) {
     const path = normalizeTobeArtifactPath(rawPath);
-    const original = originalL4FileInfo(project, moduleName, baseId, path);
     const temporary = tobeArtifactFileInfo(project, moduleName, path, 'tobe');
-    if (!fileExists(original) || !fileExists(temporary)) throw new Error(`Missing L4 artifact: ${path}`);
+    if (!fileExists(temporary)) throw new Error(`Missing L4 artifact: ${path}`);
+    if (path in release.files && !fileExists(originalL4FileInfo(project, moduleName, baseId, path))) {
+      throw new Error(`Missing L4 artifact: ${path}`);
+    }
     temporaryHashes[path] = await sha256(await readSourceText(temporary));
   }
   const root = `${moduleName}/tobe/plan`;
@@ -135,7 +160,7 @@ export async function readReviewEntrySnapshot(invocation: ReviewInvocation): Pro
     if (folder !== root && !folder.startsWith(`${root}/`)) continue;
     const relative = `${folder === root ? '' : `${folder.slice(root.length + 1)}/`}${file.shortName}${file.extension}`;
     const path = normalizeTobeArtifactPath(relative);
-    if (!(path in release.files)) throw new Error(`Unexpected temporary L4 artifact: ${path}`);
+    if (!(path in revision.files)) throw new Error(`Unexpected temporary L4 artifact: ${path}`);
   }
   return freezeReviewEntry(invocation, change, release, revision, temporaryHashes);
 }
@@ -167,26 +192,31 @@ export async function readReviewInventories(
   }
   const base: Record<string, unknown> = {};
   const candidate: Record<string, unknown> = {};
-  for (const rawPath of Object.keys(before.originalHashes).sort()) {
+  const paths = [...new Set([...Object.keys(before.originalHashes), ...Object.keys(before.candidateHashes)])].sort();
+  for (const rawPath of paths) {
     const path = normalizeTobeArtifactPath(rawPath);
-    const [baseSource, candidateSource] = await Promise.all([
-      runtime.readOriginalSource(before, path),
-      runtime.readCandidateSource(before, path),
-    ]);
-    if (await sha256(baseSource) !== before.originalHashes[path]) {
-      throw new Error(`Captured L4 base bytes changed without a matching release manifest: ${path}`);
+    if (path in before.originalHashes) {
+      const baseSource = await runtime.readOriginalSource(before, path);
+      if (await sha256(baseSource) !== before.originalHashes[path]) {
+        throw new Error(`Captured L4 base bytes changed without a matching release manifest: ${path}`);
+      }
+      const baseArtifact = parseNs4ClassicDefsSource<unknown>(baseSource);
+      if (!baseArtifact || typeof baseArtifact !== 'object' || Array.isArray(baseArtifact)) {
+        throw new Error(`Invalid L4 artifact: ${path}`);
+      }
+      base[path] = baseArtifact;
     }
-    if (await sha256(candidateSource) !== before.candidateHashes[path]) {
-      throw new Error(`Temporary L4 bytes changed without a matching candidate revision: ${path}`);
+    if (path in before.candidateHashes) {
+      const candidateSource = await runtime.readCandidateSource(before, path);
+      if (await sha256(candidateSource) !== before.candidateHashes[path]) {
+        throw new Error(`Temporary L4 bytes changed without a matching candidate revision: ${path}`);
+      }
+      const candidateArtifact = parseNs4ClassicDefsSource<unknown>(candidateSource);
+      if (!candidateArtifact || typeof candidateArtifact !== 'object' || Array.isArray(candidateArtifact)) {
+        throw new Error(`Invalid L4 artifact: ${path}`);
+      }
+      candidate[path] = candidateArtifact;
     }
-    const baseArtifact = parseNs4ClassicDefsSource<unknown>(baseSource);
-    const candidateArtifact = parseNs4ClassicDefsSource<unknown>(candidateSource);
-    if (!baseArtifact || typeof baseArtifact !== 'object' || Array.isArray(baseArtifact)
-      || !candidateArtifact || typeof candidateArtifact !== 'object' || Array.isArray(candidateArtifact)) {
-      throw new Error(`Invalid L4 artifact: ${path}`);
-    }
-    base[path] = baseArtifact;
-    candidate[path] = candidateArtifact;
   }
   const after = await runtime.readSnapshot(invocation);
   assertReviewSnapshotMatches(before, after);

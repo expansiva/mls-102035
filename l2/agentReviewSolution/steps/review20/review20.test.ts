@@ -196,5 +196,11 @@ test('review20 rejects unknown response fields, malformed JSON pointers, duplica
   assert.throws(() => stageReview20(snapshot, persisted, base, candidate, applyResponse({ operations: [{ ...operation, pointer: '/~2title' }] })), /pointer escape/);
   assert.throws(() => stageReview20(snapshot, persisted, base, candidate, applyResponse({ operations: [operation, operation] })), /duplicate/);
   assert.throws(() => stageReview20(snapshot, persisted, base, { ...candidate, 'module.defs.ts': { ...candidate['module.defs.ts'], moduleName: 'other' } }, applyResponse()), /another module/);
-  assert.throws(() => stageReview20(snapshot, persisted, base, { ...candidate, 'rules.defs.ts': {} }, applyResponse()), /inventory differs/);
+  const withNewJourney = {
+    ...candidate,
+    'journeys/newJourney.defs.ts': { moduleName: 'agendaClinica', journeyId: 'newJourney' },
+  };
+  const staged = stageReview20(snapshot, persisted, base, withNewJourney, applyResponse());
+  assert.equal(staged.status, 'staged');
+  assert.ok(staged.explicitDiff['journeys/newJourney.defs.ts']?.some(entry => entry.before === undefined && entry.after !== undefined));
 });
