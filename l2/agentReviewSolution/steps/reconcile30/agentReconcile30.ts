@@ -200,7 +200,8 @@ function assertReviewStateIntegrity(
   }
   const basePaths = Object.keys(review.base).sort();
   const proposalPaths = Object.keys(review.proposal).sort();
-  if (!sameStrings(basePaths, proposalPaths)
+  if (!sameStrings(basePaths, Object.keys(snapshot.originalHashes).sort())
+    || !sameStrings(proposalPaths, Object.keys(snapshot.candidateHashes).sort())
     || !sameJson(review.proposedDiff, diffMaps(review.base, review.proposal))) {
     throw new Error('review20 private result was altered or does not match the sealed inventories.');
   }

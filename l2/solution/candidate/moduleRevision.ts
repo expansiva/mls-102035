@@ -649,12 +649,20 @@ export async function writeL4OutputRevision(project: number, moduleName: string,
   return withModuleWriter(project, moduleName, async () => {
     const release = await readL4Release(project, moduleName, input.baseId);
     const paths = input.sources.map(item => item.path);
-    if (!release || paths.length !== Object.keys(release.files).length
-      || new Set(paths).size !== paths.length || paths.some(path => !Object.hasOwn(release.files, path))) {
+    if (!release || new Set(paths).size !== paths.length
+      || paths.some(path => !Object.hasOwn(release.files, path) && !isIndexedLeaf(path))
+      || Object.keys(release.files).some(path => !paths.includes(path) && !isIndexedLeaf(path))) {
       throw new Error('l4.output_revision_paths');
     }
     const files: L4HashMap = {};
     for (const item of input.sources) files[item.path] = await sourceHash(item.source);
+    const fileStates: Record<string, L4FileState> = {};
+    for (const path of paths) {
+      fileStates[path] = !Object.hasOwn(release.files, path) ? 'added'
+        : files[path] === release.files[path] ? 'same' : 'changed';
+    }
+    for (const path of Object.keys(release.files)) if (!Object.hasOwn(files, path)) fileStates[path] = 'removed';
+    const changedPaths = paths.filter(path => fileStates[path] === 'added' || fileStates[path] === 'changed').sort();
     const info = revisionInfo(project, moduleName, input.changeId, input.revisionId);
     const existing = await readJson<L4CandidateManifest>(info);
     if (existing) {
@@ -672,7 +680,7 @@ export async function writeL4OutputRevision(project: number, moduleName: string,
     await writeJson(info, {
       schemaVersion: L4_REVISION_SCHEMA, project, moduleName,
       changeId: input.changeId, revisionId: input.revisionId, baseId: input.baseId,
-      createdAt: new Date().toISOString(), files, changedPaths: input.changedPaths,
+      createdAt: new Date().toISOString(), files, changedPaths, fileStates,
       requestRevision: input.requestRevision, requestHash: input.requestHash,
     } satisfies L4CandidateManifest);
     const revision = await readL4Revision(project, moduleName, input.changeId, input.revisionId);

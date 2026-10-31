@@ -53,6 +53,19 @@ test('reconcile30 treats a textual rule edit as requiring no dependency mutation
   assert.deepEqual(result.draft['module.defs.ts'], proposal['module.defs.ts']);
 });
 
+test('reconcile30 includes an added journey path in the sealed proposal diff', async () => {
+  const base = inventory();
+  const proposal = clone(base);
+  const journey = clone(loadNs5Journeys('agendaClinica')[0]);
+  journey.journeyId = 'newJourney';
+  proposal['journeys/newJourney.defs.ts'] = journey;
+  const index = proposal['journeys/index.defs.ts'] as ReturnType<typeof loadNs5JourneyIndex>;
+  index.journeys.push({ ...index.journeys[0], journeyId: 'newJourney' });
+  const result = await reconcile30Private(base, proposal, context);
+  assert.ok(result.changedPaths.includes('journeys/newJourney.defs.ts'));
+  assert.deepEqual(result.draft['journeys/newJourney.defs.ts'], journey);
+});
+
 test('reconcile30 reports a broken workflow reference instead of inventing a task', async () => {
   const base = inventory();
   const proposal = clone(base);

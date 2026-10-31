@@ -381,27 +381,28 @@ export async function materializeFinalize50Sources(
   readBaseSource: (snapshot: ReviewEntrySnapshot, path: string) => Promise<string>,
   readCandidateSource: (snapshot: ReviewEntrySnapshot, path: string) => Promise<string>,
 ): Promise<MaterializedFinalize50Source[]> {
-  const basePaths = Object.keys(snapshot.originalHashes).sort();
   const inputPaths = Object.keys(snapshot.candidateHashes).sort();
   const draftPaths = Object.keys(draft).sort();
-  if (!sameStrings(basePaths, inputPaths) || !sameStrings(inputPaths, draftPaths)) {
-    throw new Error('finalize50 refuses new, removed or renamed artifact paths.');
+  if (!sameStrings(inputPaths, draftPaths)) {
+    throw new Error('finalize50 refuses draft artifact path changes.');
+  }
+  for (const path of Object.keys(snapshot.originalHashes).filter(path => !Object.hasOwn(snapshot.candidateHashes, path))) {
+    if (await prefixedSha256(await readBaseSource(snapshot, path)) !== snapshot.originalHashes[path]) {
+      throw new Error(`finalize50 base bytes are stale: ${path}`);
+    }
   }
   const materialized: MaterializedFinalize50Source[] = [];
   for (const path of inputPaths) {
-    const [baseSource, inputSource] = await Promise.all([
-      readBaseSource(snapshot, path),
-      readCandidateSource(snapshot, path),
-    ]);
-    if (await prefixedSha256(baseSource) !== snapshot.originalHashes[path]) {
+    const baseSource = Object.hasOwn(snapshot.originalHashes, path) ? await readBaseSource(snapshot, path) : null;
+    const inputSource = await readCandidateSource(snapshot, path);
+    if (baseSource !== null && await prefixedSha256(baseSource) !== snapshot.originalHashes[path]) {
       throw new Error(`finalize50 base bytes are stale: ${path}`);
     }
     if (await prefixedSha256(inputSource) !== snapshot.candidateHashes[path]) {
       throw new Error(`finalize50 candidate bytes are stale: ${path}`);
     }
-    const baseEnvelope = splitDefsEnvelope(baseSource);
     const envelope = splitDefsEnvelope(inputSource);
-    assertSafeWrapper(path, baseEnvelope, envelope);
+    assertSafeWrapper(path, baseSource === null ? { prefix: '', suffix: '' } : splitDefsEnvelope(baseSource), envelope);
     const current = JSON.parse(envelope.objectSource) as unknown;
     if (!isRecord(current) || !isRecord(draft[path])) {
       throw new Error(`finalize50 requires object artifacts: ${path}`);

@@ -154,12 +154,12 @@ test('materialization fails closed for stale bytes, path changes and ambiguous w
   const added = { ...current, 'workspaces/newPage.defs.ts': { schemaVersion: 'v2' } };
   await assert.rejects(() => materializeFinalize50Sources(snapshot, added,
     async (_snapshot, path) => sources[path], async (_snapshot, path) => sources[path]),
-    /new, removed or renamed/u);
+    /draft artifact path changes/u);
   const removed = { ...current };
   delete removed['rules.defs.ts'];
   await assert.rejects(() => materializeFinalize50Sources(snapshot, removed,
     async (_snapshot, path) => sources[path], async (_snapshot, path) => sources[path]),
-    /new, removed or renamed/u);
+    /draft artifact path changes/u);
 
   const ambiguous = `${sources['module.defs.ts']}\nexport const second = {};\n`;
   const ambiguousSnapshot = await makeSnapshot(sources);
@@ -196,6 +196,44 @@ test('materialization accepts a canonical generated wrapper when it differs from
   const output = await materializeFinalize50Sources(snapshot, current,
     async (_snapshot, path) => baseSources[path], async (_snapshot, path) => candidateSources[path]);
   assert.equal(output.find(item => item.path === 'module.defs.ts')?.outputSource, candidateSources['module.defs.ts']);
+});
+
+test('materialization accepts a sealed new journey and preserves the candidate paths', async () => {
+  const base = inventory();
+  const baseSources = sourceMap(base);
+  const path = 'journeys/newJourney.defs.ts';
+  const journey = { schemaVersion: 'v2', journeyId: 'newJourney', title: 'Nova' };
+  const candidate = { ...base, [path]: journey };
+  const candidateSources = { ...baseSources, [path]: renderDefsSource({
+    project: 102047, level: 4, folder: 'agendaClinica/tobe/plan/journeys', shortName: 'newJourney', extension: '.defs.ts',
+  }, 'newJourney', journey, 'Ns5JourneyArtifact') };
+  const snapshot = await makeSnapshot(baseSources);
+  snapshot.candidateHashes[path] = await prefixedHash(candidateSources[path]);
+  const output = await materializeFinalize50Sources(snapshot, candidate,
+    async (_snapshot, key) => baseSources[key], async (_snapshot, key) => candidateSources[key]);
+  assert.deepEqual(output.map(item => item.path).sort(), Object.keys(candidate).sort());
+  assert.equal(output.find(item => item.path === path)?.outputSource, candidateSources[path]);
+  await assert.rejects(materializeFinalize50Sources(snapshot, candidate,
+    async (_snapshot, key) => baseSources[key], async (_snapshot, key) => key === path ? defs(path, journey) : candidateSources[key]),
+    /candidate bytes are stale/u);
+});
+
+test('materialization accepts a sealed removed journey and checks its base bytes', async () => {
+  const path = 'journeys/oldJourney.defs.ts';
+  const base = { ...inventory(), [path]: { schemaVersion: 'v2', journeyId: 'oldJourney' } };
+  const baseSources = { ...sourceMap(base), [path]: defs(path, base[path]) };
+  const candidate = { ...base };
+  delete candidate[path];
+  const candidateSources = { ...baseSources };
+  delete candidateSources[path];
+  const snapshot = await makeSnapshotForSources(baseSources);
+  delete snapshot.candidateHashes[path];
+  const output = await materializeFinalize50Sources(snapshot, candidate,
+    async (_snapshot, key) => baseSources[key], async (_snapshot, key) => candidateSources[key]);
+  assert.equal(output.some(item => item.path === path), false);
+  await assert.rejects(materializeFinalize50Sources(snapshot, candidate,
+    async (_snapshot, key) => key === path ? `${baseSources[key]} ` : baseSources[key],
+    async (_snapshot, key) => candidateSources[key]), /base bytes are stale/u);
 });
 
 test('mr_23 s2 finalize50 confirms mark, publishes in order and serializes no snapshot bytes', async () => withProject(async () => {

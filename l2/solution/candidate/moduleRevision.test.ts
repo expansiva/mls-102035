@@ -269,3 +269,43 @@ test('mr_23 s1 rejects missing or duplicate release paths without writes', async
     assert.equal(fixture.writes(), 0);
   } finally { fixture.restore(); }
 });
+
+test('p4_81 output revision records an added journey against the immutable release', async () => {
+  const fixture = installStorFixture();
+  try {
+    const index = { schemaVersion: 'fixture', journeys: [{ journeyId: 'newJourney', actorRef: 'actor', title: 'Nova' }] };
+    const sources = fixture.sources.map(item => item.path === 'journeys/index.defs.ts'
+      ? { ...item, source: `export const fixture = ${JSON.stringify(index)} as const;\n` } : item);
+    sources.push({ path: 'journeys/newJourney.defs.ts', source: 'export const fixture = { "schemaVersion": "fixture", "journeyId": "newJourney" } as const;\n' });
+    const input = inputFor(sources);
+    const output = await writeL4OutputRevision(project, moduleName, input);
+    assert.equal(output.fileStates?.['journeys/newJourney.defs.ts'], 'added');
+    assert.equal(output.fileStates?.['journeys/index.defs.ts'], 'changed');
+    assert.ok(output.changedPaths.includes('journeys/newJourney.defs.ts'));
+    assert.deepEqual(await readL4Revision(project, moduleName, input.changeId, input.revisionId), output);
+  } finally { fixture.restore(); }
+});
+
+test('p4_81 output revision records a removed journey against the immutable release', async () => {
+  const fixture = installStorFixture();
+  try {
+    const path = 'journeys/oldJourney.defs.ts';
+    const source = 'export const fixture = { "schemaVersion": "fixture", "journeyId": "oldJourney" } as const;\n';
+    const index = { schemaVersion: 'fixture', journeys: [{ journeyId: 'oldJourney', actorRef: 'actor', title: 'Antiga' }] };
+    const indexSource = `export const fixture = ${JSON.stringify(index)} as const;\n`;
+    fixture.add(originalL4FileInfo(project, moduleName, 'base1', path), source);
+    fixture.add(originalL4FileInfo(project, moduleName, 'base1', 'journeys/index.defs.ts'), indexSource);
+    const manifestInfo = { project, level: 4, folder: `${moduleName}/pipeline/releases/base1`, shortName: 'manifest', extension: '.json' };
+    const manifestKey = `${project}:4:${moduleName}/pipeline/releases/base1:manifest.json`;
+    const manifest = JSON.parse(fixture.contents.get(manifestKey) || '{}');
+    manifest.files[path] = hash(source);
+    manifest.files['journeys/index.defs.ts'] = hash(indexSource);
+    manifest.schemas[path] = 'fixture';
+    fixture.add(manifestInfo, JSON.stringify(manifest));
+    const input = inputFor(fixture.sources);
+    const output = await writeL4OutputRevision(project, moduleName, input);
+    assert.equal(output.fileStates?.[path], 'removed');
+    assert.equal(output.files[path], undefined);
+    assert.deepEqual(await readL4Revision(project, moduleName, input.changeId, input.revisionId), output);
+  } finally { fixture.restore(); }
+});
