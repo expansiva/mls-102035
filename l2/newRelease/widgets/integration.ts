@@ -249,7 +249,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
     const view = this.view();
     const presentation: NewReleaseTabPresentation = {
       detail: !!this.selected, back: () => this.back(), select: id => { if (id.includes(':')) this.select(id); },
-      nodes: (['inbound', 'outbound', 'plugins'] as const).map(lane => ({id: lane, label: this.t(`integration.${lane}`), value: '', children: view[lane].map((item, index) => ({id: `${lane}:${index}`, label: 'pluginId' in item ? item.pluginId : item.event || item.id, value: item.description, changed: this.changedItem(lane, 'pluginId' in item ? item.pluginId : item.id), children: []}))})),
+      nodes: (['inbound', 'outbound', 'plugins'] as const).map(lane => ({id: lane, label: this.t(`integration.${lane}`), value: '', children: view[lane].map((item, index) => ({id: `${lane}:${index}`, label: 'pluginId' in item ? item.pluginId : item.id, value: '', searchText: `${'event' in item ? item.event || '' : ''} ${item.description}`, changed: this.changedItem(lane, 'pluginId' in item ? item.pluginId : item.id), children: []}))})),
     };
     this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
   }

@@ -6,6 +6,8 @@ import type { Ns5AccessArtifact, Ns5OntologyEntityArtifact, Ns5OntologyIndexArti
 import {
   accessMatrixRows,
   accessTextNodes,
+  accessGrantCopyId,
+  accessGrantSource,
   patchAccessActor,
   patchAccessGrant,
   accessAnchorPath,
@@ -62,6 +64,16 @@ function entity(entityId: string, party: Ns5OntologyEntityArtifact['party']): Ns
 test('matrix chooses the broadest effective grant for an actor and entity', () => {
   assert.equal(bestAccessGrant(access.grants, 'agent', 'Order')?.grantId, 'agentOrganization');
   assert.equal(bestAccessGrant(access.grants, 'agent', 'Customer'), null);
+});
+
+test('copied access grant keeps a separate actor identity and scope', () => {
+  const source = access.grants[0];
+  const copy = { ...structuredClone(source), grantId: accessGrantCopyId(source.grantId, 'manager'), actorRef: 'manager', dataScope: { ...source.dataScope, mode: 'organization' as const } };
+  const withCopy = { ...access, grants: [...access.grants, copy] };
+  assert.equal(copy.grantId, 'agentOwnForManager');
+  assert.equal(accessGrantSource(withCopy, copy).grantId, source.grantId);
+  assert.equal(source.dataScope.mode, 'own');
+  assert.equal(copy.dataScope.mode, 'organization');
 });
 
 test('person anchors require a path through required relationships', () => {

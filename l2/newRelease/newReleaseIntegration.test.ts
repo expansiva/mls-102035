@@ -140,7 +140,8 @@ test('presentation environment badge is hidden while Studio is active', () => {
 
 test('review composition hides its request and places changes before its panels while other tabs retain scoped diffs', () => {
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
-  assert.match(index, /this\.activeTab !== 'review' \? this\.renderRequest\(\)/);
+  assert.match(index, /this\.activeTab === 'general' \? this\.renderRequest\(\)/);
+  assert.match(index, /this\.presentation === 'prompt'[^\n]*\? this\.renderRequest\(\)/);
   assert.match(index, /this\.renderDiffs\(\)\}\s*<new-release--widgets--review-102035/);
   assert.match(index, /visibleDiffs\(this\.data\?\.diffs \?\? \[\], this\.activeTab\)/);
   assert.match(index, /this\.renderTobeStatus\(\)/);
@@ -215,7 +216,8 @@ test('review panels put effort before apply and publish, with execution and logs
 test('publish is an informational placeholder with no execution call', () => {
   const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
   const publish = source.slice(source.indexOf('  private renderPublish()'), source.lastIndexOf('  render() {'));
-  assert.match(publish, /<button type="button" disabled>/);
+  assert.match(publish, /nr-review__primary-action is-top/);
+  assert.match(publish, /<button type="button" disabled aria-disabled="true">/);
   assert.doesNotMatch(publish, /@click=/);
   assert.match(publish, /role="status"/);
   assert.match(publish, /review.panels.inDevelopment/);

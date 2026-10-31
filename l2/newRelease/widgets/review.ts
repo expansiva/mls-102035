@@ -1470,8 +1470,9 @@ export class NewReleaseReview102035 extends StateLitElement {
   private renderPublish() {
     return html`<section class="nr-review__panel nr-review__publish" aria-label=${this.t('review.panels.publish')}>
       <h3>${this.t('review.panels.publish')}</h3>
-      <button type="button" disabled>${this.t('review.panels.publish')}</button>
-      <p role="status">${this.t('review.panels.inDevelopment')}</p>
+      <section class="nr-review__primary-action is-top"><div><p role="status">${this.t('review.panels.inDevelopment')}</p></div>
+        <button type="button" disabled aria-disabled="true">${this.t('review.panels.publish')}</button>
+      </section>
     </section>`;
   }
 

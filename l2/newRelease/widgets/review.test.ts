@@ -119,14 +119,14 @@ function templateText(value: any): string {
   return Array.isArray(value) ? value.map(templateText).join('') : typeof value === 'string' ? value : '';
 }
 
-test('mr41 s3c new planned module without active change has Apply and never Calculate', () => {
+test('mr41 s3c new planned module without active change enables Apply and keeps Calculate visible', () => {
   const review = widget();
   const action = review.actionPresentation(review.view(), true);
   assert.equal(action.kind, 'continue'); assert.equal(action.disabled, false);
   assert.equal(action.labelKey, 'review.implementation.accept');
   const output = templateText(review.render());
-  assert.match(output, /review\.implementation\.accept/);
-  assert.doesNotMatch(output, /review\.calculate/);
+  assert.match(output, /review\.panels\.apply/);
+  assert.match(output, /review\.calculate/);
   review.version = 'release:old';
   assert.notEqual(review.actionPresentation(review.view(), true).labelKey, 'review.implementation.accept');
 });

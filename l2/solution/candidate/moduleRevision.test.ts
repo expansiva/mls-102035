@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { adoptL4ReviewResult, L4_REVISION_SCHEMA, originalL4FileInfo, readActiveL4Change, readActiveSealedL4Candidate, readL4Revision, writeL4OutputRevision } from './moduleRevision.js';
+import { adoptL4ReviewResult, L4_REVISION_SCHEMA, originalL4FileInfo, readActiveL4Change, readActiveSealedL4Candidate, readL4Revision, sealL4Revision, writeL4OutputRevision } from './moduleRevision.js';
 import type { Ns5FileInfo } from '../fs.js';
 import type { Ns5TobeArtifactPath } from './tobePaths.js';
+import { tobeArtifactFileInfo } from './tobePaths.js';
 
 const project = 102035;
 const moduleName = 'fixture';
@@ -51,7 +52,7 @@ function installStorFixture() {
     schemas: Object.fromEntries(values.map(([path, value]) => [path, (value as { schemaVersion: string }).schemaVersion])),
   });
   sources[0].source += '// saída alterada: ação\n';
-  return { sources, json, contents, writes: () => writes, restore: () => { (globalThis as any).mls = previous; } };
+  return { sources, add, json, contents, writes: () => writes, restore: () => { (globalThis as any).mls = previous; } };
 }
 
 const inputFor = (sources: Array<{ path: string; source: string }>) => ({
@@ -70,6 +71,16 @@ function installActiveChange(fixture: ReturnType<typeof installStorFixture>, act
   fixture.json('pipeline/changes/change1/requests', 'request-1', { request: 'pedido' });
   return change;
 }
+
+test('new L4 source from prompt cannot be reported as a sealed pending revision', async () => {
+  const fixture = installStorFixture();
+  try {
+    const active = installActiveChange(fixture);
+    fixture.add(tobeArtifactFileInfo(project, moduleName, 'journeys/newJourney.defs.ts', 'tobe'), 'export const newJourney = {};');
+    await assert.rejects(sealL4Revision(project, moduleName, active.activeRevisionId), /new-release\.candidate_unindexed_file:journeys\/newJourney\.defs\.ts/);
+    assert.deepEqual(await readActiveL4Change(project, moduleName), active);
+  } finally { fixture.restore(); }
+});
 
 test('mr_25 s1 adopts output hashes and active sealed revision, then repeats without writes', async () => {
   const fixture = installStorFixture();

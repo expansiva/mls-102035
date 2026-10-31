@@ -40,6 +40,7 @@ export interface NewReleaseTextNode {
   changed?: boolean;
   suffix?: string;
   value: string;
+  searchText?: string;
   children: NewReleaseTextNode[];
 }
 

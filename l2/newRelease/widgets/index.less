@@ -155,6 +155,7 @@ new-release--widgets--index-102035 {
     border-radius: .4rem; background: var(--surface-bg, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .7rem;
   }
   .nr-index__request button:disabled { cursor: not-allowed; opacity: .6; }
+  .nr-index__request button.nr-request-action:not(:disabled) { border-color: var(--button-primary-bg, #1273d4); background: var(--button-primary-bg, #1273d4); color: var(--button-primary-text, #fff); font-weight: 750; }
   .nr-index__request .nr-index__request-error { color: var(--status-error-text, #ab2328); }
   .nr-index__request--history { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .65rem .85rem; }
   .nr-index__request--history strong { font-size: .74rem; }
@@ -377,6 +378,7 @@ new-release--widgets--index-102035 {
   .nr-index__diff section > header span { color: var(--text-muted, #5d6b7e); font-size: .62rem; }
   .nr-index__diff section > header button {
     min-height: 2rem;
+    padding: .4rem .7rem;
     border: 1px solid color-mix(in srgb, var(--status-error-text, #ab2328) 34%, transparent);
     border-radius: .45rem;
     background: transparent;
@@ -473,6 +475,7 @@ new-release--widgets--index-102035 {
     .nr-common__tree-select { appearance: none; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; padding: 0; text-align: left; cursor: pointer; }
     .nr-common__tree-select:hover { text-decoration: underline; }
     .nr-common__tree-select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+    details > ul > li:first-child > .nr-common__tree-select { color: var(--link-text, #0f62b8); font-weight: 700; }
   }
 }
 
@@ -488,6 +491,8 @@ new-release--widgets--index-102035:has(new-release--widgets--rules-102035) .nr-c
 }
 
 new-release--widgets--index-102035 pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+
+new-release--widgets--index-102035 .is-primary:not(:disabled) { border-color: var(--button-primary-bg, #1273d4); background: var(--button-primary-bg, #1273d4); color: var(--button-primary-text, #fff); }
 
 new-release--widgets--index-102035 {
   .nr-index input[readonly] {

@@ -428,6 +428,14 @@ async function sealL4RevisionInsideWriter(project: number, moduleName: string, e
     const release = await readL4Release(project, moduleName, change.baseId);
     if (!release) throw new Error('Captured L4 base is incomplete.');
     const paths = Object.keys(release.files).map(normalizeTobeArtifactPath);
+    const planRoot = `${moduleName}/tobe/plan`;
+    for (const file of Object.values(mls.stor.files)) {
+      if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted' || file.extension !== '.defs.ts') continue;
+      const folder = String(file.folder || '');
+      if (folder !== planRoot && !folder.startsWith(`${planRoot}/`)) continue;
+      const relative = `${folder === planRoot ? '' : `${folder.slice(planRoot.length + 1)}/`}${file.shortName}${file.extension}`;
+      if (!Object.hasOwn(release.files, normalizeTobeArtifactPath(relative))) throw new Error(`new-release.candidate_unindexed_file:${relative}`);
+    }
     const current = await mapHash(paths, project, moduleName, 'tobe');
     const changedPaths = paths.filter(path => current[path] !== release.files[path]);
     const hash = await sourceHash(JSON.stringify(current));

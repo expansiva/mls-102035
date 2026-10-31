@@ -42,6 +42,16 @@ export function accessGrantsForActor(
   return access.grants.filter(grant => grant.actorRef === actorId);
 }
 
+/** Copies remain ordinary grants; the ID only lets this editor find its own copies. */
+export function accessGrantCopyId(grantId: string, actorId: string): string {
+  return `${grantId}For${actorId.charAt(0).toUpperCase()}${actorId.slice(1)}`;
+}
+
+export function accessGrantSource(access: Ns5AccessArtifact, grant: Ns5AccessGrant): Ns5AccessGrant {
+  return access.grants.find(source => source.actorRef !== grant.actorRef
+    && accessGrantCopyId(source.grantId, grant.actorRef) === grant.grantId) || grant;
+}
+
 export function bestAccessGrant(
   grants: readonly Ns5AccessGrant[],
   actorId: string,
@@ -85,7 +95,7 @@ export function accessMatrixRows(access: Ns5AccessArtifact) {
 
 export function accessTextNodes(access: Ns5AccessArtifact, unassigned: string): NewReleaseTextNode[] {
   const grantNode = (grant: Ns5AccessGrant): NewReleaseTextNode => ({
-    id: `grant:${grant.grantId}`, label: grant.title, value: `${grant.grantId} ${grant.description} ${grant.entityRefs.join(' ')}`, children: [],
+    id: `grant:${grant.grantId}`, label: grant.title, value: '', searchText: `${grant.grantId} ${grant.description} ${grant.entityRefs.join(' ')}`, children: [],
   });
   const nodes = access.actors.map(actor => ({
     id: `actor:${actor.actorId}`, label: actor.title, value: `${actor.actorId} ${actor.description}`,

@@ -1126,7 +1126,7 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       ${this.renderExtraValues((value || entity) as unknown as OntologyPanelValue, [], readOnly)}
       <details><summary>${this.t('ontology.panel.definition')}</summary><pre>${JSON.stringify(value || entity, null, 2)}</pre></details>
       ${this.editMessage ? html`<p role="alert">${this.editMessage}</p>` : nothing}
-      <footer><button type="button" @click=${() => this.closePanelEditor()}>${this.t('ontology.cancel')}</button><button type="button" ?disabled=${!this.dirty || readOnly} @click=${() => void this.savePanel()}>${this.t('ontology.save')}</button></footer>
+      <footer><button type="button" @click=${() => this.closePanelEditor()}>${this.t('ontology.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty || readOnly} @click=${() => void this.savePanel()}>${this.t('ontology.save')}</button></footer>
     </section>`;
   }
 

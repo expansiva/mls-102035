@@ -72,7 +72,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private requestResult = '';
   @state() private requestNeedsRetry = false;
 
-  @state() private presentation: 'graph' | 'text' = 'graph';
+  @state() private presentation: 'graph' | 'text' | 'prompt' = 'graph';
   @state() private textSearch = '';
   @state() private textFilter = '';
   @state() private graphZoom = 1;
@@ -102,6 +102,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (message.startsWith('general.languages')) return this.t(message);
     if (message === 'new-release.application_active') return this.t('request.applicationActive');
     if (message === 'new-release.request_empty') return this.t('request.empty');
+    if (message.startsWith('new-release.candidate_unindexed_file:')) return this.t('request.newArtifactUnsupported', { path: message.slice('new-release.candidate_unindexed_file:'.length) });
     if (message.startsWith('collab_messages_')) return this.t('request.identityUnavailable', { reason: message });
     if (message === 'implementation.user_unavailable') return this.t('request.userUnavailable');
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
@@ -341,6 +342,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (historicalReleaseId(this.version)) return;
     const text = (event as CustomEvent<{ text?: string }> | undefined)?.detail?.text;
     if (!this.requestText.trim()) this.requestText = text || this.t('common.requestTemplate', { tab: this.t(`tab.${this.activeTab}`) });
+    this.presentation = 'prompt';
     await this.updateComplete;
     const panel = this.querySelector<HTMLDetailsElement>('.nr-index__request');
     if (panel) panel.open = true;
@@ -355,10 +357,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
       .map(artifact => textTree(artifact.path, artifact.value));
   }
 
-  private renderTreeNode(node: TextTreeNode): unknown {
+  private renderTreeNode(node: TextTreeNode, depth = 0): unknown {
     const dot = node.changed ? html`<span class="nr-item__changed" role="img" aria-label=${this.t('tobe.itemChanged')} title=${this.t('tobe.itemChanged')}></span>` : nothing;
-    if (!node.children.length) return html`<li>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}><span class="nr-common__tree-name">${node.label}</span>${dot}${node.suffix ? html`<span class="nr-common__tree-suffix">${node.suffix}</span>` : nothing}</button>` : html`<strong>${node.label}</strong>`}<span>${node.value}</span></li>`;
-    return html`<li><details ?open=${!!this.textSearch}><summary>${this.tabPresentation ? html`<button class="nr-common__tree-select" type="button" @click=${(event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); this.tabPresentation?.select(node.id); }}>${node.label}${dot}</button>` : node.label}</summary><ul>${node.children.map(child => this.renderTreeNode(child))}</ul></details></li>`;
+    if (!node.children.length && !(depth === 0 && this.tabPresentation && node.value)) return html`<li>${this.tabPresentation && (depth > 0 || node.value) ? html`<button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}><span class="nr-common__tree-name">${node.label}</span>${dot}${node.suffix ? html`<span class="nr-common__tree-suffix">${node.suffix}</span>` : nothing}</button>` : html`<strong>${node.label}</strong>`}${node.value ? html`<span>${node.value}</span>` : nothing}</li>`;
+    return html`<li><details ?open=${!!this.textSearch}><summary>${node.label}${dot}</summary><ul>${this.tabPresentation && node.value ? html`<li><button class="nr-common__tree-select" type="button" @click=${() => { this.tabPresentation?.select(node.id); }}>${this.t('common.details')}</button></li>` : nothing}${node.children.map(child => this.renderTreeNode(child, depth + 1))}</ul></details></li>`;
   }
 
   private closeHintsOnScroll = () => {
@@ -380,14 +382,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
         this.tabDetail = false;
       }}>${this.t('common.back')}</button>` : nothing}
       ${!nested ? html`<div role="group" aria-label=${this.t('common.presentation')}>
-        ${(['graph', 'text'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
+        ${(['graph', 'text', 'prompt'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
       </div>` : nothing}
       ${this.presentation === 'graph' && !nested ? html`<div role="group" aria-label=${this.t('common.zoom')}>
         <button type="button" aria-label=${this.t('common.zoomOut')} ?disabled=${this.graphZoom <= .5} @click=${() => { this.graphZoom = Math.max(.5, this.graphZoom - .1); }}>−</button>
         <button type="button" aria-label=${this.t('common.zoomReset')} @click=${() => { this.graphZoom = 1; }}>${Math.round(this.graphZoom * 100)}%</button>
         <button type="button" aria-label=${this.t('common.zoomIn')} ?disabled=${this.graphZoom >= 2} @click=${() => { this.graphZoom = Math.min(2, this.graphZoom + .1); }}>+</button>
       </div>` : nothing}
-      <button type="button" ?disabled=${!!historicalReleaseId(this.version)} @click=${this.openChangeRequest}>${this.t('common.requestChange')}</button>
       <details class="nr-common__hint"><summary aria-label=${this.t('common.help')}>?</summary><p>${this.t('common.hint')}</p></details>
     </div>`;
   }
@@ -924,7 +925,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}
           ${this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
           <div class="nr-index__request-actions">
-            <button type="button" ?disabled=${this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
+            <button class="nr-request-action" type="button" ?disabled=${this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
           </div>
         </div>
       </details>
@@ -954,7 +955,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           { count: pendingChanges },
         )}</p>` : nothing}
 
-        ${!this.loading && this.data?.module && this.activeTab !== 'review' ? this.renderRequest() : nothing}
+        ${!this.loading && this.data?.module && this.activeTab === 'general' ? this.renderRequest() : nothing}
         ${!this.loading && this.version !== 'tobe' && this.data?.baseProvenance?.status === 'unverified' ? html`<p class="nr-index__base-warning" role="status">${this.t('request.baseUnverified')}</p>` : nothing}
 
         ${this.renderTobeStatus()}
@@ -976,7 +977,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
             tabindex="0"
           ><fieldset class="nr-index__revision-content" ?disabled=${historical}>
             ${this.renderCommonControls()}
-            <div class="nr-common__graph" ?hidden=${this.presentation === 'text' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit'}>
+            ${this.presentation === 'prompt' && !this.tabDetail && this.activeTab !== 'review' && this.activeTab !== 'general' && this.activeEditor()?.mode !== 'edit' ? this.renderRequest() : nothing}
+            <div class="nr-common__graph" ?hidden=${this.presentation !== 'graph' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit'}>
               <div style=${`zoom: ${this.activeTab === 'general' || this.activeTab === 'review' || this.tabDetail || this.activeEditor()?.mode === 'edit' ? 1 : this.graphZoom}`}>
                 ${this.renderTabContent()}
               </div>
