@@ -97,3 +97,17 @@ test('identity resolution is awaited and its original failure propagates before 
     execute: async (_agent, context) => { context.task = task('done'); },
   });
 });
+
+
+test('request states come only from the final written result and reject invalid entries', () => {
+  const changed = { path: 'journeys/existing.defs.ts', state: 'changed' };
+  const added = { path: 'journeys/new.defs.ts', state: 'added' };
+  const removed = { path: 'journeys/old.defs.ts', state: 'removed' };
+  const summary = summarizeNewReleaseRequest([
+    JSON.stringify({ fileStates: [{ path: 'intermediate', state: 'added' }] }),
+    JSON.stringify({ written: false, fileStates: [{ path: 'refused', state: 'changed' }] }),
+    JSON.stringify({ written: true, files: [changed.path, added.path, removed.path], fileStates: [changed, added, removed,
+      null, {}, { path: 42, state: 'added' }, { path: 'invalid', state: 'kept' }] }),
+  ], 'done');
+  assert.deepEqual(summary, { key: 'request.success', values: { count: 3 }, retry: false, fileStates: [changed, added, removed] });
+});

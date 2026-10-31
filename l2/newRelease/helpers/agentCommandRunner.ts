@@ -21,7 +21,13 @@ export function taskResultTexts(task: TaskData): string[] {
   return [...new Set(output)];
 }
 
+export interface NewReleaseRequestFileState {
+  path: string;
+  state: 'added' | 'changed' | 'removed';
+}
+
 export interface NewReleaseRequestSummary {
+  fileStates?: NewReleaseRequestFileState[];
   key: string;
   values: { reason?: string; question?: string; count?: number };
   retry: boolean;
@@ -32,6 +38,7 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
   let question = '';
   let refusal = '';
   let written: number | null = null;
+  let fileStates: NewReleaseRequestFileState[] = [];
   for (const result of results) {
     let value: unknown;
     try { value = JSON.parse(result); }
@@ -41,19 +48,24 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
       continue;
     }
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
-    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
+    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
     if (typeof outcome.question === 'string') question = outcome.question;
     if (outcome.triage?.valid === false) {
       if (typeof outcome.triage.clarification === 'string') question = outcome.triage.clarification;
       if (typeof outcome.triage.reason === 'string') refusal = outcome.triage.reason;
     }
     if (outcome.written === false) refusal = typeof outcome.reason === 'string' ? outcome.reason : '';
-    if (outcome.written === true) written = Array.isArray(outcome.files) ? outcome.files.length : 0;
+    if (outcome.written === true) {
+      written = Array.isArray(outcome.files) ? outcome.files.length : 0;
+      fileStates = Array.isArray(outcome.fileStates) ? outcome.fileStates.filter((item): item is NewReleaseRequestFileState =>
+        !!item && typeof item === 'object' && typeof item.path === 'string'
+        && ['added', 'changed', 'removed'].includes(item.state)) : [];
+    }
   }
   if (question) return { key: 'request.question', values: { question }, retry: true };
   if (refusal) return { key: 'request.refused', values: { reason: refusal }, retry: true };
   if (status === 'failed') return { key: 'request.failed', values: {}, retry: true };
-  if (written !== null) return { key: 'request.success', values: { count: written }, retry: false };
+  if (written !== null) return { key: 'request.success', values: { count: written }, retry: false, ...(fileStates.length ? { fileStates } : {}) };
   return { key: 'request.noResult', values: {}, retry: true };
 }
 

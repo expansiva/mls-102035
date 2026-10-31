@@ -2,7 +2,7 @@
 import { ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
 import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
-import { summarizeNewReleaseRequest, runNewReleaseRequest } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { summarizeNewReleaseRequest, runNewReleaseRequest, type NewReleaseRequestFileState } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 
 import { html, nothing, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -70,6 +70,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private identityError = 'pending';
   private identityFlight?: Promise<void>;
   @state() private requestResult = '';
+  @state() private requestFileStates: NewReleaseRequestFileState[] = [];
+  private requestResultModule = '';
   @state() private requestNeedsRetry = false;
 
   @state() private presentation: 'graph' | 'text' | 'prompt' = 'graph';
@@ -177,6 +179,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async loadModule() {
+    const resultModule = `${this.project}/${this.moduleName}`;
+    if (this.requestResultModule !== resultModule) {
+      this.requestResult = '';
+      this.requestFileStates = [];
+      this.requestNeedsRetry = false;
+      this.requestResultModule = resultModule;
+    }
     this.requestDrafts.remember(this.requestKey, this.requestText, this.savedRequest);
     this.requestKey = null;
     if (this.validationTimer) {
@@ -533,6 +542,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestBusy = true;
     this.requestError = '';
     this.requestResult = '';
+    this.requestFileStates = [];
     this.requestNeedsRetry = false;
     try {
       const saved = await saveChangeRequest(context.project, context.moduleName, text, expectedChange, expectedRevision);
@@ -548,6 +558,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       if (!contextStillCurrent(context, this)) return;
       const summary = summarizeNewReleaseRequest(outcome.results, outcome.task.status);
       this.requestResult = this.t(summary.key, summary.values);
+      this.requestFileStates = summary.fileStates ?? [];
       this.requestNeedsRetry = summary.retry;
       if (outcome.task.status === 'failed') throw new Error(this.requestResult);
       const written = outcome.results.some(result => { try { return JSON.parse(result).written === true; } catch { return false; } });
@@ -561,7 +572,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
       window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
       await this.loadModule();
     } catch (error) {
-      if (contextStillCurrent(context, this)) { this.requestNeedsRetry = true; this.requestError = this.revisionError(error); }
+      if (contextStillCurrent(context, this)) {
+        if (!this.requestNeedsRetry) {
+          this.requestResult = '';
+          this.requestFileStates = [];
+        }
+        this.requestNeedsRetry = true;
+        this.requestError = this.revisionError(error);
+      }
     } finally {
       if (this.project === context.project && this.moduleName === context.moduleName) this.requestBusy = false;
     }
@@ -915,13 +933,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
       </section>
     `;
     return html`
-      <details class="nr-index__request" ?open=${!this.savedRequest}>
+      <details class="nr-index__request" ?open=${!this.savedRequest || !!this.requestResult || !!this.requestError}>
         <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : this.requestText === this.savedRequest ? this.t('request.saved') : this.t('request.unsaved')}</span></summary>
         <div class="nr-index__request-body">
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
           ${this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
+          ${this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
           ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}
           ${this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
           <div class="nr-index__request-actions">
