@@ -91,7 +91,7 @@ export interface NewReleaseValidationIssue {
   code: string;
   message: string;
   source: 'gate' | 'oracle';
-  /** The same artifact, path and code already failed on the unedited module. */
+  /** The same artifact, path and code already occurred at this severity on the unedited module. */
   baseline?: boolean;
 }
 

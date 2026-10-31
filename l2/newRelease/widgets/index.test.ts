@@ -59,3 +59,43 @@ test('change request controls do not submit empty text and clear prior-tab feedb
   index.requestError = 'Erro tardio da jornada';
   assert.doesNotMatch(templateText(index.renderRequest()), /tardio da jornada/);
 });
+
+
+test('review counts new warnings and keeps previous observations in closed details', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
+  for (const [language, title, warnings, errors] of [
+    ['en', 'Previous observations: 1', '1 warnings', '1 errors'],
+    ['pt', 'Observações anteriores: 1', '1 avisos', '1 erros'],
+  ]) {
+    const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+    index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, language));
+    index.activeTab = 'review';
+    index.version = 'tobe';
+    index.data = {
+      changeId: 'candidate', manifest: { changes: [], author: 'User', updatedAt: '2026-10-31T12:00:00Z' }, stalePaths: [],
+      validation: { issues: [
+        { severity: 'warning', artifact: 'workflows.json', path: '$.room', message: 'Previous message', baseline: true },
+        { severity: 'warning', artifact: 'journeys.json', path: '$.steps', message: 'New message' },
+        { severity: 'error', artifact: 'ontology.json', path: '$', message: 'Error message', baseline: true },
+      ] },
+    };
+    const status = templateText(index.renderTobeStatus());
+    assert.ok(status.includes(warnings), status);
+    assert.ok(status.includes(errors), status);
+    assert.ok(status.includes(`<span>${title}</span>`), status);
+    const log = templateText(index.renderValidationLog());
+    const [main, previous] = log.split('<details');
+    assert.match(main, /New message/);
+    assert.match(main, /Error message/);
+    assert.doesNotMatch(main, /Previous message/);
+    assert.ok(previous.includes(`<summary>${title}</summary>`));
+    assert.match(previous, /workflows.json · \$\.room/);
+    assert.match(previous, /Previous message/);
+    assert.doesNotMatch(previous, /\bopen(?:=|\s|>)/);
+    assert.doesNotMatch(previous, /is-warning/);
+    index.data.validation.issues = [index.data.validation.issues[0]];
+    assert.doesNotMatch(templateText(index.renderValidationLog()), /No warnings|Nenhum aviso/);
+    index.data.validation.issues = [];
+    assert.doesNotMatch(templateText(index.renderValidationLog()), /<details/);
+  }
+});

@@ -306,7 +306,7 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
         }
         return;
       }
-      if (step.effect === 'create') return;
+      if (step.effect === 'create' || step.effect === 'update') return;
       if (!entityHasLifecycle(entity)) return;
       if (!(entity?.transitions || []).some(item => actorMatches(item.by, actor))) return;
       warning(

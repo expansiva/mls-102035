@@ -752,7 +752,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const manifest = this.data?.manifest;
     if (!manifest) return nothing;
     const errors = this.validationIssues().filter(issue => issue.severity === 'error').length;
-    const warnings = this.validationIssues().filter(issue => issue.severity === 'warning').length;
+    const warnings = this.validationIssues().filter(issue => issue.severity === 'warning' && !issue.baseline).length;
+    const previous = this.validationIssues().filter(issue => issue.severity === 'warning' && issue.baseline).length;
     return html`
       ${this.activeTab === 'review' ? html`<section class="nr-index__tobe" aria-label=${this.t('tobe.statusLabel')} aria-live="polite">
         <div class="nr-index__tobe-main">
@@ -765,6 +766,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <div class="nr-index__tobe-health">
           <span class=${errors ? 'has-errors' : ''}>${this.t('summary.errors', { count: errors })}</span>
           <span class=${warnings ? 'has-warnings' : ''}>${this.t('summary.warnings', { count: warnings })}</span>
+          ${previous ? html`<span>${this.t('review.log.previous', { count: previous })}</span>` : nothing}
         </div>
       </section>` : nothing}
       ${this.data?.stalePaths.length ? html`
@@ -782,13 +784,21 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private renderValidationLog() {
     if (this.activeTab !== 'review' || this.version !== 'tobe' || !this.hasPreparedChanges()) return nothing;
-    const issues = this.validationIssues();
+    const issues = this.validationIssues().filter(issue => issue.severity !== 'warning' || !issue.baseline);
+    const previous = this.validationIssues().filter(issue => issue.severity === 'warning' && issue.baseline);
     return html`<section class="nr-index__log" aria-label=${this.t('review.log.title')}>
       <h2>${this.t('review.log.title')}</h2>
       ${issues.length ? html`<ul>${issues.map(issue => html`<li class=${`is-${issue.severity}`}>
         <div><strong>${this.t(`review.log.${issue.severity}`)}</strong><code>${issue.artifact}${issue.path && issue.path !== '$' ? ` · ${issue.path}` : ''}</code></div>
         <p>${issue.message}</p>
-      </li>`)}</ul>` : html`<p>${this.t('review.log.empty')}</p>`}
+      </li>`)}</ul>` : previous.length ? nothing : html`<p>${this.t('review.log.empty')}</p>`}
+      ${previous.length ? html`<details class="nr-index__previous">
+        <summary>${this.t('review.log.previous', { count: previous.length })}</summary>
+        <ul>${previous.map(issue => html`<li>
+          <div><code>${issue.artifact}${issue.path && issue.path !== '$' ? ` · ${issue.path}` : ''}</code></div>
+          <p>${issue.message}</p>
+        </li>`)}</ul>
+      </details>` : nothing}
     </section>`;
   }
 

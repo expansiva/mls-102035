@@ -46,16 +46,16 @@ export function screenIssueKey(issue: Pick<NewReleaseValidationIssue, 'artifact'
 
 export interface ScreenBlame { area: CandidateArea; key: string }
 
-/** Errors already on `baselineIssues` do not fail `ok`. An area whose errors are all baseline becomes checked. */
+/** Mark existing issues at the same severity. Only baseline errors affect `ok` and coverage. */
 export function applyScreenBaseline(
   current: NewReleaseOverlayValidation,
   baselineIssues: readonly NewReleaseValidationIssue[] | undefined,
   blame: readonly ScreenBlame[],
 ): NewReleaseOverlayValidation {
   if (!baselineIssues) return current;
-  const known = new Set(baselineIssues.filter(issue => issue.severity === 'error').map(screenIssueKey));
+  const known = new Set(baselineIssues.map(issue => `${issue.severity}\u0000${screenIssueKey(issue)}`));
   const issues = current.issues.map(issue =>
-    issue.severity === 'error' && known.has(screenIssueKey(issue)) ? { ...issue, baseline: true } : issue);
+    known.has(`${issue.severity}\u0000${screenIssueKey(issue)}`) ? { ...issue, baseline: true } : issue);
   const fresh = new Set(issues.filter(issue => issue.severity === 'error' && !issue.baseline).map(screenIssueKey));
   const coverage: CandidateCoverage = { ...current.coverage };
   for (const area of AREAS) {

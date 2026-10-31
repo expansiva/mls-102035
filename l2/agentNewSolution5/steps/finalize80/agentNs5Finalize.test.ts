@@ -320,13 +320,12 @@ void test('I7 fails on the captured comandaRestaurante5 disk (19 journeys / inde
   assert.equal(passing.checks.find(check => check.checkId === 'I7')?.status, 'passed');
 });
 
-void test('real comandaRestaurante5 sources pass I1–I10; I2 warns on acts without transitionRef', () => {
+void test('real comandaRestaurante5 sources pass I1–I10 without warnings', () => {
   const report = runNs5Oracle(loadSources('comandaRestaurante.json'));
   assert.equal(report.finalStatus, 'passed', report.errors.map(issue => `${issue.code} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.errors.length, 0);
-  assert.ok(report.warnings.length > 0);
-  assert.ok(report.warnings.every(issue => issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF));
-  assert.equal(report.checks.find(check => check.checkId === 'I2')?.status, 'warned');
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.checks.find(check => check.checkId === 'I2')?.status, 'passed');
   assert.ok(report.checks.filter(check => check.checkId !== 'I2').every(check => check.status === 'passed'));
   assert.equal(report.checks.find(check => check.checkId === 'I8')?.status, 'passed');
   assert.equal(report.checks.find(check => check.checkId === 'I9')?.status, 'passed');
@@ -407,7 +406,9 @@ void test('I2 uses ontology30 collectNs5LifecycleSignal without changing message
 });
 
 void test('I2 warns when an act on a lifecycle entity omits transitionRef', () => {
-  const sources = loadSources('comandaRestaurante.json');
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const step = sources.journeys.flatMap(journey => journey.business.steps).find(item => item.stepId === 'fecharComanda')!;
+  delete step.effect;
   const report = runNs5Oracle(sources);
   assert.equal(report.errors.filter(issue => issue.checkId === 'I2').length, 0);
   assert.ok(report.warnings.some(issue =>
@@ -567,9 +568,7 @@ void test('I2 passes leva acts with hand-placed effect', () => {
     [levaDefs('Despesa.defs.ts')],
   ));
   assert.equal(i2Issues(reembolso, 'errors').length, 0, i2Issues(reembolso, 'errors').map(issue => issue.message).join('\n'));
-  assert.ok(i2Issues(reembolso, 'warnings').some(issue =>
-    issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF && /corrigirDespesa/.test(issue.message),
-  ));
+  assert.equal(i2Issues(reembolso, 'warnings').length, 0);
 
   const frota = runNs5Oracle(i2OnlySources(
     'manutencaoFrota',
@@ -585,8 +584,25 @@ void test('I2 passes leva acts with hand-placed effect', () => {
     [levaDefs('Evento.defs.ts')],
   ));
   assert.equal(i2Issues(evento, 'errors').length, 0, i2Issues(evento, 'errors').map(issue => issue.message).join('\n'));
-  assert.ok(i2Issues(evento, 'warnings').some(issue =>
-    issue.code === NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF && /baixarListaCsv/.test(issue.message),
+  assert.equal(i2Issues(evento, 'warnings').length, 0);
+});
+
+void test('I2 accepts update without transitionRef but still rejects a transition by the wrong actor', () => {
+  const journey = clone(levaDefs<Ns5JourneyArtifact>('corrigirEreenviarDespesa.defs.ts'));
+  const entity = clone(levaDefs<Ns5OntologyEntityArtifact>('Despesa.defs.ts'));
+  const step = journey.business.steps.find(item => item.stepId === 'corrigirDespesa')!;
+  assert.equal(step.effect, 'update');
+  assert.equal(step.transitionRef, undefined);
+  const sources = i2OnlySources('reembolsoDespesas', [journey], [entity]);
+  assert.equal(i2Issues(runNs5Oracle(sources), 'warnings').length, 0);
+
+  const transition = entity.transitions.find(item => Array.isArray(item.by) && !item.by.includes(journey.business.actorRef))!;
+  assert.ok(transition);
+  step.effect = 'transition';
+  step.transitionRef = transition.transitionId;
+  const report = runNs5Oracle(sources);
+  assert.ok(i2Issues(report, 'errors').some(issue =>
+    issue.code === NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION && /does not include/.test(issue.message),
   ));
 });
 

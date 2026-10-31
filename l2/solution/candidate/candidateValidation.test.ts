@@ -10,8 +10,8 @@ import {
   loadNs5Module, loadNs5Rules, loadNs5Workflows,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import type { Ns5OntologyAnyEntity, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
-import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
-import { candidateCanPublish, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
+import type { NewReleaseArtifact, NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
+import { applyScreenBaseline, candidateCanPublish, unavailableCandidateCoverage, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 
 function artifact<T>(relative: Ns5TobeArtifactPath, value: T): NewReleaseArtifact<T> {
   return { path: relative, source: 'asis', value };
@@ -98,12 +98,47 @@ test('a new rules error blocks publication and an error already on the module do
   assert.equal(same.coverage.ontologyEntities.status, 'unsupported');
   assert.equal(candidateCanPublish(same, ['rules']), true);
   assert.equal(same.ok, false);
+  const oldWarnings = same.issues.filter(issue => issue.severity === 'warning');
+  assert.ok(oldWarnings.length > 0);
+  assert.ok(oldWarnings.every(issue => issue.baseline === true));
 
   const noBase = validateV3Candidate(actualV3(), context);
   assert.ok(noBase.issues.some(issue => issue.severity === 'error' && !issue.baseline));
   assert.equal(noBase.coverage.oracle.status, 'error');
   assert.equal(candidateCanPublish(noBase, ['oracle']), false);
   assert.ok(noBase.issues.filter(issue => issue.severity === 'warning').every(issue => !issue.baseline));
+});
+
+test('warning baseline matches artifact, path and code without changing verdicts or severity', () => {
+  const warning: NewReleaseValidationIssue = {
+    artifact: 'workflows.defs.ts', path: 'processes[0].functions', code: 'LEGACY_WARNING',
+    message: 'Existing observation', severity: 'warning', source: 'gate',
+  };
+  const coverage = unavailableCandidateCoverage('unused');
+  for (const area of Object.keys(coverage) as (keyof typeof coverage)[]) coverage[area] = { status: 'checked' };
+  const current: NewReleaseOverlayValidation = {
+    ok: true, coverage, oracle: null,
+    issues: [
+      { ...warning, message: 'Updated wording', source: 'oracle' },
+      { ...warning, artifact: 'rules.defs.ts' },
+      { ...warning, path: 'processes[1].functions' },
+      { ...warning, code: 'NEW_WARNING' },
+    ],
+  };
+  const result = applyScreenBaseline(current, [warning], []);
+  assert.deepEqual(result.issues.map(issue => issue.baseline), [true, undefined, undefined, undefined]);
+  assert.ok(result.issues.every(issue => issue.severity === 'warning'));
+  assert.deepEqual(result.coverage, coverage);
+  assert.equal(result.ok, true);
+  assert.equal(candidateCanPublish(result, ['workflows']), true);
+  assert.equal(applyScreenBaseline(current, undefined, []), current);
+
+  const error = { ...warning, severity: 'error' as const };
+  const failed = applyScreenBaseline({ ...current, ok: false, issues: [error] }, [warning], []);
+  assert.equal(failed.issues[0].baseline, undefined, 'an earlier warning must not exempt a new error');
+  assert.equal(failed.issues[0].severity, 'error');
+  assert.equal(failed.ok, false);
+  assert.equal(candidateCanPublish(failed, ['workflows']), false);
 });
 
 test('missing platform catalog or transient plan is unsupported, not green', () => {
