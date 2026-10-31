@@ -9,6 +9,7 @@ import { MODULE_LAYERS_SCHEMA, type ModuleLayersSeal } from '/_102035_/l2/soluti
 export const L4_REVISION_SCHEMA = '2026-09-20-nr-module-revision-v1' as const;
 export type L4HashMap = Record<string, string>;
 export type L4SchemaMap = Record<string, string | null>;
+export type L4FileState = 'added' | 'changed' | 'removed' | 'same';
 
 export interface L4ReleaseManifest {
   schemaVersion: typeof L4_REVISION_SCHEMA;
@@ -51,6 +52,8 @@ export interface L4CandidateManifest {
   createdAt: string;
   files: L4HashMap;
   changedPaths: string[];
+  /** Inventory of this candidate against the immutable release. Absent on manifests sealed before that contract. */
+  fileStates?: Record<string, L4FileState>;
   requestRevision: number;
   /** Absent only on legacy manifests, which remain readable but cannot cross the migration boundary. */
   requestHash?: string;
@@ -74,6 +77,12 @@ const CORE_PATHS = [
   'module.defs.ts', 'journeys/index.defs.ts', 'ontology/index.defs.ts',
   'rules.defs.ts', 'workflows.defs.ts', 'access.defs.ts', 'integration.defs.ts',
 ] as const;
+const JOURNEY_FILE = /^journeys\/(?!index\.defs\.ts$)[a-z][A-Za-z0-9]*\.defs\.ts$/u;
+const ONTOLOGY_FILE = /^ontology\/[A-Z][A-Za-z0-9]*\.defs\.ts$/u;
+
+function isIndexedLeaf(path: string): boolean {
+  return JOURNEY_FILE.test(path) || ONTOLOGY_FILE.test(path);
+}
 
 function assertContext(project: number, moduleName: string): void {
   if (!Number.isInteger(project) || project <= 0) throw new Error('A valid project is required.');
@@ -363,6 +372,60 @@ export async function prepareL4Change(project: number, moduleName: string, oldMa
   });
 }
 
+function candidateStatesMatch(manifest: L4CandidateManifest, base: L4ReleaseManifest): boolean {
+  const states = manifest.fileStates;
+  if (!states) return false;
+  const releasePaths = Object.keys(base.files).map(normalizeTobeArtifactPath);
+  const described = Object.keys(states).map(normalizeTobeArtifactPath).sort();
+  const expected = [...new Set([...Object.keys(manifest.files).map(normalizeTobeArtifactPath), ...releasePaths])].sort();
+  if (described.length !== expected.length || described.some((path, index) => path !== expected[index])) return false;
+  for (const path of described) {
+    const state = states[path];
+    const inCandidate = Object.hasOwn(manifest.files, path);
+    const inRelease = Object.hasOwn(base.files, path);
+    if (state === 'removed') {
+      if (inCandidate || !inRelease || !isIndexedLeaf(path)) return false;
+    } else if (state === 'added') {
+      if (!inCandidate || inRelease || !isIndexedLeaf(path)) return false;
+    } else if (state === 'changed') {
+      if (!inCandidate || !inRelease || manifest.files[path] === base.files[path]) return false;
+    } else if (state === 'same') {
+      if (!inCandidate || !inRelease || manifest.files[path] !== base.files[path]) return false;
+    } else return false;
+  }
+  return true;
+}
+
+async function assertCandidateIndex(project: number, moduleName: string, candidate: ReadonlySet<string>): Promise<void> {
+  const journey = await readDefsJson<Ns5JourneyIndexArtifact>(artifactInfo(project, moduleName, 'journeys/index.defs.ts', 'tobe'));
+  const ontology = await readDefsJson<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>(artifactInfo(project, moduleName, 'ontology/index.defs.ts', 'tobe'));
+  if (!journey?.journeys || !ontology) throw new Error('new-release.candidate_index_mismatch:index');
+  const journeyIds = new Set(journey.journeys.map(item => item.journeyId));
+  for (const id of journeyIds) {
+    const path = `journeys/${id}.defs.ts`;
+    if (!candidate.has(path)) throw new Error(`new-release.candidate_index_mismatch:${path}`);
+  }
+  for (const path of candidate) {
+    if (!JOURNEY_FILE.test(path)) continue;
+    const id = path.slice('journeys/'.length, -'.defs.ts'.length);
+    if (!journeyIds.has(id)) throw new Error(`new-release.candidate_index_mismatch:${path}`);
+    const file = await readDefsJson<{ journeyId?: unknown }>(artifactInfo(project, moduleName, normalizeTobeArtifactPath(path), 'tobe'));
+    if (file?.journeyId !== id) throw new Error(`new-release.candidate_index_mismatch:${path}`);
+  }
+  const entityIds = new Set(ns5OntologyEntityIds(ontology));
+  for (const id of entityIds) {
+    const path = `ontology/${id}.defs.ts`;
+    if (!candidate.has(path)) throw new Error(`new-release.candidate_index_mismatch:${path}`);
+  }
+  for (const path of candidate) {
+    if (!ONTOLOGY_FILE.test(path)) continue;
+    const id = path.slice('ontology/'.length, -'.defs.ts'.length);
+    if (!entityIds.has(id)) throw new Error(`new-release.candidate_index_mismatch:${path}`);
+    const file = await readDefsJson<{ entityId?: unknown }>(artifactInfo(project, moduleName, normalizeTobeArtifactPath(path), 'tobe'));
+    if (file?.entityId !== id) throw new Error(`new-release.candidate_index_mismatch:${path}`);
+  }
+}
+
 export async function sealL4Revision(project: number, moduleName: string, expectedRevisionId: string | null, request?: string): Promise<L4CandidateManifest> {
   return withModuleWriter(project, moduleName, () => sealL4RevisionInsideWriter(project, moduleName, expectedRevisionId, request));
 }
@@ -427,17 +490,38 @@ async function sealL4RevisionInsideWriter(project: number, moduleName: string, e
     const requestHash = await sourceHash(requestText);
     const release = await readL4Release(project, moduleName, change.baseId);
     if (!release) throw new Error('Captured L4 base is incomplete.');
-    const paths = Object.keys(release.files).map(normalizeTobeArtifactPath);
+    const releasePaths = Object.keys(release.files).map(normalizeTobeArtifactPath);
+    const releaseSet = new Set(releasePaths);
     const planRoot = `${moduleName}/tobe/plan`;
+    const candidatePaths: Ns5TobeArtifactPath[] = [];
     for (const file of Object.values(mls.stor.files)) {
       if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted' || file.extension !== '.defs.ts') continue;
       const folder = String(file.folder || '');
       if (folder !== planRoot && !folder.startsWith(`${planRoot}/`)) continue;
       const relative = `${folder === planRoot ? '' : `${folder.slice(planRoot.length + 1)}/`}${file.shortName}${file.extension}`;
-      if (!Object.hasOwn(release.files, normalizeTobeArtifactPath(relative))) throw new Error(`new-release.candidate_unindexed_file:${relative}`);
+      if (!(CORE_PATHS as readonly string[]).includes(relative) && !isIndexedLeaf(relative) && !releaseSet.has(relative as Ns5TobeArtifactPath)) {
+        throw new Error(`new-release.candidate_path_refused:${relative}`);
+      }
+      candidatePaths.push(normalizeTobeArtifactPath(relative));
     }
+    const candidateSet = new Set(candidatePaths);
+    const removed: Ns5TobeArtifactPath[] = [];
+    for (const path of releasePaths) {
+      if (candidateSet.has(path)) continue;
+      if (!isIndexedLeaf(path)) throw new Error(`new-release.candidate_fixed_file_missing:${path}`);
+      removed.push(path);
+    }
+    await assertCandidateIndex(project, moduleName, candidateSet);
+    const paths = [...candidateSet].sort();
     const current = await mapHash(paths, project, moduleName, 'tobe');
-    const changedPaths = paths.filter(path => current[path] !== release.files[path]);
+    const fileStates: Record<string, L4FileState> = {};
+    for (const path of paths) {
+      if (!releaseSet.has(path)) fileStates[path] = 'added';
+      else if (current[path] !== release.files[path]) fileStates[path] = 'changed';
+      else fileStates[path] = 'same';
+    }
+    for (const path of removed.sort()) fileStates[path] = 'removed';
+    const changedPaths = paths.filter(path => fileStates[path] === 'added' || fileStates[path] === 'changed');
     const hash = await sourceHash(JSON.stringify(current));
     const revisionId = `rev-${Date.now()}-${hash.slice(7, 19)}-${crypto.randomUUID()}`;
     const now = new Date().toISOString();
@@ -447,7 +531,7 @@ async function sealL4RevisionInsideWriter(project: number, moduleName: string, e
     if (!sameHashes(await mapHash(paths, project, moduleName, 'revision', change.changeId, revisionId), current)) throw new Error('Candidate snapshot is incomplete.');
     const manifest: L4CandidateManifest = {
       schemaVersion: L4_REVISION_SCHEMA, project, moduleName, changeId: change.changeId, revisionId,
-      baseId: change.baseId, createdAt: now, files: current, changedPaths,
+      baseId: change.baseId, createdAt: now, files: current, changedPaths, fileStates,
       requestRevision,
       requestHash,
     };
@@ -470,7 +554,10 @@ export async function readL4Revision(project: number, moduleName: string, change
   try {
     const paths = Object.keys(manifest.files).map(normalizeTobeArtifactPath);
     const base = await readL4Release(project, moduleName, manifest.baseId);
-    if (!base || paths.length !== Object.keys(base.files).length || paths.some(path => !(path in base.files))) return null;
+    if (!base) return null;
+    if (manifest.fileStates) {
+      if (!candidateStatesMatch(manifest, base)) return null;
+    } else if (paths.length !== Object.keys(base.files).length || paths.some(path => !(path in base.files))) return null;
     return sameHashes(await mapHash(paths, project, moduleName, 'revision', changeId, revisionId), manifest.files) ? manifest : null;
   } catch {
     return null;
