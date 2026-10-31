@@ -985,9 +985,26 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
   }
 
+  /** Localize only the closing receipt; keep the stored agent report untouched. */
+  private implementationReport(report: string): string {
+    return report.replace(/(^|\r?\n)menu\.json (removed|kept: ([^\r\n]*))(?=(?:\r?\n)*$)/u,
+      (_line, separator: string, status: string, reason: string | undefined) => {
+        if (status === 'removed') return separator + this.t('review.implementation.menu.removed');
+        const reasons: Record<string, string> = {
+          absent: 'absent',
+          'finalize70 not approved': 'notApproved',
+          'l1 incomplete': 'incomplete',
+          'delete left the file': 'deleteFailed',
+        };
+        const known = reason !== undefined && Object.hasOwn(reasons, reason) ? reasons[reason] : null;
+        return separator + (known ? this.t(`review.implementation.menu.${known}`)
+          : this.t('review.implementation.menu.technicalError', { reason: reason ?? '' }));
+      });
+  }
+
   private renderImplementation(placement: 'top' | 'bottom') {
     if (!this.hasImplementation()) return nothing;
-    if (this.implementationComplete()) return html`<section class="nr-review__run">${this.actionError ? html`<p role="alert">${this.tStoredReviewError(this.actionError)}</p>` : nothing}${this.implementation!.phases.filter(phase => phase.report).map(phase => html`<article><strong>${phase.agent}</strong><pre>${phase.report}</pre></article>`)}</section>`;
+    if (this.implementationComplete()) return html`<section class="nr-review__run">${this.actionError ? html`<p role="alert">${this.tStoredReviewError(this.actionError)}</p>` : nothing}${this.implementation!.phases.filter(phase => phase.report).map(phase => html`<article><strong>${phase.agent}</strong><pre>${this.implementationReport(phase.report!)}</pre></article>`)}</section>`;
     const phases = implementationProgress(this.implementation, this.implementation?.changeId ?? null, this.project, this.moduleName);
     const materialize = this.implementation!.merged.materialize;
     return html`
@@ -1006,7 +1023,7 @@ export class NewReleaseReview102035 extends StateLitElement {
                 <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
                 ${phase.attempt ? html`<small>${this.t('review.implementation.attempt', { attempt: phase.attempt })}</small>` : nothing}
               </div>
-              ${this.implementation?.phases.find(item => item.name === phase.name)?.report ? html`<pre>${this.implementation.phases.find(item => item.name === phase.name)!.report}</pre>` : nothing}
+              ${this.implementation?.phases.find(item => item.name === phase.name)?.report ? html`<pre>${this.implementationReport(this.implementation.phases.find(item => item.name === phase.name)!.report!)}</pre>` : nothing}
               ${phase.error ? html`<p class="nr-review__implementation-error">${this.tStoredReviewError(phase.error)}</p>` : nothing}
               ${phase.previousAttempts?.length ? html`<details>
                 <summary>${this.t('review.implementation.previousAttempts')}</summary>

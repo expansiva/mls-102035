@@ -302,3 +302,34 @@ test('review effort hides missing pool coverage but keeps invalid pool warning',
   assert.match(templateText(review.renderEffort(ready)), /review\.backend\.effortInvalid/);
   assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.backend\.effortInvalid/);
 });
+
+for (const language of ['en', 'pt']) test(`menu closing receipt is localized in ${language} without changing other report lines`, async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.js');
+  const review = widget();
+  review.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, language));
+  const notes = [
+    ['removed', 'removed'], ['kept: absent', 'absent'],
+    ['kept: finalize70 not approved', 'notApproved'], ['kept: l1 incomplete', 'incomplete'],
+    ['kept: delete left the file', 'deleteFailed'], ['kept: EACCES: /pool/menu.json', 'technicalError'],
+  ];
+  for (const [note, key] of notes) {
+    const body = 'Agent result\r\nmenu.json removed\r\nOther evidence';
+    const report = `${body}\r\nmenu.json ${note}\r\n`;
+    const translated = review.t(`review.implementation.menu.${key}`, { reason: 'EACCES: /pool/menu.json' });
+    assert.equal(review.implementationReport(report), `${body}\r\n${translated}\r\n`);
+    for (const complete of [false, true]) {
+      const f = setup();
+      const record = await applyInitialReview(f.input, f.dependencies);
+      record.phases = [{ name: 'runAgents:0', agent: 'agentDefsL2', command: '', attempt: 1, taskId: '1', threadId: 'thread', messageId: 'message', status: 'done', startedAt: '', report }];
+      review.implementation = record;
+      review.hasImplementation = () => true;
+      review.implementationComplete = () => complete;
+      const output = templateText(review.renderImplementation('top'));
+      assert.ok(output.includes(`${body}\r\n${translated}\r\n`));
+      assert.equal(record.phases[0].report, report);
+    }
+  }
+  for (const report of ['plain report', 'menu.json kept: absent\nmore evidence', 'prefix menu.json removed', '']) {
+    assert.equal(review.implementationReport(report), report);
+  }
+});

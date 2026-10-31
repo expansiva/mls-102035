@@ -5,6 +5,13 @@ export type NewReleaseTranslate = (key: string, values?: Record<string, string |
 
 /// **collab_i18n_start**
 const message_en = {
+  "review.implementation.menu.removed": "menu.json removed.",
+  "review.implementation.menu.absent": "menu.json kept: the file was already absent.",
+  "review.implementation.menu.notApproved": "menu.json kept: finalize70 was not approved.",
+  "review.implementation.menu.incomplete": "menu.json kept: L1 is incomplete.",
+  "review.implementation.menu.deleteFailed": "menu.json kept: deletion left the file in place.",
+  "review.implementation.menu.technicalError": "menu.json kept due to a technical error: {{reason}}",
+
   "app.eyebrow": "Module blueprint",
   "app.title": "Shape the product before building it",
   "app.subtitle": "Review the business model, follow generation progress and prepare the next release from one place.",
@@ -1119,6 +1126,12 @@ const message_en = {
 };
 type MessageType = typeof message_en;
 const message_pt: MessageType = {
+  "review.implementation.menu.removed": "menu.json removido.",
+  "review.implementation.menu.absent": "menu.json mantido: o arquivo já estava ausente.",
+  "review.implementation.menu.notApproved": "menu.json mantido: finalize70 não foi aprovado.",
+  "review.implementation.menu.incomplete": "menu.json mantido: L1 está incompleto.",
+  "review.implementation.menu.deleteFailed": "menu.json mantido: a exclusão deixou o arquivo no local.",
+  "review.implementation.menu.technicalError": "menu.json mantido devido a um erro técnico: {{reason}}",
   "app.eyebrow": "Mapa do módulo",
   "app.title": "Modele o produto antes de construir",
   "app.subtitle": "Revise o negócio, acompanhe a geração e prepare a próxima versão em um só lugar.",
