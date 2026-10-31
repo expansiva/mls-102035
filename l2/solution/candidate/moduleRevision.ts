@@ -721,6 +721,13 @@ export async function promoteL4Revision(project: number, moduleName: string, cha
       throw new Error('module-promotion.revision_mismatch');
     }
     if (!sealed || sealed.manifest.baseId !== change.baseId) throw new Error('module-promotion.revision_mismatch');
+    const removedPaths = Object.entries(sealed.manifest.fileStates ?? {})
+      .filter((entry): entry is [string, 'removed'] => entry[1] === 'removed')
+      .map(([path]) => normalizeTobeArtifactPath(path));
+    for (const path of removedPaths) {
+      const indexed = mls.stor.files[mls.stor.getKeyToFile(artifactInfo(project, moduleName, path, 'asis'))];
+      if (!indexed || indexed.status === 'deleted') throw new Error('module-promotion.revision_mismatch');
+    }
     const layers = await readJson<ModuleLayersSeal>(jsonInfo(project, moduleName, `pipeline/releases/${sealed.manifest.baseId}`, 'layers'));
     if (!layers || layers.schemaVersion !== MODULE_LAYERS_SCHEMA || layers.project !== project
       || layers.moduleName !== moduleName || layers.baseId !== sealed.manifest.baseId || !Array.isArray(layers.files)) {
@@ -742,6 +749,16 @@ export async function promoteL4Revision(project: number, moduleName: string, cha
       await writeSourceText(copy.info, copy.source);
       if (await sourceHash(await readSourceText(copy.info)) !== copy.sha256) {
         throw new Error('module-promotion.revision_mismatch');
+      }
+    }
+    if (removedPaths.length) {
+      const { deleteFile } = await import('/_102027_/l2/libStor.js');
+      for (const path of removedPaths) {
+        const info = artifactInfo(project, moduleName, path, 'asis');
+        const indexed = mls.stor.files[mls.stor.getKeyToFile(info)];
+        if (!indexed || indexed.status === 'deleted') throw new Error('module-promotion.revision_mismatch');
+        await deleteFile(indexed);
+        if (fileExists(info)) throw new Error('module-promotion.revision_mismatch');
       }
     }
     const promotedAt = new Date().toISOString();

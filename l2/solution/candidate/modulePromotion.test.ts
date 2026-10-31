@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, readActiveL4Change, writeL4OutputRevision } from './moduleRevision.js';
+import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, readActiveL4Change, sealL4Revision, writeL4OutputRevision } from './moduleRevision.js';
+import { tobeArtifactFileInfo } from './tobePaths.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from './moduleLayers.js';
 import type { Ns5FileInfo } from '../fs.js';
 import type { Ns5TobeArtifactPath } from './tobePaths.js';
@@ -184,6 +185,44 @@ test('mr_14 s3: refuses a revision that is no longer active', async () => {
     const before = new Map(fixture.contents);
     await assert.rejects(promoteL4Revision(project, moduleName, 'change1', 'rev2'), /module-promotion.revision_mismatch/);
     assert.deepEqual(fixture.contents, before);
+  } finally { fixture.restore(); }
+});
+
+test('p4_81 s4: promote writes the new journey and deletes the removed one', async () => {
+  const fixture = installStorFixture();
+  try {
+    const active = installActiveChange(fixture);
+    const oldJourney = { schemaVersion: 'fixture', journeyId: 'oldJourney' };
+    const oldSource = `export const fixture = ${JSON.stringify(oldJourney)} as const;\n`;
+    const oldIndex = { schemaVersion: 'fixture', journeys: [{ journeyId: 'oldJourney', actorRef: 'actor', title: 'Antiga' }] };
+    const oldIndexSource = `export const fixture = ${JSON.stringify(oldIndex)} as const;\n`;
+    fixture.add(originalL4FileInfo(project, moduleName, 'base1', 'journeys/oldJourney.defs.ts'), oldSource);
+    fixture.add(originalL4FileInfo(project, moduleName, 'base1', 'journeys/index.defs.ts'), oldIndexSource);
+    const asisOld = { project, level: 4, folder: `${moduleName}/journeys`, shortName: 'oldJourney', extension: '.defs.ts' };
+    fixture.add(asisOld, oldSource);
+    const manifestKey = `${project}:4:${moduleName}/pipeline/releases/base1:manifest.json`;
+    const previous = JSON.parse(fixture.contents.get(manifestKey) || '{}');
+    previous.files['journeys/index.defs.ts'] = hash(oldIndexSource);
+    previous.files['journeys/oldJourney.defs.ts'] = hash(oldSource);
+    previous.schemas['journeys/oldJourney.defs.ts'] = 'fixture';
+    fixture.add({ project, level: 4, folder: `${moduleName}/pipeline/releases/base1`, shortName: 'manifest', extension: '.json' }, JSON.stringify(previous));
+    for (const item of fixture.sources) fixture.add(tobeArtifactFileInfo(project, moduleName, item.path, 'tobe'), item.source);
+    const nextIndex = { schemaVersion: 'fixture', journeys: [{ journeyId: 'newJourney', actorRef: 'actor', title: 'Nova' }] };
+    const nextJourney = { schemaVersion: 'fixture', journeyId: 'newJourney' };
+    const nextJourneySource = `export const fixture = ${JSON.stringify(nextJourney)} as const;\n`;
+    fixture.add(tobeArtifactFileInfo(project, moduleName, 'journeys/index.defs.ts', 'tobe'), `export const fixture = ${JSON.stringify(nextIndex)} as const;\n`);
+    fixture.add(tobeArtifactFileInfo(project, moduleName, 'journeys/newJourney.defs.ts', 'tobe'), nextJourneySource);
+    const sealed = await sealL4Revision(project, moduleName, active.activeRevisionId);
+    await sealModuleLayers(project, moduleName, 'base1');
+    (globalThis as any).mls.stor.localStor.deleteFile = async (file: Ns5FileInfo) => {
+      const key = `${file.project}:${file.level}:${file.folder || ''}:${file.shortName}${file.extension}`;
+      fixture.contents.delete(key);
+      delete (globalThis as any).mls.stor.files[key];
+    };
+    await promoteL4Revision(project, moduleName, 'change1', sealed.revisionId);
+    assert.equal(fixture.contents.get(`${project}:4:${moduleName}/journeys:newJourney.defs.ts`), nextJourneySource);
+    assert.equal(fixture.contents.has(`${project}:4:${moduleName}/journeys:oldJourney.defs.ts`), false);
+    assert.equal((await readActiveL4Change(project, moduleName))?.promotedRevisionId, sealed.revisionId);
   } finally { fixture.restore(); }
 });
 

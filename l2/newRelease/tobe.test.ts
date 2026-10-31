@@ -196,6 +196,18 @@ function installStorFixture(project: number, moduleName: string) {
   return { source, files, contents, keyOf, add };
 }
 
+test('p4_81 s4 discard leaves no new journey file behind', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const info = tobeArtifactFileInfo(project, moduleName, 'journeys/newJourney.defs.ts', 'tobe');
+  const created = await (globalThis as any).mls.stor.addOrUpdateFile(info);
+  await (globalThis as any).mls.stor.localStor.setContent(created, { content: 'export const fixture = {"journeyId":"newJourney"} as const;\n' });
+  await discardTobe(project, moduleName);
+  assert.equal(Object.values(fixture.files).some((file: any) => file.shortName === 'newJourney'), false);
+  assert.equal(fixture.contents.has(fixture.keyOf(info)), false);
+});
+
 test('ui_maint_01', async () => {
   const project = 102047;
   const moduleName = 'ordenServicio5';
