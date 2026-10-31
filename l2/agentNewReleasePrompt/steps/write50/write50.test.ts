@@ -2,12 +2,18 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
-import { changedNrpPaths, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import type { NrpWritePayload } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { persistNrp, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral, changedNrpPaths } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { setModuleRoot, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
+import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { sealModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { tobeArtifactFileInfo, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 const TAREFA = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -288,6 +294,130 @@ void test('an add keeps the rest of the file and the report names every written 
   });
   assert.deepEqual(three.changed, ['ontology', 'rules', 'journeys']);
   assert.deepEqual(three.modelKinds, ['rules', 'journeys']);
+});
+
+const project = 102035;
+const moduleName = 'fixture';
+const sha = (source: string) => `sha256:${createHash('sha256').update(source).digest('hex')}`;
+const defs = (value: unknown) => `export const fixture = ${JSON.stringify(value)} as const;\n`;
+
+function installRemovalFixture() {
+  const previous = (globalThis as any).mls;
+  const files: Record<string, any> = {};
+  const contents = new Map<string, string>();
+  const keyOf = (info: Ns5FileInfo) => `${info.project}:${info.level}:${info.folder || ''}:${info.shortName}${info.extension}`;
+  const add = (info: Ns5FileInfo, content = '') => {
+    const key = keyOf(info);
+    contents.set(key, content);
+    return files[key] = {
+      ...info, status: 'unchanged', versionRef: '1',
+      getContent: async () => contents.get(key) || '',
+      getValueInfo: async () => ({ content: contents.get(key) || '' }),
+    };
+  };
+  (globalThis as any).mls = {
+    actualProject: project,
+    stor: {
+      files, getKeyToFile: keyOf, addOrUpdateFile: async (info: Ns5FileInfo) => add(info),
+      localStor: {
+        setContent: async (file: Ns5FileInfo, value: { content: string }) => { contents.set(keyOf(file), value.content); },
+        deleteFile: async (file: Ns5FileInfo) => { contents.delete(keyOf(file)); delete files[keyOf(file)]; },
+      },
+    },
+    editor: { models: {}, getKeyModel: () => '' },
+    common: { crc: { crc32: () => 0 } },
+  };
+  const moduleArt = { schemaVersion: '2026-09-10-ns5-module-v2', moduleName };
+  const emptyIndex = { schemaVersion: 'fixture', journeys: [] as Array<{ journeyId: string; actorRef: string; title: string }> };
+  const oldIndex = { schemaVersion: 'fixture', journeys: [{ journeyId: 'oldJourney', actorRef: 'actor', title: 'Antiga' }] };
+  const oldJourney = { schemaVersion: 'fixture', journeyId: 'oldJourney' };
+  const ontologyIndex = { schemaVersion: 'fixture', entities: [] };
+  const plain = { schemaVersion: 'fixture' };
+  const values: Array<[Ns5TobeArtifactPath, object]> = [
+    ['module.defs.ts', moduleArt],
+    ['journeys/index.defs.ts', oldIndex],
+    ['ontology/index.defs.ts', ontologyIndex],
+    ['rules.defs.ts', plain],
+    ['workflows.defs.ts', plain],
+    ['access.defs.ts', plain],
+    ['integration.defs.ts', plain],
+  ];
+  const sources = values.map(([path, value]) => ({ path, source: defs(value) }));
+  const oldSource = defs(oldJourney);
+  for (const item of sources) add(originalL4FileInfo(project, moduleName, 'base1', item.path), item.source);
+  add(originalL4FileInfo(project, moduleName, 'base1', 'journeys/oldJourney.defs.ts'), oldSource);
+  const manifestFiles = Object.fromEntries(sources.map(item => [item.path, sha(item.source)]));
+  manifestFiles['journeys/oldJourney.defs.ts'] = sha(oldSource);
+  const schemas = Object.fromEntries(values.map(([path, value]) => [path, (value as { schemaVersion: string }).schemaVersion]));
+  schemas['journeys/oldJourney.defs.ts'] = 'fixture';
+  const json = (folder: string, shortName: string, value: unknown) => add(
+    { project, level: 4, folder: `${moduleName}/${folder}`, shortName, extension: '.json' },
+    JSON.stringify(value),
+  );
+  json('pipeline/releases', 'index', { releases: [{ baseId: 'base1' }] });
+  json('pipeline/releases/base1', 'manifest', {
+    schemaVersion: L4_REVISION_SCHEMA, project, moduleName, baseId: 'base1', files: manifestFiles, schemas,
+  });
+  const change = {
+    schemaVersion: L4_REVISION_SCHEMA, project, moduleName, changeId: 'change1', baseId: 'base1',
+    activeRevisionId: 'rev1', requestRevision: 1, resultRevisionId: null,
+    sourcePrompt: 'original', updatedAt: '2026-10-07T00:00:00.000Z',
+  };
+  json('pipeline/changes', 'active', { changeId: change.changeId });
+  json('pipeline/changes/change1', 'change', change);
+  json('pipeline/changes/change1/requests', 'request-1', { request: 'pedido' });
+  for (const item of sources) add(tobeArtifactFileInfo(project, moduleName, item.path, 'tobe'), item.source);
+  add(tobeArtifactFileInfo(project, moduleName, 'journeys/oldJourney.defs.ts', 'tobe'), oldSource);
+  add(tobeArtifactFileInfo(project, moduleName, 'journeys/oldJourney.defs.ts', 'asis'), oldSource);
+  const canonical = `${project}:4:${moduleName}/journeys:oldJourney.defs.ts`;
+  const edited = `${project}:4:${moduleName}/tobe/plan/journeys:oldJourney.defs.ts`;
+  const payload = {
+    moduleName, project, request: 'Remove a jornada antiga.',
+    triage: {
+      valid: true, reason: null, clarification: null, artifacts: ['journeys'], targets: ['oldJourney'],
+      intent: 'Remove a jornada.', mechanical: [], mechanicalOnly: false,
+    },
+    artifacts: {
+      module: moduleArt, journeyIndex: emptyIndex, journeys: [],
+      ontologyIndex, entities: [], rules: plain, workflows: plain, access: plain, integration: plain,
+    },
+    applied: [], issues: [], allowWrite: true, modelCalls: 1,
+  } as unknown as NrpWritePayload;
+  return {
+    contents, canonical, edited, oldSource, payload,
+    restore: () => { setModuleRoot(moduleName, null); (globalThis as any).mls = previous; },
+  };
+}
+
+void test('p4_81 s4b: a request that drops a journey deletes it in the edited version, seals removed, and Apply deletes the canonical', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    const written = await persistNrp(fixture.payload);
+    assert.equal(written.reason, null);
+    assert.equal(written.fileStates.some(item => item.path === 'journeys/oldJourney.defs.ts' && item.state === 'removed'), true);
+    assert.equal(fixture.contents.has(fixture.edited), false);
+    assert.equal(fixture.contents.get(fixture.canonical), fixture.oldSource);
+    const sealed = await sealL4Revision(project, moduleName, 'rev1');
+    assert.equal(sealed.fileStates?.['journeys/oldJourney.defs.ts'], 'removed');
+    await sealModuleLayers(project, moduleName, 'base1');
+    await promoteL4Revision(project, moduleName, 'change1', sealed.revisionId);
+    assert.equal(fixture.contents.has(fixture.canonical), false);
+  } finally { fixture.restore(); }
+});
+
+void test('p4_81 s4b: a failed delete writes nothing', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    (globalThis as any).mls.stor.localStor.deleteFile = async () => { throw new Error('disk full'); };
+    const indexKey = `${project}:4:${moduleName}/tobe/plan/journeys:index.defs.ts`;
+    const indexBefore = fixture.contents.get(indexKey);
+    const written = await persistNrp(fixture.payload);
+    assert.match(written.reason || '', /Could not delete journeys\/oldJourney\.defs\.ts/);
+    assert.deepEqual(written.files, []);
+    assert.equal(fixture.contents.get(fixture.edited), fixture.oldSource);
+    assert.equal(fixture.contents.get(fixture.canonical), fixture.oldSource);
+    assert.equal(fixture.contents.get(indexKey), indexBefore);
+  } finally { fixture.restore(); }
 });
 
 function changedSpan(before: string, after: string): string[] {

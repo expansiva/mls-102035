@@ -20,6 +20,8 @@ import {
   journeyIndexFile,
   ontologyEntityFile,
   ontologyIndexFile,
+  fileExists,
+  indexedFile,
   pipelineJsonFileForProject,
   readSourceText,
   rulesFile,
@@ -130,7 +132,7 @@ export async function beforeNrpWriteStep(
   }
 }
 
-async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; fileStates: NrpFileState[]; reason: string | null }> {
+export async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; fileStates: NrpFileState[]; reason: string | null }> {
   setModuleRoot(payload.moduleName, `${payload.moduleName}/${NRP_CANDIDATE_REL}`);
   const written: string[] = [];
   const moduleName = payload.moduleName;
@@ -189,6 +191,8 @@ async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; 
     if (mismatch) return { files: [], fileStates: [], reason: `${label}: ${mismatch}` };
     pending.push({ info: job.info, text, label, existed: false });
   }
+  const deleteError = await deleteDroppedTobeFiles(moduleName, removed);
+  if (deleteError) return { files: [], fileStates: [], reason: deleteError };
   for (const job of pending) {
     await writeSourceText(job.info, job.text);
     written.push(job.label);
@@ -200,6 +204,52 @@ async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; 
   written.push(await writeJson(reportFile, nrpReport(payload, { written: true, reason: null, files: written })));
   const fileStates = nrpFileStates(pending.map(job => ({ path: candidateRelative(job.info, moduleName), existed: job.existed })), removed);
   return { files: written, fileStates, reason: null };
+}
+
+const DROPPED_TOBE_FILE = /^(journeys|ontology)\/([A-Za-z][A-Za-z0-9]*)\.defs\.ts$/u;
+
+/** Deletes journey or entity files the new index dropped. Only under `l4/<mod>/tobe/plan`. */
+async function deleteDroppedTobeFiles(moduleName: string, paths: readonly string[]): Promise<string | null> {
+  const prefix = `${moduleName}/${NRP_CANDIDATE_REL}/`;
+  const planned: Array<{ info: Ns5FileInfo; indexed: mls.stor.IFileInfo; text: string; path: string }> = [];
+  for (const path of paths) {
+    const match = DROPPED_TOBE_FILE.exec(path);
+    if (!match) return `Could not delete ${path}: not a journey or entity in the edited version.`;
+    const info = match[1] === 'journeys' ? journeyFile(moduleName, match[2]) : ontologyEntityFile(moduleName, match[2]);
+    if (!info.folder.startsWith(prefix)) return `Could not delete ${path}: outside the edited version.`;
+    const indexed = indexedFile(info);
+    if (!indexed || indexed.status === 'deleted') return `Could not delete ${path}: the file is not in the edited version.`;
+    let text = '';
+    try { text = await readSourceText(info); }
+    catch (error) {
+      console.error('[agentNewReleasePrompt] write50 delete read failed', error);
+      return `Could not delete ${path}: the file could not be read.`;
+    }
+    if (!text) return `Could not delete ${path}: the file is empty.`;
+    planned.push({ info, indexed, text, path });
+  }
+  if (!planned.length) return null;
+  const { deleteFile } = await import('/_102027_/l2/libStor.js');
+  const gone: typeof planned = [];
+  for (const job of planned) {
+    try { await deleteFile(job.indexed); }
+    catch (error) {
+      console.error('[agentNewReleasePrompt] write50 delete failed', error);
+      await restoreDroppedTobeFiles(gone);
+      const detail = error instanceof Error ? error.message : String(error);
+      return `Could not delete ${job.path}: ${detail}`;
+    }
+    if (fileExists(job.info)) {
+      await restoreDroppedTobeFiles(gone);
+      return `Could not delete ${job.path}: the file is still there.`;
+    }
+    gone.push(job);
+  }
+  return null;
+}
+
+async function restoreDroppedTobeFiles(jobs: ReadonlyArray<{ info: Ns5FileInfo; text: string }>): Promise<void> {
+  for (const job of jobs) await writeSourceText(job.info, job.text);
 }
 
 function candidateRelative(info: Ns5FileInfo, moduleName: string): string {
