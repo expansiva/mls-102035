@@ -41,6 +41,17 @@ export const MENU_ORGANISM_KINDS = [
 export type MenuOrganismKind = typeof MENU_ORGANISM_KINDS[number];
 export const MENU_ACTIONS = ['new', 'change', 'keep', 'remove'] as const;
 export type MenuAction = typeof MENU_ACTIONS[number];
+export const MENU_PLACEMENTS = ['screenAction', 'menuItem', 'listWithAdd'] as const;
+export type MenuPlacementKind = typeof MENU_PLACEMENTS[number];
+
+/** One place for a journey × actor pair. Read by finalize70. */
+export interface MenuPlacement {
+  journeyId: string;
+  actorRef: string;
+  placement: MenuPlacementKind;
+  pageId: string;
+  reason: string;
+}
 
 export interface MenuOrganism {
   kind: MenuOrganismKind;
@@ -89,6 +100,8 @@ export interface PoolMenuMeta {
   processes: Record<string, string[]>;
   /** Kept record (entityId from recordsKept) → pages that maintain it. Read by needs30. */
   records: Record<string, string[]>;
+  /** One place per journey × actor. Optional so a menu written before this field still parses. Read by finalize70. */
+  placements?: MenuPlacement[];
 }
 
 export interface PoolMenuFileMeta extends PoolMenuMeta {
