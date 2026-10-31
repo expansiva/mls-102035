@@ -11,6 +11,7 @@ import {
 import {
   REVIEW20_SCHEMA_VERSION,
   stageReview20,
+  stageReview20Applied,
 } from '/_102035_/l2/agentReviewSolution/steps/review20/review20.js';
 import type { Reconcile30Result } from '/_102035_/l2/agentReviewSolution/steps/reconcile30/reconcile30.js';
 import {
@@ -171,6 +172,25 @@ test('reconcile30 stores a bounded ready draft privately and schedules validate4
   const validate = (intents[1] as mls.msg.AgentIntentAddStep).step as mls.msg.AIAgentStep;
   assert.equal(validate.planning?.planId, 'validate40');
   assert.deepEqual(validate.planning?.dependsOn, ['reconcile30-private-result']);
+}));
+
+test('reconcile30 accepts an added journey already sealed in the candidate inventory', async () => withProject(async () => {
+  const path = 'journeys/newJourney.defs.ts';
+  const frozen: ReviewEntrySnapshot = {
+    ...snapshot, candidateHashes: { ...snapshot.candidateHashes, [path]: 'sha256:new' }, changedPaths: [path],
+  };
+  const proposal = { ...inventories.candidate, [path]: { schemaVersion: 'v1', journeyId: 'newJourney' } };
+  const staged = stageReview20Applied(frozen, inventories.persistedRequest, inventories.base, proposal);
+  const task = await taskState(frozen);
+  const state: Review20PrivateState = {
+    ...await reviewState(), ...staged, candidateHashes: { ...frozen.candidateHashes },
+    validationContextHash: task.validationContextHash,
+    correctionState: { requestKey: task.requestKey, correctionAttemptsUsed: task.correctionAttemptsUsed },
+  };
+  const intents = await beforeReconcile30Step(await context(state, frozen), parent(), step(), 36,
+    runtime(await result('ready', staged.proposal)));
+  assert.deepEqual(intents.map(intent => intent.type), ['add-step', 'add-step', 'update-status']);
+  assert.equal(parseReconcile30PrivateState(((intents[0] as mls.msg.AgentIntentAddStep).step as mls.msg.AIResultStep).result).draft[path] !== undefined, true);
 }));
 
 test('reconcile30 refuses stale snapshots and tampered private review results', async () => withProject(async () => {
