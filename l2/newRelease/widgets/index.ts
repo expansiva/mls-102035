@@ -72,6 +72,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private requestResult = '';
   @state() private requestFileStates: NewReleaseRequestFileState[] = [];
   private requestResultModule = '';
+  private requestFeedbackTab: NewReleaseTab | null = null;
   @state() private requestNeedsRetry = false;
 
   @state() private presentation: 'graph' | 'text' | 'prompt' = 'graph';
@@ -186,6 +187,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.requestNeedsRetry = false;
       this.requestResultModule = resultModule;
     }
+    const retryText = this.requestNeedsRetry ? this.requestText : '';
     this.requestDrafts.remember(this.requestKey, this.requestText, this.savedRequest);
     this.requestKey = null;
     if (this.validationTimer) {
@@ -232,7 +234,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestKey = context.version === 'asis' || context.version === 'tobe'
       ? ChangeRequestDrafts.key(context.project, context.moduleName, request?.changeId ?? data.changeId)
       : null;
-    this.requestText = this.requestKey ? this.requestDrafts.restore(this.requestKey, this.savedRequest) ?? this.savedRequest : '';
+    this.requestText = this.requestKey ? this.requestDrafts.restore(this.requestKey, this.savedRequest) ?? retryText : '';
     this.loading = false;
     if (this.pendingEdit && context.version === 'tobe') void this.resumePendingEdit(context, token);
   }
@@ -279,7 +281,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private async activateTab(tab: NewReleaseTab, focus = false) {
     if (tab !== this.activeTab && !this.canLeaveTab()) return;
-    if (tab !== this.activeTab) this.pendingEdit = undefined;
+    if (tab !== this.activeTab) {
+      this.pendingEdit = undefined;
+      this.requestResult = '';
+      this.requestFileStates = [];
+      this.requestError = '';
+      this.requestFeedbackTab = null;
+    }
     const previous = this.activeEditor();
     if (previous && tab !== this.activeTab) { previous.mode = 'view'; previous.dirty = false; }
     this.activeTab = tab;
@@ -532,11 +540,16 @@ export class NewReleaseIndex102035 extends StateLitElement {
     });
   };
 
-  private async saveRequest() {
-    if (this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)) return;
-    const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+  private canSubmitRequest(): boolean {
     const text = this.requestText.trim();
-    if (!text) { this.requestError = this.t('request.empty'); return; }
+    return !!text && (text !== this.savedRequest.trim() || this.requestNeedsRetry);
+  }
+
+  private async saveRequest() {
+    if (this.requestBusy || this.changing || !this.canSubmitRequest()) return;
+    const context = { project: this.project, moduleName: this.moduleName, version: this.version };
+    this.requestFeedbackTab = this.activeTab;
+    const text = this.requestText.trim();
     const expectedChange = this.expectedChangeId;
     const expectedRevision = this.expectedRevisionId;
     this.requestBusy = true;
@@ -567,6 +580,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         this.expectedRevisionId = revision.revisionId;
         this.revisionByModule.set(`${context.project}/${context.moduleName}`, revision.revisionId);
       }
+      if (!summary.retry) this.requestText = '';
       this.requestDrafts.forget(this.requestKey);
       this.version = 'tobe';
       window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
@@ -932,19 +946,21 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <button type="button" ?disabled=${this.changing} @click=${() => void this.reuseHistory()}>${this.t('request.reuseHistory')}</button>
       </section>
     `;
+    const showFeedback = this.requestFeedbackTab === this.activeTab;
+    const unsaved = (!this.savedRequest && !this.requestText.trim()) || this.canSubmitRequest();
     return html`
-      <details class="nr-index__request" ?open=${!this.savedRequest || !!this.requestResult || !!this.requestError}>
-        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : this.requestText === this.savedRequest ? this.t('request.saved') : this.t('request.unsaved')}</span></summary>
+      <details class="nr-index__request" ?open=${!this.savedRequest || !!(showFeedback && (this.requestResult || this.requestError))}>
+        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : unsaved ? this.t('request.unsaved') : this.t('request.saved')}</span></summary>
         <div class="nr-index__request-body">
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
-          ${this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
-          ${this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
+          ${showFeedback && this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
+          ${showFeedback && this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
           ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}
-          ${this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
+          ${showFeedback && this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
           <div class="nr-index__request-actions">
-            <button class="nr-request-action" type="button" ?disabled=${this.requestBusy || this.changing || (this.requestText === this.savedRequest && !this.requestNeedsRetry)} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
+            <button class="nr-request-action" type="button" ?disabled=${this.requestBusy || this.changing || !this.canSubmitRequest()} @click=${() => void this.saveRequest()}>${this.t('request.save')}</button>
           </div>
         </div>
       </details>

@@ -206,9 +206,12 @@ test('review panels put effort before apply and publish, with execution and logs
   assert.doesNotMatch(render, /renderImplementation\('bottom'\)/);
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
   assert.ok(index.lastIndexOf('this.renderTabContent()') < index.lastIndexOf('this.renderValidationLog()'));
-  assert.match(source, /<section class="nr-review__panel nr-review__effort-panel"><details>/);
-  assert.match(source, /private renderMenu\(view: ReviewView\) \{\s*if \(view.kind === 'pending'\)/);
-  assert.match(source, /\$\{resultVisible \? html`[^`]*\$\{this.renderMenu\(view\)\}/);
+  const effortPanel = source.slice(source.indexOf('  private renderEffortPanel('), source.indexOf('  private renderPublish()'));
+  assert.match(effortPanel, /<section class="nr-review__panel nr-review__effort-panel"><details>/);
+  assert.match(effortPanel, /this.renderEffort\(changeEffort\)/);
+  assert.match(effortPanel, /this.renderChangeEffort\(changeEffort\)/);
+  assert.match(effortPanel, /this.renderBackend\(view\)/);
+  assert.doesNotMatch(effortPanel, /this.renderMenu\(view\)/);
   assert.match(render, /const calculate = \[\{ placement: 'top'/);
   assert.match(render, /const apply = \[\{ placement: 'top'/);
 });

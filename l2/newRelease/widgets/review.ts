@@ -1480,7 +1480,7 @@ export class NewReleaseReview102035 extends StateLitElement {
             : changeEffort.kind === 'ready' ? this.t(`review.effort.status.${changeEffort.status}`) : this.t('review.backend.notCalculated')}</span>
       </summary>
       ${!this.hasRelease ? html`<p class="nr-review__panel-note">${this.t('review.panels.fullGenerationBody')}</p>` : nothing}
-      ${resultVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderMenu(view)}${this.renderBackend(view)}` : nothing}
+      ${resultVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderBackend(view)}` : nothing}
     </details>${calculate.map(block => this.renderPrimaryAction(block))}</section>`;
   }
 

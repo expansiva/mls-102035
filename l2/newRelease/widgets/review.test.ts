@@ -288,16 +288,17 @@ test('mr41 s3c reviewer seal alone remains initial without maintenance effort', 
   assert.equal(review.actionPresentation(review.view(), true).descriptionKey, 'review.panels.fullGenerationBody');
 });
 
-test('review effort hides missing pool coverage but keeps invalid pool warning', () => {
+test('review effort keeps coverage and backend without the actor menu', () => {
   const review = widget();
   review.hasRelease = true;
   review.renderChangeEffort = () => '';
-  review.renderMenu = () => '';
-  review.renderBackend = () => '';
+  review.renderMenu = () => { throw new Error('actor menu must not render in review'); };
+  review.renderBackend = () => 'backend remains';
   const ready = { kind: 'ready', status: 'simple', items: [], merged: null, untouched: null, errorCode: '' };
   review.effortRead = { status: 'missing', path: 'pool' };
   assert.equal(templateText(review.renderEffort(ready)), '');
   assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.effort\.status\.simple/);
+  assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /backend remains/);
   review.effortRead = { status: 'invalid', path: 'pool' };
   assert.match(templateText(review.renderEffort(ready)), /review\.backend\.effortInvalid/);
   assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.backend\.effortInvalid/);
