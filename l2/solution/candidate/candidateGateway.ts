@@ -1,6 +1,9 @@
 /// <mls fileReference="_102035_/l2/solution/candidate/candidateGateway.ts" enhancement="_blank" />
 
-/** Wire contract of the authenticated candidate endpoint. No local-store fallback. */
+import { fileExists, readJson, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
+import { L4SealedCandidateError, readSealedL4Candidate, withModuleWriter } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+
+/** Candidate pointer and marked results live in the frontend stor. The snapshot is recomputed from the sealed revision. */
 export interface CandidatePointer {
   changeId: string;
   revisionId: string;
@@ -106,21 +109,27 @@ export class CandidateGatewayError extends Error {
   }
 }
 
+/** Present so existing call sites still typecheck. The gateway does not perform HTTP. */
 export interface CandidateGatewayOptions {
-  /** Explicit test/Studio override. Production host calls use the restricted `mls.candidateIO`. */
   endpoint?: string;
   fetchImpl?: typeof fetch;
 }
 
-type CandidateCapabilityResponse = Record<string, unknown> & { statusCode: number };
-
-interface CandidateIoCapability {
-  read(input: CandidateScope): Promise<CandidateCapabilityResponse>;
-  publish(input: CandidatePublishInput): Promise<CandidateCapabilityResponse>;
-  markResult(input: CandidateMarkResultInput): Promise<CandidateCapabilityResponse>;
+interface StoredResult {
+  resultId: string;
+  resultHash: string;
+  expectedRevisionId: string;
+  expectedSnapshotHash: string;
+  expectedRevisionNumber: number;
+  manifest: CandidateResultManifest;
+  outputSnapshot: {
+    hash: string;
+    baseId: string;
+    requestRevision: number;
+    request: string;
+    files: Array<{ path: string; sha256: string; bytes: number }>;
+  };
 }
-
-const DEFAULT_ENDPOINT = '/exec/candidate';
 const TOKEN = /^[A-Za-z0-9_-]{1,100}$/u;
 const TASK_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}$/u;
 const MODULE = /^[a-z][A-Za-z0-9]{0,59}$/u;
@@ -165,13 +174,6 @@ function frozenClone<T>(value: T): T {
   return deepFreeze(structuredClone(value));
 }
 
-function fixedOptions(options: CandidateGatewayOptions): CandidateGatewayOptions {
-  return Object.freeze({
-    ...(options.endpoint !== undefined ? { endpoint: options.endpoint } : {}),
-    ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
-  });
-}
-
 async function sha256(bytes: Uint8Array): Promise<string> {
   const input = new Uint8Array(bytes.byteLength);
   input.set(bytes);
@@ -202,45 +204,6 @@ function encodeBase64(bytes: Uint8Array): string {
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
-}
-
-function injectedCandidateIo(): CandidateIoCapability | null {
-  const host = record((globalThis as typeof globalThis & { mls?: unknown }).mls);
-  if (!host || host.candidateIO === undefined) return null;
-  const capability = record(host.candidateIO);
-  if (!capability || typeof capability.read !== 'function' || typeof capability.publish !== 'function'
-    || typeof capability.markResult !== 'function') {
-    throw new CandidateGatewayError(503, 'candidate.transport_unavailable');
-  }
-  return capability as unknown as CandidateIoCapability;
-}
-
-async function postThroughCandidateIo(
-  body: Record<string, unknown>,
-  capability: CandidateIoCapability,
-): Promise<{ httpStatus: number; payload: Record<string, unknown> }> {
-  const { action, ...input } = frozenClone(body);
-  let raw: CandidateCapabilityResponse;
-  try {
-    if (action === 'candidateRead') raw = await capability.read(input as unknown as CandidateScope);
-    else if (action === 'candidatePublish') raw = await capability.publish(input as unknown as CandidatePublishInput);
-    else if (action === 'candidateMarkResult') raw = await capability.markResult(input as unknown as CandidateMarkResultInput);
-    else throw new CandidateGatewayError(400, 'candidate.invalid_action');
-  } catch (error) {
-    if (error instanceof CandidateGatewayError) throw error;
-    const failure = record(error);
-    if (failure && Number.isInteger(failure.statusCode) && Number(failure.statusCode) >= 400
-      && Number(failure.statusCode) <= 599 && typeof failure.code === 'string'
-      && failure.code.startsWith('candidate.')) {
-      throw new CandidateGatewayError(Number(failure.statusCode), failure.code);
-    }
-    throw new CandidateGatewayError(503, 'candidate.transport_unavailable');
-  }
-  const payload = record(frozenClone(raw));
-  if (!payload || !Number.isInteger(payload.statusCode)) {
-    throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  }
-  return { httpStatus: Number(payload.statusCode), payload };
 }
 
 function parsePointer(value: unknown): CandidatePointer | null {
@@ -512,61 +475,163 @@ export async function buildCandidateSnapshot(input: {
   return snapshot;
 }
 
-async function post(
-  body: Record<string, unknown>,
-  options: CandidateGatewayOptions,
-): Promise<{ httpStatus: number; payload: Record<string, unknown> }> {
-  if (options.endpoint === undefined && options.fetchImpl === undefined) {
-    const capability = injectedCandidateIo();
-    if (capability) return postThroughCandidateIo(body, capability);
-  }
-  let response: Response;
-  try {
-    response = await (options.fetchImpl ?? fetch)(options.endpoint ?? DEFAULT_ENDPOINT, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', cache: 'no-store', redirect: 'error', body: JSON.stringify(body),
-    });
-  } catch {
-    throw new CandidateGatewayError(503, 'candidate.transport_unavailable');
-  }
-  if (response.status === 401) throw new CandidateGatewayError(401, 'candidate.unauthorized');
-  if (response.status === 403) throw new CandidateGatewayError(403, 'candidate.forbidden');
-  if (response.status >= 500) throw new CandidateGatewayError(503, 'candidate.storage_unavailable');
-  let payload: Record<string, unknown> | null;
-  try { payload = record(await response.json()); }
-  catch { payload = null; }
-  if (!payload || payload.statusCode !== response.status) {
-    throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  }
-  if (response.status !== 200 && response.status !== 409) {
-    throw new CandidateGatewayError(response.status, typeof payload.msg === 'string' ? payload.msg : 'candidate.request_failed');
-  }
-  return { httpStatus: response.status, payload };
+function pointerInfo(scope: CandidateScope): Ns5FileInfo {
+  return { project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate`, shortName: 'pointer', extension: '.json' };
 }
 
-export async function candidateRead(scope: CandidateScope, options: CandidateGatewayOptions = {}): Promise<CandidateReadResult> {
-  requireScope(scope);
-  const { httpStatus, payload } = await post({
-    action: 'candidateRead', project: scope.project, moduleName: scope.moduleName,
-  }, options);
-  if (httpStatus !== 200 || payload.status !== 'read') throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  const pointer = parsePointer(payload.pointer);
-  if (!pointer) {
-    if (payload.snapshot !== undefined && payload.snapshot !== null) throw new CandidateGatewayError(502, 'candidate.invalid_response');
-    return { status: 'read', pointer: null, snapshot: null };
+function resultInfo(scope: CandidateScope, resultId: string): Ns5FileInfo {
+  requireToken(resultId);
+  return { project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate/results`, shortName: resultId, extension: '.json' };
+}
+
+function asStorageError(error: unknown): never {
+  if (error instanceof CandidateGatewayError) throw error;
+  if (error instanceof L4SealedCandidateError) throw new CandidateGatewayError(502, error.code);
+  throw new CandidateGatewayError(503, 'candidate.storage_unavailable');
+}
+
+async function loadPointer(scope: CandidateScope): Promise<CandidatePointer | null> {
+  const info = pointerInfo(scope);
+  if (!fileExists(info)) return null;
+  let raw: unknown;
+  try { raw = await readJson<unknown>(info); }
+  catch (error) { asStorageError(error); }
+  if (raw === null) throw new CandidateGatewayError(502, 'candidate.invalid_pointer');
+  return parsePointer(raw);
+}
+
+async function savePointer(scope: CandidateScope, pointer: CandidatePointer): Promise<void> {
+  try { await writeJson(pointerInfo(scope), pointer); }
+  catch (error) { asStorageError(error); }
+}
+
+function outputRecord(snapshot: CandidateSnapshot): StoredResult['outputSnapshot'] {
+  return {
+    hash: snapshot.hash,
+    baseId: snapshot.baseId,
+    requestRevision: snapshot.requestRevision,
+    request: snapshot.request,
+    files: snapshot.files.map(file => ({
+      path: file.path,
+      sha256: file.sha256,
+      bytes: decodeBase64(file.contentBase64).length,
+    })).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
+  };
+}
+
+async function loadStoredResult(scope: CandidateScope, resultId: string): Promise<StoredResult | null> {
+  const info = resultInfo(scope, resultId);
+  if (!fileExists(info)) return null;
+  let raw: unknown;
+  try { raw = await readJson<unknown>(info); }
+  catch (error) { asStorageError(error); }
+  const value = record(raw);
+  if (!value || typeof value.resultId !== 'string' || typeof value.resultHash !== 'string') {
+    throw new CandidateGatewayError(502, 'candidate.invalid_result');
   }
-  const snapshot = await verifyCandidateSnapshot(payload.snapshot);
+  return value as unknown as StoredResult;
+}
+
+async function saveStoredResult(scope: CandidateScope, stored: StoredResult): Promise<void> {
+  try { await writeJson(resultInfo(scope, stored.resultId), stored); }
+  catch (error) { asStorageError(error); }
+}
+
+async function snapshotFromSeal(scope: CandidateScope, changeId: string, revisionId: string): Promise<CandidateSnapshot> {
+  let sealed: Awaited<ReturnType<typeof readSealedL4Candidate>>;
+  try {
+    sealed = await readSealedL4Candidate(scope.project, scope.moduleName, changeId, revisionId);
+  } catch (error) { asStorageError(error); }
+  if (!sealed) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot');
+  try {
+    return await buildCandidateSnapshot({
+      baseId: sealed.manifest.baseId,
+      requestRevision: sealed.manifest.requestRevision,
+      request: sealed.request,
+      sources: sealed.sources,
+    });
+  } catch (error) {
+    if (error instanceof CandidateGatewayError && error.code === 'candidate.invalid_snapshot_hash') throw error;
+    if (error instanceof CandidateGatewayError) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot');
+    asStorageError(error);
+  }
+}
+
+function sameStoredResult(left: StoredResult, right: StoredResult): boolean {
+  return left.resultId === right.resultId && left.resultHash === right.resultHash
+    && left.expectedRevisionId === right.expectedRevisionId
+    && left.expectedSnapshotHash === right.expectedSnapshotHash
+    && left.expectedRevisionNumber === right.expectedRevisionNumber
+    && JSON.stringify(left.manifest) === JSON.stringify(right.manifest)
+    && JSON.stringify(left.outputSnapshot) === JSON.stringify(right.outputSnapshot);
+}
+
+async function boundResult(scope: CandidateScope, pointer: CandidatePointer): Promise<CandidateResultRef> {
+  const resultId = pointer.resultId ?? pointer.source?.resultId;
+  if (!resultId) throw new CandidateGatewayError(502, 'candidate.invalid_result');
+  const stored = await loadStoredResult(scope, resultId);
+  if (!stored) throw new CandidateGatewayError(502, 'candidate.invalid_result');
+  const viaMarked = !!pointer.resultId;
+  return verifyCandidateResult({
+    resultRevisionId: viaMarked ? pointer.resultRevisionId : pointer.source?.revisionId,
+    resultSnapshotHash: viaMarked ? pointer.resultSnapshotHash : pointer.source?.snapshotHash,
+    resultRevisionNumber: viaMarked ? pointer.resultRevisionNumber : pointer.source?.revisionNumber,
+    resultId: viaMarked ? pointer.resultId : pointer.source?.resultId,
+    resultHash: viaMarked ? pointer.resultHash : pointer.source?.resultHash,
+    manifest: stored.manifest,
+  }, pointer);
+}
+
+async function assertPermit(
+  scope: CandidateScope,
+  current: CandidatePointer,
+  permit: CandidatePublishPermit,
+  snapshot: CandidateSnapshot,
+): Promise<void> {
+  if (current.revisionId !== permit.inputRevisionId || current.snapshotHash !== permit.inputSnapshotHash
+    || current.revisionNumber !== permit.inputRevisionNumber || current.resultId !== permit.resultId
+    || current.resultHash !== permit.resultHash || current.resultRevisionId !== permit.inputRevisionId
+    || current.resultSnapshotHash !== permit.inputSnapshotHash
+    || current.resultRevisionNumber !== permit.inputRevisionNumber) {
+    throw new CandidateGatewayError(409, 'candidate.result_permit_stale');
+  }
+  const stored = await loadStoredResult(scope, permit.resultId);
+  if (!stored || stored.resultHash !== permit.resultHash || stored.manifest.status !== 'completed'
+    || stored.manifest.outputSnapshotHash !== permit.outputSnapshotHash
+    || stored.outputSnapshot.hash !== permit.outputSnapshotHash
+    || snapshot.hash !== stored.outputSnapshot.hash
+    || snapshot.baseId !== stored.outputSnapshot.baseId
+    || snapshot.requestRevision !== stored.outputSnapshot.requestRevision
+    || snapshot.request !== stored.outputSnapshot.request
+    || JSON.stringify(outputRecord(snapshot).files) !== JSON.stringify(stored.outputSnapshot.files)) {
+    throw new CandidateGatewayError(409, 'candidate.result_permit_mismatch');
+  }
+}
+
+function markedPermit(fixed: CandidateMarkResultInput, outputSnapshotHash: string): CandidatePublishPermit {
+  return {
+    resultId: fixed.resultId, resultHash: fixed.resultHash,
+    inputRevisionId: fixed.expectedRevisionId, inputSnapshotHash: fixed.expectedSnapshotHash,
+    inputRevisionNumber: fixed.expectedRevisionNumber, outputSnapshotHash,
+  };
+}
+
+export async function candidateRead(scope: CandidateScope, _options: CandidateGatewayOptions = {}): Promise<CandidateReadResult> {
+  requireScope(scope);
+  let pointer: CandidatePointer | null;
+  try { pointer = await loadPointer(scope); }
+  catch (error) { asStorageError(error); }
+  if (!pointer) return { status: 'read', pointer: null, snapshot: null };
+  const snapshot = await snapshotFromSeal(scope, pointer.changeId, pointer.revisionId);
   if (pointer.snapshotHash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot_hash');
   if (pointer.resultId || pointer.source) {
-    return { status: 'read', pointer, snapshot, result: await verifyCandidateResult(payload.result, pointer) };
+    return { status: 'read', pointer, snapshot, result: await boundResult(scope, pointer) };
   }
-  if (payload.result !== undefined && payload.result !== null) throw new CandidateGatewayError(502, 'candidate.invalid_response');
   return { status: 'read', pointer, snapshot };
 }
 
-export async function candidatePublish(input: CandidatePublishInput, options: CandidateGatewayOptions = {}): Promise<CandidatePublishResult> {
+export async function candidatePublish(input: CandidatePublishInput, _options: CandidateGatewayOptions = {}): Promise<CandidatePublishResult> {
   const fixed = frozenClone(input);
-  const transport = fixedOptions(options);
   requireScope(fixed);
   requireToken(fixed.requestId);
   requireToken(fixed.changeId);
@@ -580,59 +645,99 @@ export async function candidatePublish(input: CandidatePublishInput, options: Ca
   }
   const snapshot = await verifyCandidateSnapshot(fixed.snapshot);
   const permit = normalizePermit(fixed.permit, fixed.expectedRevisionId !== null && !fixed.supersede);
-  if (permit && (permit.inputRevisionId !== fixed.expectedRevisionId
-    || permit.outputSnapshotHash !== snapshot.hash)) {
+  if (permit && (permit.inputRevisionId !== fixed.expectedRevisionId || permit.outputSnapshotHash !== snapshot.hash)) {
     throw new CandidateGatewayError(409, 'candidate.result_permit_mismatch');
   }
-  const { httpStatus, payload } = await post({
-    action: 'candidatePublish', project: fixed.project, moduleName: fixed.moduleName,
-    expectedRevisionId: fixed.expectedRevisionId, requestId: fixed.requestId,
-    changeId: fixed.changeId, revisionId: fixed.revisionId, snapshot,
-    ...(permit ? { permit } : {}), ...(fixed.supersede ? { supersede: fixed.supersede } : {}),
-  }, transport);
-  if (httpStatus === 409 && payload.status === 'conflict') {
-    return { status: 'conflict', pointer: parsePointer(payload.pointer) };
-  }
-  if (httpStatus === 409 && payload.status === 'error' && payload.msg === 'candidate.supersede_mismatch') {
-    throw new CandidateGatewayError(409, 'candidate.supersede_mismatch');
-  }
-  if (httpStatus !== 200 || payload.status !== 'committed') throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  const pointer = parsePointer(payload.pointer);
-  if (!pointer || pointer.changeId !== fixed.changeId || pointer.revisionId !== fixed.revisionId
-    || pointer.snapshotHash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  return { status: 'committed', pointer };
+  try {
+    return await withModuleWriter(fixed.project, fixed.moduleName, async () => {
+      const current = await loadPointer(fixed);
+      if ((current?.revisionId ?? null) !== fixed.expectedRevisionId) {
+        return { status: 'conflict', pointer: current };
+      }
+      const sealed = await snapshotFromSeal(fixed, fixed.changeId, fixed.revisionId);
+      if (sealed.hash !== snapshot.hash) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot_hash');
+      if (fixed.expectedRevisionId !== null) {
+        if (fixed.supersede) {
+          if (!current || fixed.revisionId === current.revisionId || fixed.supersede.changeId !== current.changeId
+            || fixed.supersede.revisionId !== current.revisionId || current.revisionId !== fixed.expectedRevisionId) {
+            throw new CandidateGatewayError(409, 'candidate.supersede_mismatch');
+          }
+        } else if (!current || !permit) {
+          throw new CandidateGatewayError(409, 'candidate.result_permit_required');
+        } else {
+          await assertPermit(fixed, current, permit, sealed);
+        }
+      }
+      const pointer: CandidatePointer = {
+        changeId: fixed.changeId,
+        revisionId: fixed.revisionId,
+        snapshotHash: snapshot.hash,
+        revisionNumber: (current?.revisionNumber ?? 0) + 1,
+        ...(permit ? { source: {
+          resultId: permit.resultId, resultHash: permit.resultHash, revisionId: permit.inputRevisionId,
+          snapshotHash: permit.inputSnapshotHash, revisionNumber: permit.inputRevisionNumber,
+        } } : {}),
+        ...(fixed.supersede && current ? { supersedes: {
+          changeId: current.changeId, revisionId: current.revisionId, revisionNumber: current.revisionNumber,
+        } } : {}),
+      };
+      await savePointer(fixed, pointer);
+      return { status: 'committed', pointer };
+    });
+  } catch (error) { asStorageError(error); }
 }
 
-export async function candidateMarkResult(input: CandidateMarkResultInput, options: CandidateGatewayOptions = {}): Promise<CandidateMarkResultResult> {
+export async function candidateMarkResult(input: CandidateMarkResultInput, _options: CandidateGatewayOptions = {}): Promise<CandidateMarkResultResult> {
   const fixed = frozenClone(input);
-  const transport = fixedOptions(options);
   const normalized = await buildCandidateResult({ ...fixed, result: fixed.result });
   if (normalized.resultHash !== fixed.resultHash) throw new CandidateGatewayError(400, 'candidate.invalid_result_hash');
-  const { httpStatus, payload } = await post({
-    action: 'candidateMarkResult', project: fixed.project, moduleName: fixed.moduleName,
-    expectedRevisionId: fixed.expectedRevisionId, expectedSnapshotHash: fixed.expectedSnapshotHash,
-    expectedRevisionNumber: fixed.expectedRevisionNumber, resultId: fixed.resultId,
-    resultHash: fixed.resultHash, result: normalized.result, outputSnapshot: normalized.outputSnapshot,
-  }, transport);
-  if (httpStatus === 409 && payload.status === 'conflict') {
-    return { status: 'conflict', pointer: parsePointer(payload.pointer) };
-  }
-  if (httpStatus !== 200 || payload.status !== 'marked') throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  const pointer = parsePointer(payload.pointer);
-  if (!pointer || pointer.revisionId !== fixed.expectedRevisionId || pointer.snapshotHash !== fixed.expectedSnapshotHash
-    || pointer.revisionNumber !== fixed.expectedRevisionNumber || pointer.resultRevisionId !== fixed.expectedRevisionId
-    || pointer.resultSnapshotHash !== fixed.expectedSnapshotHash
-    || pointer.resultRevisionNumber !== fixed.expectedRevisionNumber
-    || pointer.resultId !== fixed.resultId || pointer.resultHash !== fixed.resultHash) {
-    throw new CandidateGatewayError(502, 'candidate.invalid_response');
-  }
-  return {
-    status: 'marked', pointer,
-    permit: {
-      resultId: fixed.resultId, resultHash: fixed.resultHash,
-      inputRevisionId: fixed.expectedRevisionId, inputSnapshotHash: fixed.expectedSnapshotHash,
-      inputRevisionNumber: fixed.expectedRevisionNumber,
-      outputSnapshotHash: normalized.result.outputSnapshotHash,
-    },
+  const stored: StoredResult = {
+    resultId: fixed.resultId,
+    resultHash: fixed.resultHash,
+    expectedRevisionId: fixed.expectedRevisionId,
+    expectedSnapshotHash: fixed.expectedSnapshotHash,
+    expectedRevisionNumber: fixed.expectedRevisionNumber,
+    manifest: normalized.result,
+    outputSnapshot: outputRecord(normalized.outputSnapshot),
   };
+  try {
+    return await withModuleWriter(fixed.project, fixed.moduleName, async () => {
+      const current = await loadPointer(fixed);
+      if (!current || current.revisionId !== fixed.expectedRevisionId || current.snapshotHash !== fixed.expectedSnapshotHash
+        || current.revisionNumber !== fixed.expectedRevisionNumber) {
+        return { status: 'conflict', pointer: current };
+      }
+      const sealed = await snapshotFromSeal(fixed, current.changeId, current.revisionId);
+      if (sealed.hash !== current.snapshotHash) throw new CandidateGatewayError(502, 'candidate.invalid_snapshot_hash');
+      if (normalized.result.status === 'completed') {
+        const paths = (files: Array<{ path: string }>) => files.map(file => file.path).sort();
+        const inputPaths = JSON.stringify(paths(sealed.files));
+        if (inputPaths !== JSON.stringify(paths(normalized.outputSnapshot.files))
+          || inputPaths !== JSON.stringify(paths(normalized.result.artifacts))) {
+          throw new CandidateGatewayError(400, 'candidate.result_artifact_paths_mismatch');
+        }
+      }
+      const prior = await loadStoredResult(fixed, fixed.resultId);
+      if (prior) {
+        if (!sameStoredResult(prior, stored)) throw new CandidateGatewayError(409, 'candidate.result_reused');
+        if (current.resultId === fixed.resultId && current.resultHash === fixed.resultHash
+          && current.resultRevisionId === fixed.expectedRevisionId) {
+          return { status: 'marked', pointer: current, permit: markedPermit(fixed, normalized.result.outputSnapshotHash) };
+        }
+        return { status: 'conflict', pointer: current };
+      }
+      if (current.resultId) return { status: 'conflict', pointer: current };
+      await saveStoredResult(fixed, stored);
+      const pointer: CandidatePointer = {
+        ...current,
+        resultRevisionId: fixed.expectedRevisionId,
+        resultSnapshotHash: fixed.expectedSnapshotHash,
+        resultRevisionNumber: fixed.expectedRevisionNumber,
+        resultId: fixed.resultId,
+        resultHash: fixed.resultHash,
+      };
+      await savePointer(fixed, pointer);
+      return { status: 'marked', pointer, permit: markedPermit(fixed, normalized.result.outputSnapshotHash) };
+    });
+  } catch (error) { asStorageError(error); }
 }

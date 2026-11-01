@@ -1,17 +1,20 @@
 /// <mls fileReference="_102035_/l2/solution/candidate/candidateGateway.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { fileExists, readJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import {
-  buildCandidateSnapshot,
   buildCandidateResult,
+  buildCandidateSnapshot,
   candidateMarkResult,
   candidatePublish,
   candidateRead,
   CandidateGatewayError,
   verifyCandidateSnapshot,
-  type CandidatePointer,
 } from '/_102035_/l2/solution/candidate/candidateGateway.js';
+import { L4_REVISION_SCHEMA, originalL4FileInfo } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { tobeArtifactFileInfo, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 const scope = { project: 102047, moduleName: 'agendaClinica' };
 const sourcePaths = [
@@ -33,26 +36,108 @@ const rejectedExtraPaths = [
   'ontology/Patient-2.defs.ts',
   'journeys/check_in.defs.ts',
 ] as const;
+const baseId = 'base-one';
+const request = 'Review the title';
 
-async function snapshot(title = 'one') {
-  return buildCandidateSnapshot({
-    baseId: 'base-one', requestRevision: 1, request: 'Review the title',
-    sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title })};\n` })),
+const shaPref = (source: string) => `sha256:${createHash('sha256').update(source).digest('hex')}`;
+
+function coreSources(title: string): Array<{ path: Ns5TobeArtifactPath; source: string }> {
+  const values: Array<[Ns5TobeArtifactPath, object]> = [
+    ['module.defs.ts', { schemaVersion: '2026-09-10-ns5-module-v2', moduleName: scope.moduleName, title }],
+    ['journeys/index.defs.ts', { schemaVersion: 'fixture', journeys: [] }],
+    ['ontology/index.defs.ts', { schemaVersion: 'fixture', entities: [] }],
+    ['rules.defs.ts', { schemaVersion: 'fixture' }],
+    ['workflows.defs.ts', { schemaVersion: 'fixture' }],
+    ['access.defs.ts', { schemaVersion: 'fixture' }],
+    ['integration.defs.ts', { schemaVersion: 'fixture' }],
+  ];
+  return values.map(([path, value]) => ({ path, source: `export const fixture = ${JSON.stringify(value)} as const;\n` }));
+}
+
+function installStor() {
+  const previous = (globalThis as { mls?: unknown }).mls;
+  const files: Record<string, {
+    project: number; level: number; folder: string; shortName: string; extension: string;
+    status: string; versionRef: string;
+    getContent: () => Promise<string>;
+    getValueInfo: () => Promise<{ content: string }>;
+  }> = {};
+  const contents = new Map<string, string>();
+  const keyOf = (info: Ns5FileInfo) => `${info.project}:${info.level}:${info.folder || ''}:${info.shortName}${info.extension}`;
+  const add = (info: Ns5FileInfo, content = '') => {
+    const key = keyOf(info);
+    contents.set(key, content);
+    return files[key] = {
+      ...info, status: 'unchanged', versionRef: '1',
+      getContent: async () => contents.get(key) || '',
+      getValueInfo: async () => ({ content: contents.get(key) || '' }),
+    };
+  };
+  (globalThis as { mls?: unknown }).mls = {
+    stor: {
+      files,
+      getKeyToFile: keyOf,
+      addOrUpdateFile: async (info: Ns5FileInfo) => add(info),
+      localStor: { setContent: async (file: Ns5FileInfo, value: { content: string }) => { contents.set(keyOf(file), value.content); } },
+    },
+    editor: { models: {}, getKeyModel: () => '' },
+    common: { crc: { crc32: () => 0 } },
+  };
+  const json = (folder: string, shortName: string, value: unknown) => add({
+    project: scope.project, level: 4, folder: `${scope.moduleName}/${folder}`, shortName, extension: '.json',
+  }, JSON.stringify(value));
+  return { add, json, restore: () => { (globalThis as { mls?: unknown }).mls = previous; } };
+}
+
+function revisionFile(changeId: string, revisionId: string, path: Ns5TobeArtifactPath): Ns5FileInfo {
+  const origin = tobeArtifactFileInfo(scope.project, scope.moduleName, path, 'asis');
+  const prefix = `${scope.moduleName}/pipeline/changes/${changeId}/revisions/${revisionId}/l4`;
+  return { ...origin, folder: `${prefix}${origin.folder === scope.moduleName ? '' : origin.folder.slice(scope.moduleName.length)}` };
+}
+
+function plantRelease(fx: ReturnType<typeof installStor>, sources: Array<{ path: Ns5TobeArtifactPath; source: string }>) {
+  for (const item of sources) fx.add(originalL4FileInfo(scope.project, scope.moduleName, baseId, item.path), item.source);
+  fx.json('pipeline/releases', 'index', { releases: [{ baseId }] });
+  fx.json(`pipeline/releases/${baseId}`, 'manifest', {
+    schemaVersion: L4_REVISION_SCHEMA, project: scope.project, moduleName: scope.moduleName, baseId,
+    files: Object.fromEntries(sources.map(item => [item.path, shaPref(item.source)])),
+    schemas: {
+      'module.defs.ts': '2026-09-10-ns5-module-v2',
+      'journeys/index.defs.ts': 'fixture',
+      'ontology/index.defs.ts': 'fixture',
+      'rules.defs.ts': 'fixture',
+      'workflows.defs.ts': 'fixture',
+      'access.defs.ts': 'fixture',
+      'integration.defs.ts': 'fixture',
+    },
   });
 }
 
-function pointer(hash: string, revisionId = 'rev-one'): CandidatePointer {
-  return { changeId: 'change-one', revisionId, snapshotHash: hash, revisionNumber: 1 };
+function plantRevision(
+  fx: ReturnType<typeof installStor>,
+  changeId: string,
+  revisionId: string,
+  sources: Array<{ path: Ns5TobeArtifactPath; source: string }>,
+  requestText = request,
+) {
+  for (const item of sources) fx.add(revisionFile(changeId, revisionId, item.path), item.source);
+  fx.json(`pipeline/changes/${changeId}/revisions/${revisionId}`, 'manifest', {
+    schemaVersion: L4_REVISION_SCHEMA, project: scope.project, moduleName: scope.moduleName,
+    changeId, revisionId, baseId, createdAt: '2026-11-01T00:00:00.000Z',
+    files: Object.fromEntries(sources.map(item => [item.path, shaPref(item.source)])),
+    requestRevision: 1, requestHash: shaPref(requestText),
+  });
+  fx.json(`pipeline/changes/${changeId}/requests`, 'request-1', {
+    schemaVersion: L4_REVISION_SCHEMA, revision: 1, request: requestText, createdAt: '2026-11-01T00:00:00.000Z',
+  });
 }
 
-function artifactsOf(value: Awaited<ReturnType<typeof snapshot>>) {
+async function snapshotOf(sources: Array<{ path: string; source: string }>, requestText = request) {
+  return buildCandidateSnapshot({ baseId, requestRevision: 1, request: requestText, sources });
+}
+
+function artifactsOf(value: Awaited<ReturnType<typeof snapshotOf>>) {
   return value.files.map(({ path, sha256 }) => ({ path, sha256 }));
-}
-
-function answer(status: number, body: Record<string, unknown>): Response {
-  return new Response(JSON.stringify({ statusCode: status, ...body }), {
-    status, headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 async function rejectsCode(work: () => Promise<unknown>, statusCode: number, code: string): Promise<void> {
@@ -64,143 +149,249 @@ async function rejectsCode(work: () => Promise<unknown>, statusCode: number, cod
   });
 }
 
-test('read uses the dedicated same-origin route and verifies every returned byte', async () => {
-  const snap = await snapshot();
-  let seenUrl = '';
-  let seenInit: RequestInit | undefined;
-  const result = await candidateRead(scope, { fetchImpl: async (url, init) => {
-    seenUrl = String(url); seenInit = init;
-    return answer(200, { status: 'read', pointer: pointer(snap.hash), snapshot: snap });
-  } });
-  assert.equal(seenUrl, '/exec/candidate');
-  assert.equal(seenInit?.credentials, 'include');
-  assert.equal(seenInit?.redirect, 'error');
-  assert.equal(result.pointer?.snapshotHash, snap.hash);
-  assert.equal(result.snapshot?.files.length, sourcePaths.length);
-});
-
-test('default production read consumes the restricted host candidateIO when injected', async () => {
-  const snap = await snapshot();
-  const host = globalThis as typeof globalThis & { mls?: unknown };
-  const previous = host.mls;
-  let received: unknown;
-  let fetched = false;
-  host.mls = {
-    candidateIO: {
-      read: async (input: unknown) => {
-        received = structuredClone(input);
-        return { statusCode: 200, status: 'read', pointer: pointer(snap.hash), snapshot: snap };
-      },
-      publish: async () => { throw new Error('unexpected publish'); },
-      markResult: async () => { throw new Error('unexpected mark'); },
-    },
+function manifestFor(output: Awaited<ReturnType<typeof snapshotOf>>) {
+  return {
+    runId: 'run-one', taskId: 'task-one', status: 'completed' as const, traceHash: 'c'.repeat(64),
+    outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
   };
+}
+
+test('read without a pointer is an explicit empty state and does not fetch', async () => {
+  const fx = installStor();
+  let fetched = false;
+  const previous = globalThis.fetch;
+  globalThis.fetch = (() => { fetched = true; return Promise.reject(new Error('fetch')); }) as typeof fetch;
   try {
     const result = await candidateRead(scope);
-    assert.deepEqual(received, scope);
-    assert.equal(result.snapshot?.hash, snap.hash);
-    await candidateRead(scope, { fetchImpl: async () => {
-      fetched = true;
-      return answer(200, { status: 'read', pointer: null });
-    } });
-    assert.equal(fetched, true, 'an explicit transport must override the host capability');
+    assert.deepEqual(result, { status: 'read', pointer: null, snapshot: null });
+    assert.equal(fetched, false);
+    assert.equal(fileExists({ project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate`, shortName: 'pointer', extension: '.json' }), false);
   } finally {
-    host.mls = previous;
+    globalThis.fetch = previous;
+    fx.restore();
   }
 });
 
-test('empty authoritative state is represented explicitly', async () => {
-  const result = await candidateRead(scope, {
-    endpoint: 'https://example.test/candidate',
-    fetchImpl: async () => answer(200, { status: 'read', pointer: null }),
-  });
-  assert.deepEqual(result, { status: 'read', pointer: null, snapshot: null });
+test('publish writes the pointer and the read recomputes the sealed snapshot', async () => {
+  const fx = installStor();
+  const sources = coreSources('one');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-one', 'rev-one', sources);
+  const snap = await snapshotOf(sources);
+  try {
+    const committed = await candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: snap,
+    });
+    assert.equal(committed.status, 'committed');
+    if (committed.status !== 'committed') return;
+    assert.equal(committed.pointer.snapshotHash, snap.hash);
+    assert.equal(committed.pointer.revisionNumber, 1);
+    const read = await candidateRead(scope);
+    assert.equal(read.snapshot?.hash, snap.hash);
+    assert.equal(read.snapshot?.files.length, sourcePaths.length);
+    const pointer = await readJson<Record<string, unknown>>({
+      project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate`, shortName: 'pointer', extension: '.json',
+    });
+    assert.equal(pointer?.requestId, undefined);
+  } finally { fx.restore(); }
 });
 
-test('wire payload allowlists fields and cannot have its action overridden', async () => {
-  let body: Record<string, unknown> | undefined;
-  await candidateRead({ ...scope, action: 'candidatePublish', injected: true } as typeof scope, {
-    fetchImpl: async (_url, init) => {
-      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return answer(200, { status: 'read', pointer: null });
-    },
-  });
-  assert.deepEqual(body, { action: 'candidateRead', project: scope.project, moduleName: scope.moduleName });
+test('publish conflicts when expectedRevisionId does not match the pointer', async () => {
+  const fx = installStor();
+  const sources = coreSources('one');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-one', 'rev-one', sources);
+  plantRevision(fx, 'change-one', 'rev-two', sources);
+  const snap = await snapshotOf(sources);
+  try {
+    await candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: snap,
+    });
+    const conflict = await candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-two',
+      changeId: 'change-one', revisionId: 'rev-two', snapshot: snap,
+    });
+    assert.equal(conflict.status, 'conflict');
+    assert.equal(conflict.status === 'conflict' ? conflict.pointer?.revisionId : undefined, 'rev-one');
+  } finally { fx.restore(); }
 });
 
-test('publish preserves 409 and its winning pointer as data', async () => {
-  const snap = await snapshot();
-  const winner = { ...pointer('f'.repeat(64), 'rev-winner'), revisionNumber: 4 };
-  const result = await candidatePublish({
-    ...scope, expectedRevisionId: null, requestId: 'request-loser',
-    changeId: 'change-one', revisionId: 'rev-loser', snapshot: snap,
-  }, { fetchImpl: async () => answer(409, { status: 'conflict', pointer: winner }) });
-  assert.deepEqual(result, { status: 'conflict', pointer: winner });
+test('publish rejects a snapshot whose hash does not match the seal', async () => {
+  const fx = installStor();
+  const sources = coreSources('one');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-one', 'rev-one', coreSources('other'));
+  const snap = await snapshotOf(sources);
+  try {
+    await rejectsCode(() => candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: snap,
+    }), 502, 'candidate.invalid_snapshot_hash');
+  } finally { fx.restore(); }
 });
 
-test('publish accepts only a committed pointer for the submitted immutable bytes', async () => {
-  const snap = await snapshot();
+test('a tampered pointer hash is refused on read', async () => {
+  const fx = installStor();
+  const sources = coreSources('one');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-one', 'rev-one', sources);
+  const snap = await snapshotOf(sources);
+  try {
+    await candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: snap,
+    });
+    const info = { project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate`, shortName: 'pointer', extension: '.json' };
+    const pointer = await readJson<Record<string, unknown>>(info);
+    fx.add(info, JSON.stringify({ ...pointer, snapshotHash: 'f'.repeat(64) }));
+    await rejectsCode(() => candidateRead(scope), 502, 'candidate.invalid_snapshot_hash');
+  } finally { fx.restore(); }
+});
+
+test('supersede records the previous pointer and rejects a permit', async () => {
+  const fx = installStor();
+  const first = coreSources('one');
+  const next = coreSources('next');
+  plantRelease(fx, first);
+  plantRevision(fx, 'change-one', 'rev-one', first);
+  plantRevision(fx, 'change-two', 'rev-two', next);
+  const firstSnap = await snapshotOf(first);
+  const nextSnap = await snapshotOf(next);
+  try {
+    await candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: firstSnap,
+    });
+    const input = {
+      ...scope, expectedRevisionId: 'rev-one', requestId: 'request-two',
+      changeId: 'change-two', revisionId: 'rev-two', snapshot: nextSnap,
+      supersede: { changeId: 'change-one', revisionId: 'rev-one' },
+    };
+    await rejectsCode(() => candidatePublish({ ...input, expectedRevisionId: null }), 409, 'candidate.supersede_mismatch');
+    await rejectsCode(() => candidatePublish({
+      ...input,
+      permit: {
+        resultId: 'result-one', resultHash: 'a'.repeat(64), inputRevisionId: 'rev-one',
+        inputSnapshotHash: firstSnap.hash, inputRevisionNumber: 1, outputSnapshotHash: nextSnap.hash,
+      },
+    }), 400, 'candidate.supersede_with_permit');
+    const committed = await candidatePublish(input);
+    assert.equal(committed.status, 'committed');
+    assert.deepEqual(committed.status === 'committed' ? committed.pointer.supersedes : undefined, {
+      changeId: 'change-one', revisionId: 'rev-one', revisionNumber: 1,
+    });
+  } finally { fx.restore(); }
+});
+
+test('markResult stores the permit and the next publish checks it', async () => {
+  const fx = installStor();
+  const inputSources = coreSources('input');
+  const outputSources = coreSources('output');
+  plantRelease(fx, inputSources);
+  plantRevision(fx, 'change-one', 'rev-one', inputSources);
+  plantRevision(fx, 'change-one', 'rev-two', outputSources);
+  const inputSnap = await snapshotOf(inputSources);
+  const outputSnap = await snapshotOf(outputSources);
+  try {
+    const published = await candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: inputSnap,
+    });
+    assert.equal(published.status, 'committed');
+    const markedInput = await buildCandidateResult({
+      ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: inputSnap.hash,
+      expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: outputSnap,
+      result: manifestFor(outputSnap),
+    });
+    const marked = await candidateMarkResult(markedInput);
+    assert.equal(marked.status, 'marked');
+    if (marked.status !== 'marked') return;
+    assert.equal(marked.permit.outputSnapshotHash, outputSnap.hash);
+    assert.equal(marked.permit.inputSnapshotHash, inputSnap.hash);
+    const read = await candidateRead(scope);
+    assert.equal(read.status === 'read' && read.result ? read.result.manifest.runId : undefined, 'run-one');
+    await rejectsCode(() => candidatePublish({
+      ...scope, expectedRevisionId: 'rev-one', requestId: 'request-two',
+      changeId: 'change-one', revisionId: 'rev-two', snapshot: outputSnap,
+    }), 409, 'candidate.result_permit_required');
+    const again = await candidatePublish({
+      ...scope, expectedRevisionId: 'rev-one', requestId: 'request-two',
+      changeId: 'change-one', revisionId: 'rev-two', snapshot: outputSnap, permit: marked.permit,
+    });
+    assert.equal(again.status, 'committed');
+    assert.equal(again.status === 'committed' ? again.pointer.source?.resultId : undefined, 'result-one');
+    assert.equal(again.status === 'committed' ? again.pointer.revisionNumber : undefined, 2);
+    await rejectsCode(() => candidatePublish({
+      ...scope, expectedRevisionId: 'rev-one', requestId: 'request-bad',
+      changeId: 'change-one', revisionId: 'rev-two', snapshot: outputSnap,
+      permit: { ...marked.permit, outputSnapshotHash: 'f'.repeat(64) },
+    }), 409, 'candidate.result_permit_mismatch');
+  } finally { fx.restore(); }
+});
+
+test('markResult conflicts when the expected revision is not current', async () => {
+  const fx = installStor();
+  const sources = coreSources('one');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-one', 'rev-one', sources);
+  const snap = await snapshotOf(sources);
+  try {
+    const markedInput = await buildCandidateResult({
+      ...scope, expectedRevisionId: 'rev-missing', expectedSnapshotHash: snap.hash,
+      expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: snap,
+      result: manifestFor(snap),
+    });
+    const conflict = await candidateMarkResult(markedInput);
+    assert.deepEqual(conflict, { status: 'conflict', pointer: null });
+  } finally { fx.restore(); }
+});
+
+test('publish freezes the input before the first await', async () => {
+  const fx = installStor();
+  const sources = coreSources('frozen');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-frozen', 'rev-frozen', sources);
+  const snap = await snapshotOf(sources);
   const input = {
-    ...scope, expectedRevisionId: null, requestId: 'request-one',
-    changeId: 'change-one', revisionId: 'rev-one', snapshot: snap,
+    ...scope, expectedRevisionId: null as string | null, requestId: 'request-frozen',
+    changeId: 'change-frozen', revisionId: 'rev-frozen', snapshot: snap,
   };
-  const committed = await candidatePublish(input, {
-    fetchImpl: async () => answer(200, { status: 'committed', pointer: pointer(snap.hash) }),
-  });
-  assert.equal(committed.status, 'committed');
-  await rejectsCode(() => candidatePublish(input, {
-    fetchImpl: async () => answer(200, { status: 'committed', pointer: pointer('f'.repeat(64)) }),
-  }), 502, 'candidate.invalid_response');
+  try {
+    const pending = candidatePublish(input);
+    input.changeId = 'mutated-change';
+    input.revisionId = 'mutated-revision';
+    input.project = 9;
+    const committed = await pending;
+    assert.equal(committed.status === 'committed' ? committed.pointer.changeId : undefined, 'change-frozen');
+    assert.equal(committed.status === 'committed' ? committed.pointer.revisionId : undefined, 'rev-frozen');
+  } finally { fx.restore(); }
 });
 
-test('mark-result binds a canonical manifest to the expected revision and preserves conflict', async () => {
-  const output = await snapshot('output');
-  const input = await buildCandidateResult({
-    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
-    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
-    result: {
-      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
-      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-    },
-  });
-  const markedPointer = {
-    ...pointer('a'.repeat(64)), resultRevisionId: 'rev-one',
-    resultSnapshotHash: 'a'.repeat(64), resultRevisionNumber: 1,
-    resultId: input.resultId, resultHash: input.resultHash,
-  };
-  const posted: Array<Record<string, unknown>> = [];
-  const marked = await candidateMarkResult(input, {
-    fetchImpl: async (_request, init) => {
-      posted.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-      return answer(200, { status: 'marked', pointer: markedPointer });
-    },
-  });
-  assert.deepEqual(marked, {
-    status: 'marked', pointer: markedPointer,
-    permit: {
-      resultId: input.resultId, resultHash: input.resultHash,
-      inputRevisionId: input.expectedRevisionId, inputSnapshotHash: input.expectedSnapshotHash,
-      inputRevisionNumber: input.expectedRevisionNumber, outputSnapshotHash: output.hash,
-    },
-  });
-  assert.deepEqual(posted[0]?.outputSnapshot, output);
-  const winner = { ...pointer('f'.repeat(64), 'rev-two'), revisionNumber: 2 };
-  const conflict = await candidateMarkResult(input, {
-    fetchImpl: async () => answer(409, { status: 'conflict', pointer: winner }),
-  });
-  assert.deepEqual(conflict, { status: 'conflict', pointer: winner });
+test('a stor write failure becomes candidate.storage_unavailable', async () => {
+  const fx = installStor();
+  const sources = coreSources('one');
+  plantRelease(fx, sources);
+  plantRevision(fx, 'change-one', 'rev-one', sources);
+  const snap = await snapshotOf(sources);
+  const host = (globalThis as { mls: { stor: { localStor: { setContent: () => Promise<void> } } } }).mls;
+  host.stor.localStor.setContent = async () => { throw new Error('disk'); };
+  try {
+    await rejectsCode(() => candidatePublish({
+      ...scope, expectedRevisionId: null, requestId: 'request-one',
+      changeId: 'change-one', revisionId: 'rev-one', snapshot: snap,
+    }), 503, 'candidate.storage_unavailable');
+  } finally { fx.restore(); }
 });
 
 test('mark-result rejects arbitrary artifact hashes, output hash and divergent bytes locally', async () => {
-  const output = await snapshot('output');
+  const output = await snapshotOf(coreSources('output'));
   const base = {
     ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
     expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
   };
-  const manifest = {
-    runId: 'run-one', taskId: 'task-one', status: 'completed' as const, traceHash: 'c'.repeat(64),
-    outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-  };
+  const manifest = manifestFor(output);
   const arbitrary = structuredClone(manifest);
   arbitrary.artifacts[0].sha256 = 'f'.repeat(64);
   await rejectsCode(() => buildCandidateResult({ ...base, result: arbitrary }), 400, 'candidate.result_output_mismatch');
@@ -212,110 +403,24 @@ test('mark-result rejects arbitrary artifact hashes, output hash and divergent b
   await rejectsCode(() => buildCandidateResult({ ...base, outputSnapshot: divergent, result: manifest }), 400, 'candidate.invalid_snapshot');
 });
 
-test('read verifies terminal result manifest against pointer hash', async () => {
-  const snap = await snapshot();
-  const output = await snapshot('output');
-  const result = await buildCandidateResult({
-    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
-    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
-    result: {
-      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
-      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-    },
-  });
-  const current = {
-    ...pointer(snap.hash), resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash,
-    resultRevisionNumber: 1, resultId: result.resultId, resultHash: result.resultHash,
-  };
-  const read = await candidateRead(scope, { fetchImpl: async () => answer(200, {
-    status: 'read', pointer: current, snapshot: snap,
-    result: { resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
-      resultId: result.resultId, resultHash: result.resultHash, manifest: result.result },
-  }) });
-  assert.equal('result' in read ? read.result?.manifest.runId : undefined, 'run-one');
-  await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
-    status: 'read', pointer: current, snapshot: snap,
-    result: { resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
-      resultId: result.resultId, resultHash: result.resultHash, manifest: { ...result.result, taskId: 'tampered' } },
-  }) }), 502, 'candidate.invalid_result_hash');
-});
-
-test('non-initial publish requires and forwards the exact result permit', async () => {
-  const snap = await snapshot('output');
-  const base = {
-    ...scope, expectedRevisionId: 'rev-input', requestId: 'request-next',
-    changeId: 'change-next', revisionId: 'rev-next', snapshot: snap,
-  };
-  await rejectsCode(() => candidatePublish(base), 409, 'candidate.result_permit_required');
-  const permit = {
-    resultId: 'result-one', resultHash: 'a'.repeat(64), inputRevisionId: 'rev-input',
-    inputSnapshotHash: 'b'.repeat(64), inputRevisionNumber: 3, outputSnapshotHash: snap.hash,
-  };
-  let body: Record<string, unknown> | undefined;
-  await candidatePublish({ ...base, permit }, { fetchImpl: async (_url, init) => {
-    body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    return answer(200, { status: 'committed', pointer: {
-      changeId: base.changeId, revisionId: base.revisionId,
-      snapshotHash: snap.hash, revisionNumber: 4,
-    } });
-  } });
-  assert.deepEqual(body?.permit, permit);
-  await rejectsCode(() => candidatePublish({ ...base, permit: { ...permit, outputSnapshotHash: 'f'.repeat(64) } }),
-    409, 'candidate.result_permit_mismatch');
-});
-
-test('supersede publish forwards the prior pointer and preserves its provenance', async () => {
-  const snap = await snapshot('supersede');
-  const supersede = { changeId: 'change-old', revisionId: 'rev-old' };
-  const input = {
-    ...scope, expectedRevisionId: 'rev-old', requestId: 'request-new',
-    changeId: 'change-new', revisionId: 'rev-new', snapshot: snap, supersede,
-  };
-  let body: Record<string, unknown> | undefined;
-  const result = await candidatePublish(input, { fetchImpl: async (_url, init) => {
-    body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    return answer(200, { status: 'committed', pointer: {
-      changeId: 'change-new', revisionId: 'rev-new', snapshotHash: snap.hash,
-      revisionNumber: 2, supersedes: { ...supersede, revisionNumber: 1 },
-    } });
-  } });
-  assert.equal(body?.expectedRevisionId, 'rev-old');
-  assert.deepEqual(body?.supersede, supersede);
-  assert.equal(body?.permit, undefined);
-  assert.deepEqual(result.status === 'committed' ? result.pointer.supersedes : undefined,
-    { ...supersede, revisionNumber: 1 });
-  await rejectsCode(() => candidatePublish(input, { fetchImpl: async () => answer(409, {
-    status: 'error', msg: 'candidate.supersede_mismatch',
-  }) }), 409, 'candidate.supersede_mismatch');
-  await rejectsCode(() => candidatePublish({ ...input, expectedRevisionId: null }),
-    409, 'candidate.supersede_mismatch');
-  await rejectsCode(() => candidatePublish({ ...input, permit: {
-    resultId: 'result-one', resultHash: 'a'.repeat(64), inputRevisionId: 'rev-old',
-    inputSnapshotHash: 'b'.repeat(64), inputRevisionNumber: 1, outputSnapshotHash: snap.hash,
-  } }), 400, 'candidate.supersede_with_permit');
-});
-
 test('tampered bytes, file hash and snapshot hash are rejected', async () => {
-  const snap = await snapshot();
+  const snap = await snapshotOf(coreSources('one'));
   const tamperedBytes = structuredClone(snap);
   tamperedBytes.files[0].contentBase64 = btoa('different bytes');
   await rejectsCode(() => verifyCandidateSnapshot(tamperedBytes), 502, 'candidate.invalid_snapshot');
-
   const tamperedHash = structuredClone(snap);
   tamperedHash.files[0].sha256 = '0'.repeat(64);
   await rejectsCode(() => verifyCandidateSnapshot(tamperedHash), 502, 'candidate.invalid_snapshot');
-
   const tamperedManifest = structuredClone(snap);
   tamperedManifest.hash = '0'.repeat(64);
   await rejectsCode(() => verifyCandidateSnapshot(tamperedManifest), 502, 'candidate.invalid_snapshot_hash');
-
   const tamperedRequest = structuredClone(snap);
   tamperedRequest.request = 'Different request';
   await rejectsCode(() => verifyCandidateSnapshot(tamperedRequest), 502, 'candidate.invalid_snapshot_hash');
 });
 
 test('missing core source and duplicate path fail closed', async () => {
-  const snap = await snapshot();
+  const snap = await snapshotOf(coreSources('one'));
   await rejectsCode(() => verifyCandidateSnapshot({ ...snap, files: snap.files.slice(1) }), 502, 'candidate.incomplete_snapshot');
   await rejectsCode(() => verifyCandidateSnapshot({ ...snap, files: [...snap.files, snap.files[0]] }), 502, 'candidate.invalid_snapshot');
 });
@@ -323,172 +428,26 @@ test('missing core source and duplicate path fail closed', async () => {
 test('snapshot builder uses the canonical L4 path grammar shared with CBE and host', async () => {
   for (const path of acceptedExtraPaths) {
     const built = await buildCandidateSnapshot({
-      baseId: 'base-one', requestRevision: 1, request: 'paths',
+      baseId, requestRevision: 1, request: 'paths',
       sources: [...sourcePaths, path].map(item => ({ path: item, source: `// ${item}\n` })),
     });
     assert.equal(built.files.some(file => file.path === path), true);
   }
   for (const path of rejectedExtraPaths) {
     await rejectsCode(() => buildCandidateSnapshot({
-      baseId: 'base-one', requestRevision: 1, request: 'paths',
+      baseId, requestRevision: 1, request: 'paths',
       sources: [...sourcePaths, path].map(item => ({ path: item, source: `// ${item}\n` })),
     }), 400, 'candidate.invalid_file');
   }
 });
 
-test('publish captures and freezes every input field before the first await', async () => {
-  const snap = await snapshot('immutable-publish');
-  const input = {
-    ...scope, expectedRevisionId: null, requestId: 'request-immutable',
-    changeId: 'change-immutable', revisionId: 'rev-immutable', snapshot: snap,
-  };
-  const expected = structuredClone(input);
-  let body: Record<string, unknown> | undefined;
-  const pending = candidatePublish(input, {
-    fetchImpl: async (_url, init) => {
-      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return answer(200, { status: 'committed', pointer: {
-        changeId: expected.changeId, revisionId: expected.revisionId,
-        snapshotHash: expected.snapshot.hash, revisionNumber: 1,
-      } });
-    },
-  });
-  input.project = 999999;
-  input.moduleName = 'otherModule';
-  input.requestId = 'mutated-request';
-  input.changeId = 'mutated-change';
-  input.revisionId = 'mutated-revision';
-  input.snapshot.baseId = 'mutated-base';
-  input.snapshot.files[0].path = 'other/Illegal.defs.ts';
-  assert.equal((await pending).status, 'committed');
-  assert.deepEqual(body, { action: 'candidatePublish', ...expected });
-});
-
-test('markResult captures and freezes every input field before the first await', async () => {
-  const output = await snapshot('immutable-mark');
-  const input = await buildCandidateResult({
-    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
-    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
-    result: {
-      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
-      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-    },
-  });
-  const expected = structuredClone(input);
-  let body: Record<string, unknown> | undefined;
-  const markedPointer = {
-    ...pointer(expected.expectedSnapshotHash), resultRevisionId: expected.expectedRevisionId,
-    resultSnapshotHash: expected.expectedSnapshotHash, resultRevisionNumber: expected.expectedRevisionNumber,
-    resultId: expected.resultId, resultHash: expected.resultHash,
-  };
-  const pending = candidateMarkResult(input, {
-    fetchImpl: async (_url, init) => {
-      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return answer(200, { status: 'marked', pointer: markedPointer });
-    },
-  });
-  input.project = 999999;
-  input.moduleName = 'otherModule';
-  input.expectedRevisionId = 'mutated-revision';
-  input.expectedSnapshotHash = 'e'.repeat(64);
-  input.expectedRevisionNumber = 9;
-  input.resultId = 'mutated-result';
-  input.resultHash = 'f'.repeat(64);
-  input.result.taskId = 'mutated-task';
-  input.outputSnapshot.baseId = 'mutated-base';
-  input.outputSnapshot.files[0].path = 'other/Illegal.defs.ts';
-  assert.equal((await pending).status, 'marked');
-  assert.deepEqual(body, { action: 'candidateMarkResult', ...expected });
-});
-
-test('authentication, authorization, storage and transport failures never become local success', async () => {
-  for (const [status, expected] of [[401, 'candidate.unauthorized'], [403, 'candidate.forbidden'], [503, 'candidate.storage_unavailable']] as const) {
-    await rejectsCode(() => candidateRead(scope, {
-      fetchImpl: async () => answer(status, { status: 'error', msg: expected }),
-    }), status, expected);
-  }
-  await rejectsCode(() => candidateRead(scope, {
-    fetchImpl: async () => { throw new Error('offline'); },
-  }), 503, 'candidate.transport_unavailable');
-});
-
-test('mr_22 s1 reads result through pointer source of a prior revision', async () => {
-  const snap = await snapshot();
-  const output = await snapshot('output');
-  const result = await buildCandidateResult({
-    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
-    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
-    result: {
-      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
-      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-    },
-  });
-  const current = {
-    ...pointer(output.hash, 'rev-two'), revisionNumber: 2,
-    source: {
-      resultId: result.resultId, resultHash: result.resultHash,
-      revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
-    },
-  };
-  const read = await candidateRead(scope, { fetchImpl: async () => answer(200, {
-    status: 'read', pointer: current, snapshot: output,
-    result: {
-      resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
-      resultId: result.resultId, resultHash: result.resultHash, manifest: result.result,
-    },
-  }) });
-  assert.equal('result' in read ? read.result?.resultRevisionId : undefined, 'rev-one');
-});
-
-test('mr_22 s1 rejects source bound to the current revision', async () => {
-  const snap = await snapshot();
-  await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
-    status: 'read', pointer: {
-      ...pointer(snap.hash, 'rev-two'), revisionNumber: 2,
-      source: {
-        resultId: 'result-one', resultHash: 'a'.repeat(64),
-        revisionId: 'rev-two', snapshotHash: 'b'.repeat(64), revisionNumber: 1,
-      },
-    }, snapshot: snap,
-  }) }), 502, 'candidate.invalid_pointer');
-});
-
-test('mr_22 s1 rejects a result whose hash does not match source', async () => {
-  const snap = await snapshot();
-  const output = await snapshot('output');
-  const result = await buildCandidateResult({
-    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
-    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
-    result: {
-      runId: 'run-one', taskId: 'task-one', status: 'completed', traceHash: 'c'.repeat(64),
-      outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-    },
-  });
-  await rejectsCode(() => candidateRead(scope, { fetchImpl: async () => answer(200, {
-    status: 'read', pointer: {
-      ...pointer(output.hash, 'rev-two'), revisionNumber: 2,
-      source: {
-        resultId: result.resultId, resultHash: result.resultHash,
-        revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
-      },
-    }, snapshot: output,
-    result: {
-      resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
-      resultId: result.resultId, resultHash: 'f'.repeat(64), manifest: result.result,
-    },
-  }) }), 502, 'candidate.invalid_result');
-});
-
 test('mr_19 s1 accepts a real platform taskId and rejects path and empty ids', async () => {
-  const output = await snapshot('output');
+  const output = await snapshotOf(coreSources('output'));
   const base = {
     ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: 'a'.repeat(64),
     expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
   };
-  const manifest = {
-    runId: 'run-one', taskId: '20261007053809.1001', status: 'completed' as const, traceHash: 'c'.repeat(64),
-    outputSnapshotHash: output.hash, artifacts: artifactsOf(output),
-  };
+  const manifest = { ...manifestFor(output), taskId: '20261007053809.1001' };
   const built = await buildCandidateResult({ ...base, result: manifest });
   assert.equal(built.result.taskId, '20261007053809.1001');
   for (const taskId of ['../x', '']) {
@@ -498,14 +457,4 @@ test('mr_19 s1 accepts a real platform taskId and rejects path and empty ids', a
       'candidate.invalid_result',
     );
   }
-});
-
-test('malformed success and mismatched pointer/snapshot are rejected', async () => {
-  const snap = await snapshot();
-  await rejectsCode(() => candidateRead(scope, {
-    fetchImpl: async () => answer(200, { status: 'read', pointer: pointer('f'.repeat(64)), snapshot: snap }),
-  }), 502, 'candidate.invalid_snapshot_hash');
-  await rejectsCode(() => candidateRead(scope, {
-    fetchImpl: async () => new Response('not json', { status: 200 }),
-  }), 502, 'candidate.invalid_response');
 });
