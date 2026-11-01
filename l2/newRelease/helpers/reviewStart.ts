@@ -60,6 +60,7 @@ export async function prepareReviewStartInput(
   const candidate = await (dependencies.readCandidate ?? candidateRead)({ project, moduleName });
   const pointer = candidate.pointer;
   let supersededRevisionId: string | undefined;
+  let publishedPointer: CandidatePointer | null = null;
   if (!pointer || pointer.changeId !== changeId || pointer.revisionId !== revisionId
     || pointer.snapshotHash !== snapshot.hash) {
     const published = await (dependencies.publishCandidate ?? candidatePublish)({
@@ -84,6 +85,15 @@ export async function prepareReviewStartInput(
         || prior.revisionNumber !== pointer.revisionNumber) throw new Error('review-run.hub_publish_conflict');
       supersededRevisionId = prior.revisionId;
     }
+    publishedPointer = published.pointer;
+  }
+  const activePointer = pointer && pointer.changeId === changeId && pointer.revisionId === revisionId
+    && pointer.snapshotHash === snapshot.hash
+    ? pointer
+    : publishedPointer;
+  if (!activePointer || !Number.isSafeInteger(activePointer.revisionNumber) || activePointer.revisionNumber < 1
+    || sealed.request.length > 65_536) {
+    throw new Error('review-run.invalid_request');
   }
   return {
     userId,
@@ -94,10 +104,12 @@ export async function prepareReviewStartInput(
       moduleName,
       changeId,
       inputRevisionId: revisionId,
+      inputRevisionNumber: activePointer.revisionNumber,
       inputSnapshotHash: `sha256:${snapshot.hash}`,
       baseId: sealed.manifest.baseId,
       requestRevision: sealed.manifest.requestRevision,
       requestHash: sealed.manifest.requestHash as `sha256:${string}`,
+      request: sealed.request,
     },
   };
 }

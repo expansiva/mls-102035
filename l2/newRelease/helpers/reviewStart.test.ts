@@ -133,6 +133,8 @@ test('mr_13 pointer null publishes once with expectedRevisionId null and returns
   assert.equal(publishes[0].snapshot.hash, snapshotHash);
   assert.equal(prepared.input.inputRevisionId, 'revision-one');
   assert.equal(prepared.input.inputSnapshotHash, `sha256:${snapshotHash}`);
+  assert.equal(prepared.input.inputRevisionNumber, 1);
+  assert.equal(prepared.input.request, 'Add one field');
   assert.equal(prepared.supersededRevisionId, undefined);
 });
 

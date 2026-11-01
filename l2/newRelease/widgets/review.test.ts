@@ -213,7 +213,7 @@ test('mr41 s3c initial reviewer uses authoritative result with input pointer and
   let resultStatus: 'completed' | 'failed' = 'completed';
   let published = false;
   const dependencies: import('./review.js').InitialSealDependencies = {
-    prepare: async () => ({ input: { userId: 'reviewer', project: 102035, moduleName: 'fixture', changeId: 'change1', inputRevisionId: 'rev1', inputSnapshotHash: 'sha256:input', baseId: 'base1', requestRevision: 1, requestHash: 'sha256:request' }, userId: 'reviewer' }),
+    prepare: async () => ({ input: { userId: 'reviewer', project: 102035, moduleName: 'fixture', changeId: 'change1', inputRevisionId: 'rev1', inputRevisionNumber: 1, inputSnapshotHash: 'sha256:input', baseId: 'base1', requestRevision: 1, requestHash: 'sha256:request', request: f.sealed.request }, userId: 'reviewer' }),
     thread: async () => ({ threadId: 'thread' }),
     context: (threadId, senderId, content) => ({ message: { threadId, senderId, content } } as never),
     execute: async (_agent, context) => { context.task = { PK: 'task/reviewer', status: 'done' } as never; },

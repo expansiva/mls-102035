@@ -1064,7 +1064,12 @@ export class NewReleaseReview102035 extends StateLitElement {
   private retryStartInput(run: PlatformReviewRun, userId: string): ReviewRunStartInput {
     const identity = this.identityForRun(run, userId);
     const { runId: _runId, ...input } = identity;
-    return input;
+    const request = run.binding.request;
+    if (!Number.isSafeInteger(run.binding.inputRevisionNumber) || run.binding.inputRevisionNumber < 1
+      || typeof request !== 'string' || request.length < 1 || request.length > 65_536) {
+      throw new Error('review-run.invalid_request');
+    }
+    return { ...input, inputRevisionNumber: run.binding.inputRevisionNumber, request };
   }
 
   private actionPresentation(view: ReviewView, current: boolean): ReviewPrimaryActionPresentation {

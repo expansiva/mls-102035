@@ -142,7 +142,13 @@ export interface ReviewStudioHost {
   observe(claim: ReviewWorkerClaim, execution: ReviewWorkerExecution): Promise<ReviewWorkerProgress | null>;
 }
 
-export interface ReviewRunStartInput extends Omit<ReviewWorkerIdentity, 'runId'> { retry?: boolean; }
+export interface ReviewRunStartInput extends Omit<ReviewWorkerIdentity, 'runId'> {
+  /** Sealed pointer revision, read from stor. The review-run start requires it. */
+  inputRevisionNumber: number;
+  /** Exact request text that produced requestHash. No trim on the way out. */
+  request: string;
+  retry?: boolean;
+}
 
 export function outputRevisionIdForRun(run: Pick<PlatformReviewRun, 'candidateResult'>): string | null {
   const manifest = run.candidateResult?.manifest as Record<string, unknown> | undefined;
