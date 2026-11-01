@@ -7,6 +7,7 @@ import test from 'node:test';
 import { loadNs5Entities, loadNs5OracleSources } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
 import {
   saveDirectLanguageMetadata,
+  completeTobeImplementation,
   discardTobe,
   readNs5Overlay,
   recordTobeDiscard,
@@ -402,6 +403,56 @@ test('runtime full discard clears the preparation and a new edit captures the cu
   assert.deepEqual((await readNs5Overlay(project, moduleName, `release:${fresh.baseId}`)).sources.module.value, liveModule);
   for (const [key, content] of liveOriginals) assert.equal(fixture.contents.get(key), content);
   for (const [key, content] of history) assert.equal(fixture.contents.get(key), content);
+});
+
+function plantJson(fixture: { files: Record<string, any>; contents: Map<string, string>; keyOf: (info: any) => string }, info: { project: number; folder: string; shortName: string }, value: unknown) {
+  const file = { project: info.project, level: 4, folder: info.folder, shortName: info.shortName, extension: '.json', status: 'unchanged', versionRef: '1' };
+  const key = fixture.keyOf(file);
+  fixture.contents.set(key, JSON.stringify(value));
+  fixture.files[key] = {
+    ...file,
+    getContent: async () => fixture.contents.get(key) || '',
+    getValueInfo: async () => ({ content: fixture.contents.get(key) || '' }),
+  };
+}
+
+test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the pipeline', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const saved = await saveTobeArtifact(project, moduleName, 'module.defs.ts', { ...fixture.source.module, title: 'Prepared title' }, {
+    author: 'tester@example.com', expectedRevisionId: null,
+  });
+  const candidate = { project, folder: `${moduleName}/tobe/candidate` };
+  plantJson(fixture, { ...candidate, shortName: 'pointer' }, { changeId: saved.changeId, revisionId: 'rev-one' });
+  plantJson(fixture, { project, folder: `${moduleName}/tobe/candidate/results`, shortName: 'result-one' }, { resultId: 'result-one' });
+  plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes`, shortName: 'keep' }, { keep: true });
+  const outside = fixture.keyOf({ project, level: 4, folder: `${moduleName}/pipeline/changes`, shortName: 'keep', extension: '.json' });
+
+  const discarded = await discardTobe(project, moduleName);
+  assert.ok(discarded.deleted.some(path => path.endsWith('/tobe/candidate/pointer.json')));
+  assert.ok(discarded.deleted.some(path => path.endsWith('/tobe/candidate/results/result-one.json')));
+  assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/candidate')), false);
+  assert.equal(fixture.contents.has(outside), true);
+
+  const again = await saveTobeArtifact(project, moduleName, 'module.defs.ts', { ...fixture.source.module, title: 'Applied title' }, {
+    author: 'tester@example.com', expectedRevisionId: null,
+  });
+  const active = await readActiveL4Change(project, moduleName);
+  assert.ok(active && again.changeId);
+  plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'change' }, {
+    ...active, activeRevisionId: 'rev-apply', promotedRevisionId: 'rev-apply',
+  });
+  plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'implementation' }, {
+    revisionId: 'rev-apply',
+    merged: { create: [], regenerateDefs: [], remove: [], materialize: [], runAgents: [], abend: [] },
+    phases: [],
+  });
+  plantJson(fixture, { ...candidate, shortName: 'pointer' }, { changeId: again.changeId });
+  plantJson(fixture, { project, folder: `${moduleName}/tobe/candidate/results`, shortName: 'result-apply' }, { resultId: 'result-apply' });
+  await completeTobeImplementation(project, moduleName, again.changeId, 'rev-apply');
+  assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/')), false);
+  assert.equal(fixture.contents.has(outside), true);
 });
 
 test('base snapshot is complete, byte-stable and separate from the temporary candidate', async () => {

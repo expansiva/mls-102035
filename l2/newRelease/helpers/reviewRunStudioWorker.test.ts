@@ -443,56 +443,131 @@ const sourcePaths = [
 
 test('mr_22 s2 pointer de saída com source da rev 1 abre planning com o permit dessa revisão', async () => {
   const { buildCandidateResult, buildCandidateSnapshot } = await import('/_102035_/l2/solution/candidate/candidateGateway.js');
+  const { L4_REVISION_SCHEMA, originalL4FileInfo } = await import('/_102035_/l2/solution/candidate/moduleRevision.js');
+  const { tobeArtifactFileInfo } = await import('/_102035_/l2/solution/candidate/tobePaths.js');
+  const { writeJson } = await import('/_102035_/l2/solution/fs.js');
+  const { createHash } = require('node:crypto') as typeof import('node:crypto');
   const scope = { project: 102035, moduleName: 'comandaRestaurante' };
-  const snap = await buildCandidateSnapshot({
-    baseId: 'base-one', requestRevision: 1, request: 'Review the title',
-    sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title: 'in' })};\n` })),
-  });
-  const output = await buildCandidateSnapshot({
-    baseId: 'base-one', requestRevision: 1, request: 'Review the title',
-    sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title: 'out' })};\n` })),
-  });
-  const result = await buildCandidateResult({
-    ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
-    expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
-    result: {
-      runId: 'run-mr15', taskId: '20261006181434.1001', status: 'completed', traceHash: 'c'.repeat(64),
-      outputSnapshotHash: output.hash,
-      artifacts: output.files.map(({ path, sha256 }) => ({ path, sha256 })),
+  const baseId = 'base-one';
+  const request = 'Review the title';
+  const previous = (globalThis as { mls?: unknown }).mls;
+  const files: Record<string, {
+    project: number; level: number; folder: string; shortName: string; extension: string;
+    status: string; versionRef: string;
+    getContent: () => Promise<string>;
+    getValueInfo: () => Promise<{ content: string }>;
+  }> = {};
+  const contents = new Map<string, string>();
+  const keyOf = (info: { project: number; level: number; folder?: string; shortName: string; extension: string }) => `${info.project}:${info.level}:${info.folder || ''}:${info.shortName}${info.extension}`;
+  const add = (info: { project: number; level: number; folder?: string; shortName: string; extension: string }, content = '') => {
+    const key = keyOf(info);
+    contents.set(key, content);
+    return files[key] = {
+      ...info, status: 'unchanged', versionRef: '1',
+      getContent: async () => contents.get(key) || '',
+      getValueInfo: async () => ({ content: contents.get(key) || '' }),
+    };
+  };
+  (globalThis as { mls?: unknown }).mls = {
+    stor: {
+      files,
+      getKeyToFile: keyOf,
+      addOrUpdateFile: async (info: { project: number; level: number; folder?: string; shortName: string; extension: string }) => add(info),
+      localStor: { setContent: async (file: { project: number; level: number; folder?: string; shortName: string; extension: string }, value: { content: string }) => { contents.set(keyOf(file), value.content); } },
     },
-  });
-  const host = createReviewStudioHost({
-    storage: memoryStorage(),
-    userId: () => 'user-mr15',
-    thread: async () => ({ threadId: THREAD_ID }),
-    context: () => context(),
-    execute: async () => undefined,
-    task: async () => ({ PK: 'task/20261006181434.1001', status: 'done' }) as TaskData,
-    now: () => '2026-10-06T18:14:31.000Z',
-    candidateTransport: {
-      fetchImpl: async () => new Response(JSON.stringify({
-        statusCode: 200,
-        status: 'read',
-        pointer: {
-          changeId: 'change-one', revisionId: 'rev-two', snapshotHash: output.hash, revisionNumber: 2,
-          source: {
-            resultId: result.resultId, resultHash: result.resultHash,
-            revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
-          },
+    editor: { models: {}, getKeyModel: () => '' },
+    common: { crc: { crc32: () => 0 } },
+  };
+  const shaPref = (source: string) => `sha256:${createHash('sha256').update(source).digest('hex')}`;
+  const sources = sourcePaths.map(path => ({
+    path,
+    source: `export const fixture = ${JSON.stringify({
+      schemaVersion: path === 'module.defs.ts' ? '2026-09-10-ns5-module-v2' : 'fixture',
+      moduleName: scope.moduleName,
+      title: 'out',
+      journeys: [],
+      entities: [],
+    })} as const;\n`,
+  }));
+  try {
+    for (const item of sources) add(originalL4FileInfo(scope.project, scope.moduleName, baseId, item.path), item.source);
+    const json = (folder: string, shortName: string, value: unknown) => add({
+      project: scope.project, level: 4, folder: `${scope.moduleName}/${folder}`, shortName, extension: '.json',
+    }, JSON.stringify(value));
+    json('pipeline/releases', 'index', { releases: [{ baseId }] });
+    json(`pipeline/releases/${baseId}`, 'manifest', {
+      schemaVersion: L4_REVISION_SCHEMA, project: scope.project, moduleName: scope.moduleName, baseId,
+      files: Object.fromEntries(sources.map(item => [item.path, shaPref(item.source)])),
+      schemas: Object.fromEntries(sources.map(item => [item.path, item.path === 'module.defs.ts' ? '2026-09-10-ns5-module-v2' : 'fixture'])),
+    });
+    const revisionFolder = (path: (typeof sourcePaths)[number]) => {
+      const origin = tobeArtifactFileInfo(scope.project, scope.moduleName, path, 'asis');
+      const prefix = `${scope.moduleName}/pipeline/changes/change-one/revisions/rev-two/l4`;
+      return { ...origin, folder: `${prefix}${origin.folder === scope.moduleName ? '' : origin.folder.slice(scope.moduleName.length)}` };
+    };
+    for (const item of sources) add(revisionFolder(item.path), item.source);
+    json('pipeline/changes/change-one/revisions/rev-two', 'manifest', {
+      schemaVersion: L4_REVISION_SCHEMA, project: scope.project, moduleName: scope.moduleName,
+      changeId: 'change-one', revisionId: 'rev-two', baseId, createdAt: '2026-11-01T00:00:00.000Z',
+      files: Object.fromEntries(sources.map(item => [item.path, shaPref(item.source)])),
+      requestRevision: 1, requestHash: shaPref(request),
+    });
+    json('pipeline/changes/change-one/requests', 'request-1', {
+      schemaVersion: L4_REVISION_SCHEMA, revision: 1, request, createdAt: '2026-11-01T00:00:00.000Z',
+    });
+    const output = await buildCandidateSnapshot({ baseId, requestRevision: 1, request, sources });
+    const snap = await buildCandidateSnapshot({
+      baseId, requestRevision: 1, request,
+      sources: sourcePaths.map(path => ({ path, source: `export const value = ${JSON.stringify({ path, title: 'in' })};\n` })),
+    });
+    const result = await buildCandidateResult({
+      ...scope, expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash,
+      expectedRevisionNumber: 1, resultId: 'result-one', outputSnapshot: output,
+      result: {
+        runId: 'run-mr15', taskId: '20261006181434.1001', status: 'completed', traceHash: 'c'.repeat(64),
+        outputSnapshotHash: output.hash,
+        artifacts: output.files.map(({ path, sha256 }) => ({ path, sha256 })),
+      },
+    });
+    await writeJson(
+      { project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate`, shortName: 'pointer', extension: '.json' },
+      {
+        changeId: 'change-one', revisionId: 'rev-two', snapshotHash: output.hash, revisionNumber: 2,
+        source: {
+          resultId: result.resultId, resultHash: result.resultHash,
+          revisionId: 'rev-one', snapshotHash: snap.hash, revisionNumber: 1,
         },
-        snapshot: output,
-        result: {
-          resultRevisionId: 'rev-one', resultSnapshotHash: snap.hash, resultRevisionNumber: 1,
-          resultId: result.resultId, resultHash: result.resultHash, manifest: result.result,
+      },
+    );
+    await writeJson(
+      { project: scope.project, level: 4, folder: `${scope.moduleName}/tobe/candidate/results`, shortName: 'result-one', extension: '.json' },
+      {
+        resultId: result.resultId, resultHash: result.resultHash,
+        expectedRevisionId: 'rev-one', expectedSnapshotHash: snap.hash, expectedRevisionNumber: 1,
+        manifest: result.result,
+        outputSnapshot: {
+          hash: output.hash, baseId, requestRevision: 1, request,
+          files: output.files.map(file => ({ path: file.path, sha256: file.sha256, bytes: Buffer.from(file.contentBase64, 'base64').length })),
         },
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
-    },
-  });
-  const started = await host.startOrGet(claim());
-  const progress = await host.observe(claim(), started);
-  const permit = (progress.candidateResult as { permit?: { inputRevisionId?: string } } | undefined)?.permit;
-  assert.equal(progress.status, 'planning');
-  assert.equal(permit?.inputRevisionId, 'rev-one');
+      },
+    );
+    const host = createReviewStudioHost({
+      storage: memoryStorage(),
+      userId: () => 'user-mr15',
+      thread: async () => ({ threadId: THREAD_ID }),
+      context: () => context(),
+      execute: async () => undefined,
+      task: async () => ({ PK: 'task/20261006181434.1001', status: 'done' }) as TaskData,
+      now: () => '2026-10-06T18:14:31.000Z',
+    });
+    const started = await host.startOrGet(claim());
+    const progress = await host.observe(claim(), started);
+    const permit = (progress.candidateResult as { permit?: { inputRevisionId?: string } } | undefined)?.permit;
+    assert.equal(progress.status, 'planning');
+    assert.equal(permit?.inputRevisionId, 'rev-one');
+  } finally {
+    (globalThis as { mls?: unknown }).mls = previous;
+  }
 });
 
 test('mr_20 s2 com openai e outro o reportado é o primeiro observado', async () => {

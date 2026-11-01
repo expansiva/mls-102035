@@ -196,7 +196,14 @@ export async function saveTobeArtifact(
 }
 
 function listedPlanFiles(project: number, moduleName: string): mls.stor.IFileInfo[] {
-  const folder = `${moduleName}/tobe/plan`;
+  return listedTobeFolder(project, `${moduleName}/tobe/plan`);
+}
+
+function listedCandidateFiles(project: number, moduleName: string): mls.stor.IFileInfo[] {
+  return listedTobeFolder(project, `${moduleName}/tobe/candidate`);
+}
+
+function listedTobeFolder(project: number, folder: string): mls.stor.IFileInfo[] {
   const files = mls.stor.files as FileRecord;
   const keys = new Set<string>();
   for (const [key, file] of Object.entries(files)) {
@@ -256,7 +263,7 @@ export async function discardTobe(
     }
   } else {
     await deactivateL4Change(project, moduleName, async () => {
-      const inventory = listedPlanFiles(project, moduleName);
+      const inventory = [...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName)];
       deleted.push(...inventory.map(file => `l4/${file.folder}/${file.shortName}${file.extension}`));
       await deleteInventory(inventory);
     });
@@ -476,7 +483,7 @@ export async function completeTobeImplementation(project: number, moduleName: st
     }
     const record = await readL4Implementation(project, moduleName);
     if (!record || record.revisionId !== revisionId || !implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) throw new Error('implementation.not_complete');
-    await deleteInventory(listedPlanFiles(project, moduleName));
+    await deleteInventory([...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName)]);
   });
   announceTobeUpdated(project, moduleName);
 }
