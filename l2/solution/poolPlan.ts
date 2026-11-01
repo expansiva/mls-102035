@@ -72,6 +72,8 @@ export interface MenuPageNode {
   kind: 'page';
   label: string;
   organisms: MenuOrganism[];
+  /** Lucide icon name. `""` or absent means no icon. Read by finalize70. */
+  icon?: string;
 }
 
 export interface MenuGroupNode {
