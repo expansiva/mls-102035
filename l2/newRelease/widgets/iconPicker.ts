@@ -5,7 +5,7 @@ import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
-import { lucideArtwork } from '/_102035_/l2/newRelease/widgets/lucideArtwork.js';
+import { lucideArtwork } from '/_102036_/l2/lucideArtwork.js';
 import { iconNeedsFallback, resolveNewReleaseIcon, searchNewReleaseIcons, type LucideName } from '/_102035_/l2/newRelease/widgets/iconModel.js';
 
 export function renderNewReleaseIcon(value: string | undefined, fallback: LucideName) {

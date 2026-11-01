@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LUCIDE_ICONS, LUCIDE_VERSION } from '../../solution/lucideIcons.js';
 import type { Ns5JourneyArtifact, Ns5JourneyStep, Ns5WorkflowTask } from '../../solution/types.js';
-import { LUCIDE_ARTWORK_VERSION, lucideArtwork } from './lucideArtwork.js';
+import { LUCIDE_ARTWORK_VERSION, lucideArtwork } from '/_102036_/l2/lucideArtwork.js';
 import { JOURNEY_ICON_DEFAULTS, WORKFLOW_ICON_DEFAULTS, iconNeedsFallback, resolveNewReleaseIcon, searchNewReleaseIcons, withNewReleaseIcon } from './iconModel.js';
 import { normalizeWorkflows } from './workflowsModel.js';
 
