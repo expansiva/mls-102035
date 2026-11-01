@@ -6,7 +6,11 @@ import { executePreparedReviewStart, prepareReviewStartInput } from './reviewSta
 import type { L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { buildCandidateSnapshot, type CandidatePointer, type CandidatePublishInput, type CandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
 import { canStartReviewRun } from '../widgets/reviewModel.js';
-import { createHubEmMemoria } from '../../ensaio/nodejsHubEmMemoria.js';
+import {
+  candidateRead as hubCandidateRead, candidatePublish as hubCandidatePublish, candidateMarkResult as hubCandidateMarkResult,
+  type CandidatePersistence, type CandidateReadInput, type CandidatePublishInput as HubPublishInput, type CandidateMarkResultInput,
+} from '/_102034_/l1/server/layer_1_external/candidate/candidateStore.js';
+import { commitAllowed } from '/_102034_/l1/server/layer_1_external/candidate/candidatePostgres.js';
 
 const hash = `sha256:${'a'.repeat(64)}`;
 const loaded: L4SealedCandidateSnapshot = {
@@ -268,3 +272,44 @@ test('mr_13 publish conflict throws hub_publish_conflict without start', async (
   );
   assert.equal(starts, 0);
 });
+
+class SharedCandidateTable implements CandidatePersistence {
+  private records = new Map<string, { key: string; [field: string]: unknown }>();
+  async get(key: string) { return structuredClone(this.records.get(key)); }
+  async putFile(item: Parameters<CandidatePersistence['putFile']>[0]) {
+    if (this.records.has(item.key)) return false;
+    this.records.set(item.key, structuredClone({ ...item }));
+    return true;
+  }
+  async commit(input: Parameters<CandidatePersistence['commit']>[0]) {
+    const current = this.records.get(input.pointerKey);
+    if (!commitAllowed(current, input)
+      || this.records.has(input.snapshot.key) || this.records.has(input.request.key)) return false;
+    this.records.set(input.pointerKey, structuredClone({ key: input.pointerKey, ...input.pointer }));
+    this.records.set(input.snapshot.key, structuredClone({ ...input.snapshot }));
+    this.records.set(input.request.key, structuredClone({ ...input.request }));
+    return true;
+  }
+  async commitResult(input: Parameters<CandidatePersistence['commitResult']>[0]) {
+    const current = this.records.get(input.pointerKey);
+    if (current?.revisionId !== input.expectedRevisionId || current?.snapshotHash !== input.expectedSnapshotHash
+      || current?.revisionNumber !== input.expectedRevisionNumber || current?.resultId !== undefined
+      || this.records.has(input.result.key)) return false;
+    this.records.set(input.result.key, structuredClone({ ...input.result }));
+    this.records.set(input.pointerKey, structuredClone({
+      ...current, resultRevisionId: input.expectedRevisionId, resultSnapshotHash: input.expectedSnapshotHash,
+      resultRevisionNumber: input.expectedRevisionNumber, resultId: input.result.resultId, resultHash: input.result.resultHash,
+    }));
+    return true;
+  }
+}
+
+function createHubEmMemoria() {
+  const table = new SharedCandidateTable();
+  const caller = { owner: 'ensaio', orgId: 'org-ensaio' };
+  return {
+    read: async (input: CandidateReadInput) => ({ ...await hubCandidateRead(caller, input, 'org-ensaio', table) }),
+    publish: async (input: HubPublishInput) => ({ ...await hubCandidatePublish(caller, input, 'org-ensaio', table) }),
+    markResult: async (input: CandidateMarkResultInput) => ({ ...await hubCandidateMarkResult(caller, input, 'org-ensaio', table) }),
+  };
+}

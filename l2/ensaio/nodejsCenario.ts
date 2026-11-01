@@ -18,7 +18,6 @@ import { prepareReviewStartInput } from '../newRelease/helpers/reviewStart.js';
 import { readActiveSealedL4Candidate, resolveL4Folders } from '../solution/candidate/moduleRevision.js';
 import { candidateRead } from '../solution/candidate/candidateGateway.js';
 import { runUntilDone, createMemoryIndexedDb } from './hostSimulado.js';
-import { createHubEmMemoria } from './nodejsHubEmMemoria.js';
 import { setDescribeEffortImporter } from '/_102035_/l2/solution/effortRegistry.js';
 
 export const FIXTURE = new URL('../newRelease/fixtures/ensaio/controleEstoque/', import.meta.url);
@@ -124,7 +123,6 @@ function installStorFixture() {
       },
     },
     editor: { models: {}, getKeyModel: () => '' },
-    candidateIO: createHubEmMemoria(),
   });
   return sources;
 }
