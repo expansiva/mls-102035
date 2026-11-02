@@ -1,8 +1,8 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
 import { ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
-import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
 import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
+import { resolveModuleThread } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { summarizeNewReleaseRequest, runNewReleaseRequest, newReleaseTaskCost, type NewReleaseRequestFileState } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 
@@ -114,6 +114,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (message.startsWith('new-release.candidate_unindexed_file:')) return this.t('request.newArtifactUnsupported', { path: message.slice('new-release.candidate_unindexed_file:'.length) });
     if (message.startsWith('collab_messages_')) return this.t('request.identityUnavailable', { reason: message });
     if (message === 'implementation.user_unavailable') return this.t('request.userUnavailable');
+    if (message.startsWith('new-release.thread_invalid')) return this.t('request.threadInvalid', { reason: message.slice('new-release.thread_invalid'.length).replace(/^:/, '') });
+    if (message.startsWith('new-release.thread_forbidden')) return this.t('request.threadForbidden', { reason: message.slice('new-release.thread_forbidden'.length).replace(/^:/, '') });
     if (message.includes('Historical release is incomplete')) return this.t('request.historyUnavailable');
     if (message.includes('Historical inventory differs')) return this.t('request.historyIncompatible');
     if (message.includes('Discard the active candidate')) return this.t('request.activeCandidate');
@@ -581,7 +583,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.savedRequest = text;
       const outcome = await runNewReleaseRequest(context.moduleName, text, task => {
         if (contextStillCurrent(context, this)) this.requestResult = this.t('request.running');
-      });
+      }, { project: context.project });
       if (!contextStillCurrent(context, this)) return;
       const summary = summarizeNewReleaseRequest(outcome.results, outcome.task.status);
       this.requestTask = outcome.task.status === 'done' ? {
@@ -784,10 +786,16 @@ export class NewReleaseIndex102035 extends StateLitElement {
       + (origin.earlier ? ` · ${this.t('tobe.origin.earlier', { count: origin.earlier })}` : '');
   }
 
+  private moduleThread = resolveModuleThread;
+  private openThread = dispatchThreadOpen;
+
   private async openOriginTask(taskId: string): Promise<void> {
-    const thread = await getThreadByName('_102035_/l2/newRelease/requests');
-    if (thread?.threadId) dispatchThreadOpen(thread.threadId, taskId);
-    else this.mutationError = this.t('tobe.origin.taskUnavailable');
+    try {
+      const thread = await this.moduleThread(this.project, this.moduleName);
+      this.openThread(thread.threadId, taskId);
+    } catch (error) {
+      this.mutationError = this.revisionError(error);
+    }
   }
 
   private renderTobeStatus() {

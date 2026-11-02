@@ -121,6 +121,24 @@ test('What changed shows the recorded prompt and full value for its exact path',
   assert.match(view, /texto novo completo/);
 });
 
+test('openOriginTask opens the module thread', async () => {
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.project = 102047;
+  index.moduleName = 'comanda';
+  index.t = (key: string, values?: Record<string, string>) => key + (values?.reason ? `:${values.reason}` : '');
+  const opened: string[] = [];
+  index.moduleThread = async (project: number, moduleName: string) => {
+    assert.deepEqual([project, moduleName], [102047, 'comanda']);
+    return { threadId: 'thread-comanda' };
+  };
+  index.openThread = (threadId: string, taskId: string) => { opened.push(`${threadId}/${taskId}`); };
+  await index.openOriginTask('task-9');
+  assert.deepEqual(opened, ['thread-comanda/task-9']);
+  index.moduleThread = async () => { throw new Error('new-release.thread_invalid:not a token'); };
+  await index.openOriginTask('task-9');
+  assert.equal(index.mutationError, 'request.threadInvalid:not a token');
+});
+
 test('review shows its empty state only once', () => {
   const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
   index.activeTab = 'review';

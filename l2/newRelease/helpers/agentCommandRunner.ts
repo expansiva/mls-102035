@@ -1,10 +1,10 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/agentCommandRunner.ts" enhancement="_blank" />
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
-import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
-import { createThread, getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import type { AIPayload, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import type { ImplementationRunnerDependencies } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
+import { moduleThreadMemberRefusal, resolveModuleThread, type ModuleThreadRef } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 
 /** Canonical result/clarification payloads, including nested agent interactions. */
 export function taskResultTexts(task: TaskData): string[] {
@@ -91,23 +91,54 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
 
 export interface NewReleasePromptRequest { moduleName: string; request: string }
 
+type CommandDependencies = ImplementationRunnerDependencies & {
+  wait?: () => Promise<void>;
+  project?: number;
+  moduleThread?: (project: number, moduleName: string) => Promise<ModuleThreadRef>;
+};
+
+function commandTarget(agent: string, payload: string, projectOverride?: number): { project: number; moduleName: string } {
+  const parsed: unknown = JSON.parse(payload);
+  if (agent === 'agentNewReleasePrompt') {
+    const body = parsed as { moduleName?: unknown };
+    if (!body || typeof body !== 'object' || typeof body.moduleName !== 'string' || !body.moduleName) {
+      throw new Error('new-release.thread_invalid:moduleName');
+    }
+    return { project: projectOverride ?? Number(mls.actualProject || 0), moduleName: body.moduleName };
+  }
+  const row = (Array.isArray(parsed) ? parsed[0] : parsed) as { projectId?: unknown; moduleName?: unknown } | null;
+  if (!row || typeof row.moduleName !== 'string' || !row.moduleName) throw new Error('new-release.thread_invalid:moduleName');
+  const project = typeof row.projectId === 'number' ? row.projectId : projectOverride ?? 0;
+  return { project, moduleName: row.moduleName };
+}
+
 export async function runNewReleaseRequest(moduleName: string, request: string,
-  progress: (task: TaskData) => void, dependencies: ImplementationRunnerDependencies & { wait?: () => Promise<void> } = {}): Promise<{ task: TaskData; results: string[] }> {
+  progress: (task: TaskData) => void, dependencies: CommandDependencies = {}): Promise<{ task: TaskData; results: string[] }> {
   if (!request.trim()) throw new Error('new-release.request_empty');
   const payload: NewReleasePromptRequest = { moduleName, request };
   return runNewReleaseCommand('agentNewReleasePrompt', JSON.stringify(payload), progress, dependencies);
 }
 
 export async function runNewReleaseCommand(agent: 'agentNewReleasePrompt' | 'agentAddLanguage' | 'agentRemoveLanguage', payload: string,
-  progress: (task: TaskData) => void, dependencies: ImplementationRunnerDependencies & { wait?: () => Promise<void> } = {}): Promise<{ task: TaskData; results: string[] }> {
+  progress: (task: TaskData) => void, dependencies: CommandDependencies = {}): Promise<{ task: TaskData; results: string[] }> {
   const user = await (dependencies.userId ?? ensureUserId)();
   if (!user) throw new Error('implementation.user_unavailable');
-  const threadName = '_102035_/l2/newRelease/requests';
-  const resolved = await (dependencies.thread ?? (async () => await getThreadByName(threadName) ?? await createThread(threadName, [], 'company')))();
+  let resolved: { threadId: string } | undefined;
+  if (dependencies.thread) resolved = await dependencies.thread();
+  else {
+    const target = commandTarget(agent, payload, dependencies.project);
+    resolved = await (dependencies.moduleThread ?? resolveModuleThread)(target.project, target.moduleName);
+  }
   if (!resolved?.threadId) throw new Error('implementation.thread_unavailable');
   const prompt = '@@' + agent + ' ' + payload;
   const context = (dependencies.context ?? getTemporaryContext)(resolved.threadId, user, prompt);
-  await (dependencies.execute ?? ((agent, ctx) => environment.agents.executeAgent(agent, ctx)))(agent, context);
+  try {
+    await (dependencies.execute ?? ((agentName, ctx) => environment.agents.executeAgent(agentName, ctx)))(agent, context);
+  } catch (error) {
+    const reason = moduleThreadMemberRefusal(error);
+    if (reason) throw new Error(`new-release.thread_forbidden:${reason}`);
+    throw error;
+  }
   if (!context.task?.PK) throw new Error('implementation.task_unavailable');
   let task = context.task;
   const identity = task.PK;

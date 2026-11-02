@@ -78,6 +78,46 @@ test('entry refusal in the producer plain-text status result remains visible', (
 });
 
 
+test('a text request uses the module thread id and does not invent one', async () => {
+  const outcome = await runNewReleaseCommand('agentNewReleasePrompt', JSON.stringify({ moduleName: 'comanda', request: 'marcar pronto' }), () => {}, {
+    userId: () => 'user', project: 102047,
+    moduleThread: async (project, moduleName) => {
+      assert.deepEqual([project, moduleName], [102047, 'comanda']);
+      return { threadId: 'thread-comanda' };
+    },
+    context: (threadId, senderId, content) => ({ isTest: true, task: undefined, message: { threadId, senderId, content, createAt: '', orderAt: '' } }),
+    execute: async (_agent, context) => {
+      assert.equal(context.message.threadId, 'thread-comanda');
+      context.task = task('done');
+    },
+  });
+  assert.equal(outcome.task.status, 'done');
+});
+
+test('a language command uses the module thread from its payload', async () => {
+  const payload = JSON.stringify([{ languages: [{ code: 'fr', name: 'French' }], projectId: 102047, moduleName: 'ordenServicio5' }]);
+  await runNewReleaseCommand('agentAddLanguage', payload, () => {}, {
+    userId: () => 'user',
+    moduleThread: async (project, moduleName) => {
+      assert.deepEqual([project, moduleName], [102047, 'ordenServicio5']);
+      return { threadId: 'thread-orden' };
+    },
+    context: (threadId, senderId, content) => ({ isTest: true, task: undefined, message: { threadId, senderId, content, createAt: '', orderAt: '' } }),
+    execute: async (_agent, context) => { assert.equal(context.message.threadId, 'thread-orden'); context.task = task('done'); },
+  });
+});
+
+test('a membership refusal from the server stays visible and does not start another thread', async () => {
+  let threads = 0;
+  await assert.rejects(runNewReleaseRequest('comanda', 'marcar', () => {}, {
+    userId: () => 'user',
+    thread: async () => { threads += 1; return { threadId: 'stored' }; },
+    context: (threadId, senderId, content) => ({ isTest: true, task: undefined, message: { threadId, senderId, content, createAt: '', orderAt: '' } }),
+    execute: async () => { throw new Error('User is not a member of this thread'); },
+  }), /new-release\.thread_forbidden:User is not a member of this thread/);
+  assert.equal(threads, 1);
+});
+
 test('language commands dispatch the existing scoped array protocol and preserve failure status', async () => {
   for (const agent of ['agentAddLanguage', 'agentRemoveLanguage'] as const) {
     const payload = JSON.stringify([{ languages: [{ code: 'fr', name: 'French' }], projectId: 102047, moduleName: 'ordenServicio5' }]);
