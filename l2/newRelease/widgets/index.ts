@@ -1010,12 +1010,12 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const showFeedback = this.requestFeedbackTab === this.activeTab;
     const unsaved = (!this.savedRequest && !this.requestText.trim()) || this.canSubmitRequest();
     return html`
-      <details class="nr-index__request" ?open=${this.requestReady || !this.savedRequest || !!(showFeedback && (this.requestResult || this.requestError))}>
+      <details class="nr-index__request" ?open=${this.presentation === 'prompt' || this.requestReady || !this.savedRequest || !!(showFeedback && (this.requestResult || this.requestError))}>
         <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : this.requestReady && !this.requestText.trim() ? this.t('request.ready') : unsaved ? this.t('request.unsaved') : this.t('request.saved')}</span></summary>
         <div class="nr-index__request-body">
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
-          <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
+          <textarea id="nr-change-request" rows="15" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
           ${showFeedback && this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
           ${showFeedback && this.requestTask ? html`<p class="nr-index__request-task">${this.t('request.taskExecuted', { id: this.requestTask.id, cost: this.requestTask.cost === null ? this.t('request.costUnavailable') : `$${this.requestTask.cost.toFixed(2)}` })} ${this.requestTask.threadId ? html`<button type="button" @click=${() => dispatchThreadOpen(this.requestTask!.threadId, this.requestTask!.id)}>${this.t('request.taskDetails')}</button>` : nothing}</p>` : nothing}
           ${showFeedback && this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
