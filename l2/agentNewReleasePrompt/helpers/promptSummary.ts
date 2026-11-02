@@ -44,9 +44,9 @@ export function promptChangeSummary(userLanguage: string | null | undefined, fil
   return [...lines.slice(0, shown), more].join('\n');
 }
 
-/** Question or refusal. The text is the summary; it is not a change report. */
-export function promptHoldSummary(text: string): string {
-  return text.trim();
+/** Question or refusal, in the user's language. Stock English sentences are translated. Free text is kept. */
+export function promptHoldSummary(text: string, userLanguage?: string | null): string {
+  return localizeHold(text.trim(), promptLanguage(userLanguage));
 }
 
 interface SummaryRow {
@@ -71,11 +71,21 @@ function summaryRows(files: readonly PromptSummaryFile[]): SummaryRow[] {
   return rows;
 }
 
+function localizeHold(text: string, language: 'en' | 'pt'): string {
+  if (language === 'en' || !text) return text;
+  return text
+    .replace(/Nothing was written\./gu, 'Nada foi gravado.')
+    .replace(/Verification failed\./gu, 'A verificação falhou.')
+    .replace(/Repair of (\w+) left the same errors\./gu, 'O reparo de $1 deixou os mesmos erros.')
+    .replace(/Repair of (\w+) already used (\d+) rounds\./gu, 'O reparo de $1 já usou $2 rodadas.')
+    .replace(/Repair already covered (\d+) artifact kinds\./gu, 'O reparo já cobriu $1 tipos de artefato.');
+}
+
 function idRows(file: PromptSummaryFile, key: 'ruleId' | 'grantId', fallback: string): SummaryRow[] {
   const listKey = key === 'ruleId' ? 'rules' : 'grants';
   const groups = new Map<string, { added: boolean; removed: boolean; changed: boolean }>();
   for (const diff of file.diffs) {
-    const id = idInPath(diff.jsonPath, key);
+    const id = idInPath(diff.jsonPath, key) || (key === 'ruleId' ? ruleMapKey(diff.jsonPath) : null);
     if (!id) continue;
     const slot = groups.get(id) || { added: false, removed: false, changed: false };
     const hasBefore = Object.prototype.hasOwnProperty.call(diff, 'before') && diff.before !== undefined;
@@ -90,6 +100,10 @@ function idRows(file: PromptSummaryFile, key: 'ruleId' | 'grantId', fallback: st
       title,
       state: flags.changed || (flags.added && flags.removed) ? 'changed' : flags.added ? 'added' : 'removed',
     }));
+  }
+  if (key === 'ruleId') {
+    const fromMap = ruleMapRows(file);
+    if (fromMap) return fromMap;
   }
   const afterIds = idsOf(file.after, listKey, key);
   const beforeIds = idsOf(file.before, listKey, key);
@@ -121,6 +135,42 @@ function isIndexFile(file: string): boolean {
 
 function isNamedFile(file: string, name: string): boolean {
   return file === name || file.endsWith(`/${name}`);
+}
+
+/** `tobeDiff` writes a rules-map key as `$.rules.<ruleId>` (the value is a string, not `{ ruleId }`). */
+function ruleMapKey(jsonPath: string): string | null {
+  const match = /\$\.rules\.([^.\[]+)/u.exec(jsonPath);
+  if (!match) return null;
+  try { return decodeURIComponent(match[1]); }
+  catch (error) {
+    console.error('[agentNewReleasePrompt] summary rule key is not decodable', error);
+    return match[1];
+  }
+}
+
+function ruleMap(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value) || !isRecord(value.rules) || Array.isArray(value.rules)) return null;
+  return value.rules;
+}
+
+function ruleMapRows(file: PromptSummaryFile): SummaryRow[] | null {
+  const before = ruleMap(file.before);
+  const after = ruleMap(file.after);
+  if (!before && !after) return null;
+  const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])].sort();
+  const rows: SummaryRow[] = [];
+  for (const title of keys) {
+    const left = before ? Object.prototype.hasOwnProperty.call(before, title) : false;
+    const right = after ? Object.prototype.hasOwnProperty.call(after, title) : false;
+    if (left && right && stableEnough(before?.[title], after?.[title])) continue;
+    const state: PromptSummaryState = left && right ? 'changed' : right ? 'added' : 'removed';
+    rows.push({ title, state });
+  }
+  return rows.length ? rows : [{ title: 'rules', state: file.state }];
+}
+
+function stableEnough(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function idInPath(jsonPath: string, key: string): string | null {

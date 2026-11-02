@@ -43,6 +43,7 @@ import {
   normalizeNrpTriage,
   recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
+import { promptHoldSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createWrite50Step } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
 export interface NrpGateCursor {
@@ -118,6 +119,7 @@ export async function beforeNrpGateStep(
             result: JSON.stringify({
               written: false,
               reason,
+              summary: promptHoldSummary(reason, baseArtifacts.module.userLanguage),
               issues,
               repairRounds: nrpRepairRoundCounts(cursor.repaired),
             }),

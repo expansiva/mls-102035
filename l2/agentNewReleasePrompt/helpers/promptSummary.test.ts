@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import {
   promptChangeSummary,
   promptHoldSummary,
@@ -57,10 +58,58 @@ void test('prompt summary keeps six lines and counts the rest', () => {
 });
 
 void test('a question or a refusal is the summary and is not a change report', () => {
-  const question = promptHoldSummary('O campo statusAtendimento deve aparecer para o ator garçom?');
-  const reason = promptHoldSummary('The request does not say which actor performs the step.');
+  const question = promptHoldSummary('O campo statusAtendimento deve aparecer para o ator garçom?', 'pt-BR');
+  const reason = promptHoldSummary('The request does not say which actor performs the step.', 'en');
+  const refused = promptHoldSummary('Repair of rules left the same errors. Nothing was written.', 'pt');
   assert.equal(question.includes('alterado'), false);
   assert.equal(reason.includes('changed'), false);
+  assert.equal(refused.includes('alterado'), false);
   assert.match(question, /statusAtendimento/);
   assert.match(reason, /which actor/);
+  assert.equal(refused, 'O reparo de rules deixou os mesmos erros. Nada foi gravado.');
+  assert.equal(
+    promptHoldSummary('Verification failed. Nothing was written.', 'en'),
+    'Verification failed. Nothing was written.',
+  );
+});
+
+void test('a rules map is named by its keys, and a grant stays a list', () => {
+  const before = {
+    schemaVersion: '2026-09-16-ns5-rules-v2',
+    moduleName: 'comandaRestaurante',
+    rules: {
+      itemComandaOperacaoSomenteComandaAberta: 'Um item lançado só pode ser cancelado enquanto sua comanda estiver aberta.',
+      fechaComanda: 'Fecha.',
+    },
+  };
+  const after = {
+    ...before,
+    rules: {
+      itemComandaOperacaoSomenteComandaAberta: 'Um item só pode ser cancelado com a comanda aberta.',
+      abreMesa: 'Abre a mesa.',
+    },
+  };
+  const diffs = tobeDiff(before, after);
+  assert.equal(diffs.some(entry => entry.jsonPath === '$.rules.itemComandaOperacaoSomenteComandaAberta'), true);
+  assert.equal(diffs.some(entry => entry.jsonPath.includes('[ruleId=')), false);
+  const text = promptChangeSummary('pt', [{
+    file: 'rules.defs.ts',
+    state: 'changed',
+    before,
+    after,
+    diffs,
+  }, {
+    file: 'access.defs.ts',
+    state: 'changed',
+    before: { grants: [{ grantId: 'garcomAtendimentoComandas' }] },
+    after: { grants: [{ grantId: 'garcomAtendimentoComandas' }, { grantId: 'caixaFechamento' }] },
+    diffs: [{ jsonPath: '$.grants[grantId=caixaFechamento]', after: { grantId: 'caixaFechamento' } }],
+  }]);
+  assert.equal(text, [
+    'abreMesa entrou',
+    'fechaComanda saiu',
+    'itemComandaOperacaoSomenteComandaAberta mudou',
+    'caixaFechamento entrou',
+  ].join('\n'));
+  assert.equal(text.includes('rules changed'), false);
 });

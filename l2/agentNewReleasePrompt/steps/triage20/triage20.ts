@@ -5,6 +5,7 @@ import { loadNrpArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/art
 import { buildNrpIndex, type NrpCompactIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { displayPath, pipelineJsonFileForProject, setModuleRoot, writeJson, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { createNs4FlexibleWorkerTool, unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
+import { promptHoldSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createEdit30Step, planNrpEditOrders } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
 export const NRP_TRIAGE_TOOL = 'submitNrpTriage' as const;
@@ -230,12 +231,18 @@ export async function afterNrpTriageStep(
     const payload = unwrapNs4FlexibleWorkerPayload(step.interaction?.payload?.[0]);
     const triage = normalizeNrpTriage(payload);
     const stopped = !triage.valid;
+    const hold = stopped ? await holdSummary(step, triage.clarification || triage.reason || '') : null;
     const intents: mls.msg.AgentIntent[] = [
       {
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
           stepTitle: stopped ? 'Triage stopped' : 'Triage accepted',
-          result: JSON.stringify({ triage, nextStep: stopped ? null : 'edit30', notes: nrpTriageNotes(triage) }),
+          result: JSON.stringify({
+            triage,
+            nextStep: stopped ? null : 'edit30',
+            notes: nrpTriageNotes(triage),
+            ...(hold ? { written: false, summary: hold } : {}),
+          }),
           planning: { planId: 'triage20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
@@ -269,6 +276,14 @@ export async function afterNrpTriageStep(
     const cited = await citeRefusal(step, error);
     return [fail(context, parentStep, step, hookSequential, cited)];
   }
+}
+
+async function holdSummary(step: mls.msg.AIAgentStep, text: string): Promise<string> {
+  const project = mls.actualProject || 0;
+  const invocation = parseNrpInvocation(String(step.prompt || ''), project);
+  setModuleRoot(invocation.moduleName, `${invocation.moduleName}/${NRP_CANDIDATE_REL}`);
+  const artifacts = await loadNrpArtifacts(invocation.moduleName);
+  return promptHoldSummary(text, artifacts.module.userLanguage);
 }
 
 async function citeRefusal(step: mls.msg.AIAgentStep, error: unknown): Promise<unknown> {
