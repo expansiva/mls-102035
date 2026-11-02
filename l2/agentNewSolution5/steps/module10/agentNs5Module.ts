@@ -190,7 +190,7 @@ export async function afterNs5ModulePromptStep(
       parsed.repairAttempt,
       parsed.repairAttempt > 0 ? await readPipeline(moduleName) : null,
     );
-    if (invocation.rebuildAll) await startNs5Pipeline(moduleName, sourcePrompt, invocation, true);
+    if (invocation.rebuildAll) await startNs5Pipeline(moduleName, sourcePrompt, invocation, true, context.message.threadId);
     await assertModuleWritable(moduleName, invocation.rebuildAll || ownCompileRepair);
 
     let pipeline = await ensurePipeline(moduleName, sourcePrompt, invocation);

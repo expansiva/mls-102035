@@ -956,6 +956,11 @@ export interface Ns5PipelineState {
   sourcePrompt: string;
   /** Flags used for this run. */
   invocation: Ns5Invocation;
+  /**
+   * Thread of the request that created the module (`context.message.threadId`).
+   * One per module: `/rebuild all` keeps the value already stored. Token `^[A-Za-z0-9_.-]{1,100}$`.
+   */
+  messageThreadId?: string;
   /** Set when this pipeline was created by /rebuild all. */
   rebuildAll?: Ns5RebuildAllReport;
   /** Pool trace, appended by `tracePool`. Absent in pipelines written before the pool existed. */

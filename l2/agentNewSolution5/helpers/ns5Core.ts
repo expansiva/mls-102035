@@ -3,6 +3,7 @@
 import {
   listModuleFolders,
   normalizeModuleName,
+  readPipeline,
   writePipeline,
 } from '/_102035_/l2/solution/fs.js';
 import { removeModule } from '/_102035_/l2/solution/removeModule.js';
@@ -100,12 +101,42 @@ export function parseNs5Invocation(value: string): Ns5ParsedInvocation {
   return { fast, rebuildAll, module, prompt };
 }
 
+/** Token of `context.message.threadId` stored on the module pipeline. */
+export const MESSAGE_THREAD_ID_RE = /^[A-Za-z0-9_.-]{1,100}$/;
+
+export function messageThreadIdOk(id: string): boolean {
+  return MESSAGE_THREAD_ID_RE.test(id);
+}
+
+/**
+ * Keep the id already on the module; otherwise take the incoming request thread.
+ * Rejects a non-token with a reason. Empty / omitted incoming is a no-op.
+ */
+export function resolveNs5MessageThreadId(
+  existing: string | undefined,
+  incoming: string | undefined,
+): string | undefined {
+  if (existing) {
+    if (!messageThreadIdOk(existing)) {
+      throw new Error(`messageThreadId already stored is not a token (1–100 of A–Z a–z 0–9 _ . -): ${JSON.stringify(existing)}`);
+    }
+    return existing;
+  }
+  if (incoming === undefined || incoming === '') return undefined;
+  if (!messageThreadIdOk(incoming)) {
+    throw new Error(`messageThreadId must be a token of 1–100 characters (A–Z a–z 0–9 _ . -); got ${JSON.stringify(incoming)}`);
+  }
+  return incoming;
+}
+
 export function createEmptyPipeline(
   moduleName: string,
   sourcePrompt: string,
   invocation: Ns5Invocation,
   now = new Date().toISOString(),
+  messageThreadId?: string,
 ): Ns5PipelineState {
+  const resolved = resolveNs5MessageThreadId(undefined, messageThreadId);
   return {
     schemaVersion: NS5_PIPELINE_SCHEMA_VERSION,
     flowId: NS5_FLOW_ID,
@@ -115,6 +146,7 @@ export function createEmptyPipeline(
     sourcePrompt,
     invocation,
     updatedAt: now,
+    ...(resolved ? { messageThreadId: resolved } : {}),
   };
 }
 
@@ -188,13 +220,23 @@ export async function startNs5Pipeline(
   sourcePrompt: string,
   invocation: Ns5Invocation,
   rebuildAll: boolean,
+  messageThreadId?: string,
 ): Promise<Ns5PipelineState> {
   let rebuildReport: Ns5RebuildAllReport | undefined;
+  let keptThreadId: string | undefined;
   if (rebuildAll) {
+    const existing = await readPipeline(moduleName);
+    keptThreadId = existing?.messageThreadId;
     const result = await removeModule(moduleName);
     rebuildReport = { deleted: result.deleted, edited: result.edited, at: new Date().toISOString() };
   }
-  const pipeline = createEmptyPipeline(moduleName, sourcePrompt, invocation, rebuildReport?.at);
+  const pipeline = createEmptyPipeline(
+    moduleName,
+    sourcePrompt,
+    invocation,
+    rebuildReport?.at,
+    resolveNs5MessageThreadId(keptThreadId, messageThreadId),
+  );
   if (rebuildReport) pipeline.rebuildAll = rebuildReport;
   await writePipeline(pipeline);
   return pipeline;

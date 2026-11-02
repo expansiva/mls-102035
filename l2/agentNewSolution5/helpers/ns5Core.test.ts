@@ -13,7 +13,9 @@ import {
   createNs5RetryStep,
   markNs5Complete,
   markNs5Step,
+  messageThreadIdOk,
   moduleTokenOk,
+  resolveNs5MessageThreadId,
   nextNs5RunNn,
   ns5EntryRefusal,
   ns5OntologyEntitySelector,
@@ -98,7 +100,7 @@ void test('startNs5Pipeline stamps rebuildAll { deleted, edited, at } after remo
 // deleting (and writing) on `/rebuild all`, which now happens in module10, after the verdict.
 void test('the entry hook does not start the pipeline on /rebuild all', () => {
   const source = readFileSync(fileURLToPath(new URL('../agentNewSolution5.ts', import.meta.url)), 'utf8');
-  assert.match(source, /if \(moduleName && !invocation\.rebuildAll\) await startNs5Pipeline\(moduleName, invocation\.prompt, flags, false\)/);
+  assert.match(source, /if \(moduleName && !invocation\.rebuildAll\) await startNs5Pipeline\(moduleName, invocation\.prompt, flags, false, context\.message\.threadId\)/);
   assert.equal(source.includes('startNs5Pipeline(moduleName, invocation.prompt, flags, invocation.rebuildAll)'), false);
   // the invocation the hook does not persist is the one module10 reads from memory
   assert.match(source, /rebuildAll: 'true'/);
@@ -111,6 +113,45 @@ void test('empty pipeline starts inProgress with empty steps', () => {
   assert.deepEqual(pipeline.steps, {});
   assert.equal(pipeline.schemaVersion, '2026-09-10-ns5-pipeline-v1');
   assert.equal(pipeline.flowId, 'agentNewSolution5');
+  assert.equal(pipeline.messageThreadId, undefined);
+});
+
+void test('createEmptyPipeline stores a valid messageThreadId', () => {
+  const pipeline = createEmptyPipeline(
+    'teste5',
+    'criar o modulo x',
+    { fast: true, module: 'teste5', rebuildAll: false },
+    '2026-09-10T00:00:00.000Z',
+    'thr_abc-1.2',
+  );
+  assert.equal(pipeline.messageThreadId, 'thr_abc-1.2');
+});
+
+void test('createEmptyPipeline refuses an invalid messageThreadId with a reason', () => {
+  assert.throws(
+    () => createEmptyPipeline('teste5', 'criar', { fast: false, module: 'teste5', rebuildAll: false }, undefined, 'not a token'),
+    /messageThreadId must be a token/,
+  );
+  const empty = createEmptyPipeline('teste5', 'criar', { fast: false, module: 'teste5', rebuildAll: false }, undefined, '');
+  assert.equal(empty.messageThreadId, undefined);
+});
+
+void test('resolveNs5MessageThreadId keeps the stored id on rebuild', () => {
+  assert.equal(messageThreadIdOk('t_1'), true);
+  assert.equal(messageThreadIdOk('has space'), false);
+  assert.equal(resolveNs5MessageThreadId('old.thread-1', 'new.thread-2'), 'old.thread-1');
+  assert.equal(resolveNs5MessageThreadId(undefined, 'new.thread-2'), 'new.thread-2');
+  assert.throws(() => resolveNs5MessageThreadId(undefined, 'bad id'), /must be a token/);
+});
+
+void test('startNs5Pipeline reads the stored messageThreadId before removeModule', () => {
+  const source = readFileSync(fileURLToPath(new URL('./ns5Core.ts', import.meta.url)), 'utf8');
+  const fn = source.slice(source.indexOf('export async function startNs5Pipeline'));
+  const body = fn.slice(0, fn.indexOf('\nexport function moduleTokenOk'));
+  const readAt = body.indexOf('readPipeline(moduleName)');
+  const removeAt = body.indexOf('removeModule(moduleName)');
+  assert.ok(readAt !== -1 && readAt < removeAt, 'rebuild must keep the existing thread before deleting the module');
+  assert.match(body, /resolveNs5MessageThreadId\(keptThreadId, messageThreadId\)/);
 });
 
 void test('parseNs5Invocation allows a prompt without /module', () => {

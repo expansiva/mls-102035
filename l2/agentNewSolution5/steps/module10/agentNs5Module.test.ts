@@ -144,7 +144,7 @@ void test('module10 starts the rebuild after the verdict and before the first wr
   const source = readFileSync(path.join(HERE, 'agentNs5Module.ts'), 'utf8');
   const after = source.slice(source.indexOf('export async function afterNs5ModulePromptStep'));
   const body = after.slice(0, after.indexOf('\nexport async function', 1));
-  const start = body.indexOf('startNs5Pipeline(moduleName, sourcePrompt, invocation, true)');
+  const start = body.indexOf('startNs5Pipeline(moduleName, sourcePrompt, invocation, true, context.message.threadId)');
   assert.notEqual(start, -1, 'module10 no longer starts the rebuild');
   assert.ok(start < body.indexOf('ensurePipeline('), 'the rebuild starts after the pipeline it should replace');
   assert.ok(start < body.indexOf('writeJson('), 'the draft is written before the removal');

@@ -61,7 +61,7 @@ async function beforePromptImplicit(
   // stays untouched until module10 answers "this is a module request". The invocation in flight
   // travels in `longTermMemory` below, and module10 calls `startNs5Pipeline` after its verdict.
   // Without `/rebuild all` the module does not exist yet, so there is nothing to protect.
-  if (moduleName && !invocation.rebuildAll) await startNs5Pipeline(moduleName, invocation.prompt, flags, false);
+  if (moduleName && !invocation.rebuildAll) await startNs5Pipeline(moduleName, invocation.prompt, flags, false, context.message.threadId);
 
   const addMessage: mls.msg.AgentIntentAddMessageAI = {
     type: 'add-message-ai',
