@@ -120,3 +120,11 @@ test('request states come only from the final written result and reject invalid 
   ], 'done');
   assert.deepEqual(summary, { key: 'request.success', values: { count: 3 }, retry: false, fileStates: [changed, added, removed] });
 });
+
+test('producer summary is kept for a written request and a clarification', () => {
+  const written = summarizeNewReleaseRequest([JSON.stringify({ written: true, files: ['rules.defs.ts'], summary: 'descontoNaoExcedeSubtotal mudou' })], 'done');
+  assert.equal(written.summary, 'descontoNaoExcedeSubtotal mudou');
+  const question = summarizeNewReleaseRequest([JSON.stringify({ question: 'Quem marca o prato como pronto?', summary: 'Quem marca o prato como pronto?', written: false })], 'paused');
+  assert.equal(question.summary, 'Quem marca o prato como pronto?');
+  assert.equal(question.retry, true);
+});

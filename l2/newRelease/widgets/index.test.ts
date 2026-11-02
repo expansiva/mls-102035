@@ -105,3 +105,18 @@ test('review counts new warnings and keeps previous observations in closed detai
     assert.doesNotMatch(templateText(index.renderValidationLog()), /<details/);
   }
 });
+
+test('What changed shows the recorded prompt and full value for its exact path', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+  index.activeTab = 'review';
+  index.version = 'asis';
+  index.data = { diffs: [{ path: 'rules.defs.ts', entries: [{ jsonPath: '$.rules.a', before: 'texto anterior', after: 'texto novo completo' }] }] };
+  index.changeOrigins = [{ source: 'prompt', at: '2026-11-02T10:00:00.000Z', request: 'Altere a regra a', taskId: 'task1', changes: [{ file: 'rules.defs.ts', jsonPath: '$.rules.a' }] }];
+  const view = templateText(index.renderDiffs());
+  assert.match(view, /Pedido em/);
+  assert.match(view, /Altere a regra a/);
+  assert.match(view, /Abrir task task1/);
+  assert.match(view, /texto novo completo/);
+});

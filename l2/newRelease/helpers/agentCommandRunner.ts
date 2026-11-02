@@ -44,6 +44,7 @@ export interface NewReleaseRequestFileState {
 
 export interface NewReleaseRequestSummary {
   fileStates?: NewReleaseRequestFileState[];
+  summary?: string;
   key: string;
   values: { reason?: string; question?: string; count?: number };
   retry: boolean;
@@ -55,6 +56,7 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
   let refusal = '';
   let written: number | null = null;
   let fileStates: NewReleaseRequestFileState[] = [];
+  let producerSummary = '';
   for (const result of results) {
     let value: unknown;
     try { value = JSON.parse(result); }
@@ -64,7 +66,8 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
       continue;
     }
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
-    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
+    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; summary?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
+    if (typeof outcome.summary === 'string' && outcome.summary.trim()) producerSummary = outcome.summary.trim();
     if (typeof outcome.question === 'string') question = outcome.question;
     if (outcome.triage?.valid === false) {
       if (typeof outcome.triage.clarification === 'string') question = outcome.triage.clarification;
@@ -78,11 +81,12 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
         && ['added', 'changed', 'removed'].includes(item.state)) : [];
     }
   }
-  if (question) return { key: 'request.question', values: { question }, retry: true };
-  if (refusal) return { key: 'request.refused', values: { reason: refusal }, retry: true };
-  if (status === 'failed') return { key: 'request.failed', values: {}, retry: true };
-  if (written !== null) return { key: 'request.success', values: { count: written }, retry: false, ...(fileStates.length ? { fileStates } : {}) };
-  return { key: 'request.noResult', values: {}, retry: true };
+  const summary = producerSummary ? { summary: producerSummary } : {};
+  if (question) return { key: 'request.question', values: { question }, retry: true, ...summary };
+  if (refusal) return { key: 'request.refused', values: { reason: refusal }, retry: true, ...summary };
+  if (status === 'failed') return { key: 'request.failed', values: {}, retry: true, ...summary };
+  if (written !== null) return { key: 'request.success', values: { count: written }, retry: false, ...(fileStates.length ? { fileStates } : {}), ...summary };
+  return { key: 'request.noResult', values: {}, retry: true, ...summary };
 }
 
 export interface NewReleasePromptRequest { moduleName: string; request: string }

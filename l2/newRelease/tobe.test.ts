@@ -30,6 +30,7 @@ import { tabForArtifactPath } from './editContract.js';
 import { sha256Tobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { L4SealedCandidateError, markL4Result, readActiveL4Change, readChangeRequest, readL4Release, readL4Revision, readSealedL4Candidate, resolveL4Folders, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { historicalReleaseId } from './helpers/context.js';
+import { readChangeOrigins } from './helpers/changeOrigins.js';
 import { readNs5Module } from './helpers/l4Reader.js';
 import { bindStructuredEditsRequest, ChangeRequestDrafts, contextStillCurrent, listReleaseChoices, reuseHistoricalRelease, revisionsForKnob, saveChangeRequest, selectedRevisionIndex } from './helpers/revisionSelection.js';
 
@@ -250,6 +251,9 @@ test('runtime overlay saves one artifact, detects stale base, and discards with 
   assert.equal(prepared.sources.module.value?.title, 'Prepared title');
   assert.equal(prepared.manifest?.changes.length, 1);
   assert.deepEqual(prepared.diffs[0]?.entries, [{ jsonPath: '$.title', before: fixture.source.module.title, after: 'Prepared title' }]);
+  assert.deepEqual((await readChangeOrigins(project, moduleName)).map(row => ({ source: row.source, changes: row.changes })), [
+    { source: 'manual', changes: [{ file: 'module.defs.ts', jsonPath: '$.title' }] },
+  ]);
 
   const asisInfo = tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'asis');
   fixture.contents.set(fixture.keyOf(asisInfo), `export const fixture = ${JSON.stringify({ ...fixture.source.module, title: 'Regenerated title' })} as const;`);
@@ -263,6 +267,7 @@ test('runtime overlay saves one artifact, detects stale base, and discards with 
   assert.equal(restored.sources.module.source, 'asis');
   assert.equal(restored.sources.module.value?.title, fixture.source.module.title);
   assert.equal(restored.diffs.length, 0);
+  assert.deepEqual(await readChangeOrigins(project, moduleName), []);
   assert.ok(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/plan')));
 });
 

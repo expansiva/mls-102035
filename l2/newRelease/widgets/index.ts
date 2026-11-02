@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
 import { ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
+import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
 import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
 import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 import { summarizeNewReleaseRequest, runNewReleaseRequest, newReleaseTaskCost, type NewReleaseRequestFileState } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
@@ -29,6 +30,7 @@ import { sealL4Revision, readChangeRequest, readActiveL4Change } from '/_102035_
 import { bindStructuredEditsRequest, ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import { discardTobe, saveTobeArtifact, NewReleaseSaveValidationError } from '/_102035_/l2/newRelease/tobe.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
+import { readChangeOrigins, originForChange, type ChangeOrigin } from '/_102035_/l2/newRelease/helpers/changeOrigins.js';
 import { type NewReleaseValidationIssue, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import {
   NEW_RELEASE_CHANGED_EVENT,
@@ -77,6 +79,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private requestNeedsRetry = false;
   @state() private requestReady = false;
   @state() private requestTask: { id: string; threadId: string; cost: number | null } | null = null;
+  @state() private changeOrigins: ChangeOrigin[] = [];
 
   @state() private presentation: 'graph' | 'text' | 'prompt' = 'graph';
   @state() private textSearch = '';
@@ -215,9 +218,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
     let data: NewReleaseModuleData;
     let request: Awaited<ReturnType<typeof readChangeRequest>> = null;
+    let changeOrigins: ChangeOrigin[] = [];
     try {
       data = await readNs5Module(context.project, context.moduleName, context.version);
       if (context.version === 'asis' || context.version === 'tobe') request = await readChangeRequest(context.project, context.moduleName);
+      if (context.version === 'tobe') changeOrigins = await readChangeOrigins(context.project, context.moduleName);
     } catch (error) {
       if (token === this.loadToken && contextStillCurrent(context, this)) {
         if (this.pendingEdit?.project === context.project && this.pendingEdit.moduleName === context.moduleName && context.version === 'tobe') this.pendingEdit = undefined;
@@ -230,6 +235,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const languagePending = !historicalReleaseId(context.version) && await hasPendingLanguages(context.project, context.moduleName);
     if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
     this.data = data;
+    this.changeOrigins = changeOrigins;
     this.languagePending = languagePending;
     this.expectedChangeId = data.changeId;
     this.expectedRevisionId = data.revisionId;
@@ -583,7 +589,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         threadId: (outcome.task.messageid_created || '').split('/')[0] || '',
         cost: newReleaseTaskCost(outcome.task),
       } : null;
-      this.requestResult = this.t(summary.key, summary.values);
+      this.requestResult = summary.summary || this.t(summary.key, summary.values);
       this.requestFileStates = summary.fileStates ?? [];
       this.requestNeedsRetry = summary.retry;
       if (outcome.task.status === 'failed') throw new Error(this.requestResult);
@@ -770,6 +776,20 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   }
 
+  private originLabel(origin: ReturnType<typeof originForChange>): string {
+    if (!origin) return this.t('tobe.origin.unknown');
+    const date = new Date(origin.operation.at);
+    const at = Number.isNaN(date.getTime()) ? origin.operation.at : date.toLocaleString(document.documentElement?.lang || 'pt-BR');
+    return this.t(`tobe.origin.${origin.operation.source}`, { at })
+      + (origin.earlier ? ` · ${this.t('tobe.origin.earlier', { count: origin.earlier })}` : '');
+  }
+
+  private async openOriginTask(taskId: string): Promise<void> {
+    const thread = await getThreadByName('_102035_/l2/newRelease/requests');
+    if (thread?.threadId) dispatchThreadOpen(thread.threadId, taskId);
+    else this.mutationError = this.t('tobe.origin.taskUnavailable');
+  }
+
   private renderTobeStatus() {
     const manifest = this.data?.manifest;
     if (!manifest) return nothing;
@@ -844,19 +864,23 @@ export class NewReleaseIndex102035 extends StateLitElement {
               </div>
             </header>
             <div class="nr-index__diff-lines">
-              ${diff.entries.map(entry => html`
+              ${diff.entries.map(entry => {
+                const origin = originForChange(this.changeOrigins, diff.path, entry.jsonPath);
+                return html`
                 <article>
                   <code>${entry.jsonPath}</code>
                   <span class="is-before">${this.formatDiffValue(entry.before)}</span>
                   <span aria-hidden="true">${this.t('tobe.diffArrow')}</span>
                   <span class="is-after">${this.formatDiffValue(entry.after)}</span>
                   <details class="nr-index__diff-detail">
-                    <summary>${this.t('tobe.diffDetails')}</summary>
+                    <summary>${this.t('tobe.diffDetails')} · ${this.originLabel(origin)}</summary>
+                    ${origin?.operation.request ? html`<p>${this.t('tobe.origin.request')}: ${origin.operation.request}</p>` : nothing}
+                    ${origin?.operation.taskId ? html`<button type="button" @click=${() => void this.openOriginTask(origin.operation.taskId!)}>${this.t('tobe.origin.task', { id: origin.operation.taskId })}</button>` : nothing}
                     <div><strong>${this.t('tobe.diffBefore')}</strong><pre>${this.fullDiffValue(entry.before)}</pre></div>
                     <div><strong>${this.t('tobe.diffAfter')}</strong><pre>${this.fullDiffValue(entry.after)}</pre></div>
                   </details>
                 </article>
-              `)}
+              `; })}
             </div>
           </section>
         `)}

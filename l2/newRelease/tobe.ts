@@ -45,6 +45,7 @@ import {
   type Ns5TobeManifest,
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import { clearChangeOrigins, recordManualChangeOrigin } from '/_102035_/l2/newRelease/helpers/changeOrigins.js';
 import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, withModuleWriter, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
@@ -161,7 +162,8 @@ export async function saveTobeArtifact(
   const active = await readActiveL4Change(project, moduleName);
   const reading = active ? 'tobe' : 'asis';
   const currentOverlay = await readNs5Overlay(project, moduleName, reading);
-  if (!currentOverlay.sources.all.some(artifact => artifact.path === path)) throw new NewReleaseSaveValidationError('missing', []);
+  const currentArtifact = currentOverlay.sources.all.find(artifact => artifact.path === path);
+  if (!currentArtifact) throw new NewReleaseSaveValidationError('missing', []);
   const proposedOverlay = await readNs5Overlay(project, moduleName, reading, undefined, { path, value });
   const validation = proposedOverlay.validation;
   const unsupported = Object.entries(validation.coverage)
@@ -190,6 +192,7 @@ export async function saveTobeArtifact(
     await writeDefs(tobeArtifactFileInfo(project, moduleName, path, 'tobe'), spec.exportName, value, spec.typeName);
     const next = recordTobeSave(current, path, options.jsonPath || '$', baseHash, options.author || await manifestAuthor(), options.now);
     await writeJson(tobeManifestFileInfo(project, moduleName), next);
+    await recordManualChangeOrigin(project, moduleName, path, currentArtifact.value, value, options.now ? new Date(options.now) : undefined);
     return next;
   });
   manifest.changeId = revision.changeId;
@@ -242,6 +245,7 @@ export async function discardTobe(
   let manifest: Ns5TobeManifest | null = null;
   if (path) {
     const updateManifest = async () => {
+      await clearChangeOrigins(project, moduleName, path);
       const current = await readManifest(project, moduleName);
       if (!current) return;
       manifest = recordTobeDiscard(current, path);
@@ -267,7 +271,7 @@ export async function discardTobe(
     }
   } else {
     await deactivateL4Change(project, moduleName, async () => {
-      const inventory = [...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName)];
+      const inventory = [...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName), ...listedTobeFolder(project, `${moduleName}/tobe/operations`)];
       deleted.push(...inventory.map(file => `l4/${file.folder}/${file.shortName}${file.extension}`));
       await deleteInventory(inventory);
     });
@@ -487,7 +491,7 @@ export async function completeTobeImplementation(project: number, moduleName: st
     }
     const record = await readL4Implementation(project, moduleName);
     if (!record || record.revisionId !== revisionId || !implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) throw new Error('implementation.not_complete');
-    await deleteInventory([...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName)]);
+    await deleteInventory([...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName), ...listedTobeFolder(project, `${moduleName}/tobe/operations`)]);
   });
   announceTobeUpdated(project, moduleName);
 }
