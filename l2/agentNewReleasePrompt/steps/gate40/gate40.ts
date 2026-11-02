@@ -376,7 +376,7 @@ function strip(value: string): string {
   return JSON.stringify(invocation);
 }
 
-/** Clarification instead of write50. The question is the summary; nothing is written. */
+/** The gate asks instead of writing: the task ends with `{ written:false, summary, revisedPrompt }` (no step waits for a human; the user resends a new, complete request). */
 export function fieldsOnlyHold(
   base: { messageId: string; threadId: string; taskId: string; parentStepId: number },
   step: mls.msg.AIAgentStep,
@@ -385,14 +385,6 @@ export function fieldsOnlyHold(
   revisedPrompt: string,
 ): mls.msg.AgentIntent[] {
   return [
-    {
-      type: 'add-step', ...base, step: {
-        type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],
-        stepTitle: 'Access needs clarification',
-        json: JSON.stringify({ source: 'gate40', question, revisedPrompt }),
-        planning: { planId: 'gate40-clarification', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
-      } as mls.msg.AIClarificationStep,
-    },
     {
       type: 'add-step', ...base, step: {
         type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],

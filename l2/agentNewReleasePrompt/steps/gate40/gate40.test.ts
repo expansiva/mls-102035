@@ -403,7 +403,7 @@ void test('a step-kind error names the journey file and the pointer inside it', 
   assert.match(refused, /Expected file: duplicarTarefa pointer: \/business\/steps\/2\/kind/);
 });
 
-void test('fieldsOnly hold asks and does not schedule write50', () => {
+void test('fieldsOnly hold ends the task with the revisedPrompt and no step waits for a human', () => {
   const question = 'O campo Mesa.details.statusAtendimento deve aparecer para o ator Garçom?';
   const request = 'Acrescentar o campo statusAtendimento na mesa para o atendimento.';
   const revisedPrompt = `${request}\nO campo Mesa.details.statusAtendimento aparece para o ator Garçom: [sim]`;
@@ -415,13 +415,8 @@ void test('fieldsOnly hold asks and does not schedule write50', () => {
     revisedPrompt,
   );
   const steps = intents.filter(intent => intent.type === 'add-step').map(intent => intent.step);
-  const clarification = steps.find(step => step.type === 'clarification');
-  assert.equal(clarification?.status, 'waiting_human_input');
-  assert.deepEqual(JSON.parse(String(clarification && 'json' in clarification ? clarification.json : '')), {
-    source: 'gate40',
-    question,
-    revisedPrompt,
-  });
+  assert.equal(steps.some(step => step.type === 'clarification'), false);
+  assert.equal(steps.some(step => step.status === 'waiting_human_input'), false);
   const result = steps.find(step => step.type === 'result');
   assert.deepEqual(JSON.parse(String(result && 'result' in result ? result.result : '')), {
     written: false,
