@@ -43,6 +43,7 @@ import {
   normalizeNrpTriage,
   recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
+import { fieldsOnlyQuestion } from '/_102035_/l2/agentNewReleasePrompt/helpers/accessCoherence.js';
 import { promptHoldSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createWrite50Step } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
@@ -89,6 +90,8 @@ export async function beforeNrpGateStep(
     const issues = gateIssues(baseArtifacts, merged);
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action === 'write') {
+      const question = fieldsOnlyQuestion(baseArtifacts, merged, baseArtifacts.module.userLanguage);
+      if (question) return fieldsOnlyHold(base, step, hookSequential, question);
       return [
         {
           type: 'add-step', ...base, step: createWrite50Step({
@@ -371,6 +374,34 @@ function strip(value: string): string {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return value;
   const { nrpGate: _ignored, ...invocation } = raw as Record<string, unknown>;
   return JSON.stringify(invocation);
+}
+
+/** Clarification instead of write50. The question is the summary; nothing is written. */
+export function fieldsOnlyHold(
+  base: { messageId: string; threadId: string; taskId: string; parentStepId: number },
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+  question: string,
+): mls.msg.AgentIntent[] {
+  return [
+    {
+      type: 'add-step', ...base, step: {
+        type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],
+        stepTitle: 'Access needs clarification',
+        json: JSON.stringify({ source: 'gate40', question }),
+        planning: { planId: 'gate40-clarification', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
+      } as mls.msg.AIClarificationStep,
+    },
+    {
+      type: 'add-step', ...base, step: {
+        type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
+        stepTitle: 'Verification needs clarification',
+        result: JSON.stringify({ written: false, summary: promptHoldSummary(question) }),
+        planning: { planId: 'gate40-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
+      } as mls.msg.AIResultStep,
+    },
+    done(base, step, hookSequential, question),
+  ];
 }
 
 function done(

@@ -39,7 +39,7 @@ export interface NrpEditCursor extends NrpEditOrder {
 export const NRP_JOURNEY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, journeyId, business with actorRef, title, goal, entry, steps and outcome).';
 export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, moduleName, entityId, and the same sections the sibling uses).';
 /** Step kinds the journey gate accepts, and the twin rule it enforces. The gate constant is not exported. */
-export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. To tell them apart, change the actor, the entity, or the operations (for example, replace locate plus act with one act step that has an effect). Do not invent a step kind.';
+export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. To tell them apart, change the actor, the entity, or the operations (for example, replace locate plus act with one act step that has an effect). Do not invent a step kind. If the request does not say who acts, ask; do not pick an actor.';
 /** Shown with the signatures the code already measured for the actor. */
 export const NRP_NEW_SIGNATURE_RULE = 'a jornada nova precisa de uma assinatura que não esteja na lista';
 

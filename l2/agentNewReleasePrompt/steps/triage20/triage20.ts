@@ -89,7 +89,7 @@ Call submitNrpTriage. Every property is required.
 - valid is true only when the request asks for a concrete change inside that specification.
 - valid is false when the request is empty, too vague to name a change, or about anything outside the specification (presentation, layout, colors, buttons, infrastructure, deployment).
 - reason explains an invalid request. Use null when the request is valid.
-- clarification is one question for the user when the request contradicts an indexed rule or can mean two different specification changes. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, and mechanical is [].
+- clarification is one question for the user when the request contradicts an indexed rule or can mean two different specification changes, or when a new journey step needs an actor and the request does not say which actor performs it. Never choose an actor the request does not name. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, and mechanical is [].
 - artifacts lists the kinds the change would touch. Use [] when the request stops here. Kinds: ontology, rules, journeys, access, workflows, integration.
 - targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.
 - intent is one sentence of the change to apply. Use null when the request stops here.

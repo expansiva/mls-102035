@@ -50,6 +50,7 @@ void test('triage schema is strict and the prompt states intention only', () => 
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /Put that kind in artifacts and describe that part in intent/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /mechanicalOnly is true only when those marks, by themselves, fulfill the whole request/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /new text makes mechanicalOnly false/);
+  assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /Never choose an actor the request does not name/);
   const human = buildNrpTriageHumanPrompt('Make priority optional.', index);
   assert.match(human, /Make priority optional\./);
   assert.match(human, /"entityId":"WorkItem"/);
