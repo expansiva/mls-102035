@@ -50,6 +50,7 @@ const base = moduleWith(baseFields, [
 ]);
 
 void test('statusAtendimento on a fieldsOnly grant that omits it asks in pt and en', () => {
+  const request = 'Acrescentar o campo statusAtendimento na mesa para o atendimento.';
   const merged = moduleWith({
     ...baseFields,
     details: {
@@ -57,13 +58,17 @@ void test('statusAtendimento on a fieldsOnly grant that omits it asks in pt and 
       fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
     },
   }, ['Mesa.code', 'Mesa.details.disponivel']);
+  const pt = fieldsOnlyQuestion(base, merged, 'pt', request);
+  assert.equal(pt?.question, 'O campo Mesa.details.statusAtendimento deve aparecer para o ator Garçom?');
   assert.equal(
-    fieldsOnlyQuestion(base, merged, 'pt'),
-    'O campo Mesa.details.statusAtendimento deve aparecer para o ator Garçom?',
+    pt?.revisedPrompt,
+    `${request}\nO campo Mesa.details.statusAtendimento aparece para o ator Garçom: [sim]`,
   );
+  const en = fieldsOnlyQuestion(base, merged, 'en', request);
+  assert.equal(en?.question, 'Should field Mesa.details.statusAtendimento appear for actor Garçom?');
   assert.equal(
-    fieldsOnlyQuestion(base, merged, 'en'),
-    'Should field Mesa.details.statusAtendimento appear for actor Garçom?',
+    en?.revisedPrompt,
+    `${request}\nField Mesa.details.statusAtendimento is visible to actor Garçom: [yes]`,
   );
 });
 
@@ -75,7 +80,7 @@ void test('the same field listed on the grant is not a question', () => {
       fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
     },
   }, ['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
-  assert.equal(fieldsOnlyQuestion(base, merged, 'pt'), null);
+  assert.equal(fieldsOnlyQuestion(base, merged, 'pt', 'pedido'), null);
 });
 
 void test('a new field on an entity with no fieldsOnly grant is not a question', () => {
@@ -86,5 +91,5 @@ void test('a new field on an entity with no fieldsOnly grant is not a question',
       fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
     },
   }, null);
-  assert.equal(fieldsOnlyQuestion(base, open, 'pt'), null);
+  assert.equal(fieldsOnlyQuestion(base, open, 'pt', 'pedido'), null);
 });

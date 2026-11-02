@@ -90,8 +90,8 @@ export async function beforeNrpGateStep(
     const issues = gateIssues(baseArtifacts, merged);
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action === 'write') {
-      const question = fieldsOnlyQuestion(baseArtifacts, merged, baseArtifacts.module.userLanguage);
-      if (question) return fieldsOnlyHold(base, step, hookSequential, question);
+      const ask = fieldsOnlyQuestion(baseArtifacts, merged, baseArtifacts.module.userLanguage, cursor.request);
+      if (ask) return fieldsOnlyHold(base, step, hookSequential, ask.question, ask.revisedPrompt);
       return [
         {
           type: 'add-step', ...base, step: createWrite50Step({
@@ -382,13 +382,14 @@ export function fieldsOnlyHold(
   step: mls.msg.AIAgentStep,
   hookSequential: number,
   question: string,
+  revisedPrompt: string,
 ): mls.msg.AgentIntent[] {
   return [
     {
       type: 'add-step', ...base, step: {
         type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],
         stepTitle: 'Access needs clarification',
-        json: JSON.stringify({ source: 'gate40', question }),
+        json: JSON.stringify({ source: 'gate40', question, revisedPrompt }),
         planning: { planId: 'gate40-clarification', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
       } as mls.msg.AIClarificationStep,
     },
@@ -396,7 +397,7 @@ export function fieldsOnlyHold(
       type: 'add-step', ...base, step: {
         type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
         stepTitle: 'Verification needs clarification',
-        result: JSON.stringify({ written: false, summary: promptHoldSummary(question) }),
+        result: JSON.stringify({ written: false, summary: promptHoldSummary(question), revisedPrompt }),
         planning: { planId: 'gate40-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
       } as mls.msg.AIResultStep,
     },

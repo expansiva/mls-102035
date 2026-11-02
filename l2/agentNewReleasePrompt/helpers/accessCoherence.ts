@@ -16,22 +16,38 @@ interface FieldsOnlyGap extends NewField {
   actorRef: string;
 }
 
+export interface FieldsOnlyAsk {
+  question: string;
+  /** Original request plus one default line per pending field. Nothing is written. */
+  revisedPrompt: string;
+}
+
 /**
  * One question when a new entity field is invisible to an actor whose grant is
  * `fieldsOnly` on that entity and does not list the field. Otherwise null.
+ * `revisedPrompt` is the original request plus one `[sim]` / `[yes]` line per gap.
  */
 export function fieldsOnlyQuestion(
   base: NrpModuleArtifacts,
   merged: NrpModuleArtifacts,
   language: string | null | undefined,
-): string | null {
+  request: string,
+): FieldsOnlyAsk | null {
   const gaps = fieldsOnlyGaps(base, merged);
   if (!gaps.length) return null;
+  const pt = promptLanguage(language) === 'pt';
   const gap = gaps[0];
-  const text = promptLanguage(language) === 'pt'
+  const text = pt
     ? `O campo ${gap.entityId}.${gap.path} deve aparecer para o ator ${gap.actor}?`
     : `Should field ${gap.entityId}.${gap.path} appear for actor ${gap.actor}?`;
-  return text.length <= QUESTION_MAX ? text : text.slice(0, QUESTION_MAX);
+  const lines = gaps.map(item => pt
+    ? `O campo ${item.entityId}.${item.path} aparece para o ator ${item.actor}: [sim]`
+    : `Field ${item.entityId}.${item.path} is visible to actor ${item.actor}: [yes]`);
+  const original = request.trim();
+  return {
+    question: text.length <= QUESTION_MAX ? text : text.slice(0, QUESTION_MAX),
+    revisedPrompt: original ? `${original}\n${lines.join('\n')}` : lines.join('\n'),
+  };
 }
 
 function fieldsOnlyGaps(base: NrpModuleArtifacts, merged: NrpModuleArtifacts): FieldsOnlyGap[] {

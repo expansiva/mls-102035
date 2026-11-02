@@ -405,11 +405,14 @@ void test('a step-kind error names the journey file and the pointer inside it', 
 
 void test('fieldsOnly hold asks and does not schedule write50', () => {
   const question = 'O campo Mesa.details.statusAtendimento deve aparecer para o ator Garçom?';
+  const request = 'Acrescentar o campo statusAtendimento na mesa para o atendimento.';
+  const revisedPrompt = `${request}\nO campo Mesa.details.statusAtendimento aparece para o ator Garçom: [sim]`;
   const intents = fieldsOnlyHold(
     { messageId: 'm', threadId: 't', taskId: 'task', parentStepId: 1 },
     { stepId: 4 } as mls.msg.AIAgentStep,
     2,
     question,
+    revisedPrompt,
   );
   const steps = intents.filter(intent => intent.type === 'add-step').map(intent => intent.step);
   const clarification = steps.find(step => step.type === 'clarification');
@@ -417,12 +420,16 @@ void test('fieldsOnly hold asks and does not schedule write50', () => {
   assert.deepEqual(JSON.parse(String(clarification && 'json' in clarification ? clarification.json : '')), {
     source: 'gate40',
     question,
+    revisedPrompt,
   });
   const result = steps.find(step => step.type === 'result');
   assert.deepEqual(JSON.parse(String(result && 'result' in result ? result.result : '')), {
     written: false,
     summary: question,
+    revisedPrompt,
   });
+  assert.ok(revisedPrompt.startsWith(request));
+  assert.match(revisedPrompt, /statusAtendimento aparece para o ator Garçom: \[sim\]/);
   assert.equal(steps.some(step => step.planning?.planId === 'write50'), false);
 });
 
