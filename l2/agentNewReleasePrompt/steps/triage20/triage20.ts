@@ -50,13 +50,15 @@ export interface NrpTriage {
   mechanicalOnly: boolean;
   /** Whole request rewritten with a default in brackets, or "" when there is no question. */
   revisedPrompt: string;
+  /** Text for the user when part or all of the request is interface work (l3), else null. */
+  l3Notice: string | null;
 }
 
 export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
   $id: 'https://collab.codes/schemas/agentNewReleasePrompt/triage/2026-10-27-nrp-triage-v1',
   type: 'object',
   additionalProperties: false,
-  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'revisedPrompt'],
+  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'revisedPrompt', 'l3Notice'],
   properties: {
     valid: { type: 'boolean' },
     reason: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
@@ -80,6 +82,7 @@ export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
     },
     mechanicalOnly: { type: 'boolean' },
     revisedPrompt: { type: 'string' },
+    l3Notice: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
   },
 };
 
@@ -90,16 +93,29 @@ You do not edit anything. You only classify the request.
 
 Call submitNrpTriage. Every property is required.
 - valid is true only when the request asks for a concrete change inside that specification.
-- valid is false when the request is empty, too vague to name a change, or about anything outside the specification (presentation, layout, colors, buttons, infrastructure, deployment).
-- reason explains an invalid request. Use null when the request is valid.
+- valid is false only when the request has no path in the specification: it is empty, it is not about this module at all (general questions, jokes, infrastructure, deployment, distributing the app), or the specification already satisfies it. When it is already satisfied, reason names the item that satisfies it (field, rule, journey or grant id from the index) and nothing is changed.
+- reason explains an invalid request. Use null when the request is valid, or when the whole request is interface work and l3Notice carries the answer.
+- A request of a few words ("a field name", "a feature") names something to add: if the index already has it, say so in reason; if not, ask with a revisedPrompt that proposes a default. Do not refuse it as vague.
 - clarification is one question for the user when the request contradicts an indexed rule or can mean two different specification changes, or when a new journey step needs an actor and the request does not say which actor performs it. Never choose an actor the request does not name. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, and mechanical is [].
 - revisedPrompt is the user's whole request rewritten so it can be resent as it is: at each open point write the most probable answer, inferred from the module specification you were given, between square brackets (example: 'who marks the dish ready: [kitchen]'). Never write 'fill in' or a placeholder; the user accepts the default or edits it. Use the language of the request. Do not add anything the request did not ask. Use "" when clarification is null.
+- l3Notice is text for the user, in the language of the request, when part or all of the request is about how the interface looks or is drawn: colors, positions, sizes, order of columns, design system or theme, how a screen is rendered. Say that this part is not in the specification and that the user should check the point adjustments in l3. Null otherwise. When the whole request is interface work, valid is false, clarification is null, revisedPrompt is "" and l3Notice carries the answer. When only part is, treat the rest as usual (apply it, or ask) and still fill l3Notice.
 - artifacts lists the kinds the change would touch. Use [] when the request stops here. Kinds: ontology, rules, journeys, access, workflows, integration.
 - targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.
 - intent is one sentence of the change to apply. Use null when the request stops here.
 - mechanical lists changes the code can apply without a model. A mark covers only making a field optional or required (setOptional, setRequired), removing an item (remove), or replacing one scalar (setScalar). Each mark has op, targetId, fieldId (empty string when the mark is not a field), and value (empty string when the op carries no new scalar). For remove, targetId is the owner of the item (the entity when the item is a field) and fieldId is that field. A field inside details uses a dotted path: details, then the field id. Removing a whole entity is not a mechanical mark.
   Any other part of the request goes to the model. A default value, a notice, a new rule, or new text is not a mechanical mark. Put that kind in artifacts and describe that part in intent. Use [] when the request stops here, or when every part needs the model and no mark applies.
 - mechanicalOnly is true only when those marks, by themselves, fulfill the whole request. A default value, a notice, a new rule, or new text makes mechanicalOnly false, and the kind that records that part goes in artifacts and in intent.
+
+How a request in the user's own words becomes a specification change:
+- a screen, list, panel, report, or "see / follow" something is a journey that lets an actor find and inspect data, plus the access grant that lets that actor read it. It is a valid request, not interface work. If the request does not say which actor, ask with a revisedPrompt that proposes one in brackets (it may be an actor the index does not have yet).
+- a button, an action, "be able to do X" is a journey step that acts, plus the transition or effect on the entity.
+- a field, a piece of information, "keep X" is an entity field, plus the access grant of whoever must see it.
+- "cannot", "always", "required" is a rule.
+- a notice, a deadline, an approval, "after X happens Y" is a workflow.
+- "another module", "when it arrives from" is an integration.
+- Removing or renaming an entity or field, changing the type of a field, or taking access away from an actor that uses it can break data or users: ask, explain the effect in the question, and propose [keep] in revisedPrompt.
+- When unsure which of these the user means, ask with a revisedPrompt; a question costs less than a refusal.
+- The index lists the journeys and grants that exist today per actor; use it so you do not duplicate a screen or grant.
 
 Do not restate the index. Do not invent an example module.`;
 
@@ -132,8 +148,9 @@ export function normalizeNrpTriage(value: unknown): NrpTriage {
     const mechanical = marks(root.mechanical);
     if (typeof root.mechanicalOnly !== 'boolean') throw new Error('Triage mechanicalOnly must be a boolean.');
     const revisedPrompt = revisedText(root.revisedPrompt);
+    const l3Notice = nullableText(root.l3Notice, 'l3Notice');
     const triage: NrpTriage = {
-      valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly, revisedPrompt,
+      valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly, revisedPrompt, l3Notice,
     };
     const notes = settleShape(triage);
     if (notes.length) triageNotes.set(triage, notes);
@@ -238,7 +255,9 @@ export async function afterNrpTriageStep(
     const payload = unwrapNs4FlexibleWorkerPayload(step.interaction?.payload?.[0]);
     const triage = normalizeNrpTriage(payload);
     const stopped = !triage.valid;
-    const hold = stopped ? await holdSummary(step, triage.clarification || triage.reason || '') : null;
+    const hold = stopped
+      ? await holdSummary(step, [triage.clarification || triage.reason, triage.l3Notice].filter(Boolean).join('\n'))
+      : null;
     const intents: mls.msg.AgentIntent[] = [];
     intents.push(
       {
@@ -341,7 +360,7 @@ function settleShape(triage: NrpTriage): string[] {
   }
   if (triage.revisedPrompt) throw new Error('revisedPrompt must be empty when there is no clarification.');
   if (!triage.valid) {
-    if (!triage.reason) throw new Error('An invalid request needs a reason.');
+    if (!triage.reason && !triage.l3Notice) throw new Error('An invalid request needs a reason or an l3Notice.');
     if (hasChangeFields(triage)) notes.push('Discarded fields.');
     clearChanges(triage);
     return notes;

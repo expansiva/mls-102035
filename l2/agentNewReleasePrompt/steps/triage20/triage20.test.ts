@@ -22,7 +22,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 function withRevised(value: unknown, revisedPrompt = ''): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-  return { ...value, revisedPrompt };
+  return { ...value, revisedPrompt, l3Notice: null };
 }
 
 const index: NrpCompactIndex = {
@@ -41,7 +41,7 @@ void test('triage schema is strict and the prompt states intention only', () => 
   assert.equal(lintToolSchema(JSON.stringify(tool.function.parameters)), null);
   const parameters = tool.function.parameters as { required: string[]; properties: { result: { required: string[] } } };
   assert.deepEqual(parameters.properties.result.required, [
-    'valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'revisedPrompt',
+    'valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'revisedPrompt', 'l3Notice',
   ]);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /revisedPrompt is the user's whole request rewritten/);
   assert.match(NRP_TRIAGE_SYSTEM_PROMPT, /between square brackets/);
@@ -96,7 +96,7 @@ void test('a clarification with extra fields becomes a clean question', () => {
     intent: 'Only the manager cancels.',
     mechanical: [{ op: 'setScalar', targetId: 'cancelar', fieldId: 'by', value: 'gestor' }],
     mechanicalOnly: true,
-    revisedPrompt: 'Only the manager cancels: [manager].',
+    revisedPrompt: 'Only the manager cancels: [manager].', l3Notice: null,
   });
   assert.equal(cleaned.valid, false);
   assert.equal(cleaned.reason, null);
@@ -122,7 +122,7 @@ void test('a long clarification is cut to a whole sentence', () => {
     intent: null,
     mechanical: [],
     mechanicalOnly: false,
-    revisedPrompt: 'Quem cancela o item: [gestor].',
+    revisedPrompt: 'Quem cancela o item: [gestor].', l3Notice: null,
   });
   assert.ok((cleaned.clarification || '').length <= 1000);
   assert.match(cleaned.revisedPrompt, /\[gestor\]/);
@@ -141,7 +141,7 @@ void test('an invalid request drops change fields and keeps the reason', () => {
     intent: 'Paint the button.',
     mechanical: [],
     mechanicalOnly: false,
-    revisedPrompt: '',
+    revisedPrompt: '', l3Notice: null,
   });
   assert.equal(cleaned.valid, false);
   assert.equal(cleaned.revisedPrompt, '');
@@ -163,17 +163,17 @@ void test('a malformed triage is refused and the raw answer is recorded without 
   assert.equal(stored?.reason, 'Triage valid must be a boolean.');
   assert.equal(stored?.raw?.token, '[redacted]');
   assert.throws(
-    () => normalizeNrpTriage({ valid: true, reason: null, clarification: null, artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false, revisedPrompt: '' }),
+    () => normalizeNrpTriage({ valid: true, reason: null, clarification: null, artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false, revisedPrompt: '', l3Notice: null }),
     /at least one artifact/,
   );
   assert.throws(() => normalizeNrpTriage({
-    valid: true, reason: null, clarification: null, artifacts: ['button'], targets: [], intent: 'Add a button.', mechanical: [], mechanicalOnly: false, revisedPrompt: '',
+    valid: true, reason: null, clarification: null, artifacts: ['button'], targets: [], intent: 'Add a button.', mechanical: [], mechanicalOnly: false, revisedPrompt: '', l3Notice: null,
   }), /Unknown artifact kind/);
 });
 
 void test('mechanicalOnly is true only when marks fulfill the request', () => {
   const base = {
-    valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['WorkItem'], intent: 'Make priority optional and record the medium default.', revisedPrompt: '',
+    valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['WorkItem'], intent: 'Make priority optional and record the medium default.', revisedPrompt: '', l3Notice: null,
   };
   const both = normalizeNrpTriage({
     ...base,
@@ -195,14 +195,14 @@ void test('mechanicalOnly is true only when marks fulfill the request', () => {
 void test('revisedPrompt carries a bracketed default and refuses an empty or placeholder question', () => {
   const question = {
     valid: false, reason: null, clarification: 'Quem marca o prato como pronto?',
-    artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false,
+    artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false, l3Notice: null,
   };
   const pt = normalizeNrpTriage({ ...question, revisedPrompt: 'Quem marca o prato como pronto: [cozinha].' });
   assert.match(pt.revisedPrompt, /\[cozinha\]/);
   const en = normalizeNrpTriage({
     ...question,
     clarification: 'Who marks the dish ready?',
-    revisedPrompt: 'Who marks the dish ready: [kitchen].',
+    revisedPrompt: 'Who marks the dish ready: [kitchen].', l3Notice: null,
   });
   assert.match(en.revisedPrompt, /\[kitchen\]/);
   assert.throws(() => normalizeNrpTriage({ ...question, revisedPrompt: '' }), /needs a revisedPrompt/);
@@ -210,11 +210,27 @@ void test('revisedPrompt carries a bracketed default and refuses an empty or pla
   assert.throws(() => normalizeNrpTriage({
     ...question,
     clarification: 'Who marks the dish ready?',
-    revisedPrompt: 'Who marks the dish ready: [fill in].',
+    revisedPrompt: 'Who marks the dish ready: [fill in].', l3Notice: null,
   }), /fill in/);
   const closed = normalizeNrpTriage({
     valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['WorkItem'],
-    intent: 'Make priority optional.', mechanical: [], mechanicalOnly: false, revisedPrompt: '',
+    intent: 'Make priority optional.', mechanical: [], mechanicalOnly: false, revisedPrompt: '', l3Notice: null,
   });
   assert.equal(closed.revisedPrompt, '');
+});
+
+void test('l3Notice answers interface work alone and rides along with a change', () => {
+  const alone = normalizeNrpTriage({
+    valid: false, reason: null, clarification: null, artifacts: [], targets: [], intent: null, mechanical: [],
+    mechanicalOnly: false, revisedPrompt: '', l3Notice: 'This is interface work: check the point adjustments in l3.',
+  });
+  assert.equal(alone.valid, false);
+  assert.match(alone.l3Notice || '', /l3/);
+  assert.throws(() => normalizeNrpTriage({ ...alone, l3Notice: null }), /needs a reason or an l3Notice/);
+  const mixed = normalizeNrpTriage({
+    valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['WorkItem'],
+    intent: 'Add a field.', mechanical: [], mechanicalOnly: false, revisedPrompt: '', l3Notice: 'The color is l3.',
+  });
+  assert.equal(mixed.valid, true);
+  assert.equal(mixed.l3Notice, 'The color is l3.');
 });

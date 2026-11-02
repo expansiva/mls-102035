@@ -245,7 +245,7 @@ export async function persistNrp(payload: NrpWritePayload, taskId = ''): Promise
   const userLanguage = payload.artifacts.module && 'userLanguage' in payload.artifacts.module
     ? payload.artifacts.module.userLanguage
     : undefined;
-  const summary = promptChangeSummary(userLanguage, touched);
+  const summary = [promptChangeSummary(userLanguage, touched), payload.triage.l3Notice].filter(Boolean).join('\n');
   if (touched.length) {
     const at = new Date();
     const record: NrpOperationRecord = {
