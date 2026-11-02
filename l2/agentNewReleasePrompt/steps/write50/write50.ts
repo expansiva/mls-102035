@@ -33,6 +33,8 @@ import {
 } from '/_102035_/l2/solution/fs.js';
 import { scanNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds } from '/_102035_/l2/solution/ontologyView.js';
+import { tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
+import { promptChangeSummary, type PromptSummaryFile } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 
 export interface NrpWritePayload {
   moduleName: string;
@@ -56,6 +58,26 @@ export interface NrpPersistPlan {
   written: boolean;
   reason: string | null;
   files: string[];
+}
+
+export interface NrpPersistResult {
+  files: string[];
+  fileStates: NrpFileState[];
+  reason: string | null;
+  summary: string;
+}
+
+export interface NrpOperationChange {
+  file: string;
+  jsonPath: string;
+}
+
+export interface NrpOperationRecord {
+  source: 'prompt';
+  at: string;
+  request: string;
+  taskId: string;
+  changes: NrpOperationChange[];
 }
 
 /** Classify each written file, plus journeys or entities the new index no longer names. */
@@ -103,7 +125,9 @@ export async function beforeNrpWriteStep(
   try {
     const payload = readPayload(step.prompt);
     const planned = planNrpPersistence(payload.allowWrite, fileNames(payload));
-    const persisted = planned.written ? await persistNrp(payload) : { files: [] as string[], fileStates: [] as NrpFileState[], reason: planned.reason };
+    const persisted = planned.written
+      ? await persistNrp(payload, context.task?.PK || '')
+      : { files: [] as string[], fileStates: [] as NrpFileState[], reason: planned.reason, summary: '' };
     const written = persisted.files.length > 0;
     const outcome = { written, reason: persisted.reason, files: persisted.files };
     const listed = persisted.fileStates.map(item => `${item.path} ${item.state}`).join(', ');
@@ -112,7 +136,10 @@ export async function beforeNrpWriteStep(
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
           stepTitle: written ? 'Version written' : 'Version not written',
-          result: JSON.stringify({ written, reason: outcome.reason, files: persisted.files, fileStates: persisted.fileStates, report: nrpReport(payload, outcome) }),
+          result: JSON.stringify({
+            written, reason: outcome.reason, files: persisted.files, fileStates: persisted.fileStates,
+            summary: persisted.summary, report: nrpReport(payload, outcome, persisted.summary),
+          }),
           planning: { planId: 'write50-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
@@ -132,7 +159,7 @@ export async function beforeNrpWriteStep(
   }
 }
 
-export async function persistNrp(payload: NrpWritePayload): Promise<{ files: string[]; fileStates: NrpFileState[]; reason: string | null }> {
+export async function persistNrp(payload: NrpWritePayload, taskId = ''): Promise<NrpPersistResult> {
   setModuleRoot(payload.moduleName, `${payload.moduleName}/${NRP_CANDIDATE_REL}`);
   const written: string[] = [];
   const moduleName = payload.moduleName;
@@ -154,7 +181,7 @@ export async function persistNrp(payload: NrpWritePayload): Promise<{ files: str
   jobs.push({ info: integrationFile(moduleName), value: payload.artifacts.integration, newId: null });
   const siblings = new Map<string, string>();
   const missing: typeof jobs = [];
-  const pending: Array<{ info: Ns5FileInfo; text: string; label: string; existed: boolean }> = [];
+  const pending: Array<{ info: Ns5FileInfo; text: string; label: string; existed: boolean; before: unknown; after: unknown }> = [];
   const removed: string[] = [];
   for (const job of jobs) {
     let current = '';
@@ -179,8 +206,8 @@ export async function persistNrp(payload: NrpWritePayload): Promise<{ files: str
     if (sameDefsJson(current, job.value)) continue;
     const text = replaceDefsJsonLiteral(current, job.value);
     const mismatch = nrpDefsRoundTripError(text, job.value);
-    if (mismatch) return { files: [], fileStates: [], reason: `${label}: ${mismatch}` };
-    pending.push({ info: job.info, text, label, existed: true });
+    if (mismatch) return nothingWritten(`${label}: ${mismatch}`);
+    pending.push({ info: job.info, text, label, existed: true, before: defsJson(current), after: job.value });
   }
   for (const job of missing) {
     const siblingSource = siblings.get(job.info.folder) || '';
@@ -189,28 +216,82 @@ export async function persistNrp(payload: NrpWritePayload): Promise<{ files: str
     const nextId = job.newId || job.info.shortName;
     const text = defsSourceFromSibling(siblingSource, siblingIdOf(siblingSource, nextId), nextId, job.value);
     const mismatch = nrpDefsRoundTripError(text, job.value);
-    if (mismatch) return { files: [], fileStates: [], reason: `${label}: ${mismatch}` };
-    pending.push({ info: job.info, text, label, existed: false });
+    if (mismatch) return nothingWritten(`${label}: ${mismatch}`);
+    pending.push({ info: job.info, text, label, existed: false, before: undefined, after: job.value });
   }
-  const deleteError = await deleteDroppedTobeFiles(moduleName, removed);
-  if (deleteError) return { files: [], fileStates: [], reason: deleteError };
+  const removedBodies: Array<{ path: string; before: unknown }> = [];
+  const deleteError = await deleteDroppedTobeFiles(moduleName, removed, removedBodies);
+  if (deleteError) return nothingWritten(deleteError);
   for (const job of pending) {
     await writeSourceText(job.info, job.text);
     written.push(job.label);
+  }
+  const touched: PromptSummaryFile[] = pending.map(job => ({
+    file: candidateRelative(job.info, moduleName),
+    state: job.existed ? 'changed' as const : 'added' as const,
+    before: job.before,
+    after: job.after,
+    diffs: tobeDiff(job.before, job.after),
+  }));
+  for (const item of removedBodies) {
+    touched.push({
+      file: item.path,
+      state: 'removed',
+      before: item.before,
+      diffs: tobeDiff(item.before, undefined),
+    });
+  }
+  const fileStates = nrpFileStates(pending.map(job => ({ path: candidateRelative(job.info, moduleName), existed: job.existed })), removed);
+  const userLanguage = payload.artifacts.module && 'userLanguage' in payload.artifacts.module
+    ? payload.artifacts.module.userLanguage
+    : undefined;
+  const summary = promptChangeSummary(userLanguage, touched);
+  if (touched.length) {
+    const at = new Date();
+    const record: NrpOperationRecord = {
+      source: 'prompt',
+      at: at.toISOString(),
+      request: payload.request,
+      taskId,
+      changes: touched.flatMap(item => item.diffs.map(diff => ({ file: item.file, jsonPath: diff.jsonPath }))),
+    };
+    const operation = {
+      project: payload.project,
+      level: 4 as const,
+      folder: `${moduleName}/tobe/operations`,
+      shortName: operationStamp(at, taskId),
+      extension: '.json',
+    };
+    written.push(await writeJson(operation, record));
   }
   const reportFile = pipelineJsonFileForProject(payload.project, payload.moduleName, 'newReleasePrompt');
   if (reportFile.folder.startsWith(`${payload.moduleName}/${NRP_CANDIDATE_REL}`)) {
     reportFile.folder = `${payload.moduleName}/pipeline`;
   }
-  written.push(await writeJson(reportFile, nrpReport(payload, { written: true, reason: null, files: written })));
-  const fileStates = nrpFileStates(pending.map(job => ({ path: candidateRelative(job.info, moduleName), existed: job.existed })), removed);
-  return { files: written, fileStates, reason: null };
+  written.push(await writeJson(reportFile, nrpReport(payload, { written: true, reason: null, files: written }, summary)));
+  return { files: written, fileStates, reason: null, summary };
+}
+
+function nothingWritten(reason: string): NrpPersistResult {
+  return { files: [], fileStates: [], reason, summary: '' };
+}
+
+/** `<yyyymmddhhmmss>-<taskId>`. A dot in the task id becomes a hyphen so the short name stays valid. */
+export function operationStamp(at: Date, taskId: string): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const stamp = `${at.getUTCFullYear()}${pad(at.getUTCMonth() + 1)}${pad(at.getUTCDate())}${pad(at.getUTCHours())}${pad(at.getUTCMinutes())}${pad(at.getUTCSeconds())}`;
+  const id = taskId.replaceAll('.', '-') || 'none';
+  return `${stamp}-${id}`;
 }
 
 const DROPPED_TOBE_FILE = /^(journeys|ontology)\/([A-Za-z][A-Za-z0-9]*)\.defs\.ts$/u;
 
 /** Deletes journey or entity files the new index dropped. Only under `l4/<mod>/tobe/plan`. */
-async function deleteDroppedTobeFiles(moduleName: string, paths: readonly string[]): Promise<string | null> {
+async function deleteDroppedTobeFiles(
+  moduleName: string,
+  paths: readonly string[],
+  removedBodies: Array<{ path: string; before: unknown }>,
+): Promise<string | null> {
   const prefix = `${moduleName}/${NRP_CANDIDATE_REL}/`;
   const planned: Array<{ info: Ns5FileInfo; indexed: mls.stor.IFileInfo; text: string; path: string }> = [];
   for (const path of paths) {
@@ -227,6 +308,7 @@ async function deleteDroppedTobeFiles(moduleName: string, paths: readonly string
       return `Could not delete ${path}: the file could not be read.`;
     }
     if (!text) return `Could not delete ${path}: the file is empty.`;
+    removedBodies.push({ path, before: defsJson(text) });
     planned.push({ info, indexed, text, path });
   }
   if (!planned.length) return null;
@@ -253,7 +335,7 @@ async function restoreDroppedTobeFiles(jobs: ReadonlyArray<{ info: Ns5FileInfo; 
   for (const job of jobs) await writeSourceText(job.info, job.text);
 }
 
-function candidateRelative(info: Ns5FileInfo, moduleName: string): string {
+export function candidateRelative(info: Ns5FileInfo, moduleName: string): string {
   const root = `${moduleName}/${NRP_CANDIDATE_REL}`;
   const folder = info.folder === root ? '' : info.folder.startsWith(`${root}/`) ? info.folder.slice(root.length + 1) : info.folder;
   return `${folder ? `${folder}/` : ''}${info.shortName}${info.extension}`;
@@ -286,6 +368,16 @@ function parsedIds(rows: unknown, idKey: 'journeyId' | 'entityId'): string[] {
     if (typeof id === 'string' && id) ids.push(id);
   }
   return ids;
+}
+
+function defsJson(source: string): unknown {
+  const bounds = scanNs4ClassicJsonObject(source);
+  if (!bounds) return undefined;
+  try { return JSON.parse(source.slice(bounds.start, bounds.end)); }
+  catch (error) {
+    console.error('[agentNewReleasePrompt] write50 defs JSON is not readable', error);
+    return undefined;
+  }
 }
 
 function sameDefsJson(source: string, value: unknown): boolean {
@@ -820,7 +912,7 @@ function kindOfWrittenPath(file: string): string | null {
   return named ? named[1] : null;
 }
 
-export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Record<string, unknown> {
+export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan, summary = ''): Record<string, unknown> {
   const modelKinds: string[] = [];
   for (const edit of payload.applied) {
     if (edit.mode !== 'model' || !edit.kind || modelKinds.includes(edit.kind)) continue;
@@ -839,6 +931,7 @@ export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan): Re
     costUsd: null,
     written: planned.written,
     reason: planned.reason,
+    summary,
     notEdited: nrpFreeTextHits(payload.artifacts.module, removedFieldTerms(payload.triage)).map(hit => ({
       kind: 'module',
       path: hit.path,

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import type { NrpWritePayload } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
-import { persistNrp, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral, changedNrpPaths } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { persistNrp, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral, changedNrpPaths, candidateRelative, operationStamp, type NrpOperationRecord } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { setModuleRoot, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { sealModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
@@ -445,6 +445,40 @@ void test('a new journey is created without reporting its expected absence as a 
     console.error = originalError;
     fixture.restore();
   }
+});
+
+void test('candidateRelative keeps a plan-root file and a nested file', () => {
+  const root = { project: 1, level: 4 as const, folder: 'comanda/tobe/plan', shortName: 'rules', extension: '.defs.ts' };
+  const nested = { project: 1, level: 4 as const, folder: 'comanda/tobe/plan/ontology', shortName: 'Mesa', extension: '.defs.ts' };
+  assert.equal(candidateRelative(root, 'comanda'), 'rules.defs.ts');
+  assert.equal(candidateRelative(nested, 'comanda'), 'ontology/Mesa.defs.ts');
+  assert.equal(operationStamp(new Date('2026-11-02T14:17:39.000Z'), '20261102141739.1001'), '20261102141739-20261102141739-1001');
+});
+
+void test('a written request stores the pt summary and the operation json paths', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    const payload = structuredClone(fixture.payload);
+    payload.artifacts.module = { ...payload.artifacts.module, userLanguage: 'pt' } as typeof payload.artifacts.module;
+    payload.artifacts.rules = { schemaVersion: 'fixture', rules: [{ ruleId: 'fechaComanda' }] } as typeof payload.artifacts.rules;
+    payload.request = 'Fecha a comanda.';
+    const result = await persistNrp(payload, '20261102141739.1001');
+    assert.equal(result.reason, null);
+    assert.match(result.summary, /fechaComanda entrou/);
+    assert.match(result.summary, /oldJourney saiu/);
+    assert.equal(result.summary.includes('alterado'), false);
+    const opKey = [...fixture.contents.keys()].find(key => key.includes('/tobe/operations:'));
+    assert.ok(opKey);
+    const record = JSON.parse(fixture.contents.get(opKey || '') || '') as NrpOperationRecord;
+    assert.equal(record.source, 'prompt');
+    assert.equal(record.request, 'Fecha a comanda.');
+    assert.equal(record.taskId, '20261102141739.1001');
+    assert.equal(record.changes.some(change => change.file === 'rules.defs.ts'), true);
+    assert.match(opKey || '', /tobe\/operations:\d{14}-20261102141739-1001\.json$/u);
+    const reportKey = [...fixture.contents.keys()].find(key => key.endsWith(':newReleasePrompt.json'));
+    const report = JSON.parse(fixture.contents.get(reportKey || '') || '') as { summary?: string };
+    assert.equal(report.summary, result.summary);
+  } finally { fixture.restore(); }
 });
 
 function changedSpan(before: string, after: string): string[] {
