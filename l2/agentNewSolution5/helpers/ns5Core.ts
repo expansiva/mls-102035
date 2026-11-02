@@ -16,6 +16,7 @@ import {
   type Ns5RebuildAllReport,
   type Ns5StepId,
 } from '/_102035_/l2/solution/types.js';
+import { MESSAGE_THREAD_ID_RE, messageThreadIdOk } from '/_102035_/l2/solution/messageThread.js';
 
 export const NS5_FLOW_ID = 'agentNewSolution5' as const;
 export const NS5_FLOW_VERSION = '2026-09-19-ns5-flow-v3' as const;
@@ -101,12 +102,7 @@ export function parseNs5Invocation(value: string): Ns5ParsedInvocation {
   return { fast, rebuildAll, module, prompt };
 }
 
-/** Token of `context.message.threadId` stored on the module pipeline. */
-export const MESSAGE_THREAD_ID_RE = /^[A-Za-z0-9_.-]{1,100}$/;
-
-export function messageThreadIdOk(id: string): boolean {
-  return MESSAGE_THREAD_ID_RE.test(id);
-}
+export { MESSAGE_THREAD_ID_RE, messageThreadIdOk };
 
 /**
  * Keep the id already on the module; otherwise take the incoming request thread.

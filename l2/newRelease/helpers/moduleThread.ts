@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/moduleThread.ts" enhancement="_blank" />
 import { createThread } from '/_102025_/l2/collabMessagesHelper.js';
-import { messageThreadIdOk } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
+import { messageThreadIdOk } from '/_102035_/l2/solution/messageThread.js';
 import { pipelineFileForProject, readPipelineForProject, writeJson } from '/_102035_/l2/solution/fs.js';
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
 
