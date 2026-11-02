@@ -74,7 +74,10 @@ export async function observeReviewRun(
   input: ReviewWorkerIdentity,
   postMessage: MsgPost = defaultReviewPost,
 ): Promise<PlatformReviewRun> {
-  const response = await postMessage<ReviewRunResponse>({ action: 'observeReviewRun', ...input });
+  const { userId, project, moduleName, changeId, inputRevisionId, inputSnapshotHash,
+    baseId, requestRevision, requestHash, runId } = input;
+  const response = await postMessage<ReviewRunResponse>({ action: 'observeReviewRun', userId, project,
+    moduleName, changeId, inputRevisionId, inputSnapshotHash, baseId, requestRevision, requestHash, runId });
   if (!response.run) throw new Error(response.msg || 'review-run.invalid_observe_response');
   return response.run;
 }

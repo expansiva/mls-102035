@@ -170,7 +170,10 @@ export async function saveTobeArtifact(
     .filter(([, area]) => area.status === 'unsupported')
     .map(([area, coverage]) => ({ area, reason: coverage.reason ?? '' }));
   if (unsupported.length) {
-    console.error('[newRelease] candidate validation unavailable', { project, moduleName, path, unsupported });
+    console.error('[newRelease] candidate validation unavailable', JSON.stringify({
+      project, moduleName, path, unsupported,
+      previousOntologyCoverage: currentOverlay.validation.coverage.ontologyEntities,
+    }));
     throw new NewReleaseSaveValidationError('unavailable', validation.issues);
   }
   const identity = (issue: NewReleaseValidationIssue) => `${issue.artifact}:${issue.path}:${issue.code}:${issue.message}`;

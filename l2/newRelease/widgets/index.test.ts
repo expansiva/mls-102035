@@ -120,3 +120,17 @@ test('What changed shows the recorded prompt and full value for its exact path',
   assert.match(view, /Abrir task task1/);
   assert.match(view, /texto novo completo/);
 });
+
+test('review shows its empty state only once', () => {
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.activeTab = 'review';
+  index.version = 'tobe';
+  index.data = { module: { moduleName: 'sample' }, diffs: [], errors: [] };
+  index.t = (key: string) => key;
+  index.renderTabs = () => '';
+  index.renderTobeStatus = () => '';
+  index.renderCommonControls = () => '';
+  index.renderTabContent = () => '';
+  const view = templateText(index.render());
+  assert.doesNotMatch(view, /nr-index__changes-summary/);
+});

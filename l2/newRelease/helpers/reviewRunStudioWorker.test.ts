@@ -45,7 +45,23 @@ Module._resolveFilename = function (request, parent, isMain, options) {
   return resolveFilename.call(this, request, parent, isMain, options);
 };
 
-const { createReviewStudioHost } = require('./reviewRunStudioWorker.ts') as typeof import('./reviewRunStudioWorker.ts');
+const { createReviewStudioHost, observeReviewRun } = require('./reviewRunStudioWorker.ts') as typeof import('./reviewRunStudioWorker.ts');
+
+test('observeReviewRun sends only fields accepted by its API schema', async () => {
+  let sent: Record<string, unknown> | null = null;
+  const input = {
+    userId: 'user', project: 102047, moduleName: 'comandaRestaurante', changeId: 'change',
+    inputRevisionId: 'revision', inputSnapshotHash: 'sha256:snapshot', baseId: 'base',
+    requestRevision: 1, requestHash: 'sha256:request', runId: 'review',
+    inputRevisionNumber: 1, request: 'Revisar a regra',
+  } as Parameters<typeof observeReviewRun>[0];
+  await observeReviewRun(input, async args => { sent = args; return { statusCode: 200, run: {} as never } as never; });
+  assert.ok(sent);
+  assert.equal(sent.action, 'observeReviewRun');
+  assert.equal(sent.runId, 'review');
+  assert.equal('inputRevisionNumber' in sent, false);
+  assert.equal('request' in sent, false);
+});
 
 function memoryStorage(): KeyValueStorage & { raw(): string } {
   const items = new Map<string, string>();
