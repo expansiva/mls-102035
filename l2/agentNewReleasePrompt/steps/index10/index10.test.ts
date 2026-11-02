@@ -24,6 +24,7 @@ const TRIAGE: NrpTriage = {
   intent: 'Make the priority field optional.',
   mechanical: [{ op: 'setOptional', targetId: 'Tarefa', fieldId: 'prioridade', value: '' }],
   mechanicalOnly: true,
+  revisedPrompt: '',
 };
 
 type Stored = {
@@ -121,7 +122,7 @@ void test('a hook that plants a step closes itself last', async () => {
   const meta = { agentName: 'agentNewReleasePrompt' } as IAgentMeta;
   const stopped = {
     valid: false, reason: 'Outside the specification.', clarification: null,
-    artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false,
+    artifacts: [], targets: [], intent: null, mechanical: [], mechanicalOnly: false, revisedPrompt: '',
   };
   const cases: Array<{ planId: string; stepId: number; when: 'before' | 'after'; prompt: string; payload?: unknown; plants: boolean }> = [
     { planId: 'entry10', stepId: 2, when: 'before', prompt: invocation, plants: true },

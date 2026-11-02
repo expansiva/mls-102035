@@ -48,13 +48,15 @@ export interface NrpTriage {
   mechanical: NrpMechanicalMark[];
   /** True only when the marks alone fulfill the request. */
   mechanicalOnly: boolean;
+  /** Whole request rewritten with a default in brackets, or "" when there is no question. */
+  revisedPrompt: string;
 }
 
 export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
   $id: 'https://collab.codes/schemas/agentNewReleasePrompt/triage/2026-10-27-nrp-triage-v1',
   type: 'object',
   additionalProperties: false,
-  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly'],
+  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'revisedPrompt'],
   properties: {
     valid: { type: 'boolean' },
     reason: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
@@ -77,6 +79,7 @@ export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
       },
     },
     mechanicalOnly: { type: 'boolean' },
+    revisedPrompt: { type: 'string' },
   },
 };
 
@@ -90,6 +93,7 @@ Call submitNrpTriage. Every property is required.
 - valid is false when the request is empty, too vague to name a change, or about anything outside the specification (presentation, layout, colors, buttons, infrastructure, deployment).
 - reason explains an invalid request. Use null when the request is valid.
 - clarification is one question for the user when the request contradicts an indexed rule or can mean two different specification changes, or when a new journey step needs an actor and the request does not say which actor performs it. Never choose an actor the request does not name. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, and mechanical is [].
+- revisedPrompt is the user's whole request rewritten so it can be resent as it is: at each open point write the most probable answer, inferred from the module specification you were given, between square brackets (example: 'who marks the dish ready: [kitchen]'). Never write 'fill in' or a placeholder; the user accepts the default or edits it. Use the language of the request. Do not add anything the request did not ask. Use "" when clarification is null.
 - artifacts lists the kinds the change would touch. Use [] when the request stops here. Kinds: ontology, rules, journeys, access, workflows, integration.
 - targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.
 - intent is one sentence of the change to apply. Use null when the request stops here.
@@ -127,7 +131,10 @@ export function normalizeNrpTriage(value: unknown): NrpTriage {
     const targets = texts(root.targets, 'targets');
     const mechanical = marks(root.mechanical);
     if (typeof root.mechanicalOnly !== 'boolean') throw new Error('Triage mechanicalOnly must be a boolean.');
-    const triage: NrpTriage = { valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly };
+    const revisedPrompt = revisedText(root.revisedPrompt);
+    const triage: NrpTriage = {
+      valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly, revisedPrompt,
+    };
     const notes = settleShape(triage);
     if (notes.length) triageNotes.set(triage, notes);
     return triage;
@@ -232,7 +239,8 @@ export async function afterNrpTriageStep(
     const triage = normalizeNrpTriage(payload);
     const stopped = !triage.valid;
     const hold = stopped ? await holdSummary(step, triage.clarification || triage.reason || '') : null;
-    const intents: mls.msg.AgentIntent[] = [
+    const intents: mls.msg.AgentIntent[] = [];
+    intents.push(
       {
         type: 'add-step', ...base, step: {
           type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
@@ -241,12 +249,12 @@ export async function afterNrpTriageStep(
             triage,
             nextStep: stopped ? null : 'edit30',
             notes: nrpTriageNotes(triage),
-            ...(hold ? { written: false, summary: hold } : {}),
+            ...(hold ? { written: false, summary: hold, revisedPrompt: triage.revisedPrompt } : {}),
           }),
           planning: { planId: 'triage20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
       },
-    ];
+    );
     if (!stopped) {
       const project = mls.actualProject || 0;
       const invocation = parseNrpInvocation(String(step.prompt || ''), project);
@@ -324,12 +332,14 @@ function settleShape(triage: NrpTriage): string[] {
     triage.clarification = clipped.text;
     if (clipped.clipped) notes.push(`clarification exceeded ${NRP_TRIAGE_CLARIFICATION_MAX} characters and was cut to a whole sentence`);
     if (!triage.clarification) throw new Error('A clarification needs a question.');
+    if (!triage.revisedPrompt) throw new Error('A clarification needs a revisedPrompt.');
     if (hasChangeFields(triage) || triage.valid || triage.reason) notes.push('Discarded fields.');
     triage.valid = false;
     triage.reason = null;
     clearChanges(triage);
     return notes;
   }
+  if (triage.revisedPrompt) throw new Error('revisedPrompt must be empty when there is no clarification.');
   if (!triage.valid) {
     if (!triage.reason) throw new Error('An invalid request needs a reason.');
     if (hasChangeFields(triage)) notes.push('Discarded fields.');
@@ -404,6 +414,17 @@ function marks(value: unknown): NrpMechanicalMark[] {
     }
     return { op: op as NrpMechanicalOp, targetId, fieldId: row.fieldId, value: row.value };
   });
+}
+
+const REVISED_PLACEHOLDER = /preencher|fill in/iu;
+
+function revisedText(value: unknown): string {
+  if (typeof value !== 'string') throw new Error('Triage revisedPrompt must be a string.');
+  const text = value.trim();
+  if (REVISED_PLACEHOLDER.test(text)) {
+    throw new Error('Triage revisedPrompt must propose a default in brackets, not "fill in" or "preencher".');
+  }
+  return text;
 }
 
 function nullableText(value: unknown, label: string): string | null {
