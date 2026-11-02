@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/agentCommandRunner.test.ts" enhancement="_blank" />
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { summarizeNewReleaseRequest, runNewReleaseRequest, runNewReleaseCommand, taskResultTexts } from './agentCommandRunner.js';
+import { summarizeNewReleaseRequest, runNewReleaseRequest, runNewReleaseCommand, taskResultTexts, newReleaseTaskCost } from './agentCommandRunner.js';
 import type { TaskData } from '/_102036_/l2/shared/interfaces.js';
 const task = (status: TaskData['status']): TaskData => ({ PK: 'task/#one', SK: 'metadata', title: '', owner: 'user', team: null,
   status, last_updated: 0, last_update_log: null, messageid_created: 'thread/canonical' });
@@ -31,6 +31,15 @@ test('canonical nested results and clarification are preserved for display', () 
     { type: 'clarification', json: 'Which actor?', nextSteps: [] },
   ] }], longMemory: {}, queueBackEnd: [], queueFrontEnd: [] } as any;
   assert.deepEqual(taskResultTexts(value), ['{"written":false,"reason":"No change"}', 'Which actor?']);
+});
+
+test('task cost sums reported nested interactions and leaves missing cost unknown', () => {
+  const value = task('done');
+  assert.equal(newReleaseTaskCost(value), null);
+  value.iaCompressed = { nextSteps: [{ type: 'agent', interaction: { cost: .12, payload: [
+    { type: 'agent', interaction: { cost: .08, payload: [] }, nextSteps: [] },
+  ] }, nextSteps: [{ type: 'result', nextSteps: [] }] }], longMemory: {}, queueBackEnd: [], queueFrontEnd: [] } as any;
+  assert.equal(newReleaseTaskCost(value), .2);
 });
 test('a paused request returns the question without dispatching a second task', async () => {
   let calls = 0;

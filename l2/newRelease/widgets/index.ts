@@ -1,8 +1,9 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
 import { ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
 import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
 import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
-import { summarizeNewReleaseRequest, runNewReleaseRequest, type NewReleaseRequestFileState } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { summarizeNewReleaseRequest, runNewReleaseRequest, newReleaseTaskCost, type NewReleaseRequestFileState } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 
 import { html, nothing, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -74,6 +75,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private requestResultModule = '';
   private requestFeedbackTab: NewReleaseTab | null = null;
   @state() private requestNeedsRetry = false;
+  @state() private requestReady = false;
+  @state() private requestTask: { id: string; threadId: string; cost: number | null } | null = null;
 
   @state() private presentation: 'graph' | 'text' | 'prompt' = 'graph';
   @state() private textSearch = '';
@@ -185,6 +188,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.requestResult = '';
       this.requestFileStates = [];
       this.requestNeedsRetry = false;
+      this.requestReady = false;
+      this.requestTask = null;
       this.requestResultModule = resultModule;
     }
     const retryText = this.requestNeedsRetry ? this.requestText : '';
@@ -268,7 +273,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.expectedChangeId = null;
     this.expectedRevisionId = null;
     this.mutationError = '';
-    this.requestBusy = false;
+    this.requestReady = false;
+    this.requestTask = null;
     this.changing = this.pendingMutations > 0;
     if (projectChanged) void this.loadLanguage();
     void this.loadModule();
@@ -542,7 +548,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private canSubmitRequest(): boolean {
     const text = this.requestText.trim();
-    return !!text && (text !== this.savedRequest.trim() || this.requestNeedsRetry);
+    return !!text && (this.requestReady || text !== this.savedRequest.trim() || this.requestNeedsRetry);
   }
 
   private async saveRequest() {
@@ -557,6 +563,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestResult = '';
     this.requestFileStates = [];
     this.requestNeedsRetry = false;
+    this.requestReady = false;
+    this.requestTask = null;
     try {
       const saved = await saveChangeRequest(context.project, context.moduleName, text, expectedChange, expectedRevision);
       if (!contextStillCurrent(context, this)) return;
@@ -570,6 +578,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
       });
       if (!contextStillCurrent(context, this)) return;
       const summary = summarizeNewReleaseRequest(outcome.results, outcome.task.status);
+      this.requestTask = outcome.task.status === 'done' ? {
+        id: outcome.task.PK,
+        threadId: (outcome.task.messageid_created || '').split('/')[0] || '',
+        cost: newReleaseTaskCost(outcome.task),
+      } : null;
       this.requestResult = this.t(summary.key, summary.values);
       this.requestFileStates = summary.fileStates ?? [];
       this.requestNeedsRetry = summary.retry;
@@ -585,6 +598,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.version = 'tobe';
       window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project: context.project, moduleName: context.moduleName } }));
       await this.loadModule();
+      if (!summary.retry && context.project === this.project && context.moduleName === this.moduleName) {
+        this.requestText = '';
+        this.requestReady = true;
+        this.requestDrafts.forget(this.requestKey);
+      }
     } catch (error) {
       if (contextStillCurrent(context, this)) {
         if (!this.requestNeedsRetry) {
@@ -595,7 +613,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         this.requestError = this.revisionError(error);
       }
     } finally {
-      if (this.project === context.project && this.moduleName === context.moduleName) this.requestBusy = false;
+      this.requestBusy = false;
     }
   }
 
@@ -743,9 +761,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private formatDiffValue(value: unknown): string {
-    if (value === undefined) return this.t('tobe.diffEmpty');
-    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    const text = this.fullDiffValue(value);
     return text.length > 140 ? `${text.slice(0, 137)}…` : text;
+  }
+
+  private fullDiffValue(value: unknown): string {
+    if (value === undefined) return this.t('tobe.diffEmpty');
+    return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   }
 
   private renderTobeStatus() {
@@ -828,6 +850,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
                   <span class="is-before">${this.formatDiffValue(entry.before)}</span>
                   <span aria-hidden="true">${this.t('tobe.diffArrow')}</span>
                   <span class="is-after">${this.formatDiffValue(entry.after)}</span>
+                  <details class="nr-index__diff-detail">
+                    <summary>${this.t('tobe.diffDetails')}</summary>
+                    <div><strong>${this.t('tobe.diffBefore')}</strong><pre>${this.fullDiffValue(entry.before)}</pre></div>
+                    <div><strong>${this.t('tobe.diffAfter')}</strong><pre>${this.fullDiffValue(entry.after)}</pre></div>
+                  </details>
                 </article>
               `)}
             </div>
@@ -959,13 +986,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const showFeedback = this.requestFeedbackTab === this.activeTab;
     const unsaved = (!this.savedRequest && !this.requestText.trim()) || this.canSubmitRequest();
     return html`
-      <details class="nr-index__request" ?open=${!this.savedRequest || !!(showFeedback && (this.requestResult || this.requestError))}>
-        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : unsaved ? this.t('request.unsaved') : this.t('request.saved')}</span></summary>
+      <details class="nr-index__request" ?open=${this.requestReady || !this.savedRequest || !!(showFeedback && (this.requestResult || this.requestError))}>
+        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : this.requestReady && !this.requestText.trim() ? this.t('request.ready') : unsaved ? this.t('request.unsaved') : this.t('request.saved')}</span></summary>
         <div class="nr-index__request-body">
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
           ${showFeedback && this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
+          ${showFeedback && this.requestTask ? html`<p class="nr-index__request-task">${this.t('request.taskExecuted', { id: this.requestTask.id, cost: this.requestTask.cost === null ? this.t('request.costUnavailable') : `$${this.requestTask.cost.toFixed(2)}` })} ${this.requestTask.threadId ? html`<button type="button" @click=${() => dispatchThreadOpen(this.requestTask!.threadId, this.requestTask!.id)}>${this.t('request.taskDetails')}</button>` : nothing}</p>` : nothing}
           ${showFeedback && this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
           ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}
           ${showFeedback && this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}

@@ -43,6 +43,12 @@ test('change request controls do not submit empty text and clear prior-tab feedb
   index.requestText = '   ';
   index.requestNeedsRetry = true;
   assert.equal(index.canSubmitRequest(), false);
+  index.requestNeedsRetry = false;
+  index.requestReady = true;
+  index.requestText = '';
+  assert.match(templateText(index.renderRequest()), /request\.ready/);
+  index.requestText = 'Pedido anterior';
+  assert.equal(index.canSubmitRequest(), true);
 
   index.requestResult = 'Arquivos gravados';
   index.requestFileStates = [{ path: 'rules.defs.ts', state: 'changed' }];

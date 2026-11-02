@@ -406,6 +406,10 @@ new-release--widgets--index-102035 {
   .nr-index__diff-lines span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nr-index__diff-lines .is-before { color: var(--status-error-text, #ab2328); text-decoration: line-through; }
   .nr-index__diff-lines .is-after { color: var(--status-success-text, #25640e); font-weight: 700; }
+  .nr-index__diff-detail { grid-column: 1 / -1; min-width: 0; }
+  .nr-index__diff-detail > summary { width: fit-content; color: var(--link-text, #0f62b8); cursor: pointer; }
+  .nr-index__diff-detail > div { margin-top: .55rem; }
+  .nr-index__diff-detail pre { margin: .2rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
   @keyframes nr-shimmer { to { background-position: -240% 0; } }
 

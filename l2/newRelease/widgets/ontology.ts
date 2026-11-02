@@ -1088,6 +1088,15 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
       const mapKey = ontologyPanelMapKey([...path,key]);
       const options = this.panelDraft && !mapKey ? ontologyPanelPropertyOptions(this.panelDraft, key) : undefined;
       const locked = readOnly || (!mapKey && protectedKeys.includes(key) && !options);
+      if (key === 'values' && Array.isArray(child) && child.every(row => !!row && typeof row === 'object' && !Array.isArray(row))) {
+        const columns = ['value', 'title', 'description'] as const;
+        return html`<details><summary>${this.t('ontology.panel.property.values')}</summary><div class="nr-ontology-panels__values-table"><table>
+          <thead><tr><th scope="col">${this.t('ontology.panel.itemNumber')}</th>${columns.map(column => html`<th scope="col">${this.t(`ontology.panel.property.${column}`)}</th>`)}</tr></thead>
+          <tbody>${child.map((row, index) => html`<tr><th scope="row">${index + 1}</th>${columns.map(column => html`<td><input type="text" aria-label=${`${this.t(`ontology.panel.property.${column}`)} ${index + 1}`} ?readonly=${locked || !Object.hasOwn(row as object, column)} .value=${String((row as Record<string, OntologyPanelValue>)[column] ?? '')} @input=${(event: Event) => {
+            if (!locked && Object.hasOwn(row as object, column)) this.changeExtraValue([...path, key, String(index), column], (event.target as HTMLInputElement).value);
+          }}></td>`)}</tr>`)}</tbody>
+        </table></div></details>`;
+      }
       if (child && typeof child === 'object') return html`<details><summary>${this.t(`ontology.panel.property.${key}`) === `ontology.panel.property.${key}` ? key : this.t(`ontology.panel.property.${key}`)}</summary>${this.renderExtraValues(child, [...path, key], locked)}</details>`;
       if (child === null) return nothing;
       if (options) return html`<label><span>${this.t(`ontology.panel.property.${key}`)}</span><select ?disabled=${locked} .value=${String(child)} @change=${(event: Event) => {

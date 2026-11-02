@@ -21,6 +21,22 @@ export function taskResultTexts(task: TaskData): string[] {
   return [...new Set(output)];
 }
 
+/** Sum only costs reported by completed task interactions. */
+export function newReleaseTaskCost(task: TaskData): number | null {
+  let total = 0;
+  let found = false;
+  function visit(steps: AIPayload[]) {
+    for (const step of steps) {
+      const cost = step.interaction?.cost;
+      if (typeof cost === 'number' && Number.isFinite(cost)) { total += cost; found = true; }
+      visit(step.nextSteps || []);
+      visit(step.interaction?.payload || []);
+    }
+  }
+  visit(task.iaCompressed?.nextSteps || []);
+  return found ? total : null;
+}
+
 export interface NewReleaseRequestFileState {
   path: string;
   state: 'added' | 'changed' | 'removed';

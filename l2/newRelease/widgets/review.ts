@@ -1528,10 +1528,10 @@ export class NewReleaseReview102035 extends StateLitElement {
         availabilityKey: !this.loading && current && action.kind === 'continue' ? action.availabilityKey : '',
         error: action.kind === 'continue' ? action.error : '' } }] as const;
     return html`<section class="nr-review">
-      <header class="nr-review__hero">
-        <h2>${this.t(`review.release.${lifecycle}`)}</h2>
+      ${lifecycle !== 'calculate' || this.supersededRevisionId ? html`<header class="nr-review__hero">
+        ${lifecycle !== 'calculate' ? html`<h2>${this.t(`review.release.${lifecycle}`)}</h2>` : nothing}
         ${this.supersededRevisionId ? html`<p role="status">${this.t('review.run.replacedPrevious', { revisionId: this.supersededRevisionId.slice(-8) })}</p>` : nothing}
-      </header>
+      </header>` : nothing}
       ${this.loading || !current ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : nothing}
         ${this.renderEffortPanel(view, changeEffort, resultVisible, calculate)}
         <section class="nr-review__panel nr-review__apply" aria-label=${this.t('review.panels.apply')}>

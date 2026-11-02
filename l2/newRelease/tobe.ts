@@ -164,7 +164,11 @@ export async function saveTobeArtifact(
   if (!currentOverlay.sources.all.some(artifact => artifact.path === path)) throw new NewReleaseSaveValidationError('missing', []);
   const proposedOverlay = await readNs5Overlay(project, moduleName, reading, undefined, { path, value });
   const validation = proposedOverlay.validation;
-  if (Object.values(validation.coverage).some(area => area.status === 'unsupported')) {
+  const unsupported = Object.entries(validation.coverage)
+    .filter(([, area]) => area.status === 'unsupported')
+    .map(([area, coverage]) => ({ area, reason: coverage.reason ?? '' }));
+  if (unsupported.length) {
+    console.error('[newRelease] candidate validation unavailable', { project, moduleName, path, unsupported });
     throw new NewReleaseSaveValidationError('unavailable', validation.issues);
   }
   const identity = (issue: NewReleaseValidationIssue) => `${issue.artifact}:${issue.path}:${issue.code}:${issue.message}`;
