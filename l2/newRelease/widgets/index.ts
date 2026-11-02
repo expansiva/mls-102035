@@ -591,9 +591,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
         threadId: (outcome.task.messageid_created || '').split('/')[0] || '',
         cost: newReleaseTaskCost(outcome.task),
       } : null;
-      this.requestResult = summary.summary || this.t(summary.key, summary.values);
+      this.requestResult = summary.revisedPrompt ? this.t(summary.key) : summary.summary || this.t(summary.key, summary.values);
       this.requestFileStates = summary.fileStates ?? [];
       this.requestNeedsRetry = summary.retry;
+      if (summary.revisedPrompt) this.requestText = summary.revisedPrompt;
       if (outcome.task.status === 'failed') throw new Error(this.requestResult);
       const written = outcome.results.some(result => { try { return JSON.parse(result).written === true; } catch { return false; } });
       if (written) {

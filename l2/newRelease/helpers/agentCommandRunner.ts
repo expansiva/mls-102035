@@ -45,6 +45,7 @@ export interface NewReleaseRequestFileState {
 export interface NewReleaseRequestSummary {
   fileStates?: NewReleaseRequestFileState[];
   summary?: string;
+  revisedPrompt?: string;
   key: string;
   values: { reason?: string; question?: string; count?: number };
   retry: boolean;
@@ -57,6 +58,7 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
   let written: number | null = null;
   let fileStates: NewReleaseRequestFileState[] = [];
   let producerSummary = '';
+  let revisedPrompt = '';
   for (const result of results) {
     let value: unknown;
     try { value = JSON.parse(result); }
@@ -66,14 +68,17 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
       continue;
     }
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
-    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; summary?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
+    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; summary?: unknown; revisedPrompt?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
     if (typeof outcome.summary === 'string' && outcome.summary.trim()) producerSummary = outcome.summary.trim();
     if (typeof outcome.question === 'string') question = outcome.question;
     if (outcome.triage?.valid === false) {
       if (typeof outcome.triage.clarification === 'string') question = outcome.triage.clarification;
       if (typeof outcome.triage.reason === 'string') refusal = outcome.triage.reason;
     }
-    if (outcome.written === false) refusal = typeof outcome.reason === 'string' ? outcome.reason : '';
+    if (outcome.written === false) {
+      refusal = typeof outcome.reason === 'string' ? outcome.reason : '';
+      if (typeof outcome.revisedPrompt === 'string' && outcome.revisedPrompt.trim()) revisedPrompt = outcome.revisedPrompt.trim();
+    }
     if (outcome.written === true) {
       written = Array.isArray(outcome.files) ? outcome.files.length : 0;
       fileStates = Array.isArray(outcome.fileStates) ? outcome.fileStates.filter((item): item is NewReleaseRequestFileState =>
@@ -82,6 +87,7 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
     }
   }
   const summary = producerSummary ? { summary: producerSummary } : {};
+  if (status === 'done' && written === null && revisedPrompt) return { key: 'request.revisedPrompt', values: {}, retry: true, revisedPrompt };
   if (question) return { key: 'request.question', values: { question }, retry: true, ...summary };
   if (refusal) return { key: 'request.refused', values: { reason: refusal }, retry: true, ...summary };
   if (status === 'failed') return { key: 'request.failed', values: {}, retry: true, ...summary };

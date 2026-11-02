@@ -61,6 +61,8 @@ test('request display skips producer indexes, proposals and gates and summarizes
     { key: 'request.success', values: { count: 2 }, retry: false });
   assert.deepEqual(summarizeNewReleaseRequest([...intermediate, JSON.stringify({ triage: { valid: false, reason: null, clarification: 'Which actor?' } })], 'done'),
     { key: 'request.question', values: { question: 'Which actor?' }, retry: true });
+  assert.deepEqual(summarizeNewReleaseRequest([...intermediate, JSON.stringify({ written: false, summary: 'Question: Which actor?', revisedPrompt: 'Change the task for [manager].' })], 'done'),
+    { key: 'request.revisedPrompt', values: {}, retry: true, revisedPrompt: 'Change the task for [manager].' });
   assert.deepEqual(summarizeNewReleaseRequest([JSON.stringify({ written: false, reason: 'Gate refused', issues: [] })], 'done'),
     { key: 'request.refused', values: { reason: 'Gate refused' }, retry: true });
 });
