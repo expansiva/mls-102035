@@ -9,9 +9,11 @@ import {
   loadNs5Access, loadNs5Defs, loadNs5Integration, loadNs5JourneyIndex, loadNs5Journeys,
   loadNs5Module, loadNs5Rules, loadNs5Workflows,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
-import type { Ns5OntologyAnyEntity, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
+import { isNs5OntologyEntityV3, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseArtifact, NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { applyScreenBaseline, candidateCanPublish, unavailableCandidateCoverage, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
+import { deriveOntologyPlan } from '/_102035_/l2/solution/candidate/ontologyPlanDerive.js';
+import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
 function artifact<T>(relative: Ns5TobeArtifactPath, value: T): NewReleaseArtifact<T> {
   return { path: relative, source: 'asis', value };
@@ -45,7 +47,7 @@ test('existing v3 fixture records every area and exposes its real access defect'
   }
   assert.equal(result.coverage.access.status, 'error');
   assert.ok(result.issues.some(issue => issue.code === 'NS5_ACCESS_DISCLOSURE_PATH_UNKNOWN'));
-  assert.equal(result.coverage.ontologyEntities.status, 'unsupported');
+  assert.equal(result.coverage.ontologyEntities.status, 'checked');
   assert.equal(result.coverage.oracle.status, 'error', result.coverage.oracle.reason);
   assert.match(result.coverage.oracle.reason || '', /attendanceNote/);
   assert.equal(result.ok, false);
@@ -95,9 +97,9 @@ test('a new rules error blocks publication and an error already on the module do
   assert.ok(oldErrors.every(issue => issue.baseline === true));
   assert.equal(same.coverage.oracle.status, 'checked');
   assert.equal(same.coverage.access.status, 'checked');
-  assert.equal(same.coverage.ontologyEntities.status, 'unsupported');
+  assert.equal(same.coverage.ontologyEntities.status, 'checked');
   assert.equal(candidateCanPublish(same, ['rules']), true);
-  assert.equal(same.ok, false);
+  assert.equal(same.ok, true);
   const oldWarnings = same.issues.filter(issue => issue.severity === 'warning');
   assert.ok(oldWarnings.length > 0);
   assert.ok(oldWarnings.every(issue => issue.baseline === true));
@@ -141,7 +143,7 @@ test('warning baseline matches artifact, path and code without changing verdicts
   assert.equal(candidateCanPublish(failed, ['workflows']), false);
 });
 
-test('missing platform catalog or transient plan is unsupported, not green', () => {
+test('missing platform catalog is unsupported; a missing frozen plan still checks entity gates', () => {
   const sources = actualV3();
   const withoutCatalog = validateV3Candidate(sources);
   assert.equal(withoutCatalog.coverage.ontologyAssembly.status, 'unsupported');
@@ -149,7 +151,79 @@ test('missing platform catalog or transient plan is unsupported, not green', () 
   const withoutTdm = validateV3Candidate(sources, { mdm, ddm });
   assert.equal(withoutTdm.coverage.ontologyAssembly.status, 'unsupported');
   const withoutPlan = validateV3Candidate(sources, { mdm, tdm, ddm });
-  assert.equal(withoutPlan.coverage.ontologyEntities.status, 'unsupported');
-  assert.equal(candidateCanPublish(withoutPlan, ['ontologyEntities']), false);
+  assert.equal(withoutPlan.coverage.ontologyEntities.status, 'checked');
+  assert.notEqual(withoutPlan.coverage.ontologyEntities.status, 'unsupported');
   assert.equal(withoutPlan.ok, false);
+});
+
+test('edited ontology index still runs entity gates, and a real content error is refused', () => {
+  const index = actualV3().ontologyIndex.value!;
+  const fk = index.relationships.find(row => row.mode === 'fk' && row.field && row.field.includes('.'));
+  assert.ok(fk, 'fixture has an fk relationship');
+
+  const added = actualV3();
+  const addedIndex = added.ontologyIndex.value!;
+  added.ontologyIndex.value = {
+    ...addedIndex,
+    relationships: [...addedIndex.relationships, { ...fk!, relationshipId: 'extraSeating' }],
+  };
+  const addedResult = validateV3Candidate(added, context);
+  assert.equal(addedResult.coverage.ontologyEntities.status, 'checked', addedResult.coverage.ontologyEntities.reason);
+
+  const donor = added.entities.find(item => item.value && 'kind' in item.value && item.value.kind === 'entity');
+  assert.ok(donor?.value);
+  const created = actualV3();
+  const createdIndex = created.ontologyIndex.value!;
+  const file = structuredClone(donor.value) as NonNullable<typeof donor.value>;
+  if (!('kind' in file) || file.kind !== 'entity') throw new Error('Expected a table entity');
+  file.entityId = 'SideNote';
+  file.relationships = {};
+  created.entities = [...created.entities, artifact('ontology/SideNote.defs.ts', file)];
+  created.ontologyIndex.value = {
+    ...createdIndex,
+    entities: [...createdIndex.entities, { entityId: 'SideNote', kind: 'entity', class: file.class }],
+  };
+  const createdResult = validateV3Candidate(created, context);
+  assert.equal(createdResult.coverage.ontologyEntities.status, 'checked', JSON.stringify(createdResult.issues.filter(issue => issue.code.startsWith('NS5_ONTOLOGY')).slice(0, 4)));
+
+  const retargeted = actualV3();
+  const retargetedIndex = retargeted.ontologyIndex.value!;
+  retargeted.ontologyIndex.value = {
+    ...retargetedIndex,
+    relationships: retargetedIndex.relationships.map(row => row.relationshipId === fk!.relationshipId
+      ? { ...row, mode: 'throughTable' as const, through: row.to }
+      : row),
+  };
+  const retargetedResult = validateV3Candidate(retargeted, context);
+  assert.equal(retargetedResult.coverage.ontologyEntities.status, 'checked', retargetedResult.coverage.ontologyEntities.reason);
+
+  const broken = actualV3();
+  const brokenIndex = broken.ontologyIndex.value!;
+  const owner = fk!.field!.split('.')[0];
+  broken.ontologyIndex.value = {
+    ...brokenIndex,
+    relationships: brokenIndex.relationships.map(row => row.relationshipId === fk!.relationshipId
+      ? { ...row, field: `${owner}.missingColumn` }
+      : row),
+  };
+  const brokenResult = validateV3Candidate(broken, context);
+  assert.equal(brokenResult.coverage.ontologyEntities.status, 'error');
+  assert.ok(brokenResult.issues.some(issue => issue.code === 'NS5_ONTOLOGY_FK_FIELD_UNRESOLVED'));
+
+  const table = createdIndex.entities.find(row => row.kind === 'entity');
+  assert.ok(table);
+  const frozen: Ns5OntologyV3PlanDraft = {
+    moduleName: createdIndex.moduleName,
+    businessDomain: createdIndex.businessDomain,
+    entities: [{ entityId: table.entityId, kind: 'entity', family: 'ddm', title: 't', description: 'd', displayField: 'name' }],
+    relationships: [],
+    normalizations: [{ kind: 'tightened', entityId: table.entityId, detail: 'kept' }],
+  };
+  const files = created.entities.map(item => item.value).filter((item): item is Ns5OntologyEntityV3 => item !== null && isNs5OntologyEntityV3(item));
+  const derived = deriveOntologyPlan(createdIndex, files, frozen);
+  assert.equal(derived.entities.find(row => row.entityId === table.entityId)?.family, 'ddm');
+  assert.equal(derived.normalizations?.[0]?.kind, 'tightened');
+  const withFamily = validateV3Candidate(actualV3(), { ...context, ontologyPlan: frozen });
+  const kept = withFamily.issues.some(issue => issue.code === 'NS5_ONTOLOGY_DDM_HAS_STATE' || issue.code === 'NS5_ONTOLOGY_DDM_UNIQUE_KEY');
+  assert.equal(kept, true);
 });

@@ -13,6 +13,7 @@ import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration7
 import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { artifactForOraclePath, runCandidateOracle, type CandidateModule } from '/_102035_/l2/solution/candidate/moduleVerification.js';
+import { deriveOntologyPlan } from '/_102035_/l2/solution/candidate/ontologyPlanDerive.js';
 import { isNs5OntologyV3Version, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
@@ -157,19 +158,15 @@ function validateV3CandidateRun(
       }
       return found;
     });
-    const plan = context.ontologyPlan;
-    if (!plan || !planMatchesIndex(plan, v3Index)) {
-      coverage.ontologyEntities = { status: 'unsupported', reason: 'A matching frozen ontology plan is required for entity gates.' };
-    } else {
-      check('ontologyEntities', 'ontology/index.defs.ts', () => v3Entities.flatMap(entity => validateNs5OntologyEntityV3(entity, plan, {
-        moduleName: v3Index.moduleName, mdm: context.mdm!, tdm: context.tdm!, ddm: context.ddm!,
-        journeys, workflows, evidenceText: [module?.sourcePrompt || '', ...journeys.map(journey => JSON.stringify(journey.business))].join('\n'),
-        actors: access?.actors.map(actor => actor.actorId) || [],
-      }).issues), path => {
-        const match = /^entities\.([A-Z][A-Za-z0-9]*)/u.exec(path);
-        return match ? `ontology/${match[1]}.defs.ts` : 'ontology/index.defs.ts';
-      });
-    }
+    const plan = deriveOntologyPlan(v3Index, v3Entities, context.ontologyPlan);
+    check('ontologyEntities', 'ontology/index.defs.ts', () => v3Entities.flatMap(entity => validateNs5OntologyEntityV3(entity, plan, {
+      moduleName: v3Index.moduleName, mdm: context.mdm!, tdm: context.tdm!, ddm: context.ddm!,
+      journeys, workflows, evidenceText: [module?.sourcePrompt || '', ...journeys.map(journey => JSON.stringify(journey.business))].join('\n'),
+      actors: access?.actors.map(actor => actor.actorId) || [],
+    }).issues), path => {
+      const match = /^entities\.([A-Z][A-Za-z0-9]*)/u.exec(path);
+      return match ? `ontology/${match[1]}.defs.ts` : 'ontology/index.defs.ts';
+    });
   }
 
   if (rules) check('rules', 'rules.defs.ts', () => validateNs5Rules(ns5RuleRecord(rules), { moduleName: module?.moduleName }).issues);
@@ -241,19 +238,4 @@ function candidateModule(
   if (!module || !journeyIndex || !index || !rules || !workflows || !access || !integration) return null;
   if (journeys.length === 0 || entities.length === 0) return null;
   return { module, journeyIndex, journeys, ontologyIndex: index, entities, rules, workflows, access, integration };
-}
-
-function planMatchesIndex(plan: Ns5OntologyV3PlanDraft, index: Ns5OntologyIndexV3): boolean {
-  if (plan.moduleName !== index.moduleName || plan.entities.length !== index.entities.length || plan.relationships.length !== index.relationships.length) return false;
-  const entities = new Map(plan.entities.map(row => [row.entityId, row]));
-  const relations = new Map(plan.relationships.map(row => [row.relationshipId, row]));
-  return index.entities.every(row => {
-    const planned = entities.get(row.entityId);
-    return planned && planned.kind === row.kind && (row.kind !== 'role' || planned.subtype === row.subtype)
-      && (row.kind !== 'entity' || planned.class === row.class);
-  }) && index.relationships.every(row => {
-    const planned = relations.get(row.relationshipId);
-    return planned && planned.from === row.from && planned.to === row.to && planned.type === row.type
-      && planned.mode === row.mode && planned.field === row.field;
-  });
 }

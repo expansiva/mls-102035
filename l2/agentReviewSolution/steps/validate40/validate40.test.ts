@@ -48,7 +48,7 @@ const requestKey = 'change-1/request-2';
 const initialState = { requestKey, correctionAttemptsUsed: 0 };
 const context = { v3: { mdm, tdm, ddm, registryModuleNames: ['agendaClinica'] }, v2: { registryModuleNames: ['agendaClinica'] } };
 
-test('validate40 accepts a supported partial v3 change while reporting unrelated unsupported coverage', async () => {
+test('validate40 accepts a supported partial v3 change; the ontology plan is derived, so entity gates are checked', async () => {
   const base = v3Inventory();
   const proposal = clone(base);
   const rules = proposal['rules.defs.ts'] as ReturnType<typeof loadNs5Rules>;
@@ -56,22 +56,22 @@ test('validate40 accepts a supported partial v3 change while reporting unrelated
   const result = await validate40Private({ requestKey, state: initialState, base, proposal, context });
   assert.deepEqual(result.affectedAreas, ['rules']);
   assert.equal(result.validation?.coverage.rules.status, 'checked');
-  assert.equal(result.validation?.coverage.ontologyEntities.status, 'unsupported');
+  assert.equal(result.validation?.coverage.ontologyEntities.status, 'checked');
   assert.equal(result.publishable, true, result.reasons.join('\n'));
   assert.equal(result.status, 'publishable');
   assert.equal(result.state.correctionAttemptsUsed, 0);
   assert.equal(result.mayCorrect, false);
 });
 
-test('validate40 keeps a v3 ontology draft when required plan coverage is unsupported', async () => {
+test('validate40 checks a v3 ontology edit against the plan derived from the edited ontology', async () => {
   const base = v3Inventory();
   const proposal = clone(base);
   (proposal['ontology/Consulta.defs.ts'] as { title: string }).title = 'Appointment';
   const result = await validate40Private({ requestKey, state: initialState, base, proposal, context });
   assert.deepEqual(result.affectedAreas, ['ontologyAssembly', 'ontologyEntities']);
-  assert.equal(result.validation?.coverage.ontologyEntities.status, 'unsupported');
-  assert.equal(result.publishable, false);
-  assert.equal(result.status, 'draft');
+  assert.equal(result.validation?.coverage.ontologyEntities.status, 'checked');
+  assert.equal(result.publishable, true, result.reasons.join('\n'));
+  assert.equal(result.status, 'publishable');
   assert.equal(result.state.correctionAttemptsUsed, 0);
   assert.equal(result.mayCorrect, false);
   assert.deepEqual(result.draft, proposal);
