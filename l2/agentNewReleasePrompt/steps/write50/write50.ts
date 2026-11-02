@@ -158,10 +158,11 @@ export async function persistNrp(payload: NrpWritePayload): Promise<{ files: str
   const removed: string[] = [];
   for (const job of jobs) {
     let current = '';
-    try { current = await readSourceText(job.info); }
-    catch (error) {
-      console.error('[agentNewReleasePrompt] write50 read failed', error);
-      current = '';
+    if (fileExists(job.info)) {
+      try { current = await readSourceText(job.info); }
+      catch (error) {
+        console.error('[agentNewReleasePrompt] write50 read failed', error);
+      }
     }
     const label = `${job.info.folder}/${job.info.shortName}${job.info.extension}`;
     if (!current) {
@@ -253,9 +254,9 @@ async function restoreDroppedTobeFiles(jobs: ReadonlyArray<{ info: Ns5FileInfo; 
 }
 
 function candidateRelative(info: Ns5FileInfo, moduleName: string): string {
-  const prefix = `${moduleName}/${NRP_CANDIDATE_REL}/`;
-  const folder = info.folder.startsWith(prefix) ? info.folder.slice(prefix.length) : info.folder;
-  return `${folder}/${info.shortName}${info.extension}`;
+  const root = `${moduleName}/${NRP_CANDIDATE_REL}`;
+  const folder = info.folder === root ? '' : info.folder.startsWith(`${root}/`) ? info.folder.slice(root.length + 1) : info.folder;
+  return `${folder ? `${folder}/` : ''}${info.shortName}${info.extension}`;
 }
 
 function droppedIndexIds(current: string, next: unknown, listKey: 'journeys' | 'entities', idKey: 'journeyId' | 'entityId', prefix: string): string[] {

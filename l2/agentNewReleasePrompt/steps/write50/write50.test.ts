@@ -420,6 +420,33 @@ void test('p4_81 s4b: a failed delete writes nothing', async () => {
   } finally { fixture.restore(); }
 });
 
+void test('a new journey is created without reporting its expected absence as a read error', async () => {
+  const fixture = installRemovalFixture();
+  const originalError = console.error;
+  const errors: unknown[][] = [];
+  console.error = (...args: unknown[]) => { errors.push(args); };
+  try {
+    const payload = structuredClone(fixture.payload);
+    payload.artifacts.journeyIndex = { schemaVersion: 'fixture', journeys: [
+      { journeyId: 'oldJourney', actorRef: 'actor', title: 'Antiga' },
+      { journeyId: 'newJourney', actorRef: 'actor', title: 'Nova' },
+    ] } as typeof payload.artifacts.journeyIndex;
+    payload.artifacts.journeys = [
+      { schemaVersion: 'fixture', journeyId: 'oldJourney' },
+      { schemaVersion: 'fixture', journeyId: 'newJourney' },
+    ] as typeof payload.artifacts.journeys;
+    payload.artifacts.rules = { schemaVersion: 'fixture', updated: true } as typeof payload.artifacts.rules;
+    const result = await persistNrp(payload);
+    assert.equal(result.reason, null);
+    assert.equal(result.fileStates.some(item => item.path === 'journeys/newJourney.defs.ts' && item.state === 'added'), true);
+    assert.equal(result.fileStates.some(item => item.path === 'rules.defs.ts' && item.state === 'changed'), true);
+    assert.equal(errors.some(args => String(args[0]).includes('write50 read failed')), false);
+  } finally {
+    console.error = originalError;
+    fixture.restore();
+  }
+});
+
 function changedSpan(before: string, after: string): string[] {
   const left = before.split('\n');
   const right = after.split('\n');
