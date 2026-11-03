@@ -60,6 +60,7 @@ function fixture(work: 'materialize' | 'both' | 'agents' | 'twoAgents' | 'unknow
   const accept = () => acceptL4Implementation(project, moduleName, { revisionId: 'rev1', acceptedBy: 'user',
     hashes: { changeEffort: `sha256:${createHash('sha256').update(effortSource).digest('hex')}` } });
   const dispatched: string[] = [];
+  const threadCalls: Array<[number, string]> = [];
   const reads: string[][] = [];
   let status: TaskData['status'] = 'done';
   let sequence = 0;
@@ -67,7 +68,7 @@ function fixture(work: 'materialize' | 'both' | 'agents' | 'twoAgents' | 'unknow
   const task = (id: string): TaskData => ({ PK: `task/#${id}`, SK: 'metadata', title: '', owner: 'user', team: null,
     status, last_updated: 0, last_update_log: status === 'failed' || status === 'paused' ? 'reason' : null, messageid_created: `thread/canonical-${id}` });
   const dependencies = {
-    userId: () => 'user', now: () => '2026-10-08T00:00:00.000Z', thread: async () => ({ threadId: 'thread' }),
+    userId: () => 'user', now: () => '2026-10-08T00:00:00.000Z', moduleThread: async (target: number, name: string) => { threadCalls.push([target, name]); return { threadId: 'thread' }; },
     context: (threadId: string, senderId: string, content: string): ExecutionContext => ({ task: undefined, isTest: true,
       message: { threadId, senderId, content, createAt: `temporary-${++sequence}`, orderAt: '' } }),
     execute: async (agent: string, ctx: ExecutionContext) => {
@@ -82,7 +83,7 @@ function fixture(work: 'materialize' | 'both' | 'agents' | 'twoAgents' | 'unknow
     task: async (user: string, id: string, message: string) => { reads.push([user, id, message]); return task(id); },
     message: async () => ({ taskResults: ['@@agentMaterializeL1 {\"scope\":\"fixture\"}', command] } as any),
   };
-  return { accept, dependencies, dispatched, reads, makeTab, first, task, command, contents, key,
+  return { accept, dependencies, dispatched, threadCalls, reads, makeTab, first, task, command, contents, key,
     status: (value: TaskData['status']) => { status = value; }, beforeExecute: (value: () => Promise<void>) => { beforeExecute = value; },
     restore: () => { (globalThis as any).mls = previous; } };
 }
@@ -100,6 +101,17 @@ test('mr39 s10: structural effort executes L2 then L1 then returned commands', a
       assert.equal(f.dispatched.length, work === 'both' ? 6 : 5);
     } finally { f.restore(); }
   }
+});
+
+test('every phase asks for the thread of the module, by project and module name', async () => {
+  const f = fixture('both');
+  try {
+    await f.accept();
+    const runner = createImplementationRunner(f.dependencies);
+    await runner.runNext(project, moduleName);
+    assert.ok(f.threadCalls.length >= 1);
+    assert.deepEqual(f.threadCalls.filter(([target, name]) => target !== project || name !== moduleName), []);
+  } finally { f.restore(); }
 });
 
 test('one accepted language command dispatches exactly once', async () => {
@@ -138,6 +150,22 @@ test('running phase is reread after runner recreation with canonical identity', 
     assert.equal(result.phases[0].status, 'done');
     assert.deepEqual(f.reads, [['user', '1', 'thread/canonical-1']]);
     assert.deepEqual(f.dispatched, [f.command]);
+  } finally { f.restore(); }
+});
+
+test('implementation task observation reuses the runner poll for live UI cost', async () => {
+  const f = fixture();
+  try {
+    await f.accept(); f.status('in progress');
+    const observed: Array<{ phase: string; status: string; cost: number | null }> = [];
+    const task = async (_user: string, id: string) => ({ ...f.task(id), iaCompressed: { nextSteps: [{ interaction: { cost: 0.08, payload: [] }, nextSteps: [] }] } } as TaskData);
+    const runner = createImplementationRunner({ ...f.dependencies, task, onTask: (_project, _module, phase, value) => {
+      observed.push({ phase, status: value.status, cost: value.iaCompressed?.nextSteps?.[0]?.interaction?.cost ?? null });
+    } });
+    await runner.runNext(project, moduleName);
+    await runner.runNext(project, moduleName);
+    assert.deepEqual(observed.at(-1), { phase: 'runAgents:0', status: 'in progress', cost: 0.08 });
+    assert.equal(f.dispatched.length, 1);
   } finally { f.restore(); }
 });
 

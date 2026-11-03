@@ -1,11 +1,11 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/implementationRunner.ts" enhancement="_blank" />
 import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { resolveModuleThread } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
-import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
-import { createThread, getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { implementationCommands, implementationPhaseCommand, withL4ImplementationWriter, readInitialImplementationPlan, INITIAL_PLAN_PATHS, type InitialImplementationPlan, type L4ImplementationRecord, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
@@ -13,15 +13,17 @@ import { diffModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.j
 
 export interface ImplementationRunnerDependencies {
   thread?: () => Promise<{ threadId: string }>;
+  /** The thread of the module, the same one the text request and the review use. Default: `resolveModuleThread`. */
+  moduleThread?: (project: number, moduleName: string) => Promise<{ threadId: string }>;
   context?: (threadId: string, userId: string, prompt: string) => ExecutionContext;
   execute?: (agentName: string, context: ExecutionContext) => Promise<void>;
   task?: (userId: string, taskId: string, messageId: string) => Promise<TaskData>;
   message?: (userId: string, threadId: string, messageId: string) => Promise<Message | null>;
   userId?: () => string | null | Promise<string | null>;
   now?: () => string;
+  onTask?: (project: number, moduleName: string, phaseName: string, task: TaskData) => void;
 }
 
-const THREAD = '_102035_/l2/newRelease/implementations';
 const taskId = (value: string) => value.replace(/^task(?:\/#?|#)/u, '');
 
 interface InitialPipeline {
@@ -182,11 +184,9 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
   const now = dependencies.now ?? (() => new Date().toISOString());
   const context = dependencies.context ?? getTemporaryContext;
   const execute = dependencies.execute ?? ((agent, ctx) => environment.agents.executeAgent(agent, ctx));
-  const thread = dependencies.thread ?? (async () => {
-    const found = await getThreadByName(THREAD) ?? await createThread(THREAD, [], 'company');
-    if (!found?.threadId) throw new Error('implementation.thread_unavailable');
-    return found;
-  });
+  const thread = (project: number, moduleName: string) => dependencies.thread
+    ? dependencies.thread()
+    : (dependencies.moduleThread ?? resolveModuleThread)(project, moduleName);
   const task = dependencies.task ?? (async (userId, taskId, messageId) => {
     const result = await msgGetTaskUpdate({ userId, taskId, messageId });
     if (!result.success || !result.response?.task) throw new Error(result.error || 'implementation.task_unavailable');
@@ -200,6 +200,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
   async function observed(project: number, moduleName: string, phase: L4ImplementationPhase, value: TaskData, record: L4ImplementationRecord): Promise<L4ImplementationPhase> {
     const id = taskId(value.PK);
     if (!id || (phase.taskId && phase.taskId !== id)) throw new Error('implementation.task_mismatch');
+    dependencies.onTask?.(project, moduleName, phase.name, value);
     let status: L4ImplementationPhase['status'] = value.status === 'done' ? 'done' : value.status === 'failed' || value.status === 'paused' ? 'failed' : 'running';
     let changedDefs = phase.changedDefs;
     if (status === 'done' && !record.initial) {
@@ -235,7 +236,7 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
     previousAttempts?: L4ImplementationPhase['previousAttempts']) {
     const user = await userId();
     if (!user) throw new Error('implementation.user_unavailable');
-    const resolved = await thread();
+    const resolved = await thread(project, moduleName);
     const ctx = context(resolved.threadId, user, command.command);
     const phase: L4ImplementationPhase = { name, ...command, attempt, ...(previousAttempts ? { previousAttempts } : {}), taskId: '', threadId: resolved.threadId,
       messageId: `${ctx.message.threadId}/${ctx.message.orderAt || ctx.message.createAt}`, status: 'running', startedAt: now() };
