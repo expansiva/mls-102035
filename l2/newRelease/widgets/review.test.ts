@@ -203,6 +203,18 @@ test('mr41 s3c exact Apply click emits tobe only after persisting initial accept
   } finally { window.dispatchEvent = previousDispatch; }
 });
 
+test('the initial review runs on the thread of the module, by project and module name', async () => {
+  const f = setup(true);
+  const asked: Array<[number, string]> = [];
+  await assert.rejects(reviewInitialCandidate(f.sealed, 'reviewer', {
+    prepare: async () => ({ input: {} as never, userId: 'reviewer' }),
+    moduleThread: async (project, moduleName) => { asked.push([project, moduleName]); return { threadId: 'module-thread' }; },
+    context: (threadId, senderId, content) => ({ message: { threadId, senderId, content } } as never),
+    execute: async () => { throw new Error('stop here'); },
+  }), /stop here/);
+  assert.deepEqual(asked, [[f.sealed.manifest.project, f.sealed.manifest.moduleName]]);
+});
+
 for (const reason of ['refused: invalid revision', 'failed: invalid revision']) {
   test(`mr41 s3c reviewer terminal done with ${reason.split(':')[0]} is rejected before reading output`, async () => {
     const f = setup(true);

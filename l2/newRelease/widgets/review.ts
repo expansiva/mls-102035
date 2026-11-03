@@ -23,10 +23,10 @@ import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Im
 import { createImplementationRunner, type ImplementationRunnerDependencies } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
-import { getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
+import { resolveModuleThread } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 import { serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
-import { getUserId, createThread, getTemporaryContext } from '/_102025_/l2/collabMessagesHelper.js';
+import { getUserId, getTemporaryContext } from '/_102025_/l2/collabMessagesHelper.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
 import { addOrUpdateTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
 import '/_102025_/l2/collabMessagesTask.js';
@@ -139,8 +139,7 @@ export async function reviewInitialCandidate(sealed: L4SealedCandidateSnapshot, 
   const prepared = await (dependencies.prepare ?? prepareReviewStartInput)({ project, moduleName, changeId, revisionId, request: sealed.request, userId, loaded: sealed });
   const invocation: ReviewInvocation = { project, moduleName, baseId, request: sealed.request,
     originalL4Path: `l4/${moduleName}/pipeline/releases/${baseId}/l4`, temporaryL4Path: `l4/${moduleName}/tobe/plan`, expectedRevisionId: revisionId };
-  const name = '_102035_/l2/newRelease/initialReview';
-  const thread = await (dependencies.thread?.() ?? (async () => await getThreadByName(name) ?? await createThread(name, [], 'company'))());
+  const thread = await (dependencies.thread?.() ?? (dependencies.moduleThread ?? resolveModuleThread)(project, moduleName));
   if (!thread?.threadId) throw new Error('implementation.thread_unavailable');
   const ctx = (dependencies.context ?? getTemporaryContext)(thread.threadId, userId, '@@agentReviewSolution ' + serializeReviewInvocation(invocation));
   await (dependencies.execute ?? ((agent, context) => environment.agents.executeAgent(agent, context)))('agentReviewSolution', ctx);
