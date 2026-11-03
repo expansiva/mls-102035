@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { installMlsStub } from '../../../../../test/mlsStub.js';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { applyNrpMechanical, nrpModelKinds } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
@@ -13,6 +14,9 @@ import {
   NRP_JOURNEY_RULES,
   NRP_JOURNEY_SHAPE,
   NRP_NEW_SIGNATURE_RULE,
+  NrpEditRefusal,
+  createEdit30Step,
+  nrpEditRefusalIntents,
   buildNrpEditHumanPrompt,
   buildNrpEditTool,
   nextNrpEditAfterRefusal,
@@ -708,4 +712,34 @@ void test('the recorded duplicate-journey response, rewritten with business, pas
   const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(merged, [...NRP_ARTIFACT_KINDS])));
   assert.deepEqual(fresh, [], fresh.map(issue => `${issue.code} ${issue.path} ${issue.message}`).join('; '));
   assert.equal(index.journeys.some(entry => entry.journeyId === 'duplicarTarefa'), false);
+});
+
+void test('a refusal with a repair left is a warning; with none left it is an error and the task fails', async () => {
+  installMlsStub({ actualProject: 102047 });
+  const at = (attempts: number) => {
+    const order: NrpEditCursor = { mode: 'model', kind: 'ontology', triage: { ...triage, l3Notice: null }, rest: [], applied: [], attempts, editErrors: [] };
+    return {
+      base: { messageId: 'm', threadId: 't', taskId: 'task', parentStepId: 1 },
+      context: { message: { orderAt: 'm', threadId: 't' }, task: { PK: 'task' } } as unknown as mls.msg.ExecutionContext,
+      parentStep: { stepId: 1 } as mls.msg.AIAgentStep,
+      step: { ...createEdit30Step('sample', 'Add hours.', order), stepId: 5 } as mls.msg.AIAgentStep,
+      hookSequential: 3,
+    };
+  };
+  const logs = { warn: [] as unknown[][], error: [] as unknown[][] };
+  const deps = {
+    cite: async (_step: mls.msg.AIAgentStep, error: unknown) => error,
+    log: { warn: (...args: unknown[]) => { logs.warn.push(args); }, error: (...args: unknown[]) => { logs.error.push(args); } },
+  };
+  const refusal = new NrpEditRefusal('Index lists a file that was not created.', {}, ['newFile']);
+  const recovered = await nrpEditRefusalIntents(at(0), refusal, deps);
+  assert.equal(recovered.some(intent => intent.type === 'add-step' && intent.step.planning?.planId === 'edit30'), true);
+  assert.equal(recovered.some(intent => intent.type === 'update-status' && intent.status === 'failed'), false);
+  assert.equal(logs.warn.length, 1);
+  assert.match(String(logs.warn[0].join(' ')), /repair attempt.*Index lists a file/);
+  assert.equal(logs.error.length, 0);
+  const failed = await nrpEditRefusalIntents(at(1), refusal, deps);
+  assert.equal(failed.some(intent => intent.type === 'update-status' && intent.status === 'failed'), true);
+  assert.equal(logs.error.length, 1);
+  assert.equal(logs.warn.length, 1);
 });

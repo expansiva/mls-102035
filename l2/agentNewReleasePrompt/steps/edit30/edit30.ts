@@ -980,21 +980,46 @@ export async function afterNrpEditStep(
       },
     ];
   } catch (error) {
-    console.error('[agentNewReleasePrompt] edit30 result rejected', error);
-    const cited = await citeEditRefusal(step, error);
-    const retry = retryEdit(step, cited);
-    if (retry) {
-      return [
-        { type: 'add-step', ...base, step: retry },
-        {
-          type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
-          cleaner: 'input_output',
-          traceMsg: cited instanceof Error ? cited.message : String(cited),
-        },
-      ];
-    }
-    return [fail(context, parentStep, step, hookSequential, cited)];
+    return nrpEditRefusalIntents({ base, context, parentStep, step, hookSequential }, error);
   }
+}
+
+export interface NrpEditRefusalDeps {
+  cite: (step: mls.msg.AIAgentStep, error: unknown) => Promise<unknown>;
+  log: Pick<Console, 'warn' | 'error'>;
+}
+
+/**
+ * A rejected model answer. When one repair attempt is still available the refusal is only a diagnostic warning:
+ * the repair is the expected path. When no repair is left the task fails and the refusal is an error.
+ */
+export async function nrpEditRefusalIntents(
+  at: {
+    base: { messageId: string; threadId: string; taskId: string; parentStepId: number };
+    context: mls.msg.ExecutionContext;
+    parentStep: mls.msg.AIAgentStep;
+    step: mls.msg.AIAgentStep;
+    hookSequential: number;
+  },
+  error: unknown,
+  deps: NrpEditRefusalDeps = { cite: citeEditRefusal, log: console },
+): Promise<mls.msg.AgentIntent[]> {
+  const { base, context, parentStep, step, hookSequential } = at;
+  const cited = await deps.cite(step, error);
+  const retry = retryEdit(step, cited);
+  if (retry) {
+    deps.log.warn('[agentNewReleasePrompt] edit30 repair attempt after a rejected answer:', cited instanceof Error ? cited.message : String(cited));
+    return [
+      { type: 'add-step', ...base, step: retry },
+      {
+        type: 'update-status', ...base, stepId: step.stepId, hookSequential, status: 'completed',
+        cleaner: 'input_output',
+        traceMsg: cited instanceof Error ? cited.message : String(cited),
+      },
+    ];
+  }
+  deps.log.error('[agentNewReleasePrompt] edit30 result rejected', error);
+  return [fail(context, parentStep, step, hookSequential, cited)];
 }
 
 function retryEdit(step: mls.msg.AIAgentStep, error: unknown): mls.msg.AIAgentStep | null {
