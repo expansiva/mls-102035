@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { installMlsStub } from '../../../../../test/mlsStub.js';
 
 import { createPlAgentStep } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 import { PL_STEP_HOOKS } from '/_102035_/l2/agentPlannerL4/helpers/plDispatch.js';
@@ -28,17 +29,14 @@ function keyOf(info: { project: number | string; level: number | string; folder:
 
 function installHost(): Host {
   const host: Host = { files: {} };
-  (globalThis as unknown as Record<string, unknown>).mls = {
-    actualProject: PROJECT,
-    events: { addEventListener() {}, removeEventListener() {}, dispatch() {} },
-    stor: {
-      files: host.files,
-      getKeyToFile: keyOf,
-      localStor: {
-        setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
-        listFolder: () => [],
-        deleteFile: (file: Stored) => { file.status = 'deleted'; },
-      },
+  installMlsStub({ actualProject: PROJECT, events: { addEventListener() {}, removeEventListener() {}, dispatch() {} } });
+  (globalThis as unknown as { mls: Record<string, unknown> }).mls.stor = {
+    files: host.files,
+    getKeyToFile: keyOf,
+    localStor: {
+      setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
+      listFolder: () => [],
+      deleteFile: (file: Stored) => { file.status = 'deleted'; },
     },
   };
   return host;

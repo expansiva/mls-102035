@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { installMlsStub } from '../../../../test/mlsStub.js';
 
 import {
   adjustL5PlannerDeps,
@@ -53,28 +54,25 @@ function keyOf(info: { project: number | string; level: number | string; folder:
 
 function installHost(): Host {
   const host: Host = { files: {} };
-  (globalThis as unknown as Record<string, unknown>).mls = {
-    actualProject: PROJECT,
-    events: { addEventListener() {}, removeEventListener() {}, dispatch() {} },
-    stor: {
-      files: host.files,
-      getKeyToFile: keyOf,
-      addOrUpdateFile: async (params: { project: number; level: number; folder: string; shortName: string; extension: string }) => {
-        const file: Stored = {
-          project: params.project, level: params.level, folder: params.folder,
-          shortName: params.shortName, extension: params.extension,
-          status: 'new', versionRef: '0', content: '',
-          getValueInfo: async () => ({ content: file.content }),
-          getContent: async () => file.content,
-        };
-        host.files[keyOf(file)] = file;
-        return file;
-      },
-      localStor: {
-        setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
-        listFolder: () => [],
-        deleteFile: (file: Stored) => { file.status = 'deleted'; },
-      },
+  installMlsStub({ actualProject: PROJECT, events: { addEventListener() {}, removeEventListener() {}, dispatch() {} } });
+  (globalThis as unknown as { mls: Record<string, unknown> }).mls.stor = {
+    files: host.files,
+    getKeyToFile: keyOf,
+    addOrUpdateFile: async (params: { project: number; level: number; folder: string; shortName: string; extension: string }) => {
+      const file: Stored = {
+        project: params.project, level: params.level, folder: params.folder,
+        shortName: params.shortName, extension: params.extension,
+        status: 'new', versionRef: '0', content: '',
+        getValueInfo: async () => ({ content: file.content }),
+        getContent: async () => file.content,
+      };
+      host.files[keyOf(file)] = file;
+      return file;
+    },
+    localStor: {
+      setContent: async (file: Stored, value: { content: string }) => { file.content = value.content; },
+      listFolder: () => [],
+      deleteFile: (file: Stored) => { file.status = 'deleted'; },
     },
   };
   return host;
