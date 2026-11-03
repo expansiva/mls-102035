@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { installMlsStub } from '../../../../test/mlsStub.js';
 import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, readActiveL4Change, sealL4Revision, writeL4OutputRevision } from './moduleRevision.js';
 import { tobeArtifactFileInfo } from './tobePaths.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from './moduleLayers.js';
@@ -26,7 +27,8 @@ function installStorFixture() {
       getValueInfo: async () => ({ content: contents.get(key) || '' }),
     };
   };
-  (globalThis as any).mls = {
+  installMlsStub({ actualProject: project });
+  Object.assign((globalThis as any).mls, {
     stor: { files, getKeyToFile: keyOf, addOrUpdateFile: async (info: Ns5FileInfo) => add(info),
       localStor: { setContent: async (file: Ns5FileInfo, value: { content: string }) => {
         writes++; contents.set(keyOf(file), value.content);
@@ -34,7 +36,7 @@ function installStorFixture() {
     },
     editor: { models: {}, getKeyModel: () => '' },
     common: { crc: { crc32: () => 0 } },
-  };
+  });
   const values: Array<[Ns5TobeArtifactPath, object]> = [
     ['module.defs.ts', { schemaVersion: '2026-09-10-ns5-module-v2', moduleName }],
     ['journeys/index.defs.ts', { schemaVersion: 'fixture', journeys: [] }],
