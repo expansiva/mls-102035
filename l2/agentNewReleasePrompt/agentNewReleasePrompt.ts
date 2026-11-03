@@ -6,6 +6,7 @@ import {
   parseNrpInvocation,
   serializeNrpInvocation,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
+import { preserveModuleRoots } from '/_102035_/l2/solution/fs.js';
 import { beforeNrpEntryStep } from '/_102035_/l2/agentNewReleasePrompt/steps/entry10/entry10.js';
 import { beforeNrpIndexStep } from '/_102035_/l2/agentNewReleasePrompt/steps/index10/index10.js';
 import { afterNrpTriageStep, beforeNrpTriageStep } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
@@ -66,7 +67,17 @@ export async function beforePromptImplicit(
   }
 }
 
-export async function beforePromptStep(
+export function beforePromptStep(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+): Promise<mls.msg.AgentIntent[]> {
+  return preserveModuleRoots(() => runBeforePromptStep(agent, context, parentStep, step, hookSequential));
+}
+
+async function runBeforePromptStep(
   _agent: IAgentMeta,
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,
@@ -85,7 +96,17 @@ export async function beforePromptStep(
   return [update(context, parentStep, step, hookSequential, 'failed', `Step ${step.planning.planId} is not enabled.`)];
 }
 
-export async function afterPromptStep(
+export function afterPromptStep(
+  agent: IAgentMeta,
+  context: mls.msg.ExecutionContext,
+  parentStep: mls.msg.AIAgentStep,
+  step: mls.msg.AIAgentStep,
+  hookSequential: number,
+): Promise<mls.msg.AgentIntent[]> {
+  return preserveModuleRoots(() => runAfterPromptStep(agent, context, parentStep, step, hookSequential));
+}
+
+async function runAfterPromptStep(
   _agent: IAgentMeta,
   context: mls.msg.ExecutionContext,
   parentStep: mls.msg.AIAgentStep,

@@ -55,6 +55,18 @@ export function setModuleRoot(moduleName: string, relativeRoot: string | null): 
   moduleRoots().set(name, root);
 }
 
+/** Runs `run` and puts every module root back as it was, also when `run` throws: a hook must not leak its root to the next use. */
+export async function preserveModuleRoots<T>(run: () => Promise<T>): Promise<T> {
+  const roots = moduleRoots();
+  const before = new Map(roots);
+  try {
+    return await run();
+  } finally {
+    roots.clear();
+    for (const [name, root] of before) roots.set(name, root);
+  }
+}
+
 /** `l4/<mod>` or the `/candidate` override when `setModuleRoot` was called. */
 export function moduleFolder(moduleName: string): string {
   const name = normalizeModuleName(moduleName);
@@ -139,6 +151,11 @@ export function pipelineFile(moduleName: string): Ns5FileInfo {
 
 export function pipelineFileForProject(project: number, moduleName: string): Ns5FileInfo {
   return { project, level: 4, folder: `${moduleFolder(moduleName)}/pipeline`, shortName: 'pipeline', extension: '.json' };
+}
+
+/** The pipeline of `l4/<mod>`, whatever root `setModuleRoot` points at. */
+export function canonicalPipelineFileForProject(project: number, moduleName: string): Ns5FileInfo {
+  return { project, level: 4, folder: `${normalizeModuleName(moduleName)}/pipeline`, shortName: 'pipeline', extension: '.json' };
 }
 
 export function pipelineJsonFile(moduleName: string, shortName: string): Ns5FileInfo {

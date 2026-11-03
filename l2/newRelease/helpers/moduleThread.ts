@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/moduleThread.ts" enhancement="_blank" />
 import { createThread } from '/_102025_/l2/collabMessagesHelper.js';
 import { messageThreadIdOk } from '/_102035_/l2/solution/messageThread.js';
-import { pipelineFileForProject, readPipelineForProject, writeJson } from '/_102035_/l2/solution/fs.js';
+import { canonicalPipelineFileForProject, readJson, writeJson } from '/_102035_/l2/solution/fs.js';
 import type { Ns5PipelineState } from '/_102035_/l2/solution/types.js';
 
 export interface ModuleThreadRef { threadId: string }
@@ -30,9 +30,9 @@ export async function resolveModuleThread(
   moduleName: string,
   dependencies: ModuleThreadDependencies = {},
 ): Promise<ModuleThreadRef> {
-  const read = dependencies.read ?? readPipelineForProject;
+  const read = dependencies.read ?? ((target: number, name: string) => readJson<Ns5PipelineState>(canonicalPipelineFileForProject(target, name)));
   const write = dependencies.write ?? (async (target: number, state: Ns5PipelineState) => {
-    await writeJson(pipelineFileForProject(target, state.moduleName), state);
+    await writeJson(canonicalPipelineFileForProject(target, state.moduleName), state);
   });
   const create = dependencies.create ?? (async (name: string) => createThread(name, [], 'company'));
   const pipeline = await read(project, moduleName);
