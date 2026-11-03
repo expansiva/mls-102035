@@ -3,8 +3,8 @@
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { getPostError, post, msgGetMessage, msgGetMessagesAfter, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
-import { getAllMessagesByThreadId, getThreadByName } from '/_102036_/l2/collabMessagesIndexedDB.js';
-import { createThread, getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { getAllMessagesByThreadId } from '/_102036_/l2/collabMessagesIndexedDB.js';
+import { getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
 import { buildTaskStatistics } from '/_102025_/l2/collabMessagesTaskInfo.js';
 import { continuePoolingTask } from '/_102027_/l2/aiAgentOrchestration.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
@@ -22,6 +22,7 @@ import {
   type ReviewWorkerTransport,
 } from './reviewRunWorker.js';
 import { postReviewMessage } from './reviewRunMessageTransport.js';
+import { resolveModuleThread } from './moduleThread.js';
 import { taskResultTexts } from './agentCommandRunner.js';
 
 interface ReviewRunResponse { statusCode: number; msg?: string; run?: PlatformReviewRun; work?: ReviewWorkerClaim | null; }
@@ -97,6 +98,8 @@ export interface ReviewStudioHostDependencies {
   storage?: KeyValueStorage;
   userId?: () => string | null | Promise<string | null>;
   thread?: () => Promise<{ threadId: string }>;
+  /** The thread of the module, the same one the text request and Apply use. Default: `resolveModuleThread`. */
+  moduleThread?: (project: number, moduleName: string) => Promise<{ threadId: string }>;
   context?: (threadId: string, userId: string, prompt: string) => ExecutionContext;
   execute?: (agentName: string, context: ExecutionContext) => Promise<void>;
   task?: (userId: string, taskId: string, messageId: string) => Promise<TaskData>;
@@ -120,19 +123,15 @@ interface ReviewPlannerArtifact {
 }
 
 const EXECUTION_KEY = 'collab-new-release-review-worker-v1/';
-const REVIEW_THREAD = '_102035_/l2/newRelease/review-runs';
 const tasksOnThisPage = new Set<string>();
 
 /** Concrete Studio host. The pending marker is durable before execution and server evidence wins on reattach. */
 export function createReviewStudioHost(dependencies: ReviewStudioHostDependencies = {}): ReviewStudioHost {
   const storage = dependencies.storage ?? globalThis.localStorage;
   const currentUserId = dependencies.userId ?? ensureUserId;
-  const resolveThread = dependencies.thread ?? (async () => {
-    const existing = await getThreadByName(REVIEW_THREAD);
-    const thread = existing ?? await createThread(REVIEW_THREAD, [], 'company');
-    if (!thread?.threadId) throw new Error('review-worker.thread_unavailable');
-    return { threadId: thread.threadId };
-  });
+  const resolveThread = (claim: { project: number; moduleName: string }): Promise<{ threadId: string }> => dependencies.thread
+    ? dependencies.thread()
+    : (dependencies.moduleThread ?? resolveModuleThread)(claim.project, claim.moduleName);
   const createContext = dependencies.context ?? getTemporaryContext;
   const execute = dependencies.execute ?? ((agentName, context) => environment.agents.executeAgent(agentName, context));
   const readTask = dependencies.task ?? (async (userId, taskId, messageId) => {
@@ -230,7 +229,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
     async adoptPublished(claim, published) {
       const userId = await currentUserId();
       if (!userId) throw new Error('review-worker.user_unavailable');
-      const { threadId } = await resolveThread();
+      const { threadId } = await resolveThread(claim);
       let message = await findMessage(threadId, published.taskId);
       if (!message) {
         const instant = markerInstant({ messageOrder: published.taskId });
@@ -284,7 +283,7 @@ export function createReviewStudioHost(dependencies: ReviewStudioHostDependencie
         const age = Date.parse(now()) - markerInstant(saved);
         throw new Error(age >= 120_000 ? 'review-worker.execution_start_lost' : 'review-worker.execution_start_pending');
       }
-      const thread = await resolveThread();
+      const thread = await resolveThread(claim);
       const context = createContext(thread.threadId, userId, claim.command);
       const agentName = claim.phase === 'review' ? 'agentReviewSolution' : 'agentPlannerL4';
       const messageOrder = context.message.orderAt || context.message.createAt;

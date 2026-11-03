@@ -148,6 +148,24 @@ for (const fromServer of [false, true]) {
   });
 }
 
+test('o worker de revisao pede a thread do modulo do claim, pelo projeto e pelo nome', async () => {
+  const asked: Array<[number, string]> = [];
+  const taskId = '20261008202911.1001';
+  const message = { threadId: THREAD_ID, orderAt: '20261008202911.1000', taskId: `task/${taskId}` };
+  const host = createReviewStudioHost({
+    storage: memoryStorage(),
+    userId: () => 'user-mr15',
+    moduleThread: async (project, moduleName) => { asked.push([project, moduleName]); return { threadId: THREAD_ID }; },
+    findMessage: async () => message as never,
+    task: async () => ({ PK: `task/${taskId}`, status: 'done' } as TaskData),
+    execute: async () => undefined,
+    resume: async () => undefined,
+    now: () => '2026-10-09T12:00:00.000Z',
+  });
+  await host.adoptPublished!(claim(), { taskId, resultRunId: 'review-published' });
+  assert.deepEqual(asked, [[claim().project, claim().moduleName]]);
+});
+
 test('mr_31 s1 recusa task publicada ainda in progress', async () => {
   const storage = memoryStorage();
   const taskId = '20261008202911.1001';
