@@ -448,3 +448,88 @@ for (const language of ['en', 'pt']) test(`menu closing receipt is localized in 
     assert.equal(review.implementationReport(report), report);
   }
 });
+
+
+test('task polling backs off, pauses manual checks, resumes on updates and resets by task', () => {
+  const observe = reviewModule.observeImplementationTask;
+  const now = 1800000000000;
+  let polling = observe(null, 'task1', now, 'in progress', '', now);
+  const intervals = [polling.interval];
+  for (let index = 0; index < 6; index++) {
+    polling = observe(polling, 'task1', now, 'in progress', '', now + index * 30000);
+    intervals.push(polling.interval);
+  }
+  assert.deepEqual(intervals, [1500, 3000, 6000, 12000, 24000, 30000, 30000]);
+  polling = observe(polling, 'task1', now, 'in progress', '', now + 600000);
+  assert.equal(polling.paused, true);
+  polling = observe(polling, 'task1', now, 'in progress', '', now + 610000);
+  assert.equal(polling.paused, true);
+  polling = observe(polling, 'task1', now + 610000, 'in progress', '', now + 610000);
+  assert.equal(polling.paused, false);
+  assert.equal(polling.interval, 1500);
+  assert.equal(observe(polling, 'task1', now, 'done', '', now + 620000).paused, false);
+  polling = observe(polling, 'task2', now + 620000, 'in progress', '', now + 620000);
+  assert.equal(polling.taskId, 'task2');
+  assert.equal(polling.interval, 1500);
+  assert.equal(polling.paused, false);
+  assert.equal(observe(null, 'old', now - 3600000, 'in progress', '', now).paused, true);
+  assert.equal(observe(null, 'invalid', NaN, 'in progress', new Date(now - 600000).toISOString(), now).paused, true);
+  const fallback = observe(null, 'invalid', 0, 'in progress', '', now);
+  assert.equal(observe(fallback, 'invalid', 0, 'in progress', '', now + 600000).paused, true);
+});
+
+
+test('Apply stops timers after a stale snapshot, manual check stays single and done closes', async () => {
+  const review = widget();
+  const now = Date.now();
+  let snapshotTime = now - 3600000;
+  let done = false;
+  let calls = 0;
+  let finalized = 0;
+  const timers: number[] = [];
+  review.implementationContextCurrent = () => true;
+  review.implementationPending = () => !done;
+  review.implementationComplete = () => done;
+  review.finalizeImplementation = async () => { finalized++; };
+  review.data = { changeId: 'change1' };
+  review.implementationRunner = { runNext: async () => {
+    calls++;
+    review.implementationPolling = reviewModule.observeImplementationTask(review.implementationPolling,
+      'task1', snapshotTime, done ? 'done' : 'in progress', '', now);
+    return { changeId: 'change1' };
+  } };
+  const setTimer = window.setTimeout;
+  const clearTimer = window.clearTimeout;
+  window.setTimeout = ((_callback: () => void, delay: number) => { timers.push(delay); return 1; }) as typeof window.setTimeout;
+  window.clearTimeout = (() => undefined) as typeof window.clearTimeout;
+  try {
+    await review.advanceImplementation();
+    assert.equal(calls, 1);
+    assert.deepEqual(timers, []);
+    review.hasImplementation = () => true;
+    review.implementation = { merged: { materialize: [] }, phases: [] };
+    review.implementationComplete = () => false;
+    const panel = review.renderImplementation('top');
+    assert.match(templateText(panel), /review.implementation.pollingPaused/);
+    assert.match(templateText(panel), /review.implementation.checkNow/);
+    const manual = panel.values.flatMap((value: any) => value?.values ?? []).find((value: any) => typeof value === 'function');
+    assert.equal(typeof manual, 'function');
+    await manual();
+    assert.equal(calls, 2);
+    assert.deepEqual(timers, []);
+    snapshotTime = now;
+    await manual();
+    assert.equal(calls, 3);
+    assert.deepEqual(timers, [1500]);
+    done = true;
+    let pendingChecks = 0;
+    review.implementationPending = () => ++pendingChecks === 1;
+    review.implementationComplete = () => done;
+    await review.advanceImplementation();
+    assert.equal(finalized, 1);
+    assert.deepEqual(timers, [1500]);
+  } finally {
+    window.setTimeout = setTimer;
+    window.clearTimeout = clearTimer;
+  }
+});

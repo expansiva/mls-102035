@@ -81,6 +81,30 @@ import { backendTone, buildBackendReview, parseEffortSummary, type BackendItem, 
 import type { PoolTestSupportItem } from '/_102035_/l2/solution/poolPlan.js';
 
 const POLL_INTERVAL_MS = 1500;
+export interface ImplementationTaskPolling {
+  taskId: string;
+  lastUpdated: number;
+  unchangedSince: number;
+  interval: number;
+  paused: boolean;
+}
+
+export function observeImplementationTask(previous: ImplementationTaskPolling | null, taskId: string,
+  lastUpdated: number, status: string, startedAt: string, now: number): ImplementationTaskPolling {
+  const timestamp = Number.isFinite(lastUpdated) && lastUpdated > 0 ? lastUpdated : 0;
+  const same = previous?.taskId === taskId;
+  const changed = same && timestamp !== previous.lastUpdated;
+  const advanced = same && timestamp > previous.lastUpdated;
+  const started = Date.parse(startedAt);
+  const unchangedSince = timestamp || (same ? previous.unchangedSince
+    : Number.isFinite(started) && started > 0 ? started : now);
+  const paused = status === 'in progress' && ((same && previous.paused && !advanced)
+    || now - unchangedSince >= 10 * 60 * 1000);
+  return { taskId, lastUpdated: timestamp, unchangedSince,
+    interval: same && !changed ? Math.min(previous.interval * 2, 30000) : POLL_INTERVAL_MS,
+    paused };
+}
+
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
 const EMPTY_ARTIFACT: ReviewArtifactRead = { status: 'missing', path: '' };
 
@@ -233,6 +257,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
   @state() private implementationTasks: Record<string, TaskData> = {};
+  @state() private implementationPolling: ImplementationTaskPolling | null = null;
   private implementationTaskChanges: Record<string, number> = {};
   @state() private implementationHashes: L4ImplementationHashes = { changeEffort: '' };
 
@@ -250,6 +275,9 @@ export class NewReleaseReview102035 extends StateLitElement {
   private implementationTaskWrite: Promise<void> = Promise.resolve();
   private readonly implementationRunner = createImplementationRunner({ onTask: (project, moduleName, phaseName, task) => {
     if (project !== this.project || moduleName !== this.moduleName) return;
+    const phase = this.implementation?.phases.find(phase => phase.name === phaseName);
+    this.implementationPolling = observeImplementationTask(this.implementationPolling,
+      task.PK.replace(/^task(?:\/#?|#)/u, ''), task.last_updated, task.status, phase?.startedAt ?? '', Date.now());
     void this.rememberImplementationTask(phaseName, task, this.loadToken);
   } });
   private readonly initialApply = applyInitialReview;
@@ -317,6 +345,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.changeEffortRead = EMPTY_ARTIFACT;
     this.effortCurrent = false;
     this.effortRefreshPending = false;
+    this.implementationPolling = null;
     this.implementationTasks = {};
     this.implementationTaskChanges = {};
     this.initialPlan = null;
@@ -399,7 +428,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   private async hydrateImplementationTasks(record: L4ImplementationRecord, token: number): Promise<void> {
     const userId = getUserId();
     if (!userId) return;
-    await Promise.all(record.phases.filter(phase => phase.taskId && phase.messageId).map(async phase => {
+    await Promise.all(record.phases.filter(phase => phase.status !== 'running' && phase.taskId && phase.messageId).map(async phase => {
       try {
         const result = await msgGetTaskUpdate({ userId, taskId: phase.taskId, messageId: phase.messageId });
         const task = result.success ? result.response?.task : null;
@@ -992,11 +1021,11 @@ export class NewReleaseReview102035 extends StateLitElement {
       if (this.implementationComplete()) await this.finalizeImplementation(token);
       if (!this.implementationContextCurrent(token)) return;
       // A synchronous completion can leave the next phase absent, with none running.
-      if (this.implementationPending()) {
+      if (this.implementationPending() && !this.implementationPolling?.paused) {
         this.implementationTimer = window.setTimeout(() => {
           this.implementationTimer = undefined;
           if (this.implementationContextCurrent(token)) void this.advanceImplementation(token);
-        }, POLL_INTERVAL_MS);
+        }, this.implementationPolling?.interval ?? POLL_INTERVAL_MS);
       }
     } catch (error) {
       if (this.implementationContextCurrent(token)) this.actionError = error instanceof Error ? error.message : 'review.implementation.error.run';
@@ -1082,6 +1111,9 @@ export class NewReleaseReview102035 extends StateLitElement {
     return html`
       <section class=${`nr-review__run nr-review__implementation is-${placement}`} aria-live=${placement === 'top' ? 'polite' : 'off'}>
         <h3>${this.t('review.implementation.progress')}</h3>
+        ${this.implementationPolling?.paused ? html`<p role="status">${this.t('review.implementation.pollingPaused', { taskId: this.implementationPolling.taskId })}
+          <button type="button" ?disabled=${this.implementationBusy} @click=${() => this.advanceImplementation()}>${this.t('review.implementation.checkNow')}</button>
+        </p>` : nothing}
         ${!complete && !this.implementation?.phases.some(phase => phase.status === 'failed') ? html`<progress aria-label=${this.t('review.implementation.runningBody')}></progress>` : nothing}
         <p class="nr-review__implementation-note">${this.t(complete ? 'review.implementation.completedBody' : 'review.implementation.changesPendingBody')}</p>
         ${materialize.length ? html`<section class="nr-review__implementation-materialize">

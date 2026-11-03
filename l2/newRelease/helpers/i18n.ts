@@ -5,6 +5,8 @@ export type NewReleaseTranslate = (key: string, values?: Record<string, string |
 
 /// **collab_i18n_start**
 const message_en = {
+  "review.implementation.pollingPaused": "Task {{taskId}} has not updated for 10 minutes. Automatic checks are paused; the task may still be running.",
+  "review.implementation.checkNow": "Check now",
   "review.implementation.menu.removed": "menu.json removed.",
   "review.implementation.menu.absent": "menu.json kept: the file was already absent.",
   "review.implementation.menu.notApproved": "menu.json kept: finalize70 was not approved.",
@@ -1161,6 +1163,8 @@ const message_en = {
 };
 type MessageType = typeof message_en;
 const message_pt: MessageType = {
+  "review.implementation.pollingPaused": "A task {{taskId}} está sem atualização há 10 minutos. As consultas automáticas foram pausadas; a task pode continuar em execução.",
+  "review.implementation.checkNow": "Verificar agora",
   "review.implementation.menu.removed": "menu.json removido.",
   "review.implementation.menu.absent": "menu.json mantido: o arquivo já estava ausente.",
   "review.implementation.menu.notApproved": "menu.json mantido: finalize70 não foi aprovado.",
