@@ -134,6 +134,9 @@ new-release--widgets--review-102035 {
   .nr-review__run dl div { min-width: min(100%, 12rem); }
   .nr-review__run dt { color: var(--text-muted, #5d6b7e); font-size: .6rem; font-weight: 750; text-transform: uppercase; }
   .nr-review__run dd { margin: .08rem 0 0; overflow-wrap: anywhere; font-size: .66rem; }
+  .nr-review__copy-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+  .nr-review__copy-actions button { min-height: 2.25rem; padding: .42rem .7rem; border: 1px solid var(--link-text, #8fb9ff); border-radius: .5rem; background: transparent; color: var(--link-text, #8fb9ff); font-size: .75rem; }
+  .nr-review__copy-actions span { color: var(--text-muted, #92a0b8); font-size: .72rem; }
   .nr-review__run.is-ready > header strong { color: var(--status-success-text, #25640e); }
   .nr-review__run.is-failed > header strong,
   .nr-review__run.is-disputed > header strong { color: var(--status-error-text, #ab2328); }

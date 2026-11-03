@@ -182,6 +182,39 @@ test('What changed shows the recorded prompt and full value for its exact path',
   assert.match(view, /texto novo completo/);
 });
 
+test('Copy in What changed includes untruncated values and the prompt origin', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+  index.activeTab = 'review';
+  index.version = 'tobe';
+  index.data = { changeId: 'change', diffs: [{ path: 'rules.defs.ts', entries: [
+    { jsonPath: '$.rules.a', before: 'antes', after: 'x'.repeat(250) },
+  ] }] };
+  index.changeOrigins = [{ source: 'prompt', at: '2026-11-02T10:00:00.000Z', request: 'Altere a regra a', taskId: 'task1',
+    changes: [{ file: 'rules.defs.ts', jsonPath: '$.rules.a' }] }];
+  const copied: string[] = [];
+  const prior = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { copied.push(value); } } });
+  try {
+    assert.match(templateText(index.renderDiffs()), /Copiar/);
+    await index.copyDiffs();
+    assert.equal(copied.length, 1);
+    assert.match(copied[0], /rules\.defs\.ts/);
+    assert.match(copied[0], /\$\.rules\.a/);
+    assert.match(copied[0], new RegExp('x'.repeat(250)));
+    assert.match(copied[0], /Altere a regra a/);
+    assert.match(copied[0], /task1/);
+    assert.match(index.diffCopyFeedback, /Copiado/);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } });
+    await index.copyDiffs();
+    assert.match(index.diffCopyFeedback, /Não foi possível copiar/);
+  } finally {
+    if (prior) Object.defineProperty(navigator, 'clipboard', prior);
+    else delete (navigator as { clipboard?: unknown }).clipboard;
+  }
+});
+
 test('openOriginTask opens the module thread', async () => {
   const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
   index.project = 102047;

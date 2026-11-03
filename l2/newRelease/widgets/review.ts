@@ -222,6 +222,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
+  @state() private reviewCopyFeedback = '';
+  private reviewCopyRunId = '';
 
   @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
@@ -257,6 +259,8 @@ export class NewReleaseReview102035 extends StateLitElement {
       || (changed.has('data') && (previousData?.changeId !== this.data?.changeId
         || previousData?.revisionId !== this.data?.revisionId))) this.supersededRevisionId = '';
     if (changed.has('project') || changed.has('moduleName') || changed.has('version') || changed.has('data') || changed.has('request')) {
+      this.reviewCopyFeedback = '';
+      this.reviewCopyRunId = '';
       this.selectedActor = '';
       this.selectedId = '';
       this.selectedScope = 'future';
@@ -1183,6 +1187,48 @@ export class NewReleaseReview102035 extends StateLitElement {
     return this.t(stored);
   }
 
+  private reviewRunCopyText(run: PlatformReviewRun | ReviewRunRecord): string {
+    const execution = 'executions' in run ? run.executions.at(-1) : undefined;
+    const saved = 'taskId' in run ? run : undefined;
+    const output = 'output' in run ? run.output : undefined;
+    return `${this.t('review.run.title')}\n${JSON.stringify({
+      project: this.project,
+      moduleName: this.moduleName,
+      status: run.status,
+      errorCode: run.errorCode,
+      runId: run.runId,
+      taskId: execution?.taskId ?? saved?.taskId ?? null,
+      threadId: execution?.threadId ?? saved?.threadId ?? null,
+      attempt: 'attempt' in run ? run.attempt : run.attemptsUsed,
+      provider: execution?.provider ?? null,
+      model: execution?.model ?? null,
+      changeId: run.binding.changeId,
+      inputRevisionId: run.binding.inputRevisionId,
+      requestRevision: run.binding.requestRevision,
+      resultRunId: execution?.resultRunId ?? null,
+      resultId: output?.result.resultId ?? null,
+      resultTaskId: output?.result.manifest.taskId ?? null,
+      traceHash: output?.result.manifest.traceHash ?? null,
+    }, null, 2)}`;
+  }
+
+  private async copyReviewRun(run: PlatformReviewRun | ReviewRunRecord): Promise<void> {
+    this.reviewCopyRunId = run.runId;
+    try {
+      await navigator.clipboard.writeText(this.reviewRunCopyText(run));
+      this.reviewCopyFeedback = this.t('common.copied');
+    } catch {
+      this.reviewCopyFeedback = this.t('common.copyFailed');
+    }
+  }
+
+  private renderReviewRunCopy(run: PlatformReviewRun | ReviewRunRecord) {
+    return html`<div class="nr-review__copy-actions">
+      <button type="button" @click=${() => void this.copyReviewRun(run)}>${this.t('common.copy')}</button>
+      ${this.reviewCopyRunId === run.runId && this.reviewCopyFeedback ? html`<span role="status">${this.reviewCopyFeedback}</span>` : nothing}
+    </div>`;
+  }
+
   private renderReviewRun() {
     if (this.version !== 'tobe') return nothing;
     if (this.reviewRunLoadError) {
@@ -1205,6 +1251,7 @@ export class NewReleaseReview102035 extends StateLitElement {
             ${execution?.provider ? html`<div><dt>${this.t('review.run.provider')}</dt><dd><code>${execution.provider}</code></dd></div>` : nothing}
             ${execution?.model ? html`<div><dt>${this.t('review.run.model')}</dt><dd><code>${execution.model}</code></dd></div>` : nothing}
           </dl>
+          ${this.renderReviewRunCopy(channel)}
         </section>
       `;
     }
@@ -1231,6 +1278,7 @@ export class NewReleaseReview102035 extends StateLitElement {
             <div><dt>${this.t('review.run.trace')}</dt><dd><code>${run.output.result.manifest.traceHash}</code></dd></div>
           ` : nothing}
         </dl>
+        ${this.renderReviewRunCopy(run)}
       </section>
     `;
   }

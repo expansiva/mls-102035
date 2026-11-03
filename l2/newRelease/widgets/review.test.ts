@@ -119,6 +119,36 @@ function templateText(value: any): string {
   return Array.isArray(value) ? value.map(templateText).join('') : typeof value === 'string' ? value : '';
 }
 
+test('Copy review failure includes code, task, thread and run in full', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.js');
+  const review = widget();
+  review.version = 'tobe';
+  review.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+  review.channelRun = {
+    runId: 'review-550', status: 'failed', attempt: 1, errorCode: 'review-worker.candidate_result_missing',
+    binding: { changeId: 'change-1', inputRevisionId: 'rev-1', requestRevision: 2 },
+    executions: [{ taskId: 'task-20261103173810', threadId: 'thread-20261102193705', provider: 'openai', model: 'test-model', resultRunId: null }],
+  };
+  const view = templateText(review.renderReviewRun());
+  assert.match(view, /Copiar/);
+  const copied: string[] = [];
+  const prior = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { copied.push(value); } } });
+  try {
+    await review.copyReviewRun(review.channelRun);
+    const report = JSON.parse(copied[0].split('\n').slice(1).join('\n'));
+    assert.equal(report.errorCode, 'review-worker.candidate_result_missing');
+    assert.equal(report.runId, 'review-550');
+    assert.equal(report.taskId, 'task-20261103173810');
+    assert.equal(report.threadId, 'thread-20261102193705');
+    assert.equal(report.inputRevisionId, 'rev-1');
+    assert.match(templateText(review.renderReviewRun()), /Copiado/);
+  } finally {
+    if (prior) Object.defineProperty(navigator, 'clipboard', prior);
+    else delete (navigator as { clipboard?: unknown }).clipboard;
+  }
+});
+
 test('mr41 s3c new planned module without active change enables Apply and keeps Calculate visible', () => {
   const review = widget();
   const action = review.actionPresentation(review.view(), true);

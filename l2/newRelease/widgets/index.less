@@ -545,6 +545,10 @@ new-release--widgets--index-102035 {
     cursor: text;
   }
   .nr-index__diff-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
     padding: .5rem .9rem .8rem;
     button {
       min-height: 2.25rem;
@@ -557,6 +561,8 @@ new-release--widgets--index-102035 {
       font: inherit;
       font-size: .75rem;
     }
+    .nr-index__copy-button { border-color: var(--button-primary-bg, #1273d4); color: var(--link-text, #8fb9ff); }
+    span { color: var(--text-muted, #92a0b8); font-size: .72rem; }
     button:disabled { opacity: .6; cursor: not-allowed; }
   }
 }

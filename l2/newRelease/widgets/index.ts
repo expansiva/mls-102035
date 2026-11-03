@@ -87,6 +87,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private requestReady = false;
   @state() private requestTask: { id: string; threadId: string; cost: number | null } | null = null;
   @state() private changeOrigins: ChangeOrigin[] = [];
+  @state() private diffCopyFeedback = '';
 
   @state() private presentation: 'graph' | 'text' | 'prompt' = 'graph';
   @state() private textSearch = '';
@@ -196,6 +197,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private async loadModule() {
     const resultModule = `${this.project}/${this.moduleName}`;
+    this.diffCopyFeedback = '';
     if (this.requestResultModule !== resultModule) {
       this.requestResult = '';
       this.requestFileStates = [];
@@ -831,6 +833,30 @@ export class NewReleaseIndex102035 extends StateLitElement {
       + (origin.earlier ? ` · ${this.t('tobe.origin.earlier', { count: origin.earlier })}` : '');
   }
 
+  private diffCopyText(): string {
+    const diffs = visibleDiffs(this.data?.diffs ?? [], 'review');
+    return diffs.map(diff => [diff.path, ...diff.entries.map(entry => {
+      const origin = originForChange(this.changeOrigins, diff.path, entry.jsonPath);
+      return [
+        entry.jsonPath,
+        `${this.t('tobe.diffBefore')}: ${this.fullDiffValue(entry.before)}`,
+        `${this.t('tobe.diffAfter')}: ${this.fullDiffValue(entry.after)}`,
+        ...(origin ? [this.originLabel(origin)] : []),
+        ...(origin?.operation.request ? [`${this.t('tobe.origin.request')}: ${origin.operation.request}`] : []),
+        ...(origin?.operation.taskId ? [this.t('tobe.origin.task', { id: origin.operation.taskId })] : []),
+      ].join('\n');
+    })].join('\n\n')).join('\n\n');
+  }
+
+  private async copyDiffs(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.diffCopyText());
+      this.diffCopyFeedback = this.t('common.copied');
+    } catch {
+      this.diffCopyFeedback = this.t('common.copyFailed');
+    }
+  }
+
   private moduleThread = resolveModuleThread;
   private openThread = dispatchThreadOpen;
 
@@ -904,8 +930,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
       <details class="nr-index__diff">
         <summary>${this.t('tobe.diffTitle', { count: diffs.reduce((total, item) => total + item.entries.length, 0) })}</summary>
         ${this.activeTab === 'review' && this.version === 'tobe' && this.hasPreparedChanges() ? html`
-          <div class="nr-index__diff-actions"><button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
-            @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button></div>
+          <div class="nr-index__diff-actions">
+            <button type="button" class="nr-index__copy-button" ?disabled=${this.loading || this.requestBusy}
+              @click=${() => void this.copyDiffs()}>${this.t('common.copy')}</button>
+            <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
+              @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>
+            ${this.diffCopyFeedback ? html`<span role="status">${this.diffCopyFeedback}</span>` : nothing}
+          </div>
         ` : nothing}
         ${diffs.map(diff => html`
           <section>
