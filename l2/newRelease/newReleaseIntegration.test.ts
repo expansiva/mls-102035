@@ -19,7 +19,8 @@ test('behavior service opens the module index through the right-side detail cont
   assert.match(source, /if \(!hadContext && this\._context\(\)\) await this\._openModuleBlueprint\(\)/);
   assert.match(source, /NEW_RELEASE_TOBE_UPDATED_EVENT/);
   assert.match(source, /listReleaseChoices/);
-  assert.match(source, /selectedRevisionIndex\(this\._versions, preferredVersion\)/);
+  assert.match(source, /readActiveL4Change\(project, moduleName\)/);
+  assert.match(source, /selectedRevisionIndex\(this\._versions, preferredVersion \?\? \(active \? 'tobe' : 'asis'\)\)/);
 });
 
 test('new release index exposes the shared edit seam and completed functional tabs', () => {

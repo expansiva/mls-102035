@@ -574,7 +574,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestReady = false;
     this.requestTask = null;
     try {
-      const saved = await saveChangeRequest(context.project, context.moduleName, text, expectedChange, expectedRevision);
+      const active = context.version === 'asis' ? await readActiveL4Change(context.project, context.moduleName) : null;
+      if (!contextStillCurrent(context, this)) return;
+      const saved = await saveChangeRequest(context.project, context.moduleName, text,
+        active ? active.changeId : expectedChange, active ? active.activeRevisionId : expectedRevision);
       if (!contextStillCurrent(context, this)) return;
       this.expectedChangeId = saved.changeId;
       this.expectedRevisionId = saved.revisionId;
