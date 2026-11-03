@@ -195,6 +195,22 @@ export async function recordNrpTriageRefusal(
   return citation;
 }
 
+/**
+ * The tool-call answer of the triage call. Without one, the model answered but no tool call reached the step:
+ * the refusal says so and keeps the step trace (provider, tokens, cost), which is all the stored task keeps.
+ */
+export function nrpTriagePayload(step: mls.msg.AIAgentStep): unknown {
+  const first = step.interaction?.payload?.[0];
+  if (first === undefined || first === null) {
+    const trace = step.interaction?.trace ?? [];
+    throw new NrpTriageRefusal(
+      'The model answered the triage without a tool call (no payload reached the step).',
+      { payloadMissing: true, payloadLength: step.interaction?.payload?.length ?? null, cost: step.interaction?.cost ?? null, trace },
+    );
+  }
+  return unwrapNs4FlexibleWorkerPayload(first);
+}
+
 export function createTriage20Step(prompt: string): mls.msg.AIAgentStep {
   return {
     type: 'agent',
@@ -252,8 +268,7 @@ export async function afterNrpTriageStep(
     taskId: context.task?.PK || '', parentStepId: parentStep.stepId,
   };
   try {
-    const payload = unwrapNs4FlexibleWorkerPayload(step.interaction?.payload?.[0]);
-    const triage = normalizeNrpTriage(payload);
+    const triage = normalizeNrpTriage(nrpTriagePayload(step));
     const stopped = !triage.valid;
     const hold = stopped
       ? await holdSummary(step, [triage.clarification || triage.reason, triage.l3Notice].filter(Boolean).join('\n'))

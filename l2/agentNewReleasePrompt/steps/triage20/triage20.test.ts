@@ -15,6 +15,7 @@ import {
   buildNrpTriageTool,
   normalizeNrpTriage,
   nrpTriageNotes,
+  nrpTriagePayload,
   recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 
@@ -233,4 +234,16 @@ void test('l3Notice answers interface work alone and rides along with a change',
   });
   assert.equal(mixed.valid, true);
   assert.equal(mixed.l3Notice, 'The color is l3.');
+});
+
+void test('a triage step without a tool-call payload is refused with the real cause and keeps the trace', () => {
+  const step = { interaction: { input: [], cost: 0.04, trace: ['provider: x outputTokens:746'], payload: null } } as unknown as mls.msg.AIAgentStep;
+  assert.throws(() => nrpTriagePayload(step), (error: unknown) => {
+    assert.ok(error instanceof NrpTriageRefusal);
+    assert.match(error.message, /without a tool call/);
+    assert.match(JSON.stringify(error.raw), /outputTokens:746/);
+    return true;
+  });
+  const ok = { interaction: { payload: [{ valid: false }] } } as unknown as mls.msg.AIAgentStep;
+  assert.deepEqual(nrpTriagePayload(ok), { valid: false });
 });
