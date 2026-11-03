@@ -61,10 +61,29 @@ test('request display skips producer indexes, proposals and gates and summarizes
     { key: 'request.success', values: { count: 2 }, retry: false });
   assert.deepEqual(summarizeNewReleaseRequest([...intermediate, JSON.stringify({ triage: { valid: false, reason: null, clarification: 'Which actor?' } })], 'done'),
     { key: 'request.question', values: { question: 'Which actor?' }, retry: true });
-  assert.deepEqual(summarizeNewReleaseRequest([...intermediate, JSON.stringify({ written: false, summary: 'Question: Which actor?', revisedPrompt: 'Change the task for [manager].' })], 'done'),
-    { key: 'request.revisedPrompt', values: {}, retry: true, revisedPrompt: 'Change the task for [manager].' });
+  assert.deepEqual(summarizeNewReleaseRequest([...intermediate, JSON.stringify({ written: false, question: 'Which actor?', summary: 'Question: Which actor?' })], 'done'),
+    { key: 'request.question', values: { question: 'Which actor?' }, retry: true, summary: 'Question: Which actor?' });
   assert.deepEqual(summarizeNewReleaseRequest([JSON.stringify({ written: false, reason: 'Gate refused', issues: [] })], 'done'),
     { key: 'request.refused', values: { reason: 'Gate refused' }, retry: true });
+});
+
+test('successful prompt exposes assumptions as a list without repeating their summary line', () => {
+  const results = [
+    JSON.stringify({ triage: { valid: true, assumptions: ['actor: team member'] } }),
+    JSON.stringify({ written: true, files: ['journeys/view.defs.ts'], summary: 'Journey added\nAssumed: actor: team member; scope: own\nReview the interface in L3.' }),
+  ];
+  assert.deepEqual(summarizeNewReleaseRequest(results, 'done'), {
+    key: 'request.success', values: { count: 1 }, retry: false,
+    assumptions: ['actor: team member', 'scope: own'],
+    summary: 'Journey added\nReview the interface in L3.',
+  });
+  assert.deepEqual(summarizeNewReleaseRequest([
+    JSON.stringify({ triage: { valid: true, assumptions: [] } }),
+    JSON.stringify({ written: true, files: ['access.defs.ts'], summary: 'Acesso atualizado\nAssumi: campo visível ao ator' }),
+  ], 'done'), {
+    key: 'request.success', values: { count: 1 }, retry: false,
+    assumptions: ['campo visível ao ator'], summary: 'Acesso atualizado',
+  });
 });
 
 test('empty request never resolves a thread or invokes an agent', async () => {

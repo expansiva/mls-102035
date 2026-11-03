@@ -67,6 +67,19 @@ test('change request controls do not submit empty text and clear prior-tab feedb
 });
 
 
+test('prompt result displays assumptions separately and in the active language', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+  index.activeTab = 'journeys';
+  index.requestFeedbackTab = 'journeys';
+  index.requestResult = 'Jornada adicionada';
+  index.requestAssumptions = ['ator: membro da equipe', 'escopo: próprio'];
+  const view = templateText(index.renderRequest());
+  assert.match(view, /Jornada adicionada/);
+  assert.match(view, /<strong>Assumi:<\/strong><ul><li>ator: membro da equipe<\/li><li>escopo: próprio<\/li><\/ul>/);
+});
+
 test('review counts new warnings and keeps previous observations in closed details', async () => {
   const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
   for (const [language, title, warnings, errors] of [

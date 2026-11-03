@@ -74,6 +74,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private identityFlight?: Promise<void>;
   @state() private requestResult = '';
   @state() private requestFileStates: NewReleaseRequestFileState[] = [];
+  @state() private requestAssumptions: string[] = [];
   private requestResultModule = '';
   private requestFeedbackTab: NewReleaseTab | null = null;
   @state() private requestNeedsRetry = false;
@@ -192,6 +193,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     if (this.requestResultModule !== resultModule) {
       this.requestResult = '';
       this.requestFileStates = [];
+      this.requestAssumptions = [];
       this.requestNeedsRetry = false;
       this.requestReady = false;
       this.requestTask = null;
@@ -299,6 +301,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.pendingEdit = undefined;
       this.requestResult = '';
       this.requestFileStates = [];
+      this.requestAssumptions = [];
       this.requestError = '';
       this.requestFeedbackTab = null;
     }
@@ -570,6 +573,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestError = '';
     this.requestResult = '';
     this.requestFileStates = [];
+    this.requestAssumptions = [];
     this.requestNeedsRetry = false;
     this.requestReady = false;
     this.requestTask = null;
@@ -594,10 +598,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
         threadId: (outcome.task.messageid_created || '').split('/')[0] || '',
         cost: newReleaseTaskCost(outcome.task),
       } : null;
-      this.requestResult = summary.revisedPrompt ? this.t(summary.key) : summary.summary || this.t(summary.key, summary.values);
+      this.requestResult = summary.summary || this.t(summary.key, summary.values);
       this.requestFileStates = summary.fileStates ?? [];
+      this.requestAssumptions = summary.assumptions ?? [];
       this.requestNeedsRetry = summary.retry;
-      if (summary.revisedPrompt) this.requestText = summary.revisedPrompt;
+      if (summary.key === 'request.question') this.requestText = '';
       if (outcome.task.status === 'failed') throw new Error(this.requestResult);
       const written = outcome.results.some(result => { try { return JSON.parse(result).written === true; } catch { return false; } });
       if (written) {
@@ -620,6 +625,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         if (!this.requestNeedsRetry) {
           this.requestResult = '';
           this.requestFileStates = [];
+          this.requestAssumptions = [];
         }
         this.requestNeedsRetry = true;
         this.requestError = this.revisionError(error);
@@ -1029,6 +1035,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" rows="15" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
           ${showFeedback && this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
+          ${showFeedback && this.requestAssumptions.length ? html`<div><strong>${this.t('request.assumptions')}:</strong><ul>${this.requestAssumptions.map(item => html`<li>${item}</li>`)}</ul></div>` : nothing}
           ${showFeedback && this.requestTask ? html`<p class="nr-index__request-task">${this.t('request.taskExecuted', { id: this.requestTask.id, cost: this.requestTask.cost === null ? this.t('request.costUnavailable') : `$${this.requestTask.cost.toFixed(2)}` })} ${this.requestTask.threadId ? html`<button type="button" @click=${() => dispatchThreadOpen(this.requestTask!.threadId, this.requestTask!.id)}>${this.t('request.taskDetails')}</button>` : nothing}</p>` : nothing}
           ${showFeedback && this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
           ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}

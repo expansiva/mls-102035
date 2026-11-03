@@ -45,7 +45,7 @@ export interface NewReleaseRequestFileState {
 export interface NewReleaseRequestSummary {
   fileStates?: NewReleaseRequestFileState[];
   summary?: string;
-  revisedPrompt?: string;
+  assumptions?: string[];
   key: string;
   values: { reason?: string; question?: string; count?: number };
   retry: boolean;
@@ -58,7 +58,7 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
   let written: number | null = null;
   let fileStates: NewReleaseRequestFileState[] = [];
   let producerSummary = '';
-  let revisedPrompt = '';
+  let assumptions: string[] = [];
   for (const result of results) {
     let value: unknown;
     try { value = JSON.parse(result); }
@@ -68,16 +68,16 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
       continue;
     }
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
-    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; summary?: unknown; revisedPrompt?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown }; question?: unknown };
+    const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; summary?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown; assumptions?: unknown }; question?: unknown };
     if (typeof outcome.summary === 'string' && outcome.summary.trim()) producerSummary = outcome.summary.trim();
     if (typeof outcome.question === 'string') question = outcome.question;
+    if (Array.isArray(outcome.triage?.assumptions)) assumptions = outcome.triage.assumptions.filter((item): item is string => typeof item === 'string' && !!item.trim());
     if (outcome.triage?.valid === false) {
       if (typeof outcome.triage.clarification === 'string') question = outcome.triage.clarification;
       if (typeof outcome.triage.reason === 'string') refusal = outcome.triage.reason;
     }
     if (outcome.written === false) {
       refusal = typeof outcome.reason === 'string' ? outcome.reason : '';
-      if (typeof outcome.revisedPrompt === 'string' && outcome.revisedPrompt.trim()) revisedPrompt = outcome.revisedPrompt.trim();
     }
     if (outcome.written === true) {
       written = Array.isArray(outcome.files) ? outcome.files.length : 0;
@@ -86,13 +86,24 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
         && ['added', 'changed', 'removed'].includes(item.state)) : [];
     }
   }
-  const summary = producerSummary ? { summary: producerSummary } : {};
-  if (status === 'done' && written === null && revisedPrompt) return { key: 'request.revisedPrompt', values: {}, retry: true, revisedPrompt };
+  const display = separateAssumptions(producerSummary, assumptions);
+  const summary = display.summary ? { summary: display.summary } : {};
   if (question) return { key: 'request.question', values: { question }, retry: true, ...summary };
   if (refusal) return { key: 'request.refused', values: { reason: refusal }, retry: true, ...summary };
   if (status === 'failed') return { key: 'request.failed', values: {}, retry: true, ...summary };
-  if (written !== null) return { key: 'request.success', values: { count: written }, retry: false, ...(fileStates.length ? { fileStates } : {}), ...summary };
+  if (written !== null) return { key: 'request.success', values: { count: written }, retry: false,
+    ...(fileStates.length ? { fileStates } : {}), ...(display.assumptions.length ? { assumptions: display.assumptions } : {}), ...summary };
   return { key: 'request.noResult', values: {}, retry: true, ...summary };
+}
+
+function separateAssumptions(summary: string, triageAssumptions: readonly string[]): { summary: string; assumptions: string[] } {
+  // The final write summary also includes access choices added after triage.
+  const line = summary.split('\n').find(value => /^(?:Assumi|Assumed): /u.test(value));
+  if (!line) return { summary, assumptions: [...triageAssumptions] };
+  return {
+    summary: summary.split('\n').filter(value => value !== line).join('\n'),
+    assumptions: line.slice(line.indexOf(': ') + 2).split('; ').map(value => value.trim()).filter(Boolean),
+  };
 }
 
 export interface NewReleasePromptRequest { moduleName: string; request: string }
