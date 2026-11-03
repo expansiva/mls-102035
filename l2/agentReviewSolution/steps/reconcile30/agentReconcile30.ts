@@ -11,7 +11,7 @@ import {
   reviewTaskStateFromContext,
   type ReviewTaskState,
 } from '/_102035_/l2/agentReviewSolution/helpers/reviewTaskState.js';
-import type { Validate40CorrectionState } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
+import type { Validate40Context, Validate40CorrectionState } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
 import { tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import {
   parseReview20PrivateState,
@@ -53,11 +53,11 @@ export interface Reconcile30PrivateState {
 }
 
 export interface Reconcile30Runtime {
-  reconcile(base: Record<string, unknown>, proposal: Record<string, unknown>): Promise<Reconcile30Result>;
+  reconcile(base: Record<string, unknown>, proposal: Record<string, unknown>, context: Validate40Context): Promise<Reconcile30Result>;
 }
 
 const defaultRuntime: Reconcile30Runtime = {
-  reconcile: (base, proposal) => reconcile30Private(base, proposal),
+  reconcile: (base, proposal, context) => reconcile30Private(base, proposal, context),
 };
 
 export async function beforeReconcile30Step(
@@ -75,7 +75,7 @@ export async function beforeReconcile30Step(
     assertReviewStateIntegrity(review, frozen, invocation, taskState);
     const baseBefore = JSON.stringify(review.base);
     const proposalBefore = JSON.stringify(review.proposal);
-    const reconciled = await runtime.reconcile(review.base, review.proposal);
+    const reconciled = await runtime.reconcile(review.base, review.proposal, taskState.validationContext);
     if (JSON.stringify(review.base) !== baseBefore || JSON.stringify(review.proposal) !== proposalBefore
       || reconciled.mutations.length !== 0 || JSON.stringify(reconciled.draft) !== proposalBefore) {
       throw new Error('reconcile30 attempted an unsupported mutation.');

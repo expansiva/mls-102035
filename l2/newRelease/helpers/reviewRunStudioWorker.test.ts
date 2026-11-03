@@ -426,6 +426,23 @@ function hostForTask(task: TaskData) {
   });
 }
 
+test('review task done without an authoritative candidate stays a failed run', async () => {
+  const previous = (globalThis as { mls?: unknown }).mls;
+  (globalThis as { mls?: unknown }).mls = {
+    stor: { files: {}, getKeyToFile: () => 'missing-candidate-pointer' },
+  };
+  try {
+    const host = hostForTask({ PK: 'task/20261103173810.1001', status: 'done' } as TaskData);
+    const started = await host.startOrGet(claim());
+    const progress = await host.observe(claim(), started);
+    assert.equal(progress.status, 'failed');
+    assert.equal(progress.errorCode, 'review-worker.candidate_result_missing');
+    assert.equal(progress.candidateResult, undefined);
+  } finally {
+    (globalThis as { mls?: unknown }).mls = previous;
+  }
+});
+
 test('mr_18 s3 openrouter com openai/gpt-5.6-terra-pro sem estágio de fallback não é fallback', async () => {
   fs.writeFileSync(taskInfoStats, JSON.stringify({
     models: [{ stage: 'review', provider: 'openrouter', model: 'openai/gpt-5.6-terra-pro' }],

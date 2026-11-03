@@ -13,6 +13,7 @@ import {
   stageReview20,
   stageReview20Applied,
 } from '/_102035_/l2/agentReviewSolution/steps/review20/review20.js';
+import type { Validate40Context } from '/_102035_/l2/agentReviewSolution/steps/validate40/validate40.js';
 import type { Reconcile30Result } from '/_102035_/l2/agentReviewSolution/steps/reconcile30/reconcile30.js';
 import {
   beforeReconcile30Step,
@@ -51,14 +52,14 @@ const inventories: ReviewInventories = {
   candidate: { 'module.defs.ts': { schemaVersion: 'v1', moduleName: 'agendaClinica', title: 'Old title' } },
 };
 
-async function taskState(frozen: ReviewEntrySnapshot = snapshot): Promise<ReviewTaskState> {
-  return buildReviewTaskState(frozen, {
+async function taskState(frozen: ReviewEntrySnapshot = snapshot, validationContext: Validate40Context = {
     v3: { registryModuleNames: ['agendaClinica'] },
     v2: { registryModuleNames: ['agendaClinica'] },
-  }, 0);
+  }): Promise<ReviewTaskState> {
+  return buildReviewTaskState(frozen, validationContext, 0);
 }
 
-async function reviewState(frozen: ReviewEntrySnapshot = snapshot): Promise<Review20PrivateState> {
+async function reviewState(frozen: ReviewEntrySnapshot = snapshot, validationContext?: Validate40Context): Promise<Review20PrivateState> {
   const staged = stageReview20(snapshot, inventories.persistedRequest, inventories.base, inventories.candidate, {
     schemaVersion: REVIEW20_SCHEMA_VERSION,
     decision: 'apply',
@@ -69,7 +70,7 @@ async function reviewState(frozen: ReviewEntrySnapshot = snapshot): Promise<Revi
     }],
   });
   assert.equal(staged.status, 'staged');
-  const task = await taskState(frozen);
+  const task = await taskState(frozen, validationContext);
   return {
     schemaVersion: REVIEW20_PRIVATE_STATE_VERSION,
     project: snapshot.project,
@@ -111,9 +112,10 @@ function runtime(reconciled: Reconcile30Result): Reconcile30Runtime {
   return { reconcile: async () => reconciled };
 }
 
-async function context(state?: Review20PrivateState, frozen: ReviewEntrySnapshot = snapshot): Promise<mls.msg.ExecutionContext> {
-  const task = await taskState(frozen);
-  const resolvedState = state || await reviewState(frozen);
+async function context(state?: Review20PrivateState, frozen: ReviewEntrySnapshot = snapshot,
+  validationContext?: Validate40Context): Promise<mls.msg.ExecutionContext> {
+  const task = await taskState(frozen, validationContext);
+  const resolvedState = state || await reviewState(frozen, validationContext);
   const reviewResult: mls.msg.AIResultStep = {
     type: 'result', stepId: 21, status: 'completed', interaction: null, nextSteps: [],
     result: JSON.stringify(resolvedState),
@@ -172,6 +174,30 @@ test('reconcile30 stores a bounded ready draft privately and schedules validate4
   const validate = (intents[1] as mls.msg.AgentIntentAddStep).step as mls.msg.AIAgentStep;
   assert.equal(validate.planning?.planId, 'validate40');
   assert.deepEqual(validate.planning?.dependsOn, ['reconcile30-private-result']);
+}));
+
+test('reconcile30 passes the frozen V3 catalogs and module registry to the pure gate', async () => withProject(async () => {
+  const validationContext = {
+    v3: {
+      mdm: { schemaVersion: 'fixture-mdm' },
+      tdm: { schemaVersion: 'fixture-tdm' },
+      ddm: { schemaVersion: 'fixture-ddm' },
+      ontologyPlan: { schemaVersion: 'fixture-plan' },
+      registryModuleNames: ['agendaClinica', 'financeiro'],
+    },
+  } as unknown as Validate40Context;
+  const frozen = await context(undefined, snapshot, validationContext);
+  let received: Validate40Context | undefined;
+  const gate: Reconcile30Runtime = {
+    reconcile: async (_base, _proposal, supplied) => {
+      received = supplied;
+      return result('ready');
+    },
+  };
+  const intents = await beforeReconcile30Step(frozen, parent(), step(), 30, gate);
+  assert.deepEqual(intents.map(intent => intent.type), ['add-step', 'add-step', 'update-status']);
+  assert.deepEqual(received, validationContext);
+  assert.deepEqual(received?.v3?.registryModuleNames, ['agendaClinica', 'financeiro']);
 }));
 
 test('reconcile30 accepts an added journey already sealed in the candidate inventory', async () => withProject(async () => {
