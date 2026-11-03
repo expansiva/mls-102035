@@ -160,6 +160,37 @@ new-release--widgets--index-102035 {
   .nr-index__request--history { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .65rem .85rem; }
   .nr-index__request--history strong { font-size: .74rem; }
   .nr-index__request--history button { flex: none; }
+  .nr-index__request-progress {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483640;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(5, 13, 25, .78);
+    backdrop-filter: blur(.35rem);
+  }
+  .nr-index__request-progress-card {
+    display: grid;
+    justify-items: center;
+    gap: .8rem;
+    width: min(100%, 28rem);
+    padding: 2rem;
+    border: 1px solid var(--border-subtle, #e4e9f0);
+    border-radius: 1rem;
+    background: var(--surface-bg, #fff);
+    box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, .3);
+    text-align: center;
+  }
+  .nr-index__request-progress-card strong { font-size: 1.1rem; }
+  .nr-index__request-progress-card p { margin: 0; color: var(--text-muted, #5d6b7e); }
+  .nr-index__request-progress-card small { color: var(--text-muted, #5d6b7e); }
+  .nr-index__request-progress-card progress { width: 100%; height: .65rem; accent-color: var(--button-primary-bg, #1273d4); }
+  .nr-index__request-progress-icon { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; color: var(--button-primary-bg, #1273d4); }
+  .nr-index__request-progress-warning { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border-radius: 50%; background: var(--status-warning-bg, #fff3cc); color: var(--status-warning-text, #775700); font-size: 1.6rem; font-weight: 800; }
+  .nr-index__request-progress-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; animation: nr-request-spin 1.2s linear infinite; }
+  @keyframes nr-request-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .nr-index__request-progress-icon svg { animation: none; } }
   .nr-index__revision-content { min-width: 0; margin: 0; padding: 0; border: 0; }
 
   .nr-tab__source {

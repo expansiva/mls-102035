@@ -66,6 +66,54 @@ test('change request controls do not submit empty text and clear prior-tab feedb
   assert.doesNotMatch(templateText(index.renderRequest()), /tardio da jornada/);
 });
 
+test('prompt progress blocks navigation and shows a recoverable 10 minute limit', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+  index.project = 102047;
+  index.moduleName = 'tarefas';
+  index.version = 'tobe';
+  index.activeTab = 'journeys';
+  index.requestText = 'Alterar regra';
+  index.requestBusy = true;
+  const originalTimeout = globalThis.setTimeout;
+  const originalInterval = globalThis.setInterval;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const originalClearInterval = globalThis.clearInterval;
+  let expire: (() => void) | undefined;
+  let timeoutMs = 0;
+  try {
+    globalThis.setTimeout = ((callback: () => void, delay: number) => {
+      expire = callback;
+      timeoutMs = delay;
+      return 91;
+    }) as typeof setTimeout;
+    globalThis.setInterval = (() => 92) as typeof setInterval;
+    globalThis.clearTimeout = (() => undefined) as typeof clearTimeout;
+    globalThis.clearInterval = (() => undefined) as typeof clearInterval;
+    index.startRequestProgress({ project: 102047, moduleName: 'tarefas', version: 'tobe' });
+    assert.equal(timeoutMs, 600_000);
+    assert.match(templateText(index.renderRequestProgress()), /role="dialog"/);
+    assert.match(templateText(index.renderRequestProgress()), /<progress max="600"/);
+    await index.activateTab('rules');
+    assert.equal(index.activeTab, 'journeys');
+    expire?.();
+    assert.equal(index.requestTimedOut, true);
+    assert.match(index.requestError, /não respondeu após 10 minutos/i);
+    assert.match(templateText(index.renderRequestProgress()), /Limite de espera atingido/);
+    assert.doesNotMatch(templateText(index.renderRequestProgress()), /<progress/);
+    assert.equal(index.requestBusy, true);
+    assert.match(templateText(index.renderRequest()), /Limite de espera atingido/);
+    index.stopRequestProgress();
+    assert.equal(index.requestTimedOut, false);
+  } finally {
+    globalThis.setTimeout = originalTimeout;
+    globalThis.setInterval = originalInterval;
+    globalThis.clearTimeout = originalClearTimeout;
+    globalThis.clearInterval = originalClearInterval;
+  }
+});
+
 
 test('prompt result displays assumptions separately and in the active language', async () => {
   const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');

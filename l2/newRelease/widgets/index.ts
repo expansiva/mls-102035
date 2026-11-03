@@ -53,6 +53,7 @@ import '/_102035_/l2/newRelease/widgets/review.js';
 type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration' | 'review';
 
 const TABS: NewReleaseTab[] = ['general', 'journeys', 'ontology', 'access', 'rules', 'workflows', 'integration', 'review'];
+const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
 
 @customElement('new-release--widgets--index-102035')
 export class NewReleaseIndex102035 extends StateLitElement {
@@ -69,6 +70,11 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private requestText = '';
   @state() private savedRequest = '';
   @state() private requestBusy = false;
+  @state() private requestTimedOut = false;
+  @state() private requestElapsedSeconds = 0;
+  private requestProgressTimer?: number;
+  private requestTimeoutTimer?: number;
+  private requestStartedAt = 0;
   @state() private requestError = '';
   @state() private identityError = 'pending';
   private identityFlight?: Promise<void>;
@@ -296,6 +302,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   };
 
   private async activateTab(tab: NewReleaseTab, focus = false) {
+    if (this.requestBusy) return;
     if (tab !== this.activeTab && !this.canLeaveTab()) return;
     if (tab !== this.activeTab) {
       this.pendingEdit = undefined;
@@ -562,6 +569,31 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return !!text && (this.requestReady || text !== this.savedRequest.trim() || this.requestNeedsRetry);
   }
 
+  private startRequestProgress(context: NewReleaseContext) {
+    this.requestTimedOut = false;
+    this.requestElapsedSeconds = 0;
+    this.requestStartedAt = Date.now();
+    this.requestProgressTimer = window.setInterval(() => {
+      this.requestElapsedSeconds = Math.min(600, Math.floor((Date.now() - this.requestStartedAt) / 1000));
+    }, 1000);
+    this.requestTimeoutTimer = window.setTimeout(() => {
+      this.requestTimedOut = true;
+      this.requestElapsedSeconds = 600;
+      if (this.requestProgressTimer !== undefined) window.clearInterval(this.requestProgressTimer);
+      this.requestProgressTimer = undefined;
+      if (contextStillCurrent(context, this)) this.requestError = this.t('request.timedOut');
+    }, REQUEST_TIMEOUT_MS);
+  }
+
+  private stopRequestProgress() {
+    if (this.requestProgressTimer !== undefined) window.clearInterval(this.requestProgressTimer);
+    if (this.requestTimeoutTimer !== undefined) window.clearTimeout(this.requestTimeoutTimer);
+    this.requestProgressTimer = undefined;
+    this.requestTimeoutTimer = undefined;
+    this.requestTimedOut = false;
+    this.requestElapsedSeconds = 0;
+  }
+
   private async saveRequest() {
     if (this.requestBusy || this.changing || !this.canSubmitRequest()) return;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
@@ -570,6 +602,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const expectedChange = this.expectedChangeId;
     const expectedRevision = this.expectedRevisionId;
     this.requestBusy = true;
+    this.startRequestProgress(context);
     this.requestError = '';
     this.requestResult = '';
     this.requestFileStates = [];
@@ -592,6 +625,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         if (contextStillCurrent(context, this)) this.requestResult = this.t('request.running');
       }, { project: context.project });
       if (!contextStillCurrent(context, this)) return;
+      this.requestError = '';
       const summary = summarizeNewReleaseRequest(outcome.results, outcome.task.status);
       this.requestTask = outcome.task.status === 'done' ? {
         id: outcome.task.PK,
@@ -631,6 +665,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         this.requestError = this.revisionError(error);
       }
     } finally {
+      this.stopRequestProgress();
       this.requestBusy = false;
     }
   }
@@ -1029,7 +1064,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const unsaved = (!this.savedRequest && !this.requestText.trim()) || this.canSubmitRequest();
     return html`
       <details class="nr-index__request" ?open=${this.presentation === 'prompt' || this.requestReady || !this.savedRequest || !!(showFeedback && (this.requestResult || this.requestError))}>
-        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy ? this.t('request.saving') : this.requestReady && !this.requestText.trim() ? this.t('request.ready') : unsaved ? this.t('request.unsaved') : this.t('request.saved')}</span></summary>
+        <summary><strong>${this.t('request.title')}</strong><span>${this.requestBusy && !this.requestTimedOut ? this.t('request.running') : this.requestTimedOut ? this.t('request.timedOutShort') : this.requestReady && !this.requestText.trim() ? this.t('request.ready') : unsaved ? this.t('request.unsaved') : this.t('request.saved')}</span></summary>
         <div class="nr-index__request-body">
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
@@ -1058,13 +1093,32 @@ export class NewReleaseIndex102035 extends StateLitElement {
     `;
   }
 
+  private renderRequestProgress() {
+    if (!this.requestBusy) return nothing;
+    return html`<div class="nr-index__request-progress" role="dialog" aria-modal="true" aria-label=${this.t(this.requestTimedOut ? 'request.timedOutShort' : 'request.progressTitle')}>
+      <div class="nr-index__request-progress-card">
+        ${this.requestTimedOut ? html`
+          <span class="nr-index__request-progress-warning" aria-hidden="true">!</span>
+          <strong>${this.t('request.timedOutShort')}</strong>
+          <p role="alert">${this.t('request.timedOut')}</p>
+        ` : html`
+          <span class="nr-index__request-progress-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></svg></span>
+          <strong>${this.t('request.progressTitle')}</strong>
+          <p>${this.t('request.progressHint')}</p>
+          <progress max="600" value=${this.requestElapsedSeconds} aria-label=${this.t('request.progressElapsed')}></progress>
+          <small>${this.t('request.progressElapsed')} · ${Math.floor(this.requestElapsedSeconds / 60)} / 10 ${this.t('request.minutes')}</small>
+        `}
+      </div>
+    </div>`;
+  }
+
   render() {
     const historical = !!historicalReleaseId(this.version);
     const pendingChanges = !this.loading && this.version === 'tobe' && this.data?.module
       ? visibleDiffs(this.data.diffs, 'review').reduce((count, diff) => count + diff.entries.length, 0)
       : null;
     return html`
-      <main class="nr-index" aria-busy=${this.loading ? 'true' : 'false'}>
+      <main class="nr-index" ?inert=${this.requestBusy} aria-busy=${this.loading || this.requestBusy ? 'true' : 'false'}>
         ${this.renderTabs()}
         ${pendingChanges !== null && this.activeTab !== 'review' ? html`<p class="nr-index__changes-summary" role="status">${this.t(
           pendingChanges === 0 ? 'tobe.noChanges' : pendingChanges === 1 ? 'tobe.onePendingChange' : 'tobe.pendingChanges',
@@ -1105,6 +1159,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           ${this.renderValidationLog()}
         `}
       </main>
+      ${this.renderRequestProgress()}
     `;
   }
 }
