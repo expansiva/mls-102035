@@ -351,7 +351,7 @@ test('recalculating effort hides the previous summary and shows the active phase
   assert.doesNotMatch(output, /OLD_EFFORT/);
 });
 
-test('Apply contains live task cost and an explicit completion state', () => {
+test('Apply embeds the live task card, follows updates and replaces a retried task', () => {
   const review = widget();
   review.version = 'tobe'; review.hasRelease = true;
   const record: L4ImplementationRecord = { schemaVersion: '2026-10-08-nr-module-implementation-v1', changeId: 'change1', revisionId: 'rev1', acceptedBy: 'reviewer', acceptedAt: '', hashes: { changeEffort: 'hash' },
@@ -359,18 +359,63 @@ test('Apply contains live task cost and an explicit completion state', () => {
     phases: [{ name: 'runAgents:0', agent: 'agentAddLanguage', command: '@@agentAddLanguage []', attempt: 1,
       taskId: 'task1', threadId: 'thread1', messageId: 'thread1/message', status: 'running', startedAt: '' }] };
   review.implementation = record;
-  review.t = (key: string, values?: Record<string, string | number>) => key === 'review.implementation.taskCost' ? String(values?.cost) : key;
   review.data = { ...review.data, changeId: record.changeId, revisionId: record.revisionId };
   review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
-  review.implementationTasks = { 'runAgents:0': { PK: 'task/#task1', status: 'in progress', iaCompressed: { nextSteps: [{ interaction: { cost: 0.08, payload: [] }, nextSteps: [] }] } } };
+  const task = { PK: 'task1', status: 'in progress', last_updated: 1,
+    iaCompressed: { nextSteps: [{ interaction: { cost: 0.08, payload: [] }, nextSteps: [] }] } };
+  review.implementationTasks = { 'runAgents:0': task };
+  review.implementationTaskChanges = { 'runAgents:0': 1 };
   const running = templateText(review.render());
-  assert.match(running, /review\.implementation\.taskDetails/);
-  assert.match(running, /US\$ 0\.08/);
+  assert.match(running, /<collab-messages-task-102025/);
+  assert.doesNotMatch(running, /nr-review__task-link/);
   assert.match(running, /<progress/);
+  const card = review.renderImplementationTask('runAgents:0');
+  assert.equal(card.values.find((value: any) => value?.task)?.task, task);
+  const firstChanged = card.values.find((value: any) => value === 'task1:1');
+  task.last_updated = 2;
+  task.iaCompressed.nextSteps[0].interaction.cost = 0.12;
+  review.implementationTaskChanges['runAgents:0'] = 2;
+  const updated = review.renderImplementationTask('runAgents:0');
+  assert.equal(updated.values.find((value: any) => value?.task)?.task, task);
+  assert.equal(updated.values.find((value: any) => value === 'task1:2'), 'task1:2');
+  assert.notEqual(firstChanged, 'task1:2');
+  assert.equal(updated.values.find((value: any) => value?.task)?.task.iaCompressed.nextSteps[0].interaction.cost, 0.12);
+  const previousDispatch = window.dispatchEvent;
+  const events: CustomEvent[] = [];
+  window.dispatchEvent = ((event: CustomEvent) => { events.push(event); return true; }) as typeof window.dispatchEvent;
+  try { (updated.values.find((value: any) => typeof value === 'function') as () => void)(); }
+  finally { window.dispatchEvent = previousDispatch; }
+  assert.equal(events[0].type, 'thread-open');
+  assert.deepEqual(events[0].detail, { threadId: 'thread1', taskId: 'task1' });
+  record.phases[0].taskId = 'task2';
+  assert.match(templateText(review.renderImplementationTask('runAgents:0')), /review\.implementation\.taskLoading/);
+  review.implementationTasks = { 'runAgents:0': { ...task, PK: 'task2' } };
+  assert.match(templateText(review.renderImplementationTask('runAgents:0')), /<collab-messages-task-102025/);
   record.phases[0].status = 'done';
   const complete = templateText(review.render());
   assert.match(complete, /review\.implementation\.completedBody/);
   assert.doesNotMatch(complete.slice(complete.indexOf('nr-review__implementation')), /<progress/);
+});
+
+test('task card waits for persisted snapshots and keeps the newest one after reload', async () => {
+  const review = widget();
+  let releaseFirst!: () => void;
+  const firstWrite = new Promise<void>(resolve => { releaseFirst = resolve; });
+  const persisted: string[] = [];
+  const store = async (task: { PK: string; status: string }) => {
+    persisted.push(`${task.PK}:${task.status}`);
+    if (task.status === 'in progress') await firstWrite;
+  };
+  const running = { PK: '20261103185746.1001', status: 'in progress', last_updated: 1 };
+  const done = { ...running, status: 'done', last_updated: 2 };
+  const first = review.rememberImplementationTask('runAgents:0', running, review.loadToken, store);
+  const second = review.rememberImplementationTask('runAgents:0', done, review.loadToken, store);
+  await Promise.resolve();
+  assert.equal(review.implementationTasks['runAgents:0'], undefined);
+  releaseFirst();
+  await Promise.all([first, second]);
+  assert.deepEqual(persisted, [`${running.PK}:in progress`, `${running.PK}:done`]);
+  assert.equal(review.implementationTasks['runAgents:0'], done);
 });
 
 for (const language of ['en', 'pt']) test(`menu closing receipt is localized in ${language} without changing other report lines`, async () => {

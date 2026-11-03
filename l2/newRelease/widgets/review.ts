@@ -28,8 +28,9 @@ import { serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/a
 import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 import { getUserId, createThread, getTemporaryContext } from '/_102025_/l2/collabMessagesHelper.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
-import type { TaskData } from '/_102036_/l2/shared/interfaces.js';
-import { newReleaseTaskCost } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { addOrUpdateTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
+import '/_102025_/l2/collabMessagesTask.js';
+import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import {
   claimInputForRun,
   publishedCandidateMatchesRunRevision,
@@ -232,6 +233,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
   @state() private implementationTasks: Record<string, TaskData> = {};
+  private implementationTaskChanges: Record<string, number> = {};
   @state() private implementationHashes: L4ImplementationHashes = { changeEffort: '' };
 
   @state() private implementationDiff: ModuleLayerDiff[] | null = null;
@@ -245,9 +247,10 @@ export class NewReleaseReview102035 extends StateLitElement {
   private readonly workerHost = createReviewStudioHost();
   private workerTimer?: number;
   private implementationTimer?: number;
+  private implementationTaskWrite: Promise<void> = Promise.resolve();
   private readonly implementationRunner = createImplementationRunner({ onTask: (project, moduleName, phaseName, task) => {
     if (project !== this.project || moduleName !== this.moduleName) return;
-    this.implementationTasks = { ...this.implementationTasks, [phaseName]: task };
+    void this.rememberImplementationTask(phaseName, task, this.loadToken);
   } });
   private readonly initialApply = applyInitialReview;
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
@@ -315,6 +318,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.effortCurrent = false;
     this.effortRefreshPending = false;
     this.implementationTasks = {};
+    this.implementationTaskChanges = {};
     this.initialPlan = null;
     this.stopImplementationTimer();
     this.implementationDiff = null;
@@ -401,9 +405,28 @@ export class NewReleaseReview102035 extends StateLitElement {
         const task = result.success ? result.response?.task : null;
         if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== phase.taskId
           || token !== this.loadToken || this.implementation !== record || this.implementationTasks[phase.name]) return;
-        this.implementationTasks = { ...this.implementationTasks, [phase.name]: task };
+        await this.rememberImplementationTask(phase.name, task, token);
       } catch { /* The phase remains usable with an unavailable cost. */ }
     }));
+  }
+
+  private rememberImplementationTask(phaseName: string, task: TaskData, token: number,
+    storeTask: (snapshot: TaskData) => Promise<void> = addOrUpdateTask): Promise<void> {
+    const project = this.project;
+    const moduleName = this.moduleName;
+    const write = this.implementationTaskWrite.then(async () => {
+      try {
+        // The card also reads IndexedDB on mount. Store this snapshot first so that read cannot replace it with an older one.
+        await storeTask(task);
+      } catch {
+        return; // Keep the details fallback when the card cannot be mounted reliably.
+      }
+      if (token !== this.loadToken || project !== this.project || moduleName !== this.moduleName) return;
+      this.implementationTaskChanges[phaseName] = (this.implementationTaskChanges[phaseName] || 0) + 1;
+      this.implementationTasks = { ...this.implementationTasks, [phaseName]: task };
+    });
+    this.implementationTaskWrite = write.catch(() => undefined);
+    return write;
   }
 
   private selectActor(actor: string) {
@@ -1074,11 +1097,7 @@ export class NewReleaseReview102035 extends StateLitElement {
                 <span>${this.t(`review.implementation.status.${phase.status}`)}</span>
                 ${phase.attempt ? html`<small>${this.t('review.implementation.attempt', { attempt: phase.attempt })}</small>` : nothing}
               </div>
-              ${this.implementation?.phases.find(item => item.name === phase.name)?.taskId ? html`<button type="button" class="nr-review__task-link"
-                @click=${() => { const item = this.implementation?.phases.find(value => value.name === phase.name); if (item?.threadId && item.taskId) dispatchThreadOpen(item.threadId, item.taskId); }}>
-                ${this.t('review.implementation.taskDetails', { id: this.implementation!.phases.find(item => item.name === phase.name)!.taskId })}
-                · ${this.t('review.implementation.taskCost', { cost: this.implementationTaskCost(phase.name) })}
-              </button>` : nothing}
+              ${this.renderImplementationTask(phase.name)}
               ${this.implementation?.phases.find(item => item.name === phase.name)?.report ? html`<pre>${this.implementationReport(this.implementation.phases.find(item => item.name === phase.name)!.report!)}</pre>` : nothing}
               ${phase.error ? html`<p class="nr-review__implementation-error">${this.tStoredReviewError(phase.error)}</p>` : nothing}
               ${phase.previousAttempts?.length ? html`<details>
@@ -1116,10 +1135,36 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
-  private implementationTaskCost(phaseName: string): string {
+  private renderImplementationTask(phaseName: string) {
+    const phase = this.implementation?.phases.find(item => item.name === phaseName);
+    if (!phase?.taskId) return nothing;
     const task = this.implementationTasks[phaseName];
-    const cost = task ? newReleaseTaskCost(task) : null;
-    return cost === null ? this.t('request.costUnavailable') : `US$ ${cost.toFixed(2)}`;
+    if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== phase.taskId) {
+      return html`<p class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}
+        ${phase.threadId ? html`<button type="button" @click=${() => dispatchThreadOpen(phase.threadId, phase.taskId)}
+          >${this.t('review.implementation.taskDetails', { id: phase.taskId })}</button>` : nothing}
+      </p>`;
+    }
+    const messageOrderAt = phase.messageId.split('/').pop() || '';
+    const context: ExecutionContext = {
+      message: {
+        threadId: phase.threadId,
+        orderAt: messageOrderAt,
+        createAt: messageOrderAt.slice(0, 14),
+        senderId: getUserId() || '',
+        content: phase.command,
+        taskId: phase.taskId,
+        taskStatus: task.status,
+      },
+      task,
+      isTest: false,
+    };
+    const lastChanged = `${phase.taskId}:${this.implementationTaskChanges[phaseName] || 0}`;
+    return html`<collab-messages-task-102025 class="nr-review__task-card"
+      taskid=${phase.taskId} threadId=${phase.threadId} messageid=${phase.messageId}
+      userId=${getUserId() || ''} .context=${context} lastChanged=${lastChanged}
+      @taskclick=${() => { if (phase.threadId) dispatchThreadOpen(phase.threadId, phase.taskId); }}
+    ></collab-messages-task-102025>`;
   }
 
   private retryStartInput(run: PlatformReviewRun, userId: string): ReviewRunStartInput {
