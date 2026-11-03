@@ -5,7 +5,7 @@ import { effortMatchesCurrent } from '/_102035_/l2/newRelease/helpers/effortFres
 import { html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-import { NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
+import { NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Reader.js';
 import type { NewReleaseTranslate } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import { readModuleMenu, type MenuReadResult } from '/_102035_/l2/newRelease/helpers/menuReader.js';
@@ -837,11 +837,14 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.actionBusy = true;
     this.actionError = '';
     this.initialErrorDetail = '';
+    window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, { detail: { project, moduleName, active: true } }));
+    let accepted = false;
     try {
       const record = await this.initialApply({ project, moduleName, acceptedBy: getUserId() ?? '',
         changeId: data?.changeId ?? null, revisionId: data?.revisionId ?? null }, { current });
       if (!current()) return;
       this.implementation = record;
+      accepted = true;
       this.initialPlan = null;
       // The context owner reloads the accepted revision in tobe; load() resumes its persisted phases.
       window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project, moduleName, version: 'tobe' } }));
@@ -850,7 +853,10 @@ export class NewReleaseReview102035 extends StateLitElement {
         ? 'review.implementation.error.conflict' : 'review.implementation.error.run';
       if (current()) this.initialErrorDetail = error instanceof Error ? error.message : String(error);
       console.error('[newRelease] initial implementation failed', error);
-    } finally { if (current()) this.actionBusy = false; }
+    } finally {
+      if (current()) this.actionBusy = false;
+      if (!accepted) window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, { detail: { project, moduleName, active: false } }));
+    }
   }
 
   private canImplement(): boolean {
@@ -872,6 +878,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     const hashes = { ...this.implementationHashes };
     this.actionBusy = true;
     this.actionError = '';
+    window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, { detail: { project, moduleName, active: true } }));
     this.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button').forEach(button => {
       button.disabled = true;
       button.setAttribute('aria-disabled', 'true');
@@ -909,6 +916,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       }
     } finally {
       if (current()) this.actionBusy = false;
+      if (!accepted) window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, { detail: { project, moduleName, active: false } }));
     }
     // Execution failures must never roll back a successfully accepted revision.
     if (accepted && current()) {

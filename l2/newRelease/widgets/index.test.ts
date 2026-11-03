@@ -27,6 +27,41 @@ function templateText(value: any): string {
   return Array.isArray(value) ? value.map(templateText).join('') : typeof value === 'string' ? value : '';
 }
 
+test('active implementation keeps content readable and blocks editing until the stored record clears', async () => {
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.project = 102047;
+  index.moduleName = 'tarefas';
+  index.version = 'tobe';
+  index.activeTab = 'rules';
+  index.activeEditor = () => null;
+  index.implementationReader = async () => ({ changeId: 'change1' });
+  await index.refreshImplementationLock();
+  assert.equal(index.implementationActive, true);
+  assert.match(templateText(index.renderTabContent()), /release:implementation-active/);
+  assert.doesNotMatch(templateText(index.renderCommonControls()), /common\.prompt/);
+  assert.equal(templateText(index.renderRequest()), '');
+  index.requestText = 'Novo pedido';
+  assert.equal(index.canSubmitRequest(), false);
+  let blocked = '';
+  index.onArtifactChanged({ preventDefault() {}, detail: { path: 'rules.defs.ts', complete: (error: Error) => { blocked = error.message; } } });
+  assert.equal(blocked, 'request.applicationActive');
+  index.activeTab = 'review';
+  assert.match(templateText(index.renderTabContent()), /tobe/);
+  index.presentation = 'prompt';
+  index.onImplementationState({ detail: { project: 102047, moduleName: 'tarefas', active: true } });
+  assert.equal(index.presentation, 'graph');
+  index.implementationReader = async () => null;
+  await index.refreshImplementationLock();
+  assert.equal(index.implementationActive, false);
+  index.activeTab = 'rules';
+  assert.match(templateText(index.renderTabContent()), /tobe/);
+  assert.equal(index.canSubmitRequest(), true);
+  index.implementationReader = async () => { throw new Error('read failed'); };
+  await index.refreshImplementationLock();
+  assert.equal(index.implementationActive, true);
+  assert.equal(index.mutationError, 'read failed');
+});
+
 test('change request controls do not submit empty text and clear prior-tab feedback', async () => {
   const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
   index.activeTab = 'journeys';

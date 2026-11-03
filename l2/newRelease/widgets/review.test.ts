@@ -184,14 +184,16 @@ test('mr41 s3c exact Apply click emits tobe only after persisting initial accept
   const previousDispatch = window.dispatchEvent;
   const events: CustomEvent[] = [];
   window.dispatchEvent = ((event: CustomEvent) => {
-    assert.equal(review.implementation, record);
+    if (event.type === 'nr-tobe-updated') assert.equal(review.implementation, record);
     events.push(event); return true;
   }) as typeof window.dispatchEvent;
   try {
     await review.runReviewPrimaryAction();
     assert.equal(accepts, 1);
-    assert.deepEqual(events[0].detail, { project: 102035, moduleName: 'fixture', version: 'tobe' });
-    assert.equal(events[0].type, 'nr-tobe-updated');
+    assert.deepEqual(events[0].detail, { project: 102035, moduleName: 'fixture', active: true });
+    assert.equal(events[0].type, 'nr-implementation-state');
+    assert.deepEqual(events[1].detail, { project: 102035, moduleName: 'fixture', version: 'tobe' });
+    assert.equal(events[1].type, 'nr-tobe-updated');
     assert.equal(review.initialPlan, null);
     await review.runReviewPrimaryAction();
     assert.equal(accepts, 1);

@@ -11,6 +11,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
 import {
   NEW_RELEASE_CONTEXT_EVENT,
+  NEW_RELEASE_IMPLEMENTATION_STATE_EVENT,
   NEW_RELEASE_TOBE_UPDATED_EVENT,
   historicalReleaseId,
   type NewReleaseContext,
@@ -27,6 +28,7 @@ import {
   type NewReleaseTranslate,
 } from '/_102035_/l2/newRelease/helpers/i18n.js';
 import { sealL4Revision, readChangeRequest, readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { readL4Implementation } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { bindStructuredEditsRequest, ChangeRequestDrafts, contextStillCurrent, reuseHistoricalRelease, saveChangeRequest } from '/_102035_/l2/newRelease/helpers/revisionSelection.js';
 import { discardTobe, saveTobeArtifact, NewReleaseSaveValidationError } from '/_102035_/l2/newRelease/tobe.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
@@ -65,6 +67,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   @state() private activeTab: NewReleaseTab = 'general';
   @state() private loading = true;
   @state() private changing = false;
+  @state() private implementationActive = false;
   @state() private mutationError = '';
   @state() private languagePending = false;
   @state() private requestText = '';
@@ -98,6 +101,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private t: NewReleaseTranslate = key => key;
   private languageObserver?: MutationObserver;
   private loadToken = 0;
+  private implementationLockToken = 0;
   private languageToken = 0;
   private validationTimer?: number;
   private mutationQueue: Promise<void> = Promise.resolve();
@@ -108,6 +112,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private revisionByModule = new Map<string, string | null>();
   private requestDrafts = new ChangeRequestDrafts();
   private requestKey: string | null = null;
+  private implementationReader = readL4Implementation;
   private pendingEdit?: { project: number; moduleName: string; tab: NewReleaseTab; id: string };
 
   createRenderRoot() { return this; }
@@ -159,6 +164,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.addEventListener(NEW_RELEASE_CHANGED_EVENT, this.onArtifactChanged as EventListener);
     window.addEventListener(NEW_RELEASE_CONTEXT_EVENT, this.onContextChange as EventListener);
     window.addEventListener(NEW_RELEASE_TOBE_UPDATED_EVENT, this.onTobeUpdated as EventListener);
+    window.addEventListener(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, this.onImplementationState as EventListener);
     void this.initialize();
   }
 
@@ -178,6 +184,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.removeEventListener(NEW_RELEASE_CHANGED_EVENT, this.onArtifactChanged as EventListener);
     window.removeEventListener(NEW_RELEASE_CONTEXT_EVENT, this.onContextChange as EventListener);
     window.removeEventListener(NEW_RELEASE_TOBE_UPDATED_EVENT, this.onTobeUpdated as EventListener);
+    window.removeEventListener(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, this.onImplementationState as EventListener);
     super.disconnectedCallback();
   }
 
@@ -215,6 +222,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.validationTimer = undefined;
     }
     const token = ++this.loadToken;
+    const lockToken = ++this.implementationLockToken;
     this.data = null;
     this.requestText = '';
     this.savedRequest = '';
@@ -223,6 +231,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.expectedRevisionId = null;
     if (!this.project || !this.moduleName) {
       this.data = null;
+      this.setImplementationActive(false);
       this.loading = false;
       return;
     }
@@ -244,9 +253,16 @@ export class NewReleaseIndex102035 extends StateLitElement {
       return;
     }
     if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
+    let implementationActive = true;
+    let lockError = '';
+    try { implementationActive = !!await this.implementationReader(context.project, context.moduleName); }
+    catch (error) { lockError = this.revisionError(error); }
+    if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
     const languagePending = !historicalReleaseId(context.version) && await hasPendingLanguages(context.project, context.moduleName);
     if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
     this.data = data;
+    if (lockToken === this.implementationLockToken) this.setImplementationActive(implementationActive);
+    if (lockError) this.mutationError = lockError;
     this.changeOrigins = changeOrigins;
     this.languagePending = languagePending;
     this.expectedChangeId = data.changeId;
@@ -305,6 +321,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private async activateTab(tab: NewReleaseTab, focus = false) {
     if (this.requestBusy && !this.requestTimedOut) return;
+    if (tab !== this.activeTab) await this.refreshImplementationLock();
     if (tab !== this.activeTab && !this.canLeaveTab()) return;
     if (tab !== this.activeTab) {
       this.pendingEdit = undefined;
@@ -357,6 +374,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.presentation = detail.mode;
   };
   private onEditRequested = (event: Event) => {
+    if (this.implementationActive) return;
     const source = event.target as HTMLElement & { project?: number; moduleName?: string; version?: NewReleaseVersion };
     const id = (event as CustomEvent<NewReleaseEditRequest>).detail?.id;
     if (!id || this.version !== 'asis' || source.project !== this.project || source.moduleName !== this.moduleName || source.version !== 'asis') return;
@@ -384,7 +402,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private openChangeRequest = async (event?: Event) => {
-    if (historicalReleaseId(this.version)) return;
+    if (this.implementationActive || historicalReleaseId(this.version)) return;
     const text = (event as CustomEvent<{ text?: string }> | undefined)?.detail?.text;
     if (!this.requestText.trim()) this.requestText = text || this.t('common.requestTemplate', { tab: this.t(`tab.${this.activeTab}`) });
     this.presentation = 'prompt';
@@ -427,7 +445,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         this.tabDetail = false;
       }}>${this.t('common.back')}</button>` : nothing}
       ${!nested ? html`<div role="group" aria-label=${this.t('common.presentation')}>
-        ${(['graph', 'text', 'prompt'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
+        ${(this.implementationActive ? ['graph', 'text'] as const : ['graph', 'text', 'prompt'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
       </div>` : nothing}
       ${this.presentation === 'graph' && !nested ? html`<div role="group" aria-label=${this.t('common.zoom')}>
         <button type="button" aria-label=${this.t('common.zoomOut')} ?disabled=${this.graphZoom <= .5} @click=${() => { this.graphZoom = Math.max(.5, this.graphZoom - .1); }}>−</button>
@@ -471,6 +489,45 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.scheduleOverlayReload();
   };
 
+  private setImplementationActive(active: boolean) {
+    if (active) {
+      const editor = this.activeEditor();
+      if (editor?.mode === 'edit') {
+        editor.mode = 'view';
+        editor.dirty = false;
+        this.activeTab = 'review';
+        this.tabDetail = false;
+        this.tabPresentation = undefined;
+      }
+      if (this.presentation === 'prompt') this.presentation = 'graph';
+      this.pendingEdit = undefined;
+    }
+    this.implementationActive = active;
+  }
+
+  private async refreshImplementationLock() {
+    const project = this.project;
+    const moduleName = this.moduleName;
+    const token = ++this.implementationLockToken;
+    if (!project || !moduleName) { this.setImplementationActive(false); return; }
+    try {
+      const active = !!await this.implementationReader(project, moduleName);
+      if (token === this.implementationLockToken && project === this.project && moduleName === this.moduleName) this.setImplementationActive(active);
+    } catch (error) {
+      if (token === this.implementationLockToken && project === this.project && moduleName === this.moduleName) {
+        this.setImplementationActive(true);
+        this.mutationError = this.revisionError(error);
+      }
+    }
+  }
+
+  private onImplementationState = (event: Event) => {
+    const detail = (event as CustomEvent<{ project?: number; moduleName?: string; active?: boolean }>).detail;
+    if (detail?.project !== this.project || detail.moduleName !== this.moduleName) return;
+    if (detail.active) { ++this.implementationLockToken; this.setImplementationActive(true); }
+    else void this.refreshImplementationLock();
+  };
+
   private scheduleOverlayReload() {
     if (this.validationTimer) window.clearTimeout(this.validationTimer);
     this.validationTimer = window.setTimeout(() => {
@@ -481,6 +538,12 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private onArtifactChanged = (event: Event) => {
     const detail = (event as CustomEvent<NewReleaseChangedDetail>).detail;
+    if (this.implementationActive) {
+      event.preventDefault();
+      detail?.complete?.(new Error(this.t('request.applicationActive')));
+      this.mutationError = this.t('request.applicationActive');
+      return;
+    }
     const source = event.target as HTMLElement & { project?: number; moduleName?: string; version?: NewReleaseVersion };
     if (!detail?.path || historicalReleaseId(this.version)
       || source.project !== this.project || source.moduleName !== this.moduleName || source.version !== this.version) return;
@@ -569,6 +632,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   };
 
   private canSubmitRequest(): boolean {
+    if (this.implementationActive) return false;
     const text = this.requestText.trim();
     return !!text && (this.requestReady || text !== this.savedRequest.trim() || this.requestNeedsRetry);
   }
@@ -599,7 +663,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async saveRequest() {
-    if (this.requestBusy || this.changing || !this.canSubmitRequest()) return;
+    if (this.implementationActive || this.requestBusy || this.changing || !this.canSubmitRequest()) return;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
     this.requestFeedbackTab = this.activeTab;
     const text = this.requestText.trim();
@@ -675,7 +739,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async retryLanguages() {
-    if (!this.data?.module || this.changing || this.requestBusy || this.activeEditor()?.dirty || historicalReleaseId(this.version)) return;
+    if (this.implementationActive || !this.data?.module || this.changing || this.requestBusy || this.activeEditor()?.dirty || historicalReleaseId(this.version)) return;
     this.changing = true;
     try {
       await applyDirectLanguages(this.project, this.moduleName, this.data.module,
@@ -690,7 +754,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async reuseHistory() {
-    if (!historicalReleaseId(this.version) || this.changing) return;
+    if (this.implementationActive || !historicalReleaseId(this.version) || this.changing) return;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
     this.changing = true;
     this.mutationError = '';
@@ -764,7 +828,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async cancelChanges() {
-    if (this.version !== 'tobe' || !this.hasPreparedChanges() || this.loading || this.changing || this.requestBusy) return;
+    if (this.implementationActive || this.version !== 'tobe' || !this.hasPreparedChanges() || this.loading || this.changing || this.requestBusy) return;
     if (!window.confirm(this.t('review.clearConfirm'))) return;
     const context = { project: this.project, moduleName: this.moduleName, version: this.version };
     const moduleKey = `${context.project}/${context.moduleName}`;
@@ -798,7 +862,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private async discardPaths(paths: Ns5TobeArtifactPath[]) {
-    if (!paths.length || this.changing) return;
+    if (this.implementationActive || !paths.length || this.changing) return;
     if (!window.confirm(this.t('tobe.discardConfirm', { count: paths.length }))) return;
     this.changing = true;
     this.mutationError = '';
@@ -897,7 +961,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <div><strong>${this.t('tobe.staleTitle')}</strong><p>${this.t('tobe.staleBody')}</p></div>
           <div class="nr-index__stale-list">
             ${this.data.stalePaths.map(path => html`
-              <span><code>${path}</code><button type="button" ?disabled=${this.changing} @click=${() => void this.discardPaths([path])}>${this.t('tobe.recopy')}</button></span>
+              <span><code>${path}</code><button type="button" ?disabled=${this.changing || this.implementationActive} @click=${() => void this.discardPaths([path])}>${this.t('tobe.recopy')}</button></span>
             `)}
           </div>
         </section>
@@ -935,7 +999,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <div class="nr-index__diff-actions">
             <button type="button" class="nr-index__copy-button" ?disabled=${this.loading || this.requestBusy}
               @click=${() => void this.copyDiffs()}>${this.t('common.copy')}</button>
-            <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy}
+            <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy || this.implementationActive}
               @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>
             ${this.diffCopyFeedback ? html`<span role="status">${this.diffCopyFeedback}</span>` : nothing}
           </div>
@@ -946,7 +1010,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
               <code>${diff.path}</code>
               <div>
                 <span>${this.t('tobe.diffCount', { count: diff.entries.length })}</span>
-                <button type="button" ?disabled=${this.changing} @click=${() => void this.discardPaths([diff.path])}>${this.t('tobe.discardPath')}</button>
+                <button type="button" ?disabled=${this.changing || this.implementationActive} @click=${() => void this.discardPaths([diff.path])}>${this.t('tobe.discardPath')}</button>
               </div>
             </header>
             <div class="nr-index__diff-lines">
@@ -975,12 +1039,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderTabContent() {
+    const contentVersion: NewReleaseVersion = this.implementationActive ? 'release:implementation-active' : this.version;
     if (this.activeTab === 'general') {
       return html`
         <new-release--widgets--general-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--general-102035>
@@ -991,7 +1056,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <new-release--widgets--ontology-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--ontology-102035>
@@ -1002,7 +1067,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <new-release--widgets--journeys-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--journeys-102035>
@@ -1013,7 +1078,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <new-release--widgets--access-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--access-102035>
@@ -1024,7 +1089,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <new-release--widgets--rules-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--rules-102035>
@@ -1035,7 +1100,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <new-release--widgets--workflows-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--workflows-102035>
@@ -1046,7 +1111,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         <new-release--widgets--integration-102035
           .project=${this.project}
           .moduleName=${this.moduleName}
-          .version=${this.version}
+          .version=${contentVersion}
           .data=${this.data}
           .t=${this.t}
         ></new-release--widgets--integration-102035>
@@ -1087,6 +1152,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderRequest() {
+    if (this.implementationActive) return nothing;
     if (historicalReleaseId(this.version)) return html`
       <section class="nr-index__request nr-index__request--history">
         <div><strong>${this.t('request.historyTitle')}</strong><p>${this.t('request.historyBody')}</p></div>
@@ -1147,6 +1213,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     return html`
       <main class="nr-index" ?inert=${this.requestBusy && !this.requestTimedOut} aria-busy=${this.loading || (this.requestBusy && !this.requestTimedOut) ? 'true' : 'false'}>
         ${this.renderTabs()}
+        ${this.implementationActive ? html`<p class="nr-index__implementation-lock" role="status">${this.t('request.applicationActive')}</p>` : nothing}
         ${pendingChanges !== null && this.activeTab !== 'review' ? html`<p class="nr-index__changes-summary" role="status">${this.t(
           pendingChanges === 0 ? 'tobe.noChanges' : pendingChanges === 1 ? 'tobe.onePendingChange' : 'tobe.pendingChanges',
           { count: pendingChanges },
@@ -1158,7 +1225,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         ${this.renderTobeStatus()}
 
         ${this.loading ? this.renderLoading() : !this.data?.module ? this.renderEmpty() : html`
-          ${this.languagePending ? html`<button type="button" class="nr-button" ?disabled=${this.changing || this.requestBusy || !!this.activeEditor()?.dirty} @click=${this.retryLanguages}>${this.t('general.languagesRetry')}</button>` : nothing}
+          ${this.languagePending ? html`<button type="button" class="nr-button" ?disabled=${this.changing || this.requestBusy || this.implementationActive || !!this.activeEditor()?.dirty} @click=${this.retryLanguages}>${this.t('general.languagesRetry')}</button>` : nothing}
           ${this.data.errors.length || this.mutationError ? html`
             <section class="nr-index__errors">
               ${this.data.errors.length ? html`<strong>${this.t('state.errorTitle')}</strong>` : nothing}
