@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import {
+  promptAssumptionsLine,
   promptChangeSummary,
   promptHoldSummary,
   type PromptSummaryFile,
@@ -112,4 +113,11 @@ void test('a rules map is named by its keys, and a grant stays a list', () => {
     'caixaFechamento entrou',
   ].join('\n'));
   assert.equal(text.includes('rules changed'), false);
+});
+
+void test('the assumptions line is empty without assumptions and follows the language', () => {
+  assert.equal(promptAssumptionsLine('pt', []), '');
+  assert.equal(promptAssumptionsLine('pt-BR', ['a', 'b']), 'Assumi: a; b');
+  assert.equal(promptAssumptionsLine('en', ['a']), 'Assumed: a');
+  assert.equal(promptAssumptionsLine(null, ['a']), 'Assumed: a');
 });

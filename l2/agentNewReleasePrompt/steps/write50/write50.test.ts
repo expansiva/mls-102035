@@ -51,7 +51,7 @@ void test('a field change rewrites one defs file and only that field line', () =
   assert.deepEqual(changed, ['        "required": false,']);
   const report = nrpReport({
     moduleName: 'tarefas', project: 1, request: 'Make priority optional.',
-    triage: { valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'], intent: 'Optional.', mechanical: [], mechanicalOnly: false },
+    triage: { valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'], intent: 'Optional.', mechanical: [], mechanicalOnly: false, assumptions: [] },
     artifacts: after, applied: [], issues: [], allowWrite: true, modelCalls: 2,
   }, { written: true, reason: null, files: ['ontology/Tarefa.defs.ts'] });
   assert.equal(report.calls, 2);
@@ -91,7 +91,7 @@ void test('rewritten defs text matches the gated value for remove, replace and a
     moduleName: 'tarefas', project: 1, request: 'Drop labels.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
-      intent: 'Remove the field.', mechanicalOnly: true,
+      intent: 'Remove the field.', mechanicalOnly: true, assumptions: [],
       mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
     },
     artifacts: {
@@ -133,7 +133,7 @@ void test('removing a details field touches only that field line, and a leftover
     journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ description: 'Grava a tarefa com etiquetas.' }] } }],
   } as unknown as NrpModuleArtifacts, {
     valid: true, reason: null, clarification: null, artifacts: ['ontology', 'journeys'], targets: ['Tarefa'],
-    intent: 'Drop labels.', mechanicalOnly: false,
+    intent: 'Drop labels.', mechanicalOnly: false, assumptions: [],
     mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
   });
   assert.equal(pending.length, 1);
@@ -143,7 +143,7 @@ void test('removing a details field touches only that field line, and a leftover
     moduleName: 'tarefas', project: 1, request: 'Drop labels.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['journeys'], targets: ['Tarefa'],
-      intent: 'Drop labels.', mechanicalOnly: false,
+      intent: 'Drop labels.', mechanicalOnly: false, assumptions: [],
       mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
     },
     artifacts: {
@@ -245,7 +245,7 @@ void test('an add keeps the rest of the file and the report names every written 
     moduleName: 'tarefas', project: 1, request: 'Drop labels.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
-      intent: 'Drop labels.', mechanicalOnly: false,
+      intent: 'Drop labels.', mechanicalOnly: false, assumptions: [],
       mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
     },
     artifacts: { entities: [] } as unknown as NrpModuleArtifacts,
@@ -262,7 +262,7 @@ void test('an add keeps the rest of the file and the report names every written 
     moduleName: 'tarefas', project: 1, request: 'Make priority optional.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
-      intent: 'Make priority optional.', mechanicalOnly: true,
+      intent: 'Make priority optional.', mechanicalOnly: true, assumptions: [],
       mechanical: [{ op: 'setOptional', targetId: 'Tarefa', fieldId: 'prioridade', value: '' }],
     },
     artifacts: { entities: [] } as unknown as NrpModuleArtifacts,
@@ -275,7 +275,7 @@ void test('an add keeps the rest of the file and the report names every written 
     moduleName: 'tarefas', project: 1, request: 'Priority, a rule, and a journey.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['ontology', 'rules', 'journeys'], targets: ['Tarefa'],
-      intent: 'Priority, a rule, and a journey.', mechanicalOnly: false, mechanical: [],
+      intent: 'Priority, a rule, and a journey.', mechanicalOnly: false, assumptions: [], mechanical: [],
     },
     artifacts: { entities: [] } as unknown as NrpModuleArtifacts,
     applied: [
@@ -375,7 +375,7 @@ function installRemovalFixture() {
     moduleName, project, request: 'Remove a jornada antiga.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['journeys'], targets: ['oldJourney'],
-      intent: 'Remove a jornada.', mechanical: [], mechanicalOnly: false,
+      intent: 'Remove a jornada.', mechanical: [], mechanicalOnly: false, assumptions: [],
     },
     artifacts: {
       module: moduleArt, journeyIndex: emptyIndex, journeys: [],
@@ -447,6 +447,19 @@ void test('a new journey is created without reporting its expected absence as a 
   }
 });
 
+void test('a written request with assumptions says what it assumed, in the summary', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    const payload = structuredClone(fixture.payload);
+    payload.artifacts.module = { ...payload.artifacts.module, userLanguage: 'pt' } as typeof payload.artifacts.module;
+    payload.artifacts.rules = { schemaVersion: 'fixture', rules: [{ ruleId: 'fechaComanda' }] } as typeof payload.artifacts.rules;
+    payload.triage = { ...payload.triage, assumptions: ['quem marca pronto: a cozinha (ator novo)', 'o campo aparece para o garçom'], l3Notice: null };
+    const result = await persistNrp(payload, '20261102141739.1001');
+    assert.match(result.summary, /fechaComanda entrou/);
+    assert.match(result.summary, /Assumi: quem marca pronto: a cozinha \(ator novo\); o campo aparece para o garçom/);
+  } finally { fixture.restore(); }
+});
+
 void test('candidateRelative keeps a plan-root file and a nested file', () => {
   const root = { project: 1, level: 4 as const, folder: 'comanda/tobe/plan', shortName: 'rules', extension: '.defs.ts' };
   const nested = { project: 1, level: 4 as const, folder: 'comanda/tobe/plan/ontology', shortName: 'Mesa', extension: '.defs.ts' };
@@ -467,6 +480,7 @@ void test('a written request stores the pt summary and the operation json paths'
     assert.match(result.summary, /fechaComanda entrou/);
     assert.match(result.summary, /oldJourney saiu/);
     assert.equal(result.summary.includes('alterado'), false);
+    assert.equal(result.summary.includes('Assumi'), false, 'nothing assumed, no assumption line');
     const opKey = [...fixture.contents.keys()].find(key => key.includes('/tobe/operations:'));
     assert.ok(opKey);
     const record = JSON.parse(fixture.contents.get(opKey || '') || '') as NrpOperationRecord;

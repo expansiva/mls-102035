@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fieldsOnlyQuestion } from '/_102035_/l2/agentNewReleasePrompt/helpers/accessCoherence.js';
+import { fieldsOnlyFix } from '/_102035_/l2/agentNewReleasePrompt/helpers/accessCoherence.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 
 function mesa(fields: Record<string, unknown>): NrpModuleArtifacts['entities'][number] {
@@ -17,14 +17,14 @@ const baseFields = {
   details: { type: 'object', fields: { disponivel: { type: 'boolean' } } },
 };
 
-function moduleWith(entityFields: Record<string, unknown>, allowed: string[] | null): NrpModuleArtifacts {
+function moduleWith(entityFields: Record<string, unknown>, allowed: string[] | null, journeyEntity: string | null = 'Mesa'): NrpModuleArtifacts {
   const disclosure = allowed
     ? { mode: 'fieldsOnly' as const, description: '', allowedFields: allowed }
     : { mode: 'fullRecord' as const, description: '' };
   return {
     module: { moduleName: 'comandaRestaurante', userLanguage: 'pt', sourcePrompt: '' },
     journeyIndex: { journeys: [] },
-    journeys: [],
+    journeys: journeyEntity ? [{ journeyId: 'atender', business: { actorRef: 'garcom', steps: [{ stepId: 'ver', kind: 'locate', entity: journeyEntity }] } }] : [],
     ontologyIndex: { entities: [] },
     entities: [mesa(entityFields)],
     rules: { rules: {} },
@@ -49,47 +49,44 @@ const base = moduleWith(baseFields, [
   'Mesa.details.disponivel',
 ]);
 
-void test('statusAtendimento on a fieldsOnly grant that omits it asks in pt and en', () => {
-  const request = 'Acrescentar o campo statusAtendimento na mesa para o atendimento.';
-  const merged = moduleWith({
-    ...baseFields,
-    details: {
-      type: 'object',
-      fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
-    },
-  }, ['Mesa.code', 'Mesa.details.disponivel']);
-  const pt = fieldsOnlyQuestion(base, merged, 'pt', request);
-  assert.equal(pt?.question, 'O campo Mesa.details.statusAtendimento deve aparecer para o ator Garçom?');
-  assert.equal(
-    pt?.revisedPrompt,
-    `${request}\nO campo Mesa.details.statusAtendimento aparece para o ator Garçom: [sim]`,
-  );
-  const en = fieldsOnlyQuestion(base, merged, 'en', request);
-  assert.equal(en?.question, 'Should field Mesa.details.statusAtendimento appear for actor Garçom?');
-  assert.equal(
-    en?.revisedPrompt,
-    `${request}\nField Mesa.details.statusAtendimento is visible to actor Garçom: [yes]`,
-  );
+const withStatus = (allowed: string[] | null, journeyEntity: string | null = 'Mesa') => moduleWith({
+  ...baseFields,
+  details: {
+    type: 'object',
+    fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
+  },
+}, allowed, journeyEntity);
+
+void test('a new field on a fieldsOnly grant of an actor whose journey works on the entity is included, not asked', () => {
+  const merged = withStatus(['Mesa.code', 'Mesa.details.disponivel']);
+  const pt = fieldsOnlyFix(base, merged, 'pt');
+  assert.equal(pt.ask, null);
+  assert.deepEqual(pt.notes, ['o campo Mesa.details.statusAtendimento também aparece para Garçom']);
+  assert.deepEqual(pt.access.grants[0].disclosure.allowedFields, ['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
+  assert.deepEqual(merged.access.grants[0].disclosure.allowedFields, ['Mesa.code', 'Mesa.details.disponivel'], 'the input is not changed');
+  const en = fieldsOnlyFix(base, merged, 'en');
+  assert.deepEqual(en.notes, ['field Mesa.details.statusAtendimento is also visible to Garçom']);
 });
 
-void test('the same field listed on the grant is not a question', () => {
-  const merged = moduleWith({
-    ...baseFields,
-    details: {
-      type: 'object',
-      fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
-    },
-  }, ['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
-  assert.equal(fieldsOnlyQuestion(base, merged, 'pt', 'pedido'), null);
+void test('a new field for an actor with no journey on the entity asks once, with no default filled in', () => {
+  const merged = withStatus(['Mesa.code', 'Mesa.details.disponivel'], 'Comanda');
+  const pt = fieldsOnlyFix(base, merged, 'pt');
+  assert.equal(pt.ask, 'Quem deve ver o campo Mesa.details.statusAtendimento? Nenhuma jornada do ator Garçom usa Mesa.');
+  assert.deepEqual(pt.notes, []);
+  const en = fieldsOnlyFix(base, merged, 'en');
+  assert.equal(en.ask, 'Who should see field Mesa.details.statusAtendimento? No journey of actor Garçom works on Mesa.');
 });
 
-void test('a new field on an entity with no fieldsOnly grant is not a question', () => {
-  const open = moduleWith({
-    ...baseFields,
-    details: {
-      type: 'object',
-      fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } },
-    },
-  }, null);
-  assert.equal(fieldsOnlyQuestion(base, open, 'pt', 'pedido'), null);
+void test('the same field listed on the grant is not a question and nothing is added', () => {
+  const merged = withStatus(['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
+  const outcome = fieldsOnlyFix(base, merged, 'pt');
+  assert.equal(outcome.ask, null);
+  assert.deepEqual(outcome.notes, []);
+  assert.equal(outcome.access, merged.access);
+});
+
+void test('a new field on an entity with no fieldsOnly grant needs nothing', () => {
+  const outcome = fieldsOnlyFix(base, withStatus(null), 'pt');
+  assert.equal(outcome.ask, null);
+  assert.deepEqual(outcome.notes, []);
 });

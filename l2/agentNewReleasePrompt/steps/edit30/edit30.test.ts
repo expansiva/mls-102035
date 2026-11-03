@@ -80,7 +80,7 @@ const triage: NrpTriage = {
   targets: ['WorkItem', 'priority'],
   intent: 'Priority becomes optional and a default rule is added.',
   mechanical: [{ op: 'setOptional', targetId: 'WorkItem', fieldId: 'priority', value: '' }],
-  mechanicalOnly: true,
+  mechanicalOnly: true, assumptions: [],
 };
 
 void test('edit schema is strict and the prompt names no sample module', () => {
@@ -141,7 +141,7 @@ void test('mechanical marks change the artifact and leave the other kind to the 
   const orders = planNrpEditOrders(artifacts, triage);
   assert.deepEqual(orders.map(order => order.mode), ['apply', 'model']);
   assert.equal(orders[1].kind, 'rules');
-  const keepOntology = planNrpEditOrders(artifacts, { ...triage, mechanicalOnly: false });
+  const keepOntology = planNrpEditOrders(artifacts, { ...triage, mechanicalOnly: false, assumptions: [] });
   assert.deepEqual(keepOntology.map(order => `${order.mode}:${order.kind}`), ['apply:null', 'model:ontology', 'model:rules']);
   assert.throws(() => applyNrpMechanical(artifacts, [{ op: 'setOptional', targetId: 'WorkItem', fieldId: 'missing', value: '' }]), /not found/);
 });
@@ -453,7 +453,7 @@ void test('remove of a details field keeps the entity and drops only that field'
   assert.equal(marked.textMarks.some(mark => mark.text.includes('etiquetario')), false);
   const orders = planNrpEditOrders(cited, {
     valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
-    intent: 'Drop labels.', mechanicalOnly: true,
+    intent: 'Drop labels.', mechanicalOnly: true, assumptions: [],
     mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
   });
   assert.equal(orders.some(order => order.mode === 'model' && order.kind === 'journeys'), true);
@@ -555,7 +555,7 @@ void test('a new gestor journey shows occupied signatures and retries once befor
     creates: ['duplicarTarefa'],
     files: [{ id: 'index', artifact: index }, ...occupied],
   };
-  const ask = { ...triage, artifacts: ['journeys'] as NrpTriage['artifacts'], targets: ['duplicarTarefa'], mechanical: [], mechanicalOnly: false };
+  const ask = { ...triage, artifacts: ['journeys'] as NrpTriage['artifacts'], targets: ['duplicarTarefa'], mechanical: [], mechanicalOnly: false, assumptions: [] };
   const prompt = buildNrpEditHumanPrompt('The manager duplicates a task.', ask, 'journeys', scope.files, [], scope.creates, [], null, occupied);
   assert.match(prompt, /gestor: act:Tarefa\+locate:Tarefa em reatribuirTarefa, cancelarTarefa/);
   assert.match(prompt, /gestor: inspect:Tarefa em acompanharTarefas/);
@@ -677,7 +677,7 @@ void test('the recorded duplicate-journey response, rewritten with business, pas
     targets: ['Tarefa', 'responsavelId', 'responsavelAceitaTarefas', 'duplicarTarefa'],
     intent: 'The manager can duplicate a task and keep the same assignee.',
     mechanical: [],
-    mechanicalOnly: false,
+    mechanicalOnly: false, assumptions: [],
   };
   const scope = nrpFileScope(artifacts, 'journeys', ask);
   assert.equal(scope.creates.includes('duplicarTarefa'), true);

@@ -48,8 +48,8 @@ export interface NrpTriage {
   mechanical: NrpMechanicalMark[];
   /** True only when the marks alone fulfill the request. */
   mechanicalOnly: boolean;
-  /** Whole request rewritten with a default in brackets, or "" when there is no question. */
-  revisedPrompt: string;
+  /** What the request left open and the model decided from the module, one short sentence each. [] when nothing was assumed. */
+  assumptions: string[];
   /** Text for the user when part or all of the request is interface work (l3), else null. */
   l3Notice: string | null;
 }
@@ -58,7 +58,7 @@ export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
   $id: 'https://collab.codes/schemas/agentNewReleasePrompt/triage/2026-10-27-nrp-triage-v1',
   type: 'object',
   additionalProperties: false,
-  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'revisedPrompt', 'l3Notice'],
+  required: ['valid', 'reason', 'clarification', 'artifacts', 'targets', 'intent', 'mechanical', 'mechanicalOnly', 'assumptions', 'l3Notice'],
   properties: {
     valid: { type: 'boolean' },
     reason: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
@@ -81,7 +81,7 @@ export const NRP_TRIAGE_SCHEMA: Record<string, unknown> = {
       },
     },
     mechanicalOnly: { type: 'boolean' },
-    revisedPrompt: { type: 'string' },
+    assumptions: { type: 'array', items: { type: 'string', minLength: 1 } },
     l3Notice: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
   },
 };
@@ -95,10 +95,10 @@ Call submitNrpTriage. Every property is required.
 - valid is true only when the request asks for a concrete change inside that specification.
 - valid is false only when the request has no path in the specification: it is empty, it is not about this module at all (general questions, jokes, infrastructure, deployment, distributing the app), or the specification already satisfies it. When it is already satisfied, reason names the item that satisfies it (field, rule, journey or grant id from the index) and nothing is changed.
 - reason explains an invalid request. Use null when the request is valid, or when the whole request is interface work and l3Notice carries the answer.
-- A request of a few words ("a field name", "a feature") names something to add: if the index already has it, say so in reason; if not, ask with a revisedPrompt that proposes a default. Do not refuse it as vague.
-- clarification is one question for the user when the request contradicts an indexed rule or can mean two different specification changes, or when a new journey step needs an actor and the request does not say which actor performs it. Never choose an actor the request does not name. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, and mechanical is [].
-- revisedPrompt is the user's whole request rewritten so it can be resent as it is: at each open point write the most probable answer, inferred from the module specification you were given, between square brackets (example: 'who marks the dish ready: [kitchen]'). Never write 'fill in' or a placeholder; the user accepts the default or edits it. Use the language of the request. Do not add anything the request did not ask. Use "" when clarification is null.
-- l3Notice is text for the user, in the language of the request, when part or all of the request is about how the interface looks or is drawn: colors, positions, sizes, order of columns, design system or theme, how a screen is rendered. Say that this part is not in the specification and that the user should check the point adjustments in l3. Null otherwise. When the whole request is interface work, valid is false, clarification is null, revisedPrompt is "" and l3Notice carries the answer. When only part is, treat the rest as usual (apply it, or ask) and still fill l3Notice.
+- A request of a few words ("a field name", "a feature") names something to add: if the index already has it, say so in reason; if not, add it with the most probable default and record it in assumptions. Do not refuse it as vague.
+- clarification is one question for the user, only when applying the request could break the module or its data (removing or renaming an entity or field that exists, changing the type of a field, taking access away from an actor that uses it) or when the request contradicts an indexed rule. State the effect in the question. Do not propose a default. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, mechanical is [] and assumptions is [].
+- assumptions are short sentences, in the language of the request, one for each thing the request left open and you decided from the module specification: who performs a step (it may be an actor the index does not have yet), a default value, who sees a new field. Example: 'who marks the dish ready: the kitchen (new actor)'. The change is applied with these choices and the user reads them in the summary, so do not ask about them. Use [] when nothing was assumed or when valid is false.
+- l3Notice is text for the user, in the language of the request, when part or all of the request is about how the interface looks or is drawn: colors, positions, sizes, order of columns, design system or theme, how a screen is rendered. Say that this part is not in the specification and that the user should check the point adjustments in l3. Null otherwise. When the whole request is interface work, valid is false, clarification is null and l3Notice carries the answer. When only part is, treat the rest as usual (apply it, or ask) and still fill l3Notice.
 - artifacts lists the kinds the change would touch. Use [] when the request stops here. Kinds: ontology, rules, journeys, access, workflows, integration.
 - targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.
 - intent is one sentence of the change to apply. Use null when the request stops here.
@@ -107,14 +107,14 @@ Call submitNrpTriage. Every property is required.
 - mechanicalOnly is true only when those marks, by themselves, fulfill the whole request. A default value, a notice, a new rule, or new text makes mechanicalOnly false, and the kind that records that part goes in artifacts and in intent.
 
 How a request in the user's own words becomes a specification change:
-- a screen, list, panel, report, or "see / follow" something is a journey that lets an actor find and inspect data, plus the access grant that lets that actor read it. It is a valid request, not interface work. If the request does not say which actor, ask with a revisedPrompt that proposes one in brackets (it may be an actor the index does not have yet).
+- a screen, list, panel, report, or "see / follow" something is a journey that lets an actor find and inspect data, plus the access grant that lets that actor read it. It is a valid request, not interface work. If the request does not say which actor, choose the one the journeys and grants of the index make most probable (it may be an actor the index does not have yet) and record it in assumptions.
 - a button, an action, "be able to do X" is a journey step that acts, plus the transition or effect on the entity.
-- a field, a piece of information, "keep X" is an entity field, plus the access grant of whoever must see it.
+- a field, a piece of information, "keep X" is an entity field, plus the access grant of whoever must see it: put access in artifacts and decide from the journeys which actors see the new field.
 - "cannot", "always", "required" is a rule.
 - a notice, a deadline, an approval, "after X happens Y" is a workflow.
 - "another module", "when it arrives from" is an integration.
-- Removing or renaming an entity or field, changing the type of a field, or taking access away from an actor that uses it can break data or users: ask, explain the effect in the question, and propose [keep] in revisedPrompt.
-- When unsure which of these the user means, ask with a revisedPrompt; a question costs less than a refusal.
+- Removing or renaming an entity or field, changing the type of a field, or taking access away from an actor that uses it can break data or users: ask once, explaining the effect, with no default filled in.
+- When unsure which of these the user means, pick the most probable one, apply it and record the choice in assumptions. Ask only in the cases of the clarification line above.
 - The index lists the journeys and grants that exist today per actor; use it so you do not duplicate a screen or grant.
 
 Do not restate the index. Do not invent an example module.`;
@@ -147,10 +147,10 @@ export function normalizeNrpTriage(value: unknown): NrpTriage {
     const targets = texts(root.targets, 'targets');
     const mechanical = marks(root.mechanical);
     if (typeof root.mechanicalOnly !== 'boolean') throw new Error('Triage mechanicalOnly must be a boolean.');
-    const revisedPrompt = revisedText(root.revisedPrompt);
+    const assumptions = texts(root.assumptions, 'assumptions');
     const l3Notice = nullableText(root.l3Notice, 'l3Notice');
     const triage: NrpTriage = {
-      valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly, revisedPrompt, l3Notice,
+      valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly, assumptions, l3Notice,
     };
     const notes = settleShape(triage);
     if (notes.length) triageNotes.set(triage, notes);
@@ -283,7 +283,7 @@ export async function afterNrpTriageStep(
             triage,
             nextStep: stopped ? null : 'edit30',
             notes: nrpTriageNotes(triage),
-            ...(hold ? { written: false, summary: hold, revisedPrompt: triage.revisedPrompt } : {}),
+            ...(hold ? { written: false, summary: hold } : {}),
           }),
           planning: { planId: 'triage20-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
@@ -366,14 +366,12 @@ function settleShape(triage: NrpTriage): string[] {
     triage.clarification = clipped.text;
     if (clipped.clipped) notes.push(`clarification exceeded ${NRP_TRIAGE_CLARIFICATION_MAX} characters and was cut to a whole sentence`);
     if (!triage.clarification) throw new Error('A clarification needs a question.');
-    if (!triage.revisedPrompt) throw new Error('A clarification needs a revisedPrompt.');
     if (hasChangeFields(triage) || triage.valid || triage.reason) notes.push('Discarded fields.');
     triage.valid = false;
     triage.reason = null;
     clearChanges(triage);
     return notes;
   }
-  if (triage.revisedPrompt) throw new Error('revisedPrompt must be empty when there is no clarification.');
   if (!triage.valid) {
     if (!triage.reason && !triage.l3Notice) throw new Error('An invalid request needs a reason or an l3Notice.');
     if (hasChangeFields(triage)) notes.push('Discarded fields.');
@@ -390,7 +388,7 @@ function settleShape(triage: NrpTriage): string[] {
 }
 
 function hasChangeFields(triage: NrpTriage): boolean {
-  return !!(triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length || triage.mechanicalOnly);
+  return !!(triage.intent || triage.artifacts.length || triage.targets.length || triage.mechanical.length || triage.mechanicalOnly || triage.assumptions.length);
 }
 
 function clearChanges(triage: NrpTriage): void {
@@ -399,6 +397,7 @@ function clearChanges(triage: NrpTriage): void {
   triage.targets = [];
   triage.mechanical = [];
   triage.mechanicalOnly = false;
+  triage.assumptions = [];
 }
 
 function redact(value: unknown, depth = 0): unknown {
@@ -448,17 +447,6 @@ function marks(value: unknown): NrpMechanicalMark[] {
     }
     return { op: op as NrpMechanicalOp, targetId, fieldId: row.fieldId, value: row.value };
   });
-}
-
-const REVISED_PLACEHOLDER = /preencher|fill in/iu;
-
-function revisedText(value: unknown): string {
-  if (typeof value !== 'string') throw new Error('Triage revisedPrompt must be a string.');
-  const text = value.trim();
-  if (REVISED_PLACEHOLDER.test(text)) {
-    throw new Error('Triage revisedPrompt must propose a default in brackets, not "fill in" or "preencher".');
-  }
-  return text;
 }
 
 function nullableText(value: unknown, label: string): string | null {

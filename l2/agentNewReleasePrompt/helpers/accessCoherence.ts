@@ -2,7 +2,7 @@
 
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { promptLanguage } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
-import type { Ns5OntologyAnyEntity } from '/_102035_/l2/solution/types.js';
+import type { Ns5AccessArtifact, Ns5OntologyAnyEntity } from '/_102035_/l2/solution/types.js';
 
 const QUESTION_MAX = 1000;
 
@@ -16,38 +16,55 @@ interface FieldsOnlyGap extends NewField {
   actorRef: string;
 }
 
-export interface FieldsOnlyAsk {
-  question: string;
-  /** Original request plus one default line per pending field. Nothing is written. */
-  revisedPrompt: string;
+export interface FieldsOnlyOutcome {
+  /** One question, only when a gap has no journey that points at the actor. Nothing is written then. */
+  ask: string | null;
+  /** The access artifact with the new fields added to the grants of the actors that use them. */
+  access: Ns5AccessArtifact;
+  /** One sentence per field included, for the summary. */
+  notes: string[];
 }
 
 /**
- * One question when a new entity field is invisible to an actor whose grant is
- * `fieldsOnly` on that entity and does not list the field. Otherwise null.
- * `revisedPrompt` is the original request plus one `[sim]` / `[yes]` line per gap.
+ * A new entity field is invisible to an actor whose grant is `fieldsOnly` on that entity and does not list it.
+ * When a journey of that actor works on the entity, the field is included in the grant. Otherwise one question.
  */
-export function fieldsOnlyQuestion(
+export function fieldsOnlyFix(
   base: NrpModuleArtifacts,
   merged: NrpModuleArtifacts,
   language: string | null | undefined,
-  request: string,
-): FieldsOnlyAsk | null {
+): FieldsOnlyOutcome {
   const gaps = fieldsOnlyGaps(base, merged);
-  if (!gaps.length) return null;
   const pt = promptLanguage(language) === 'pt';
-  const gap = gaps[0];
-  const text = pt
-    ? `O campo ${gap.entityId}.${gap.path} deve aparecer para o ator ${gap.actor}?`
-    : `Should field ${gap.entityId}.${gap.path} appear for actor ${gap.actor}?`;
-  const lines = gaps.map(item => pt
-    ? `O campo ${item.entityId}.${item.path} aparece para o ator ${item.actor}: [sim]`
-    : `Field ${item.entityId}.${item.path} is visible to actor ${item.actor}: [yes]`);
-  const original = request.trim();
-  return {
-    question: text.length <= QUESTION_MAX ? text : text.slice(0, QUESTION_MAX),
-    revisedPrompt: original ? `${original}\n${lines.join('\n')}` : lines.join('\n'),
-  };
+  const access = JSON.parse(JSON.stringify(merged.access)) as Ns5AccessArtifact;
+  const notes: string[] = [];
+  for (const gap of gaps) {
+    if (!actorWorksOn(merged, gap.actorRef, gap.entityId)) {
+      const text = pt
+        ? `Quem deve ver o campo ${gap.entityId}.${gap.path}? Nenhuma jornada do ator ${gap.actor} usa ${gap.entityId}.`
+        : `Who should see field ${gap.entityId}.${gap.path}? No journey of actor ${gap.actor} works on ${gap.entityId}.`;
+      return { ask: text.length <= QUESTION_MAX ? text : text.slice(0, QUESTION_MAX), access: merged.access, notes: [] };
+    }
+    for (const grant of access.grants || []) {
+      if (grant.actorRef !== gap.actorRef || grant.disclosure?.mode !== 'fieldsOnly') continue;
+      if (!(grant.entityRefs || []).includes(gap.entityId)) continue;
+      const entry = `${gap.entityId}.${gap.path}`;
+      const allowed = grant.disclosure.allowedFields || [];
+      if (!allowed.includes(entry)) grant.disclosure.allowedFields = [...allowed, entry];
+    }
+    notes.push(pt
+      ? `o campo ${gap.entityId}.${gap.path} também aparece para ${gap.actor}`
+      : `field ${gap.entityId}.${gap.path} is also visible to ${gap.actor}`);
+  }
+  return { ask: null, access: gaps.length ? access : merged.access, notes };
+}
+
+function actorWorksOn(artifacts: NrpModuleArtifacts, actorRef: string, entityId: string): boolean {
+  return artifacts.journeys.some(journey => {
+    const business = (journey as unknown as { business?: { actorRef?: unknown; steps?: unknown } }).business;
+    if (!business || business.actorRef !== actorRef || !Array.isArray(business.steps)) return false;
+    return business.steps.some(step => isRecord(step) && step.entity === entityId);
+  });
 }
 
 function fieldsOnlyGaps(base: NrpModuleArtifacts, merged: NrpModuleArtifacts): FieldsOnlyGap[] {

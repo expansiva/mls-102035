@@ -44,6 +44,12 @@ export function promptChangeSummary(userLanguage: string | null | undefined, fil
   return [...lines.slice(0, shown), more].join('\n');
 }
 
+/** One line with what the agent decided for the user, in the user's language. Empty when nothing was assumed. */
+export function promptAssumptionsLine(userLanguage: string | null | undefined, assumptions: readonly string[]): string {
+  if (!assumptions.length) return '';
+  return `${promptLanguage(userLanguage) === 'pt' ? 'Assumi' : 'Assumed'}: ${assumptions.join('; ')}`;
+}
+
 /** Question or refusal, in the user's language. Stock English sentences are translated. Free text is kept. */
 export function promptHoldSummary(text: string, userLanguage?: string | null): string {
   return localizeHold(text.trim(), promptLanguage(userLanguage));

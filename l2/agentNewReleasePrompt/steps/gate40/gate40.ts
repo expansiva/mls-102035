@@ -43,7 +43,7 @@ import {
   normalizeNrpTriage,
   recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
-import { fieldsOnlyQuestion } from '/_102035_/l2/agentNewReleasePrompt/helpers/accessCoherence.js';
+import { fieldsOnlyFix } from '/_102035_/l2/agentNewReleasePrompt/helpers/accessCoherence.js';
 import { promptHoldSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createWrite50Step } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
@@ -90,18 +90,21 @@ export async function beforeNrpGateStep(
     const issues = gateIssues(baseArtifacts, merged);
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action === 'write') {
-      const ask = fieldsOnlyQuestion(baseArtifacts, merged, baseArtifacts.module.userLanguage, cursor.request);
-      if (ask) return fieldsOnlyHold(base, step, hookSequential, ask.question, ask.revisedPrompt);
+      const fix = fieldsOnlyFix(baseArtifacts, merged, baseArtifacts.module.userLanguage);
+      if (fix.ask) return fieldsOnlyHold(base, step, hookSequential, fix.ask);
+      const fixed = fix.notes.length > 0;
+      const artifacts = fixed ? { ...merged, access: fix.access } : merged;
+      const triage = fixed ? { ...cursor.triage, assumptions: [...cursor.triage.assumptions, ...fix.notes] } : cursor.triage;
       return [
         {
           type: 'add-step', ...base, step: createWrite50Step({
             moduleName: cursor.moduleName,
             project,
             request: cursor.request,
-            triage: cursor.triage,
-            artifacts: merged,
+            triage,
+            artifacts,
             applied: cursor.applied,
-            issues,
+            issues: fixed ? gateIssues(baseArtifacts, artifacts) : issues,
             allowWrite: true,
             modelCalls: cursor.modelCalls,
             repairRounds: cursor.repaired,
@@ -376,20 +379,19 @@ function strip(value: string): string {
   return JSON.stringify(invocation);
 }
 
-/** The gate asks instead of writing: the task ends with `{ written:false, summary, revisedPrompt }` (no step waits for a human; the user resends a new, complete request). */
+/** The gate asks instead of writing: the task ends with `{ written:false, summary }` (no step waits for a human; the user sends a new request). */
 export function fieldsOnlyHold(
   base: { messageId: string; threadId: string; taskId: string; parentStepId: number },
   step: mls.msg.AIAgentStep,
   hookSequential: number,
   question: string,
-  revisedPrompt: string,
 ): mls.msg.AgentIntent[] {
   return [
     {
       type: 'add-step', ...base, step: {
         type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
         stepTitle: 'Verification needs clarification',
-        result: JSON.stringify({ written: false, summary: promptHoldSummary(question), revisedPrompt }),
+        result: JSON.stringify({ written: false, summary: promptHoldSummary(question) }),
         planning: { planId: 'gate40-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
       } as mls.msg.AIResultStep,
     },

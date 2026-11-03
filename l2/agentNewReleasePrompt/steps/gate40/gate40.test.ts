@@ -154,7 +154,7 @@ void test('the tarefas fixture has no new gate error, and an edit that keeps it 
   const scope = nrpFileScope(broken, 'journeys', {
     valid: true, reason: null, clarification: null, artifacts: ['rules', 'journeys'],
     targets: ['Tarefa', 'edicaoNaoMudaSituacao', 'duplicarTarefa'],
-    intent: 'Duplicate a task.', mechanical: [], mechanicalOnly: false,
+    intent: 'Duplicate a task.', mechanical: [], mechanicalOnly: false, assumptions: [],
   });
   const allowed = [...scope.present, ...scope.creates.filter(id => !scope.present.includes(id))];
   assert.equal(allowed.includes('duplicarTarefa'), true);
@@ -297,7 +297,7 @@ void test('a new error gets a second repair, the same error stops, and a third r
     moduleName: 'tarefas', project: 1, request: 'Duplicate.',
     triage: {
       valid: true, reason: null, clarification: null, artifacts: ['journeys'], targets: [],
-      intent: 'Duplicate.', mechanical: [], mechanicalOnly: false,
+      intent: 'Duplicate.', mechanical: [], mechanicalOnly: false, assumptions: [],
     },
     artifacts: tarefasModule(), applied: [], issues: [], allowWrite: true, modelCalls: 2,
     repairRounds: [repairRound('journeys', [twin]), repairRound('journeys', [stepKind])],
@@ -403,28 +403,19 @@ void test('a step-kind error names the journey file and the pointer inside it', 
   assert.match(refused, /Expected file: duplicarTarefa pointer: \/business\/steps\/2\/kind/);
 });
 
-void test('fieldsOnly hold ends the task with the revisedPrompt and no step waits for a human', () => {
-  const question = 'O campo Mesa.details.statusAtendimento deve aparecer para o ator Garçom?';
-  const request = 'Acrescentar o campo statusAtendimento na mesa para o atendimento.';
-  const revisedPrompt = `${request}\nO campo Mesa.details.statusAtendimento aparece para o ator Garçom: [sim]`;
+void test('fieldsOnly hold ends the task with the question alone and no step waits for a human', () => {
+  const question = 'Quem deve ver o campo Mesa.details.statusAtendimento? Nenhuma jornada do ator Garçom usa Mesa.';
   const intents = fieldsOnlyHold(
     { messageId: 'm', threadId: 't', taskId: 'task', parentStepId: 1 },
     { stepId: 4 } as mls.msg.AIAgentStep,
     2,
     question,
-    revisedPrompt,
   );
   const steps = intents.filter(intent => intent.type === 'add-step').map(intent => intent.step);
   assert.equal(steps.some(step => step.type === 'clarification'), false);
   assert.equal(steps.some(step => step.status === 'waiting_human_input'), false);
   const result = steps.find(step => step.type === 'result');
-  assert.deepEqual(JSON.parse(String(result && 'result' in result ? result.result : '')), {
-    written: false,
-    summary: question,
-    revisedPrompt,
-  });
-  assert.ok(revisedPrompt.startsWith(request));
-  assert.match(revisedPrompt, /statusAtendimento aparece para o ator Garçom: \[sim\]/);
+  assert.deepEqual(JSON.parse(String(result && 'result' in result ? result.result : '')), { written: false, summary: question });
   assert.equal(steps.some(step => step.planning?.planId === 'write50'), false);
 });
 
