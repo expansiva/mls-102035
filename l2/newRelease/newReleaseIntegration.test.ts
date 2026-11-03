@@ -199,10 +199,10 @@ test('workflow has three navigation levels and protects structural identities', 
 });
 
 
-test('review panels put effort before apply and publish, with execution and logs after the actions', () => {
+test('review panels put implementation progress inside Apply before Publish', () => {
   const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
   const render = source.slice(source.lastIndexOf('  render() {'));
-  const order = ['this.renderEffortPanel(', 'nr-review__apply', 'this.renderPublish()', "this.renderImplementation('top')", 'this.renderReviewRun()'];
+  const order = ['this.renderEffortPanel(', 'nr-review__apply', "this.renderImplementation('top')", 'this.renderPublish()', 'this.renderReviewRun()'];
   for (let index = 1; index < order.length; index++) assert.ok(render.indexOf(order[index - 1]) < render.indexOf(order[index]), order[index]);
   assert.doesNotMatch(render, /renderImplementation\('bottom'\)/);
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');

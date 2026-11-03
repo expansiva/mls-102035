@@ -334,6 +334,43 @@ test('review effort keeps coverage and backend without the actor menu', () => {
   assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.backend\.effortInvalid/);
 });
 
+test('recalculating effort hides the previous summary and shows the active phase', () => {
+  const review = widget();
+  review.version = 'tobe'; review.hasRelease = true;
+  review.data = { ...review.data, resultCurrent: true, changeId: 'change1', revisionId: 'rev1' };
+  review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
+  review.effortRead = { status: 'ok', path: 'old', value: { screens: [{ name: 'OLD_EFFORT' }] } };
+  review.effortRefreshPending = true;
+  review.channelRun = { status: 'planning', runId: 'run1', executions: [], binding: {}, attempt: 2 };
+  const output = templateText(review.render());
+  assert.match(output, /review\.run\.phase\.planning/);
+  assert.match(output, /<progress/);
+  assert.ok(output.indexOf('</details>') < output.indexOf('class="nr-review__progress"'));
+  assert.doesNotMatch(output, /OLD_EFFORT/);
+});
+
+test('Apply contains live task cost and an explicit completion state', () => {
+  const review = widget();
+  review.version = 'tobe'; review.hasRelease = true;
+  const record: L4ImplementationRecord = { schemaVersion: '2026-10-08-nr-module-implementation-v1', changeId: 'change1', revisionId: 'rev1', acceptedBy: 'reviewer', acceptedAt: '', hashes: { changeEffort: 'hash' },
+    merged: { create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [{ agent: 'agentAddLanguage', command: '@@agentAddLanguage []' }], abend: [] },
+    phases: [{ name: 'runAgents:0', agent: 'agentAddLanguage', command: '@@agentAddLanguage []', attempt: 1,
+      taskId: 'task1', threadId: 'thread1', messageId: 'thread1/message', status: 'running', startedAt: '' }] };
+  review.implementation = record;
+  review.t = (key: string, values?: Record<string, string | number>) => key === 'review.implementation.taskCost' ? String(values?.cost) : key;
+  review.data = { ...review.data, changeId: record.changeId, revisionId: record.revisionId };
+  review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
+  review.implementationTasks = { 'runAgents:0': { PK: 'task/#task1', status: 'in progress', iaCompressed: { nextSteps: [{ interaction: { cost: 0.08, payload: [] }, nextSteps: [] }] } } };
+  const running = templateText(review.render());
+  assert.match(running, /review\.implementation\.taskDetails/);
+  assert.match(running, /US\$ 0\.08/);
+  assert.match(running, /<progress/);
+  record.phases[0].status = 'done';
+  const complete = templateText(review.render());
+  assert.match(complete, /review\.implementation\.completedBody/);
+  assert.doesNotMatch(complete.slice(complete.indexOf('nr-review__implementation')), /<progress/);
+});
+
 for (const language of ['en', 'pt']) test(`menu closing receipt is localized in ${language} without changing other report lines`, async () => {
   const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.js');
   const review = widget();
