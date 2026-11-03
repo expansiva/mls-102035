@@ -66,7 +66,7 @@ test('change request controls do not submit empty text and clear prior-tab feedb
   assert.doesNotMatch(templateText(index.renderRequest()), /tardio da jornada/);
 });
 
-test('prompt progress blocks navigation and shows a recoverable 10 minute limit', async () => {
+test('prompt progress ends visual wait at 10 minutes, but keeps another prompt blocked', async () => {
   const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
   const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
   index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
@@ -76,6 +76,8 @@ test('prompt progress blocks navigation and shows a recoverable 10 minute limit'
   index.activeTab = 'journeys';
   index.requestText = 'Alterar regra';
   index.requestBusy = true;
+  index.canLeaveTab = () => true;
+  index.activeEditor = () => null;
   const originalTimeout = globalThis.setTimeout;
   const originalInterval = globalThis.setInterval;
   const originalClearTimeout = globalThis.clearTimeout;
@@ -100,10 +102,15 @@ test('prompt progress blocks navigation and shows a recoverable 10 minute limit'
     expire?.();
     assert.equal(index.requestTimedOut, true);
     assert.match(index.requestError, /não respondeu após 10 minutos/i);
-    assert.match(templateText(index.renderRequestProgress()), /Limite de espera atingido/);
-    assert.doesNotMatch(templateText(index.renderRequestProgress()), /<progress/);
+    assert.equal(templateText(index.renderRequestProgress()), '');
     assert.equal(index.requestBusy, true);
     assert.match(templateText(index.renderRequest()), /Limite de espera atingido/);
+    await index.activateTab('rules');
+    assert.equal(index.activeTab, 'rules');
+    await index.activateTab('journeys');
+    assert.match(index.requestError, /não respondeu após 10 minutos/i);
+    await index.saveRequest();
+    assert.equal(index.requestBusy, true);
     index.stopRequestProgress();
     assert.equal(index.requestTimedOut, false);
   } finally {
