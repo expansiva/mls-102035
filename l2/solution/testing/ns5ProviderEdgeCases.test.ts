@@ -71,7 +71,7 @@ function leaked(item: ProviderEdgeCase, result: unknown): string | null {
 }
 
 for (const step of STEPS) {
-  void test(`${step.name}: what the provider lets through is normalized or refused with a reason`, { todo: step.leaks ? `the normalizer passes it on: ${step.leaks}` : false }, () => {
+  void test(`${step.name}: what the provider lets through is normalized or refused with a reason`, { todo: step.leaks ? `the normalizer passes it on (${step.leaks}); the step gate refuses it or the normalizer replaces it, see ns5GateDefense.test.ts` : false }, () => {
     const schema = readJson(path.join(SCHEMAS, step.schema));
     const example = readJson(path.join(SOLUTION, step.draft));
     const cases = providerEdgeCases(schema, example);
