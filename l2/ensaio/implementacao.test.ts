@@ -11,6 +11,7 @@ import { createImplementationRunner } from '../newRelease/helpers/implementation
 import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord } from '../solution/candidate/moduleImplementation.js';
 import { adoptL4ReviewResult, promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
+import { createAgent as createNewReleaseL1 } from '/_102021_/l2/agentNewReleaseL1/agentNewReleaseL1.js';
 import { createSimulatedDefsHost, withReviewScenario, runPlannerScenario, PROJECT, MODULE } from './nodejsCenario.js';
 import { effortRegistry } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
@@ -212,4 +213,23 @@ test('exported QA JSON matches simulated implementation states', () => {
     };
     assert.deepEqual(stableEffort(exported[name].changeEffort), stableEffort(qaRecords[name].changeEffort), name);
   }
+});
+
+/** The text the real agent leaves as its result: `done: ...` or `refused: ...`. */
+function resultText(intents: mls.msg.AgentIntent[]): string {
+  const step = intents.find(intent => intent.type === 'add-step');
+  return step && step.type === 'add-step' && 'result' in step.step ? String(step.step.result) : '';
+}
+
+test('l4_p4_96 s4: the REAL agentNewReleaseL1 runs after a promotion in the rehearsal and reports its own outcome', { todo: 'the rehearsal promotes a module with no pool/l2/web/backend.json (the planners write only l4diff.json and changeEffort.json): the real phase refuses "plan missing"; the rehearsal has to run the L1 estimate, or carry the plan, before this phase can pass' }, async () => {
+  await acceptedScenario('rule', async () => {
+    const agent = createNewReleaseL1();
+    const meta = { agentName: 'agentNewReleaseL1' } as Parameters<NonNullable<typeof agent.beforePromptImplicit>>[0];
+    const content = `@@agentNewReleaseL1 ${MODULE}`;
+    const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
+    const text = resultText(await agent.beforePromptImplicit!(meta, context, content));
+    // Not simulated: whatever the real phase finds missing in the promoted module shows up here, not on the screen.
+    assert.match(text, /^(done|refused|failed)/u, `the phase answered: ${text.slice(0, 200)}`);
+    assert.doesNotMatch(text, /plan missing/u, `the L1 phase did not find the promoted plan: ${text.slice(0, 300)}`);
+  });
 });
