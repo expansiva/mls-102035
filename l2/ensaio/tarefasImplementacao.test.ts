@@ -8,6 +8,23 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import * as agentNewReleaseL2 from '/_102020_/l2/agentNewReleaseL2/agentNewReleaseL2.js';
+import * as agentMaterializeL1 from '/_102021_/l2/agentMaterializeL1/agentMaterializeL1.js';
+import * as agentM12Controllers from '/_102021_/l2/agentMaterializeL1/steps/controllers30/agentM12Controllers.js';
+import * as agentM12Domain from '/_102021_/l2/agentMaterializeL1/steps/domain10/agentM12Domain.js';
+import * as agentM12Finalize from '/_102021_/l2/agentMaterializeL1/steps/finalize80/agentM12Finalize.js';
+import * as agentM12Persistence from '/_102021_/l2/agentMaterializeL1/steps/persistence20/agentM12Persistence.js';
+import * as agentM12Register from '/_102021_/l2/agentMaterializeL1/steps/register70/agentM12Register.js';
+import * as agentM12RequestService from '/_102021_/l2/agentMaterializeL1/steps/requests50/agentM12RequestService.js';
+import * as agentM12Requests from '/_102021_/l2/agentMaterializeL1/steps/requests50/agentM12Requests.js';
+import * as agentM12SeedRowUnit from '/_102021_/l2/agentMaterializeL1/steps/seedRows25/agentM12SeedRowUnit.js';
+import * as agentM12SeedRows from '/_102021_/l2/agentMaterializeL1/steps/seedRows25/agentM12SeedRows.js';
+import * as agentM12Tests from '/_102021_/l2/agentMaterializeL1/steps/tests60/agentM12Tests.js';
+import * as agentM12TestsPage from '/_102021_/l2/agentMaterializeL1/steps/tests60/agentM12TestsPage.js';
+import * as agentM12UsecaseUnit from '/_102021_/l2/agentMaterializeL1/steps/usecases40/agentM12UsecaseUnit.js';
+import * as agentM12Usecases from '/_102021_/l2/agentMaterializeL1/steps/usecases40/agentM12Usecases.js';
+import * as agentM12WorkflowUnit from '/_102021_/l2/agentMaterializeL1/steps/workflows45/agentM12WorkflowUnit.js';
+import * as agentM12Workflows from '/_102021_/l2/agentMaterializeL1/steps/workflows45/agentM12Workflows.js';
 import * as agentDefsL1 from '/_102021_/l2/agentDefsL1/agentDefsL1.js';
 import { createRecordedLlm } from '/_102035_/l2/solution/testing/recordedLlm.js';
 import { installAgentResources, installProjectFile } from './agentResources.js';
@@ -170,6 +187,40 @@ void test('tarefas, rule only: the fan-out host runs the whole agentDefsL1 /run 
   } finally { stor.restore(); }
 });
 
-void test('tarefas, rule only: materialization of the creation run (agentMaterializeL1) and the comparison with it', { todo: 'the fan-out host and the creation run exist now; with a stand-in model the run writes no defs for L1, so agentMaterializeL1 and /compare have nothing to materialize and compare: they need the recorded answers of the real model (s3, waiting for the token)' }, () => {
+void test('tarefas, rule only: the REAL agentMaterializeL1 runs its ten steps in the fan-out host and finishes done, with no model call', async () => {
+  const stor = installTarefas();
+  try {
+    await installAgentResources(102021, 'agentMaterializeL1');
+    const asked: string[] = [];
+    const llm = createRecordedLlm({ mode: 'record', call: async request => { asked.push(request.humanPrompt.slice(0, 40)); return '{}'; }, store: { read: () => null, write: () => undefined } });
+    const command = '@@agentMaterializeL1 ' + JSON.stringify({ scope: MODULE });
+    const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
+    const result = await runUntilDone(agentMaterializeL1, context, {}, [
+      agentM12Controllers, agentM12Domain, agentM12Finalize, agentM12Persistence, agentM12Register, agentM12RequestService, agentM12Requests, agentM12SeedRowUnit, agentM12SeedRows, agentM12Tests, agentM12TestsPage, agentM12UsecaseUnit, agentM12Usecases, agentM12WorkflowUnit, agentM12Workflows
+    ], llm);
+    assert.equal(context.task?.status, 'done');
+    assert.deepEqual(result.executedPlans.map(plan => plan.replace(`-${MODULE}`, '')),
+      ['domain10', 'persistence20', 'seedRows25', 'usecases40', 'workflows45', 'requests50', 'controllers30', 'tests60', 'register70', 'finalize80']);
+    assert.deepEqual(asked, [], 'the module is already materialized: nothing asks the model');
+  } finally { stor.restore(); }
+});
+
+void test('tarefas, rule only: the REAL agentNewReleaseL2 refuses "nothing to apply" when the accepted effort asks for no L2 work, and calls no model', async () => {
+  const stor = installTarefas();
+  try {
+    const asked: string[] = [];
+    const llm = createRecordedLlm({ mode: 'record', call: async request => { asked.push(request.humanPrompt.slice(0, 40)); return '{}'; }, store: { read: () => null, write: () => undefined } });
+    const command = `@@agentNewReleaseL2 ${MODULE}`;
+    const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
+    const result = await runUntilDone(agentNewReleaseL2, context, {}, [], llm);
+    const answer = result.intents.flatMap(intent => intent.type === 'add-message-ai' ? intent.request.inputAI : []).map(item => String(item.content)).join('\n');
+    assert.match(answer, /refused: nothing to apply/u);
+    assert.deepEqual(asked, []);
+  } finally { stor.restore(); }
+});
+
+// An effort that materializes a page makes agentNewReleaseL2 schedule agentDefsL2 and agentMaterializeL2, whose pages50 and bff55
+// steps call the model: that is the recorded pass (s3).
+void test('tarefas, rule only: the comparison of the creation run with the saved copy (/compare)', { todo: 'with a stand-in model the creation run writes no L1 defs, so /compare has nothing to compare: it needs the recorded answers of the real model (s3, by collabmsg --record-dir)' }, () => {
   assert.fail('not exercised');
 });

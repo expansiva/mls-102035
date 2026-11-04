@@ -73,8 +73,8 @@ export async function runUntilDone(
 ) {
   const agent = agentEntry.createAgent();
   const agents = new Map([agent, ...entries.map(entry => entry.createAgent())].map(item => [item.agentName, item]));
-  if (!agent.beforePromptImplicit || !agent.beforePromptStep || !agent.afterPromptStep) {
-    throw new Error('The replay requires the three public prompt lifecycle hooks.');
+  if (!agent.beforePromptImplicit || !agent.beforePromptStep) {
+    throw new Error('The replay requires beforePromptImplicit and beforePromptStep.');
   }
   const steps: mls.msg.AIPayload[] = [];
   const intents: mls.msg.AgentIntent[] = [];
@@ -190,7 +190,7 @@ export async function runUntilDone(
     activeStep = step;
     executedPlans.push(planId);
     const stepAgent = agents.get(step.agentName);
-    if (!stepAgent?.beforePromptStep || !stepAgent.afterPromptStep) throw new Error(`Missing public entry for ${step.agentName}`);
+    if (!stepAgent?.beforePromptStep) throw new Error(`Missing public entry for ${step.agentName}`);
     // A fan-out child gets its arg as the sixth parameter, as the real host passes it.
     const args = fanouts.has(parent.stepId) ? String(step.prompt ?? '') : undefined;
     apply(await (stepAgent.beforePromptStep as (...rest: unknown[]) => Promise<mls.msg.AgentIntent[]>)(stepAgent, context, parent, step, ++hookSequential, args));
@@ -212,6 +212,7 @@ export async function runUntilDone(
         step.interaction.payload = [raw as unknown as mls.msg.AIPayload];
       }
       step.status = 'waiting_after_prompt';
+      if (!stepAgent.afterPromptStep) throw new Error(`${step.agentName} prepared a prompt for ${planId} and has no afterPromptStep.`);
       apply(await (stepAgent.afterPromptStep as (...rest: unknown[]) => Promise<mls.msg.AgentIntent[]>)(stepAgent, context, parent, step, ++hookSequential, args));
     }
   }
