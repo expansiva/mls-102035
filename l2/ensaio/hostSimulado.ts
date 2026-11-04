@@ -223,7 +223,9 @@ export async function runUntilDone(
         const system = step.interaction.input.find(item => item.type === 'system');
         const human = step.interaction.input.find(item => item.type === 'human');
         // The raw answer of the provider, as the step stores it before any normalization.
-        const raw = await llm!.respond(step.agentName, planId, {
+        // The step label the recorder writes: the planId, or `<planId of the fan-out step>-item` for a worker the fan-out made from an arg.
+        const label = fanouts.has(parent.stepId) ? `${parent.planning?.planId ?? parent.stepId}-item` : planId;
+        const raw = await llm!.respond(step.agentName, label, {
           systemPrompt: system ? String(system.content) : '', humanPrompt: human ? String(human.content) : '',
           tools: step.interaction.tools ?? null,
         });

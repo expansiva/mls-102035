@@ -177,7 +177,7 @@ void test('tarefas, rule only: agentDefsL1 /run reaches its first model call in 
   try {
     const llm = createRecordedLlm({ mode: 'replay', store: { read: () => null, write: () => { throw new Error('replay does not record'); } } });
     const { run } = await creationRun(llm);
-    await assert.rejects(run(), /^Error: recordedLlm\.missing:agentDefsL1\/resolve25-worker-r0\/[0-9a-f]{16}$/u);
+    await assert.rejects(run(), /^Error: recordedLlm\.missing:agentDefsL1\/resolve25-fanout-item\/[0-9a-f]{16}$/u);
   } finally { stor.restore(); }
 });
 
@@ -217,10 +217,11 @@ function recordedReplay(log: (line: string) => void) {
 void test('tarefas, rule only: agentDefsL1 /run REPLAYS the recorded answers of the real model to done, with no missing recording', async t => {
   const stor = installTarefas();
   try {
-    const { llm, missing } = recordedReplay(line => t.diagnostic(line));
+    const { llm, missing, used } = recordedReplay(line => t.diagnostic(line));
     const { context, run } = await creationRun(llm);
     const result = await run();
     assert.deepEqual(missing, [], 'every model request of the run has a recording');
+    assert.deepEqual(used, [], 'every recording matched the exact key: no fallback was used');
     assert.equal(context.task?.status, 'done');
     assert.ok(result.executedPlans.some(plan => /^resolve25-worker-/u.test(plan)), 'the fan-out ran');
   } finally { stor.restore(); }
@@ -229,7 +230,7 @@ void test('tarefas, rule only: agentDefsL1 /run REPLAYS the recorded answers of 
 void test('tarefas, rule only: the whole L1 chain on the recorded answers: prepare, creation run, /compare and agentMaterializeL1 (the real agents, replay)', async t => {
   const stor = installTarefas();
   try {
-    const { llm, missing } = recordedReplay(line => t.diagnostic(line));
+    const { llm, missing, used } = recordedReplay(line => t.diagnostic(line));
     const { context, run } = await creationRun(llm);
     await run();
     assert.equal(context.task?.status, 'done', 'agentDefsL1 /run');
@@ -244,6 +245,7 @@ void test('tarefas, rule only: the whole L1 chain on the recorded answers: prepa
     assert.equal(materialize.task?.status, 'done', 'agentMaterializeL1');
     assert.equal(result.executedPlans.length >= 10, true);
     assert.deepEqual(missing, [], 'every model request of the chain has a recording');
+    assert.deepEqual(used, [], 'every recording matched the exact key: no fallback was used');
   } finally { stor.restore(); }
 });
 
@@ -285,7 +287,7 @@ void test('tarefas, rule only: the REAL agentNewReleaseL2 with the real effort r
     await installProjectFile(102034, 1, 'mdm/defs', 'ontology', '.ts');
     await installProjectIndexDefs(102040, 2, 'molecules');
     await installProjectIndexDefs(102020, 2, 'aura/molecules/skills', 'usage', '.ts');
-    const { llm, missing } = recordedReplay(line => t.diagnostic(line));
+    const { llm, missing, used } = recordedReplay(line => t.diagnostic(line));
     const command = `@@agentNewReleaseL2 ${MODULE}`;
     const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
     const result = await runUntilDone(agentNewReleaseL2, context, {}, [agentMaterializeL2L2, agentM4EntryL2, agentM4FinalizeL2, agentM4InputL2, agentM4PagesL2, agentM4PagesPageL2, agentM4ReviewL2, agentM4ReviewPageL2, agentM4ChainPageL2, agentM4SharedL2, agentM4SharedPageL2], llm);
@@ -293,6 +295,7 @@ void test('tarefas, rule only: the REAL agentNewReleaseL2 with the real effort r
     assert.deepEqual(failed, [], 'no step failed');
     assert.equal(context.task?.status, 'done');
     assert.deepEqual(missing, [], 'every model request has a recording');
+    assert.deepEqual(used, [], 'every recording matched the exact key: no fallback was used');
     assert.ok(result.executedPlans.some(plan => /^pages50/u.test(plan)), `the page was materialized: ${result.executedPlans.join(',')}`);
   } finally { stor.restore(); }
 });
