@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-shared-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "inicio",
+  "unitInputHash": "sha256:5ae88b8463e44bc3f6f7d1678b8962ef0e3bdb576df2bb48d80b0a474c66c622",
+  "promptHash": "sha256:b70bea88413f612669d6f5a1375c4eafb045b518a297d8dc974845627ab7cb76",
+  "rulesHash": "sha256:e9ec84afe4f5a5d41f55077b59879d829f2d9f35f88856941300e20d0ca11c85",
+  "sourcePath": "l2/tarefas/web/shared/inicio.ts",
+  "sourceHash": "sha256:45317a3f3c2763f1b463949cc26f8fe0cdeaea878aee3ed60c012279eb338b7d",
+  "declarationPath": "l2/tarefas/web/shared/inicioDts.txt",
+  "declarationHash": "sha256:e3b89f803dab1130dc29d7c64497c8ab211a993b1554a264c4c96cbd47c4d22d",
+  "attempt": 1,
+  "findings": [
+    {
+      "code": "FILTER_STATE_MISSING",
+      "message": "devolverTarefa needs a reason typed by the person but the defs declare no draft state; added public state devolverTarefaDraft (DevolverTarefaDraft) with setDevolverTarefaDraft; devolverTarefa(id) reads the reason from it, the version from the loaded row, and clears it on success."
+    },
+    {
+      "code": "STATE_LEFT_STALE",
+      "message": "Commands return tarefa and indicadores. tarefa is upserted (or removed when quemAgeAgora is no longer the same person) in pendencias and indicadores is replaced, but the alertas list (AlertaPrazo with status) is not updated by any declared output, so an alert for a task that was started, sent to review or concluded stays stale until carregarInicio is called again."
+    },
+    {
+      "code": "STATE_LEFT_STALE",
+      "message": "pageStatus is only written by the initial load: after commands empty the pendencias list the page status stays success instead of empty."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public devolverTarefaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setDevolverTarefaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import type { Listas_tarefasContracts, ListaTarefas } from '/_102047_/l2/tarefas/web/contracts/listas_tarefas.defs.js';
+export type { Listas_tarefasContracts, ListaTarefas, ListaTarefasDetails } from '/_102047_/l2/tarefas/web/contracts/listas_tarefas.defs.js';
+type Output<R extends keyof Listas_tarefasContracts> = Listas_tarefasContracts[R]['output'];
+export type ErrorState = {
+    code: string;
+    message: string;
+    details?: unknown;
+} | null;
+type ListasPage = Output<'tarefas.listas_tarefas.qryListasTarefas'>['listas'];
+/** Draft of the new list form (cmdCriarLista input); every leaf may be null while empty. */
+export type CmdCriarListaDraft = {
+    nome: string | null;
+    details: {
+        descricao: string | null;
+    };
+};
+/** Draft of the edit list form (cmdSalvarLista input); filled from the selected list. */
+export type CmdSalvarListaDraft = {
+    id: string | null;
+    version: number | null;
+    nome: string | null;
+    details: {
+        descricao: string | null;
+    };
+};
+export declare class TarefasListas_tarefasShared extends StateLitElement {
+    /** state listas — the lists of tasks (name, description and open task count), one page { items, page, pageSize, hasMore }; source qryListasTarefas.listas; organisms formularioLista, listasCadastradas */
+    listas: ListasPage | null;
+    /** state texto — the name search text that filters the lists (null when no search); source entry.params.texto; organism listasCadastradas; persisted */
+    texto: string | null;
+    /** state selectedListaTarefas — the id of the ListaTarefas selected in listasCadastradas (null when none); read the record through the getter formularioLista; source entry.params.listaTarefasId; organisms formularioLista, listasCadastradas */
+    selectedListaTarefas: string | null;
+    /** state cmdCriarListaDraft — draft of the form that creates a list (nome, details.descricao); source cmdCriarLista.input; organism formularioLista */
+    cmdCriarListaDraft: CmdCriarListaDraft;
+    /** state cmdSalvarListaDraft — draft of the form that edits the selected list (id, version, nome, details.descricao), filled from the selected list; source cmdSalvarLista.input; organism formularioLista */
+    cmdSalvarListaDraft: CmdSalvarListaDraft;
+    /** state pageStatus — overall status of the page load: idle, loading, empty (no list), success or error; source page */
+    pageStatus: 'idle' | 'loading' | 'empty' | 'success' | 'error';
+    /** state qryListasTarefasStatus — status of the lists query; source qryListasTarefas */
+    qryListasTarefasStatus: 'idle' | 'loading' | 'success' | 'error';
+    /** state qryListasTarefasError — error of the lists query (also client.selectionInvalid), null when none; source qryListasTarefas */
+    qryListasTarefasError: ErrorState;
+    /** state cmdCriarListaStatus — status of the create list command; source cmdCriarLista */
+    cmdCriarListaStatus: 'idle' | 'loading' | 'success' | 'error';
+    /** state cmdCriarListaError — error of the create list command, null when none; source cmdCriarLista */
+    cmdCriarListaError: ErrorState;
+    /** state cmdSalvarListaStatus — status of the save list command; source cmdSalvarLista */
+    cmdSalvarListaStatus: 'idle' | 'loading' | 'success' | 'error';
+    /** state cmdSalvarListaError — error of the save list command, null when none; source cmdSalvarLista */
+    cmdSalvarListaError: ErrorState;
+    /** state scenary — the visible scene of the page; '' until the page shows its first scene */
+    scenary: string;
+    private selectionPending;
+    private readonly onPopState;
+    private publish;
+    private assignState;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
+    handleIcaStateChange(key: string, value: any): void;
+    private resetVisit;
+    private resetCommandResults;
+    private readParam;
+    private applyEntryParams;
+    private findLista;
+    private unexpectedError;
+    private upsertLista;
+    private resolveSelection;
+    /** The selected ListaTarefas record (the row of the loaded lists whose id is selectedListaTarefas), or null; feeds formularioLista */
+    get formularioLista(): ListaTarefas | null;
+    /** scene — publishes the visible scene of the page (scenary); clears old command results */
+    setScenario(value: string): void;
+    /** draft — replaces the draft of the create list form (cmdCriarListaDraft); clears old command results */
+    setCmdCriarListaDraft(value: CmdCriarListaDraft): void;
+    /** draft — replaces the draft of the edit list form (cmdSalvarListaDraft); clears old command results */
+    setCmdSalvarListaDraft(value: CmdSalvarListaDraft): void;
+    /** select — selects the list with this id (or null to clear) in listasCadastradas; the record is read through the getter formularioLista and the edit draft is filled from it; an id that is not in the loaded lists publishes client.selectionInvalid in qryListasTarefasError. Argument: id of the list, or null */
+    selectListaTarefas(id: string | null): void;
+    /** request qryListasTarefas — loads the lists of tasks ordered by name, searched by name, with the open task count of each; redraws listas (replace, or append the next page when append is true), texto when given; arguments: texto = new search text (omit to keep the current one; a new text loads from the first page; null or '' clears the search), page = page to load (default 1), append = true adds the page to the current items (load more) and does nothing when there is no more */
+    qryListasTarefas(texto?: string | null, page?: number, append?: boolean): Promise<void>;
+    /** request cmdCriarLista — creates a list of tasks from cmdCriarListaDraft (nome required, details.descricao optional); redraws listas (upsert of the returned list by id, appended when new) and clears cmdCriarListaDraft; no arguments; a missing nome publishes client.requiredMissing in cmdCriarListaError */
+    cmdCriarLista(): Promise<void>;
+    /** request cmdSalvarLista — saves the name and description of the selected list from cmdSalvarListaDraft (id, version, nome required); redraws listas (upsert of the returned list by id, so formularioLista follows) and refills cmdSalvarListaDraft from the returned list with the new version; no arguments; missing id, version or nome publishes client.requiredMissing in cmdSalvarListaError */
+    cmdSalvarLista(): Promise<void>;
+}

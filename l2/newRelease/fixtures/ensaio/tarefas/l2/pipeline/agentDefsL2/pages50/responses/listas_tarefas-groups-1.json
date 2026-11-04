@@ -1,0 +1,40 @@
+{
+  "attempt": "groups-1",
+  "model": "claude-opus-5-5",
+  "promptChars": 0,
+  "receivedAt": "2026-10-23T01:42:45.067Z",
+  "raw": {
+    "type": "flexible",
+    "result": {
+      "toolName": "submitD2MoleculeGroups",
+      "arguments": {
+        "organisms": [
+          {
+            "organismId": "organism1",
+            "groups": [
+              "groupViewData",
+              "groupViewCard",
+              "groupViewTable",
+              "groupSearchContent",
+              "groupTriggerAction"
+            ]
+          },
+          {
+            "organismId": "organism2",
+            "groups": [
+              "groupEnterText",
+              "groupSelectOne",
+              "groupTriggerAction",
+              "groupNotifyUser"
+            ]
+          }
+        ]
+      }
+    },
+    "status": "completed",
+    "stepId": 17,
+    "interaction": null,
+    "nextSteps": null
+  },
+  "verdict": "accepted"
+}

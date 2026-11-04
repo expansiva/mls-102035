@@ -1,0 +1,32 @@
+{
+  "organisms": {
+    "indicadoresTarefas": {
+      "reads": [
+        "Tarefa.details.aberta",
+        "Tarefa.details.venceHoje",
+        "Tarefa.details.atrasada",
+        "Tarefa.details.devolvidaPendente",
+        "Tarefa.status",
+        "Tarefa.prazo"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    },
+    "tarefasPorLista": {
+      "reads": [
+        "ListaTarefas.nome",
+        "ListaTarefas.details.quantidadeTarefasAbertas",
+        "Tarefa.titulo",
+        "Tarefa.listaId",
+        "Tarefa.details.aberta",
+        "Tarefa.details.progressoChecklist",
+        "ItemChecklist.tarefaId",
+        "ItemChecklist.details.concluido"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    }
+  }
+}

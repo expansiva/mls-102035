@@ -1,0 +1,98 @@
+import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import type { PendenciaTarefa, AlertaPrazo, IndicadoresTarefas, PermissoesParticipante } from '/_102047_/l2/tarefas/web/contracts/inicio.defs.js';
+export type { InicioContracts, ParticipanteIdentificacaoResumo, ParticipanteNomeDetalhes, ParticipanteNome, ListaTarefasNome, PendenciaTarefaDetalhes, PendenciaTarefa, AlertaPrazoDetalhes, AlertaPrazo, IndicadoresTarefas, PermissoesTarefas, PermissoesParticipanteDetalhes, PermissoesParticipante, } from '/_102047_/l2/tarefas/web/contracts/inicio.defs.js';
+export type ErrorState = {
+    code: string;
+    message: string;
+    details?: unknown;
+} | null;
+type PageStatus = 'idle' | 'loading' | 'empty' | 'success' | 'error';
+type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
+/** Draft of the devolverTarefa command input; every leaf is null until typed. */
+export type DevolverTarefaDraft = {
+    id: string | null;
+    version: number | null;
+    details: {
+        motivoDevolucao: string | null;
+    };
+};
+export declare class TarefasInicioShared extends StateLitElement {
+    /** state pendencias — the list of tasks that depend on the person now, with status, due date, priority, list, assignee, creator, checklist progress and return reason; source carregarInicio.pendencias; organism pendenciasAgora */
+    pendencias: PendenciaTarefa[];
+    /** state alertas — the list of open tasks that are due today or late, with title, due date and status; source carregarInicio.alertas; organism alertasPrazo */
+    alertas: AlertaPrazo[];
+    /** state indicadores — counters of the person's tasks: open, due today, late and returned awaiting resumption; source carregarInicio.indicadores; organism indicadoresTarefas */
+    indicadores: IndicadoresTarefas | null;
+    /** state permissoes — the session participant with name and effective flags for accepting and creating tasks; source carregarInicio.permissoes; organism minhasPermissoes */
+    permissoes: PermissoesParticipante | null;
+    /** state devolverTarefaDraft — draft of the return command: the reason (details.motivoDevolucao) the creator types before returning a task in review; source devolverTarefa.input; organism pendenciasAgora */
+    devolverTarefaDraft: DevolverTarefaDraft;
+    /** state pageStatus — overall status of the page: idle, loading, empty (nothing pending and no alert), success or error */
+    pageStatus: PageStatus;
+    /** state carregarInicioStatus — status of the initial load request */
+    carregarInicioStatus: RequestStatus;
+    /** state carregarInicioError — error of the initial load request (also used by navigation refusals), null when none */
+    carregarInicioError: ErrorState;
+    /** state iniciarTarefaStatus — status of the start-task command */
+    iniciarTarefaStatus: RequestStatus;
+    /** state iniciarTarefaError — error of the start-task command, null when none */
+    iniciarTarefaError: ErrorState;
+    /** state enviarRevisaoStatus — status of the send-to-review command */
+    enviarRevisaoStatus: RequestStatus;
+    /** state enviarRevisaoError — error of the send-to-review command, null when none */
+    enviarRevisaoError: ErrorState;
+    /** state aceitarTarefaStatus — status of the accept-task command */
+    aceitarTarefaStatus: RequestStatus;
+    /** state aceitarTarefaError — error of the accept-task command, null when none */
+    aceitarTarefaError: ErrorState;
+    /** state devolverTarefaStatus — status of the return-task command */
+    devolverTarefaStatus: RequestStatus;
+    /** state devolverTarefaError — error of the return-task command, null when none */
+    devolverTarefaError: ErrorState;
+    /** state retomarTarefaStatus — status of the resume-task command */
+    retomarTarefaStatus: RequestStatus;
+    /** state retomarTarefaError — error of the resume-task command, null when none */
+    retomarTarefaError: ErrorState;
+    /** state scenary — the visible scene of the page; '' until the page shows its first scene */
+    scenary: string;
+    private publish;
+    private assignState;
+    private onPopState;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
+    handleIcaStateChange(key: string, value: any): void;
+    private hydrateData;
+    private resetVisit;
+    private resetCommandResults;
+    /** scene — publishes the visible scene of the page (state scenary); clears the results of past commands */
+    setScenario(value: string): void;
+    /** draft — replaces the draft of the return command (state devolverTarefaDraft); the page types details.motivoDevolucao here before calling devolverTarefa */
+    setDevolverTarefaDraft(value: DevolverTarefaDraft): void;
+    /** request carregarInicio — loads the member's home in one call: pending tasks, due-date alerts, counters and effective permissions; redraws pendencias, alertas, indicadores and permissoes (replace) and sets pageStatus; no arguments, the session person is identified by the server; call it again to reload */
+    carregarInicio(): Promise<void>;
+    private publishCommandStatus;
+    private publishCommandError;
+    private commandStatus;
+    /**
+     * Runs one command on a row of pendencias. The version comes from the loaded row.
+     * The returned task is upserted by id in pendencias, or removed when it no longer
+     * depends on the same person; indicadores is replaced by the returned counters.
+     */
+    private runCommand;
+    /** request iniciarTarefa — starts a to-do task the session person is assignee of (aFazer to emAndamento); redraws pendencias (upsert the returned task by id) and indicadores (replace); argument id: the task row to start, its version is read from the loaded row */
+    iniciarTarefa(id: string): Promise<void>;
+    /** request enviarRevisao — sends an in-progress task (or resends a returned one) to review; redraws pendencias (upsert by id, or remove when the creator becomes the one who acts) and indicadores (replace); argument id: the task row to send, its version is read from the loaded row */
+    enviarRevisao(id: string): Promise<void>;
+    /** request aceitarTarefa — accepts the delivery of a task in review created by the session person, concluding it; redraws pendencias (the task leaves the list) and indicadores (replace); argument id: the task row to accept, its version is read from the loaded row */
+    aceitarTarefa(id: string): Promise<void>;
+    /** request devolverTarefa — returns a task in review to its assignee with a reason; the reason is read from devolverTarefaDraft.details.motivoDevolucao (required, otherwise client.requiredMissing and no call); redraws pendencias (upsert by id, or remove when the assignee becomes the one who acts), indicadores (replace) and clears the draft; argument id: the task row to return, its version is read from the loaded row */
+    devolverTarefa(id: string): Promise<void>;
+    /** request retomarTarefa — resumes a returned task the session person is assignee of, to continue the work; redraws pendencias (upsert the returned task by id) and indicadores (replace); argument id: the task row to resume, its version is read from the loaded row */
+    retomarTarefa(id: string): Promise<void>;
+    /** navigate — opens a pending task in Minhas tarefas (minhas_tarefas); argument tarefaId: id of the picked task, carried into the tarefaId param; null is refused with client.preconditionMissing */
+    abrirTarefa(tarefaId: string | null): void;
+    /** navigate — opens a task due today or late, from the alerts, in Minhas tarefas (minhas_tarefas); argument tarefaId: id of the picked alert task, carried into the tarefaId param; null is refused with client.preconditionMissing */
+    abrirTarefaVencendo(tarefaId: string | null): void;
+    /** navigate — opens Minhas tarefas (minhas_tarefas) from the counters; carries nothing */
+    verMinhasTarefas(): void;
+}

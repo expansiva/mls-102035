@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "participantes",
+  "device": "desktop",
+  "contextHash": "sha256:bde9c5cb8a5b4feb6a26e4fefe44a52623fe0b342e67854812eb658014d40900",
+  "sourcePath": "l2/tarefas/web/desktop/page11/participantes.ts",
+  "sourceHash": "sha256:dfe120f39f9a8927ccdcc8ebbcd1a700741a76aa223b242e2402bf7560ce5c25",
+  "attempt": 1,
+  "design": {
+    "concept": "Uma diretoria de participantes deixa a lista como superfície principal de auditoria e mantém um painel de trabalho ao lado: o gestor localiza uma pessoa, lê as permissões efetivas e ajusta apenas as marcas daquele participante. A inclusão é um modo explícito do mesmo painel, preservando a lista e a busca em contexto.",
+    "views": [
+      {
+        "id": "orientacao",
+        "purpose": "Estado tranquilo do painel quando não há participante escolhido, com acesso para incluir alguém da organização."
+      },
+      {
+        "id": "participante",
+        "purpose": "Exibir a identidade e as marcas efetivas do participante selecionado e permitir salvar as escolhas do gestor."
+      },
+      {
+        "id": "incluir",
+        "purpose": "Buscar um usuário ativo da organização, escolher um resultado e incluí-lo com as marcas opcionais."
+      }
+    ],
+    "decisions": "Segui o padrão de diretório em desktop: a tabela escaneável ocupa a maior área e o painel lateral conserva o contexto da lista. Os modos do painel usam o host de cenários, em vez de transformar ações da linha em edição; a seleção abre o painel da pessoa e voltar limpa a seleção. As marcas efetivas ficam abertas na tabela, enquanto as marcas configuráveis ficam somente no painel; o toggle inicia visualmente em “sim” quando a escolha ainda está vazia, coerente com a regra de que o padrão é aceitar e criar, mas o rascunho não é alterado até o gestor tocar no controle."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section participantesAtuais needs an element with data-section-id=\"participantesAtuais\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section configurarParticipante needs an element with data-section-id=\"configurarParticipante\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism listaParticipantes (paginação) renders neither <grouptriggeraction--ml-pagination-control>."
+    }
+  ]
+}

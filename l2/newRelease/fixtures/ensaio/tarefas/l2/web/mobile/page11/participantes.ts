@@ -1,0 +1,264 @@
+/// <mls fileReference="_102047_/l2/tarefas/web/mobile/page11/participantes.ts" enhancement="_102020_/l2/enhancementAura"/>
+import { html } from 'lit';
+import { customElement } from 'lit/decorators.js';
+import { TarefasParticipantesShared } from '/_102047_/l2/tarefas/web/shared/participantes.js';
+import '/_102040_/l2/molecules/groupenterboolean/ml-toggle-switch.js';
+import '/_102040_/l2/molecules/groupnotifyuser/ml-contextual-feedback.js';
+import '/_102040_/l2/molecules/groupsearchcontent/ml-search-bar.js';
+import '/_102040_/l2/molecules/groupselectone/ml-select-one-autocomplete.js';
+import '/_102040_/l2/molecules/grouptriggeraction/ml-button-standard.js';
+import '/_102040_/l2/molecules/groupviewdata/ml-vertical-record-list.js';
+import '/_102020_/l2/molecules/ml-scenary.js';
+const statusKeys: Record<'Active' | 'Inactive' | 'Merged' | 'Blocked', keyof PageMessageType> = {
+Active: 'statusActive',
+Inactive: 'statusInactive',
+Merged: 'statusMerged',
+Blocked: 'statusBlocked',
+};
+const statusKey = (status: 'Active' | 'Inactive' | 'Merged' | 'Blocked'): keyof PageMessageType => statusKeys[status];
+/// **collab_i18n_start**
+const pageMessage_pt_br = {
+pageTitle: 'Participantes',
+directoryTitle: 'Participantes',
+addParticipant: 'Incluir participante',
+searchParticipants: 'Buscar participante',
+searchParticipantsPlaceholder: 'Buscar por nome',
+participantsLoading: 'Carregando participantes…',
+noParticipants: 'Nenhum participante encontrado.',
+participantName: 'Nome',
+situation: 'Situação no MDM',
+roles: 'Papéis',
+acceptsTasksEffective: 'Aceita tarefas',
+canCreateTasksEffective: 'Pode criar tarefas',
+yes: 'Sim',
+no: 'Não',
+statusActive: 'Ativo',
+statusInactive: 'Inativo',
+statusMerged: 'Mesclado',
+statusBlocked: 'Bloqueado',
+includeTitle: 'Incluir participante',
+searchOrganizationUser: 'Buscar usuário da organização',
+searchOrganizationUserPlaceholder: 'Digite um nome para buscar',
+chooseUser: 'Usuário',
+chooseUserPlaceholder: 'Escolha um usuário',
+noUsers: 'Nenhum usuário disponível para inclusão.',
+searchUsersError: 'Não foi possível buscar os usuários.',
+acceptsTasks: 'Aceita tarefas',
+canCreateTasks: 'Pode criar tarefas',
+defaultPermissionHint: 'Sem configuração, esta marca vale como sim.',
+includeParticipant: 'Incluir participante',
+includingParticipant: 'Incluindo participante…',
+participantTitle: 'Participante',
+effectivePermissions: 'Permissões efetivas',
+managerChoices: 'Escolhas do gestor',
+saveChoices: 'Salvar marcas',
+savingChoices: 'Salvando marcas…',
+includeSuccessTitle: 'Participante incluído',
+includeSuccessMessage: 'O usuário agora participa do módulo de tarefas.',
+saveSuccessTitle: 'Marcas salvas',
+saveSuccessMessage: 'As escolhas do gestor foram atualizadas.',
+actionErrorTitle: 'Não foi possível concluir',
+missingContext: 'Não foi possível abrir os participantes porque falta o contexto necessário.',
+returnToTasks: 'Voltar para tarefas',
+loadMore: 'Carregar mais',
+loadingMore: 'Carregando mais…',
+back: 'Voltar',
+participantUnavailable: 'O participante não está disponível.',
+};
+type PageMessageType = typeof pageMessage_pt_br;
+const pageMessages: Record<string, PageMessageType> = { 'pt-br': pageMessage_pt_br };
+/// **collab_i18n_end**
+@customElement('tarefas--web--mobile--page11--participantes-102047')
+export class TarefasMobilePage11ParticipantesPage extends TarefasParticipantesShared {
+private msg: PageMessageType = pageMessage_pt_br;
+private renderDirectory() {
+const rows = this.participantes?.items ?? [];
+const listError = this.listarParticipantesError;
+return html`
+<section class="min-h-full px-4 pb-8 pt-4" data-organism-id="listaParticipantes">
+<div class="mb-4 flex items-center justify-between gap-3">
+<h1 class="text-xl font-semibold text-[var(--text-strong,currentColor)]">${this.msg.pageTitle}</h1>
+<grouptriggeraction--ml-button-standard
+data-variant="primary" size="sm" type="button"
+@action=${() => { this.selectParticipante(null); this.setScenario('incluir'); }}>
+<Label>${this.msg.addParticipant}</Label>
+</grouptriggeraction--ml-button-standard>
+</div>
+${this.pageStatus === 'error' && listError?.code === 'client.preconditionMissing' ? html`
+<div class="rounded-lg border border-[var(--border-default,currentColor)] bg-[var(--surface-alt-bg,transparent)] p-4">
+<p class="text-sm text-[var(--text-default,currentColor)]">${this.msg.missingContext}</p>
+<grouptriggeraction--ml-button-standard data-variant="secondary" size="md" type="button" data-class="mt-3 w-full"
+@action=${() => this.setScenario('diretorio')}>
+<Label>${this.msg.returnToTasks}</Label>
+</grouptriggeraction--ml-button-standard>
+</div>
+` : html`
+<groupsearchcontent--ml-search-bar
+.value=${this.busca}
+.error=${listError?.message ?? ''}
+.name=${'buscaParticipantes'}
+.placeholder=${this.msg.searchParticipantsPlaceholder}
+.debounce=${300}
+.disabled=${this.listarParticipantesStatus === 'loading'}
+.loading=${this.listarParticipantesStatus === 'loading'}
+@search=${(e: CustomEvent<{ query: string }>) => this.listarParticipantes(e.detail.query)}
+@change=${(e: CustomEvent<{ value: string | null }>) => this.listarParticipantes(e.detail.value)}
+@clear=${() => this.listarParticipantes(null)}>
+<Label>${this.msg.searchParticipants}</Label>
+</groupsearchcontent--ml-search-bar>
+<div class="mt-4 overflow-hidden rounded-xl border border-[var(--border-default,currentColor)] bg-[var(--surface-bg,transparent)]">
+<groupviewdata--ml-vertical-record-list
+.loading=${this.listarParticipantesStatus === 'loading'}
+.hoverable=${true}
+@row-click=${(e: CustomEvent<{ index: number }>) => {
+const row = rows[e.detail.index];
+if (row) { this.selectParticipante(row.id); this.setScenario('participante'); }
+}}>
+<Columns>
+<Column field="participante" header=${this.msg.participantName}></Column>
+<Column field="marcas" header=${this.msg.effectivePermissions}></Column>
+</Columns>
+<Rows>
+${rows.map((row) => html`
+<Row ?selected=${row.id === this.selectedParticipante}>
+<Cell>
+<div class="min-w-0">
+<div class="truncate font-medium text-[var(--text-strong,currentColor)]">${row.details.identification.name}</div>
+<div class="mt-1 flex flex-wrap gap-1.5 text-xs">
+<span class="rounded-full bg-[var(--status-neutral-bg,transparent)] px-2 py-0.5 text-[var(--status-neutral-text,currentColor)]">${this.msg[statusKey(row.details.identification.status)]}</span>
+<span class="truncate text-[var(--text-muted,currentColor)]">${row.details.identification.tags}</span>
+</div>
+</div>
+</Cell>
+<Cell>
+<div class="flex flex-col items-end gap-1 text-xs text-[var(--text-default,currentColor)]">
+<span>${this.msg.acceptsTasksEffective}: ${row.details.tarefas.aceitaTarefasEfetivo ? this.msg.yes : this.msg.no}</span>
+<span>${this.msg.canCreateTasksEffective}: ${row.details.tarefas.podeCriarTarefasEfetivo ? this.msg.yes : this.msg.no}</span>
+</div>
+</Cell>
+</Row>
+`)}
+</Rows>
+<Loading><div class="px-4 py-10 text-center text-sm text-[var(--text-muted,currentColor)]">${this.msg.participantsLoading}</div></Loading>
+<Empty><div class="px-4 py-10 text-center text-sm text-[var(--text-muted,currentColor)]">${this.msg.noParticipants}</div></Empty>
+</groupviewdata--ml-vertical-record-list>
+</div>
+${this.participantes?.hasMore ? html`
+<grouptriggeraction--ml-button-standard data-variant="secondary" size="md" type="button" data-class="mt-4 w-full"
+.loading=${this.listarParticipantesStatus === 'loading'}
+@action=${() => this.listarParticipantes(undefined, undefined, true)}>
+<Label>${this.listarParticipantesStatus === 'loading' ? this.msg.loadingMore : this.msg.loadMore}</Label>
+</grouptriggeraction--ml-button-standard>
+` : ''}
+`}
+</section>
+`;
+}
+private renderInclude() {
+const draft = this.incluirParticipanteDraft;
+const busy = this.incluirParticipanteStatus === 'loading';
+return html`
+<section class="px-4 pb-8 pt-4" data-organism-id="formParticipante">
+<div class="space-y-5 rounded-xl border border-[var(--border-default,currentColor)] bg-[var(--surface-bg,transparent)] p-4">
+<groupnotifyuser--ml-contextual-feedback type="error" .visible=${this.buscarUsuariosStatus === 'error'} .dismissible=${false} .duration=${0}>
+<Title>${this.msg.actionErrorTitle}</Title><Message>${this.buscarUsuariosError?.message ?? this.msg.searchUsersError}</Message>
+</groupnotifyuser--ml-contextual-feedback>
+<groupsearchcontent--ml-search-bar .value=${null} .error=${''} .name=${'buscarUsuario'} .placeholder=${this.msg.searchOrganizationUserPlaceholder} .debounce=${300}
+.disabled=${busy} .loading=${this.buscarUsuariosStatus === 'loading'}
+@search=${(e: CustomEvent<{ query: string }>) => this.buscarUsuarios(e.detail.query)}>
+<Label>${this.msg.searchOrganizationUser}</Label>
+</groupsearchcontent--ml-search-bar>
+<groupselectone--ml-select-one-autocomplete
+.value=${draft.id} .error=${this.incluirParticipanteError?.message ?? ''} .name=${'usuario'}
+.placeholder=${this.msg.chooseUserPlaceholder} .searchable=${true} .isEditing=${true}
+.disabled=${busy} .required=${true} .loading=${this.buscarUsuariosStatus === 'loading'} .clearable=${true}
+@change=${(e: CustomEvent<{ value: string | null }>) => this.setIncluirParticipanteDraft({ ...draft, id: e.detail.value })}>
+<Label>${this.msg.chooseUser}</Label>
+${this.usuarios.map((user) => html`<Item value=${user.id}>${user.details.identification.name}</Item>`)}
+<Empty>${this.msg.noUsers}</Empty>
+</groupselectone--ml-select-one-autocomplete>
+<groupenterboolean--ml-toggle-switch .value=${draft.details.tarefas.aceitaTarefas ?? true} .error=${''} .name=${'aceitaTarefas'} .isEditing=${true} .disabled=${busy}
+@change=${(e: CustomEvent<{ value: boolean }>) => this.setIncluirParticipanteDraft({ ...draft, details: { tarefas: { ...draft.details.tarefas, aceitaTarefas: e.detail.value } } })}>
+<Label>${this.msg.acceptsTasks}</Label><Helper>${this.msg.defaultPermissionHint}</Helper>
+</groupenterboolean--ml-toggle-switch>
+<groupenterboolean--ml-toggle-switch .value=${draft.details.tarefas.podeCriarTarefas ?? true} .error=${''} .name=${'podeCriarTarefas'} .isEditing=${true} .disabled=${busy}
+@change=${(e: CustomEvent<{ value: boolean }>) => this.setIncluirParticipanteDraft({ ...draft, details: { tarefas: { ...draft.details.tarefas, podeCriarTarefas: e.detail.value } } })}>
+<Label>${this.msg.canCreateTasks}</Label><Helper>${this.msg.defaultPermissionHint}</Helper>
+</groupenterboolean--ml-toggle-switch>
+<groupnotifyuser--ml-contextual-feedback type="success" .visible=${this.incluirParticipanteStatus === 'success'} .dismissible=${false} .duration=${0}>
+<Title>${this.msg.includeSuccessTitle}</Title><Message>${this.msg.includeSuccessMessage}</Message>
+</groupnotifyuser--ml-contextual-feedback>
+<grouptriggeraction--ml-button-standard data-variant="primary" size="lg" type="button" data-class="w-full" .disabled=${draft.id === null} .loading=${busy} @action=${() => this.incluirParticipante()}>
+<Label>${busy ? this.msg.includingParticipant : this.msg.includeParticipant}</Label>
+</grouptriggeraction--ml-button-standard>
+</div>
+</section>
+`;
+}
+private renderParticipant() {
+const participant = this.formParticipante;
+const draft = this.salvarMarcasDraft;
+const busy = this.salvarMarcasStatus === 'loading';
+return html`
+<section class="px-4 pb-8 pt-4" data-organism-id="formParticipante">
+${participant === null ? html`<p class="text-sm text-[var(--text-muted,currentColor)]">${this.msg.participantUnavailable}</p>` : html`
+<div class="space-y-5">
+<div class="rounded-xl border border-[var(--border-default,currentColor)] bg-[var(--surface-bg,transparent)] p-4">
+<h2 class="text-lg font-semibold text-[var(--text-strong,currentColor)]">${participant.details.identification.name}</h2>
+<dl class="mt-4 space-y-3 text-sm">
+<div><dt class="text-[var(--text-muted,currentColor)]">${this.msg.situation}</dt><dd class="mt-1 text-[var(--text-default,currentColor)]">${this.msg[statusKey(participant.details.identification.status)]}</dd></div>
+<div><dt class="text-[var(--text-muted,currentColor)]">${this.msg.roles}</dt><dd class="mt-1 text-[var(--text-default,currentColor)]">${participant.details.identification.tags}</dd></div>
+</dl>
+</div>
+<div class="rounded-xl border border-[var(--border-default,currentColor)] bg-[var(--surface-alt-bg,transparent)] p-4">
+<h3 class="font-medium text-[var(--text-strong,currentColor)]">${this.msg.effectivePermissions}</h3>
+<p class="mt-3 text-sm text-[var(--text-default,currentColor)]">${this.msg.acceptsTasksEffective}: ${participant.details.tarefas.aceitaTarefasEfetivo ? this.msg.yes : this.msg.no}</p>
+<p class="mt-2 text-sm text-[var(--text-default,currentColor)]">${this.msg.canCreateTasksEffective}: ${participant.details.tarefas.podeCriarTarefasEfetivo ? this.msg.yes : this.msg.no}</p>
+</div>
+<div class="space-y-5 rounded-xl border border-[var(--border-default,currentColor)] bg-[var(--surface-bg,transparent)] p-4">
+<h3 class="font-medium text-[var(--text-strong,currentColor)]">${this.msg.managerChoices}</h3>
+<groupnotifyuser--ml-contextual-feedback type="error" .visible=${this.salvarMarcasStatus === 'error'} .dismissible=${false} .duration=${0}>
+<Title>${this.msg.actionErrorTitle}</Title><Message>${this.salvarMarcasError?.message ?? ''}</Message>
+</groupnotifyuser--ml-contextual-feedback>
+<groupenterboolean--ml-toggle-switch .value=${draft.details.tarefas.aceitaTarefas ?? true} .error=${''} .name=${'aceitaTarefas'} .isEditing=${true} .disabled=${busy}
+@change=${(e: CustomEvent<{ value: boolean }>) => this.setSalvarMarcasDraft({ ...draft, details: { tarefas: { ...draft.details.tarefas, aceitaTarefas: e.detail.value } } })}>
+<Label>${this.msg.acceptsTasks}</Label><Helper>${this.msg.defaultPermissionHint}</Helper>
+</groupenterboolean--ml-toggle-switch>
+<groupenterboolean--ml-toggle-switch .value=${draft.details.tarefas.podeCriarTarefas ?? true} .error=${''} .name=${'podeCriarTarefas'} .isEditing=${true} .disabled=${busy}
+@change=${(e: CustomEvent<{ value: boolean }>) => this.setSalvarMarcasDraft({ ...draft, details: { tarefas: { ...draft.details.tarefas, podeCriarTarefas: e.detail.value } } })}>
+<Label>${this.msg.canCreateTasks}</Label><Helper>${this.msg.defaultPermissionHint}</Helper>
+</groupenterboolean--ml-toggle-switch>
+<groupnotifyuser--ml-contextual-feedback type="success" .visible=${this.salvarMarcasStatus === 'success'} .dismissible=${false} .duration=${0}>
+<Title>${this.msg.saveSuccessTitle}</Title><Message>${this.msg.saveSuccessMessage}</Message>
+</groupnotifyuser--ml-contextual-feedback>
+<grouptriggeraction--ml-button-standard data-variant="primary" size="lg" type="button" data-class="w-full" .loading=${busy} @action=${() => this.salvarMarcas()}>
+<Label>${busy ? this.msg.savingChoices : this.msg.saveChoices}</Label>
+</grouptriggeraction--ml-button-standard>
+</div>
+</div>
+`}
+</section>
+`;
+}
+render() {
+this.msg = pageMessages[this.getMessageKey(pageMessages)];
+return html`
+<main class="min-h-full bg-[var(--page-bg,transparent)] text-[var(--text-default,currentColor)]">
+<molecules--ml-scenary-102020
+mode="scenary"
+.value=${this.scenary || (this.selectedParticipante !== null ? 'participante' : 'diretorio')}
+.backLabel=${this.msg.back}
+@change=${(e: CustomEvent<{ value: string }>) => {
+if (e.target === e.currentTarget) {
+this.setScenario(e.detail.value);
+if (e.detail.value === 'diretorio') this.selectParticipante(null);
+}
+}}>
+<Scene value="diretorio" title=${this.msg.directoryTitle}>${this.renderDirectory()}</Scene>
+<Scene value="incluir" title=${this.msg.includeTitle} nav="back" backTo="diretorio">${this.renderInclude()}</Scene>
+<Scene value="participante" title=${this.msg.participantTitle} nav="back" backTo="diretorio">${this.renderParticipant()}</Scene>
+</molecules--ml-scenary-102020>
+</main>
+`;
+}
+}

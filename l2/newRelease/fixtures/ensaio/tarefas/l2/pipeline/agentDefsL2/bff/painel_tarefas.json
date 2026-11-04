@@ -1,0 +1,237 @@
+{
+  "types": [
+    {
+      "name": "IndicadoresTarefas",
+      "description": "Contagens da situação geral das tarefas da organização: abertas, que vencem hoje, atrasadas e devolvidas aguardando retomada.",
+      "fields": [
+        {
+          "name": "tarefasAbertas",
+          "type": "number",
+          "origin": {
+            "kind": "aggregate",
+            "paths": [
+              "Tarefa.details.aberta",
+              "Tarefa.status"
+            ]
+          }
+        },
+        {
+          "name": "vencemHoje",
+          "type": "number",
+          "origin": {
+            "kind": "aggregate",
+            "paths": [
+              "Tarefa.details.venceHoje",
+              "Tarefa.details.aberta",
+              "Tarefa.prazo"
+            ]
+          }
+        },
+        {
+          "name": "atrasadas",
+          "type": "number",
+          "origin": {
+            "kind": "aggregate",
+            "paths": [
+              "Tarefa.details.atrasada",
+              "Tarefa.details.aberta",
+              "Tarefa.prazo"
+            ]
+          }
+        },
+        {
+          "name": "devolvidasPendentes",
+          "type": "number",
+          "origin": {
+            "kind": "aggregate",
+            "paths": [
+              "Tarefa.details.devolvidaPendente",
+              "Tarefa.status"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ResumoTarefaLista",
+      "description": "Tarefa aberta de uma lista, com o título e o progresso da sua checklist.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "Tarefa.id"
+            ]
+          }
+        },
+        {
+          "name": "titulo",
+          "type": "string",
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "Tarefa.titulo"
+            ]
+          }
+        },
+        {
+          "name": "listaId",
+          "type": "string",
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "Tarefa.listaId"
+            ]
+          }
+        },
+        {
+          "name": "details.progressoChecklist",
+          "type": "string",
+          "optional": true,
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "Tarefa.details.progressoChecklist"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ResumoLista",
+      "description": "Lista de tarefas (projeto ou área) com a quantidade de tarefas abertas, os totais de itens de checklist concluídos e existentes nas suas tarefas abertas, e as tarefas abertas que têm checklist.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "ListaTarefas.id"
+            ]
+          }
+        },
+        {
+          "name": "nome",
+          "type": "string",
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "ListaTarefas.nome"
+            ]
+          }
+        },
+        {
+          "name": "details.quantidadeTarefasAbertas",
+          "type": "number",
+          "origin": {
+            "kind": "field",
+            "paths": [
+              "ListaTarefas.details.quantidadeTarefasAbertas"
+            ]
+          }
+        },
+        {
+          "name": "itensChecklistConcluidos",
+          "type": "number",
+          "origin": {
+            "kind": "aggregate",
+            "paths": [
+              "ItemChecklist.details.concluido",
+              "ItemChecklist.tarefaId",
+              "Tarefa.listaId",
+              "Tarefa.details.aberta"
+            ]
+          }
+        },
+        {
+          "name": "itensChecklistTotal",
+          "type": "number",
+          "origin": {
+            "kind": "aggregate",
+            "paths": [
+              "ItemChecklist.tarefaId",
+              "Tarefa.listaId",
+              "Tarefa.details.aberta"
+            ]
+          }
+        },
+        {
+          "name": "tarefas",
+          "type": "ResumoTarefaLista[]"
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "id": "carregarPainelTarefas",
+      "kind": "qry",
+      "when": "onLoad",
+      "input": [],
+      "output": [
+        {
+          "name": "indicadores",
+          "type": "IndicadoresTarefas"
+        },
+        {
+          "name": "listas",
+          "type": "ResumoLista[]"
+        }
+      ],
+      "rules": [
+        "tarefaAbertaVencimento",
+        "membroVeResponsavelOuCriador",
+        "gestorPorAcessoPlataforma"
+      ],
+      "jsdoc": {
+        "purpose": "Carrega, numa única chamada, o painel do gestor: os quatro indicadores gerais das tarefas da organização e o resumo das tarefas abertas por lista com o progresso das checklists.",
+        "input": "Nenhuma entrada; o gestor é identificado pela sessão.",
+        "processing": "Verifica que a pessoa da sessão é gestor pelo acesso da plataforma (gestorPorAcessoPlataforma) e considera todas as tarefas da organização, sem o filtro de membro (membroVeResponsavelOuCriador: o gestor vê todas). Conta no servidor, com tarefaAbertaVencimento: abertas (situação diferente de concluida e cancelada), que vencem hoje (abertas com prazo igual à data de hoje), atrasadas (abertas com prazo anterior a hoje) e devolvidas pendentes (em andamento, devolvidas e ainda não retomadas após a última devolução). Para cada lista, ordenada pelo nome, calcula a quantidade de tarefas abertas, conta os itens de checklist totais e concluídos das tarefas abertas da lista e traz as tarefas abertas que têm checklist com o progresso calculado (itens marcados de total). Todos esses valores são derivados e calculados na consulta, nunca gravados.",
+        "output": "indicadores com as quatro contagens já calculadas; listas com cada lista de tarefas, seu nome, quantidade de tarefas abertas, totais de itens de checklist concluídos e existentes e as tarefas abertas com título e progresso da checklist."
+      }
+    }
+  ],
+  "bindings": {
+    "organisms": [
+      {
+        "organism": "indicadoresTarefas",
+        "reads": "carregarPainelTarefas.indicadores"
+      },
+      {
+        "organism": "tarefasPorLista",
+        "reads": "carregarPainelTarefas.listas"
+      }
+    ],
+    "commands": [],
+    "selections": [],
+    "journeys": [
+      {
+        "step": "acompanharTarefas/filtrarTarefas",
+        "organisms": [
+          "indicadoresTarefas",
+          "tarefasPorLista"
+        ],
+        "endpoints": [
+          "carregarPainelTarefas"
+        ],
+        "continuesIn": "tarefas_equipe"
+      },
+      {
+        "step": "acompanharTarefas/verQuadro",
+        "organisms": [],
+        "endpoints": [],
+        "continuesIn": "tarefas_equipe"
+      },
+      {
+        "step": "acompanharTarefas/abrirTarefaGestor",
+        "organisms": [],
+        "endpoints": [],
+        "continuesIn": "tarefas_equipe"
+      }
+    ],
+    "updates": []
+  }
+}

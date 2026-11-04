@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "minhas_tarefas",
+  "device": "desktop",
+  "contextHash": "sha256:4f87919cd8e6441a2a7f1cac39881731f4bfbf756a9c723460503cf7a14d12e9",
+  "sourcePath": "l2/tarefas/web/desktop/page11/minhas_tarefas.ts",
+  "sourceHash": "sha256:cb5e428b9281b162de39b3f478555e30a200f00289bedc83b8408c2a9560d9d9",
+  "attempt": 1,
+  "design": {
+    "concept": "Uma fila de trabalho por prazo ocupa a maior parte da tela, mantendo visíveis os compromissos enquanto o membro abre a tarefa escolhida em um painel de trabalho à direita. O painel alterna entre contexto vazio, detalhes editáveis e criação, sem tirar a lista do campo de visão.",
+    "views": [
+      {
+        "id": "vazio",
+        "purpose": "Mantém o painel lateral orientado para a seleção enquanto a lista continua disponível."
+      },
+      {
+        "id": "detalhe",
+        "purpose": "Permite conferir, editar checklist e avançar a tarefa selecionada ao lado da fila."
+      },
+      {
+        "id": "nova",
+        "purpose": "Abre a criação de uma tarefa no painel lateral sem navegar para fora da fila."
+      }
+    ],
+    "decisions": "Segui o padrão master-detail do template: a lista continua fixa e a área lateral é um scenary regional para detalhes e criação. Como o contrato não oferece busca, ordenação controlável, atribuição sem abrir a tarefa ou um total de registros, não exponho controles que não poderiam funcionar; o backend entrega a fila carregada. Os três grupos disponíveis são uma troca de escopo por pills, e prazos atrasados recebem a única ênfase de alarme na tabela."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secTarefas needs an element with data-section-id=\"secTarefas\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secTarefaAberta needs an element with data-section-id=\"secTarefaAberta\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secEdicao needs an element with data-section-id=\"secEdicao\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasLista (progresso da checklist na linha) renders neither <groupshowprogress--ml-linear-progress> nor <groupshowprogress--ml-circular-progress>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasLista (busca pelo título e filtros da lista) renders neither <groupsearchcontent--ml-search-filters> nor <groupsearchcontent--ml-search-bar>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefaDetalhe (progresso da checklist) renders neither <groupshowprogress--ml-linear-progress> nor <groupshowprogress--ml-segmented-progress>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefaAcoes (ação secundária de cancelar) renders neither <grouptriggeraction--ml-kebab-action-trigger> nor <grouptriggeraction--ml-icon-button>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefaAcoes (confirmação de cancelamento e retorno das ações) renders neither <groupnotifyuser--ml-alert-modal> nor <groupnotifyuser--ml-toast-notification>."
+    }
+  ]
+}

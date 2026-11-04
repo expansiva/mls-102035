@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "2026-10-04-agent-defs-l2-bff-v2",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "listas_tarefas",
+  "attempt": 1,
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:43d0695f77d98146e9f7f86cd10fee06342a1f80c5ee7ca9525409539ee16712",
+  "promptHash": "sha256:8281f57f8006b2abe1176fad3bc303101db2f31d1084b882b98a350bfe2f26a8",
+  "promptChars": 31962,
+  "repairPromptChars": 0,
+  "designHash": "sha256:eb295cd1189423866b9b1c50e6fb33ecb275520bb608893e57c1cda75e03ba6b"
+}

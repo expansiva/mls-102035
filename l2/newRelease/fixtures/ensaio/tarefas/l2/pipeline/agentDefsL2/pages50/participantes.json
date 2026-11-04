@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pages-v2.1",
+  "needsVersion": "2026-09-30-agent-defs-l2-page11-needs-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "participantes",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:dfaae1bcdde3ebcefa03f66ea8fce10b9633dad2276069d86f5cd88d0dc843b8",
+  "template": {
+    "category": "userAccessManagement",
+    "experience": "memberDirectory",
+    "reason": "A página serve para o gestor decidir quem participa do módulo de tarefas e o que cada participante pode fazer: se aceita tarefas e se pode criar tarefas. Isso é gestão de usuários e das suas permissões no módulo, por isso a categoria userAccessManagement serve para desktop e mobile. Derived memberDirectory from userAccessManagement.page21.",
+    "reference": "_102020_/l4/collabux/templates/userAccessManagement/page21.md",
+    "hash": "sha256:4c256ecdebb83339ce63a93febc58dda173da2d9066216f1feffb0fe4de62fa2",
+    "catalogHash": "sha256:285e42e596b7bde092824c38a446f23d7bd4ac40fc551a0e0d58be6d08f135dc"
+  },
+  "moleculeInventoryHash": "sha256:a243774aee05d980d07cae75cf2e574b3a9c93761f3cec240a457e3dc5d5b78d",
+  "moleculeHashes": {
+    "/_102040_/l2/molecules/groupviewtable/index.defs": "sha256:3e2e055853cf7b3fb3d01991dcfd148dc9030d8b9cbef76640feb87157f0d4f9",
+    "/_102020_/l2/aura/molecules/skills/groupViewTable/usage": "sha256:36320ac5933a879e44fc9e9b9dc7112ea73d25f1ea39d13304b0dbce85c6eb78",
+    "/_102040_/l2/molecules/groupviewdata/index.defs": "sha256:cd1aeb8f281ca1e1fcf30f0acf8f6b1707f6c43a675faedfca4b8f12504499fa",
+    "/_102020_/l2/aura/molecules/skills/groupViewData/usage": "sha256:bd498bbefd80c0985dce0f1f11b8fca1c9c595f244658c39ac87016ca70a5525",
+    "/_102040_/l2/molecules/groupsearchcontent/index.defs": "sha256:27988d1fa4120362c6529663ac2cfc8a97b53ece995329bb6fe9bc98a9acbb5f",
+    "/_102020_/l2/aura/molecules/skills/groupSearchContent/usage": "sha256:c1e4ab5899f80b0541f4364c875e164de747d053a3b2f09748a6f87be373738e",
+    "/_102040_/l2/molecules/grouptriggeraction/index.defs": "sha256:b64c73d526fbc780a7a512a661d48a92fe29722bb9338ca939090a9dad2d4dca",
+    "/_102020_/l2/aura/molecules/skills/groupTriggerAction/usage": "sha256:be6151e6341cc19ffc02dc2699bb210b88e18051320c3e09d862be283822e485",
+    "/_102040_/l2/molecules/groupselectone/index.defs": "sha256:6cd31103bd70d5d83feffcc8fe97dbbdbbd1cd3912cf50251c8e650f412b882a",
+    "/_102020_/l2/aura/molecules/skills/groupSelectOne/usage": "sha256:5d7eaae4f1b9b028779e06d51b656ad6c0cd8f696cca6de267f0236e6efb7760",
+    "/_102040_/l2/molecules/groupenterboolean/index.defs": "sha256:f01bf583edd0aaeae58e296fa52b185cda14f065da42f6dd8dfab20798043c2b",
+    "/_102020_/l2/aura/molecules/skills/groupEnterBoolean/usage": "sha256:a6e099d45adbfe024dfe2d3660a13746992b3f20e4dc892496aab900db0fdcc7",
+    "/_102040_/l2/molecules/groupnotifyuser/index.defs": "sha256:b041b5f2e0d3deb0e4abf184e15d9542862677e3659da5f1969d6db2bd8d8e08",
+    "/_102020_/l2/aura/molecules/skills/groupNotifyUser/usage": "sha256:f0f8cbf8f40d261b222b6d0c53f31a6690c1ad85502f1601c0b893ea7cdb4aa2"
+  },
+  "moleculeGroupAssessments": [
+    {
+      "organismId": "organism1",
+      "groups": [
+        {
+          "groupId": "groupViewTable",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism2",
+      "groups": [
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSelectOne",
+          "relevant": true
+        },
+        {
+          "groupId": "groupEnterBoolean",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNotifyUser",
+          "relevant": true
+        }
+      ]
+    }
+  ],
+  "skillHash": "sha256:c3517179ccbde253ae6f8f2824b85092ccd698ba82925d87739370ba48f2e9d8",
+  "promptHash": "sha256:7c32290937225111880488f28364629141f1c1a16cff64eafa536c2ebaa93455",
+  "promptChars": 50560,
+  "repairPromptChars": 15179,
+  "sourceHashes": {
+    "desktop": "sha256:9285af0993fd313538183c48a7d43f71d2c58967b52275dc1bd076f0c599ab12",
+    "mobile": "sha256:ea6e3a5222ddd25cc1b361ef4aaa6d9ff0177fcc1225a4d8c6c301e44764dbfc"
+  },
+  "needsHashes": {
+    "desktop": "sha256:e57b2ff49078304c5822bb69ea986c054444b09a9d0c3c19a3ca94379dd92c91",
+    "mobile": "sha256:e57b2ff49078304c5822bb69ea986c054444b09a9d0c3c19a3ca94379dd92c91"
+  },
+  "menuOrigins": [
+    {
+      "organismId": "listaParticipantes",
+      "sourceIndex": 0,
+      "kind": "list",
+      "text": "Usuários da organização que participam do módulo, com aceita tarefas e pode criar tarefas (efetivo)."
+    },
+    {
+      "organismId": "formParticipante",
+      "sourceIndex": 1,
+      "kind": "form",
+      "text": "Incluir um usuário como participante e marcar se aceita tarefas e se pode criar tarefas."
+    }
+  ]
+}

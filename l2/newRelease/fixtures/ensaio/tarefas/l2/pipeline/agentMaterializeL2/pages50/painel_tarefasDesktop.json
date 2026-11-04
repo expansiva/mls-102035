@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "painel_tarefas",
+  "device": "desktop",
+  "contextHash": "sha256:372d5e156098bf9590a18011e2f922646d37e9d65f876b057e6573c70aabc2de",
+  "sourcePath": "l2/tarefas/web/desktop/page11/painel_tarefas.ts",
+  "sourceHash": "sha256:afb5d904d18e207985fc4c958f2909c42169032c916b0099817cbba013af2dff",
+  "attempt": 1,
+  "design": {
+    "concept": "Um painel de triagem sereno: o gestor começa pela distribuição de tarefas abertas entre listas, usando cada linha como caminho direto para a lista que precisa de acompanhamento. Os indicadores gerais ficam como uma faixa discreta de contexto abaixo, com atrasos e devoluções preservando sua importância sem transformar a tela em uma grade de KPIs.",
+    "views": [],
+    "decisions": "Mantive uma única superfície, pois todos os destinos já são navegações e não há um registro selecionável nesta página. O contrato não traz identidades de tarefas atrasadas ou devolvidas; por isso não inventei lanes de exceção sem ação por item. Em vez disso, as listas abertas são a superfície acionável principal, e os quatro totais ficam abaixo como contexto de saúde. Não usei o indicador linear: os dados oferecem totais de checklist, mas não uma porcentagem pronta, e a página não pode calculá-la."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoIndicadores needs an element with data-section-id=\"secaoIndicadores\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoListas needs an element with data-section-id=\"secaoListas\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasPorLista (tarefas abertas agrupadas por lista) renders neither <groupviewtable--ml-grouping-table> nor <groupviewtable--ml-data-table>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasPorLista (progresso da checklist) renders neither <groupshowprogress--ml-linear-progress> nor <groupshowprogress--ml-circular-progress>."
+    }
+  ]
+}

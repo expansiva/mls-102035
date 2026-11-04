@@ -1,0 +1,191 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pages-v2.1",
+  "needsVersion": "2026-09-30-agent-defs-l2-page11-needs-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "minhas_tarefas",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:7f83be4baa6cdc0516a337f96906fc462832353a8c48e4ecb4b2e0999bcd16d9",
+  "template": {
+    "category": "workPlanningBoard",
+    "experience": "timelineList",
+    "reason": "Minhas tarefas é a mesa de trabalho do membro: lista as tarefas de que é responsável ou que criou, abre uma em master-detail, cria e ajusta tarefas com responsável e prazo, e conduz o ciclo a fazer → em andamento → em revisão → concluída. Isso corresponde a workPlanningBoard (criar tarefas, atribuir responsáveis, prazos e edição master-detail) nos dois dispositivos. Derived timelineList from workPlanningBoard.page21.",
+    "reference": "_102020_/l4/collabux/templates/workPlanningBoard/page21.md",
+    "hash": "sha256:3b4192690347b2a4873ca84dc3cd5d9032b5c3206250674c20b55ad525a2fca7",
+    "catalogHash": "sha256:285e42e596b7bde092824c38a446f23d7bd4ac40fc551a0e0d58be6d08f135dc"
+  },
+  "moleculeInventoryHash": "sha256:a243774aee05d980d07cae75cf2e574b3a9c93761f3cec240a457e3dc5d5b78d",
+  "moleculeHashes": {
+    "/_102040_/l2/molecules/groupviewtable/index.defs": "sha256:3e2e055853cf7b3fb3d01991dcfd148dc9030d8b9cbef76640feb87157f0d4f9",
+    "/_102020_/l2/aura/molecules/skills/groupViewTable/usage": "sha256:36320ac5933a879e44fc9e9b9dc7112ea73d25f1ea39d13304b0dbce85c6eb78",
+    "/_102040_/l2/molecules/groupnavigatesection/index.defs": "sha256:367863a7c12c553fa024f441d4cf41632b6d54a6387b33bd03da7b83a1b8c369",
+    "/_102020_/l2/aura/molecules/skills/groupNavigateSection/usage": "sha256:df701aaafb37e08e88fe7da485e67dff9c3c763ee871fc8864a756e99c01cb49",
+    "/_102040_/l2/molecules/groupshowprogress/index.defs": "sha256:072c083ab8c8f558aac8605b1bf381e6a3ca5f54bdffe5790f7d9941953719f5",
+    "/_102020_/l2/aura/molecules/skills/groupShowProgress/usage": "sha256:cb29a9fc515fc7ec7424875b83b8bd4482ad7eaf23a90a72a71473b96faaa1a0",
+    "/_102040_/l2/molecules/groupsearchcontent/index.defs": "sha256:27988d1fa4120362c6529663ac2cfc8a97b53ece995329bb6fe9bc98a9acbb5f",
+    "/_102020_/l2/aura/molecules/skills/groupSearchContent/usage": "sha256:c1e4ab5899f80b0541f4364c875e164de747d053a3b2f09748a6f87be373738e",
+    "/_102040_/l2/molecules/groupviewcard/index.defs": "sha256:ef557fceab6248a6ef1292cb692929b1793b71d12866fe13d1980a1378819f4c",
+    "/_102020_/l2/aura/molecules/skills/groupViewCard/usage": "sha256:136a98aa182ec2d9d2bea7fe649783d51c091deb59c7d13e6f31fecc850b08c9",
+    "/_102040_/l2/molecules/groupnotifyuser/index.defs": "sha256:b041b5f2e0d3deb0e4abf184e15d9542862677e3659da5f1969d6db2bd8d8e08",
+    "/_102020_/l2/aura/molecules/skills/groupNotifyUser/usage": "sha256:f0f8cbf8f40d261b222b6d0c53f31a6690c1ad85502f1601c0b893ea7cdb4aa2",
+    "/_102040_/l2/molecules/groupentertext/index.defs": "sha256:38ec5d8bb137a2b12192fec3b1a9df3357f9034cc7f6106ddc8ba07dc73095db",
+    "/_102020_/l2/aura/molecules/skills/groupEnterText/usage": "sha256:ac42da7e457722bd9f08e16cb6ffdae397b3ffd9fbe02a4481e1381eb6f8a75f",
+    "/_102040_/l2/molecules/groupenterdate/index.defs": "sha256:3b123b9e6001dd5f5a79e1d006302350ea764a858a2f15ee84f561fcfe902c5b",
+    "/_102020_/l2/aura/molecules/skills/groupEnterDate/usage": "sha256:dea694dd437ab896405db9ca67fbd5e895e736d00f798320bc8e146e7b772aaf",
+    "/_102040_/l2/molecules/groupselectone/index.defs": "sha256:6cd31103bd70d5d83feffcc8fe97dbbdbbd1cd3912cf50251c8e650f412b882a",
+    "/_102020_/l2/aura/molecules/skills/groupSelectOne/usage": "sha256:5d7eaae4f1b9b028779e06d51b656ad6c0cd8f696cca6de267f0236e6efb7760",
+    "/_102040_/l2/molecules/grouptriggeraction/index.defs": "sha256:b64c73d526fbc780a7a512a661d48a92fe29722bb9338ca939090a9dad2d4dca",
+    "/_102020_/l2/aura/molecules/skills/groupTriggerAction/usage": "sha256:be6151e6341cc19ffc02dc2699bb210b88e18051320c3e09d862be283822e485",
+    "/_102040_/l2/molecules/groupenterboolean/index.defs": "sha256:f01bf583edd0aaeae58e296fa52b185cda14f065da42f6dd8dfab20798043c2b",
+    "/_102020_/l2/aura/molecules/skills/groupEnterBoolean/usage": "sha256:a6e099d45adbfe024dfe2d3660a13746992b3f20e4dc892496aab900db0fdcc7",
+    "/_102040_/l2/molecules/groupviewdata/index.defs": "sha256:cd1aeb8f281ca1e1fcf30f0acf8f6b1707f6c43a675faedfca4b8f12504499fa",
+    "/_102020_/l2/aura/molecules/skills/groupViewData/usage": "sha256:bd498bbefd80c0985dce0f1f11b8fca1c9c595f244658c39ac87016ca70a5525"
+  },
+  "moleculeGroupAssessments": [
+    {
+      "organismId": "organism1",
+      "groups": [
+        {
+          "groupId": "groupViewTable",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNavigateSection",
+          "relevant": true
+        },
+        {
+          "groupId": "groupShowProgress",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism2",
+      "groups": [
+        {
+          "groupId": "groupViewCard",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewTable",
+          "relevant": true
+        },
+        {
+          "groupId": "groupShowProgress",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNotifyUser",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism3",
+      "groups": [
+        {
+          "groupId": "groupEnterText",
+          "relevant": true
+        },
+        {
+          "groupId": "groupEnterDate",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSelectOne",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism4",
+      "groups": [
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        },
+        {
+          "groupId": "groupEnterBoolean",
+          "relevant": true
+        },
+        {
+          "groupId": "groupEnterText",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNotifyUser",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism5",
+      "groups": [
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        }
+      ]
+    }
+  ],
+  "skillHash": "sha256:c3517179ccbde253ae6f8f2824b85092ccd698ba82925d87739370ba48f2e9d8",
+  "promptHash": "sha256:7c32290937225111880488f28364629141f1c1a16cff64eafa536c2ebaa93455",
+  "promptChars": 101794,
+  "repairPromptChars": 101794,
+  "sourceHashes": {
+    "desktop": "sha256:cdef8007b3164939506003681e1b4c364db9d21efd6b81b250d496202f864d80",
+    "mobile": "sha256:f386bfcc220c87b3e4db9d70e1e2a16d67494902baaa365f38c69c72d1f60d63"
+  },
+  "needsHashes": {
+    "desktop": "sha256:179280ba70e6c51b54d1bceb13767281f99e5b9b91b926f82f6326cb2a4544e1",
+    "mobile": "sha256:179280ba70e6c51b54d1bceb13767281f99e5b9b91b926f82f6326cb2a4544e1"
+  },
+  "menuOrigins": [
+    {
+      "organismId": "tarefasLista",
+      "sourceIndex": 0,
+      "kind": "list",
+      "text": "Tarefas de que sou responsável e as que criei, com prazo, prioridade, lista, quem age agora, progresso da checklist e marcação de vence hoje ou atrasada."
+    },
+    {
+      "organismId": "tarefaDetalhe",
+      "sourceIndex": 1,
+      "kind": "detail",
+      "text": "A tarefa aberta: responsável, prazo, prioridade, criada em, subtarefas, checklist com itens concluídos e quando, e o motivo da devolução quando houver."
+    },
+    {
+      "organismId": "tarefaForm",
+      "sourceIndex": 2,
+      "kind": "form",
+      "text": "Criar uma tarefa escolhendo o responsável pelo nome, prazo, prioridade e lista, adicionando itens de checklist; ou ajustar campos e checklist de uma tarefa sem mudar a situação."
+    },
+    {
+      "organismId": "tarefaAcoes",
+      "sourceIndex": 3,
+      "kind": "actions",
+      "text": "Iniciar, marcar item da checklist, enviar para revisão, aceitar ou devolver com motivo, retomar e reenviar, trocar o responsável ou cancelar uma tarefa que criei."
+    },
+    {
+      "organismId": "tarefaHistorico",
+      "sourceIndex": 4,
+      "kind": "timeline",
+      "text": "Histórico da tarefa: criação, início, envios para revisão, devoluções com motivo, aceite, troca de responsável e cancelamento."
+    }
+  ]
+}

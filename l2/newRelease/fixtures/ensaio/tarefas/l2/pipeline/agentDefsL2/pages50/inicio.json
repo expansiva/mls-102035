@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pages-v2.1",
+  "needsVersion": "2026-09-30-agent-defs-l2-page11-needs-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "inicio",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:9e3f92f3e8effb5df636304c30130866f4f05fe5eb0b266218014f48f73eacfb",
+  "template": {
+    "category": "activityNotificationHub",
+    "experience": "inboxSplit",
+    "reason": "Início é a central pessoal do membro: reúne o que depende dele agora (caixa de entrada com ações de iniciar, enviar para revisão, aceitar, devolver e retomar), o alerta do resumo das 8h, contadores e suas marcas efetivas. Isso corresponde a activityNotificationHub (atividades, alertas e ações contextuais), não a um quadro ou lista analítica. Mapeamento: organism1 → pendenciasAgora, organism2 → alertasPrazo, organism3 → indicadoresTarefas, organism4 → minhasPermissoes. Derived inboxSplit from activityNotificationHub.page21.",
+    "reference": "_102020_/l4/collabux/templates/activityNotificationHub/page21.md",
+    "hash": "sha256:816813b46cba0c9d0c4c6048392cc675356970c98491e932dc89d0807302cc26",
+    "catalogHash": "sha256:285e42e596b7bde092824c38a446f23d7bd4ac40fc551a0e0d58be6d08f135dc"
+  },
+  "moleculeInventoryHash": "sha256:a243774aee05d980d07cae75cf2e574b3a9c93761f3cec240a457e3dc5d5b78d",
+  "moleculeHashes": {
+    "/_102040_/l2/molecules/groupviewdata/index.defs": "sha256:cd1aeb8f281ca1e1fcf30f0acf8f6b1707f6c43a675faedfca4b8f12504499fa",
+    "/_102020_/l2/aura/molecules/skills/groupViewData/usage": "sha256:bd498bbefd80c0985dce0f1f11b8fca1c9c595f244658c39ac87016ca70a5525",
+    "/_102040_/l2/molecules/groupnavigatesection/index.defs": "sha256:367863a7c12c553fa024f441d4cf41632b6d54a6387b33bd03da7b83a1b8c369",
+    "/_102020_/l2/aura/molecules/skills/groupNavigateSection/usage": "sha256:df701aaafb37e08e88fe7da485e67dff9c3c763ee871fc8864a756e99c01cb49",
+    "/_102040_/l2/molecules/grouptriggeraction/index.defs": "sha256:b64c73d526fbc780a7a512a661d48a92fe29722bb9338ca939090a9dad2d4dca",
+    "/_102020_/l2/aura/molecules/skills/groupTriggerAction/usage": "sha256:be6151e6341cc19ffc02dc2699bb210b88e18051320c3e09d862be283822e485",
+    "/_102040_/l2/molecules/groupnotifyuser/index.defs": "sha256:b041b5f2e0d3deb0e4abf184e15d9542862677e3659da5f1969d6db2bd8d8e08",
+    "/_102020_/l2/aura/molecules/skills/groupNotifyUser/usage": "sha256:f0f8cbf8f40d261b222b6d0c53f31a6690c1ad85502f1601c0b893ea7cdb4aa2",
+    "/_102040_/l2/molecules/groupviewmetric/index.defs": "sha256:d29744fb8f555f77212029439f071181c7bb012342fcf00969df59f1446b99d7",
+    "/_102020_/l2/aura/molecules/skills/groupViewMetric/usage": "sha256:d14098c0c252f3e2a1d5ceeb6292de697ff8f2057b8c1ddde9fa66f4f4cf3b8a",
+    "/_102040_/l2/molecules/groupenterboolean/index.defs": "sha256:f01bf583edd0aaeae58e296fa52b185cda14f065da42f6dd8dfab20798043c2b",
+    "/_102020_/l2/aura/molecules/skills/groupEnterBoolean/usage": "sha256:a6e099d45adbfe024dfe2d3660a13746992b3f20e4dc892496aab900db0fdcc7"
+  },
+  "moleculeGroupAssessments": [
+    {
+      "organismId": "organism1",
+      "groups": [
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNavigateSection",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism2",
+      "groups": [
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNotifyUser",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism3",
+      "groups": [
+        {
+          "groupId": "groupViewMetric",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism4",
+      "groups": [
+        {
+          "groupId": "groupEnterBoolean",
+          "relevant": true
+        }
+      ]
+    }
+  ],
+  "skillHash": "sha256:c3517179ccbde253ae6f8f2824b85092ccd698ba82925d87739370ba48f2e9d8",
+  "promptHash": "sha256:7c32290937225111880488f28364629141f1c1a16cff64eafa536c2ebaa93455",
+  "promptChars": 61943,
+  "repairPromptChars": 0,
+  "sourceHashes": {
+    "desktop": "sha256:a4e6bf2bf6da9c4a807de3bd360f68807dc689808a33b937081fd017c787633b",
+    "mobile": "sha256:bdef57eb2b4fea2c603bea1e735fef71205fd380d328c93c7763bfcbb2ed9e8c"
+  },
+  "needsHashes": {
+    "desktop": "sha256:060db0a2dc579d506118868381d192b85dc11a914630102a9e635d668da8b028",
+    "mobile": "sha256:f7dfa24acda3741356c3ba69471e5936e7dc94efaeaea6bae6a5bbadf52f2d47"
+  },
+  "menuOrigins": [
+    {
+      "organismId": "pendenciasAgora",
+      "sourceIndex": 0,
+      "kind": "inbox",
+      "text": "O que depende de mim agora: tarefas para iniciar e executar, tarefas que criei aguardando minha revisão e tarefas devolvidas para eu retomar."
+    },
+    {
+      "organismId": "alertasPrazo",
+      "sourceIndex": 1,
+      "kind": "alerts",
+      "text": "Resumo das 8h: minhas tarefas abertas que vencem hoje ou estão atrasadas, para abrir direto."
+    },
+    {
+      "organismId": "indicadoresTarefas",
+      "sourceIndex": 2,
+      "kind": "highlights",
+      "text": "Quantas tarefas abertas eu tenho, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas aguardando retomada."
+    },
+    {
+      "organismId": "minhasPermissoes",
+      "sourceIndex": 3,
+      "kind": "summary",
+      "text": "Se eu aceito tarefas e se posso criar tarefas (efetivo)."
+    }
+  ]
+}

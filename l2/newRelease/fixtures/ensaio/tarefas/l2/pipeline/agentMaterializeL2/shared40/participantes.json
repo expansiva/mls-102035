@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-shared-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "participantes",
+  "unitInputHash": "sha256:59dc8268140f609a69646e14782cc42614674e6117f357efe517349725b20628",
+  "promptHash": "sha256:b70bea88413f612669d6f5a1375c4eafb045b518a297d8dc974845627ab7cb76",
+  "rulesHash": "sha256:0409f30f0fa7c1e572f1b9b9db0cbf66ac15429db54c1a922da805b43bcfe905",
+  "sourcePath": "l2/tarefas/web/shared/participantes.ts",
+  "sourceHash": "sha256:6b402bf869846e904e18d9b0c2964c181f064cb3bc268cb8615e323429c11945",
+  "declarationPath": "l2/tarefas/web/shared/participantesDts.txt",
+  "declarationHash": "sha256:517949ac6037f25175823920a75da935b57ce5684c49646372fcff038d2a22c8",
+  "attempt": 1,
+  "findings": [
+    {
+      "code": "SELECT_SETTER_MISSING",
+      "message": "The select param participanteId (effect select:formParticipante) has no request that fetches one record. Added public selectParticipante(id | null), which resolves the id against the loaded list, fills salvarMarcasDraft from the row and publishes client.selectionInvalid in listarParticipantesError when no row matches; the record is exposed by the getter formParticipante."
+    },
+    {
+      "code": "FILTER_STATE_MISSING",
+      "message": "The param busca (filter:listaParticipantes, persisted) has no state in the definition. Added the persisted state busca, used by listarParticipantes(busca?, page, append)."
+    },
+    {
+      "code": "FORM_DRAFT_MISSING",
+      "message": "The commands incluirParticipante and salvarMarcas have no <command>.input state. Added incluirParticipanteDraft and salvarMarcasDraft with setSetIncluirParticipanteDraft/setSalvarMarcasDraft setters (setIncluirParticipanteDraft, setSalvarMarcasDraft)."
+    },
+    {
+      "code": "STATE_LEFT_STALE",
+      "message": "incluirParticipante returns the participant but no state has it as source: it is inserted by id in participantes and the user is removed from usuarios (no longer a candidate). pageStatus is not rewritten by commands, so it can stay 'empty' after including the first participant until the next load."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public busca is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public formParticipante is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public incluirParticipanteDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public salvarMarcasDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public selectParticipante is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setIncluirParticipanteDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setSalvarMarcasDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    }
+  ]
+}

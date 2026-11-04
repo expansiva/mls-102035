@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "2026-10-04-agent-defs-l2-contracts-v3",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "participantes",
+  "sharedHash": "sha256:cab5cd3ef00ce644eeb75779abee327d6751fc2ad507900851335ed8363f9786",
+  "designHash": "sha256:8b6598ee432dee12b6501d27ffa175d25a7b1663e61bcc52ef1b4041f706d6b8",
+  "sourceHash": "sha256:93a1280344bfee33ec49819f2d1352e161cd7e80265deab197ce6c3e78f84c68"
+}

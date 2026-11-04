@@ -1,0 +1,90 @@
+{
+  "organisms": {
+    "tarefasEquipe": {
+      "reads": [
+        "Tarefa.id",
+        "Tarefa.titulo",
+        "Tarefa.status",
+        "Tarefa.prioridade",
+        "Tarefa.prazo",
+        "Tarefa.listaId",
+        "Tarefa.responsavelId",
+        "Tarefa.criadaEm",
+        "Tarefa.details.quemAgeAgora",
+        "Tarefa.details.venceHoje",
+        "Tarefa.details.atrasada",
+        "Tarefa.details.progressoChecklist",
+        "ListaTarefas.nome",
+        "Participante.details.identification.name"
+      ],
+      "edits": [],
+      "selects": "tarefaDetalhe",
+      "submits": []
+    },
+    "tarefaDetalhe": {
+      "reads": [
+        "Tarefa.titulo",
+        "Tarefa.status",
+        "Tarefa.prioridade",
+        "Tarefa.prazo",
+        "Tarefa.listaId",
+        "Tarefa.responsavelId",
+        "Tarefa.criadorId",
+        "Tarefa.criadaEm",
+        "Tarefa.details.descricao",
+        "Tarefa.details.quemAgeAgora",
+        "Tarefa.details.quantidadeSubtarefas",
+        "Tarefa.details.progressoChecklist",
+        "ListaTarefas.nome",
+        "Participante.details.identification.name",
+        "ItemChecklist.ordem",
+        "ItemChecklist.details.descricao",
+        "ItemChecklist.details.concluido",
+        "ItemChecklist.details.concluidoEm"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    },
+    "tarefaAcoes": {
+      "reads": [
+        "Tarefa.status",
+        "Tarefa.responsavelId",
+        "Tarefa.details.aberta",
+        "Participante.details.identification.name",
+        "Participante.details.identification.status",
+        "Participante.details.tarefas.aceitaTarefasEfetivo"
+      ],
+      "edits": [
+        "Tarefa.responsavelId"
+      ],
+      "selects": "",
+      "submits": [
+        {
+          "intentId": "trocarResponsavel",
+          "write": "Tarefa.update"
+        },
+        {
+          "intentId": "cancelarTarefa",
+          "write": "Tarefa.cancelar"
+        }
+      ]
+    },
+    "tarefaHistorico": {
+      "reads": [
+        "Tarefa.criadaEm",
+        "Tarefa.status",
+        "Tarefa.details.devolvidaEm",
+        "Tarefa.details.motivoDevolucao",
+        "Tarefa.details.retomadaEm",
+        "Tarefa.details.concluidaEm",
+        "Tarefa.details.canceladaEm",
+        "Tarefa.responsavelId",
+        "Participante.details.identification.name"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    }
+  }
+}

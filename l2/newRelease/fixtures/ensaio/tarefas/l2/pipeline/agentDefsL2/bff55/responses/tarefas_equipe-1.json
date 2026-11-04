@@ -1,0 +1,1198 @@
+{
+  "attempt": "1",
+  "model": "claude-opus-5-5",
+  "promptChars": 43027,
+  "receivedAt": "2026-10-23T01:46:43.097Z",
+  "raw": {
+    "type": "flexible",
+    "result": {
+      "toolName": "submitD2Bff",
+      "arguments": {
+        "types": [
+          {
+            "name": "TarefaResumo",
+            "description": "Tarefa da organização em forma resumida, com a lista, o responsável, quem age agora e as marcas de vencimento já calculadas.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.id"
+                  ]
+                }
+              },
+              {
+                "name": "version",
+                "type": "number",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.version"
+                  ]
+                }
+              },
+              {
+                "name": "titulo",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.titulo"
+                  ]
+                }
+              },
+              {
+                "name": "status",
+                "type": "'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada'",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.status"
+                  ]
+                }
+              },
+              {
+                "name": "prioridade",
+                "type": "'baixa' | 'media' | 'alta'",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prioridade"
+                  ]
+                }
+              },
+              {
+                "name": "prazo",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prazo"
+                  ]
+                }
+              },
+              {
+                "name": "listaId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.listaId"
+                  ]
+                }
+              },
+              {
+                "name": "listaNome",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ListaTarefas.nome"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.responsavelId"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelNome",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "criadaEm",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.criadaEm"
+                  ]
+                }
+              },
+              {
+                "name": "quemAgeAgora",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.quemAgeAgora"
+                  ]
+                }
+              },
+              {
+                "name": "quemAgeAgoraNome",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.details.quemAgeAgora",
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "venceHoje",
+                "type": "boolean",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.venceHoje"
+                  ]
+                }
+              },
+              {
+                "name": "atrasada",
+                "type": "boolean",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.atrasada"
+                  ]
+                }
+              },
+              {
+                "name": "progressoChecklist",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.progressoChecklist"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "ContagemSituacao",
+            "description": "Quantidade de tarefas em uma situação, dentro dos filtros aplicados.",
+            "fields": [
+              {
+                "name": "status",
+                "type": "'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada'",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.status"
+                  ]
+                }
+              },
+              {
+                "name": "quantidade",
+                "type": "number",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.id",
+                    "Tarefa.status"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "ListaOpcao",
+            "description": "Lista de tarefas identificada pelo nome.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ListaTarefas.id"
+                  ]
+                }
+              },
+              {
+                "name": "nome",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ListaTarefas.nome"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "ParticipanteOpcao",
+            "description": "Participante do módulo identificado pelo nome, com a situação na plataforma e se aceita tarefas.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Participante.id"
+                  ]
+                }
+              },
+              {
+                "name": "name",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "status",
+                "type": "'Active' | 'Inactive' | 'Merged' | 'Blocked'",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Participante.details.identification.status"
+                  ]
+                }
+              },
+              {
+                "name": "aceitaTarefasEfetivo",
+                "type": "boolean",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Participante.details.tarefas.aceitaTarefasEfetivo"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "ItemChecklistLinha",
+            "description": "Item da checklist de uma tarefa, na sua ordem, com a marca de concluído.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ItemChecklist.id"
+                  ]
+                }
+              },
+              {
+                "name": "ordem",
+                "type": "number",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ItemChecklist.ordem"
+                  ]
+                }
+              },
+              {
+                "name": "descricao",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ItemChecklist.details.descricao"
+                  ]
+                }
+              },
+              {
+                "name": "concluido",
+                "type": "boolean",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ItemChecklist.details.concluido"
+                  ]
+                }
+              },
+              {
+                "name": "concluidoEm",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ItemChecklist.details.concluidoEm"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "EventoTarefa",
+            "description": "Evento do ciclo de uma tarefa (criação, início, envio para revisão, devolução, retomada, conclusão, troca de responsável ou cancelamento) com o momento em que ocorreu.",
+            "fields": [
+              {
+                "name": "tipo",
+                "type": "string",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.status",
+                    "Tarefa.criadaEm",
+                    "Tarefa.details.devolvidaEm",
+                    "Tarefa.details.retomadaEm",
+                    "Tarefa.details.concluidaEm",
+                    "Tarefa.details.canceladaEm",
+                    "Tarefa.responsavelId"
+                  ]
+                }
+              },
+              {
+                "name": "momento",
+                "type": "string",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.criadaEm",
+                    "Tarefa.details.devolvidaEm",
+                    "Tarefa.details.retomadaEm",
+                    "Tarefa.details.concluidaEm",
+                    "Tarefa.details.canceladaEm"
+                  ]
+                }
+              },
+              {
+                "name": "motivoDevolucao",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.motivoDevolucao"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelNome",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.responsavelId",
+                    "Participante.details.identification.name"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "TarefaDetalhe",
+            "description": "Tarefa completa com lista, responsável, quem criou, quem age agora, subtarefas, checklist em ordem e o histórico de eventos.",
+            "fields": [
+              {
+                "name": "id",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.id"
+                  ]
+                }
+              },
+              {
+                "name": "version",
+                "type": "number",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.version"
+                  ]
+                }
+              },
+              {
+                "name": "titulo",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.titulo"
+                  ]
+                }
+              },
+              {
+                "name": "status",
+                "type": "'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada'",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.status"
+                  ]
+                }
+              },
+              {
+                "name": "prioridade",
+                "type": "'baixa' | 'media' | 'alta'",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prioridade"
+                  ]
+                }
+              },
+              {
+                "name": "prazo",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prazo"
+                  ]
+                }
+              },
+              {
+                "name": "listaId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.listaId"
+                  ]
+                }
+              },
+              {
+                "name": "listaNome",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "ListaTarefas.nome"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.responsavelId"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelNome",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "criadorId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.criadorId"
+                  ]
+                }
+              },
+              {
+                "name": "criadorNome",
+                "type": "string",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.criadorId",
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "quemAgeAgora",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.quemAgeAgora"
+                  ]
+                }
+              },
+              {
+                "name": "quemAgeAgoraNome",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.details.quemAgeAgora",
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "criadaEm",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.criadaEm"
+                  ]
+                }
+              },
+              {
+                "name": "descricao",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.descricao"
+                  ]
+                }
+              },
+              {
+                "name": "aberta",
+                "type": "boolean",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.aberta"
+                  ]
+                }
+              },
+              {
+                "name": "quantidadeSubtarefas",
+                "type": "number",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.quantidadeSubtarefas"
+                  ]
+                }
+              },
+              {
+                "name": "progressoChecklist",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.details.progressoChecklist"
+                  ]
+                }
+              },
+              {
+                "name": "checklist",
+                "type": "ItemChecklistLinha[]",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "ItemChecklist.ordem",
+                    "ItemChecklist.details.descricao",
+                    "ItemChecklist.details.concluido",
+                    "ItemChecklist.details.concluidoEm"
+                  ]
+                }
+              },
+              {
+                "name": "historico",
+                "type": "EventoTarefa[]",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.criadaEm",
+                    "Tarefa.status",
+                    "Tarefa.details.devolvidaEm",
+                    "Tarefa.details.motivoDevolucao",
+                    "Tarefa.details.retomadaEm",
+                    "Tarefa.details.concluidaEm",
+                    "Tarefa.details.canceladaEm",
+                    "Tarefa.responsavelId"
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "endpoints": [
+          {
+            "id": "carregarFiltrosEquipe",
+            "kind": "qry",
+            "when": "onLoad",
+            "input": [],
+            "output": [
+              {
+                "name": "listas",
+                "type": "ListaOpcao[]",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "ListaTarefas.id",
+                    "ListaTarefas.nome"
+                  ]
+                }
+              },
+              {
+                "name": "participantes",
+                "type": "ParticipanteOpcao[]",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Participante.id",
+                    "Participante.details.identification.name",
+                    "Participante.details.identification.status",
+                    "Participante.details.tarefas.aceitaTarefasEfetivo"
+                  ]
+                }
+              }
+            ],
+            "rules": [
+              "participanteNaoConfiguradoAceitaECria"
+            ],
+            "jsdoc": {
+              "purpose": "Carrega as opções dos filtros de lista e de responsável da visão de tarefas da equipe.",
+              "input": "Nenhuma entrada; o gestor é identificado pela sessão.",
+              "processing": "Lê as listas de tarefas ordenadas pelo nome e os participantes do módulo pelo papel tarefas.Participante, ordenados pelo nome. aceitaTarefasEfetivo é calculado (participanteNaoConfiguradoAceitaECria: sem configuração vale sim), nunca gravado.",
+              "output": "As listas de tarefas (id e nome) e os participantes (id, nome, situação na plataforma e se aceita tarefas)."
+            }
+          },
+          {
+            "id": "listarTarefasEquipe",
+            "kind": "qry",
+            "when": "interaction",
+            "input": [
+              {
+                "name": "listaId",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.listaId"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelId",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.responsavelId"
+                  ]
+                }
+              },
+              {
+                "name": "prioridade",
+                "type": "'baixa' | 'media' | 'alta'",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prioridade"
+                  ]
+                }
+              },
+              {
+                "name": "status",
+                "type": "'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada'",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.status"
+                  ]
+                }
+              },
+              {
+                "name": "prazoDe",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prazo"
+                  ]
+                }
+              },
+              {
+                "name": "prazoAte",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.prazo"
+                  ]
+                }
+              },
+              {
+                "name": "page",
+                "type": "number",
+                "origin": {
+                  "kind": "context",
+                  "paths": []
+                }
+              },
+              {
+                "name": "pageSize",
+                "type": "number",
+                "origin": {
+                  "kind": "context",
+                  "paths": []
+                }
+              }
+            ],
+            "output": [
+              {
+                "name": "tarefas",
+                "type": "TarefaResumo[]",
+                "paginated": true,
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.id",
+                    "Tarefa.titulo",
+                    "Tarefa.status",
+                    "Tarefa.prioridade",
+                    "Tarefa.prazo",
+                    "Tarefa.listaId",
+                    "Tarefa.responsavelId",
+                    "Tarefa.criadaEm",
+                    "Tarefa.details.quemAgeAgora",
+                    "Tarefa.details.venceHoje",
+                    "Tarefa.details.atrasada",
+                    "Tarefa.details.progressoChecklist",
+                    "ListaTarefas.nome",
+                    "Participante.details.identification.name"
+                  ]
+                }
+              },
+              {
+                "name": "contagemPorSituacao",
+                "type": "ContagemSituacao[]",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.id",
+                    "Tarefa.status"
+                  ]
+                }
+              }
+            ],
+            "rules": [
+              "membroVeResponsavelOuCriador",
+              "gestorPorAcessoPlataforma",
+              "quemAgeAgoraPorSituacao",
+              "tarefaAbertaVencimento"
+            ],
+            "jsdoc": {
+              "purpose": "Lista todas as tarefas da organização com os filtros do gestor, servindo tanto a visão em lista quanto o quadro por situação.",
+              "input": "listaId, responsavelId, prioridade e status: filtros opcionais por igualdade; prazoDe e prazoAte: intervalo opcional de prazo; page e pageSize: página pedida.",
+              "processing": "Executa ao abrir a página (sem filtros) e a cada mudança de filtro ou página. O gestor, definido pelo acesso da plataforma (gestorPorAcessoPlataforma), vê todas as tarefas (membroVeResponsavelOuCriador). Ordena por criadaEm decrescente. Junta o nome da lista e os nomes do responsável e de quem age agora. Calcula quemAgeAgora pela situação (quemAgeAgoraPorSituacao), venceHoje e atrasada (tarefaAbertaVencimento) e progressoChecklist contando itens marcados sobre o total; nada disso é gravado. Conta as tarefas por situação sob os mesmos filtros, sem paginação.",
+              "output": "A página de tarefas resumidas { items, page, pageSize, hasMore } e a quantidade de tarefas em cada situação para os mesmos filtros."
+            }
+          },
+          {
+            "id": "obterTarefaEquipe",
+            "kind": "qry",
+            "when": "interaction",
+            "input": [
+              {
+                "name": "tarefaId",
+                "type": "string",
+                "origin": {
+                  "kind": "context",
+                  "paths": []
+                }
+              }
+            ],
+            "output": [
+              {
+                "name": "tarefa",
+                "type": "TarefaDetalhe",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.titulo",
+                    "Tarefa.status",
+                    "Tarefa.prioridade",
+                    "Tarefa.prazo",
+                    "Tarefa.listaId",
+                    "Tarefa.responsavelId",
+                    "Tarefa.criadorId",
+                    "Tarefa.criadaEm",
+                    "Tarefa.details.descricao",
+                    "Tarefa.details.quemAgeAgora",
+                    "Tarefa.details.aberta",
+                    "Tarefa.details.quantidadeSubtarefas",
+                    "Tarefa.details.progressoChecklist",
+                    "ListaTarefas.nome",
+                    "Participante.details.identification.name",
+                    "ItemChecklist.ordem",
+                    "ItemChecklist.details.descricao",
+                    "ItemChecklist.details.concluido",
+                    "ItemChecklist.details.concluidoEm"
+                  ]
+                }
+              }
+            ],
+            "rules": [
+              "quemAgeAgoraPorSituacao",
+              "tarefaAbertaVencimento",
+              "moduloNaoGuardaComentarios"
+            ],
+            "jsdoc": {
+              "purpose": "Abre uma tarefa da organização com tudo que o gestor confere antes de agir: responsável, prazo, checklist, subtarefas e histórico.",
+              "input": "tarefaId: id da tarefa escolhida na lista ou no quadro.",
+              "processing": "Lê a tarefa pelo id, junta o nome da lista e os nomes do responsável, de quem criou e de quem age agora. Lista os itens da checklist pela tarefa em ordem. Calcula quemAgeAgora (quemAgeAgoraPorSituacao), aberta (tarefaAbertaVencimento), quantidadeSubtarefas contando as tarefas que apontam esta como pai e progressoChecklist; nada disso é gravado. Monta o histórico em ordem de tempo a partir de criadaEm, devolvidaEm com motivo, retomadaEm, concluidaEm, canceladaEm e dos eventos de mudança de situação e reatribuição da ocorrência do processo de tarefa da plataforma. Comentários e anexos não vêm daqui (moduloNaoGuardaComentarios).",
+              "output": "A tarefa no estado atual, com sua checklist ordenada e o histórico de eventos em ordem de tempo."
+            }
+          },
+          {
+            "id": "buscarResponsaveisDisponiveis",
+            "kind": "qry",
+            "when": "interaction",
+            "input": [
+              {
+                "name": "nome",
+                "type": "string",
+                "optional": true,
+                "origin": {
+                  "kind": "context",
+                  "paths": []
+                }
+              }
+            ],
+            "output": [
+              {
+                "name": "participantes",
+                "type": "ParticipanteOpcao[]",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Participante.id",
+                    "Participante.details.identification.name",
+                    "Participante.details.identification.status",
+                    "Participante.details.tarefas.aceitaTarefasEfetivo"
+                  ]
+                }
+              }
+            ],
+            "rules": [
+              "responsavelAceitaTarefas",
+              "escolhaResponsavelPeloNome",
+              "participanteNaoConfiguradoAceitaECria"
+            ],
+            "jsdoc": {
+              "purpose": "Busca pelo nome os participantes que podem ser escolhidos como novo responsável.",
+              "input": "nome: trecho do nome digitado; vazio traz os primeiros por ordem alfabética.",
+              "processing": "Filtra participantes ativos que aceitam tarefas (responsavelAceitaTarefas), com aceitaTarefasEfetivo calculado como sim quando o gestor não configurou (participanteNaoConfiguradoAceitaECria). A busca é só pelo nome, nunca pelo e-mail (escolhaResponsavelPeloNome). Limita a uma quantidade curta de resultados ordenados pelo nome.",
+              "output": "Os participantes elegíveis encontrados, com id, nome, situação e se aceita tarefas."
+            }
+          },
+          {
+            "id": "trocarResponsavelTarefa",
+            "kind": "cmd",
+            "when": "trocarResponsavel",
+            "writes": "Tarefa.update",
+            "input": [
+              {
+                "name": "tarefaId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.id"
+                  ]
+                }
+              },
+              {
+                "name": "version",
+                "type": "number",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.version"
+                  ]
+                }
+              },
+              {
+                "name": "responsavelId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.responsavelId"
+                  ]
+                }
+              }
+            ],
+            "output": [
+              {
+                "name": "tarefa",
+                "type": "TarefaDetalhe",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.responsavelId",
+                    "Tarefa.status",
+                    "Tarefa.details.quemAgeAgora",
+                    "Participante.details.identification.name"
+                  ]
+                }
+              }
+            ],
+            "rules": [
+              "reatribuirApenasCriadorOuGestor",
+              "gestorPorAcessoPlataforma",
+              "responsavelAceitaTarefas",
+              "edicaoNaoMudaSituacao",
+              "quemAgeAgoraPorSituacao",
+              "avisarQuemAgeAgora"
+            ],
+            "jsdoc": {
+              "purpose": "Troca o responsável de uma tarefa pelo participante escolhido pelo gestor.",
+              "input": "tarefaId: tarefa a reatribuir; version: versão lida, para concorrência otimista; responsavelId: novo responsável escolhido pelo nome.",
+              "processing": "Recusa quem não é o criador nem gestor pelo acesso da plataforma (reatribuirApenasCriadorOuGestor, gestorPorAcessoPlataforma). Recusa responsável inativo ou que não aceita tarefas (responsavelAceitaTarefas). Recusa versão divergente. Grava só o responsável, sem mudar a situação (edicaoNaoMudaSituacao). Quando a tarefa está a fazer ou em andamento, o novo responsável passa a ser quem age agora (quemAgeAgoraPorSituacao, calculado, não gravado) e a ocorrência do processo da plataforma troca e avisa essa pessoa (avisarQuemAgeAgora).",
+              "output": "A tarefa no novo estado, com o novo responsável, quem age agora recalculado, checklist e histórico incluindo a troca."
+            }
+          },
+          {
+            "id": "cancelarTarefaEquipe",
+            "kind": "cmd",
+            "when": "cancelarTarefa",
+            "writes": "Tarefa.cancelar",
+            "input": [
+              {
+                "name": "tarefaId",
+                "type": "string",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.id"
+                  ]
+                }
+              },
+              {
+                "name": "version",
+                "type": "number",
+                "origin": {
+                  "kind": "field",
+                  "paths": [
+                    "Tarefa.version"
+                  ]
+                }
+              }
+            ],
+            "output": [
+              {
+                "name": "tarefa",
+                "type": "TarefaDetalhe",
+                "origin": {
+                  "kind": "aggregate",
+                  "paths": [
+                    "Tarefa.status",
+                    "Tarefa.details.canceladaEm",
+                    "Tarefa.details.aberta",
+                    "Tarefa.details.quemAgeAgora"
+                  ]
+                }
+              }
+            ],
+            "rules": [
+              "cancelarApenasCriadorOuGestor",
+              "gestorPorAcessoPlataforma",
+              "avisarQuemAgeAgora",
+              "quemAgeAgoraPorSituacao"
+            ],
+            "jsdoc": {
+              "purpose": "Cancela uma tarefa ainda aberta a pedido do gestor.",
+              "input": "tarefaId: tarefa a cancelar; version: versão lida, para concorrência otimista.",
+              "processing": "Recusa quem não é o criador nem gestor pelo acesso da plataforma e recusa tarefa que não está a fazer, em andamento ou em revisão (cancelarApenasCriadorOuGestor, gestorPorAcessoPlataforma). Recusa versão divergente. Aplica a transição cancelar, levando a situação a cancelada e registrando canceladaEm. Antes de trocar, identifica quem estava agindo e o processo da plataforma o avisa (avisarQuemAgeAgora); depois quem age agora passa a ser ninguém (quemAgeAgoraPorSituacao, calculado).",
+              "output": "A tarefa cancelada, não mais aberta, sem quem age agora, com checklist e histórico incluindo o cancelamento."
+            }
+          }
+        ],
+        "bindings": {
+          "organisms": [
+            {
+              "organism": "tarefasEquipe",
+              "reads": "listarTarefasEquipe.tarefas"
+            },
+            {
+              "organism": "tarefasEquipe",
+              "reads": "listarTarefasEquipe.contagemPorSituacao"
+            },
+            {
+              "organism": "tarefasEquipe",
+              "reads": "carregarFiltrosEquipe.listas"
+            },
+            {
+              "organism": "tarefasEquipe",
+              "reads": "carregarFiltrosEquipe.participantes"
+            },
+            {
+              "organism": "tarefaDetalhe",
+              "reads": "obterTarefaEquipe.tarefa"
+            },
+            {
+              "organism": "tarefaAcoes",
+              "reads": "obterTarefaEquipe.tarefa"
+            },
+            {
+              "organism": "tarefaAcoes",
+              "reads": "buscarResponsaveisDisponiveis.participantes"
+            },
+            {
+              "organism": "tarefaHistorico",
+              "reads": "obterTarefaEquipe.tarefa"
+            }
+          ],
+          "commands": [
+            {
+              "endpoint": "trocarResponsavelTarefa",
+              "refreshes": [
+                "listarTarefasEquipe"
+              ]
+            },
+            {
+              "endpoint": "cancelarTarefaEquipe",
+              "refreshes": [
+                "listarTarefasEquipe"
+              ]
+            }
+          ],
+          "selections": [
+            {
+              "organism": "tarefasEquipe",
+              "via": {
+                "kind": "query",
+                "ref": "obterTarefaEquipe"
+              }
+            }
+          ],
+          "updates": [
+            {
+              "endpoint": "listarTarefasEquipe",
+              "state": "listarTarefasEquipe.tarefas",
+              "mode": "replace"
+            },
+            {
+              "endpoint": "listarTarefasEquipe",
+              "state": "listarTarefasEquipe.tarefas",
+              "mode": "append"
+            },
+            {
+              "endpoint": "trocarResponsavelTarefa",
+              "state": "obterTarefaEquipe.tarefa",
+              "mode": "replace"
+            },
+            {
+              "endpoint": "cancelarTarefaEquipe",
+              "state": "obterTarefaEquipe.tarefa",
+              "mode": "replace"
+            }
+          ],
+          "journeys": [
+            {
+              "step": "acompanharTarefas/filtrarTarefas",
+              "organisms": [
+                "tarefasEquipe"
+              ],
+              "endpoints": [
+                "carregarFiltrosEquipe",
+                "listarTarefasEquipe"
+              ]
+            },
+            {
+              "step": "acompanharTarefas/verQuadro",
+              "organisms": [
+                "tarefasEquipe"
+              ],
+              "endpoints": [
+                "listarTarefasEquipe"
+              ]
+            },
+            {
+              "step": "acompanharTarefas/abrirTarefaGestor",
+              "organisms": [
+                "tarefaDetalhe",
+                "tarefaHistorico"
+              ],
+              "endpoints": [
+                "obterTarefaEquipe"
+              ]
+            },
+            {
+              "step": "cancelarTarefa/localizarTarefaCancelar",
+              "organisms": [
+                "tarefasEquipe"
+              ],
+              "endpoints": [
+                "listarTarefasEquipe"
+              ]
+            },
+            {
+              "step": "cancelarTarefa/cancelar",
+              "organisms": [
+                "tarefaAcoes"
+              ],
+              "endpoints": [
+                "cancelarTarefaEquipe"
+              ]
+            },
+            {
+              "step": "reatribuirTarefa/localizarTarefaReatribuir",
+              "organisms": [
+                "tarefasEquipe"
+              ],
+              "endpoints": [
+                "carregarFiltrosEquipe",
+                "listarTarefasEquipe"
+              ]
+            },
+            {
+              "step": "reatribuirTarefa/verResponsavelAtual",
+              "organisms": [
+                "tarefaDetalhe"
+              ],
+              "endpoints": [
+                "obterTarefaEquipe"
+              ]
+            },
+            {
+              "step": "reatribuirTarefa/trocarResponsavel",
+              "organisms": [
+                "tarefaAcoes"
+              ],
+              "endpoints": [
+                "buscarResponsaveisDisponiveis",
+                "trocarResponsavelTarefa"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "status": "completed",
+    "stepId": 18,
+    "interaction": null,
+    "nextSteps": null
+  },
+  "verdict": "accepted"
+}

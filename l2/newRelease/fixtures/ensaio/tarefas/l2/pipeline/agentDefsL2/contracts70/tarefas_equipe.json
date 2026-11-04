@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "2026-10-04-agent-defs-l2-contracts-v3",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "tarefas_equipe",
+  "sharedHash": "sha256:ce1816dc25efa26b383cdc72924172848ad3fe364e7324799cf06f6ad7bf45bf",
+  "designHash": "sha256:a0b969c053ba5a75aebed67ca8e05da779c24718b671d797061496f9a30d7359",
+  "sourceHash": "sha256:940fd1870167acbe9dfa77a0e937c646b7292a33f36d82ee4ff0a19545d9a228"
+}

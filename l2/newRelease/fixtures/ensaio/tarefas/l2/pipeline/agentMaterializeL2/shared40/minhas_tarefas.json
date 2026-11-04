@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-shared-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "minhas_tarefas",
+  "unitInputHash": "sha256:b661adfe989294c44927dcefb3e7b8aa82bb79f96f16289ccebb6536b648636b",
+  "promptHash": "sha256:b70bea88413f612669d6f5a1375c4eafb045b518a297d8dc974845627ab7cb76",
+  "rulesHash": "sha256:92580d7e00b2f63df9d8825f6dd6464776bf944c3a68d4b421a7a8fba1e7a00b",
+  "sourcePath": "l2/tarefas/web/shared/minhas_tarefas.ts",
+  "sourceHash": "sha256:d1681e34aedb3b0bb089042b769e4d07c19229843b5595a4fa6dcb996a1e33c8",
+  "declarationPath": "l2/tarefas/web/shared/minhas_tarefasDts.txt",
+  "declarationHash": "sha256:24e408c0bb3c545fc8b293e77baa77ae52e3ba047d977cf148b84b3a478723bb",
+  "attempt": 2,
+  "findings": [
+    {
+      "code": "DRAFT_STATE_MISSING",
+      "message": "The defs have no <command>.input state for the form commands. Added public drafts with setters: cmdCriarTarefaDraft/setCmdCriarTarefaDraft (prefilled from entry params listaId, responsavelId, tarefaPaiId), cmdAdicionarItensChecklistDraft, cmdSalvarAlteracoesDraft (filled from the loaded tarefa and from each command output), cmdAjustarChecklistDraft and cmdDevolverDraft (the reason is typed), each with its set<RequestIdPascal>Draft setter."
+    },
+    {
+      "code": "FILTER_STATE_MISSING",
+      "message": "qryTarefasDoGrupo takes a group (responsavel, criadas, dependeDeMim) but no state holds it, and its output 'tarefas' has no state of its own. It writes the existing 'tarefas' state (replace or append) and the shared added the public state grupoTarefas (default 'dependeDeMim') so the page knows which group the list shows."
+    },
+    {
+      "code": "SELECT_SETTER_MISSING",
+      "message": "The selection of selectedTarefa had no member: qryTarefa(tarefaId | null) selects (publishes selectedTarefa, mirrored in the URL), fetches and keeps tarefa and historico; null clears the selection."
+    },
+    {
+      "code": "STATE_LEFT_STALE",
+      "message": "Commands return a TarefaCompleta, but the list 'tarefas' holds TarefaResumo rows (with venceHoje, atrasada and group membership computed by the backend) and the five totals. The shared cannot convert or recompute them, so after a command or create the list rows and totals stay stale until the page calls qryMinhasTarefas or qryTarefasDoGrupo again. Only tarefa, historico, selectedTarefa and the edit draft are redrawn."
+    },
+    {
+      "code": "SESSION_INPUT_EMPTY",
+      "message": "cmdCriarTarefa.criadorId must be the session person and the browser does not know that id; it is sent as an empty string for the backend to fill from the session."
+    },
+    {
+      "code": "STATE_NOT_LOADED_ON_OPEN",
+      "message": "qryResponsaveis and qryListas are not onLoad requests; the page must call qryResponsaveis() and qryListas() when the form opens (and with busca while the person searches)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdAdicionarItensChecklistDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdAjustarChecklistDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdCriarTarefaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdDevolverDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdSalvarAlteracoesDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public grupoTarefas is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdAdicionarItensChecklistDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdAjustarChecklistDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdCriarTarefaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdDevolverDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdSalvarAlteracoesDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    }
+  ]
+}

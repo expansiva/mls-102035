@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2026-10-13-agent-defs-l2-shared-v5",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "inicio",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "page11Hashes": {
+    "desktop": "sha256:a4e6bf2bf6da9c4a807de3bd360f68807dc689808a33b937081fd017c787633b",
+    "mobile": "sha256:bdef57eb2b4fea2c603bea1e735fef71205fd380d328c93c7763bfcbb2ed9e8c"
+  },
+  "draftHashes": {
+    "desktop": "sha256:060db0a2dc579d506118868381d192b85dc11a914630102a9e635d668da8b028",
+    "mobile": "sha256:f7dfa24acda3741356c3ba69471e5936e7dc94efaeaea6bae6a5bbadf52f2d47"
+  },
+  "designHash": "sha256:9ee264d2d58f23f917e9a94681d6d575f8f886b8f4219b4213ea56d533009e3d",
+  "siblingsHash": "sha256:bcca0b9b0d9e3ec72437398f2b8818a648575660860bd81f8940cff916663502",
+  "sourceHash": "sha256:4e2040c83efbc836d9459e9fa9fb1b20943de3b450d665ccbde2a0fe44b720c0"
+}

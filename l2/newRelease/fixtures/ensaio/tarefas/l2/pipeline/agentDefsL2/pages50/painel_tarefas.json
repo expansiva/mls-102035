@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pages-v2.1",
+  "needsVersion": "2026-09-30-agent-defs-l2-page11-needs-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "painel_tarefas",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:43e3498d73393501d541ba3ab2a112b340d7fb4c0e02f12d8fb64ada41c39134",
+  "template": {
+    "category": "dashboardCommandCenter",
+    "experience": "exceptionTriage",
+    "reason": "O Painel de tarefas é um painel de monitoramento do gestor. Ele mostra indicadores de toda a organização (tarefas abertas, que vencem hoje, atrasadas e devolvidas aguardando retomada) e um resumo das tarefas abertas por lista com o progresso das checklists. A página não grava nada, então a categoria dashboardCommandCenter é a mais adequada. Correspondência dos organismos: organism1 → indicadoresTarefas; organism2 → tarefasPorLista. Derived exceptionTriage from dashboardCommandCenter.page21.",
+    "reference": "_102020_/l4/collabux/templates/dashboardCommandCenter/page21.md",
+    "hash": "sha256:63d812c97d16ba5882584293792e17dddfbaf21cb1344db604df96170219743e",
+    "catalogHash": "sha256:285e42e596b7bde092824c38a446f23d7bd4ac40fc551a0e0d58be6d08f135dc"
+  },
+  "moleculeInventoryHash": "sha256:a243774aee05d980d07cae75cf2e574b3a9c93761f3cec240a457e3dc5d5b78d",
+  "moleculeHashes": {
+    "/_102040_/l2/molecules/groupviewmetric/index.defs": "sha256:d29744fb8f555f77212029439f071181c7bb012342fcf00969df59f1446b99d7",
+    "/_102020_/l2/aura/molecules/skills/groupViewMetric/usage": "sha256:d14098c0c252f3e2a1d5ceeb6292de697ff8f2057b8c1ddde9fa66f4f4cf3b8a",
+    "/_102040_/l2/molecules/groupviewtable/index.defs": "sha256:3e2e055853cf7b3fb3d01991dcfd148dc9030d8b9cbef76640feb87157f0d4f9",
+    "/_102020_/l2/aura/molecules/skills/groupViewTable/usage": "sha256:36320ac5933a879e44fc9e9b9dc7112ea73d25f1ea39d13304b0dbce85c6eb78",
+    "/_102040_/l2/molecules/groupshowprogress/index.defs": "sha256:072c083ab8c8f558aac8605b1bf381e6a3ca5f54bdffe5790f7d9941953719f5",
+    "/_102020_/l2/aura/molecules/skills/groupShowProgress/usage": "sha256:cb29a9fc515fc7ec7424875b83b8bd4482ad7eaf23a90a72a71473b96faaa1a0"
+  },
+  "moleculeGroupAssessments": [
+    {
+      "organismId": "organism1",
+      "groups": [
+        {
+          "groupId": "groupViewMetric",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism2",
+      "groups": [
+        {
+          "groupId": "groupViewTable",
+          "relevant": true
+        },
+        {
+          "groupId": "groupShowProgress",
+          "relevant": true
+        }
+      ]
+    }
+  ],
+  "skillHash": "sha256:c3517179ccbde253ae6f8f2824b85092ccd698ba82925d87739370ba48f2e9d8",
+  "promptHash": "sha256:7c32290937225111880488f28364629141f1c1a16cff64eafa536c2ebaa93455",
+  "promptChars": 50193,
+  "repairPromptChars": 0,
+  "sourceHashes": {
+    "desktop": "sha256:cafb25ed0f26c8ce1ed968fb9957484bceaae664a016588f7d4a95b416a4502e",
+    "mobile": "sha256:7cfd9f415dde740232508c7d1d6bdc989410996731b8f63f01000cd3f8a880c2"
+  },
+  "needsHashes": {
+    "desktop": "sha256:a45d1562b1b27b3af25033e0bb6977928b924295418ac0d1a233dd1bfacaa0c1",
+    "mobile": "sha256:a45d1562b1b27b3af25033e0bb6977928b924295418ac0d1a233dd1bfacaa0c1"
+  },
+  "menuOrigins": [
+    {
+      "organismId": "indicadoresTarefas",
+      "sourceIndex": 0,
+      "kind": "highlights",
+      "text": "Tarefas abertas, que vencem hoje, atrasadas e devolvidas aguardando retomada em toda a organização."
+    },
+    {
+      "organismId": "tarefasPorLista",
+      "sourceIndex": 1,
+      "kind": "summary",
+      "text": "Tarefas abertas por lista e progresso das checklists."
+    }
+  ]
+}

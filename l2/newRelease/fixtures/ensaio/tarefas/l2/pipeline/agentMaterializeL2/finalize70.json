@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "2026-10-16-materialize-l2-finalize-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "configPath": "l5/config.json",
+  "pages": [
+    "inicio",
+    "listas_tarefas",
+    "minhas_tarefas",
+    "painel_tarefas",
+    "participantes",
+    "tarefas_equipe"
+  ],
+  "notApproved": [],
+  "changes": [
+    "shellMode",
+    "languages",
+    "navigation",
+    "landings",
+    "frontend"
+  ],
+  "written": true,
+  "sourcesHash": "sha256:1e74daa8ef0e013f18f97017b4d678641f7397e8c355642495b371dce5651dfb"
+}

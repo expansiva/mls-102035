@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "painel_tarefas",
+  "device": "mobile",
+  "contextHash": "sha256:ac71b5f5307f3cc79824e68bd0a35c0448ed9b59e9a9bacbd47e2265370bc9f7",
+  "sourcePath": "l2/tarefas/web/mobile/page11/painel_tarefas.ts",
+  "sourceHash": "sha256:c82addb629a234bb38886e6a69eee14390f5383a1b13cfc271b7f6a3b9de6ee7",
+  "attempt": 1,
+  "design": {
+    "concept": "Um painel móvel de triagem que põe primeiro os sinais que merecem acompanhamento — atrasadas, vencendo hoje e devolvidas — como linhas de acesso rápido às tarefas da equipe. O restante vira contexto: uma faixa de saúde com o total aberto e, abaixo, listas que permitem entrar diretamente no recorte certo sem uma tabela larga.",
+    "views": [],
+    "decisions": "Mantive uma única superfície, pois as três saídas são navegações para outras páginas e não exigem preservar um fluxo local. Como o contrato só entrega contagens de exceção, e não as tarefas sinalizadas para formar lanes, as exceções são linhas compactas e acionáveis que levam à visão de todas as tarefas; não inventei filtros ou derivei dados. A faixa de saúde fica depois da triagem, seguindo o template, e o resumo por lista usa a tabela responsiva preferida, que se torna cartões no espaço estreito."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoIndicadores needs an element with data-section-id=\"secaoIndicadores\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoListas needs an element with data-section-id=\"secaoListas\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasPorLista (progresso da checklist) renders neither <groupshowprogress--ml-linear-progress> nor <groupshowprogress--ml-circular-progress>."
+    }
+  ]
+}

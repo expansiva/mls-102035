@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "listas_tarefas",
+  "device": "mobile",
+  "contextHash": "sha256:7557ce4f4b920d258668ca424bc71e3679cbf2abf9f54470790f03ccfe9f57db",
+  "sourcePath": "l2/tarefas/web/mobile/page11/listas_tarefas.ts",
+  "sourceHash": "sha256:fa5e50b8dff20f34c3169cefc42315864631704d045d5ad9d697d438d6a440e2",
+  "attempt": 1,
+  "design": {
+    "concept": "Uma superfície móvel calma para o gestor localizar listas rapidamente e abrir uma única lista por vez. A leitura começa pela busca e pela lista de nomes com tarefas abertas; criação e edição acontecem em cenas próprias, com retorno explícito para preservar o foco na coleção.",
+    "views": [
+      {
+        "id": "listas",
+        "purpose": "Pesquisar, percorrer e selecionar as listas de tarefas existentes, além de iniciar a criação de uma nova lista."
+      },
+      {
+        "id": "nova",
+        "purpose": "Cadastrar uma lista com nome obrigatório e descrição opcional."
+      },
+      {
+        "id": "editar",
+        "purpose": "Ajustar o nome e a descrição da lista selecionada, mantendo um retorno claro à coleção."
+      }
+    ],
+    "decisions": "Segui a tradução móvel do template: a tabela virou uma lista vertical e o formulário não é empilhado sob ela, mas aberto em uma cena com voltar. A busca e a criação ficam no topo da coleção; a paginação é substituída por uma ação discreta de carregar mais porque o contrato entrega apenas hasMore, não o total de páginas. Erros de gravação permanecem junto ao formulário, e a confirmação bem-sucedida fecha a cena de volta à lista atualizada."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoListas needs an element with data-section-id=\"secaoListas\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoEdicaoLista needs an element with data-section-id=\"secaoEdicaoLista\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism listasCadastradas (paginação) renders neither <grouptriggeraction--ml-pagination-control>."
+    }
+  ]
+}

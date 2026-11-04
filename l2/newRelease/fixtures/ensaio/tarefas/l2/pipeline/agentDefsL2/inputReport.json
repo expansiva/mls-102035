@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2026-09-21-agent-defs-l2-input-report-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "outcome": "accepted",
+  "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "problems": [
+    {
+      "severity": "review",
+      "code": "TRANSITION_ACTOR_NOT_SELECTED",
+      "file": "l4/tarefas/ontology/Tarefa.defs.ts",
+      "message": "TRANSITION_ACTOR_NOT_SELECTED l4/tarefas/ontology/Tarefa.defs.ts#transitions.cancelar.by: transition actor is not authorized by the selected page context",
+      "route": "transitions.cancelar.by:"
+    },
+    {
+      "severity": "review",
+      "code": "TRANSITION_ACTOR_NOT_SELECTED",
+      "file": "l4/tarefas/ontology/Tarefa.defs.ts",
+      "message": "TRANSITION_ACTOR_NOT_SELECTED l4/tarefas/ontology/Tarefa.defs.ts#transitions.cancelar.by: transition actor is not authorized by the selected page context",
+      "route": "transitions.cancelar.by:"
+    },
+    {
+      "severity": "review",
+      "code": "TRANSITION_ACTOR_NOT_SELECTED",
+      "file": "l4/tarefas/ontology/Tarefa.defs.ts",
+      "message": "TRANSITION_ACTOR_NOT_SELECTED l4/tarefas/ontology/Tarefa.defs.ts#transitions.cancelar.by: transition actor is not authorized by the selected page context",
+      "route": "transitions.cancelar.by:"
+    },
+    {
+      "severity": "info",
+      "code": "NO_COMMON_RELEASE_IDENTITY",
+      "file": "input20",
+      "message": "Sources have content hashes and structural consistency checks, but no shared release identity exists across all planners."
+    }
+  ]
+}

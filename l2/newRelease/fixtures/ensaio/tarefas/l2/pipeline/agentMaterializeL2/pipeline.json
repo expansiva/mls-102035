@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-pipeline-v1",
+  "flowId": "agentMaterializeL2",
+  "project": 102047,
+  "module": "tarefas",
+  "status": "complete",
+  "steps": {
+    "entry10": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:51:07.846Z"
+    },
+    "input20": {
+      "status": "approved",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentMaterializeL2/input.json"
+      ],
+      "snapshotHash": "sha256:e34218effbfce7aace82d3c64165db53f925090317d9e5837e37c810f5649c9a",
+      "updatedAt": "2026-10-23T01:51:10.104Z"
+    },
+    "shared40": {
+      "status": "approved",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentMaterializeL2/shared40/inicio.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/shared40/listas_tarefas.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/shared40/minhas_tarefas.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/shared40/painel_tarefas.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/shared40/participantes.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/shared40/tarefas_equipe.json"
+      ],
+      "snapshotHash": "sha256:e34218effbfce7aace82d3c64165db53f925090317d9e5837e37c810f5649c9a",
+      "updatedAt": "2026-10-23T01:58:33.116Z"
+    },
+    "pages50": {
+      "status": "approved",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/inicioDesktop.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/inicioMobile.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/listas_tarefasDesktop.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/listas_tarefasMobile.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/minhas_tarefasDesktop.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/minhas_tarefasMobile.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/painel_tarefasDesktop.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/painel_tarefasMobile.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/participantesDesktop.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/participantesMobile.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/tarefas_equipeDesktop.json",
+        "l2/tarefas/pipeline/agentMaterializeL2/pages50/tarefas_equipeMobile.json"
+      ],
+      "snapshotHash": "sha256:e34218effbfce7aace82d3c64165db53f925090317d9e5837e37c810f5649c9a",
+      "updatedAt": "2026-10-23T01:58:33.845Z"
+    },
+    "finalize70": {
+      "status": "approved",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentMaterializeL2/finalize70.json",
+        "l5/config.json"
+      ],
+      "updatedAt": "2026-10-23T01:58:34.345Z"
+    }
+  },
+  "createdAt": "2026-10-23T01:51:07.846Z",
+  "updatedAt": "2026-10-23T01:58:34.345Z"
+}

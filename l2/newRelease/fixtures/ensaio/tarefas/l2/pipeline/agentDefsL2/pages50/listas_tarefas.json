@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pages-v2.1",
+  "needsVersion": "2026-09-30-agent-defs-l2-page11-needs-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "listas_tarefas",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:a8d0f6dc582d55198f10528c0c0c788b59279e6550f9ae71646edafb5555798a",
+  "template": {
+    "category": "masterDataManagement",
+    "experience": "compactCrudTable",
+    "reason": "A página mantém um cadastro simples de listas (projeto ou área) que outras telas usam para agrupar e escolher tarefas: é um dado mestre com listagem, busca e criação/edição, por isso masterDataManagement nos dois dispositivos. Derived compactCrudTable from masterDataManagement.page21.",
+    "reference": "_102020_/l4/collabux/templates/masterDataManagement/page21.md",
+    "hash": "sha256:5388c7e7a499aa785bd50cdc3c9635697ecbf69fd7234260c643c4f75f0a71ca",
+    "catalogHash": "sha256:285e42e596b7bde092824c38a446f23d7bd4ac40fc551a0e0d58be6d08f135dc"
+  },
+  "moleculeInventoryHash": "sha256:a243774aee05d980d07cae75cf2e574b3a9c93761f3cec240a457e3dc5d5b78d",
+  "moleculeHashes": {
+    "/_102040_/l2/molecules/groupviewdata/index.defs": "sha256:cd1aeb8f281ca1e1fcf30f0acf8f6b1707f6c43a675faedfca4b8f12504499fa",
+    "/_102020_/l2/aura/molecules/skills/groupViewData/usage": "sha256:bd498bbefd80c0985dce0f1f11b8fca1c9c595f244658c39ac87016ca70a5525",
+    "/_102040_/l2/molecules/groupviewcard/index.defs": "sha256:ef557fceab6248a6ef1292cb692929b1793b71d12866fe13d1980a1378819f4c",
+    "/_102020_/l2/aura/molecules/skills/groupViewCard/usage": "sha256:136a98aa182ec2d9d2bea7fe649783d51c091deb59c7d13e6f31fecc850b08c9",
+    "/_102040_/l2/molecules/groupviewtable/index.defs": "sha256:3e2e055853cf7b3fb3d01991dcfd148dc9030d8b9cbef76640feb87157f0d4f9",
+    "/_102020_/l2/aura/molecules/skills/groupViewTable/usage": "sha256:36320ac5933a879e44fc9e9b9dc7112ea73d25f1ea39d13304b0dbce85c6eb78",
+    "/_102040_/l2/molecules/groupsearchcontent/index.defs": "sha256:27988d1fa4120362c6529663ac2cfc8a97b53ece995329bb6fe9bc98a9acbb5f",
+    "/_102020_/l2/aura/molecules/skills/groupSearchContent/usage": "sha256:c1e4ab5899f80b0541f4364c875e164de747d053a3b2f09748a6f87be373738e",
+    "/_102040_/l2/molecules/grouptriggeraction/index.defs": "sha256:b64c73d526fbc780a7a512a661d48a92fe29722bb9338ca939090a9dad2d4dca",
+    "/_102020_/l2/aura/molecules/skills/groupTriggerAction/usage": "sha256:be6151e6341cc19ffc02dc2699bb210b88e18051320c3e09d862be283822e485",
+    "/_102040_/l2/molecules/groupentertext/index.defs": "sha256:38ec5d8bb137a2b12192fec3b1a9df3357f9034cc7f6106ddc8ba07dc73095db",
+    "/_102020_/l2/aura/molecules/skills/groupEnterText/usage": "sha256:ac42da7e457722bd9f08e16cb6ffdae397b3ffd9fbe02a4481e1381eb6f8a75f",
+    "/_102040_/l2/molecules/groupselectone/index.defs": "sha256:6cd31103bd70d5d83feffcc8fe97dbbdbbd1cd3912cf50251c8e650f412b882a",
+    "/_102020_/l2/aura/molecules/skills/groupSelectOne/usage": "sha256:5d7eaae4f1b9b028779e06d51b656ad6c0cd8f696cca6de267f0236e6efb7760",
+    "/_102040_/l2/molecules/groupnotifyuser/index.defs": "sha256:b041b5f2e0d3deb0e4abf184e15d9542862677e3659da5f1969d6db2bd8d8e08",
+    "/_102020_/l2/aura/molecules/skills/groupNotifyUser/usage": "sha256:f0f8cbf8f40d261b222b6d0c53f31a6690c1ad85502f1601c0b893ea7cdb4aa2"
+  },
+  "moleculeGroupAssessments": [
+    {
+      "organismId": "organism1",
+      "groups": [
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewCard",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewTable",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism2",
+      "groups": [
+        {
+          "groupId": "groupEnterText",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSelectOne",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNotifyUser",
+          "relevant": true
+        }
+      ]
+    }
+  ],
+  "skillHash": "sha256:c3517179ccbde253ae6f8f2824b85092ccd698ba82925d87739370ba48f2e9d8",
+  "promptHash": "sha256:7c32290937225111880488f28364629141f1c1a16cff64eafa536c2ebaa93455",
+  "promptChars": 54081,
+  "repairPromptChars": 0,
+  "sourceHashes": {
+    "desktop": "sha256:497168e0b014583b84dbcf53c5f0e76b3e1ba8bc9bad545a064e9572934f33d0",
+    "mobile": "sha256:9074afc0d48d238abcd8d1e075929ee777f41aa37c85aeb9513847677d096c41"
+  },
+  "needsHashes": {
+    "desktop": "sha256:f52ecd27c34e436ec2bbebb91bff4fceaf581f4b2d59424372508caddcce64d9",
+    "mobile": "sha256:6f246d4d22653fbfb9464b73285d6654d22146d817297ce15e8f7de04387fc68"
+  },
+  "menuOrigins": [
+    {
+      "organismId": "listasCadastradas",
+      "sourceIndex": 0,
+      "kind": "list",
+      "text": "Listas que agrupam tarefas por projeto ou área, com a quantidade de tarefas abertas."
+    },
+    {
+      "organismId": "formularioLista",
+      "sourceIndex": 1,
+      "kind": "form",
+      "text": "Criar uma lista ou ajustar nome e dados de uma lista existente."
+    }
+  ]
+}

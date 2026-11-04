@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "participantes",
+  "device": "mobile",
+  "contextHash": "sha256:6d46a58e1686895b52988b680f6741e7f9c9c8fed8a9255103e3c1353658e777",
+  "sourcePath": "l2/tarefas/web/mobile/page11/participantes.ts",
+  "sourceHash": "sha256:c2da982e90a043510f0f3fa6ca508113c459d7cda09958122bef54f8eb21478f",
+  "attempt": 2,
+  "design": {
+    "concept": "Um diretório móvel de participantes abre pela lista, onde a situação e as permissões efetivas ficam visíveis antes de qualquer toque. A inclusão e o ajuste de uma pessoa ocupam cenas próprias, com retorno para a mesma lista e sem misturar os dois fluxos em uma tela estreita.",
+    "views": [
+      {
+        "id": "diretorio",
+        "purpose": "Consultar, filtrar e abrir um participante ou iniciar sua inclusão."
+      },
+      {
+        "id": "incluir",
+        "purpose": "Localizar um usuário ativo da organização, escolhê-lo e incluí-lo com as marcas do gestor."
+      },
+      {
+        "id": "participante",
+        "purpose": "Ver a situação e as marcas efetivas da pessoa selecionada e salvar as escolhas do gestor."
+      }
+    ],
+    "decisions": "Segui a sequência móvel do template (diretório → pessoa) com o host de cenários, mantendo a lista como início e nunca pré-selecionando alguém. A inclusão ganhou uma cena separada, acionada acima da lista, para não competir com a leitura do diretório; o ajuste da pessoa selecionada mostra primeiro identidade, situação, papéis e efeitos atuais, depois os controles. As marcas nulas são apresentadas inicialmente como “sim”, pois esta é a regra efetiva, mas só são gravadas quando o gestor altera o controle."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section participantesAtuais needs an element with data-section-id=\"participantesAtuais\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section configurarParticipante needs an element with data-section-id=\"configurarParticipante\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism listaParticipantes (paginação) renders neither <grouptriggeraction--ml-pagination-control>."
+    }
+  ]
+}

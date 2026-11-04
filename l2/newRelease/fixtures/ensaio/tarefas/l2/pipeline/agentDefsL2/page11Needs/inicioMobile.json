@@ -1,0 +1,82 @@
+{
+  "organisms": {
+    "pendenciasAgora": {
+      "reads": [
+        "Tarefa.titulo",
+        "Tarefa.status",
+        "Tarefa.prazo",
+        "Tarefa.prioridade",
+        "Tarefa.listaId",
+        "Tarefa.responsavelId",
+        "Tarefa.criadorId",
+        "Tarefa.details.quemAgeAgora",
+        "Tarefa.details.devolvidaPendente",
+        "Tarefa.details.motivoDevolucao",
+        "Tarefa.details.progressoChecklist",
+        "Tarefa.details.venceHoje",
+        "Tarefa.details.atrasada",
+        "ListaTarefas.nome",
+        "Participante.details.identification.name"
+      ],
+      "edits": [
+        "Tarefa.details.motivoDevolucao"
+      ],
+      "selects": "",
+      "submits": [
+        {
+          "intentId": "iniciarTarefa",
+          "write": "Tarefa.iniciar"
+        },
+        {
+          "intentId": "enviarRevisao",
+          "write": "Tarefa.enviarParaRevisao"
+        },
+        {
+          "intentId": "aceitarTarefa",
+          "write": "Tarefa.aceitar"
+        },
+        {
+          "intentId": "devolverTarefa",
+          "write": "Tarefa.devolver"
+        },
+        {
+          "intentId": "retomarTarefa",
+          "write": "Tarefa.retomar"
+        }
+      ]
+    },
+    "alertasPrazo": {
+      "reads": [
+        "Tarefa.titulo",
+        "Tarefa.prazo",
+        "Tarefa.status",
+        "Tarefa.details.aberta",
+        "Tarefa.details.venceHoje",
+        "Tarefa.details.atrasada"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    },
+    "indicadoresTarefas": {
+      "reads": [
+        "Tarefa.details.aberta",
+        "Tarefa.details.venceHoje",
+        "Tarefa.details.atrasada",
+        "Tarefa.details.devolvidaPendente"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    },
+    "minhasPermissoes": {
+      "reads": [
+        "Participante.details.tarefas.aceitaTarefasEfetivo",
+        "Participante.details.tarefas.podeCriarTarefasEfetivo"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    }
+  }
+}

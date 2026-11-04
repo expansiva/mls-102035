@@ -1,0 +1,42 @@
+import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import type { IndicadoresTarefas, ResumoLista } from '/_102047_/l2/tarefas/web/contracts/painel_tarefas.defs.js';
+export type { Painel_tarefasContracts, IndicadoresTarefas, ResumoLista, ResumoTarefaLista } from '/_102047_/l2/tarefas/web/contracts/painel_tarefas.defs.js';
+export type ErrorState = {
+    code: string;
+    message: string;
+    details?: unknown;
+} | null;
+export declare class TarefasPainel_tarefasShared extends StateLitElement {
+    /** state indicadores — the four general counts of the organization's tasks (open, due today, overdue, returned awaiting resume); source carregarPainelTarefas.indicadores; organism indicadoresTarefas */
+    indicadores: IndicadoresTarefas | null;
+    /** state listas — the task lists (project or area) with open task count, checklist items done and total, and the open tasks that have a checklist; source carregarPainelTarefas.listas; organism tarefasPorLista */
+    listas: ResumoLista[];
+    /** state pageStatus — overall status of the page: idle, loading, empty (no list loaded), success or error */
+    pageStatus: 'idle' | 'loading' | 'empty' | 'success' | 'error';
+    /** state carregarPainelTarefasStatus — status of the request carregarPainelTarefas */
+    carregarPainelTarefasStatus: 'idle' | 'loading' | 'success' | 'error';
+    /** state carregarPainelTarefasError — error of the request carregarPainelTarefas, null when none */
+    carregarPainelTarefasError: ErrorState;
+    /** state scenary — the visible scene of the page; '' until the page shows its first scene */
+    scenary: string;
+    private popstateHandler;
+    private publish;
+    private assignState;
+    private hydrateData;
+    private resetVisit;
+    /** The page has no entry params; kept so every visit follows the same sequence. */
+    private applyEntryParams;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
+    handleIcaStateChange(key: string, value: any): void;
+    /** setScenario — publishes the visible scene of the page; argument value is the scene id ('' clears it) */
+    setScenario(value: string): void;
+    /** request carregarPainelTarefas — loads the manager panel in one call (general indicators and open tasks per list with checklist progress); redraws indicadores and listas (replace) and pageStatus; no arguments, also used to reload the panel */
+    carregarPainelTarefas(): Promise<void>;
+    /** navigate — opens the team tasks page (tarefas_equipe) showing all tasks; carries nothing */
+    verTodasTarefas(): void;
+    /** navigate — opens the task lists page (listas_tarefas); optional listaId is the list to highlight there (listaTarefasId), omitted when null */
+    abrirListas(listaId?: string | null): void;
+    /** navigate — opens the team tasks page (tarefas_equipe) filtered by one list; listaId is the id of the list row the person picked (carried as listaTarefasId); null is refused with client.preconditionMissing */
+    verTarefasDaLista(listaId: string | null): void;
+}

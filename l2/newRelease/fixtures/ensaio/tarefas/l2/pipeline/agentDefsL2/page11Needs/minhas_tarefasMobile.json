@@ -1,0 +1,154 @@
+{
+  "organisms": {
+    "tarefasLista": {
+      "reads": [
+        "Tarefa.titulo",
+        "Tarefa.status",
+        "Tarefa.prazo",
+        "Tarefa.prioridade",
+        "Tarefa.listaId",
+        "ListaTarefas.nome",
+        "Tarefa.responsavelId",
+        "Tarefa.criadorId",
+        "Participante.details.identification.name",
+        "Tarefa.details.quemAgeAgora",
+        "Tarefa.details.progressoChecklist",
+        "Tarefa.details.venceHoje",
+        "Tarefa.details.atrasada",
+        "Tarefa.details.devolvidaPendente",
+        "Tarefa.details.aberta",
+        "Tarefa.criadaEm"
+      ],
+      "edits": [],
+      "selects": "tarefaDetalhe",
+      "submits": []
+    },
+    "tarefaDetalhe": {
+      "reads": [
+        "Tarefa.titulo",
+        "Tarefa.status",
+        "Tarefa.details.descricao",
+        "Tarefa.responsavelId",
+        "Tarefa.criadorId",
+        "Participante.details.identification.name",
+        "Tarefa.prazo",
+        "Tarefa.prioridade",
+        "Tarefa.listaId",
+        "ListaTarefas.nome",
+        "Tarefa.criadaEm",
+        "Tarefa.details.etiquetas",
+        "Tarefa.tarefaPaiId",
+        "Tarefa.details.quantidadeSubtarefas",
+        "Tarefa.details.progressoChecklist",
+        "ItemChecklist.ordem",
+        "ItemChecklist.details.descricao",
+        "ItemChecklist.details.concluido",
+        "ItemChecklist.details.concluidoEm",
+        "Tarefa.details.motivoDevolucao",
+        "Tarefa.details.devolvidaEm"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    },
+    "tarefaForm": {
+      "reads": [
+        "Tarefa.status",
+        "Tarefa.criadorId",
+        "Participante.details.identification.name",
+        "Participante.details.identification.status",
+        "Participante.details.tarefas.aceitaTarefasEfetivo",
+        "Participante.details.tarefas.podeCriarTarefasEfetivo",
+        "ListaTarefas.nome"
+      ],
+      "edits": [
+        "Tarefa.titulo",
+        "Tarefa.details.descricao",
+        "Tarefa.prioridade",
+        "Tarefa.prazo",
+        "Tarefa.listaId",
+        "Tarefa.responsavelId",
+        "Tarefa.tarefaPaiId",
+        "Tarefa.details.etiquetas",
+        "ItemChecklist.ordem",
+        "ItemChecklist.details.descricao",
+        "ItemChecklist.details.concluido"
+      ],
+      "selects": "",
+      "submits": [
+        {
+          "intentId": "criarTarefa",
+          "write": "Tarefa.create"
+        },
+        {
+          "intentId": "adicionarItensChecklist",
+          "write": "ItemChecklist.create"
+        },
+        {
+          "intentId": "salvarAlteracoes",
+          "write": "Tarefa.update"
+        },
+        {
+          "intentId": "ajustarChecklist",
+          "write": "ItemChecklist.update"
+        }
+      ]
+    },
+    "tarefaAcoes": {
+      "reads": [
+        "Tarefa.status",
+        "Tarefa.details.quemAgeAgora",
+        "Tarefa.details.devolvidaPendente",
+        "Tarefa.responsavelId",
+        "Tarefa.criadorId",
+        "Participante.details.identification.name"
+      ],
+      "edits": [
+        "Tarefa.details.motivoDevolucao"
+      ],
+      "selects": "",
+      "submits": [
+        {
+          "intentId": "iniciar",
+          "write": "Tarefa.iniciar"
+        },
+        {
+          "intentId": "enviarParaRevisao",
+          "write": "Tarefa.enviarParaRevisao"
+        },
+        {
+          "intentId": "aceitar",
+          "write": "Tarefa.aceitar"
+        },
+        {
+          "intentId": "devolver",
+          "write": "Tarefa.devolver"
+        },
+        {
+          "intentId": "retomar",
+          "write": "Tarefa.retomar"
+        },
+        {
+          "intentId": "cancelar",
+          "write": "Tarefa.cancelar"
+        }
+      ]
+    },
+    "tarefaHistorico": {
+      "reads": [
+        "Tarefa.criadaEm",
+        "Tarefa.status",
+        "Tarefa.responsavelId",
+        "Participante.details.identification.name",
+        "Tarefa.details.devolvidaEm",
+        "Tarefa.details.motivoDevolucao",
+        "Tarefa.details.retomadaEm",
+        "Tarefa.details.concluidaEm",
+        "Tarefa.details.canceladaEm"
+      ],
+      "edits": [],
+      "selects": "",
+      "submits": []
+    }
+  }
+}

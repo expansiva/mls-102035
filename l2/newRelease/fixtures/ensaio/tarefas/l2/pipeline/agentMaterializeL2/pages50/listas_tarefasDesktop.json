@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "listas_tarefas",
+  "device": "desktop",
+  "contextHash": "sha256:f48e1f13ab81dc7cad3e9a8c826361b91b01611eac61c67ca5b5530ca2ae8a9a",
+  "sourcePath": "l2/tarefas/web/desktop/page11/listas_tarefas.ts",
+  "sourceHash": "sha256:20f796488c55a4b14e6257c2e76e49daf4f84fd921ece955c8c8436bfe1e5238",
+  "attempt": 2,
+  "design": {
+    "concept": "Uma superfície de referência tranquila para o gestor localizar listas rapidamente e conferir sua carga de tarefas abertas. A tabela permanece como âncora à esquerda, enquanto um painel lateral conduz a criação ou a edição sem tirar o contexto da listagem.",
+    "views": [
+      {
+        "id": "instrucoes",
+        "purpose": "Estado inicial do painel lateral, convidando o gestor a selecionar uma lista ou iniciar um novo cadastro."
+      },
+      {
+        "id": "criar",
+        "purpose": "Painel lateral para informar nome e descrição de uma nova lista."
+      },
+      {
+        "id": "editar",
+        "purpose": "Painel lateral para ajustar a lista selecionada mantendo a linha marcada na tabela."
+      }
+    ],
+    "decisions": "Segui o padrão compactCrudTable com a tabela como região dominante, busca discreta no topo e um painel complementar persistente, em vez de navegar para outra página ou usar modal. Um scene host controla exclusivamente os modos do painel lateral: a listagem nunca sai de vista; voltar de um painel limpa a seleção. Escolhi a alternativa ml-data-table porque o detalhe é uma composição própria ao lado da tabela, e usei o controle de paginação apenas como continuação da coleção retornada pelo backend."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoListas needs an element with data-section-id=\"secaoListas\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoEdicaoLista needs an element with data-section-id=\"secaoEdicaoLista\"."
+    }
+  ]
+}

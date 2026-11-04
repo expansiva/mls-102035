@@ -1,0 +1,124 @@
+import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import type { Tarefas_equipeContracts, ContagemSituacao, ListaOpcao, ParticipanteOpcao, TarefaDetalhe } from '/_102047_/l2/tarefas/web/contracts/tarefas_equipe.defs.js';
+export type { Tarefas_equipeContracts, TarefaResumo, ContagemSituacao, ListaOpcao, ParticipanteOpcao, ItemChecklistLinha, EventoTarefa, TarefaDetalhe } from '/_102047_/l2/tarefas/web/contracts/tarefas_equipe.defs.js';
+type Input<R extends keyof Tarefas_equipeContracts> = Tarefas_equipeContracts[R]['input'];
+type Output<R extends keyof Tarefas_equipeContracts> = Tarefas_equipeContracts[R]['output'];
+export type ErrorState = {
+    code: string;
+    message: string;
+    details?: unknown;
+} | null;
+export type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
+export type PageStatus = 'idle' | 'loading' | 'empty' | 'success' | 'error';
+export type Prioridade = NonNullable<Input<'tarefas.tarefas_equipe.listarTarefasEquipe'>['prioridade']>;
+export type Situacao = NonNullable<Input<'tarefas.tarefas_equipe.listarTarefasEquipe'>['status']>;
+export type TarefasPage = Output<'tarefas.tarefas_equipe.listarTarefasEquipe'>['tarefas'];
+/** Draft of the command trocarResponsavelTarefa: only what the person picks (id and version come from the open tarefa). */
+export type TrocarResponsavelTarefaDraft = {
+    responsavelId: string | null;
+};
+export declare class TarefasTarefas_equipeShared extends StateLitElement {
+    /** state tarefas — the page of Tarefa da organização in summary form (list, responsible, who acts now, due marks already computed), for the list view and the board; source listarTarefasEquipe.tarefas; organism tarefasEquipe */
+    tarefas: TarefasPage | null;
+    /** state contagemPorSituacao — quantity of tarefas in each situation within the applied filters (board column totals); source listarTarefasEquipe.contagemPorSituacao; organism tarefasEquipe */
+    contagemPorSituacao: ContagemSituacao[];
+    /** state listas — the lists of tarefas identified by name, options of the list filter; source carregarFiltrosEquipe.listas; organism tarefasEquipe */
+    listas: ListaOpcao[];
+    /** state carregarFiltrosEquipeParticipantes — participants of the module with name, platform status and whether they accept tarefas, options of the responsible filter; source carregarFiltrosEquipe.participantes; organism tarefasEquipe */
+    carregarFiltrosEquipeParticipantes: ParticipanteOpcao[];
+    /** state tarefa — the open Tarefa in full (list, responsible, creator, who acts now, subtasks, ordered checklist, event history); it is the selected record; source obterTarefaEquipe.tarefa; organisms tarefaAcoes, tarefaDetalhe, tarefaHistorico */
+    tarefa: TarefaDetalhe | null;
+    /** state buscarResponsaveisDisponiveisParticipantes — eligible participants found by name to become the new responsible; source buscarResponsaveisDisponiveis.participantes; organism tarefaAcoes */
+    buscarResponsaveisDisponiveisParticipantes: ParticipanteOpcao[];
+    /** state selectedTarefa — the id of the Tarefa selected in tarefasEquipe; source entry.params.tarefaId; organisms tarefaDetalhe, tarefasEquipe; lives in the URL */
+    selectedTarefa: string | null;
+    /** state listaTarefasId — filter by list of tarefas (id) applied to the list and the board, null for all lists; source entry.params.listaTarefasId; organism tarefasEquipe; lives in the URL */
+    listaTarefasId: string | null;
+    /** state filtroResponsavelId — filter by responsible participant (id), null for everyone; source filter draft of listarTarefasEquipe; organism tarefasEquipe */
+    filtroResponsavelId: string | null;
+    /** state filtroPrioridade — filter by priority, null for any; source filter draft of listarTarefasEquipe; organism tarefasEquipe */
+    filtroPrioridade: Prioridade | null;
+    /** state filtroStatus — filter by situation, null for any; source filter draft of listarTarefasEquipe; organism tarefasEquipe */
+    filtroStatus: Situacao | null;
+    /** state filtroPrazoDe — start of the due-date interval filter (date), null for open; source filter draft of listarTarefasEquipe; organism tarefasEquipe */
+    filtroPrazoDe: string | null;
+    /** state filtroPrazoAte — end of the due-date interval filter (date), null for open; source filter draft of listarTarefasEquipe; organism tarefasEquipe */
+    filtroPrazoAte: string | null;
+    /** state trocarResponsavelTarefaDraft — the new responsible the manager picks by name for the reassignment form (prefilled from the entry param responsavelId); source trocarResponsavelTarefa.input; organism tarefaAcoes */
+    trocarResponsavelTarefaDraft: TrocarResponsavelTarefaDraft;
+    /** state pageStatus — overall status of the initial load of the page: idle, loading, empty, success or error; source initial load */
+    pageStatus: PageStatus;
+    /** state scenary — the visible scene of the page; '' until the page shows its first scene */
+    scenary: string;
+    /** state carregarFiltrosEquipeStatus — status of the request carregarFiltrosEquipe: idle, loading, success or error */
+    carregarFiltrosEquipeStatus: RequestStatus;
+    /** state carregarFiltrosEquipeError — error of the request carregarFiltrosEquipe, null when none */
+    carregarFiltrosEquipeError: ErrorState;
+    /** state listarTarefasEquipeStatus — status of the request listarTarefasEquipe: idle, loading, success or error */
+    listarTarefasEquipeStatus: RequestStatus;
+    /** state listarTarefasEquipeError — error of the request listarTarefasEquipe, null when none */
+    listarTarefasEquipeError: ErrorState;
+    /** state obterTarefaEquipeStatus — status of the request obterTarefaEquipe: idle, loading, success or error */
+    obterTarefaEquipeStatus: RequestStatus;
+    /** state obterTarefaEquipeError — error of the request obterTarefaEquipe, null when none */
+    obterTarefaEquipeError: ErrorState;
+    /** state buscarResponsaveisDisponiveisStatus — status of the request buscarResponsaveisDisponiveis: idle, loading, success or error */
+    buscarResponsaveisDisponiveisStatus: RequestStatus;
+    /** state buscarResponsaveisDisponiveisError — error of the request buscarResponsaveisDisponiveis, null when none */
+    buscarResponsaveisDisponiveisError: ErrorState;
+    /** state trocarResponsavelTarefaStatus — status of the command trocarResponsavelTarefa: idle, loading, success or error */
+    trocarResponsavelTarefaStatus: RequestStatus;
+    /** state trocarResponsavelTarefaError — error of the command trocarResponsavelTarefa, null when none */
+    trocarResponsavelTarefaError: ErrorState;
+    /** state cancelarTarefaEquipeStatus — status of the command cancelarTarefaEquipe: idle, loading, success or error */
+    cancelarTarefaEquipeStatus: RequestStatus;
+    /** state cancelarTarefaEquipeError — error of the command cancelarTarefaEquipe, null when none */
+    cancelarTarefaEquipeError: ErrorState;
+    private publish;
+    private assignState;
+    private syncUrlParam;
+    private readParam;
+    private unexpected;
+    private hydrateData;
+    private resetVisit;
+    private resetCommandResults;
+    private applyEntryParams;
+    private loadPage;
+    private readonly onPopState;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
+    handleIcaStateChange(key: string, value: any): void;
+    /** scene — publishes the visible scene of the page (for example list or board view); clears the result of the commands */
+    setScenario(value: string): void;
+    /** draft — sets the draft of the reassignment form (the participant picked by name as new responsible); clears the result of the commands */
+    setTrocarResponsavelTarefaDraft(value: TrocarResponsavelTarefaDraft): void;
+    /** filter — sets the list filter (id of a lista de tarefas, null or '' for all) and reloads the list and board from the first page */
+    setListaTarefasId(value: string | null): void;
+    /** filter — sets the responsible filter (participant id, null or '' for everyone) and reloads the list and board from the first page */
+    setFiltroResponsavelId(value: string | null): void;
+    /** filter — sets the priority filter (null for any) and reloads the list and board from the first page */
+    setFiltroPrioridade(value: Prioridade | null): void;
+    /** filter — sets the situation filter (null for any) and reloads the list and board from the first page */
+    setFiltroStatus(value: Situacao | null): void;
+    /** filter — sets the start of the due-date interval (date, null or '' for open) and reloads the list and board from the first page */
+    setFiltroPrazoDe(value: string | null): void;
+    /** filter — sets the end of the due-date interval (date, null or '' for open) and reloads the list and board from the first page */
+    setFiltroPrazoAte(value: string | null): void;
+    /** select — selects the tarefa to open by id (null clears the selection): publishes selectedTarefa, empties the reassignment draft and loads the record into tarefa through obterTarefaEquipe */
+    selectTarefa(id: string | null): Promise<void>;
+    /** request carregarFiltrosEquipe — loads the options of the list and responsible filters (no input; the manager comes from the session); redraws listas and carregarFiltrosEquipeParticipantes by replace; no arguments */
+    carregarFiltrosEquipe(): Promise<void>;
+    /** request listarTarefasEquipe — lists all tarefas of the organization with the current filters (listaTarefasId, filtroResponsavelId, filtroPrioridade, filtroStatus, filtroPrazoDe, filtroPrazoAte), serving the list view and the board; redraws tarefas (replace, or append when append is true) and contagemPorSituacao (replace); page: page to load, default 1; append: true adds the next page to the items ("load more"), does nothing when tarefas.hasMore is false */
+    listarTarefasEquipe(page?: number, append?: boolean): Promise<void>;
+    /** request obterTarefaEquipe — opens one tarefa in full (responsible, due date, checklist, subtasks, history); redraws tarefa by replace; tarefaId: id of the tarefa chosen in the list or board (prefer selectTarefa, which also publishes the selection) */
+    obterTarefaEquipe(tarefaId: string): Promise<void>;
+    /** request buscarResponsaveisDisponiveis — searches by name the active participants who accept tarefas and can become the new responsible (never by e-mail); redraws buscarResponsaveisDisponiveisParticipantes by replace; nome: typed part of the name, omit or empty to get the first ones alphabetically */
+    buscarResponsaveisDisponiveis(nome?: string): Promise<void>;
+    /** request trocarResponsavelTarefa — changes the responsible of the open tarefa to the participant in trocarResponsavelTarefaDraft.responsavelId (the situation does not change; the new responsible is warned when the tarefa is to do or in progress); redraws tarefa by replace and upserts its row in tarefas (removed when it no longer matches the active responsible or situation filter), then empties the draft; no arguments (id and version come from the open tarefa) */
+    trocarResponsavelTarefa(): Promise<void>;
+    /** request cancelarTarefaEquipe — cancels the open tarefa while it is still open (the one who was acting is warned); redraws tarefa by replace and upserts its row in tarefas (removed when the situation filter no longer matches); no arguments (id and version come from the open tarefa) */
+    cancelarTarefaEquipe(): Promise<void>;
+    /** Applies the tarefa returned by a command: redraws the open record and upserts (or removes) its row in the loaded list. */
+    private applyTarefaResult;
+    private mergeResumo;
+}

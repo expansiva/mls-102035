@@ -1,0 +1,803 @@
+{
+  "schemaVersion": "2026-10-14-materialize-l2-input-v4",
+  "project": 102047,
+  "module": "tarefas",
+  "defsPipelineStatus": "complete",
+  "snapshotHash": "sha256:e34218effbfce7aace82d3c64165db53f925090317d9e5837e37c810f5649c9a",
+  "accepted": [
+    "inicio",
+    "listas_tarefas",
+    "minhas_tarefas",
+    "painel_tarefas",
+    "participantes",
+    "tarefas_equipe"
+  ],
+  "refused": [],
+  "moduleProblems": [],
+  "pages": [
+    {
+      "pageId": "inicio",
+      "status": "accepted",
+      "inputs": {
+        "contract": {
+          "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+          "sha256": "sha256:d872928e15ea66a238d5bb42ccd4f8499fcdf9c4197ccaee89fd7c2b20d93a5c"
+        },
+        "shared": {
+          "path": "l2/tarefas/web/shared/inicio.defs.ts",
+          "sha256": "sha256:4e2040c83efbc836d9459e9fa9fb1b20943de3b450d665ccbde2a0fe44b720c0"
+        },
+        "desktop": {
+          "path": "l2/tarefas/web/desktop/page11/inicio.defs.ts",
+          "sha256": "sha256:a4e6bf2bf6da9c4a807de3bd360f68807dc689808a33b937081fd017c787633b"
+        },
+        "mobile": {
+          "path": "l2/tarefas/web/mobile/page11/inicio.defs.ts",
+          "sha256": "sha256:bdef57eb2b4fea2c603bea1e735fef71205fd380d328c93c7763bfcbb2ed9e8c"
+        }
+      },
+      "units": [
+        {
+          "unitId": "inicio__shared",
+          "kind": "shared",
+          "inputHash": "sha256:5ae88b8463e44bc3f6f7d1678b8962ef0e3bdb576df2bb48d80b0a474c66c622"
+        },
+        {
+          "unitId": "inicio__desktop",
+          "kind": "desktop",
+          "inputHash": "sha256:4ae797ef07e3de5879724259aa7e7e801d783def025b423366360044532d64fd"
+        },
+        {
+          "unitId": "inicio__mobile",
+          "kind": "mobile",
+          "inputHash": "sha256:b2719e6a6bbf413c27a2f1fab75e4b953666c522fb8988d2c0954af36779a425"
+        },
+        {
+          "unitId": "inicio__tests",
+          "kind": "tests",
+          "inputHash": "sha256:8dd0d6beb22425d84c99c897dcdb9b7df8252c04530ebc40cb2dc0cd6a820607"
+        }
+      ],
+      "problems": [
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "inicio",
+          "path": "shared:requests.iniciarTarefa.returns",
+          "message": "Command iniciarTarefa returns [tarefa, indicadores], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "inicio",
+          "path": "shared:requests.enviarRevisao.returns",
+          "message": "Command enviarRevisao returns [tarefa, indicadores], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "inicio",
+          "path": "shared:requests.aceitarTarefa.returns",
+          "message": "Command aceitarTarefa returns [tarefa, indicadores], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "inicio",
+          "path": "shared:requests.devolverTarefa.returns",
+          "message": "Command devolverTarefa returns [tarefa, indicadores], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "inicio",
+          "path": "shared:requests.retomarTarefa.returns",
+          "message": "Command retomarTarefa returns [tarefa, indicadores], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        }
+      ],
+      "methods": {
+        "iniciarTarefa": "iniciarTarefa",
+        "enviarRevisao": "enviarRevisao",
+        "aceitarTarefa": "aceitarTarefa",
+        "devolverTarefa": "devolverTarefa",
+        "retomarTarefa": "retomarTarefa",
+        "abrirTarefa": "abrirTarefa",
+        "abrirTarefaVencendo": "abrirTarefaVencendo",
+        "verMinhasTarefas": "verMinhasTarefas"
+      },
+      "contextInputs": [],
+      "navigations": [
+        {
+          "method": "abrirTarefa",
+          "organism": "pendenciasAgora",
+          "to": "minhas_tarefas",
+          "targetParams": [
+            "tarefaId",
+            "listaId",
+            "responsavelId",
+            "tarefaPaiId"
+          ]
+        },
+        {
+          "method": "abrirTarefaVencendo",
+          "organism": "alertasPrazo",
+          "to": "minhas_tarefas",
+          "targetParams": [
+            "tarefaId",
+            "listaId",
+            "responsavelId",
+            "tarefaPaiId"
+          ]
+        },
+        {
+          "method": "verMinhasTarefas",
+          "organism": "indicadoresTarefas",
+          "to": "minhas_tarefas",
+          "targetParams": [
+            "tarefaId",
+            "listaId",
+            "responsavelId",
+            "tarefaPaiId"
+          ]
+        }
+      ],
+      "l4": {
+        "entities": [
+          "ItemChecklist",
+          "ListaTarefas",
+          "Participante",
+          "Tarefa"
+        ],
+        "rules": [
+          "apenasResponsavelExecuta",
+          "avisarQuemAgeAgora",
+          "apenasCriadorRevisa",
+          "devolucaoExigeMotivo",
+          "retomarSoAposDevolucao",
+          "cancelarApenasCriadorOuGestor",
+          "participanteNaoConfiguradoAceitaECria",
+          "escolhaGestorNuncaSobrescrita",
+          "gestorPorAcessoPlataforma",
+          "responsavelAceitaTarefas",
+          "criarTarefaExigePodeCriar",
+          "participanteSemCadastroPessoal",
+          "nomeListaUnico",
+          "somenteGestorMantemListas",
+          "podeCriarTarefasExigido",
+          "escolhaResponsavelPeloNome",
+          "reatribuirApenasCriadorOuGestor",
+          "edicaoNaoMudaSituacao",
+          "tarefaPaiDiferenteDaPropria",
+          "quemAgeAgoraPorSituacao",
+          "resumoDiarioOitoHoras",
+          "avisoNaoSobrepostoPorPessoa",
+          "membroVeResponsavelOuCriador",
+          "itemChecklistSoQuemVeTarefa",
+          "marcarItemNaoMudaSituacao",
+          "itemChecklistTarefaNaoEncerrada",
+          "tarefaAbertaVencimento"
+        ],
+        "journeys": [
+          "executarTarefa",
+          "resumoDiario",
+          "retomarTarefa",
+          "revisarTarefa"
+        ],
+        "actors": [
+          "membroEquipe"
+        ],
+        "wide": false
+      }
+    },
+    {
+      "pageId": "listas_tarefas",
+      "status": "accepted",
+      "inputs": {
+        "contract": {
+          "path": "l2/tarefas/web/contracts/listas_tarefas.defs.ts",
+          "sha256": "sha256:1086bdcfddee0975a6e3a1d93d630573f63ba43aed3f0440d28f5ab042d2eac7"
+        },
+        "shared": {
+          "path": "l2/tarefas/web/shared/listas_tarefas.defs.ts",
+          "sha256": "sha256:ecae7cae8b05434be047ca317d3266dbef66f10e12245594035aca251d643f40"
+        },
+        "desktop": {
+          "path": "l2/tarefas/web/desktop/page11/listas_tarefas.defs.ts",
+          "sha256": "sha256:497168e0b014583b84dbcf53c5f0e76b3e1ba8bc9bad545a064e9572934f33d0"
+        },
+        "mobile": {
+          "path": "l2/tarefas/web/mobile/page11/listas_tarefas.defs.ts",
+          "sha256": "sha256:9074afc0d48d238abcd8d1e075929ee777f41aa37c85aeb9513847677d096c41"
+        }
+      },
+      "units": [
+        {
+          "unitId": "listas_tarefas__shared",
+          "kind": "shared",
+          "inputHash": "sha256:bbc540948ac585f23e32f5ac838e2a7025796c371a2993c368be745db2e159c2"
+        },
+        {
+          "unitId": "listas_tarefas__desktop",
+          "kind": "desktop",
+          "inputHash": "sha256:f7d6323ea1ed61ba08822019d105d2f480944a2222704b8d21c645ed43c8f849"
+        },
+        {
+          "unitId": "listas_tarefas__mobile",
+          "kind": "mobile",
+          "inputHash": "sha256:ef381ae1d4d62ba1ea77dc44b8a57fec3de1ad0e804e96b6362c623b487523e7"
+        },
+        {
+          "unitId": "listas_tarefas__tests",
+          "kind": "tests",
+          "inputHash": "sha256:9fee7e5669727b3f8769fe93fb978b89156c17f5aff451b15b3d69718bc05536"
+        }
+      ],
+      "problems": [
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "listas_tarefas",
+          "path": "shared:requests.cmdCriarLista.returns",
+          "message": "Command cmdCriarLista returns [lista], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "listas_tarefas",
+          "path": "shared:requests.cmdSalvarLista.returns",
+          "message": "Command cmdSalvarLista returns [lista], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        }
+      ],
+      "methods": {
+        "criarLista": "cmdCriarLista",
+        "salvarLista": "cmdSalvarLista"
+      },
+      "contextInputs": [],
+      "navigations": [],
+      "l4": {
+        "entities": [
+          "ListaTarefas"
+        ],
+        "rules": [
+          "nomeListaUnico",
+          "somenteGestorMantemListas",
+          "tarefaAbertaVencimento"
+        ],
+        "journeys": [
+          "manterListas"
+        ],
+        "actors": [
+          "gestor"
+        ],
+        "wide": false
+      }
+    },
+    {
+      "pageId": "minhas_tarefas",
+      "status": "accepted",
+      "inputs": {
+        "contract": {
+          "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+          "sha256": "sha256:d24204bf09749887b990df05b72297f67c08f3ac5b86a12a208c86901761b0a7"
+        },
+        "shared": {
+          "path": "l2/tarefas/web/shared/minhas_tarefas.defs.ts",
+          "sha256": "sha256:20d3867427ddcd731189690b62463866baf4c92c2ecd1739ec09c1193a70e0cc"
+        },
+        "desktop": {
+          "path": "l2/tarefas/web/desktop/page11/minhas_tarefas.defs.ts",
+          "sha256": "sha256:cdef8007b3164939506003681e1b4c364db9d21efd6b81b250d496202f864d80"
+        },
+        "mobile": {
+          "path": "l2/tarefas/web/mobile/page11/minhas_tarefas.defs.ts",
+          "sha256": "sha256:f386bfcc220c87b3e4db9d70e1e2a16d67494902baaa365f38c69c72d1f60d63"
+        }
+      },
+      "units": [
+        {
+          "unitId": "minhas_tarefas__shared",
+          "kind": "shared",
+          "inputHash": "sha256:b661adfe989294c44927dcefb3e7b8aa82bb79f96f16289ccebb6536b648636b"
+        },
+        {
+          "unitId": "minhas_tarefas__desktop",
+          "kind": "desktop",
+          "inputHash": "sha256:b68df76045a654ac1b75b3e4b14732ccac12110f2baf0ed35a37f42284150804"
+        },
+        {
+          "unitId": "minhas_tarefas__mobile",
+          "kind": "mobile",
+          "inputHash": "sha256:b48470c7260052e1913dbf5f54389f7c479cc2d29843731248747632cb47874c"
+        },
+        {
+          "unitId": "minhas_tarefas__tests",
+          "kind": "tests",
+          "inputHash": "sha256:976cd0b54d4e7530e371e5d2948e5ee8128b9bcfbb981c16395e9279e9949dd9"
+        }
+      ],
+      "problems": [
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdCriarTarefa.returns",
+          "message": "Command cmdCriarTarefa returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdAdicionarItensChecklist.returns",
+          "message": "Command cmdAdicionarItensChecklist returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdSalvarAlteracoes.returns",
+          "message": "Command cmdSalvarAlteracoes returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdAjustarChecklist.returns",
+          "message": "Command cmdAjustarChecklist returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdIniciar.returns",
+          "message": "Command cmdIniciar returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdEnviarParaRevisao.returns",
+          "message": "Command cmdEnviarParaRevisao returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdAceitar.returns",
+          "message": "Command cmdAceitar returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdDevolver.returns",
+          "message": "Command cmdDevolver returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdRetomar.returns",
+          "message": "Command cmdRetomar returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "minhas_tarefas",
+          "path": "shared:requests.cmdCancelar.returns",
+          "message": "Command cmdCancelar returns [tarefa, historico], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_CONTEXT_INPUT",
+          "page": "minhas_tarefas",
+          "path": "page11:organisms.tarefaForm",
+          "message": "tarefaForm submits tarefas.minhas_tarefas.cmdAdicionarItensChecklist; its input member tarefaId is the page's selection (entry param tarefaId, state selectedTarefa). cmdAdicionarItensChecklist fills tarefaId from this.selectedTarefa; the person does not type it, and a draft is not where it comes from."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_CONTEXT_INPUT",
+          "page": "minhas_tarefas",
+          "path": "page11:organisms.tarefaForm",
+          "message": "tarefaForm submits tarefas.minhas_tarefas.cmdAjustarChecklist; its input member tarefaId is the page's selection (entry param tarefaId, state selectedTarefa). cmdAjustarChecklist fills tarefaId from this.selectedTarefa; the person does not type it, and a draft is not where it comes from."
+        }
+      ],
+      "methods": {
+        "criarTarefa": "cmdCriarTarefa",
+        "adicionarItensChecklist": "cmdAdicionarItensChecklist",
+        "salvarAlteracoes": "cmdSalvarAlteracoes",
+        "ajustarChecklist": "cmdAjustarChecklist",
+        "iniciar": "cmdIniciar",
+        "enviarParaRevisao": "cmdEnviarParaRevisao",
+        "aceitar": "cmdAceitar",
+        "devolver": "cmdDevolver",
+        "retomar": "cmdRetomar",
+        "cancelar": "cmdCancelar"
+      },
+      "contextInputs": [
+        {
+          "organism": "tarefaForm",
+          "method": "cmdAdicionarItensChecklist",
+          "route": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+          "member": "tarefaId",
+          "param": "tarefaId",
+          "state": "selectedTarefa"
+        },
+        {
+          "organism": "tarefaForm",
+          "method": "cmdAjustarChecklist",
+          "route": "tarefas.minhas_tarefas.cmdAjustarChecklist",
+          "member": "tarefaId",
+          "param": "tarefaId",
+          "state": "selectedTarefa"
+        }
+      ],
+      "navigations": [],
+      "l4": {
+        "entities": [
+          "ItemChecklist",
+          "ListaTarefas",
+          "Participante",
+          "Tarefa"
+        ],
+        "rules": [
+          "apenasResponsavelExecuta",
+          "avisarQuemAgeAgora",
+          "apenasCriadorRevisa",
+          "devolucaoExigeMotivo",
+          "retomarSoAposDevolucao",
+          "cancelarApenasCriadorOuGestor",
+          "participanteNaoConfiguradoAceitaECria",
+          "escolhaGestorNuncaSobrescrita",
+          "gestorPorAcessoPlataforma",
+          "responsavelAceitaTarefas",
+          "criarTarefaExigePodeCriar",
+          "participanteSemCadastroPessoal",
+          "nomeListaUnico",
+          "somenteGestorMantemListas",
+          "podeCriarTarefasExigido",
+          "escolhaResponsavelPeloNome",
+          "reatribuirApenasCriadorOuGestor",
+          "edicaoNaoMudaSituacao",
+          "tarefaPaiDiferenteDaPropria",
+          "quemAgeAgoraPorSituacao",
+          "resumoDiarioOitoHoras",
+          "avisoNaoSobrepostoPorPessoa",
+          "membroVeResponsavelOuCriador",
+          "itemChecklistSoQuemVeTarefa",
+          "marcarItemNaoMudaSituacao",
+          "itemChecklistTarefaNaoEncerrada",
+          "tarefaAbertaVencimento",
+          "moduloNaoGuardaComentarios"
+        ],
+        "journeys": [
+          "cancelarTarefaCriada",
+          "criarTarefa",
+          "editarTarefa",
+          "executarTarefa",
+          "minhasTarefas",
+          "reatribuirTarefaCriada",
+          "resumoDiario",
+          "retomarTarefa",
+          "revisarTarefa"
+        ],
+        "actors": [
+          "membroEquipe"
+        ],
+        "wide": false
+      }
+    },
+    {
+      "pageId": "painel_tarefas",
+      "status": "accepted",
+      "inputs": {
+        "contract": {
+          "path": "l2/tarefas/web/contracts/painel_tarefas.defs.ts",
+          "sha256": "sha256:cf7146e04c14393814fb90d0ac1c50d6e5010bea856731304f84679534124403"
+        },
+        "shared": {
+          "path": "l2/tarefas/web/shared/painel_tarefas.defs.ts",
+          "sha256": "sha256:c2e672a9c2b7ab4634ea9c301f75b0c3a07b8d51f07f879497214131a6cfc8ea"
+        },
+        "desktop": {
+          "path": "l2/tarefas/web/desktop/page11/painel_tarefas.defs.ts",
+          "sha256": "sha256:cafb25ed0f26c8ce1ed968fb9957484bceaae664a016588f7d4a95b416a4502e"
+        },
+        "mobile": {
+          "path": "l2/tarefas/web/mobile/page11/painel_tarefas.defs.ts",
+          "sha256": "sha256:7cfd9f415dde740232508c7d1d6bdc989410996731b8f63f01000cd3f8a880c2"
+        }
+      },
+      "units": [
+        {
+          "unitId": "painel_tarefas__shared",
+          "kind": "shared",
+          "inputHash": "sha256:b2ff26e354c0dc8bd3ad1c38106e34734512c280182dffd7db61139835b7261b"
+        },
+        {
+          "unitId": "painel_tarefas__desktop",
+          "kind": "desktop",
+          "inputHash": "sha256:0b96e18294bcc76a2d43673363d0d1f23bc9a658ecf91006adea13f649fd8ab2"
+        },
+        {
+          "unitId": "painel_tarefas__mobile",
+          "kind": "mobile",
+          "inputHash": "sha256:eb2388dbc9c29db2782053e64f2e678739c21c99ad6c9d9537c51d959cefdd6e"
+        },
+        {
+          "unitId": "painel_tarefas__tests",
+          "kind": "tests",
+          "inputHash": "sha256:0108cf7203344f4df50650f2c9310e7bf18676050c11d00f8e391dc316a22a70"
+        }
+      ],
+      "problems": [],
+      "methods": {
+        "verTodasTarefas": "verTodasTarefas",
+        "abrirListas": "abrirListas",
+        "verTarefasDaLista": "verTarefasDaLista"
+      },
+      "contextInputs": [],
+      "navigations": [
+        {
+          "method": "verTodasTarefas",
+          "organism": "indicadoresTarefas",
+          "to": "tarefas_equipe",
+          "targetParams": [
+            "tarefaId",
+            "listaTarefasId",
+            "responsavelId"
+          ]
+        },
+        {
+          "method": "abrirListas",
+          "organism": "tarefasPorLista",
+          "to": "listas_tarefas",
+          "targetParams": [
+            "texto",
+            "listaTarefasId"
+          ]
+        },
+        {
+          "method": "verTarefasDaLista",
+          "organism": "tarefasPorLista",
+          "to": "tarefas_equipe",
+          "targetParams": [
+            "tarefaId",
+            "listaTarefasId",
+            "responsavelId"
+          ]
+        }
+      ],
+      "l4": {
+        "entities": [
+          "Tarefa"
+        ],
+        "rules": [
+          "apenasResponsavelExecuta",
+          "avisarQuemAgeAgora",
+          "apenasCriadorRevisa",
+          "devolucaoExigeMotivo",
+          "retomarSoAposDevolucao",
+          "cancelarApenasCriadorOuGestor",
+          "gestorPorAcessoPlataforma",
+          "responsavelAceitaTarefas",
+          "podeCriarTarefasExigido",
+          "escolhaResponsavelPeloNome",
+          "reatribuirApenasCriadorOuGestor",
+          "edicaoNaoMudaSituacao",
+          "tarefaPaiDiferenteDaPropria",
+          "quemAgeAgoraPorSituacao",
+          "resumoDiarioOitoHoras",
+          "avisoNaoSobrepostoPorPessoa",
+          "membroVeResponsavelOuCriador",
+          "tarefaAbertaVencimento"
+        ],
+        "journeys": [
+          "acompanharTarefas"
+        ],
+        "actors": [
+          "gestor"
+        ],
+        "wide": false
+      }
+    },
+    {
+      "pageId": "participantes",
+      "status": "accepted",
+      "inputs": {
+        "contract": {
+          "path": "l2/tarefas/web/contracts/participantes.defs.ts",
+          "sha256": "sha256:93a1280344bfee33ec49819f2d1352e161cd7e80265deab197ce6c3e78f84c68"
+        },
+        "shared": {
+          "path": "l2/tarefas/web/shared/participantes.defs.ts",
+          "sha256": "sha256:cab5cd3ef00ce644eeb75779abee327d6751fc2ad507900851335ed8363f9786"
+        },
+        "desktop": {
+          "path": "l2/tarefas/web/desktop/page11/participantes.defs.ts",
+          "sha256": "sha256:9285af0993fd313538183c48a7d43f71d2c58967b52275dc1bd076f0c599ab12"
+        },
+        "mobile": {
+          "path": "l2/tarefas/web/mobile/page11/participantes.defs.ts",
+          "sha256": "sha256:ea6e3a5222ddd25cc1b361ef4aaa6d9ff0177fcc1225a4d8c6c301e44764dbfc"
+        }
+      },
+      "units": [
+        {
+          "unitId": "participantes__shared",
+          "kind": "shared",
+          "inputHash": "sha256:59dc8268140f609a69646e14782cc42614674e6117f357efe517349725b20628"
+        },
+        {
+          "unitId": "participantes__desktop",
+          "kind": "desktop",
+          "inputHash": "sha256:5e81452b9ef93adfc6e5409fdf7042968a8fbcc9ba0ee21714755f89226228df"
+        },
+        {
+          "unitId": "participantes__mobile",
+          "kind": "mobile",
+          "inputHash": "sha256:bf367be50864d59c2ecf0b7aff2f1e19accc5e6c6aac8b880ae7cbeb97d5f1cf"
+        },
+        {
+          "unitId": "participantes__tests",
+          "kind": "tests",
+          "inputHash": "sha256:249d01242b60bb4255c3db108ba0eac575ce4f6607462418cd38e750180476d9"
+        }
+      ],
+      "problems": [
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "participantes",
+          "path": "shared:requests.incluirParticipante.returns",
+          "message": "Command incluirParticipante returns [participante], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "participantes",
+          "path": "shared:requests.salvarMarcas.returns",
+          "message": "Command salvarMarcas returns [participante], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        }
+      ],
+      "methods": {
+        "incluirParticipante": "incluirParticipante",
+        "salvarMarcas": "salvarMarcas"
+      },
+      "contextInputs": [],
+      "navigations": [],
+      "l4": {
+        "entities": [
+          "Participante"
+        ],
+        "rules": [
+          "participanteNaoConfiguradoAceitaECria",
+          "escolhaGestorNuncaSobrescrita",
+          "gestorPorAcessoPlataforma",
+          "responsavelAceitaTarefas",
+          "criarTarefaExigePodeCriar",
+          "participanteSemCadastroPessoal"
+        ],
+        "journeys": [
+          "configurarParticipantes"
+        ],
+        "actors": [
+          "gestor"
+        ],
+        "wide": false
+      }
+    },
+    {
+      "pageId": "tarefas_equipe",
+      "status": "accepted",
+      "inputs": {
+        "contract": {
+          "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+          "sha256": "sha256:940fd1870167acbe9dfa77a0e937c646b7292a33f36d82ee4ff0a19545d9a228"
+        },
+        "shared": {
+          "path": "l2/tarefas/web/shared/tarefas_equipe.defs.ts",
+          "sha256": "sha256:ce1816dc25efa26b383cdc72924172848ad3fe364e7324799cf06f6ad7bf45bf"
+        },
+        "desktop": {
+          "path": "l2/tarefas/web/desktop/page11/tarefas_equipe.defs.ts",
+          "sha256": "sha256:8da7cc02db4bbc1d330a5afba1772c75b32b4e6617456a2513f3852791970514"
+        },
+        "mobile": {
+          "path": "l2/tarefas/web/mobile/page11/tarefas_equipe.defs.ts",
+          "sha256": "sha256:9abd4b58a3235b3a3ada0b70d232a095531be3458b500752574202dae3f6f63b"
+        }
+      },
+      "units": [
+        {
+          "unitId": "tarefas_equipe__shared",
+          "kind": "shared",
+          "inputHash": "sha256:99d7be173a234922c5fb43147076e5737cdbf143ca4a2dfe9404e42437cbbde7"
+        },
+        {
+          "unitId": "tarefas_equipe__desktop",
+          "kind": "desktop",
+          "inputHash": "sha256:6a653e9ffc5bcf9bc78cc83a336eb9a41e96447d2b55e1fc20e5d1bdc5129368"
+        },
+        {
+          "unitId": "tarefas_equipe__mobile",
+          "kind": "mobile",
+          "inputHash": "sha256:c84724b50ef18410700b724dcf918a8c51a1f094b3cbfe5a7258dcfd3a6fbacb"
+        },
+        {
+          "unitId": "tarefas_equipe__tests",
+          "kind": "tests",
+          "inputHash": "sha256:25bc16535a1522529990d79f3867b579864113b06f40f655ac0da74a64797d61"
+        }
+      ],
+      "problems": [
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "tarefas_equipe",
+          "path": "shared:requests.trocarResponsavelTarefa.returns",
+          "message": "Command trocarResponsavelTarefa returns [tarefa], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        },
+        {
+          "severity": "warning",
+          "code": "M4_INPUT_RETURN_UNREAD",
+          "page": "tarefas_equipe",
+          "path": "shared:requests.cancelarTarefaEquipe.returns",
+          "message": "Command cancelarTarefaEquipe returns [tarefa], which no state has as its source. Its route comment says where each one goes (a row to insert or update in a list, a record to redraw); apply it there."
+        }
+      ],
+      "methods": {
+        "trocarResponsavel": "trocarResponsavelTarefa",
+        "cancelarTarefa": "cancelarTarefaEquipe"
+      },
+      "contextInputs": [],
+      "navigations": [],
+      "l4": {
+        "entities": [
+          "ItemChecklist",
+          "ListaTarefas",
+          "Participante",
+          "Tarefa"
+        ],
+        "rules": [
+          "apenasResponsavelExecuta",
+          "avisarQuemAgeAgora",
+          "apenasCriadorRevisa",
+          "devolucaoExigeMotivo",
+          "retomarSoAposDevolucao",
+          "cancelarApenasCriadorOuGestor",
+          "participanteNaoConfiguradoAceitaECria",
+          "escolhaGestorNuncaSobrescrita",
+          "gestorPorAcessoPlataforma",
+          "responsavelAceitaTarefas",
+          "criarTarefaExigePodeCriar",
+          "participanteSemCadastroPessoal",
+          "nomeListaUnico",
+          "somenteGestorMantemListas",
+          "podeCriarTarefasExigido",
+          "escolhaResponsavelPeloNome",
+          "reatribuirApenasCriadorOuGestor",
+          "edicaoNaoMudaSituacao",
+          "tarefaPaiDiferenteDaPropria",
+          "quemAgeAgoraPorSituacao",
+          "resumoDiarioOitoHoras",
+          "avisoNaoSobrepostoPorPessoa",
+          "membroVeResponsavelOuCriador",
+          "itemChecklistSoQuemVeTarefa",
+          "marcarItemNaoMudaSituacao",
+          "itemChecklistTarefaNaoEncerrada",
+          "tarefaAbertaVencimento",
+          "moduloNaoGuardaComentarios"
+        ],
+        "journeys": [
+          "acompanharTarefas",
+          "cancelarTarefa",
+          "reatribuirTarefa"
+        ],
+        "actors": [
+          "gestor"
+        ],
+        "wide": false
+      }
+    }
+  ]
+}

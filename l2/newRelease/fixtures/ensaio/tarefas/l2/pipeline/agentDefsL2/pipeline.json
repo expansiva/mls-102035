@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pipeline-v2",
+  "flowId": "agentDefsL2",
+  "project": 102047,
+  "module": "tarefas",
+  "status": "complete",
+  "steps": {
+    "entry10": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:42:36.335Z"
+    },
+    "input20": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:42:36.564Z",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentDefsL2/input.json"
+      ],
+      "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b"
+    },
+    "pages50": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:45:07.877Z",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentDefsL2/pages50/inicio.json",
+        "l2/tarefas/pipeline/agentDefsL2/pages50/listas_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/pages50/minhas_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/pages50/painel_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/pages50/participantes.json",
+        "l2/tarefas/pipeline/agentDefsL2/pages50/tarefas_equipe.json"
+      ],
+      "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b"
+    },
+    "bff55": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:49:56.023Z",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentDefsL2/bff/inicio.json",
+        "l2/tarefas/pipeline/agentDefsL2/bff/listas_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/bff/minhas_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/bff/painel_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/bff/participantes.json",
+        "l2/tarefas/pipeline/agentDefsL2/bff/tarefas_equipe.json"
+      ],
+      "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b"
+    },
+    "shared60": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:49:56.375Z",
+      "artifactPaths": [
+        "l2/tarefas/pipeline/agentDefsL2/shared60/inicio.json",
+        "l2/tarefas/pipeline/agentDefsL2/shared60/listas_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/shared60/minhas_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/shared60/painel_tarefas.json",
+        "l2/tarefas/pipeline/agentDefsL2/shared60/participantes.json",
+        "l2/tarefas/pipeline/agentDefsL2/shared60/tarefas_equipe.json"
+      ],
+      "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b"
+    },
+    "contracts70": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:49:56.718Z",
+      "artifactPaths": [
+        "l2/tarefas/web/contracts/inicio.defs.ts",
+        "l2/tarefas/web/contracts/listas_tarefas.defs.ts",
+        "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+        "l2/tarefas/web/contracts/painel_tarefas.defs.ts",
+        "l2/tarefas/web/contracts/participantes.defs.ts",
+        "l2/tarefas/web/contracts/tarefas_equipe.defs.ts"
+      ],
+      "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b"
+    },
+    "finalize80": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:49:57.587Z",
+      "artifactPaths": [
+        "l2/tarefas/web/contracts/inicio.defs.ts",
+        "l2/tarefas/web/contracts/listas_tarefas.defs.ts",
+        "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+        "l2/tarefas/web/contracts/painel_tarefas.defs.ts",
+        "l2/tarefas/web/contracts/participantes.defs.ts",
+        "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+        "l2/tarefas/web/desktop/page11/inicio.defs.ts",
+        "l2/tarefas/web/desktop/page11/listas_tarefas.defs.ts",
+        "l2/tarefas/web/desktop/page11/minhas_tarefas.defs.ts",
+        "l2/tarefas/web/desktop/page11/painel_tarefas.defs.ts",
+        "l2/tarefas/web/desktop/page11/participantes.defs.ts",
+        "l2/tarefas/web/desktop/page11/tarefas_equipe.defs.ts",
+        "l2/tarefas/web/mobile/page11/inicio.defs.ts",
+        "l2/tarefas/web/mobile/page11/listas_tarefas.defs.ts",
+        "l2/tarefas/web/mobile/page11/minhas_tarefas.defs.ts",
+        "l2/tarefas/web/mobile/page11/painel_tarefas.defs.ts",
+        "l2/tarefas/web/mobile/page11/participantes.defs.ts",
+        "l2/tarefas/web/mobile/page11/tarefas_equipe.defs.ts",
+        "l2/tarefas/web/shared/inicio.defs.ts",
+        "l2/tarefas/web/shared/listas_tarefas.defs.ts",
+        "l2/tarefas/web/shared/minhas_tarefas.defs.ts",
+        "l2/tarefas/web/shared/painel_tarefas.defs.ts",
+        "l2/tarefas/web/shared/participantes.defs.ts",
+        "l2/tarefas/web/shared/tarefas_equipe.defs.ts",
+        "l2/tarefas/pipeline/agentDefsL2/finalize80/report.json"
+      ],
+      "snapshotHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b"
+    }
+  },
+  "createdAt": "2026-10-23T01:42:36.335Z",
+  "updatedAt": "2026-10-23T01:49:57.587Z"
+}

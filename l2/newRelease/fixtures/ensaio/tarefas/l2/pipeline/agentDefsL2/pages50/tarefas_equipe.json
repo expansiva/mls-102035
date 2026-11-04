@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "2026-09-30-agent-defs-l2-pages-v2.1",
+  "needsVersion": "2026-09-30-agent-defs-l2-page11-needs-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "tarefas_equipe",
+  "inputHash": "sha256:4ece6676de81d5149ce624e66c9b0b1b3403d6445671c95fb0f63bc2a4ca2f5b",
+  "unitInputHash": "sha256:dc64bc709d4f6bea3f9a1436e5563b367216ed6eca21739884046a07c2bf7cac",
+  "template": {
+    "category": "operationsQueue",
+    "experience": "workQueueSplit",
+    "reason": "A página é uma fila operacional de tarefas de toda a organização, acompanhada por situação, prioridade, prazo e responsável, alternando entre lista e quadro, com ações pontuais de trocar o responsável e cancelar sobre a tarefa aberta. Por isso operationsQueue serve como categoria comum para desktop e mobile. Derived workQueueSplit from operationsQueue.page21.",
+    "reference": "_102020_/l4/collabux/templates/operationsQueue/page21.md",
+    "hash": "sha256:9faa354b37a0a8f7bcd032b49ee8fb28991f7651ce985662f4b84ef874f192c3",
+    "catalogHash": "sha256:285e42e596b7bde092824c38a446f23d7bd4ac40fc551a0e0d58be6d08f135dc"
+  },
+  "moleculeInventoryHash": "sha256:a243774aee05d980d07cae75cf2e574b3a9c93761f3cec240a457e3dc5d5b78d",
+  "moleculeHashes": {
+    "/_102040_/l2/molecules/groupselectone/index.defs": "sha256:6cd31103bd70d5d83feffcc8fe97dbbdbbd1cd3912cf50251c8e650f412b882a",
+    "/_102020_/l2/aura/molecules/skills/groupSelectOne/usage": "sha256:5d7eaae4f1b9b028779e06d51b656ad6c0cd8f696cca6de267f0236e6efb7760",
+    "/_102040_/l2/molecules/groupselectmany/index.defs": "sha256:f4eb38abdd200520a97d15aed88f64cb20b3318dd3554eb663e92c6fd6d5a500",
+    "/_102020_/l2/aura/molecules/skills/groupSelectMany/usage": "sha256:4e2b949a359cc6de80a08ea4a119cf6193e1cfc550710793293f0599a7beb35b",
+    "/_102040_/l2/molecules/groupenterdateinterval/index.defs": "sha256:ac8ce6efaaad421c82c6a9af079a22fd231487b80719207740e2bd8e0369a492",
+    "/_102020_/l2/aura/molecules/skills/groupEnterDateInterval/usage": "sha256:54d3f3835443f599c80743f0ba259ae98d2fc44d471c925409cb0eeec02ff75a",
+    "/_102040_/l2/molecules/groupnavigatesection/index.defs": "sha256:367863a7c12c553fa024f441d4cf41632b6d54a6387b33bd03da7b83a1b8c369",
+    "/_102020_/l2/aura/molecules/skills/groupNavigateSection/usage": "sha256:df701aaafb37e08e88fe7da485e67dff9c3c763ee871fc8864a756e99c01cb49",
+    "/_102040_/l2/molecules/groupviewtable/index.defs": "sha256:3e2e055853cf7b3fb3d01991dcfd148dc9030d8b9cbef76640feb87157f0d4f9",
+    "/_102020_/l2/aura/molecules/skills/groupViewTable/usage": "sha256:36320ac5933a879e44fc9e9b9dc7112ea73d25f1ea39d13304b0dbce85c6eb78",
+    "/_102040_/l2/molecules/groupviewcard/index.defs": "sha256:ef557fceab6248a6ef1292cb692929b1793b71d12866fe13d1980a1378819f4c",
+    "/_102020_/l2/aura/molecules/skills/groupViewCard/usage": "sha256:136a98aa182ec2d9d2bea7fe649783d51c091deb59c7d13e6f31fecc850b08c9",
+    "/_102040_/l2/molecules/groupsearchcontent/index.defs": "sha256:27988d1fa4120362c6529663ac2cfc8a97b53ece995329bb6fe9bc98a9acbb5f",
+    "/_102020_/l2/aura/molecules/skills/groupSearchContent/usage": "sha256:c1e4ab5899f80b0541f4364c875e164de747d053a3b2f09748a6f87be373738e",
+    "/_102040_/l2/molecules/groupshowprogress/index.defs": "sha256:072c083ab8c8f558aac8605b1bf381e6a3ca5f54bdffe5790f7d9941953719f5",
+    "/_102020_/l2/aura/molecules/skills/groupShowProgress/usage": "sha256:cb29a9fc515fc7ec7424875b83b8bd4482ad7eaf23a90a72a71473b96faaa1a0",
+    "/_102040_/l2/molecules/groupviewdata/index.defs": "sha256:cd1aeb8f281ca1e1fcf30f0acf8f6b1707f6c43a675faedfca4b8f12504499fa",
+    "/_102020_/l2/aura/molecules/skills/groupViewData/usage": "sha256:bd498bbefd80c0985dce0f1f11b8fca1c9c595f244658c39ac87016ca70a5525",
+    "/_102040_/l2/molecules/grouptriggeraction/index.defs": "sha256:b64c73d526fbc780a7a512a661d48a92fe29722bb9338ca939090a9dad2d4dca",
+    "/_102020_/l2/aura/molecules/skills/groupTriggerAction/usage": "sha256:be6151e6341cc19ffc02dc2699bb210b88e18051320c3e09d862be283822e485",
+    "/_102040_/l2/molecules/groupnotifyuser/index.defs": "sha256:b041b5f2e0d3deb0e4abf184e15d9542862677e3659da5f1969d6db2bd8d8e08",
+    "/_102020_/l2/aura/molecules/skills/groupNotifyUser/usage": "sha256:f0f8cbf8f40d261b222b6d0c53f31a6690c1ad85502f1601c0b893ea7cdb4aa2"
+  },
+  "moleculeGroupAssessments": [
+    {
+      "organismId": "organism1",
+      "groups": [
+        {
+          "groupId": "groupSelectOne",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSelectMany",
+          "relevant": true
+        },
+        {
+          "groupId": "groupEnterDateInterval",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNavigateSection",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewTable",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewCard",
+          "relevant": true
+        },
+        {
+          "groupId": "groupSearchContent",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism2",
+      "groups": [
+        {
+          "groupId": "groupViewCard",
+          "relevant": true
+        },
+        {
+          "groupId": "groupShowProgress",
+          "relevant": true
+        },
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism3",
+      "groups": [
+        {
+          "groupId": "groupSelectOne",
+          "relevant": true
+        },
+        {
+          "groupId": "groupTriggerAction",
+          "relevant": true
+        },
+        {
+          "groupId": "groupNotifyUser",
+          "relevant": true
+        }
+      ]
+    },
+    {
+      "organismId": "organism4",
+      "groups": [
+        {
+          "groupId": "groupViewData",
+          "relevant": true
+        }
+      ]
+    }
+  ],
+  "skillHash": "sha256:c3517179ccbde253ae6f8f2824b85092ccd698ba82925d87739370ba48f2e9d8",
+  "promptHash": "sha256:7c32290937225111880488f28364629141f1c1a16cff64eafa536c2ebaa93455",
+  "promptChars": 66332,
+  "repairPromptChars": 0,
+  "sourceHashes": {
+    "desktop": "sha256:8da7cc02db4bbc1d330a5afba1772c75b32b4e6617456a2513f3852791970514",
+    "mobile": "sha256:9abd4b58a3235b3a3ada0b70d232a095531be3458b500752574202dae3f6f63b"
+  },
+  "needsHashes": {
+    "desktop": "sha256:4fc219b4eb83ea87cdd7cd85a9f39a097c74825d4e31936357c95e18f207208e",
+    "mobile": "sha256:4fc219b4eb83ea87cdd7cd85a9f39a097c74825d4e31936357c95e18f207208e"
+  },
+  "menuOrigins": [
+    {
+      "organismId": "tarefasEquipe",
+      "sourceIndex": 0,
+      "kind": "list",
+      "text": "Todas as tarefas filtradas por lista, responsável, prioridade, prazo e situação, em lista ou em quadro, mostrando quem age agora."
+    },
+    {
+      "organismId": "tarefaDetalhe",
+      "sourceIndex": 1,
+      "kind": "detail",
+      "text": "A tarefa aberta com responsável atual, prazo, criada em, subtarefas e checklist com progresso."
+    },
+    {
+      "organismId": "tarefaAcoes",
+      "sourceIndex": 2,
+      "kind": "actions",
+      "text": "Trocar o responsável ou cancelar a tarefa."
+    },
+    {
+      "organismId": "tarefaHistorico",
+      "sourceIndex": 3,
+      "kind": "timeline",
+      "text": "Histórico da tarefa: criação, execução, revisões, devoluções, trocas de responsável e cancelamento."
+    }
+  ]
+}

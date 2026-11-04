@@ -1,9 +1,13 @@
 /// <mls fileReference="_102035_/l2/ensaio/hostSimulado.ts" enhancement="_blank" />
 
 import type { IAgentAsync } from '/_102027_/l2/aiAgentBase.js';
+import type { createRecordedLlm } from '/_102035_/l2/solution/testing/recordedLlm.js';
 
 interface AgentEntry { createAgent(): IAgentAsync; }
 export type RecordedAnswers = Record<string, mls.msg.AIPayload | mls.msg.AIPayload[]>;
+
+/** The model of the rehearsal for steps that have no hand-written answer: `replay` returns the recording, `record` makes the real call. */
+export type RehearsalLlm = ReturnType<typeof createRecordedLlm>;
 
 /** Browser storage surface used by the real candidate draft store in this sequential replay. */
 export function createMemoryIndexedDb(): IDBFactory {
@@ -65,6 +69,7 @@ export async function runUntilDone(
   context: mls.msg.ExecutionContext,
   answers: RecordedAnswers,
   entries: AgentEntry[] = [],
+  llm?: RehearsalLlm,
 ) {
   const agent = agentEntry.createAgent();
   const agents = new Map([agent, ...entries.map(entry => entry.createAgent())].map(item => [item.agentName, item]));
@@ -75,6 +80,10 @@ export async function runUntilDone(
   const intents: mls.msg.AgentIntent[] = [];
   const executedPlans: string[] = [];
   const parents = new Map<number, mls.msg.AIAgentStep>();
+  /** Fan-out parents (`executionMode: { type: 'parallel' }`): the worker steps the host made for them. Run one after the other here. */
+  const fanouts = new Map<number, number[]>();
+  /** Steps whose beforePrompt left them `in_progress` with no prompt: they wait for fan-out children and a barrier step closes them. */
+  const started = new Set<number>();
   let nextId = 1;
   let hookSequential = 0;
   let activeStep: mls.msg.AIAgentStep | undefined;
@@ -106,6 +115,24 @@ export async function runUntilDone(
         (parent.nextSteps ??= []).push(step);
         steps.push(step);
         parents.set(step.stepId, parent);
+        const mode = (intent as { executionMode?: { type?: string; args?: string[] } }).executionMode;
+        if (mode?.type === 'parallel') {
+          // Like the real host: one child per arg, the arg is the child prompt; the parent closes when its children do.
+          const children: number[] = [];
+          for (const arg of mode.args ?? []) {
+            const planId = (JSON.parse(arg) as { planId?: string }).planId;
+            const child: mls.msg.AIAgentStep = {
+              type: 'agent', stepId: nextId++, interaction: null, nextSteps: [], status: 'waiting_human_input',
+              agentName: step.type === 'agent' ? step.agentName : parent.agentName, stepTitle: planId ?? 'worker', prompt: arg, rags: [],
+              planning: { planId: planId ?? String(nextId), dependsOn: [], executionMode: 'sequential', executionHost: 'client' },
+            } as mls.msg.AIAgentStep;
+            ((step as mls.msg.AIAgentStep).nextSteps ??= []).push(child);
+            steps.push(child);
+            parents.set(child.stepId, step as mls.msg.AIAgentStep);
+            children.push(child.stepId);
+          }
+          fanouts.set(step.stepId, children);
+        }
       } else if (intent.type === 'update-status') {
         const step = steps.find(item => item.stepId === intent.stepId);
         if (!step || step.type !== 'agent') throw new Error(`Unknown update step ${intent.stepId}`);
@@ -142,7 +169,14 @@ export async function runUntilDone(
       context.task.last_update_log = `Task failed at ${new Date().toISOString()} | reason: ${failed.interaction?.trace.at(-1) ?? ''}`;
       return { context, steps, executedPlans, intents };
     }
-    const pending = steps.filter(step => step.status !== 'completed');
+    for (const [parentId, children] of fanouts) {
+      const parentStep = steps.find(item => item.stepId === parentId);
+      if (parentStep && parentStep.status !== 'completed'
+        && children.every(id => ['completed', 'failed'].includes(steps.find(item => item.stepId === id)?.status ?? ''))) parentStep.status = 'completed';
+    }
+    const unfinished = steps.filter(step => step.status !== 'completed' && !fanouts.has(step.stepId));
+    const pending = unfinished.filter(step => !started.has(step.stepId));
+    if (!pending.length && unfinished.length) throw new Error(`Replay stopped: ${unfinished.map(step => step.planning?.planId ?? step.stepId).join(', ')} wait for children that never closed them.`);
     if (!pending.length) {
       if (!context.task) throw new Error('The agent did not create a task.');
       context.task.status = 'done';
@@ -157,14 +191,28 @@ export async function runUntilDone(
     executedPlans.push(planId);
     const stepAgent = agents.get(step.agentName);
     if (!stepAgent?.beforePromptStep || !stepAgent.afterPromptStep) throw new Error(`Missing public entry for ${step.agentName}`);
-    apply(await stepAgent.beforePromptStep(stepAgent, context, parent, step, ++hookSequential));
+    // A fan-out child gets its arg as the sixth parameter, as the real host passes it.
+    const args = fanouts.has(parent.stepId) ? String(step.prompt ?? '') : undefined;
+    apply(await (stepAgent.beforePromptStep as (...rest: unknown[]) => Promise<mls.msg.AgentIntent[]>)(stepAgent, context, parent, step, ++hookSequential, args));
+    if (step.status === 'in_progress' && !step.interaction?.input.length) { started.add(step.stepId); continue; }
     if (step.status !== 'completed' && step.status !== 'failed') {
       if (!step.interaction?.input.length) throw new Error(`Step ${planId} neither completed nor prepared a prompt.`);
       const answer = answers[planId];
-      if (!answer) throw new Error(`Missing recorded answer for ${planId}`);
-      step.interaction.payload = structuredClone(Array.isArray(answer) ? answer : [answer]);
+      if (!answer && !llm) throw new Error(`Missing recorded answer for ${planId}`);
+      if (answer) {
+        step.interaction.payload = structuredClone(Array.isArray(answer) ? answer : [answer]);
+      } else {
+        const system = step.interaction.input.find(item => item.type === 'system');
+        const human = step.interaction.input.find(item => item.type === 'human');
+        // The raw answer of the provider, as the step stores it before any normalization.
+        const raw = await llm!.respond(step.agentName, planId, {
+          systemPrompt: system ? String(system.content) : '', humanPrompt: human ? String(human.content) : '',
+          tools: step.interaction.tools ?? null,
+        });
+        step.interaction.payload = [raw as unknown as mls.msg.AIPayload];
+      }
       step.status = 'waiting_after_prompt';
-      apply(await stepAgent.afterPromptStep(stepAgent, context, parent, step, ++hookSequential));
+      apply(await (stepAgent.afterPromptStep as (...rest: unknown[]) => Promise<mls.msg.AgentIntent[]>)(stepAgent, context, parent, step, ++hookSequential, args));
     }
   }
   throw new Error('Replay exceeded 100 hook iterations.');

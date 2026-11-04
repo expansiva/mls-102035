@@ -1,0 +1,41 @@
+{
+  "organisms": {
+    "listaParticipantes": {
+      "reads": [
+        "Participante.details.identification.name",
+        "Participante.details.identification.status",
+        "Participante.details.identification.tags",
+        "Participante.details.tarefas.aceitaTarefasEfetivo",
+        "Participante.details.tarefas.podeCriarTarefasEfetivo"
+      ],
+      "edits": [],
+      "selects": "formParticipante",
+      "submits": []
+    },
+    "formParticipante": {
+      "reads": [
+        "Participante.details.identification.name",
+        "Participante.details.identification.status",
+        "Participante.details.tarefas.aceitaTarefas",
+        "Participante.details.tarefas.podeCriarTarefas",
+        "Participante.details.tarefas.aceitaTarefasEfetivo",
+        "Participante.details.tarefas.podeCriarTarefasEfetivo"
+      ],
+      "edits": [
+        "Participante.details.tarefas.aceitaTarefas",
+        "Participante.details.tarefas.podeCriarTarefas"
+      ],
+      "selects": "",
+      "submits": [
+        {
+          "intentId": "incluirParticipante",
+          "write": "Participante.create"
+        },
+        {
+          "intentId": "salvarMarcas",
+          "write": "Participante.update"
+        }
+      ]
+    }
+  }
+}

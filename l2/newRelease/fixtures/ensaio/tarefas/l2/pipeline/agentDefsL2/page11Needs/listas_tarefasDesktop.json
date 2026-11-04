@@ -1,0 +1,38 @@
+{
+  "organisms": {
+    "listasCadastradas": {
+      "reads": [
+        "ListaTarefas.id",
+        "ListaTarefas.nome",
+        "ListaTarefas.details.descricao",
+        "ListaTarefas.details.quantidadeTarefasAbertas"
+      ],
+      "edits": [],
+      "selects": "formularioLista",
+      "submits": []
+    },
+    "formularioLista": {
+      "reads": [
+        "ListaTarefas.id",
+        "ListaTarefas.version",
+        "ListaTarefas.nome",
+        "ListaTarefas.details.descricao"
+      ],
+      "edits": [
+        "ListaTarefas.nome",
+        "ListaTarefas.details.descricao"
+      ],
+      "selects": "",
+      "submits": [
+        {
+          "intentId": "criarLista",
+          "write": "ListaTarefas.create"
+        },
+        {
+          "intentId": "salvarLista",
+          "write": "ListaTarefas.update"
+        }
+      ]
+    }
+  }
+}

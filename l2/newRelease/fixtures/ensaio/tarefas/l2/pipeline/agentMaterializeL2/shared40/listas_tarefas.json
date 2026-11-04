@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-shared-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "listas_tarefas",
+  "unitInputHash": "sha256:bbc540948ac585f23e32f5ac838e2a7025796c371a2993c368be745db2e159c2",
+  "promptHash": "sha256:b70bea88413f612669d6f5a1375c4eafb045b518a297d8dc974845627ab7cb76",
+  "rulesHash": "sha256:d36f3b0a137d37cd7391c26de572d3e082fd25db80a4832c25efe696a34525f2",
+  "sourcePath": "l2/tarefas/web/shared/listas_tarefas.ts",
+  "sourceHash": "sha256:444cf219f7bb86ec01a7d634ab1c276704609ce668ae8e4fc93b9d2f473dad04",
+  "declarationPath": "l2/tarefas/web/shared/listas_tarefasDts.txt",
+  "declarationHash": "sha256:c1e06e841c2dba80d6999312a1d41f2d573a8aeefe6dd1d61a6e299935451be3",
+  "attempt": 1,
+  "findings": [
+    {
+      "code": "FILTER_STATE_MISSING",
+      "message": "Param texto (filter:listasCadastradas, persisted) has no state in the definition. Added the public state texto (string | null, persisted in localStorage) that takes part in the qryListasTarefas input; qryListasTarefas(texto) publishes it and loads from the first page."
+    },
+    {
+      "code": "SELECT_SETTER_MISSING",
+      "message": "Param listaTarefasId selects formularioLista but no request fetches one record and no setter exists. Added selectListaTarefas(id | null), the getter formularioLista (the loaded row with that id) and the URL sync of selectedListaTarefas."
+    },
+    {
+      "code": "FILTER_STATE_MISSING",
+      "message": "The forms had no draft state (no <command>.input state). Added cmdCriarListaDraft and cmdSalvarListaDraft with setCmdCriarListaDraft and setCmdSalvarListaDraft; the edit draft is filled from the selected list and refilled from the list the command returns."
+    },
+    {
+      "code": "STATE_LEFT_STALE",
+      "message": "cmdCriarLista and cmdSalvarLista return lista, which no state has as its source. It is upserted by id into listas.items (a new list is appended at the end). The backend order by nome, the current texto filter and hasMore are not recomputed in the browser, so a new or renamed list may sit out of order or outside the filter until qryListasTarefas is called again."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdCriarListaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public cmdSalvarListaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public formularioLista is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public selectListaTarefas is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdCriarListaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public setCmdSalvarListaDraft is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    },
+    {
+      "code": "MEMBER_ADDED",
+      "message": "public texto is not declared by the defs; the shared added it so the pages can drive the page (a draft, a setter, a selection or a filter state)."
+    }
+  ]
+}

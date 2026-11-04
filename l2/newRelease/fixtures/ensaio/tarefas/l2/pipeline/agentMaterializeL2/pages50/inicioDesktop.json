@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "inicio",
+  "device": "desktop",
+  "contextHash": "sha256:b1171cdb4675b2c4035169150e63048526ac59b8b2b7f4672c4d057df31904a5",
+  "sourcePath": "l2/tarefas/web/desktop/page11/inicio.ts",
+  "sourceHash": "sha256:7948c99c78005bb3a788e4d96235284bbf6dc26a411d536d2fb0b103b8a03804",
+  "attempt": 1,
+  "design": {
+    "concept": "Uma mesa de triagem para o início do dia: o resumo de prazo abre a tela, enquanto a lista central mostra somente o contexto necessário para cada tarefa e deixa a próxima ação explícita. O panorama fica na lateral como referência silenciosa, sem competir com o trabalho imediato.",
+    "views": [],
+    "decisions": "A tela é uma única superfície desktop, pois o contrato não fornece um estado de seleção de tarefa para sustentar com segurança o painel mestre-detalhe do template. Em vez de inventar seleção local, cada item da caixa de entrada traz seu contexto e sua ação de processo, com o motivo obrigatório exposto apenas em tarefas em revisão. O aviso diário lidera a hierarquia; a coluna lateral concentra indicadores e permissões. A lista vertical e os cartões de métrica seguem as moléculas preferidas; os pills oferecem uma orientação de fluxo sem filtrar nem recalcular os dados fornecidos pelo backend."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoAlertas needs an element with data-section-id=\"secaoAlertas\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoPendencias needs an element with data-section-id=\"secaoPendencias\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secaoPanorama needs an element with data-section-id=\"secaoPanorama\"."
+    }
+  ]
+}

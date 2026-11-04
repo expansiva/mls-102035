@@ -1,0 +1,100 @@
+import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import type { ParticipantesContracts, ParticipanteModulo, UsuarioOrganizacao } from '/_102047_/l2/tarefas/web/contracts/participantes.defs.js';
+export type { ParticipantesContracts, ParticipanteModulo, UsuarioOrganizacao } from '/_102047_/l2/tarefas/web/contracts/participantes.defs.js';
+type Output<R extends keyof ParticipantesContracts> = ParticipantesContracts[R]['output'];
+export type ErrorState = {
+    code: string;
+    message: string;
+    details?: unknown;
+} | null;
+type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
+type ParticipantesPage = Output<'tarefas.participantes.listarParticipantes'>['participantes'];
+/** Draft of the command incluirParticipante: the user chosen in the search and the optional manager flags (null = not informed). */
+export type IncluirParticipanteDraft = {
+    id: string | null;
+    details: {
+        tarefas: {
+            aceitaTarefas: boolean | null;
+            podeCriarTarefas: boolean | null;
+        };
+    };
+};
+/** Draft of the command salvarMarcas: the participant being edited, its read version and the two flags. */
+export type SalvarMarcasDraft = {
+    id: string | null;
+    version: number | null;
+    details: {
+        tarefas: {
+            aceitaTarefas: boolean | null;
+            podeCriarTarefas: boolean | null;
+        };
+    };
+};
+export declare class TarefasParticipantesShared extends StateLitElement {
+    /** state participantes — the page of participants of the tarefas module (name, status, roles, manager flags and effective flags); source listarParticipantes.participantes; organism listaParticipantes */
+    participantes: ParticipantesPage | null;
+    /** state usuarios — short list of active organization users that do not participate yet, found by name; source buscarUsuarios.usuarios; organism formParticipante */
+    usuarios: UsuarioOrganizacao[];
+    /** state selectedParticipante — the id of the Participante selected in listaParticipantes (the record is the getter formParticipante); source entry.params.participanteId; organism formParticipante, listaParticipantes */
+    selectedParticipante: string | null;
+    /** state busca — the name filter of the participants list (null = no filter); source entry.params.busca; organism listaParticipantes; persisted */
+    busca: string | null;
+    /** state incluirParticipanteDraft — form draft of the command incluirParticipante: the chosen user id and the optional manager flags; source incluirParticipante.input; organism formParticipante */
+    incluirParticipanteDraft: IncluirParticipanteDraft;
+    /** state salvarMarcasDraft — form draft of the command salvarMarcas: the selected participant, its version and the two flags; source salvarMarcas.input; organism formParticipante */
+    salvarMarcasDraft: SalvarMarcasDraft;
+    /** state pageStatus — overall state of the page: idle, loading, empty (no participant), success or error */
+    pageStatus: 'idle' | 'loading' | 'empty' | 'success' | 'error';
+    /** state listarParticipantesStatus — status of the request listarParticipantes */
+    listarParticipantesStatus: RequestStatus;
+    /** state listarParticipantesError — error of the request listarParticipantes (also client.selectionInvalid when the selected id is not in the list) */
+    listarParticipantesError: ErrorState;
+    /** state buscarUsuariosStatus — status of the request buscarUsuarios */
+    buscarUsuariosStatus: RequestStatus;
+    /** state buscarUsuariosError — error of the request buscarUsuarios */
+    buscarUsuariosError: ErrorState;
+    /** state incluirParticipanteStatus — status of the command incluirParticipante */
+    incluirParticipanteStatus: RequestStatus;
+    /** state incluirParticipanteError — error of the command incluirParticipante */
+    incluirParticipanteError: ErrorState;
+    /** state salvarMarcasStatus — status of the command salvarMarcas */
+    salvarMarcasStatus: RequestStatus;
+    /** state salvarMarcasError — error of the command salvarMarcas */
+    salvarMarcasError: ErrorState;
+    /** state scenary — the visible scene of the page; '' until the page shows its first scene */
+    scenary: string;
+    private selectionPending;
+    private readonly onPopState;
+    private publish;
+    private assignState;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
+    handleIcaStateChange(key: string, value: any): void;
+    private hydrateData;
+    private resetVisit;
+    private beginVisit;
+    private applyEntryParams;
+    private resetCommandResults;
+    /** Resolves the selected id into a row of the loaded list and fills the marks draft from it; an id no row resolves publishes client.selectionInvalid. */
+    private resolveSelection;
+    /** The Participante record selected in listaParticipantes: the row of the loaded list whose id is selectedParticipante, or null. */
+    get formParticipante(): ParticipanteModulo | null;
+    /** select — chooses the participant whose marks are edited in formParticipante (null clears the selection); fills salvarMarcasDraft from that row; an id that is not in the loaded list publishes client.selectionInvalid in listarParticipantesError. id: participant id or null. */
+    selectParticipante(id: string | null): void;
+    /** draft — replaces the draft of the command incluirParticipante (chosen user id and optional flags); used by formParticipante when a user is picked or a flag is toggled. */
+    setIncluirParticipanteDraft(value: IncluirParticipanteDraft): void;
+    /** draft — replaces the draft of the command salvarMarcas (participant id, version and the two flags); used by formParticipante when a flag is toggled. */
+    setSalvarMarcasDraft(value: SalvarMarcasDraft): void;
+    /** Publishes the visible scene of the page. value: scene id. */
+    setScenario(value: string): void;
+    /** request listarParticipantes — lists the participants of the tarefas module, filtered by name and ordered by the backend; redraws participantes (replace; with append=true the next page is added to items and page/hasMore follow the answer), busca (when given) and pageStatus; also the method to reload, filter and page the list. busca: new name filter (omit to keep the current one, '' or null clears it); page: page to load, 1 by default; append: true for a "load more" (does nothing unless the loaded list has more). */
+    listarParticipantes(busca?: string | null, page?: number, append?: boolean): Promise<void>;
+    /** request buscarUsuarios — searches by name the active organization users that do not participate yet; redraws usuarios (replace). busca: part of the user name typed by the manager (required; empty publishes client.requiredMissing and does not call). */
+    buscarUsuarios(busca: string): Promise<void>;
+    /** Inserts or updates a participant row by id in the loaded list (new rows go first). */
+    private upsertParticipante;
+    /** request incluirParticipante — includes the user chosen in the search (incluirParticipanteDraft.id) as participant, with the optional manager flags of the draft; redraws participantes (upsert of the returned participant by id) and usuarios (remove the included user), then clears incluirParticipanteDraft. Takes no arguments: fill the draft first with setIncluirParticipanteDraft; an empty id publishes client.requiredMissing. */
+    incluirParticipante(): Promise<void>;
+    /** request salvarMarcas — saves the two marks (accepts tasks, can create tasks) of the selected participant using salvarMarcasDraft (id, version, flags); redraws participantes (upsert of the returned participant by id, so the selected record follows) and refills salvarMarcasDraft from the returned record. Takes no arguments: select a participant (selectParticipante) and edit the draft first; a missing leaf publishes client.requiredMissing. */
+    salvarMarcas(): Promise<void>;
+}

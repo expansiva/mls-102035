@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-shared-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "painel_tarefas",
+  "unitInputHash": "sha256:b2ff26e354c0dc8bd3ad1c38106e34734512c280182dffd7db61139835b7261b",
+  "promptHash": "sha256:b70bea88413f612669d6f5a1375c4eafb045b518a297d8dc974845627ab7cb76",
+  "rulesHash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "sourcePath": "l2/tarefas/web/shared/painel_tarefas.ts",
+  "sourceHash": "sha256:9d8e3f81d308c3364ebac89976e16b9e4715cf482a18826dc96290bd3dea20c2",
+  "declarationPath": "l2/tarefas/web/shared/painel_tarefasDts.txt",
+  "declarationHash": "sha256:614e3f8f871de99ea2c598891b1b5706e10188f30fa4ba350416903e2dc37df5",
+  "attempt": 1,
+  "findings": []
+}

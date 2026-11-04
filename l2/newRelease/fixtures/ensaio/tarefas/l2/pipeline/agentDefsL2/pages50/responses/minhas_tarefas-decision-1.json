@@ -1,0 +1,906 @@
+{
+  "attempt": "decision-1",
+  "model": "claude-opus-5-5",
+  "promptChars": 82459,
+  "receivedAt": "2026-10-23T01:44:04.335Z",
+  "raw": {
+    "type": "flexible",
+    "result": {
+      "toolName": "submitD2Pages",
+      "arguments": {
+        "categoryReason": "Minhas tarefas é a mesa de trabalho do membro: lista as tarefas de que é responsável ou que criou, abre uma em master-detail, cria e ajusta tarefas com responsável e prazo, e conduz o ciclo a fazer → em andamento → em revisão → concluída. Isso corresponde a workPlanningBoard (criar tarefas, atribuir responsáveis, prazos e edição master-detail) nos dois dispositivos.",
+        "desktop": {
+          "definition": {
+            "template": {
+              "category": "workPlanningBoard"
+            },
+            "intent": "Dar ao membro uma visão única das tarefas de que é responsável e das que criou, destacando o que vence hoje, o que está atrasado e quem age agora, para abrir uma tarefa, entender o que falta e avançar o trabalho: executar, revisar, retomar, reatribuir, cancelar ou criar uma nova tarefa.",
+            "sections": [
+              {
+                "id": "secTarefas",
+                "priority": "primary",
+                "purpose": "Mostrar as minhas tarefas separadas em responsável, criadas e o que depende de mim agora, com prazo, prioridade, lista, quem age agora, progresso da checklist e marcação de vence hoje ou atrasada, para escolher qual abrir.",
+                "organisms": [
+                  "tarefasLista"
+                ]
+              },
+              {
+                "id": "secTarefaAberta",
+                "priority": "main",
+                "purpose": "Apresentar a tarefa escolhida com seus dados, checklist e motivo da devolução, junto das ações que cabem ao meu papel nela e do seu histórico.",
+                "organisms": [
+                  "tarefaDetalhe",
+                  "tarefaAcoes",
+                  "tarefaHistorico"
+                ]
+              },
+              {
+                "id": "secEdicao",
+                "priority": "secondary",
+                "purpose": "Criar uma nova tarefa ou ajustar campos e checklist de uma tarefa existente sem mudar sua situação.",
+                "organisms": [
+                  "tarefaForm"
+                ]
+              }
+            ],
+            "organisms": [
+              {
+                "id": "tarefasLista",
+                "kind": "list",
+                "text": "Tarefas de que sou responsável e as que criei, agrupadas em responsável, criadas e depende de mim agora, com título, prazo, prioridade, lista, quem age agora, progresso da checklist e marcação de vence hoje, atrasada ou devolvida aguardando retomada; lista vazia e erro aparecem de forma distinta.",
+                "intents": []
+              },
+              {
+                "id": "tarefaDetalhe",
+                "kind": "detail",
+                "text": "A tarefa aberta: título, descrição, responsável, quem criou, prazo, prioridade, lista, criada em, etiquetas, tarefa pai e quantidade de subtarefas, checklist com itens concluídos e quando, e o motivo da devolução em destaque quando houver.",
+                "intents": []
+              },
+              {
+                "id": "tarefaForm",
+                "kind": "form",
+                "text": "Criar uma tarefa informando título, descrição, prioridade, prazo, lista, tarefa pai opcional e etiquetas, escolhendo o responsável pelo nome entre quem aceita tarefas e adicionando itens de checklist; ou ajustar esses campos e a checklist de uma tarefa sem mudar a situação.",
+                "intents": [
+                  {
+                    "id": "criarTarefa",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "adicionarItensChecklist",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "salvarAlteracoes",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "ajustarChecklist",
+                    "kind": "submit",
+                    "to": ""
+                  }
+                ]
+              },
+              {
+                "id": "tarefaAcoes",
+                "kind": "actions",
+                "text": "Ações conforme meu papel e a situação da tarefa: como responsável, iniciar, marcar itens da checklist, enviar para revisão e retomar a tarefa devolvida para reenviar; como quem criou, aceitar ou devolver com motivo, trocar o responsável pelo nome ou cancelar.",
+                "intents": [
+                  {
+                    "id": "iniciar",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "marcarItem",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "enviarParaRevisao",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "aceitar",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "devolver",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "retomar",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "trocarResponsavel",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "cancelar",
+                    "kind": "submit",
+                    "to": ""
+                  }
+                ]
+              },
+              {
+                "id": "tarefaHistorico",
+                "kind": "timeline",
+                "text": "Histórico da tarefa em ordem de tempo: criação, início, envios para revisão, devoluções com motivo, retomadas, aceite, troca de responsável e cancelamento.",
+                "intents": []
+              }
+            ],
+            "molecules": [
+              {
+                "id": "tarefasLista",
+                "recommendations": [
+                  {
+                    "role": "tabela de tarefas agrupada por responsável, criadas e depende de mim",
+                    "preferred": "groupviewtable--ml-grouping-table",
+                    "alternative": "groupviewtable--ml-advanced-data-table"
+                  },
+                  {
+                    "role": "alternar entre responsável, criadas e depende de mim agora",
+                    "preferred": "groupnavigatesection--ml-navigate-pills",
+                    "alternative": "groupnavigatesection--ml-tabs"
+                  },
+                  {
+                    "role": "progresso da checklist na linha",
+                    "preferred": "groupshowprogress--ml-linear-progress",
+                    "alternative": "groupshowprogress--ml-circular-progress"
+                  },
+                  {
+                    "role": "busca pelo título e filtros da lista",
+                    "preferred": "groupsearchcontent--ml-search-filters",
+                    "alternative": "groupsearchcontent--ml-search-bar"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaDetalhe",
+                "recommendations": [
+                  {
+                    "role": "cartão com os dados da tarefa",
+                    "preferred": "groupviewcard--ml-vertical-card",
+                    "alternative": "groupviewcard--ml-view-card-horizontal"
+                  },
+                  {
+                    "role": "checklist com itens concluídos e quando",
+                    "preferred": "groupviewtable--ml-view-table",
+                    "alternative": "groupviewtable--ml-data-table-minimal"
+                  },
+                  {
+                    "role": "progresso da checklist",
+                    "preferred": "groupshowprogress--ml-linear-progress",
+                    "alternative": "groupshowprogress--ml-segmented-progress"
+                  },
+                  {
+                    "role": "destaque do motivo da devolução",
+                    "preferred": "groupnotifyuser--ml-notify-banner",
+                    "alternative": "groupnotifyuser--ml-contextual-feedback"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaForm",
+                "recommendations": [
+                  {
+                    "role": "título e itens da checklist",
+                    "preferred": "groupentertext--ml-enter-text",
+                    "alternative": "groupentertext--ml-floating-text-input"
+                  },
+                  {
+                    "role": "descrição",
+                    "preferred": "groupentertext--ml-multiline-text",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "etiquetas",
+                    "preferred": "groupentertext--ml-tag-input",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "prazo",
+                    "preferred": "groupenterdate--ml-date-shortcut-picker",
+                    "alternative": "groupenterdate--ml-date-picker"
+                  },
+                  {
+                    "role": "responsável escolhido pelo nome",
+                    "preferred": "groupselectone--ml-select-one-autocomplete",
+                    "alternative": "groupselectone--ml-combobox"
+                  },
+                  {
+                    "role": "prioridade",
+                    "preferred": "groupselectone--ml-segmented-control",
+                    "alternative": "groupselectone--ml-radio-group"
+                  },
+                  {
+                    "role": "lista e tarefa pai",
+                    "preferred": "groupselectone--ml-combobox",
+                    "alternative": "groupselectone--ml-select"
+                  },
+                  {
+                    "role": "salvar ou criar",
+                    "preferred": "grouptriggeraction--ml-button-standard",
+                    "alternative": "grouptriggeraction--ml-split-button"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaAcoes",
+                "recommendations": [
+                  {
+                    "role": "ações principais da situação atual",
+                    "preferred": "grouptriggeraction--ml-button-group",
+                    "alternative": "grouptriggeraction--ml-split-button"
+                  },
+                  {
+                    "role": "ações secundárias como trocar responsável e cancelar",
+                    "preferred": "grouptriggeraction--ml-kebab-action-trigger",
+                    "alternative": "grouptriggeraction--ml-icon-button"
+                  },
+                  {
+                    "role": "marcar item da checklist",
+                    "preferred": "groupenterboolean--ml-checkbox-preference",
+                    "alternative": "groupenterboolean--ml-toggle-switch"
+                  },
+                  {
+                    "role": "motivo da devolução",
+                    "preferred": "groupentertext--ml-multiline-text",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "buscar novo responsável pelo nome",
+                    "preferred": "groupsearchcontent--ml-search-bar",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "confirmação de cancelamento e retorno das ações",
+                    "preferred": "groupnotifyuser--ml-alert-modal",
+                    "alternative": "groupnotifyuser--ml-toast-notification"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaHistorico",
+                "recommendations": [
+                  {
+                    "role": "eventos da tarefa no tempo",
+                    "preferred": "groupviewdata--ml-timeline-view",
+                    "alternative": "groupviewdata--ml-vertical-record-list"
+                  }
+                ]
+              }
+            ]
+          },
+          "needs": {
+            "organisms": [
+              {
+                "id": "tarefasLista",
+                "reads": [
+                  "Tarefa.titulo",
+                  "Tarefa.status",
+                  "Tarefa.prazo",
+                  "Tarefa.prioridade",
+                  "Tarefa.listaId",
+                  "ListaTarefas.nome",
+                  "Tarefa.responsavelId",
+                  "Tarefa.criadorId",
+                  "Participante.details.identification.name",
+                  "Tarefa.details.quemAgeAgora",
+                  "Tarefa.details.progressoChecklist",
+                  "Tarefa.details.venceHoje",
+                  "Tarefa.details.atrasada",
+                  "Tarefa.details.devolvidaPendente",
+                  "Tarefa.details.aberta",
+                  "Tarefa.criadaEm"
+                ],
+                "edits": [],
+                "selects": "tarefaDetalhe",
+                "submits": []
+              },
+              {
+                "id": "tarefaDetalhe",
+                "reads": [
+                  "Tarefa.titulo",
+                  "Tarefa.status",
+                  "Tarefa.details.descricao",
+                  "Tarefa.responsavelId",
+                  "Tarefa.criadorId",
+                  "Participante.details.identification.name",
+                  "Tarefa.prazo",
+                  "Tarefa.prioridade",
+                  "Tarefa.listaId",
+                  "ListaTarefas.nome",
+                  "Tarefa.criadaEm",
+                  "Tarefa.details.etiquetas",
+                  "Tarefa.tarefaPaiId",
+                  "Tarefa.details.quantidadeSubtarefas",
+                  "Tarefa.details.progressoChecklist",
+                  "ItemChecklist.ordem",
+                  "ItemChecklist.details.descricao",
+                  "ItemChecklist.details.concluido",
+                  "ItemChecklist.details.concluidoEm",
+                  "Tarefa.details.motivoDevolucao",
+                  "Tarefa.details.devolvidaEm"
+                ],
+                "edits": [],
+                "selects": "",
+                "submits": []
+              },
+              {
+                "id": "tarefaForm",
+                "reads": [
+                  "Tarefa.status",
+                  "Participante.details.identification.name",
+                  "Participante.details.identification.status",
+                  "Participante.details.tarefas.aceitaTarefasEfetivo",
+                  "Participante.details.tarefas.podeCriarTarefasEfetivo",
+                  "ListaTarefas.nome"
+                ],
+                "edits": [
+                  "Tarefa.titulo",
+                  "Tarefa.details.descricao",
+                  "Tarefa.prioridade",
+                  "Tarefa.prazo",
+                  "Tarefa.listaId",
+                  "Tarefa.responsavelId",
+                  "Tarefa.tarefaPaiId",
+                  "Tarefa.details.etiquetas",
+                  "ItemChecklist.ordem",
+                  "ItemChecklist.details.descricao",
+                  "ItemChecklist.details.concluido"
+                ],
+                "selects": "",
+                "submits": [
+                  {
+                    "intentId": "criarTarefa",
+                    "write": "Tarefa.create"
+                  },
+                  {
+                    "intentId": "adicionarItensChecklist",
+                    "write": "ItemChecklist.create"
+                  },
+                  {
+                    "intentId": "salvarAlteracoes",
+                    "write": "Tarefa.update"
+                  },
+                  {
+                    "intentId": "ajustarChecklist",
+                    "write": "ItemChecklist.update"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaAcoes",
+                "reads": [
+                  "Tarefa.status",
+                  "Tarefa.details.quemAgeAgora",
+                  "Tarefa.details.devolvidaPendente",
+                  "Tarefa.responsavelId",
+                  "Tarefa.criadorId",
+                  "Participante.details.identification.name",
+                  "Participante.details.identification.status",
+                  "Participante.details.tarefas.aceitaTarefasEfetivo",
+                  "ItemChecklist.details.descricao"
+                ],
+                "edits": [
+                  "ItemChecklist.details.concluido",
+                  "Tarefa.details.motivoDevolucao",
+                  "Tarefa.responsavelId"
+                ],
+                "selects": "",
+                "submits": [
+                  {
+                    "intentId": "iniciar",
+                    "write": "Tarefa.iniciar"
+                  },
+                  {
+                    "intentId": "marcarItem",
+                    "write": "ItemChecklist.update"
+                  },
+                  {
+                    "intentId": "enviarParaRevisao",
+                    "write": "Tarefa.enviarParaRevisao"
+                  },
+                  {
+                    "intentId": "aceitar",
+                    "write": "Tarefa.aceitar"
+                  },
+                  {
+                    "intentId": "devolver",
+                    "write": "Tarefa.devolver"
+                  },
+                  {
+                    "intentId": "retomar",
+                    "write": "Tarefa.retomar"
+                  },
+                  {
+                    "intentId": "trocarResponsavel",
+                    "write": "Tarefa.update"
+                  },
+                  {
+                    "intentId": "cancelar",
+                    "write": "Tarefa.cancelar"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaHistorico",
+                "reads": [
+                  "Tarefa.criadaEm",
+                  "Tarefa.status",
+                  "Tarefa.responsavelId",
+                  "Participante.details.identification.name",
+                  "Tarefa.details.devolvidaEm",
+                  "Tarefa.details.motivoDevolucao",
+                  "Tarefa.details.retomadaEm",
+                  "Tarefa.details.concluidaEm",
+                  "Tarefa.details.canceladaEm"
+                ],
+                "edits": [],
+                "selects": "",
+                "submits": []
+              }
+            ]
+          }
+        },
+        "mobile": {
+          "definition": {
+            "template": {
+              "category": "workPlanningBoard"
+            },
+            "intent": "No celular, em conteúdo fluido estreito em torno de 390px e usável de 360px a 430px, mostrar primeiro o que depende de mim agora e o que vence hoje ou está atrasado, permitindo abrir uma tarefa, ler checklist e motivo da devolução e agir com poucos toques; criar ou editar tarefa fica num fluxo próprio.",
+            "sections": [
+              {
+                "id": "secTarefas",
+                "priority": "primary",
+                "purpose": "Lista compacta das minhas tarefas, alternando entre depende de mim agora, responsável e criadas, com prazo, prioridade, quem age agora, progresso da checklist e marcação de vence hoje ou atrasada.",
+                "organisms": [
+                  "tarefasLista"
+                ]
+              },
+              {
+                "id": "secTarefaAberta",
+                "priority": "main",
+                "purpose": "A tarefa aberta em uma coluna: dados e checklist, ações do meu papel logo abaixo e o histórico ao final.",
+                "organisms": [
+                  "tarefaDetalhe",
+                  "tarefaAcoes",
+                  "tarefaHistorico"
+                ]
+              },
+              {
+                "id": "secEdicao",
+                "priority": "secondary",
+                "purpose": "Criar uma tarefa ou ajustar campos e checklist sem mudar a situação, em campos empilhados.",
+                "organisms": [
+                  "tarefaForm"
+                ]
+              }
+            ],
+            "organisms": [
+              {
+                "id": "tarefasLista",
+                "kind": "list",
+                "text": "Tarefas de que sou responsável e as que criei, começando pelo que depende de mim agora, com título, prazo, prioridade, lista, quem age agora, progresso da checklist e marcação de vence hoje, atrasada ou devolvida; lista vazia e erro aparecem de forma distinta.",
+                "intents": []
+              },
+              {
+                "id": "tarefaDetalhe",
+                "kind": "detail",
+                "text": "A tarefa aberta: motivo da devolução no topo quando houver, depois responsável, quem criou, prazo, prioridade, lista, criada em, descrição, etiquetas, subtarefas e a checklist com itens concluídos e quando.",
+                "intents": []
+              },
+              {
+                "id": "tarefaForm",
+                "kind": "form",
+                "text": "Criar uma tarefa com título, descrição, prioridade, prazo, lista, tarefa pai opcional e etiquetas, escolhendo o responsável pelo nome entre quem aceita tarefas e adicionando itens de checklist; ou ajustar campos e checklist sem mudar a situação.",
+                "intents": [
+                  {
+                    "id": "criarTarefa",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "adicionarItensChecklist",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "salvarAlteracoes",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "ajustarChecklist",
+                    "kind": "submit",
+                    "to": ""
+                  }
+                ]
+              },
+              {
+                "id": "tarefaAcoes",
+                "kind": "actions",
+                "text": "A ação principal da situação atual em destaque (iniciar, enviar para revisão, retomar, aceitar ou devolver com motivo), marcação de itens da checklist ao toque e, num menu, trocar o responsável ou cancelar a tarefa que criei.",
+                "intents": [
+                  {
+                    "id": "iniciar",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "marcarItem",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "enviarParaRevisao",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "aceitar",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "devolver",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "retomar",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "trocarResponsavel",
+                    "kind": "submit",
+                    "to": ""
+                  },
+                  {
+                    "id": "cancelar",
+                    "kind": "submit",
+                    "to": ""
+                  }
+                ]
+              },
+              {
+                "id": "tarefaHistorico",
+                "kind": "timeline",
+                "text": "Histórico da tarefa: criação, início, envios para revisão, devoluções com motivo, retomadas, aceite, troca de responsável e cancelamento.",
+                "intents": []
+              }
+            ],
+            "molecules": [
+              {
+                "id": "tarefasLista",
+                "recommendations": [
+                  {
+                    "role": "lista de tarefas em tela estreita",
+                    "preferred": "groupviewtable--ml-responsive-data-table",
+                    "alternative": "groupviewtable--ml-responsive-table"
+                  },
+                  {
+                    "role": "alternar entre depende de mim, responsável e criadas",
+                    "preferred": "groupnavigatesection--ml-navigate-pills",
+                    "alternative": "groupnavigatesection--ml-tabs"
+                  },
+                  {
+                    "role": "progresso da checklist",
+                    "preferred": "groupshowprogress--ml-circular-progress",
+                    "alternative": "groupshowprogress--ml-linear-progress"
+                  },
+                  {
+                    "role": "busca pelo título",
+                    "preferred": "groupsearchcontent--ml-search-bar",
+                    "alternative": "groupsearchcontent--ml-search-filters"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaDetalhe",
+                "recommendations": [
+                  {
+                    "role": "cartão com os dados da tarefa",
+                    "preferred": "groupviewcard--ml-vertical-card",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "checklist com itens concluídos",
+                    "preferred": "groupviewtable--ml-responsive-table",
+                    "alternative": "groupviewtable--ml-data-table-minimal"
+                  },
+                  {
+                    "role": "progresso da checklist",
+                    "preferred": "groupshowprogress--ml-linear-progress",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "motivo da devolução",
+                    "preferred": "groupnotifyuser--ml-notify-banner",
+                    "alternative": "groupnotifyuser--ml-contextual-feedback"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaForm",
+                "recommendations": [
+                  {
+                    "role": "título e itens da checklist",
+                    "preferred": "groupentertext--ml-floating-text-input",
+                    "alternative": "groupentertext--ml-enter-text"
+                  },
+                  {
+                    "role": "descrição",
+                    "preferred": "groupentertext--ml-multiline-text",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "etiquetas",
+                    "preferred": "groupentertext--ml-tag-input",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "prazo",
+                    "preferred": "groupenterdate--ml-date-shortcut-picker",
+                    "alternative": "groupenterdate--ml-compact-calendar"
+                  },
+                  {
+                    "role": "responsável pelo nome",
+                    "preferred": "groupselectone--ml-select-one-autocomplete",
+                    "alternative": "groupselectone--ml-combobox"
+                  },
+                  {
+                    "role": "prioridade",
+                    "preferred": "groupselectone--ml-segmented-control",
+                    "alternative": "groupselectone--ml-select"
+                  },
+                  {
+                    "role": "lista e tarefa pai",
+                    "preferred": "groupselectone--ml-select",
+                    "alternative": "groupselectone--ml-combobox"
+                  },
+                  {
+                    "role": "salvar ou criar",
+                    "preferred": "grouptriggeraction--ml-button-standard",
+                    "alternative": ""
+                  }
+                ]
+              },
+              {
+                "id": "tarefaAcoes",
+                "recommendations": [
+                  {
+                    "role": "ação principal da situação",
+                    "preferred": "grouptriggeraction--ml-button-standard",
+                    "alternative": "grouptriggeraction--ml-split-button"
+                  },
+                  {
+                    "role": "menu com trocar responsável e cancelar",
+                    "preferred": "grouptriggeraction--ml-kebab-action-trigger",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "marcar item da checklist",
+                    "preferred": "groupenterboolean--ml-checkbox-preference",
+                    "alternative": "groupenterboolean--ml-toggle-icon"
+                  },
+                  {
+                    "role": "motivo da devolução",
+                    "preferred": "groupentertext--ml-multiline-text",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "buscar novo responsável pelo nome",
+                    "preferred": "groupsearchcontent--ml-search-bar",
+                    "alternative": ""
+                  },
+                  {
+                    "role": "retorno das ações",
+                    "preferred": "groupnotifyuser--ml-toast-notification",
+                    "alternative": "groupnotifyuser--ml-alert-modal"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaHistorico",
+                "recommendations": [
+                  {
+                    "role": "eventos da tarefa",
+                    "preferred": "groupviewdata--ml-timeline-view",
+                    "alternative": "groupviewdata--ml-vertical-record-list"
+                  }
+                ]
+              }
+            ]
+          },
+          "needs": {
+            "organisms": [
+              {
+                "id": "tarefasLista",
+                "reads": [
+                  "Tarefa.titulo",
+                  "Tarefa.status",
+                  "Tarefa.prazo",
+                  "Tarefa.prioridade",
+                  "Tarefa.listaId",
+                  "ListaTarefas.nome",
+                  "Tarefa.responsavelId",
+                  "Tarefa.criadorId",
+                  "Participante.details.identification.name",
+                  "Tarefa.details.quemAgeAgora",
+                  "Tarefa.details.progressoChecklist",
+                  "Tarefa.details.venceHoje",
+                  "Tarefa.details.atrasada",
+                  "Tarefa.details.devolvidaPendente",
+                  "Tarefa.details.aberta",
+                  "Tarefa.criadaEm"
+                ],
+                "edits": [],
+                "selects": "tarefaDetalhe",
+                "submits": []
+              },
+              {
+                "id": "tarefaDetalhe",
+                "reads": [
+                  "Tarefa.titulo",
+                  "Tarefa.status",
+                  "Tarefa.details.descricao",
+                  "Tarefa.responsavelId",
+                  "Tarefa.criadorId",
+                  "Participante.details.identification.name",
+                  "Tarefa.prazo",
+                  "Tarefa.prioridade",
+                  "Tarefa.listaId",
+                  "ListaTarefas.nome",
+                  "Tarefa.criadaEm",
+                  "Tarefa.details.etiquetas",
+                  "Tarefa.tarefaPaiId",
+                  "Tarefa.details.quantidadeSubtarefas",
+                  "Tarefa.details.progressoChecklist",
+                  "ItemChecklist.ordem",
+                  "ItemChecklist.details.descricao",
+                  "ItemChecklist.details.concluido",
+                  "ItemChecklist.details.concluidoEm",
+                  "Tarefa.details.motivoDevolucao",
+                  "Tarefa.details.devolvidaEm"
+                ],
+                "edits": [],
+                "selects": "",
+                "submits": []
+              },
+              {
+                "id": "tarefaForm",
+                "reads": [
+                  "Tarefa.status",
+                  "Participante.details.identification.name",
+                  "Participante.details.identification.status",
+                  "Participante.details.tarefas.aceitaTarefasEfetivo",
+                  "Participante.details.tarefas.podeCriarTarefasEfetivo",
+                  "ListaTarefas.nome"
+                ],
+                "edits": [
+                  "Tarefa.titulo",
+                  "Tarefa.details.descricao",
+                  "Tarefa.prioridade",
+                  "Tarefa.prazo",
+                  "Tarefa.listaId",
+                  "Tarefa.responsavelId",
+                  "Tarefa.tarefaPaiId",
+                  "Tarefa.details.etiquetas",
+                  "ItemChecklist.ordem",
+                  "ItemChecklist.details.descricao",
+                  "ItemChecklist.details.concluido"
+                ],
+                "selects": "",
+                "submits": [
+                  {
+                    "intentId": "criarTarefa",
+                    "write": "Tarefa.create"
+                  },
+                  {
+                    "intentId": "adicionarItensChecklist",
+                    "write": "ItemChecklist.create"
+                  },
+                  {
+                    "intentId": "salvarAlteracoes",
+                    "write": "Tarefa.update"
+                  },
+                  {
+                    "intentId": "ajustarChecklist",
+                    "write": "ItemChecklist.update"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaAcoes",
+                "reads": [
+                  "Tarefa.status",
+                  "Tarefa.details.quemAgeAgora",
+                  "Tarefa.details.devolvidaPendente",
+                  "Tarefa.responsavelId",
+                  "Tarefa.criadorId",
+                  "Participante.details.identification.name",
+                  "Participante.details.identification.status",
+                  "Participante.details.tarefas.aceitaTarefasEfetivo",
+                  "ItemChecklist.details.descricao"
+                ],
+                "edits": [
+                  "ItemChecklist.details.concluido",
+                  "Tarefa.details.motivoDevolucao",
+                  "Tarefa.responsavelId"
+                ],
+                "selects": "",
+                "submits": [
+                  {
+                    "intentId": "iniciar",
+                    "write": "Tarefa.iniciar"
+                  },
+                  {
+                    "intentId": "marcarItem",
+                    "write": "ItemChecklist.update"
+                  },
+                  {
+                    "intentId": "enviarParaRevisao",
+                    "write": "Tarefa.enviarParaRevisao"
+                  },
+                  {
+                    "intentId": "aceitar",
+                    "write": "Tarefa.aceitar"
+                  },
+                  {
+                    "intentId": "devolver",
+                    "write": "Tarefa.devolver"
+                  },
+                  {
+                    "intentId": "retomar",
+                    "write": "Tarefa.retomar"
+                  },
+                  {
+                    "intentId": "trocarResponsavel",
+                    "write": "Tarefa.update"
+                  },
+                  {
+                    "intentId": "cancelar",
+                    "write": "Tarefa.cancelar"
+                  }
+                ]
+              },
+              {
+                "id": "tarefaHistorico",
+                "reads": [
+                  "Tarefa.criadaEm",
+                  "Tarefa.status",
+                  "Tarefa.responsavelId",
+                  "Participante.details.identification.name",
+                  "Tarefa.details.devolvidaEm",
+                  "Tarefa.details.motivoDevolucao",
+                  "Tarefa.details.retomadaEm",
+                  "Tarefa.details.concluidaEm",
+                  "Tarefa.details.canceladaEm"
+                ],
+                "edits": [],
+                "selects": "",
+                "submits": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    "status": "completed",
+    "stepId": 17,
+    "interaction": null,
+    "nextSteps": null
+  },
+  "verdict": "D2_PAGE11_WRITE_DUPLICATE: Write Tarefa.update has a submit in tarefaForm and tarefaAcoes. Keep one submit, in the organism that edits Tarefa (tarefaForm); the actions organism does not repeat it. | D2_PAGE11_WRITE_DUPLICATE: Write ItemChecklist.update has a submit in tarefaForm and tarefaAcoes. Keep one submit, in the organism that edits ItemChecklist (tarefaForm); the actions organism does not repeat it."
+}

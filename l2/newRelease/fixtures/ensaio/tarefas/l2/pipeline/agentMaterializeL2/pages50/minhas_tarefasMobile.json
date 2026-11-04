@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "2026-10-05-materialize-l2-v4-page-v1",
+  "project": 102047,
+  "module": "tarefas",
+  "pageId": "minhas_tarefas",
+  "device": "mobile",
+  "contextHash": "sha256:29e566abda1994e5d9d79d04b440f83f225518cf3dd66a2a0740d04a5e8564be",
+  "sourcePath": "l2/tarefas/web/mobile/page11/minhas_tarefas.ts",
+  "sourceHash": "sha256:088ac8e240031ef5ec7360e14544dc8ff5c229a62a785a95ea8ccb6b3ed23b7b",
+  "attempt": 1,
+  "design": {
+    "concept": "Uma fila móvel de compromissos começa em “Depende de mim”, destacando vencimentos de hoje e atrasados antes de qualquer edição. Cada tarefa abre em uma cena focada para leitura, ação e histórico; criar e ajustar ficam em cenas próprias, preservando a lista como ponto de retorno.",
+    "views": [
+      {
+        "id": "lista",
+        "purpose": "Fila principal de tarefas, com alternância entre os três recortes pessoais e abertura de uma tarefa."
+      },
+      {
+        "id": "detalhe",
+        "purpose": "Leitura completa da tarefa, checklist, ações adequadas ao papel e histórico."
+      },
+      {
+        "id": "criar",
+        "purpose": "Cadastro concentrado de uma nova tarefa e seus primeiros itens de checklist."
+      },
+      {
+        "id": "editar",
+        "purpose": "Ajuste deliberado dos campos e da checklist sem alterar a situação."
+      }
+    ],
+    "decisions": "Segui a tradução mobile do template: a lista é a casa da experiência e detalhes/criação/edição são cenas com retorno, nunca painéis laterais. A lista usa a tabela responsiva como cartões em tela estreita para manter a seleção por índice do contrato; não há busca visual porque as consultas declaradas não oferecem busca por título. O prazo atrasado é o único dado em tom de alarme, e ações de ciclo aparecem somente quando a situação e o papel entregue pelo backend permitem."
+  },
+  "advisories": [
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secTarefas needs an element with data-section-id=\"secTarefas\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secTarefaAberta needs an element with data-section-id=\"secTarefaAberta\"."
+    },
+    {
+      "code": "M4_PAGE_SECTION",
+      "message": "Section secEdicao needs an element with data-section-id=\"secEdicao\"."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasLista (progresso da checklist) renders neither <groupshowprogress--ml-circular-progress> nor <groupshowprogress--ml-linear-progress>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefasLista (busca pelo título) renders neither <groupsearchcontent--ml-search-bar> nor <groupsearchcontent--ml-search-filters>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefaDetalhe (progresso da checklist) renders neither <groupshowprogress--ml-linear-progress>."
+    },
+    {
+      "code": "M4_PAGE_MOLECULE_UNUSED",
+      "message": "Organism tarefaAcoes (retorno das ações) renders neither <groupnotifyuser--ml-toast-notification> nor <groupnotifyuser--ml-alert-modal>."
+    }
+  ]
+}
