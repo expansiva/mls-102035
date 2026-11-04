@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { diffModuleLayers, sealModuleLayers } from './moduleLayers.js';
+import { diffModuleLayers, sealModuleLayers, sealModuleApplication, restoreModuleApplication } from './moduleLayers.js';
 
 function installStorFixture() {
   const files: Record<string, any> = {};
@@ -16,8 +16,8 @@ function installStorFixture() {
   const add = (level: number, path: string, content = path, project = 102047) => {
     const slash = path.lastIndexOf('/');
     const name = path.slice(slash + 1);
-    const dot = name.indexOf('.');
-    const info = { project, level, folder: path.slice(0, slash), shortName: name.slice(0, dot), extension: name.slice(dot) };
+    const dot = name === 'runtime.project.json' ? name.lastIndexOf('.') : name.indexOf('.');
+    const info = { project, level, folder: slash < 0 ? '' : path.slice(0, slash), shortName: name.slice(0, dot), extension: name.slice(dot) };
     contents.set(keyOf(info), content);
     return make(info);
   };
@@ -98,4 +98,87 @@ test('mr_14 s2: changed, added and removed compare hashes by level and path', as
     { level: 2, path: 'web/added.defs.ts', status: 'added', currentSha256: hash('added L2') },
     { level: 2, path: 'web/item.defs.ts', status: 'removed', sealedSha256: hash('original L2') },
   ]);
+});
+
+test('mr_53 s2: restores changed, created and removed files plus only this module in L5', async () => {
+  const fixture = installStorFixture();
+  fixture.add(1, 'sample/code.ts', 'before');
+  const removed = fixture.add(2, 'sample/web/old.ts', 'old');
+  fixture.add(4, 'sample/tobe/plan/rules.defs.ts', 'plan');
+  fixture.add(1, 'sample_old/backup.ts', 'backup');
+  fixture.add(5, 'config.json', JSON.stringify({ projects: { 102047: { modules: [
+    { moduleId: 'sample', value: 'before' }, { moduleId: 'other', value: 'keep' }] } } }));
+  fixture.add(5, 'project.json', JSON.stringify({ modules: [
+    { moduleName: 'sample', value: 'before' }, { moduleName: 'other', value: 'keep' }] }));
+  fixture.add(5, 'runtime.project.json', JSON.stringify({ modules: [
+    { moduleName: 'sample', value: 'before' }, { moduleName: 'other', value: 'keep' }] }));
+  const seal = await sealModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  assert.equal(seal.files.length, 4);
+  fixture.add(1, 'sample/code.ts', 'after');
+  removed.status = 'deleted';
+  fixture.add(2, 'sample/web/new.ts', 'new');
+  fixture.add(4, 'sample/tobe/plan/rules.defs.ts', 'changed plan');
+  fixture.add(1, 'sample_old/extra.ts', 'extra');
+  for (const document of ['config', 'project', 'runtime.project']) {
+    const key = `102047:5::${document}.json`;
+    const json = JSON.parse(fixture.contents.get(key)!);
+    const modules = document === 'config' ? json.projects['102047'].modules : json.modules;
+    modules[0].value = 'after';
+    modules[1].value = 'other changed';
+    fixture.contents.set(key, JSON.stringify(json));
+  }
+  await restoreModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  assert.equal(fixture.contents.get('102047:1:sample:code.ts'), 'before');
+  assert.equal(fixture.contents.get('102047:2:sample/web:old.ts'), 'old');
+  assert.equal(fixture.contents.has('102047:2:sample/web:new.ts'), false);
+  assert.equal(fixture.contents.get('102047:4:sample/tobe/plan:rules.defs.ts'), 'plan');
+  assert.equal(fixture.contents.get('102047:1:sample_old:backup.ts'), 'backup');
+  assert.equal(fixture.contents.has('102047:1:sample_old:extra.ts'), false);
+  for (const document of ['config', 'project', 'runtime.project']) {
+    const json = JSON.parse(fixture.contents.get(`102047:5::${document}.json`)!);
+    const modules = document === 'config' ? json.projects['102047'].modules : json.modules;
+    assert.equal(modules[0].value, 'before');
+    assert.equal(modules[1].value, 'other changed');
+  }
+  await assert.rejects(restoreModuleApplication(102047, 'sample', 'other', 'revision-1'), /invalid_seal/);
+});
+
+test('mr_53 s2: restores exact bytes and removes the checkpoint', async () => {
+  const fixture = installStorFixture();
+  fixture.add(1, 'sample/code.ts', 'L1 before\n');
+  fixture.add(2, 'sample/web/page.ts', 'L2 before\n');
+  fixture.add(4, 'sample/tobe/plan/rules.defs.ts', 'L4 before\n');
+  for (const document of ['config', 'project', 'runtime.project']) {
+    const modules = [{ [document === 'config' ? 'moduleId' : 'moduleName']: 'sample', value: 'before' },
+      { [document === 'config' ? 'moduleId' : 'moduleName']: 'other', value: 'keep' }];
+    fixture.add(5, `${document}.json`, ` { "${document === 'config' ? 'projects' : 'modules'}": ${JSON.stringify(document === 'config' ? { 102047: { modules } } : modules)} }\n`);
+  }
+  const before = new Map(fixture.contents);
+  await sealModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  fixture.add(1, 'sample/code.ts', 'L1 after');
+  fixture.add(2, 'sample/web/page.ts', 'L2 after');
+  fixture.add(4, 'sample/tobe/plan/rules.defs.ts', 'L4 after');
+  fixture.add(1, 'sample/new.ts', 'created');
+  for (const document of ['config', 'project', 'runtime.project']) {
+    const key = `102047:5::${document}.json`;
+    const value = JSON.parse(fixture.contents.get(key)!);
+    const modules = document === 'config' ? value.projects['102047'].modules : value.modules;
+    modules[0].value = 'after';
+    fixture.contents.set(key, `${JSON.stringify(value, null, 2)}\n`);
+  }
+  await restoreModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  assert.deepEqual(fixture.contents, before);
+});
+
+test('mr_53 s2: a document created by the application becomes absent', async () => {
+  const fixture = installStorFixture();
+  await sealModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  fixture.add(5, 'config.json', JSON.stringify({ projects: { 102047: { modules: [{ moduleId: 'sample' }] } } }));
+  fixture.add(5, 'project.json', JSON.stringify({ modules: [{ moduleName: 'sample' }] }));
+  fixture.add(5, 'runtime.project.json', JSON.stringify({ modules: [{ moduleName: 'sample' }, { moduleName: 'other' }] }));
+  await restoreModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  assert.equal(fixture.contents.has('102047:5::config.json'), false);
+  assert.equal(fixture.contents.has('102047:5::project.json'), false);
+  assert.deepEqual(JSON.parse(fixture.contents.get('102047:5::runtime.project.json')!).modules, [{ moduleName: 'other' }]);
+  assert.equal(fixture.contents.has('102047:4:sample/pipeline/application:undo.json'), false);
 });
