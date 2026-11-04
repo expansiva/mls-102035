@@ -1,0 +1,11 @@
+{
+  "unitId": "r20",
+  "status": "parsed",
+  "trace": "resolve25 recorded 1 answers for tarefas.painel_tarefas.carregarPainelTarefas.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r20",
+  "calls": 1,
+  "answers": {
+    "g0": "tarefaAbertaVencimento"
+  }
+}

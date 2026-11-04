@@ -1,0 +1,40 @@
+{
+  "candidates": [
+    {
+      "kind": "writtenSwitch",
+      "candidateId": "switch:Participante.podeCriarTarefas",
+      "entityId": "Participante",
+      "fieldId": "podeCriarTarefas",
+      "title": "Pode criar tarefas",
+      "type": "boolean",
+      "citedBy": [
+        "process:processoTarefa.criar"
+      ]
+    }
+  ],
+  "verdicts": [
+    {
+      "candidateId": "switch:Participante.podeCriarTarefas",
+      "verdict": "switchNeedsLifecycle",
+      "journeyBrief": {
+        "actor": "",
+        "title": "",
+        "goal": "",
+        "transitionRef": ""
+      },
+      "coveredBy": "",
+      "states": [
+        "allowed to create tasks",
+        "not allowed to create tasks"
+      ]
+    }
+  ],
+  "rounds": 0,
+  "comments": [
+    {
+      "code": "NS5_JUDGE_ORPHAN_PERSISTS",
+      "message": "judge35: written switches still need a lifecycle after ontology repair: Participante.podeCriarTarefas.",
+      "candidateId": "switch:Participante.podeCriarTarefas"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "tests",
+  "unitId": "inicio",
+  "defRef": "",
+  "status": "done",
+  "code": "",
+  "attempt": 1,
+  "diagnostic": "",
+  "inputHash": "sha256:346dafe0b5543d72d4aa081b38d403d9acd3ef9280009e0dc18d0d4077e927e9",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/inicio.test.ts": "sha256:576c51b72837a987bdee8607e6a26e1bc87946fb283f12762224575119b4ade3"
+  },
+  "updatedAt": "2026-10-23T02:43:37.275Z"
+}

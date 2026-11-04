@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "createParticipante",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/createParticipante.defs.ts",
+  "attempt": 2,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): criarTarefaExigePodeCriar — About creating a Tarefa (the creator must be a participant who can create tasks); this usecase attaches the Participante role.; gestorPorAcessoPlataforma — Being manager comes from platform access, not from the marks; this usecase does not decide or use the manager role.; responsavelAceitaTarefas — About choosing the responsible of a Tarefa at creation or reassignment, not about creating a Participante..",
+  "inputHash": "sha256:fc722d7f49b1258bb2fe0cb544917ec63d6252ab0828db258cecccda0e238364",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/createParticipante.ts": "sha256:49fcbe6e6f90e8f8ee0164381b80e7d2df724af5049989ed724b270aa229585a"
+  },
+  "updatedAt": "2026-10-23T02:36:15.919Z"
+}

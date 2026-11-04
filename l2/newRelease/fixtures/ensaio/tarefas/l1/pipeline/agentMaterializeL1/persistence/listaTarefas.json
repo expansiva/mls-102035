@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "persistence",
+  "unitId": "listaTarefas",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:28edd5265c97ea4c8e44bb9454b63168fad517e6e78a74801cfcb89f811149af",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts": "sha256:fe1d5007b9202dfc116a567a52580383212bc56e3f01a2423274c1b7605582a0"
+  },
+  "updatedAt": "2026-10-23T02:35:18.986Z"
+}

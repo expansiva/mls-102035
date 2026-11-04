@@ -1,0 +1,15 @@
+{
+  "unitId": "r2",
+  "status": "parsed",
+  "trace": "resolve25 recorded 5 answers for tarefas.inicio.devolverTarefa.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r2",
+  "calls": 1,
+  "answers": {
+    "g0": "Participante",
+    "g1": "details.identification.name",
+    "g2": "Participante",
+    "g3": "details.identification.name",
+    "g4": "none"
+  }
+}

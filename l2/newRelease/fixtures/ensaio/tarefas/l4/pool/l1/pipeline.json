@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "2026-09-20-p1-pipeline-v1",
+  "flowId": "agentPlannerL1",
+  "moduleName": "tarefas",
+  "status": "complete",
+  "steps": {
+    "entry10": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:41:58.566Z",
+      "artifactPaths": [
+        "l4/tarefas/pool/l1/pipeline.json"
+      ]
+    },
+    "plan20": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:41:58.749Z",
+      "artifactPaths": [
+        "l4/tarefas/pool/l2/web/backend.json",
+        "l4/tarefas/pool/l2/20261023014158_tarefas-20261023014130_1.json"
+      ]
+    }
+  },
+  "thread": "tarefas-20261023014130",
+  "round": 1,
+  "messageFile": "l4/tarefas/pool/l1/20261023014158_tarefas-20261023014130_1.json",
+  "sourceMessages": [
+    "20261023014158_tarefas-20261023014130_1.json"
+  ],
+  "needsFile": "l4/tarefas/pool/l1/web/needs.json",
+  "inventory": {
+    "routes": [],
+    "usecases": [],
+    "ports": [],
+    "tables": [],
+    "present": false
+  },
+  "updatedAt": "2026-10-23T01:41:58.749Z",
+  "pool": [
+    {
+      "at": "2026-10-23T01:41:58.749Z",
+      "file": "l4/tarefas/pool/l2/20261023014158_tarefas-20261023014130_1.json",
+      "from": "l1",
+      "to": "l2",
+      "thread": "tarefas-20261023014130",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    },
+    {
+      "at": "2026-10-23T01:41:58.749Z",
+      "file": "l4/tarefas/pool/l1/20261023014158_tarefas-20261023014130_1.json",
+      "from": "l2",
+      "to": "l1",
+      "thread": "tarefas-20261023014130",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "processed"
+    }
+  ]
+}

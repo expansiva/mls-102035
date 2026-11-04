@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "persistence",
+  "unitId": "registerRepositories",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:691b6d50f3580751ef8dc51e010e9c4d6c56724fb797b8d61bbbcf65de444dcf",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.ts": "sha256:5555d6d302812e379578abc25637663a8d38f0f7c5bc2da32086c785489b6296"
+  },
+  "updatedAt": "2026-10-23T02:35:19.124Z"
+}

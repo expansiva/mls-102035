@@ -1,0 +1,133 @@
+{
+  "moduleName": "tarefas",
+  "businessDomain": "Gestão de tarefas da equipe: participantes escolhidos entre os usuários da organização, listas que agrupam tarefas, tarefas com responsável, prazo, prioridade, subtarefas, checklist e etiquetas, e o fluxo a fazer → em andamento → em revisão → concluída ou cancelada.",
+  "entities": [
+    {
+      "entityId": "Participante",
+      "kind": "role",
+      "family": "mdm",
+      "title": "Participante",
+      "description": "Usuário da organização escolhido pelo gestor na lista de usuários da plataforma para participar do módulo. O módulo não cadastra nem pede dado pessoal; guarda no seu espaço apenas se aceita tarefas e se pode criar tarefas (sem configuração, aceita e pode criar). É o responsável e quem criou cada tarefa.",
+      "displayField": "details.identification.name",
+      "subtype": "Person",
+      "roleTag": "tarefas.Participante",
+      "source": "/_102034_/l4/ontology/mdm.defs.ts"
+    },
+    {
+      "entityId": "ListaTarefas",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Lista de tarefas",
+      "description": "Cadastro simples do gestor que agrupa tarefas por projeto ou área.",
+      "displayField": "nome",
+      "class": "supporting",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "tarefas_listatarefas",
+        "kind": "relational"
+      }
+    },
+    {
+      "entityId": "Tarefa",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Tarefa",
+      "description": "Tarefa com título, descrição, prioridade, prazo, lista, responsável, quem criou, tarefa pai opcional e etiquetas; percorre as situações a fazer, em andamento, em revisão, concluída e cancelada, como ocorrência do processo de tarefa da plataforma, com a conversa da própria tarefa.",
+      "displayField": "titulo",
+      "class": "core",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "tarefas_tarefa",
+        "kind": "relational"
+      }
+    },
+    {
+      "entityId": "ItemChecklist",
+      "kind": "entity",
+      "family": "tdm",
+      "title": "Item da checklist",
+      "description": "Item marcável da checklist de uma tarefa, adicionado por quem cria ou edita e marcado pelo responsável.",
+      "displayField": "descricao",
+      "class": "supporting",
+      "storage": {
+        "target": "moduleDatabase",
+        "table": "tarefas_itemchecklist",
+        "kind": "relational"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipId": "tarefaLista",
+      "from": "Tarefa",
+      "to": "ListaTarefas",
+      "type": "manyToOne",
+      "required": true,
+      "mode": "fk",
+      "description": "Cada tarefa pertence a uma lista de tarefas.",
+      "field": "Tarefa.listaId"
+    },
+    {
+      "relationshipId": "tarefaResponsavel",
+      "from": "Tarefa",
+      "to": "Participante",
+      "type": "manyToOne",
+      "required": true,
+      "mode": "fk",
+      "description": "O responsável pela tarefa, escolhido pelo nome entre os participantes que aceitam tarefas.",
+      "field": "Tarefa.responsavelId"
+    },
+    {
+      "relationshipId": "tarefaCriador",
+      "from": "Tarefa",
+      "to": "Participante",
+      "type": "manyToOne",
+      "required": true,
+      "mode": "fk",
+      "description": "Quem criou a tarefa, que revisa, aceita, devolve, reatribui ou cancela.",
+      "field": "Tarefa.criadorId"
+    },
+    {
+      "relationshipId": "tarefaPai",
+      "from": "Tarefa",
+      "to": "Tarefa",
+      "type": "manyToOne",
+      "required": false,
+      "mode": "fk",
+      "description": "Uma subtarefa aponta para a sua tarefa pai.",
+      "field": "Tarefa.tarefaPaiId"
+    },
+    {
+      "relationshipId": "itemChecklistTarefa",
+      "from": "ItemChecklist",
+      "to": "Tarefa",
+      "type": "manyToOne",
+      "required": true,
+      "mode": "fk",
+      "description": "Cada item da checklist pertence a uma tarefa.",
+      "field": "ItemChecklist.tarefaId"
+    }
+  ],
+  "normalizations": [
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Participante",
+      "detail": "roleTag tarefas.Participante; source /_102034_/l4/ontology/mdm.defs.ts"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "ListaTarefas",
+      "detail": "storage.table tarefas_listatarefas"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "Tarefa",
+      "detail": "storage.table tarefas_tarefa"
+    },
+    {
+      "kind": "derivedFromPlatform",
+      "entityId": "ItemChecklist",
+      "detail": "storage.table tarefas_itemchecklist"
+    }
+  ]
+}

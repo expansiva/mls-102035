@@ -1,0 +1,11 @@
+{
+  "unitId": "r21",
+  "status": "parsed",
+  "trace": "resolve25 recorded 1 answers for tarefas.participantes.buscarUsuarios.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r21",
+  "calls": 1,
+  "answers": {
+    "g0": "usuarios:details.identification.name"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "requests",
+  "unitId": "minhas_tarefas",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/requests/minhas_tarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "written by hand from the def (L1.2, 8582cdf): PROMPT_FAILED M12_PROMPT_LIMIT 182904",
+  "inputHash": "",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/requests/minhas_tarefas.ts": "sha256:bf86f4a0cdc48c8fed3d7fb06f54726436d0f056680f68ea2628a5b5c4f9a586"
+  },
+  "updatedAt": "2026-10-23T02:51:02.000Z"
+}

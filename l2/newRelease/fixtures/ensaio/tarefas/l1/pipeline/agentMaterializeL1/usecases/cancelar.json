@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "cancelar",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/cancelar.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): avisarQuemAgeAgora — It is a notification effect (event tarefaCancelada of the integration), not a check on the task; the usecase has no condition to enforce. The derived quemAgeAgora is returned empty because a cancelled task has no one acting..",
+  "inputHash": "sha256:19548e625a8131be1e8241f25eb882eb1558b82dfb548a8bd2cfd9e1a5db1a25",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/cancelar.ts": "sha256:a8c4dad66d545ae8bdb0c15a6e28033897025cd008262a63060f933a59356112"
+  },
+  "updatedAt": "2026-10-23T02:35:44.179Z"
+}

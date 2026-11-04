@@ -1,0 +1,12 @@
+{
+  "unitId": "r24",
+  "status": "parsed",
+  "trace": "resolve25 recorded 2 answers for tarefas.tarefas_equipe.cancelarTarefaEquipe.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r24",
+  "calls": 1,
+  "answers": {
+    "g0": "none",
+    "g1": "none"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "unitId": "r6",
+  "status": "parsed",
+  "trace": "resolve25 recorded 2 answers for tarefas.minhas_tarefas.cmdAceitar.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r6",
+  "calls": 1,
+  "answers": {
+    "g0": "tarefaResponsavel",
+    "g1": "tarefaCriador"
+  }
+}

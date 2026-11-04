@@ -1,0 +1,877 @@
+{
+  "schemaVersion": "2026-10-06-d1-resolve-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "sourceKey": "sha256:9621499ce53ee3aeb6bb2f7dbe72e89e290571728b888517fbf7a49cbb6b9aea",
+  "llmCalls": 35,
+  "routes": [
+    {
+      "route": "tarefas.inicio.aceitarTarefa",
+      "pageId": "inicio",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r0",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.tarefa.responsavel\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r0",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.tarefa.responsavel.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r0",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.tarefa.criador\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r0",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.tarefa.criador.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "none",
+          "call": "resolve25-worker-r0",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"apenasCriadorRevisa\",\"none\",\"quemAgeAgoraPorSituacao\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r0b",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.tarefa.responsavel.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r0b",
+          "gapKey": "[\"tarefas.inicio.aceitarTarefa\",\"output.tarefa.criador.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.inicio.carregarInicio",
+      "pageId": "inicio",
+      "answers": [
+        {
+          "path": "output.pendencias.responsavel",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.pendencias.responsavel\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.pendencias.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.pendencias.responsavel.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.pendencias.criador",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.pendencias.criador\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.pendencias.criador.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.pendencias.criador.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "none",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"membroVeResponsavelOuCriador\",\"none\",\"participanteNaoConfiguradoAceitaECria\",\"quemAgeAgoraPorSituacao\",\"resumoDiarioOitoHoras\",\"retomarSoAposDevolucao\",\"tarefaAbertaVencimento\"]]"
+        },
+        {
+          "path": "output.permissoes.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.permissoes.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.permissoes.details.tarefas",
+          "kind": "computedRule",
+          "choice": "participanteNaoConfiguradoAceitaECria",
+          "call": "resolve25-worker-r1",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.permissoes.details.tarefas\",\"computedRule\",\"Interface PermissoesTarefas has no field that is not readonly, so no entity owns it.\",[\"membroVeResponsavelOuCriador\",\"none\",\"participanteNaoConfiguradoAceitaECria\",\"quemAgeAgoraPorSituacao\",\"resumoDiarioOitoHoras\",\"retomarSoAposDevolucao\",\"tarefaAbertaVencimento\"]]"
+        },
+        {
+          "path": "output.pendencias.responsavel.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r1b",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.pendencias.responsavel.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        },
+        {
+          "path": "output.pendencias.criador.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r1b",
+          "gapKey": "[\"tarefas.inicio.carregarInicio\",\"output.pendencias.criador.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.inicio.devolverTarefa",
+      "pageId": "inicio",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r2",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.tarefa.responsavel\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r2",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.tarefa.responsavel.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r2",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.tarefa.criador\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r2",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.tarefa.criador.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "none",
+          "call": "resolve25-worker-r2",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"apenasCriadorRevisa\",\"avisarQuemAgeAgora\",\"avisoNaoSobrepostoPorPessoa\",\"devolucaoExigeMotivo\",\"none\",\"quemAgeAgoraPorSituacao\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r2b",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.tarefa.responsavel.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r2b",
+          "gapKey": "[\"tarefas.inicio.devolverTarefa\",\"output.tarefa.criador.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.inicio.enviarRevisao",
+      "pageId": "inicio",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r3",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.tarefa.responsavel\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r3",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.tarefa.responsavel.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r3",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.tarefa.criador\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r3",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.tarefa.criador.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "none",
+          "call": "resolve25-worker-r3",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"apenasResponsavelExecuta\",\"avisarQuemAgeAgora\",\"avisoNaoSobrepostoPorPessoa\",\"none\",\"quemAgeAgoraPorSituacao\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r3b",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.tarefa.responsavel.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r3b",
+          "gapKey": "[\"tarefas.inicio.enviarRevisao\",\"output.tarefa.criador.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.inicio.iniciarTarefa",
+      "pageId": "inicio",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r4",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.tarefa.responsavel\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r4",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.tarefa.responsavel.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r4",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.tarefa.criador\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r4",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.tarefa.criador.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "none",
+          "call": "resolve25-worker-r4",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"apenasResponsavelExecuta\",\"none\",\"quemAgeAgoraPorSituacao\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r4b",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.tarefa.responsavel.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r4b",
+          "gapKey": "[\"tarefas.inicio.iniciarTarefa\",\"output.tarefa.criador.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.inicio.retomarTarefa",
+      "pageId": "inicio",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r5",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.tarefa.responsavel\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r5",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.tarefa.responsavel.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "choice": "Participante",
+          "call": "resolve25-worker-r5",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.tarefa.criador\",\"entity\",\"Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.\",[\"ItemChecklist\",\"ListaTarefas\",\"Participante\",\"Tarefa\",\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "details.identification.name",
+          "call": "resolve25-worker-r5",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.tarefa.criador.details.identification.name\",\"fieldPath\",\"Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.\",[\"details.identification.name\",\"none\"]]"
+        },
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "none",
+          "call": "resolve25-worker-r5",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"apenasResponsavelExecuta\",\"none\",\"retomarSoAposDevolucao\"]]"
+        },
+        {
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r5b",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.tarefa.responsavel.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "choice": "none",
+          "call": "resolve25-worker-r5b",
+          "gapKey": "[\"tarefas.inicio.retomarTarefa\",\"output.tarefa.criador.details.identification\",\"relationship\",\"Participante inside Participante needs one L4 relationship between them; found 0.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdAceitar",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r6",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdAceitar\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r6",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdAceitar\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r7",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdAdicionarItensChecklist\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r7",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdAdicionarItensChecklist\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdAjustarChecklist",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r8",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdAjustarChecklist\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r8",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdAjustarChecklist\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdCancelar",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r9",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdCancelar\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r9",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdCancelar\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdCriarTarefa",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r10",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdCriarTarefa\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r10",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdCriarTarefa\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdDevolver",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r11",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdDevolver\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r11",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdDevolver\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r12",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdEnviarParaRevisao\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r12",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdEnviarParaRevisao\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdIniciar",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r13",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdIniciar\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r13",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdIniciar\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdRetomar",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r14",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdRetomar\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r14",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdRetomar\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r15",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdSalvarAlteracoes\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r15",
+          "gapKey": "[\"tarefas.minhas_tarefas.cmdSalvarAlteracoes\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.qryMinhasTarefas",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefas.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.tarefas.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefas.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.tarefas.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.quantidadeDependeDeMim",
+          "kind": "value",
+          "choice": "none",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.quantidadeDependeDeMim\",\"value\",\"Output quantidadeDependeDeMim is a value (number), not an interface; no entity owns it.\",[\"none\"]]"
+        },
+        {
+          "path": "output.quantidadeResponsavel",
+          "kind": "value",
+          "choice": "none",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.quantidadeResponsavel\",\"value\",\"Output quantidadeResponsavel is a value (number), not an interface; no entity owns it.\",[\"none\"]]"
+        },
+        {
+          "path": "output.quantidadeCriadas",
+          "kind": "value",
+          "choice": "none",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.quantidadeCriadas\",\"value\",\"Output quantidadeCriadas is a value (number), not an interface; no entity owns it.\",[\"none\"]]"
+        },
+        {
+          "path": "output.quantidadeVenceHoje",
+          "kind": "value",
+          "choice": "none",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.quantidadeVenceHoje\",\"value\",\"Output quantidadeVenceHoje is a value (number), not an interface; no entity owns it.\",[\"none\"]]"
+        },
+        {
+          "path": "output.quantidadeAtrasadas",
+          "kind": "value",
+          "choice": "none",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.quantidadeAtrasadas\",\"value\",\"Output quantidadeAtrasadas is a value (number), not an interface; no entity owns it.\",[\"none\"]]"
+        },
+        {
+          "path": "output.podeCriarTarefasEfetivo",
+          "kind": "value",
+          "choice": "none",
+          "call": "resolve25-worker-r16",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryMinhasTarefas\",\"output.podeCriarTarefasEfetivo\",\"value\",\"Output podeCriarTarefasEfetivo is a value (boolean), not an interface; no entity owns it.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.qryResponsaveis",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "input.busca",
+          "kind": "filterField",
+          "choice": "participantes:details.identification.name",
+          "call": "resolve25-worker-r17",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryResponsaveis\",\"input.busca\",\"filterField\",\"Input busca is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"none\",\"participantes:details.identification.name\",\"participantes:details.identification.tags\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.qryTarefa",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r18",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryTarefa\",\"output.tarefa.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r18",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryTarefa\",\"output.tarefa.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "input.tarefaId",
+          "kind": "filterField",
+          "choice": "none",
+          "call": "resolve25-worker-r18",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryTarefa\",\"input.tarefaId\",\"filterField\",\"Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"historico:details.etiquetas\",\"historico:details.progressoChecklist\",\"historico:titulo\",\"none\",\"tarefa:details.etiquetas\",\"tarefa:details.progressoChecklist\",\"tarefa:titulo\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.minhas_tarefas.qryTarefasDoGrupo",
+      "pageId": "minhas_tarefas",
+      "answers": [
+        {
+          "path": "output.tarefas.responsavel",
+          "kind": "relationship",
+          "choice": "tarefaResponsavel",
+          "call": "resolve25-worker-r19",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryTarefasDoGrupo\",\"output.tarefas.responsavel\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "output.tarefas.criador",
+          "kind": "relationship",
+          "choice": "tarefaCriador",
+          "call": "resolve25-worker-r19",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryTarefasDoGrupo\",\"output.tarefas.criador\",\"relationship\",\"Participante inside Tarefa needs one L4 relationship between them; found 2.\",[\"none\",\"tarefaCriador\",\"tarefaResponsavel\"]]"
+        },
+        {
+          "path": "input.grupo",
+          "kind": "filterField",
+          "choice": "none",
+          "call": "resolve25-worker-r19",
+          "gapKey": "[\"tarefas.minhas_tarefas.qryTarefasDoGrupo\",\"input.grupo\",\"filterField\",\"Input grupo is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"none\",\"tarefas:details.etiquetas\",\"tarefas:details.progressoChecklist\",\"tarefas:titulo\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.painel_tarefas.carregarPainelTarefas",
+      "pageId": "painel_tarefas",
+      "answers": [
+        {
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "choice": "tarefaAbertaVencimento",
+          "call": "resolve25-worker-r20",
+          "gapKey": "[\"tarefas.painel_tarefas.carregarPainelTarefas\",\"output.indicadores\",\"computedRule\",\"Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.\",[\"gestorPorAcessoPlataforma\",\"membroVeResponsavelOuCriador\",\"none\",\"tarefaAbertaVencimento\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.participantes.buscarUsuarios",
+      "pageId": "participantes",
+      "answers": [
+        {
+          "path": "input.busca",
+          "kind": "filterField",
+          "choice": "usuarios:details.identification.name",
+          "call": "resolve25-worker-r21",
+          "gapKey": "[\"tarefas.participantes.buscarUsuarios\",\"input.busca\",\"filterField\",\"Input busca is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"none\",\"usuarios:details.identification.name\",\"usuarios:details.identification.tags\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.participantes.listarParticipantes",
+      "pageId": "participantes",
+      "answers": [
+        {
+          "path": "input.busca",
+          "kind": "filterField",
+          "choice": "participantes:details.identification.name",
+          "call": "resolve25-worker-r22",
+          "gapKey": "[\"tarefas.participantes.listarParticipantes\",\"input.busca\",\"filterField\",\"Input busca is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"none\",\"participantes:details.identification.name\",\"participantes:details.identification.tags\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+      "pageId": "tarefas_equipe",
+      "answers": [
+        {
+          "path": "input.nome",
+          "kind": "filterField",
+          "choice": "participantes:details.identification.name",
+          "call": "resolve25-worker-r23",
+          "gapKey": "[\"tarefas.tarefas_equipe.buscarResponsaveisDisponiveis\",\"input.nome\",\"filterField\",\"Input nome is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"none\",\"participantes:details.identification.name\",\"participantes:details.identification.tags\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.tarefas_equipe.cancelarTarefaEquipe",
+      "pageId": "tarefas_equipe",
+      "answers": [
+        {
+          "path": "output.tarefa.listaTarefas.nome",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r24",
+          "gapKey": "[\"tarefas.tarefas_equipe.cancelarTarefaEquipe\",\"output.tarefa.listaTarefas.nome\",\"fieldPath\",\"Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.participante.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r24",
+          "gapKey": "[\"tarefas.tarefas_equipe.cancelarTarefaEquipe\",\"output.tarefa.participante.details.identification.name\",\"fieldPath\",\"Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.tarefas_equipe.listarTarefasEquipe",
+      "pageId": "tarefas_equipe",
+      "answers": [
+        {
+          "path": "output.tarefas.listaTarefas.nome",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r25",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"output.tarefas.listaTarefas.nome\",\"fieldPath\",\"Interface TarefaResumo: field listaTarefas.nome is not a field of any entity.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefas.participante.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r25",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"output.tarefas.participante.details.identification.name\",\"fieldPath\",\"Interface TarefaResumo: field participante.details.identification.name is not a field of any entity.\",[\"none\"]]"
+        },
+        {
+          "path": "input.page",
+          "kind": "pageParam",
+          "choice": "tarefas",
+          "call": "resolve25-worker-r25",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.page\",\"pageParam\",\"Page input page pages one of 0 lists; the types do not say which.\",[\"none\",\"tarefas\"]]"
+        },
+        {
+          "path": "input.pageSize",
+          "kind": "pageParam",
+          "choice": "tarefas",
+          "call": "resolve25-worker-r25",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.pageSize\",\"pageParam\",\"Page input pageSize pages one of 0 lists; the types do not say which.\",[\"none\",\"tarefas\"]]"
+        },
+        {
+          "path": "input.prazoDe",
+          "kind": "filterField",
+          "choice": "none",
+          "call": "resolve25-worker-r25",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.prazoDe\",\"filterField\",\"Input prazoDe is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"contagemPorSituacao:details.etiquetas\",\"contagemPorSituacao:details.progressoChecklist\",\"contagemPorSituacao:titulo\",\"none\"]]"
+        },
+        {
+          "path": "input.prazoAte",
+          "kind": "filterField",
+          "choice": "none",
+          "call": "resolve25-worker-r25",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.prazoAte\",\"filterField\",\"Input prazoAte is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"contagemPorSituacao:details.etiquetas\",\"contagemPorSituacao:details.progressoChecklist\",\"contagemPorSituacao:titulo\",\"none\"]]"
+        },
+        {
+          "path": "input.listaId",
+          "kind": "filterField",
+          "choice": "tarefas:listaId",
+          "call": "resolve25-worker-r25b",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.listaId\",\"filterField\",\"Input listaId names a field of more than one output entity; the types do not say which it filters.\",[\"contagemPorSituacao:listaId\",\"none\",\"tarefas:listaId\"]]"
+        },
+        {
+          "path": "input.responsavelId",
+          "kind": "filterField",
+          "choice": "tarefas:responsavelId",
+          "call": "resolve25-worker-r25b",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.responsavelId\",\"filterField\",\"Input responsavelId names a field of more than one output entity; the types do not say which it filters.\",[\"contagemPorSituacao:responsavelId\",\"none\",\"tarefas:responsavelId\"]]"
+        },
+        {
+          "path": "input.prioridade",
+          "kind": "filterField",
+          "choice": "tarefas:prioridade",
+          "call": "resolve25-worker-r25b",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.prioridade\",\"filterField\",\"Input prioridade names a field of more than one output entity; the types do not say which it filters.\",[\"contagemPorSituacao:prioridade\",\"none\",\"tarefas:prioridade\"]]"
+        },
+        {
+          "path": "input.status",
+          "kind": "filterField",
+          "choice": "tarefas:status",
+          "call": "resolve25-worker-r25b",
+          "gapKey": "[\"tarefas.tarefas_equipe.listarTarefasEquipe\",\"input.status\",\"filterField\",\"Input status names a field of more than one output entity; the types do not say which it filters.\",[\"contagemPorSituacao:status\",\"none\",\"tarefas:status\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.tarefas_equipe.obterTarefaEquipe",
+      "pageId": "tarefas_equipe",
+      "answers": [
+        {
+          "path": "output.tarefa.listaTarefas.nome",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r26",
+          "gapKey": "[\"tarefas.tarefas_equipe.obterTarefaEquipe\",\"output.tarefa.listaTarefas.nome\",\"fieldPath\",\"Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.participante.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r26",
+          "gapKey": "[\"tarefas.tarefas_equipe.obterTarefaEquipe\",\"output.tarefa.participante.details.identification.name\",\"fieldPath\",\"Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.\",[\"none\"]]"
+        },
+        {
+          "path": "input.tarefaId",
+          "kind": "filterField",
+          "choice": "none",
+          "call": "resolve25-worker-r26",
+          "gapKey": "[\"tarefas.tarefas_equipe.obterTarefaEquipe\",\"input.tarefaId\",\"filterField\",\"Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.\",[\"none\"]]"
+        }
+      ]
+    },
+    {
+      "route": "tarefas.tarefas_equipe.trocarResponsavelTarefa",
+      "pageId": "tarefas_equipe",
+      "answers": [
+        {
+          "path": "output.tarefa.listaTarefas.nome",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r27",
+          "gapKey": "[\"tarefas.tarefas_equipe.trocarResponsavelTarefa\",\"output.tarefa.listaTarefas.nome\",\"fieldPath\",\"Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.\",[\"none\"]]"
+        },
+        {
+          "path": "output.tarefa.participante.details.identification.name",
+          "kind": "fieldPath",
+          "choice": "none",
+          "call": "resolve25-worker-r27",
+          "gapKey": "[\"tarefas.tarefas_equipe.trocarResponsavelTarefa\",\"output.tarefa.participante.details.identification.name\",\"fieldPath\",\"Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.\",[\"none\"]]"
+        }
+      ]
+    }
+  ]
+}

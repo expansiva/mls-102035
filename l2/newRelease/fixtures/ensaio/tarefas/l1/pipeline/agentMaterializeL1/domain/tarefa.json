@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "domain",
+  "unitId": "tarefa",
+  "defRef": "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:5cf6dadf2a87052b7e0dfa8f777c6f0e8a26e5c27c17aac7cc3a9b716dbaac14",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.ts": "sha256:286d10a3f5cbe84ed5c05f7fbdc8c7ff0a892523ef0b1c1fa67b114086be6def"
+  },
+  "updatedAt": "2026-10-23T02:35:18.226Z"
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "carregarPainelTarefas.ok",
+    "routine": "tarefas.painel_tarefas.carregarPainelTarefas",
+    "params": {},
+    "expect": {
+      "ok": true,
+      "shape": "object"
+    },
+    "mutating": false
+  }
+]

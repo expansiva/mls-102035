@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "workflows",
+  "unitId": "resumoDiarioTarefas",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:c3394fd6a67aa6e16b17814c2792eb687ac248155b44fedb275abc0b931e4671",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.ts": "sha256:bc0951cea6220a8b7a8b699837353484d6915b0bed11aab24ba90f502babbb22"
+  },
+  "updatedAt": "2026-10-23T02:38:31.356Z"
+}

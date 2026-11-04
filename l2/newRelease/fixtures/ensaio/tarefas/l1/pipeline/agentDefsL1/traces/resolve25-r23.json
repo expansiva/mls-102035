@@ -1,0 +1,11 @@
+{
+  "unitId": "r23",
+  "status": "parsed",
+  "trace": "resolve25 recorded 1 answers for tarefas.tarefas_equipe.buscarResponsaveisDisponiveis.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r23",
+  "calls": 1,
+  "answers": {
+    "g0": "participantes:details.identification.name"
+  }
+}

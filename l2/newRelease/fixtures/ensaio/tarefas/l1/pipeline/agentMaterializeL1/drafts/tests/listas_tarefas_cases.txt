@@ -1,0 +1,171 @@
+[
+  {
+    "id": "tarefas.listas_tarefas.qryListasTarefas.ok",
+    "routine": "tarefas.listas_tarefas.qryListasTarefas",
+    "params": {
+      "page": 1,
+      "pageSize": 10
+    },
+    "expect": {
+      "ok": true,
+      "shape": "paginated",
+      "itemsKey": "listas"
+    },
+    "mutating": false
+  },
+  {
+    "id": "tarefas.listas_tarefas.qryListasTarefas.texto",
+    "routine": "tarefas.listas_tarefas.qryListasTarefas",
+    "params": {
+      "texto": "<seedValue>",
+      "page": 1,
+      "pageSize": 10
+    },
+    "paramFieldRefs": {
+      "texto": "ListaTarefas.nome"
+    },
+    "expect": {
+      "ok": true,
+      "shape": "paginated",
+      "itemsKey": "listas",
+      "minItems": 1
+    },
+    "mutating": false
+  },
+  {
+    "id": "tarefas.listas_tarefas.qryListasTarefas.page.required",
+    "routine": "tarefas.listas_tarefas.qryListasTarefas",
+    "params": {
+      "pageSize": 10
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": false
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdCriarLista.ok",
+    "routine": "tarefas.listas_tarefas.cmdCriarLista",
+    "params": {
+      "nome": "Lista Monitor Criada",
+      "details": {
+        "descricao": "Lista criada pelo monitor"
+      }
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdCriarLista.nome.required",
+    "routine": "tarefas.listas_tarefas.cmdCriarLista",
+    "params": {
+      "details": {
+        "descricao": "Sem nome"
+      }
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdCriarLista.nomeListaUnico",
+    "routine": "tarefas.listas_tarefas.cmdCriarLista",
+    "params": {
+      "nome": "<seedValue>",
+      "details": {
+        "descricao": "Nome repetido"
+      }
+    },
+    "paramFieldRefs": {
+      "nome": "ListaTarefas.nome"
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "CONFLICT"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdSalvarLista.nomeListaUnico",
+    "routine": "tarefas.listas_tarefas.cmdSalvarLista",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>",
+      "nome": "Lista Monitor Criada",
+      "details": {
+        "descricao": "Nome repetido"
+      }
+    },
+    "paramFieldRefs": {
+      "id": "ListaTarefas.id",
+      "version": "ListaTarefas.version"
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "CONFLICT"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdSalvarLista.ok",
+    "routine": "tarefas.listas_tarefas.cmdSalvarLista",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>",
+      "nome": "Lista Monitor Alterada",
+      "details": {
+        "descricao": "Descrição alterada pelo monitor"
+      }
+    },
+    "paramFieldRefs": {
+      "id": "ListaTarefas.id",
+      "version": "ListaTarefas.version"
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdSalvarLista.nome.required",
+    "routine": "tarefas.listas_tarefas.cmdSalvarLista",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>",
+      "details": {
+        "descricao": "Sem nome"
+      }
+    },
+    "paramFieldRefs": {
+      "id": "ListaTarefas.id",
+      "version": "ListaTarefas.version"
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.listas_tarefas.cmdSalvarLista.id.required",
+    "routine": "tarefas.listas_tarefas.cmdSalvarLista",
+    "params": {
+      "version": "<seedRef>",
+      "nome": "Lista Sem Id",
+      "details": {}
+    },
+    "paramFieldRefs": {
+      "version": "ListaTarefas.version"
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  }
+]

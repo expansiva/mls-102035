@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "requests",
+  "unitId": "tarefas_equipe",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/requests/tarefas_equipe.defs.ts",
+  "attempt": 3,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:4660a3ac4b15ba697cf15c82c1abb97fda7b7480e7cdf1842649b54cfa2e6277",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/requests/tarefas_equipe.ts": "sha256:e75a909555e1d4cc2e77523cfdacc6ac8c31b294ece0d04b50ee4705ad3d9565"
+  },
+  "updatedAt": "2026-10-23T02:43:17.907Z"
+}

@@ -1,0 +1,18 @@
+{
+  "unitId": "r16",
+  "status": "parsed",
+  "trace": "resolve25 recorded 8 answers for tarefas.minhas_tarefas.qryMinhasTarefas.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r16",
+  "calls": 1,
+  "answers": {
+    "g0": "tarefaResponsavel",
+    "g1": "tarefaCriador",
+    "g2": "none",
+    "g3": "none",
+    "g4": "none",
+    "g5": "none",
+    "g6": "none",
+    "g7": "none"
+  }
+}

@@ -1,0 +1,4694 @@
+{
+  "schemaVersion": "2026-10-01-d1-input-v2",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "device": "web",
+  "plannerRun": {
+    "flowId": "agentPlannerL1",
+    "thread": "tarefas-20261023014130",
+    "round": 1,
+    "schemaVersion": "2026-09-20-p1-pipeline-v1"
+  },
+  "sources": [
+    {
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "sha256": "sha256:d872928e15ea66a238d5bb42ccd4f8499fcdf9c4197ccaee89fd7c2b20d93a5c",
+      "bytes": 11329,
+      "schemaVersion": "",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/listas_tarefas.defs.ts",
+      "sha256": "sha256:1086bdcfddee0975a6e3a1d93d630573f63ba43aed3f0440d28f5ab042d2eac7",
+      "bytes": 3793,
+      "schemaVersion": "",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "sha256": "sha256:d24204bf09749887b990df05b72297f67c08f3ac5b86a12a208c86901761b0a7",
+      "bytes": 22504,
+      "schemaVersion": "",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/painel_tarefas.defs.ts",
+      "sha256": "sha256:cf7146e04c14393814fb90d0ac1c50d6e5010bea856731304f84679534124403",
+      "bytes": 2929,
+      "schemaVersion": "",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/participantes.defs.ts",
+      "sha256": "sha256:93a1280344bfee33ec49819f2d1352e161cd7e80265deab197ce6c3e78f84c68",
+      "bytes": 5871,
+      "schemaVersion": "",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "sha256": "sha256:940fd1870167acbe9dfa77a0e937c646b7292a33f36d82ee4ff0a19545d9a228",
+      "bytes": 11041,
+      "schemaVersion": "",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/access.defs.ts",
+      "sha256": "sha256:6ded3db7519527275a2dcd04b86c7bca16c26bc6b35179ccc307a6994ec06e90",
+      "bytes": 6444,
+      "schemaVersion": "2026-09-12-ns5-access-v3",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/integration.defs.ts",
+      "sha256": "sha256:63eeb0d5ba7a33d8aad91e17e14652262cacf99d879a84596c31317137fa482a",
+      "bytes": 1327,
+      "schemaVersion": "2026-09-12-ns5-integration-v2",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/acompanharTarefas.defs.ts",
+      "sha256": "sha256:2b5e7d05270e57e4d7a3790ca6f4f60cc7e2fd852e180cf42e696fb7059eecb8",
+      "bytes": 1954,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/cancelarTarefa.defs.ts",
+      "sha256": "sha256:83dcc69819f5d3289a8f9c1052430bba94fe3e04bdf0c9153145c74d2cbe9e3c",
+      "bytes": 1455,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/cancelarTarefaCriada.defs.ts",
+      "sha256": "sha256:899ee1843642374ccfc70e4ca90bbe63231efb0280a2e91ea682f1e83678b96a",
+      "bytes": 1507,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/configurarParticipantes.defs.ts",
+      "sha256": "sha256:a234b04a46956746bcb19defbc17e2a1dafb47720f70ae51f9b145ab1f8e8a45",
+      "bytes": 2220,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/criarTarefa.defs.ts",
+      "sha256": "sha256:d04bcea4b33e68052d969a08983710e70f54509bf09114778824fcea5f239b2d",
+      "bytes": 1758,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/editarTarefa.defs.ts",
+      "sha256": "sha256:9d56a7d8e3edfde0f00a76f57f6af1842c6757172fa6bd9c8fc848ff417fc259",
+      "bytes": 1809,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/executarTarefa.defs.ts",
+      "sha256": "sha256:f692e5d6199266ceee44f9b5aee938378890f337903f918224d25190ba914241",
+      "bytes": 2477,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/index.defs.ts",
+      "sha256": "sha256:f9bf765fc234df9d972c3cbad9669e02bc1307547548eddf4333a8a0fde7a944",
+      "bytes": 2227,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/manterListas.defs.ts",
+      "sha256": "sha256:c0fb1c5eac8669f31c17f2ec30ad113ac1550f148f0ba2e7c64cbf6843ed9dd3",
+      "bytes": 1727,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/minhasTarefas.defs.ts",
+      "sha256": "sha256:e17f2d74e9562876e084c64edb763bd9a215d8bcb4a6ffc9617b7e754775aae1",
+      "bytes": 1591,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/reatribuirTarefa.defs.ts",
+      "sha256": "sha256:2c1d53d4e66251f1a1ba0e66c7c513ff16f9e7ee62afcf812ff54e101f0d32ff",
+      "bytes": 1861,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/reatribuirTarefaCriada.defs.ts",
+      "sha256": "sha256:9c211808073e80738b605c7dde9e85165898bfa95fa740e17ad92acadba0e3b8",
+      "bytes": 1858,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/resumoDiario.defs.ts",
+      "sha256": "sha256:9080033edf028b0a2b58cd1a6898a39b4abb0a21ec975bd24e0761eb0bbcce24",
+      "bytes": 1524,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/retomarTarefa.defs.ts",
+      "sha256": "sha256:6c885562c2e7777b31c5e5c3af76f893685f4322510b6179a33339a43d7dc516",
+      "bytes": 1890,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/revisarTarefa.defs.ts",
+      "sha256": "sha256:d839a81d0b0943f706ab71f0c50f55d6fbfede331f83fd6a640911dfd3d3c648",
+      "bytes": 2429,
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/module.defs.ts",
+      "sha256": "sha256:1036ee489b8980eaa4f539e23bf5c80bdfb5517f62aa54027c49f9730106bccc",
+      "bytes": 2887,
+      "schemaVersion": "2026-09-10-ns5-module-v2",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/index.defs.ts",
+      "sha256": "sha256:b30c2cc1aa7a478ed1e5321c0e8eed63bd8da2a4c1d8d671a8e94a758be35c72",
+      "bytes": 2899,
+      "schemaVersion": "2026-09-17-ns5-ontology-v3.1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/ItemChecklist.defs.ts",
+      "sha256": "sha256:8b52124fa82fa617477fef0d69bada04ee53a2112151535fc991c124eab5eade",
+      "bytes": 4188,
+      "schemaVersion": "2026-09-17-ns5-ontology-v3.1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/ListaTarefas.defs.ts",
+      "sha256": "sha256:8b4c7c07cf8f58acb4fb872502941645aa8e685ca113185089582cd10731f2e7",
+      "bytes": 3433,
+      "schemaVersion": "2026-09-17-ns5-ontology-v3.1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/Participante.defs.ts",
+      "sha256": "sha256:9ba21750da9cd094be3851901557774f9553de1eabf5f2ef311543c73b8e0531",
+      "bytes": 9451,
+      "schemaVersion": "2026-09-17-ns5-ontology-v3.1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/Tarefa.defs.ts",
+      "sha256": "sha256:2d38596623fcc62d15b50252981bab772086c00d4bec848472141acff05ec4a5",
+      "bytes": 14874,
+      "schemaVersion": "2026-09-17-ns5-ontology-v3.1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l1/pipeline.json",
+      "sha256": "sha256:7beec2e00e299c77600a0bfd1ef360db6e86c604ab746dd26871309c0f1257c4",
+      "bytes": 1591,
+      "schemaVersion": "2026-09-20-p1-pipeline-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l1/web/needs.json",
+      "sha256": "sha256:6ea4207c48e755b8a04e312a9133325e6d72fcffe7712e90bfa130778953ab62",
+      "bytes": 28872,
+      "schemaVersion": "2026-09-21-p2-needs-v1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l2/web/backend.json",
+      "sha256": "sha256:8eb3f3200e7cfb40797235ad06c85ff07a260bc340e724c40c74fa6f5d7c81f4",
+      "bytes": 32899,
+      "schemaVersion": "2026-09-21-p1-backend-v1.2",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l2/web/effort.json",
+      "sha256": "sha256:07b599e1428e02e3d70604bea01bd199b3a4b518729b9acdcf4bd07f3f13d344",
+      "bytes": 27283,
+      "schemaVersion": "2026-09-21-p2-effort-v1.2",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l2/web/menu.json",
+      "sha256": "sha256:0540a0252a000cd262b3244f637277133dab251cbf9b4a61f78b3c6ba8b9dfd5",
+      "bytes": 6364,
+      "schemaVersion": "2026-09-20-p2-menu-v2.2",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/rules.defs.ts",
+      "sha256": "sha256:9c4b759cc09aaf5855787f7fe653fb041d8848ffc5f2b1a3903681bd1f61ba70",
+      "bytes": 4964,
+      "schemaVersion": "2026-09-16-ns5-rules-v2",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/workflows.defs.ts",
+      "sha256": "sha256:7e0f595fe50dd9a4a1f920201b28c2df1500a71b64d290c3e5447c6b5d19ef40",
+      "bytes": 7738,
+      "schemaVersion": "2026-09-17-ns5-workflows-v3",
+      "state": "present"
+    }
+  ],
+  "selection": {
+    "pages": [
+      {
+        "pageId": "inicio",
+        "routes": [
+          "tarefas.inicio.aceitarTarefa",
+          "tarefas.inicio.carregarInicio",
+          "tarefas.inicio.devolverTarefa",
+          "tarefas.inicio.enviarRevisao",
+          "tarefas.inicio.iniciarTarefa",
+          "tarefas.inicio.retomarTarefa"
+        ]
+      },
+      {
+        "pageId": "listas_tarefas",
+        "routes": [
+          "tarefas.listas_tarefas.cmdCriarLista",
+          "tarefas.listas_tarefas.cmdSalvarLista",
+          "tarefas.listas_tarefas.qryListasTarefas"
+        ]
+      },
+      {
+        "pageId": "minhas_tarefas",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdAceitar",
+          "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+          "tarefas.minhas_tarefas.cmdAjustarChecklist",
+          "tarefas.minhas_tarefas.cmdCancelar",
+          "tarefas.minhas_tarefas.cmdCriarTarefa",
+          "tarefas.minhas_tarefas.cmdDevolver",
+          "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+          "tarefas.minhas_tarefas.cmdIniciar",
+          "tarefas.minhas_tarefas.cmdRetomar",
+          "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+          "tarefas.minhas_tarefas.qryListas",
+          "tarefas.minhas_tarefas.qryMinhasTarefas",
+          "tarefas.minhas_tarefas.qryResponsaveis",
+          "tarefas.minhas_tarefas.qryTarefa",
+          "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+        ]
+      },
+      {
+        "pageId": "painel_tarefas",
+        "routes": [
+          "tarefas.painel_tarefas.carregarPainelTarefas"
+        ]
+      },
+      {
+        "pageId": "participantes",
+        "routes": [
+          "tarefas.participantes.buscarUsuarios",
+          "tarefas.participantes.incluirParticipante",
+          "tarefas.participantes.listarParticipantes",
+          "tarefas.participantes.salvarMarcas"
+        ]
+      },
+      {
+        "pageId": "tarefas_equipe",
+        "routes": [
+          "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+          "tarefas.tarefas_equipe.cancelarTarefaEquipe",
+          "tarefas.tarefas_equipe.carregarFiltrosEquipe",
+          "tarefas.tarefas_equipe.listarTarefasEquipe",
+          "tarefas.tarefas_equipe.obterTarefaEquipe",
+          "tarefas.tarefas_equipe.trocarResponsavelTarefa"
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "route": "tarefas.inicio.aceitarTarefa",
+        "pageId": "inicio",
+        "kind": "cmd",
+        "writes": "Tarefa.aceitar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          }
+        ],
+        "params": [],
+        "uses": [
+          "aceitar",
+          "listListaTarefas"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.responsavel.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "apenasCriadorRevisa",
+              "quemAgeAgoraPorSituacao",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.inicio.carregarInicio",
+        "pageId": "inicio",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "pendencias",
+            "entity": "Tarefa",
+            "many": true
+          },
+          {
+            "key": "pendencias.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "pendencias",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "alertas",
+            "entity": "Tarefa",
+            "many": true
+          }
+        ],
+        "params": [],
+        "uses": [
+          "listTarefa",
+          "listListaTarefas"
+        ],
+        "unresolved": [
+          {
+            "path": "output.pendencias.responsavel",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.pendencias.responsavel.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.pendencias.criador",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.pendencias.criador.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "membroVeResponsavelOuCriador",
+              "participanteNaoConfiguradoAceitaECria",
+              "quemAgeAgoraPorSituacao",
+              "resumoDiarioOitoHoras",
+              "retomarSoAposDevolucao",
+              "tarefaAbertaVencimento",
+              "none"
+            ]
+          },
+          {
+            "path": "output.permissoes.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.permissoes.details.tarefas",
+            "reason": "Interface PermissoesTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "membroVeResponsavelOuCriador",
+              "participanteNaoConfiguradoAceitaECria",
+              "quemAgeAgoraPorSituacao",
+              "resumoDiarioOitoHoras",
+              "retomarSoAposDevolucao",
+              "tarefaAbertaVencimento",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.inicio.devolverTarefa",
+        "pageId": "inicio",
+        "kind": "cmd",
+        "writes": "Tarefa.devolver",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          }
+        ],
+        "params": [],
+        "uses": [
+          "devolver",
+          "listListaTarefas"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.responsavel.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "apenasCriadorRevisa",
+              "avisarQuemAgeAgora",
+              "avisoNaoSobrepostoPorPessoa",
+              "devolucaoExigeMotivo",
+              "quemAgeAgoraPorSituacao",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.inicio.enviarRevisao",
+        "pageId": "inicio",
+        "kind": "cmd",
+        "writes": "Tarefa.enviarParaRevisao",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          }
+        ],
+        "params": [],
+        "uses": [
+          "enviarParaRevisao",
+          "listListaTarefas"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.responsavel.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "apenasResponsavelExecuta",
+              "avisarQuemAgeAgora",
+              "avisoNaoSobrepostoPorPessoa",
+              "quemAgeAgoraPorSituacao",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.inicio.iniciarTarefa",
+        "pageId": "inicio",
+        "kind": "cmd",
+        "writes": "Tarefa.iniciar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          }
+        ],
+        "params": [],
+        "uses": [
+          "iniciar",
+          "listListaTarefas"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.responsavel.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "apenasResponsavelExecuta",
+              "quemAgeAgoraPorSituacao",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.inicio.retomarTarefa",
+        "pageId": "inicio",
+        "kind": "cmd",
+        "writes": "Tarefa.retomar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          }
+        ],
+        "params": [],
+        "uses": [
+          "retomar",
+          "listListaTarefas"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.responsavel.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+            "kind": "entity",
+            "candidates": [
+              "ItemChecklist",
+              "ListaTarefas",
+              "Participante",
+              "Tarefa",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador.details.identification.name",
+            "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "details.identification.name",
+              "none"
+            ]
+          },
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "apenasResponsavelExecuta",
+              "retomarSoAposDevolucao",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.listas_tarefas.cmdCriarLista",
+        "pageId": "listas_tarefas",
+        "kind": "cmd",
+        "writes": "ListaTarefas.create",
+        "outputs": [
+          {
+            "key": "lista",
+            "entity": "ListaTarefas",
+            "many": false
+          }
+        ],
+        "params": [],
+        "uses": [
+          "createListaTarefas"
+        ]
+      },
+      {
+        "route": "tarefas.listas_tarefas.cmdSalvarLista",
+        "pageId": "listas_tarefas",
+        "kind": "cmd",
+        "writes": "ListaTarefas.update",
+        "outputs": [
+          {
+            "key": "lista",
+            "entity": "ListaTarefas",
+            "many": false
+          }
+        ],
+        "params": [],
+        "uses": [
+          "updateListaTarefas"
+        ]
+      },
+      {
+        "route": "tarefas.listas_tarefas.qryListasTarefas",
+        "pageId": "listas_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "listas",
+            "entity": "ListaTarefas",
+            "many": true,
+            "page": "page",
+            "pageSize": "pageSize",
+            "hasMore": "hasMore"
+          }
+        ],
+        "params": [
+          {
+            "name": "page",
+            "target": "listas",
+            "pages": "listas"
+          },
+          {
+            "name": "pageSize",
+            "target": "listas",
+            "pages": "listas"
+          },
+          {
+            "name": "texto",
+            "target": "listas",
+            "field": "nome",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "listListaTarefas"
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdAceitar",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.aceitar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "aceitar",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "ItemChecklist.create",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "createItemChecklist",
+          "listTarefa",
+          "listListaTarefas",
+          "getParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "ItemChecklist.update",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "updateItemChecklist",
+          "listTarefa",
+          "listListaTarefas",
+          "getParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdCancelar",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.cancelar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "cancelar",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdCriarTarefa",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.create",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [
+          {
+            "name": "prazo",
+            "target": "",
+            "optional": true
+          },
+          {
+            "name": "tarefaPaiId",
+            "target": "",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "createTarefa",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdDevolver",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.devolver",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "devolver",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.enviarParaRevisao",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "enviarParaRevisao",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdIniciar",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.iniciar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "iniciar",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdRetomar",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.retomar",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [],
+        "uses": [
+          "retomar",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "pageId": "minhas_tarefas",
+        "kind": "cmd",
+        "writes": "Tarefa.update",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [
+          {
+            "name": "prazo",
+            "target": "",
+            "optional": true
+          },
+          {
+            "name": "tarefaPaiId",
+            "target": "",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "updateTarefa",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.qryListas",
+        "pageId": "minhas_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "listas",
+            "entity": "ListaTarefas",
+            "many": true
+          }
+        ],
+        "params": [
+          {
+            "name": "busca",
+            "target": "listas",
+            "field": "nome",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "listListaTarefas"
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.qryMinhasTarefas",
+        "pageId": "minhas_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "tarefas",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "quemAgeAgoraNome"
+            ],
+            "page": "page",
+            "pageSize": "pageSize",
+            "hasMore": "hasMore"
+          },
+          {
+            "key": "tarefas.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefas",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefas.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefas"
+          },
+          {
+            "key": "tarefas.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefas"
+          }
+        ],
+        "params": [
+          {
+            "name": "page",
+            "target": "tarefas",
+            "pages": "tarefas"
+          },
+          {
+            "name": "pageSize",
+            "target": "tarefas",
+            "pages": "tarefas"
+          }
+        ],
+        "uses": [
+          "listTarefa",
+          "listListaTarefas",
+          "getParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefas.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefas.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.quantidadeDependeDeMim",
+            "reason": "Output quantidadeDependeDeMim is a value (number), not an interface; no entity owns it.",
+            "kind": "value",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.quantidadeResponsavel",
+            "reason": "Output quantidadeResponsavel is a value (number), not an interface; no entity owns it.",
+            "kind": "value",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.quantidadeCriadas",
+            "reason": "Output quantidadeCriadas is a value (number), not an interface; no entity owns it.",
+            "kind": "value",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.quantidadeVenceHoje",
+            "reason": "Output quantidadeVenceHoje is a value (number), not an interface; no entity owns it.",
+            "kind": "value",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.quantidadeAtrasadas",
+            "reason": "Output quantidadeAtrasadas is a value (number), not an interface; no entity owns it.",
+            "kind": "value",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.podeCriarTarefasEfetivo",
+            "reason": "Output podeCriarTarefasEfetivo is a value (boolean), not an interface; no entity owns it.",
+            "kind": "value",
+            "candidates": [
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.qryResponsaveis",
+        "pageId": "minhas_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "participantes",
+            "entity": "Participante",
+            "many": true
+          }
+        ],
+        "params": [
+          {
+            "name": "busca",
+            "target": "participantes",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "listParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "input.busca",
+            "reason": "Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "participantes:details.identification.name",
+              "participantes:details.identification.tags",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.qryTarefa",
+        "pageId": "minhas_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "tarefa",
+            "entity": "Tarefa",
+            "many": false,
+            "computed": [
+              "quemAgeAgoraNome",
+              "souResponsavel",
+              "souCriador"
+            ]
+          },
+          {
+            "key": "tarefa.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefa.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefa"
+          },
+          {
+            "key": "tarefa.tarefaPai",
+            "entity": "Tarefa",
+            "many": false,
+            "parent": "tarefa",
+            "relationship": "tarefaPai"
+          },
+          {
+            "key": "tarefa.itens",
+            "entity": "ItemChecklist",
+            "many": true,
+            "parent": "tarefa",
+            "relationship": "itemChecklistTarefa"
+          },
+          {
+            "key": "historico",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "tipo",
+              "momento",
+              "responsavelNome"
+            ]
+          }
+        ],
+        "params": [
+          {
+            "name": "tarefaId",
+            "target": ""
+          }
+        ],
+        "uses": [
+          "listTarefa",
+          "listListaTarefas",
+          "getParticipante",
+          "listItemChecklist"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "input.tarefaId",
+            "reason": "Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "historico:details.etiquetas",
+              "historico:details.progressoChecklist",
+              "historico:titulo",
+              "tarefa:details.etiquetas",
+              "tarefa:details.progressoChecklist",
+              "tarefa:titulo",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.minhas_tarefas.qryTarefasDoGrupo",
+        "pageId": "minhas_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "tarefas",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "quemAgeAgoraNome"
+            ],
+            "page": "page",
+            "pageSize": "pageSize",
+            "hasMore": "hasMore"
+          },
+          {
+            "key": "tarefas.listaTarefas",
+            "entity": "ListaTarefas",
+            "many": false,
+            "parent": "tarefas",
+            "relationship": "tarefaLista"
+          },
+          {
+            "key": "tarefas.responsavel",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefas"
+          },
+          {
+            "key": "tarefas.criador",
+            "entity": "Participante",
+            "many": false,
+            "parent": "tarefas"
+          }
+        ],
+        "params": [
+          {
+            "name": "page",
+            "target": "tarefas",
+            "pages": "tarefas"
+          },
+          {
+            "name": "pageSize",
+            "target": "tarefas",
+            "pages": "tarefas"
+          },
+          {
+            "name": "grupo",
+            "target": "tarefas"
+          }
+        ],
+        "uses": [
+          "listTarefa",
+          "listListaTarefas",
+          "getParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefas.responsavel",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefas.criador",
+            "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+            "kind": "relationship",
+            "candidates": [
+              "tarefaCriador",
+              "tarefaResponsavel",
+              "none"
+            ]
+          },
+          {
+            "path": "input.grupo",
+            "reason": "Input grupo is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "tarefas:details.etiquetas",
+              "tarefas:details.progressoChecklist",
+              "tarefas:titulo",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.painel_tarefas.carregarPainelTarefas",
+        "pageId": "painel_tarefas",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "listas",
+            "entity": "ListaTarefas",
+            "many": true,
+            "computed": [
+              "itensChecklistConcluidos",
+              "itensChecklistTotal"
+            ]
+          },
+          {
+            "key": "listas.tarefas",
+            "entity": "Tarefa",
+            "many": true,
+            "parent": "listas",
+            "relationship": "tarefaLista"
+          }
+        ],
+        "params": [],
+        "uses": [
+          "listListaTarefas",
+          "listTarefa"
+        ],
+        "unresolved": [
+          {
+            "path": "output.indicadores",
+            "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+            "kind": "computedRule",
+            "candidates": [
+              "gestorPorAcessoPlataforma",
+              "membroVeResponsavelOuCriador",
+              "tarefaAbertaVencimento",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.participantes.buscarUsuarios",
+        "pageId": "participantes",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "usuarios",
+            "entity": "Participante",
+            "many": true
+          }
+        ],
+        "params": [
+          {
+            "name": "busca",
+            "target": "usuarios"
+          }
+        ],
+        "uses": [
+          "listParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "input.busca",
+            "reason": "Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "usuarios:details.identification.name",
+              "usuarios:details.identification.tags",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.participantes.incluirParticipante",
+        "pageId": "participantes",
+        "kind": "cmd",
+        "writes": "Participante.create",
+        "outputs": [
+          {
+            "key": "participante",
+            "entity": "Participante",
+            "many": false
+          }
+        ],
+        "params": [],
+        "uses": [
+          "createParticipante"
+        ]
+      },
+      {
+        "route": "tarefas.participantes.listarParticipantes",
+        "pageId": "participantes",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "participantes",
+            "entity": "Participante",
+            "many": true,
+            "page": "page",
+            "pageSize": "pageSize",
+            "hasMore": "hasMore"
+          }
+        ],
+        "params": [
+          {
+            "name": "page",
+            "target": "participantes",
+            "pages": "participantes"
+          },
+          {
+            "name": "pageSize",
+            "target": "participantes",
+            "pages": "participantes"
+          },
+          {
+            "name": "busca",
+            "target": "participantes",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "listParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "input.busca",
+            "reason": "Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "participantes:details.identification.name",
+              "participantes:details.identification.tags",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.participantes.salvarMarcas",
+        "pageId": "participantes",
+        "kind": "cmd",
+        "writes": "Participante.update",
+        "outputs": [
+          {
+            "key": "participante",
+            "entity": "Participante",
+            "many": false
+          }
+        ],
+        "params": [],
+        "uses": [
+          "updateParticipante"
+        ]
+      },
+      {
+        "route": "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "pageId": "tarefas_equipe",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "participantes",
+            "entity": "Participante",
+            "many": true
+          }
+        ],
+        "params": [
+          {
+            "name": "nome",
+            "target": "participantes",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "listParticipante"
+        ],
+        "unresolved": [
+          {
+            "path": "input.nome",
+            "reason": "Input nome is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "participantes:details.identification.name",
+              "participantes:details.identification.tags",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.tarefas_equipe.cancelarTarefaEquipe",
+        "pageId": "tarefas_equipe",
+        "kind": "cmd",
+        "writes": "Tarefa.cancelar",
+        "outputs": [],
+        "params": [],
+        "uses": [
+          "cancelar"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.listaTarefas.nome",
+            "reason": "Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.participante.details.identification.name",
+            "reason": "Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.tarefas_equipe.carregarFiltrosEquipe",
+        "pageId": "tarefas_equipe",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "listas",
+            "entity": "ListaTarefas",
+            "many": true
+          },
+          {
+            "key": "participantes",
+            "entity": "Participante",
+            "many": true
+          }
+        ],
+        "params": [],
+        "uses": [
+          "listListaTarefas",
+          "listParticipante"
+        ]
+      },
+      {
+        "route": "tarefas.tarefas_equipe.listarTarefasEquipe",
+        "pageId": "tarefas_equipe",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [
+          {
+            "key": "contagemPorSituacao",
+            "entity": "Tarefa",
+            "many": true,
+            "computed": [
+              "quantidade"
+            ]
+          }
+        ],
+        "params": [
+          {
+            "name": "listaId",
+            "target": "contagemPorSituacao",
+            "field": "listaId",
+            "optional": true
+          },
+          {
+            "name": "responsavelId",
+            "target": "contagemPorSituacao",
+            "field": "responsavelId",
+            "optional": true
+          },
+          {
+            "name": "prioridade",
+            "target": "contagemPorSituacao",
+            "field": "prioridade",
+            "optional": true
+          },
+          {
+            "name": "status",
+            "target": "contagemPorSituacao",
+            "field": "status",
+            "optional": true
+          },
+          {
+            "name": "prazoDe",
+            "target": "contagemPorSituacao",
+            "optional": true
+          },
+          {
+            "name": "prazoAte",
+            "target": "contagemPorSituacao",
+            "optional": true
+          }
+        ],
+        "uses": [
+          "listTarefa"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefas.listaTarefas.nome",
+            "reason": "Interface TarefaResumo: field listaTarefas.nome is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefas.participante.details.identification.name",
+            "reason": "Interface TarefaResumo: field participante.details.identification.name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "input.page",
+            "reason": "Page input page pages one of 0 lists; the types do not say which.",
+            "kind": "pageParam",
+            "candidates": [
+              "tarefas",
+              "none"
+            ]
+          },
+          {
+            "path": "input.pageSize",
+            "reason": "Page input pageSize pages one of 0 lists; the types do not say which.",
+            "kind": "pageParam",
+            "candidates": [
+              "tarefas",
+              "none"
+            ]
+          },
+          {
+            "path": "input.prazoDe",
+            "reason": "Input prazoDe is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "contagemPorSituacao:details.etiquetas",
+              "contagemPorSituacao:details.progressoChecklist",
+              "contagemPorSituacao:titulo",
+              "none"
+            ]
+          },
+          {
+            "path": "input.prazoAte",
+            "reason": "Input prazoAte is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "contagemPorSituacao:details.etiquetas",
+              "contagemPorSituacao:details.progressoChecklist",
+              "contagemPorSituacao:titulo",
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.tarefas_equipe.obterTarefaEquipe",
+        "pageId": "tarefas_equipe",
+        "kind": "qry",
+        "writes": "",
+        "outputs": [],
+        "params": [
+          {
+            "name": "tarefaId",
+            "target": ""
+          }
+        ],
+        "uses": [],
+        "unresolved": [
+          {
+            "path": "output.tarefa.listaTarefas.nome",
+            "reason": "Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.participante.details.identification.name",
+            "reason": "Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "input.tarefaId",
+            "reason": "Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+            "kind": "filterField",
+            "candidates": [
+              "none"
+            ]
+          }
+        ]
+      },
+      {
+        "route": "tarefas.tarefas_equipe.trocarResponsavelTarefa",
+        "pageId": "tarefas_equipe",
+        "kind": "cmd",
+        "writes": "Tarefa.update",
+        "outputs": [],
+        "params": [],
+        "uses": [
+          "updateTarefa"
+        ],
+        "unresolved": [
+          {
+            "path": "output.tarefa.listaTarefas.nome",
+            "reason": "Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          },
+          {
+            "path": "output.tarefa.participante.details.identification.name",
+            "reason": "Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+            "kind": "fieldPath",
+            "candidates": [
+              "none"
+            ]
+          }
+        ]
+      }
+    ],
+    "usecases": [
+      {
+        "usecaseId": "aceitar",
+        "entity": "Tarefa",
+        "operation": "transition",
+        "transitionRef": "aceitar",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "aceitar",
+        "routes": [
+          "tarefas.inicio.aceitarTarefa",
+          "tarefas.minhas_tarefas.cmdAceitar"
+        ]
+      },
+      {
+        "usecaseId": "cancelar",
+        "entity": "Tarefa",
+        "operation": "transition",
+        "transitionRef": "cancelar",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "cancelar",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdCancelar",
+          "tarefas.tarefas_equipe.cancelarTarefaEquipe"
+        ]
+      },
+      {
+        "usecaseId": "createItemChecklist",
+        "entity": "ItemChecklist",
+        "operation": "create",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "createItemChecklist",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+        ]
+      },
+      {
+        "usecaseId": "createListaTarefas",
+        "entity": "ListaTarefas",
+        "operation": "create",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "createListaTarefas",
+        "routes": [
+          "tarefas.listas_tarefas.cmdCriarLista"
+        ]
+      },
+      {
+        "usecaseId": "createParticipante",
+        "entity": "Participante",
+        "operation": "create",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "createParticipante",
+        "routes": [
+          "tarefas.participantes.incluirParticipante"
+        ]
+      },
+      {
+        "usecaseId": "createTarefa",
+        "entity": "Tarefa",
+        "operation": "create",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "createTarefa",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdCriarTarefa"
+        ]
+      },
+      {
+        "usecaseId": "devolver",
+        "entity": "Tarefa",
+        "operation": "transition",
+        "transitionRef": "devolver",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "devolver",
+        "routes": [
+          "tarefas.inicio.devolverTarefa",
+          "tarefas.minhas_tarefas.cmdDevolver"
+        ]
+      },
+      {
+        "usecaseId": "enviarParaRevisao",
+        "entity": "Tarefa",
+        "operation": "transition",
+        "transitionRef": "enviarParaRevisao",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "enviarParaRevisao",
+        "routes": [
+          "tarefas.inicio.enviarRevisao",
+          "tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+        ]
+      },
+      {
+        "usecaseId": "getParticipante",
+        "entity": "Participante",
+        "operation": "get",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "getParticipante",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdAceitar",
+          "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+          "tarefas.minhas_tarefas.cmdAjustarChecklist",
+          "tarefas.minhas_tarefas.cmdCancelar",
+          "tarefas.minhas_tarefas.cmdCriarTarefa",
+          "tarefas.minhas_tarefas.cmdDevolver",
+          "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+          "tarefas.minhas_tarefas.cmdIniciar",
+          "tarefas.minhas_tarefas.cmdRetomar",
+          "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+          "tarefas.minhas_tarefas.qryMinhasTarefas",
+          "tarefas.minhas_tarefas.qryTarefa",
+          "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+        ]
+      },
+      {
+        "usecaseId": "iniciar",
+        "entity": "Tarefa",
+        "operation": "transition",
+        "transitionRef": "iniciar",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "iniciar",
+        "routes": [
+          "tarefas.inicio.iniciarTarefa",
+          "tarefas.minhas_tarefas.cmdIniciar"
+        ]
+      },
+      {
+        "usecaseId": "listItemChecklist",
+        "entity": "ItemChecklist",
+        "operation": "list",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "listItemChecklist",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdAceitar",
+          "tarefas.minhas_tarefas.cmdCancelar",
+          "tarefas.minhas_tarefas.cmdCriarTarefa",
+          "tarefas.minhas_tarefas.cmdDevolver",
+          "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+          "tarefas.minhas_tarefas.cmdIniciar",
+          "tarefas.minhas_tarefas.cmdRetomar",
+          "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+          "tarefas.minhas_tarefas.qryTarefa"
+        ]
+      },
+      {
+        "usecaseId": "listListaTarefas",
+        "entity": "ListaTarefas",
+        "operation": "list",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "listListaTarefas",
+        "routes": [
+          "tarefas.inicio.aceitarTarefa",
+          "tarefas.inicio.carregarInicio",
+          "tarefas.inicio.devolverTarefa",
+          "tarefas.inicio.enviarRevisao",
+          "tarefas.inicio.iniciarTarefa",
+          "tarefas.inicio.retomarTarefa",
+          "tarefas.listas_tarefas.qryListasTarefas",
+          "tarefas.minhas_tarefas.cmdAceitar",
+          "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+          "tarefas.minhas_tarefas.cmdAjustarChecklist",
+          "tarefas.minhas_tarefas.cmdCancelar",
+          "tarefas.minhas_tarefas.cmdCriarTarefa",
+          "tarefas.minhas_tarefas.cmdDevolver",
+          "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+          "tarefas.minhas_tarefas.cmdIniciar",
+          "tarefas.minhas_tarefas.cmdRetomar",
+          "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+          "tarefas.minhas_tarefas.qryListas",
+          "tarefas.minhas_tarefas.qryMinhasTarefas",
+          "tarefas.minhas_tarefas.qryTarefa",
+          "tarefas.minhas_tarefas.qryTarefasDoGrupo",
+          "tarefas.painel_tarefas.carregarPainelTarefas",
+          "tarefas.tarefas_equipe.carregarFiltrosEquipe"
+        ]
+      },
+      {
+        "usecaseId": "listParticipante",
+        "entity": "Participante",
+        "operation": "list",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "listParticipante",
+        "routes": [
+          "tarefas.minhas_tarefas.qryResponsaveis",
+          "tarefas.participantes.buscarUsuarios",
+          "tarefas.participantes.listarParticipantes",
+          "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+          "tarefas.tarefas_equipe.carregarFiltrosEquipe"
+        ]
+      },
+      {
+        "usecaseId": "listTarefa",
+        "entity": "Tarefa",
+        "operation": "list",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "listTarefa",
+        "routes": [
+          "tarefas.inicio.carregarInicio",
+          "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+          "tarefas.minhas_tarefas.cmdAjustarChecklist",
+          "tarefas.minhas_tarefas.qryMinhasTarefas",
+          "tarefas.minhas_tarefas.qryTarefa",
+          "tarefas.minhas_tarefas.qryTarefasDoGrupo",
+          "tarefas.painel_tarefas.carregarPainelTarefas",
+          "tarefas.tarefas_equipe.listarTarefasEquipe"
+        ]
+      },
+      {
+        "usecaseId": "retomar",
+        "entity": "Tarefa",
+        "operation": "transition",
+        "transitionRef": "retomar",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "retomar",
+        "routes": [
+          "tarefas.inicio.retomarTarefa",
+          "tarefas.minhas_tarefas.cmdRetomar"
+        ]
+      },
+      {
+        "usecaseId": "updateItemChecklist",
+        "entity": "ItemChecklist",
+        "operation": "update",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "updateItemChecklist",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdAjustarChecklist"
+        ]
+      },
+      {
+        "usecaseId": "updateListaTarefas",
+        "entity": "ListaTarefas",
+        "operation": "update",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "updateListaTarefas",
+        "routes": [
+          "tarefas.listas_tarefas.cmdSalvarLista"
+        ]
+      },
+      {
+        "usecaseId": "updateParticipante",
+        "entity": "Participante",
+        "operation": "update",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "updateParticipante",
+        "routes": [
+          "tarefas.participantes.salvarMarcas"
+        ]
+      },
+      {
+        "usecaseId": "updateTarefa",
+        "entity": "Tarefa",
+        "operation": "update",
+        "status": "toCreate",
+        "existing": "",
+        "identity": "updateTarefa",
+        "routes": [
+          "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+          "tarefas.tarefas_equipe.trocarResponsavelTarefa"
+        ]
+      }
+    ],
+    "ports": [
+      {
+        "portId": "ItemChecklistRepository",
+        "entity": "ItemChecklist",
+        "status": "toCreate"
+      },
+      {
+        "portId": "ListaTarefasRepository",
+        "entity": "ListaTarefas",
+        "status": "toCreate"
+      },
+      {
+        "portId": "TarefaRepository",
+        "entity": "Tarefa",
+        "status": "toCreate"
+      }
+    ],
+    "tables": [
+      {
+        "tableId": "itemChecklist",
+        "entity": "ItemChecklist",
+        "status": "toCreate"
+      },
+      {
+        "tableId": "listaTarefas",
+        "entity": "ListaTarefas",
+        "status": "toCreate"
+      },
+      {
+        "tableId": "tarefa",
+        "entity": "Tarefa",
+        "status": "toCreate"
+      }
+    ],
+    "entities": [
+      "ItemChecklist",
+      "ListaTarefas",
+      "Participante",
+      "Tarefa"
+    ],
+    "outbound": [
+      "tarefaConcluida",
+      "tarefaCancelada"
+    ]
+  },
+  "files": [
+    {
+      "id": "controller:inicio",
+      "artifactType": "httpController",
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/inicio.defs.ts",
+      "action": "create",
+      "identity": "inicio",
+      "ownerRefs": [
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa"
+      ],
+      "dependsOn": [
+        "requestService:inicio",
+        "usecase:aceitar",
+        "usecase:listListaTarefas",
+        "usecase:listTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:retomar",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "controller:listas_tarefas",
+      "artifactType": "httpController",
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.defs.ts",
+      "action": "create",
+      "identity": "listas_tarefas",
+      "ownerRefs": [
+        "endpoint:tarefas.listas_tarefas.cmdCriarLista",
+        "endpoint:tarefas.listas_tarefas.cmdSalvarLista",
+        "endpoint:tarefas.listas_tarefas.qryListasTarefas"
+      ],
+      "dependsOn": [
+        "requestService:listas_tarefas",
+        "usecase:createListaTarefas",
+        "usecase:updateListaTarefas",
+        "usecase:listListaTarefas",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "controller:minhas_tarefas",
+      "artifactType": "httpController",
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.defs.ts",
+      "action": "create",
+      "identity": "minhas_tarefas",
+      "ownerRefs": [
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryListas",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryResponsaveis",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo"
+      ],
+      "dependsOn": [
+        "requestService:minhas_tarefas",
+        "usecase:aceitar",
+        "usecase:listListaTarefas",
+        "usecase:getParticipante",
+        "usecase:listItemChecklist",
+        "usecase:createItemChecklist",
+        "usecase:listTarefa",
+        "usecase:updateItemChecklist",
+        "usecase:cancelar",
+        "usecase:createTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:retomar",
+        "usecase:updateTarefa",
+        "usecase:listParticipante",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "controller:painel_tarefas",
+      "artifactType": "httpController",
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.defs.ts",
+      "action": "create",
+      "identity": "painel_tarefas",
+      "ownerRefs": [
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas"
+      ],
+      "dependsOn": [
+        "requestService:painel_tarefas",
+        "usecase:listListaTarefas",
+        "usecase:listTarefa",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "controller:participantes",
+      "artifactType": "httpController",
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/participantes.defs.ts",
+      "action": "create",
+      "identity": "participantes",
+      "ownerRefs": [
+        "endpoint:tarefas.participantes.buscarUsuarios",
+        "endpoint:tarefas.participantes.incluirParticipante",
+        "endpoint:tarefas.participantes.listarParticipantes",
+        "endpoint:tarefas.participantes.salvarMarcas"
+      ],
+      "dependsOn": [
+        "requestService:participantes",
+        "usecase:listParticipante",
+        "usecase:createParticipante",
+        "usecase:updateParticipante",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "controller:tarefas_equipe",
+      "artifactType": "httpController",
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.defs.ts",
+      "action": "create",
+      "identity": "tarefas_equipe",
+      "ownerRefs": [
+        "endpoint:tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe",
+        "endpoint:tarefas.tarefas_equipe.listarTarefasEquipe",
+        "endpoint:tarefas.tarefas_equipe.obterTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "dependsOn": [
+        "requestService:tarefas_equipe",
+        "usecase:listParticipante",
+        "usecase:cancelar",
+        "usecase:listListaTarefas",
+        "usecase:listTarefa",
+        "usecase:updateTarefa",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "integration:outbound",
+      "artifactType": "integrationOutbound",
+      "defPath": "l1/tarefas/layer_1_external/adapters/integration/outbound.defs.ts",
+      "action": "create",
+      "identity": "outbound",
+      "ownerRefs": [
+        "event:tarefaConcluida",
+        "event:tarefaCancelada"
+      ],
+      "dependsOn": [
+        "usecase:aceitar",
+        "usecase:cancelar"
+      ]
+    },
+    {
+      "id": "table:itemChecklist",
+      "artifactType": "table",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+      "action": "create",
+      "identity": "itemChecklist",
+      "ownerRefs": [
+        "table:itemChecklist"
+      ],
+      "dependsOn": [
+        "entity:ItemChecklist"
+      ]
+    },
+    {
+      "id": "adapter:ItemChecklistRepository",
+      "artifactType": "repositoryAdapter",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.defs.ts",
+      "action": "create",
+      "identity": "ItemChecklistRepository",
+      "ownerRefs": [
+        "port:ItemChecklistRepository",
+        "table:itemChecklist"
+      ],
+      "dependsOn": [
+        "port:ItemChecklistRepository",
+        "table:itemChecklist"
+      ]
+    },
+    {
+      "id": "table:listaTarefas",
+      "artifactType": "table",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+      "action": "create",
+      "identity": "listaTarefas",
+      "ownerRefs": [
+        "table:listaTarefas"
+      ],
+      "dependsOn": [
+        "entity:ListaTarefas"
+      ]
+    },
+    {
+      "id": "adapter:ListaTarefasRepository",
+      "artifactType": "repositoryAdapter",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.defs.ts",
+      "action": "create",
+      "identity": "ListaTarefasRepository",
+      "ownerRefs": [
+        "port:ListaTarefasRepository",
+        "table:listaTarefas"
+      ],
+      "dependsOn": [
+        "port:ListaTarefasRepository",
+        "table:listaTarefas"
+      ]
+    },
+    {
+      "id": "registration:repositories",
+      "artifactType": "repositoryRegistration",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.defs.ts",
+      "action": "create",
+      "identity": "registerRepositories",
+      "ownerRefs": [
+        "adapter:ItemChecklistRepository",
+        "adapter:ListaTarefasRepository",
+        "adapter:TarefaRepository"
+      ],
+      "dependsOn": [
+        "adapter:ItemChecklistRepository",
+        "adapter:ListaTarefasRepository",
+        "adapter:TarefaRepository"
+      ]
+    },
+    {
+      "id": "seeds:persistence",
+      "artifactType": "persistenceSeeds",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/seeds.defs.ts",
+      "action": "create",
+      "identity": "seeds",
+      "ownerRefs": [
+        "table:itemChecklist",
+        "table:listaTarefas",
+        "table:tarefa"
+      ],
+      "dependsOn": [
+        "table:itemChecklist",
+        "table:listaTarefas",
+        "table:tarefa"
+      ]
+    },
+    {
+      "id": "table:tarefa",
+      "artifactType": "table",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+      "action": "create",
+      "identity": "tarefa",
+      "ownerRefs": [
+        "table:tarefa"
+      ],
+      "dependsOn": [
+        "entity:Tarefa"
+      ]
+    },
+    {
+      "id": "adapter:TarefaRepository",
+      "artifactType": "repositoryAdapter",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.defs.ts",
+      "action": "create",
+      "identity": "TarefaRepository",
+      "ownerRefs": [
+        "port:TarefaRepository",
+        "table:tarefa"
+      ],
+      "dependsOn": [
+        "port:TarefaRepository",
+        "table:tarefa"
+      ]
+    },
+    {
+      "id": "auth:authorityMap",
+      "artifactType": "authorityMap",
+      "defPath": "l1/tarefas/layer_1_external/auth/authorityMap.defs.ts",
+      "action": "create",
+      "identity": "authorityMap",
+      "ownerRefs": [
+        "grant:gestorListas",
+        "grant:gestorParticipantes",
+        "grant:gestorTodasTarefas",
+        "grant:membroChecklistPropria",
+        "grant:membroConsultarListas",
+        "grant:membroEscolherResponsavel",
+        "grant:membroTarefasProprias"
+      ],
+      "dependsOn": [
+        "scope:access"
+      ]
+    },
+    {
+      "id": "port:ItemChecklistRepository",
+      "artifactType": "repositoryPort",
+      "defPath": "l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+      "action": "create",
+      "identity": "ItemChecklistRepository",
+      "ownerRefs": [
+        "port:ItemChecklistRepository"
+      ],
+      "dependsOn": [
+        "entity:ItemChecklist"
+      ]
+    },
+    {
+      "id": "port:ListaTarefasRepository",
+      "artifactType": "repositoryPort",
+      "defPath": "l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts",
+      "action": "create",
+      "identity": "ListaTarefasRepository",
+      "ownerRefs": [
+        "port:ListaTarefasRepository"
+      ],
+      "dependsOn": [
+        "entity:ListaTarefas"
+      ]
+    },
+    {
+      "id": "port:TarefaRepository",
+      "artifactType": "repositoryPort",
+      "defPath": "l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+      "action": "create",
+      "identity": "TarefaRepository",
+      "ownerRefs": [
+        "port:TarefaRepository"
+      ],
+      "dependsOn": [
+        "entity:Tarefa"
+      ]
+    },
+    {
+      "id": "requestService:inicio",
+      "artifactType": "requestService",
+      "defPath": "l1/tarefas/layer_2_application/requests/inicio.defs.ts",
+      "action": "create",
+      "identity": "inicio",
+      "ownerRefs": [
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa"
+      ],
+      "dependsOn": [
+        "usecase:aceitar",
+        "usecase:listListaTarefas",
+        "usecase:listTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:retomar"
+      ]
+    },
+    {
+      "id": "requestService:listas_tarefas",
+      "artifactType": "requestService",
+      "defPath": "l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts",
+      "action": "create",
+      "identity": "listas_tarefas",
+      "ownerRefs": [
+        "endpoint:tarefas.listas_tarefas.cmdCriarLista",
+        "endpoint:tarefas.listas_tarefas.cmdSalvarLista",
+        "endpoint:tarefas.listas_tarefas.qryListasTarefas"
+      ],
+      "dependsOn": [
+        "usecase:createListaTarefas",
+        "usecase:updateListaTarefas",
+        "usecase:listListaTarefas"
+      ]
+    },
+    {
+      "id": "requestService:minhas_tarefas",
+      "artifactType": "requestService",
+      "defPath": "l1/tarefas/layer_2_application/requests/minhas_tarefas.defs.ts",
+      "action": "create",
+      "identity": "minhas_tarefas",
+      "ownerRefs": [
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryListas",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryResponsaveis",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo"
+      ],
+      "dependsOn": [
+        "usecase:aceitar",
+        "usecase:listListaTarefas",
+        "usecase:getParticipante",
+        "usecase:listItemChecklist",
+        "usecase:createItemChecklist",
+        "usecase:listTarefa",
+        "usecase:updateItemChecklist",
+        "usecase:cancelar",
+        "usecase:createTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:retomar",
+        "usecase:updateTarefa",
+        "usecase:listParticipante"
+      ]
+    },
+    {
+      "id": "requestService:painel_tarefas",
+      "artifactType": "requestService",
+      "defPath": "l1/tarefas/layer_2_application/requests/painel_tarefas.defs.ts",
+      "action": "create",
+      "identity": "painel_tarefas",
+      "ownerRefs": [
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas"
+      ],
+      "dependsOn": [
+        "usecase:listListaTarefas",
+        "usecase:listTarefa"
+      ]
+    },
+    {
+      "id": "requestService:participantes",
+      "artifactType": "requestService",
+      "defPath": "l1/tarefas/layer_2_application/requests/participantes.defs.ts",
+      "action": "create",
+      "identity": "participantes",
+      "ownerRefs": [
+        "endpoint:tarefas.participantes.buscarUsuarios",
+        "endpoint:tarefas.participantes.incluirParticipante",
+        "endpoint:tarefas.participantes.listarParticipantes",
+        "endpoint:tarefas.participantes.salvarMarcas"
+      ],
+      "dependsOn": [
+        "usecase:listParticipante",
+        "usecase:createParticipante",
+        "usecase:updateParticipante"
+      ]
+    },
+    {
+      "id": "requestService:tarefas_equipe",
+      "artifactType": "requestService",
+      "defPath": "l1/tarefas/layer_2_application/requests/tarefas_equipe.defs.ts",
+      "action": "create",
+      "identity": "tarefas_equipe",
+      "ownerRefs": [
+        "endpoint:tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe",
+        "endpoint:tarefas.tarefas_equipe.listarTarefasEquipe",
+        "endpoint:tarefas.tarefas_equipe.obterTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "dependsOn": [
+        "usecase:listParticipante",
+        "usecase:cancelar",
+        "usecase:listListaTarefas",
+        "usecase:listTarefa",
+        "usecase:updateTarefa"
+      ]
+    },
+    {
+      "id": "scope:access",
+      "artifactType": "accessScope",
+      "defPath": "l1/tarefas/layer_2_application/scope/accessScope.defs.ts",
+      "action": "create",
+      "identity": "accessScope",
+      "ownerRefs": [
+        "grant:gestorListas",
+        "grant:gestorParticipantes",
+        "grant:gestorTodasTarefas",
+        "grant:membroChecklistPropria",
+        "grant:membroConsultarListas",
+        "grant:membroEscolherResponsavel",
+        "grant:membroTarefasProprias"
+      ],
+      "dependsOn": []
+    },
+    {
+      "id": "usecase:aceitar",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/aceitar.defs.ts",
+      "action": "create",
+      "identity": "aceitar",
+      "ownerRefs": [
+        "usecase:aceitar",
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:cancelar",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/cancelar.defs.ts",
+      "action": "create",
+      "identity": "cancelar",
+      "ownerRefs": [
+        "usecase:cancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:createItemChecklist",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/createItemChecklist.defs.ts",
+      "action": "create",
+      "identity": "createItemChecklist",
+      "ownerRefs": [
+        "usecase:createItemChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+      ],
+      "dependsOn": [
+        "entity:ItemChecklist",
+        "port:ItemChecklistRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:createListaTarefas",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts",
+      "action": "create",
+      "identity": "createListaTarefas",
+      "ownerRefs": [
+        "usecase:createListaTarefas",
+        "endpoint:tarefas.listas_tarefas.cmdCriarLista"
+      ],
+      "dependsOn": [
+        "entity:ListaTarefas",
+        "port:ListaTarefasRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:createParticipante",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/createParticipante.defs.ts",
+      "action": "create",
+      "identity": "createParticipante",
+      "ownerRefs": [
+        "usecase:createParticipante",
+        "endpoint:tarefas.participantes.incluirParticipante"
+      ],
+      "dependsOn": [
+        "entity:Participante",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:createTarefa",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/createTarefa.defs.ts",
+      "action": "create",
+      "identity": "createTarefa",
+      "ownerRefs": [
+        "usecase:createTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:devolver",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/devolver.defs.ts",
+      "action": "create",
+      "identity": "devolver",
+      "ownerRefs": [
+        "usecase:devolver",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:enviarParaRevisao",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/enviarParaRevisao.defs.ts",
+      "action": "create",
+      "identity": "enviarParaRevisao",
+      "ownerRefs": [
+        "usecase:enviarParaRevisao",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:getParticipante",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/getParticipante.defs.ts",
+      "action": "create",
+      "identity": "getParticipante",
+      "ownerRefs": [
+        "usecase:getParticipante",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo"
+      ],
+      "dependsOn": [
+        "entity:Participante",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:iniciar",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/iniciar.defs.ts",
+      "action": "create",
+      "identity": "iniciar",
+      "ownerRefs": [
+        "usecase:iniciar",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:listItemChecklist",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/listItemChecklist.defs.ts",
+      "action": "create",
+      "identity": "listItemChecklist",
+      "ownerRefs": [
+        "usecase:listItemChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa"
+      ],
+      "dependsOn": [
+        "entity:ItemChecklist",
+        "port:ItemChecklistRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:listListaTarefas",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/listListaTarefas.defs.ts",
+      "action": "create",
+      "identity": "listListaTarefas",
+      "ownerRefs": [
+        "usecase:listListaTarefas",
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa",
+        "endpoint:tarefas.listas_tarefas.qryListasTarefas",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryListas",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo",
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe"
+      ],
+      "dependsOn": [
+        "entity:ListaTarefas",
+        "port:ListaTarefasRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:listParticipante",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/listParticipante.defs.ts",
+      "action": "create",
+      "identity": "listParticipante",
+      "ownerRefs": [
+        "usecase:listParticipante",
+        "endpoint:tarefas.minhas_tarefas.qryResponsaveis",
+        "endpoint:tarefas.participantes.buscarUsuarios",
+        "endpoint:tarefas.participantes.listarParticipantes",
+        "endpoint:tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe"
+      ],
+      "dependsOn": [
+        "entity:Participante",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:listTarefa",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/listTarefa.defs.ts",
+      "action": "create",
+      "identity": "listTarefa",
+      "ownerRefs": [
+        "usecase:listTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo",
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas",
+        "endpoint:tarefas.tarefas_equipe.listarTarefasEquipe"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:retomar",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/retomar.defs.ts",
+      "action": "create",
+      "identity": "retomar",
+      "ownerRefs": [
+        "usecase:retomar",
+        "endpoint:tarefas.inicio.retomarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:updateItemChecklist",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateItemChecklist.defs.ts",
+      "action": "create",
+      "identity": "updateItemChecklist",
+      "ownerRefs": [
+        "usecase:updateItemChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist"
+      ],
+      "dependsOn": [
+        "entity:ItemChecklist",
+        "port:ItemChecklistRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:updateListaTarefas",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateListaTarefas.defs.ts",
+      "action": "create",
+      "identity": "updateListaTarefas",
+      "ownerRefs": [
+        "usecase:updateListaTarefas",
+        "endpoint:tarefas.listas_tarefas.cmdSalvarLista"
+      ],
+      "dependsOn": [
+        "entity:ListaTarefas",
+        "port:ListaTarefasRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:updateParticipante",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateParticipante.defs.ts",
+      "action": "create",
+      "identity": "updateParticipante",
+      "ownerRefs": [
+        "usecase:updateParticipante",
+        "endpoint:tarefas.participantes.salvarMarcas"
+      ],
+      "dependsOn": [
+        "entity:Participante",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "usecase:updateTarefa",
+      "artifactType": "usecase",
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateTarefa.defs.ts",
+      "action": "create",
+      "identity": "updateTarefa",
+      "ownerRefs": [
+        "usecase:updateTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "dependsOn": [
+        "entity:Tarefa",
+        "port:TarefaRepository",
+        "scope:access"
+      ]
+    },
+    {
+      "id": "workflow:processoTarefa",
+      "artifactType": "workflowProcess",
+      "defPath": "l1/tarefas/layer_2_application/workflows/processoTarefa.defs.ts",
+      "action": "create",
+      "identity": "processoTarefa",
+      "ownerRefs": [
+        "process:processoTarefa"
+      ],
+      "dependsOn": [
+        "usecase:aceitar",
+        "usecase:createItemChecklist",
+        "usecase:createTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:retomar",
+        "usecase:updateItemChecklist"
+      ]
+    },
+    {
+      "id": "workflow:resumoDiarioTarefas",
+      "artifactType": "workflowProcess",
+      "defPath": "l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.defs.ts",
+      "action": "create",
+      "identity": "resumoDiarioTarefas",
+      "ownerRefs": [
+        "process:resumoDiarioTarefas"
+      ],
+      "dependsOn": []
+    },
+    {
+      "id": "entity:ItemChecklist",
+      "artifactType": "domainEntity",
+      "defPath": "l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts",
+      "action": "create",
+      "identity": "ItemChecklist",
+      "ownerRefs": [
+        "usecase:createItemChecklist",
+        "usecase:listItemChecklist",
+        "usecase:updateItemChecklist"
+      ],
+      "dependsOn": []
+    },
+    {
+      "id": "entity:ListaTarefas",
+      "artifactType": "domainEntity",
+      "defPath": "l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts",
+      "action": "create",
+      "identity": "ListaTarefas",
+      "ownerRefs": [
+        "usecase:createListaTarefas",
+        "usecase:listListaTarefas",
+        "usecase:updateListaTarefas"
+      ],
+      "dependsOn": []
+    },
+    {
+      "id": "entity:Participante",
+      "artifactType": "domainEntity",
+      "defPath": "l1/tarefas/layer_3_domain/entities/participante.defs.ts",
+      "action": "create",
+      "identity": "Participante",
+      "ownerRefs": [
+        "usecase:createParticipante",
+        "usecase:getParticipante",
+        "usecase:listParticipante",
+        "usecase:updateParticipante"
+      ],
+      "dependsOn": []
+    },
+    {
+      "id": "entity:Tarefa",
+      "artifactType": "domainEntity",
+      "defPath": "l1/tarefas/layer_3_domain/entities/tarefa.defs.ts",
+      "action": "create",
+      "identity": "Tarefa",
+      "ownerRefs": [
+        "usecase:aceitar",
+        "usecase:cancelar",
+        "usecase:createTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:listTarefa",
+        "usecase:retomar",
+        "usecase:updateTarefa"
+      ],
+      "dependsOn": []
+    }
+  ],
+  "removed": [],
+  "problems": [
+    {
+      "severity": "review",
+      "code": "ACCESS_ANCHOR",
+      "path": "l4/tarefas/access.defs.ts",
+      "message": "Grant membroChecklistPropria anchors on Participante. Relationship itemChecklistTarefa binds another required target.",
+      "ownerRef": "membroChecklistPropria"
+    },
+    {
+      "severity": "review",
+      "code": "ACCESS_ANCHOR",
+      "path": "l4/tarefas/access.defs.ts",
+      "message": "Grant membroTarefasProprias anchors on Participante. Relationship tarefaLista binds another required target.",
+      "ownerRef": "membroTarefasProprias"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAceitar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAceitar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAdicionarItensChecklist access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAjustarChecklist access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAjustarChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCancelar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCancelar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCriarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCriarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdDevolver access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdDevolver"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdEnviarParaRevisao access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdIniciar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdIniciar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdRetomar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdRetomar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdSalvarAlteracoes access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdSalvarAlteracoes"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryListas access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryListas"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryResponsaveis access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryResponsaveis"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+    },
+    {
+      "severity": "review",
+      "code": "INTEGRATION_UNBOUND",
+      "path": "l4/tarefas/integration.defs.ts",
+      "message": "Outbound tarefaCancelada is preserved. No runtime mechanism is named on the integration artifact.",
+      "ownerRef": "tarefaCancelada"
+    },
+    {
+      "severity": "review",
+      "code": "INTEGRATION_UNBOUND",
+      "path": "l4/tarefas/integration.defs.ts",
+      "message": "Outbound tarefaConcluida is preserved. No runtime mechanism is named on the integration artifact.",
+      "ownerRef": "tarefaConcluida"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa output.tarefa.responsavel is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa output.tarefa.responsavel.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa output.tarefa.criador is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa output.tarefa.criador.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.pendencias.responsavel is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.pendencias.responsavel.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.pendencias.criador is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.pendencias.criador.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.permissoes.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.permissoes.details.tarefas is not derived: Interface PermissoesTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa output.tarefa.responsavel is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa output.tarefa.responsavel.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa output.tarefa.criador is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa output.tarefa.criador.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao output.tarefa.responsavel is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao output.tarefa.responsavel.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao output.tarefa.criador is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao output.tarefa.criador.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa output.tarefa.responsavel is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa output.tarefa.responsavel.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa output.tarefa.criador is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa output.tarefa.criador.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa output.tarefa.responsavel is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa output.tarefa.responsavel.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa output.tarefa.criador is not derived: Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa output.tarefa.criador.details.identification.name is not derived: Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAceitar output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAceitar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAceitar output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAceitar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAdicionarItensChecklist output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAdicionarItensChecklist output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAjustarChecklist output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAjustarChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAjustarChecklist output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAjustarChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCancelar output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCancelar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCancelar output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCancelar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCriarTarefa output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCriarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCriarTarefa output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCriarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdDevolver output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdDevolver"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdDevolver output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdDevolver"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdEnviarParaRevisao output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdEnviarParaRevisao output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdIniciar output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdIniciar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdIniciar output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdIniciar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdRetomar output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdRetomar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdRetomar output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdRetomar"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdSalvarAlteracoes output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdSalvarAlteracoes"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdSalvarAlteracoes output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdSalvarAlteracoes"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.tarefas.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.tarefas.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.quantidadeDependeDeMim is not derived: Output quantidadeDependeDeMim is a value (number), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.quantidadeResponsavel is not derived: Output quantidadeResponsavel is a value (number), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.quantidadeCriadas is not derived: Output quantidadeCriadas is a value (number), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.quantidadeVenceHoje is not derived: Output quantidadeVenceHoje is a value (number), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.quantidadeAtrasadas is not derived: Output quantidadeAtrasadas is a value (number), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.podeCriarTarefasEfetivo is not derived: Output podeCriarTarefasEfetivo is a value (boolean), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryResponsaveis input.busca is not derived: Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.minhas_tarefas.qryResponsaveis"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefa output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefa output.tarefa.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefa input.tarefaId is not derived: Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo output.tarefas.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo output.tarefas.criador is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo input.grupo is not derived: Input grupo is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/painel_tarefas.defs.ts",
+      "message": "Route tarefas.painel_tarefas.carregarPainelTarefas output.indicadores is not derived: Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+      "ownerRef": "tarefas.painel_tarefas.carregarPainelTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/participantes.defs.ts",
+      "message": "Route tarefas.participantes.buscarUsuarios input.busca is not derived: Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.participantes.buscarUsuarios"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/participantes.defs.ts",
+      "message": "Route tarefas.participantes.listarParticipantes input.busca is not derived: Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.participantes.listarParticipantes"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.buscarResponsaveisDisponiveis input.nome is not derived: Input nome is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.cancelarTarefaEquipe output.tarefa.listaTarefas.nome is not derived: Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.cancelarTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.cancelarTarefaEquipe output.tarefa.participante.details.identification.name is not derived: Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.cancelarTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe output.tarefas.listaTarefas.nome is not derived: Interface TarefaResumo: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe output.tarefas.participante.details.identification.name is not derived: Interface TarefaResumo: field participante.details.identification.name is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe input.page is not derived: Page input page pages one of 0 lists; the types do not say which.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe input.pageSize is not derived: Page input pageSize pages one of 0 lists; the types do not say which.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe input.prazoDe is not derived: Input prazoDe is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe input.prazoAte is not derived: Input prazoAte is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.obterTarefaEquipe output.tarefa.listaTarefas.nome is not derived: Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.obterTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.obterTarefaEquipe output.tarefa.participante.details.identification.name is not derived: Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.obterTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.obterTarefaEquipe input.tarefaId is not derived: Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.tarefas_equipe.obterTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.trocarResponsavelTarefa output.tarefa.listaTarefas.nome is not derived: Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.trocarResponsavelTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.trocarResponsavelTarefa output.tarefa.participante.details.identification.name is not derived: Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.trocarResponsavelTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "USECASE_FROM_CONTRACT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas needs Participante.get, which is not in the planned pool. Usecase getParticipante was created from the contract.",
+      "ownerRef": "getParticipante"
+    }
+  ],
+  "consumersReleased": true,
+  "snapshotHash": "sha256:9621499ce53ee3aeb6bb2f7dbe72e89e290571728b888517fbf7a49cbb6b9aea",
+  "sourceKey": "sha256:9621499ce53ee3aeb6bb2f7dbe72e89e290571728b888517fbf7a49cbb6b9aea"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "controllers",
+  "unitId": "participantes",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/participantes.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:b76be3389adefceac853c98e92159fdbe30d0304dd25b2b8be1275b4df5d7759",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/participantes.ts": "sha256:b26b798a1c908e9efb2a4e82282ec1359222eafbbfac39d9dcc44dd46d2cd49a"
+  },
+  "updatedAt": "2026-10-23T02:43:19.251Z"
+}

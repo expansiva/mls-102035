@@ -1,0 +1,16 @@
+{
+  "unitId": "r25",
+  "status": "parsed",
+  "trace": "resolve25 recorded 6 answers for tarefas.tarefas_equipe.listarTarefasEquipe.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r25",
+  "calls": 1,
+  "answers": {
+    "g0": "none",
+    "g1": "none",
+    "g2": "tarefas",
+    "g3": "tarefas",
+    "g4": "none",
+    "g5": "none"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "domain",
+  "unitId": "listaTarefas",
+  "defRef": "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:aae1e48fce117d3051e367e385bca72ed4776d4c565855ce7a8b6e7d1f541b06",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.ts": "sha256:54e57686344760c6a7a1bfb2e716d78b0b6ca6da03c63a05f1401aee1366ada6"
+  },
+  "updatedAt": "2026-10-23T02:35:18.210Z"
+}

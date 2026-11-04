@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "domain",
+  "unitId": "itemChecklistRepository",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:2243961b3e899f0fbfacaa42bae87d44d7928897f403e3c7e910963bb94601cb",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts": "sha256:70a4258e6ed1b2933092890b7cbdac9bc069d87da0658e7f5cac6d548d5a1c8f"
+  },
+  "updatedAt": "2026-10-23T02:35:18.361Z"
+}

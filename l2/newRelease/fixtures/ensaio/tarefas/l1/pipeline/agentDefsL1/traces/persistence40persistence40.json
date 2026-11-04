@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "2026-09-22-d1-progress-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "step": "persistence40",
+  "unitId": "persistence40",
+  "runId": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "snapshotHash": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "draftHash": "sha256:9bb9e1bb52e9b99055e28061b80d4588b96cc06eb9131c38a208ec7c2e5f6038",
+  "transaction": false,
+  "finalized": true,
+  "invalidated": false,
+  "reported": [
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.ts",
+    "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts",
+    "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.ts",
+    "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.ts",
+    "l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts",
+    "l1/tarefas/layer_2_application/ports/listaTarefasRepository.ts",
+    "l1/tarefas/layer_2_application/ports/tarefaRepository.ts"
+  ],
+  "files": [
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:9229454bcc92600fa1da6510eb722a78061e0378e65846d6ac29e2903e7d8193",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:f916128fb27942531c467feddaf33222cc86b6978a639d4a4e704f892811cd6e",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:1accded733d24edf377302178511ebeb94a760af98f33ad5f42076fb34ca2f47",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:7764498b598628aee700719ffd25f4e1ec777deba235c8d0687f5adc60fa98c6",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:4e7dd65dc27939f65da3300d7823c5ef7c2c3800e7da8446503ab4ec9396be88",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:a55c03ae071dde6c39bd0472ded589494ce4314c7f0909601dddc85042a265b2",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:9a032213d2da912d77472c62b7fdc81c4599d166f00195150d20e0d984d79123",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts",
+        "l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:e01b7115b0b79a12043a4faec4be4909fa85ffab160b5ab33c5d3be5e467fd56",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.ts",
+        "l1/tarefas/layer_2_application/ports/listaTarefasRepository.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:1bb0414c57d32821789753626190a27ca670f648754c1999fecddac58ec9b209",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.ts",
+        "l1/tarefas/layer_2_application/ports/tarefaRepository.ts"
+      ]
+    }
+  ],
+  "issues": []
+}

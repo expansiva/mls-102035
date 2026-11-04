@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "seedRows",
+  "unitId": "seeds",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/seeds.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:a8bb1411fa082977780b467f85104c022274eed702d7c7958cc9751a3030890a",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/seeds.ts": "sha256:26d8ae4f9b42a7b8a9ec1ad8cb370fb37b9eeee9fb002336eed7618862d2b68b"
+  },
+  "updatedAt": "2026-10-23T02:35:19.591Z"
+}

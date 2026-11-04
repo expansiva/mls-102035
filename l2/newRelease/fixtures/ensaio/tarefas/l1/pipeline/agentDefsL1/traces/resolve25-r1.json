@@ -1,0 +1,17 @@
+{
+  "unitId": "r1",
+  "status": "parsed",
+  "trace": "resolve25 recorded 7 answers for tarefas.inicio.carregarInicio.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r1",
+  "calls": 1,
+  "answers": {
+    "g0": "Participante",
+    "g1": "details.identification.name",
+    "g2": "Participante",
+    "g3": "details.identification.name",
+    "g4": "none",
+    "g5": "details.identification.name",
+    "g6": "participanteNaoConfiguradoAceitaECria"
+  }
+}

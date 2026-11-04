@@ -1,0 +1,1723 @@
+{
+  "schemaVersion": "2026-09-24-d1-report-v3",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "calls": {
+    "finalizeCalledModel": false,
+    "finalizeOpenedRepair": false,
+    "repliesDelivered": null,
+    "repliesUnknown": "usecases50 call log is absent",
+    "promptsAssembled": null,
+    "repairsScheduled": null,
+    "invocationReplies": null,
+    "invocationUnknown": "usecases50 call log is absent"
+  },
+  "executableBackend": false,
+  "inventoryNote": "Inventory recognition is not certification of an executable backend.",
+  "defsStatus": "complete",
+  "materialization": "pending",
+  "outcome": "complete",
+  "blocking": "",
+  "phases": [
+    {
+      "stepId": "entry10",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "input20",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "resolve25",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "domain30",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "persistence40",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "usecases50",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "controllers60",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "support70",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    },
+    {
+      "stepId": "finalize80",
+      "executed": true,
+      "status": "approved",
+      "error": ""
+    }
+  ],
+  "findings": [
+    {
+      "severity": "review",
+      "code": "ACCESS_ANCHOR",
+      "path": "l4/tarefas/access.defs.ts",
+      "message": "Grant membroChecklistPropria anchors on Participante. Relationship itemChecklistTarefa binds another required target.",
+      "ownerRef": "membroChecklistPropria"
+    },
+    {
+      "severity": "review",
+      "code": "ACCESS_ANCHOR",
+      "path": "l4/tarefas/access.defs.ts",
+      "message": "Grant membroTarefasProprias anchors on Participante. Relationship tarefaLista binds another required target.",
+      "ownerRef": "membroTarefasProprias"
+    },
+    {
+      "severity": "review",
+      "code": "ANCHOR_UNRESOLVED",
+      "path": "membroChecklistPropria",
+      "message": "Grant membroChecklistPropria has no relationship field from ItemChecklist to Participante. The scope was not changed to organization or public.",
+      "ownerRef": "membroChecklistPropria"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAceitar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAceitar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAdicionarItensChecklist access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdAjustarChecklist access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdAjustarChecklist"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCancelar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCancelar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdCriarTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdCriarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdDevolver access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdDevolver"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdEnviarParaRevisao access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdIniciar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdIniciar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdRetomar access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdRetomar"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.cmdSalvarAlteracoes access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.cmdSalvarAlteracoes"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryListas access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryListas"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryResponsaveis access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryResponsaveis"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefa access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "CONTRACT_ACCESS_DIVERGENT",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo access does not match the L4 access artifact. L4 stays the source.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+    },
+    {
+      "severity": "review",
+      "code": "ENUMERATION_SOURCE_ABSENT",
+      "path": "/_102034_/l4/ontology/mdm.defs.ts",
+      "message": "Enum Participante details.identification.status names catalog /_102034_/l4/ontology/mdm.defs.ts, and that snapshot was not opened. It was not treated as platform.",
+      "ownerRef": "Participante details.identification.status"
+    },
+    {
+      "severity": "review",
+      "code": "ENUMERATION_SOURCE_ABSENT",
+      "path": "/_102034_/l4/ontology/mdm.defs.ts",
+      "message": "Enum Participante details.identification.subtype names catalog /_102034_/l4/ontology/mdm.defs.ts, and that snapshot was not opened. It was not treated as platform.",
+      "ownerRef": "Participante details.identification.subtype"
+    },
+    {
+      "severity": "review",
+      "code": "ENUMERATIONS_CONSUMED",
+      "path": "status",
+      "message": "Covered use of Tarefa status: seedScenario cancelarTarefa, seedScenario cancelarTarefaCriada, seedScenario criarTarefa, seedScenario executarTarefa, seedScenario retomarTarefa, seedScenario revisarTarefa. A type union is not runtime enforcement.",
+      "ownerRef": "Tarefa status"
+    },
+    {
+      "severity": "review",
+      "code": "ENUMERATIONS_NOT_CONSUMED",
+      "path": "details.identification.status",
+      "message": "No consumer: Participante details.identification.status. Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here.",
+      "ownerRef": "Participante details.identification.status"
+    },
+    {
+      "severity": "review",
+      "code": "ENUMERATIONS_NOT_CONSUMED",
+      "path": "details.identification.subtype",
+      "message": "No consumer: Participante details.identification.subtype. Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here.",
+      "ownerRef": "Participante details.identification.subtype"
+    },
+    {
+      "severity": "review",
+      "code": "ENUMERATIONS_NOT_CONSUMED",
+      "path": "prioridade",
+      "message": "No consumer: Tarefa prioridade. Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here.",
+      "ownerRef": "Tarefa prioridade"
+    },
+    {
+      "severity": "review",
+      "code": "INTEGRATION_UNBOUND",
+      "path": "l4/tarefas/integration.defs.ts",
+      "message": "Outbound tarefaCancelada is preserved. No runtime mechanism is named on the integration artifact.",
+      "ownerRef": "tarefaCancelada"
+    },
+    {
+      "severity": "review",
+      "code": "INTEGRATION_UNBOUND",
+      "path": "l4/tarefas/integration.defs.ts",
+      "message": "Outbound tarefaConcluida is preserved. No runtime mechanism is named on the integration artifact.",
+      "ownerRef": "tarefaConcluida"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.aceitarTarefa output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.inicio.aceitarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio output.pendencias.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.inicio.carregarInicio"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.devolverTarefa output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.inicio.devolverTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.enviarRevisao output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.inicio.enviarRevisao"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.iniciarTarefa output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.inicio.iniciarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.retomarTarefa output.tarefa.responsavel is not derived: Participante inside Tarefa needs one L4 relationship between them; found 2.",
+      "ownerRef": "tarefas.inicio.retomarTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryMinhasTarefas output.quantidadeDependeDeMim is not derived: Output quantidadeDependeDeMim is a value (number), not an interface; no entity owns it.",
+      "ownerRef": "tarefas.minhas_tarefas.qryMinhasTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefa input.tarefaId is not derived: Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "message": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo input.grupo is not derived: Input grupo is not the last segment of any field of the output entities; it filters one of their text fields.",
+      "ownerRef": "tarefas.minhas_tarefas.qryTarefasDoGrupo"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.cancelarTarefaEquipe output.tarefa.listaTarefas.nome is not derived: Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.cancelarTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.listarTarefasEquipe output.tarefas.listaTarefas.nome is not derived: Interface TarefaResumo: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.listarTarefasEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.obterTarefaEquipe output.tarefa.listaTarefas.nome is not derived: Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.obterTarefaEquipe"
+    },
+    {
+      "severity": "review",
+      "code": "OUTPUT_UNRESOLVED",
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "message": "Route tarefas.tarefas_equipe.trocarResponsavelTarefa output.tarefa.listaTarefas.nome is not derived: Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+      "ownerRef": "tarefas.tarefas_equipe.trocarResponsavelTarefa"
+    },
+    {
+      "severity": "review",
+      "code": "PROCESS_OCCURRENCE_UNDECLARED",
+      "path": "resumoDiarioTarefas",
+      "message": "Process resumoDiarioTarefas does not name the occurrence record.",
+      "ownerRef": "resumoDiarioTarefas"
+    },
+    {
+      "severity": "review",
+      "code": "USECASE_FROM_CONTRACT",
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "message": "Route tarefas.inicio.carregarInicio needs Participante.get, which is not in the planned pool. Usecase getParticipante was created from the contract.",
+      "ownerRef": "getParticipante"
+    }
+  ],
+  "declaredNotConsumedBy": [
+    "persistence40",
+    "usecases50",
+    "controllers60",
+    "support70"
+  ],
+  "enumerations": {
+    "consumed": [
+      {
+        "entityId": "Tarefa",
+        "path": "status",
+        "values": [
+          "aFazer",
+          "emAndamento",
+          "emRevisao",
+          "concluida",
+          "cancelada"
+        ],
+        "consumed": true,
+        "origin": {
+          "owner": "module",
+          "writer": "module",
+          "derived": false,
+          "restriction": "own",
+          "catalogValues": [],
+          "catalogSource": "",
+          "roleBinding": false
+        },
+        "uses": [
+          {
+            "purpose": "seedScenario",
+            "consumer": "cancelarTarefa",
+            "entityId": "Tarefa",
+            "path": "status",
+            "values": [
+              "cancelada"
+            ],
+            "editable": true
+          },
+          {
+            "purpose": "seedScenario",
+            "consumer": "cancelarTarefaCriada",
+            "entityId": "Tarefa",
+            "path": "status",
+            "values": [
+              "cancelada"
+            ],
+            "editable": true
+          },
+          {
+            "purpose": "seedScenario",
+            "consumer": "criarTarefa",
+            "entityId": "Tarefa",
+            "path": "status",
+            "values": [
+              "aFazer"
+            ],
+            "editable": true
+          },
+          {
+            "purpose": "seedScenario",
+            "consumer": "executarTarefa",
+            "entityId": "Tarefa",
+            "path": "status",
+            "values": [
+              "emAndamento"
+            ],
+            "editable": true
+          },
+          {
+            "purpose": "seedScenario",
+            "consumer": "retomarTarefa",
+            "entityId": "Tarefa",
+            "path": "status",
+            "values": [
+              "emAndamento"
+            ],
+            "editable": true
+          },
+          {
+            "purpose": "seedScenario",
+            "consumer": "revisarTarefa",
+            "entityId": "Tarefa",
+            "path": "status",
+            "values": [
+              "concluida"
+            ],
+            "editable": true
+          }
+        ],
+        "limits": "Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here."
+      }
+    ],
+    "notConsumed": [
+      {
+        "entityId": "Participante",
+        "path": "details.identification.status",
+        "values": [
+          "Active",
+          "Inactive",
+          "Merged",
+          "Blocked"
+        ],
+        "consumed": false,
+        "origin": {
+          "owner": "unresolved",
+          "writer": "unresolved",
+          "derived": false,
+          "restriction": "unresolved",
+          "catalogValues": [],
+          "catalogSource": "/_102034_/l4/ontology/mdm.defs.ts",
+          "roleBinding": false
+        },
+        "uses": [],
+        "limits": "Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here."
+      },
+      {
+        "entityId": "Participante",
+        "path": "details.identification.subtype",
+        "values": [
+          "Person"
+        ],
+        "consumed": false,
+        "origin": {
+          "owner": "unresolved",
+          "writer": "unresolved",
+          "derived": false,
+          "restriction": "unresolved",
+          "catalogValues": [],
+          "catalogSource": "/_102034_/l4/ontology/mdm.defs.ts",
+          "roleBinding": false
+        },
+        "uses": [],
+        "limits": "Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here."
+      },
+      {
+        "entityId": "Tarefa",
+        "path": "prioridade",
+        "values": [
+          "baixa",
+          "media",
+          "alta"
+        ],
+        "consumed": false,
+        "origin": {
+          "owner": "module",
+          "writer": "module",
+          "derived": false,
+          "restriction": "own",
+          "catalogValues": [],
+          "catalogSource": "",
+          "roleBinding": false
+        },
+        "uses": [],
+        "limits": "Covered uses are a seed scenario that names this entity and path, and a domain or usecase def whose type names this path with those literals. A TypeScript union is not runtime enforcement. Ownership is not consumption. No seed, catalog or table is created here."
+      }
+    ]
+  },
+  "files": [
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/inicio.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.listas_tarefas.cmdCriarLista",
+        "endpoint:tarefas.listas_tarefas.cmdSalvarLista",
+        "endpoint:tarefas.listas_tarefas.qryListasTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryListas",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryResponsaveis",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/participantes.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.participantes.buscarUsuarios",
+        "endpoint:tarefas.participantes.incluirParticipante",
+        "endpoint:tarefas.participantes.listarParticipantes",
+        "endpoint:tarefas.participantes.salvarMarcas"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe",
+        "endpoint:tarefas.tarefas_equipe.listarTarefasEquipe",
+        "endpoint:tarefas.tarefas_equipe.obterTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/integration/outbound.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "event:tarefaConcluida",
+        "event:tarefaCancelada"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "table:itemChecklist"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "port:ItemChecklistRepository",
+        "table:itemChecklist"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "table:listaTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "port:ListaTarefasRepository",
+        "table:listaTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "adapter:ItemChecklistRepository",
+        "adapter:ListaTarefasRepository",
+        "adapter:TarefaRepository"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/seeds.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "table:itemChecklist",
+        "table:listaTarefas",
+        "table:tarefa"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "table:tarefa"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "port:TarefaRepository",
+        "table:tarefa"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/auth/authorityMap.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "grant:gestorListas",
+        "grant:gestorParticipantes",
+        "grant:gestorTodasTarefas",
+        "grant:membroChecklistPropria",
+        "grant:membroConsultarListas",
+        "grant:membroEscolherResponsavel",
+        "grant:membroTarefasProprias"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "port:ItemChecklistRepository"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "port:ListaTarefasRepository"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "port:TarefaRepository"
+      ],
+      "sourceHash": "",
+      "phase": "persistence40"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/inicio.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.listas_tarefas.cmdCriarLista",
+        "endpoint:tarefas.listas_tarefas.cmdSalvarLista",
+        "endpoint:tarefas.listas_tarefas.qryListasTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/minhas_tarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryListas",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryResponsaveis",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/painel_tarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/participantes.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.participantes.buscarUsuarios",
+        "endpoint:tarefas.participantes.incluirParticipante",
+        "endpoint:tarefas.participantes.listarParticipantes",
+        "endpoint:tarefas.participantes.salvarMarcas"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/tarefas_equipe.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "endpoint:tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe",
+        "endpoint:tarefas.tarefas_equipe.listarTarefasEquipe",
+        "endpoint:tarefas.tarefas_equipe.obterTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "controllers60"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/scope/accessScope.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "grant:gestorListas",
+        "grant:gestorParticipantes",
+        "grant:gestorTodasTarefas",
+        "grant:membroChecklistPropria",
+        "grant:membroConsultarListas",
+        "grant:membroEscolherResponsavel",
+        "grant:membroTarefasProprias"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/aceitar.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:aceitar",
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/cancelar.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:cancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createItemChecklist.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createItemChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createListaTarefas",
+        "endpoint:tarefas.listas_tarefas.cmdCriarLista"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createParticipante.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createParticipante",
+        "endpoint:tarefas.participantes.incluirParticipante"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createTarefa.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/devolver.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:devolver",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/enviarParaRevisao.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:enviarParaRevisao",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/getParticipante.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:getParticipante",
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/iniciar.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:iniciar",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listItemChecklist.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:listItemChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.tarefas_equipe.cancelarTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.obterTarefaEquipe",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listListaTarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:listListaTarefas",
+        "endpoint:tarefas.inicio.aceitarTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.inicio.devolverTarefa",
+        "endpoint:tarefas.inicio.enviarRevisao",
+        "endpoint:tarefas.inicio.iniciarTarefa",
+        "endpoint:tarefas.inicio.retomarTarefa",
+        "endpoint:tarefas.listas_tarefas.qryListasTarefas",
+        "endpoint:tarefas.minhas_tarefas.cmdAceitar",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdCancelar",
+        "endpoint:tarefas.minhas_tarefas.cmdCriarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdDevolver",
+        "endpoint:tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+        "endpoint:tarefas.minhas_tarefas.cmdIniciar",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.minhas_tarefas.qryListas",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo",
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listParticipante.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:listParticipante",
+        "endpoint:tarefas.minhas_tarefas.qryResponsaveis",
+        "endpoint:tarefas.participantes.buscarUsuarios",
+        "endpoint:tarefas.participantes.listarParticipantes",
+        "endpoint:tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+        "endpoint:tarefas.tarefas_equipe.carregarFiltrosEquipe"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listTarefa.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:listTarefa",
+        "endpoint:tarefas.inicio.carregarInicio",
+        "endpoint:tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist",
+        "endpoint:tarefas.minhas_tarefas.qryMinhasTarefas",
+        "endpoint:tarefas.minhas_tarefas.qryTarefa",
+        "endpoint:tarefas.minhas_tarefas.qryTarefasDoGrupo",
+        "endpoint:tarefas.painel_tarefas.carregarPainelTarefas",
+        "endpoint:tarefas.tarefas_equipe.listarTarefasEquipe",
+        "endpoint:tarefas.tarefas_equipe.obterTarefaEquipe"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/retomar.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:retomar",
+        "endpoint:tarefas.inicio.retomarTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdRetomar"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateItemChecklist.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:updateItemChecklist",
+        "endpoint:tarefas.minhas_tarefas.cmdAjustarChecklist"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateListaTarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:updateListaTarefas",
+        "endpoint:tarefas.listas_tarefas.cmdSalvarLista"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateParticipante.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:updateParticipante",
+        "endpoint:tarefas.participantes.salvarMarcas"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateTarefa.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:updateTarefa",
+        "endpoint:tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+        "endpoint:tarefas.tarefas_equipe.trocarResponsavelTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "usecases50"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/workflows/processoTarefa.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "process:processoTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "process:resumoDiarioTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "support70"
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createItemChecklist",
+        "usecase:listItemChecklist",
+        "usecase:updateItemChecklist"
+      ],
+      "sourceHash": "",
+      "phase": "domain30"
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createListaTarefas",
+        "usecase:listListaTarefas",
+        "usecase:updateListaTarefas"
+      ],
+      "sourceHash": "",
+      "phase": "domain30"
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/participante.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:createParticipante",
+        "usecase:getParticipante",
+        "usecase:listParticipante",
+        "usecase:updateParticipante"
+      ],
+      "sourceHash": "",
+      "phase": "domain30"
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/tarefa.defs.ts",
+      "action": "generated",
+      "ownerRefs": [
+        "usecase:aceitar",
+        "usecase:cancelar",
+        "usecase:createTarefa",
+        "usecase:devolver",
+        "usecase:enviarParaRevisao",
+        "usecase:iniciar",
+        "usecase:listTarefa",
+        "usecase:retomar",
+        "usecase:updateTarefa"
+      ],
+      "sourceHash": "",
+      "phase": "domain30"
+    }
+  ],
+  "sources": [
+    {
+      "path": "l2/tarefas/web/contracts/inicio.defs.ts",
+      "sha256": "sha256:d872928e15ea66a238d5bb42ccd4f8499fcdf9c4197ccaee89fd7c2b20d93a5c",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/listas_tarefas.defs.ts",
+      "sha256": "sha256:1086bdcfddee0975a6e3a1d93d630573f63ba43aed3f0440d28f5ab042d2eac7",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/minhas_tarefas.defs.ts",
+      "sha256": "sha256:d24204bf09749887b990df05b72297f67c08f3ac5b86a12a208c86901761b0a7",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/painel_tarefas.defs.ts",
+      "sha256": "sha256:cf7146e04c14393814fb90d0ac1c50d6e5010bea856731304f84679534124403",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/participantes.defs.ts",
+      "sha256": "sha256:93a1280344bfee33ec49819f2d1352e161cd7e80265deab197ce6c3e78f84c68",
+      "state": "present"
+    },
+    {
+      "path": "l2/tarefas/web/contracts/tarefas_equipe.defs.ts",
+      "sha256": "sha256:940fd1870167acbe9dfa77a0e937c646b7292a33f36d82ee4ff0a19545d9a228",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/access.defs.ts",
+      "sha256": "sha256:6ded3db7519527275a2dcd04b86c7bca16c26bc6b35179ccc307a6994ec06e90",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/integration.defs.ts",
+      "sha256": "sha256:63eeb0d5ba7a33d8aad91e17e14652262cacf99d879a84596c31317137fa482a",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/acompanharTarefas.defs.ts",
+      "sha256": "sha256:2b5e7d05270e57e4d7a3790ca6f4f60cc7e2fd852e180cf42e696fb7059eecb8",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/cancelarTarefa.defs.ts",
+      "sha256": "sha256:83dcc69819f5d3289a8f9c1052430bba94fe3e04bdf0c9153145c74d2cbe9e3c",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/cancelarTarefaCriada.defs.ts",
+      "sha256": "sha256:899ee1843642374ccfc70e4ca90bbe63231efb0280a2e91ea682f1e83678b96a",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/configurarParticipantes.defs.ts",
+      "sha256": "sha256:a234b04a46956746bcb19defbc17e2a1dafb47720f70ae51f9b145ab1f8e8a45",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/criarTarefa.defs.ts",
+      "sha256": "sha256:d04bcea4b33e68052d969a08983710e70f54509bf09114778824fcea5f239b2d",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/editarTarefa.defs.ts",
+      "sha256": "sha256:9d56a7d8e3edfde0f00a76f57f6af1842c6757172fa6bd9c8fc848ff417fc259",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/executarTarefa.defs.ts",
+      "sha256": "sha256:f692e5d6199266ceee44f9b5aee938378890f337903f918224d25190ba914241",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/index.defs.ts",
+      "sha256": "sha256:f9bf765fc234df9d972c3cbad9669e02bc1307547548eddf4333a8a0fde7a944",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/manterListas.defs.ts",
+      "sha256": "sha256:c0fb1c5eac8669f31c17f2ec30ad113ac1550f148f0ba2e7c64cbf6843ed9dd3",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/minhasTarefas.defs.ts",
+      "sha256": "sha256:e17f2d74e9562876e084c64edb763bd9a215d8bcb4a6ffc9617b7e754775aae1",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/reatribuirTarefa.defs.ts",
+      "sha256": "sha256:2c1d53d4e66251f1a1ba0e66c7c513ff16f9e7ee62afcf812ff54e101f0d32ff",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/reatribuirTarefaCriada.defs.ts",
+      "sha256": "sha256:9c211808073e80738b605c7dde9e85165898bfa95fa740e17ad92acadba0e3b8",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/resumoDiario.defs.ts",
+      "sha256": "sha256:9080033edf028b0a2b58cd1a6898a39b4abb0a21ec975bd24e0761eb0bbcce24",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/retomarTarefa.defs.ts",
+      "sha256": "sha256:6c885562c2e7777b31c5e5c3af76f893685f4322510b6179a33339a43d7dc516",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/journeys/revisarTarefa.defs.ts",
+      "sha256": "sha256:d839a81d0b0943f706ab71f0c50f55d6fbfede331f83fd6a640911dfd3d3c648",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/module.defs.ts",
+      "sha256": "sha256:1036ee489b8980eaa4f539e23bf5c80bdfb5517f62aa54027c49f9730106bccc",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/index.defs.ts",
+      "sha256": "sha256:b30c2cc1aa7a478ed1e5321c0e8eed63bd8da2a4c1d8d671a8e94a758be35c72",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/ItemChecklist.defs.ts",
+      "sha256": "sha256:8b52124fa82fa617477fef0d69bada04ee53a2112151535fc991c124eab5eade",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/ListaTarefas.defs.ts",
+      "sha256": "sha256:8b4c7c07cf8f58acb4fb872502941645aa8e685ca113185089582cd10731f2e7",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/Participante.defs.ts",
+      "sha256": "sha256:9ba21750da9cd094be3851901557774f9553de1eabf5f2ef311543c73b8e0531",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/ontology/Tarefa.defs.ts",
+      "sha256": "sha256:2d38596623fcc62d15b50252981bab772086c00d4bec848472141acff05ec4a5",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l1/pipeline.json",
+      "sha256": "sha256:7beec2e00e299c77600a0bfd1ef360db6e86c604ab746dd26871309c0f1257c4",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l1/web/needs.json",
+      "sha256": "sha256:6ea4207c48e755b8a04e312a9133325e6d72fcffe7712e90bfa130778953ab62",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l2/web/backend.json",
+      "sha256": "sha256:8eb3f3200e7cfb40797235ad06c85ff07a260bc340e724c40c74fa6f5d7c81f4",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l2/web/effort.json",
+      "sha256": "sha256:07b599e1428e02e3d70604bea01bd199b3a4b518729b9acdcf4bd07f3f13d344",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/pool/l2/web/menu.json",
+      "sha256": "sha256:0540a0252a000cd262b3244f637277133dab251cbf9b4a61f78b3c6ba8b9dfd5",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/rules.defs.ts",
+      "sha256": "sha256:9c4b759cc09aaf5855787f7fe653fb041d8848ffc5f2b1a3903681bd1f61ba70",
+      "state": "present"
+    },
+    {
+      "path": "l4/tarefas/workflows.defs.ts",
+      "sha256": "sha256:7e0f595fe50dd9a4a1f920201b28c2df1500a71b64d290c3e5447c6b5d19ef40",
+      "state": "present"
+    }
+  ],
+  "materializationPending": [
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/inicio.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/inicio.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/participantes.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/participantes.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/integration/outbound.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/integration/outbound.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/seeds.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/seeds.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/auth/authorityMap.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_1_external/auth/authorityMap.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/inicio.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/requests/inicio.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/requests/listas_tarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/minhas_tarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/requests/minhas_tarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/painel_tarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/requests/painel_tarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/participantes.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/requests/participantes.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/tarefas_equipe.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/requests/tarefas_equipe.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/scope/accessScope.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/scope/accessScope.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/aceitar.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/aceitar.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/cancelar.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/cancelar.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createItemChecklist.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/createItemChecklist.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/createListaTarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createParticipante.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/createParticipante.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createTarefa.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/createTarefa.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/devolver.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/devolver.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/enviarParaRevisao.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/enviarParaRevisao.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/getParticipante.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/getParticipante.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/iniciar.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/iniciar.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listItemChecklist.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/listItemChecklist.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listListaTarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/listListaTarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listParticipante.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/listParticipante.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listTarefa.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/listTarefa.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/retomar.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/retomar.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateItemChecklist.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/updateItemChecklist.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateListaTarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/updateListaTarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateParticipante.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/updateParticipante.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateTarefa.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/usecases/updateTarefa.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/workflows/processoTarefa.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/workflows/processoTarefa.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/participante.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_3_domain/entities/participante.ts",
+      "present": false
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/tarefa.defs.ts",
+      "outputPath": "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.ts",
+      "present": false
+    }
+  ],
+  "coverage": {
+    "checked": true,
+    "gaps": []
+  },
+  "inventory": {
+    "usecaseIds": [
+      "aceitar",
+      "cancelar",
+      "createItemChecklist",
+      "createListaTarefas",
+      "createParticipante",
+      "createTarefa",
+      "devolver",
+      "enviarParaRevisao",
+      "getParticipante",
+      "iniciar",
+      "listItemChecklist",
+      "listListaTarefas",
+      "listParticipante",
+      "listTarefa",
+      "retomar",
+      "updateItemChecklist",
+      "updateListaTarefas",
+      "updateParticipante",
+      "updateTarefa"
+    ],
+    "routes": [
+      "tarefas.inicio.aceitarTarefa",
+      "tarefas.inicio.carregarInicio",
+      "tarefas.inicio.devolverTarefa",
+      "tarefas.inicio.enviarRevisao",
+      "tarefas.inicio.iniciarTarefa",
+      "tarefas.inicio.retomarTarefa",
+      "tarefas.listas_tarefas.cmdCriarLista",
+      "tarefas.listas_tarefas.cmdSalvarLista",
+      "tarefas.listas_tarefas.qryListasTarefas",
+      "tarefas.minhas_tarefas.cmdAceitar",
+      "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+      "tarefas.minhas_tarefas.cmdAjustarChecklist",
+      "tarefas.minhas_tarefas.cmdCancelar",
+      "tarefas.minhas_tarefas.cmdCriarTarefa",
+      "tarefas.minhas_tarefas.cmdDevolver",
+      "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+      "tarefas.minhas_tarefas.cmdIniciar",
+      "tarefas.minhas_tarefas.cmdRetomar",
+      "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+      "tarefas.minhas_tarefas.qryListas",
+      "tarefas.minhas_tarefas.qryMinhasTarefas",
+      "tarefas.minhas_tarefas.qryResponsaveis",
+      "tarefas.minhas_tarefas.qryTarefa",
+      "tarefas.minhas_tarefas.qryTarefasDoGrupo",
+      "tarefas.painel_tarefas.carregarPainelTarefas",
+      "tarefas.participantes.buscarUsuarios",
+      "tarefas.participantes.incluirParticipante",
+      "tarefas.participantes.listarParticipantes",
+      "tarefas.participantes.salvarMarcas",
+      "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+      "tarefas.tarefas_equipe.cancelarTarefaEquipe",
+      "tarefas.tarefas_equipe.carregarFiltrosEquipe",
+      "tarefas.tarefas_equipe.listarTarefasEquipe",
+      "tarefas.tarefas_equipe.obterTarefaEquipe",
+      "tarefas.tarefas_equipe.trocarResponsavelTarefa"
+    ],
+    "portIds": [
+      "ItemChecklistRepository",
+      "ListaTarefasRepository",
+      "TarefaRepository"
+    ],
+    "tableIds": [
+      "itemChecklist",
+      "listaTarefas",
+      "tarefa"
+    ]
+  },
+  "snapshotHash": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3"
+}

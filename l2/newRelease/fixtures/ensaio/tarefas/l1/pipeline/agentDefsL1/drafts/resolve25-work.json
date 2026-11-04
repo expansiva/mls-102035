@@ -1,0 +1,1330 @@
+{
+  "schemaVersion": "2026-10-06-d1-resolve-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "sourceKey": "sha256:9621499ce53ee3aeb6bb2f7dbe72e89e290571728b888517fbf7a49cbb6b9aea",
+  "units": [
+    {
+      "unitId": "r0",
+      "route": "tarefas.inicio.aceitarTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "apenasCriadorRevisa",
+            "quemAgeAgoraPorSituacao",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r1",
+      "route": "tarefas.inicio.carregarInicio",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.pendencias.responsavel",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.pendencias.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.pendencias.criador",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.pendencias.criador.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "membroVeResponsavelOuCriador",
+            "participanteNaoConfiguradoAceitaECria",
+            "quemAgeAgoraPorSituacao",
+            "resumoDiarioOitoHoras",
+            "retomarSoAposDevolucao",
+            "tarefaAbertaVencimento",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g5",
+          "path": "output.permissoes.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g6",
+          "path": "output.permissoes.details.tarefas",
+          "kind": "computedRule",
+          "reason": "Interface PermissoesTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "membroVeResponsavelOuCriador",
+            "participanteNaoConfiguradoAceitaECria",
+            "quemAgeAgoraPorSituacao",
+            "resumoDiarioOitoHoras",
+            "retomarSoAposDevolucao",
+            "tarefaAbertaVencimento",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r2",
+      "route": "tarefas.inicio.devolverTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "apenasCriadorRevisa",
+            "avisarQuemAgeAgora",
+            "avisoNaoSobrepostoPorPessoa",
+            "devolucaoExigeMotivo",
+            "quemAgeAgoraPorSituacao",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r3",
+      "route": "tarefas.inicio.enviarRevisao",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "apenasResponsavelExecuta",
+            "avisarQuemAgeAgora",
+            "avisoNaoSobrepostoPorPessoa",
+            "quemAgeAgoraPorSituacao",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r4",
+      "route": "tarefas.inicio.iniciarTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "apenasResponsavelExecuta",
+            "quemAgeAgoraPorSituacao",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r5",
+      "route": "tarefas.inicio.retomarTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.responsavel.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.tarefa.criador",
+          "kind": "entity",
+          "reason": "Interface ParticipanteNome: fields id are fields of ItemChecklist, ListaTarefas, Participante, Tarefa; the types do not say which.",
+          "candidates": [
+            "ItemChecklist",
+            "ListaTarefas",
+            "Participante",
+            "Tarefa",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.tarefa.criador.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface ParticipanteIdentificacaoResumo: field name is not a field of any entity.",
+          "candidates": [
+            "details.identification.name",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "apenasResponsavelExecuta",
+            "retomarSoAposDevolucao",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r6",
+      "route": "tarefas.minhas_tarefas.cmdAceitar",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r7",
+      "route": "tarefas.minhas_tarefas.cmdAdicionarItensChecklist",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r8",
+      "route": "tarefas.minhas_tarefas.cmdAjustarChecklist",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r9",
+      "route": "tarefas.minhas_tarefas.cmdCancelar",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r10",
+      "route": "tarefas.minhas_tarefas.cmdCriarTarefa",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r11",
+      "route": "tarefas.minhas_tarefas.cmdDevolver",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r12",
+      "route": "tarefas.minhas_tarefas.cmdEnviarParaRevisao",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r13",
+      "route": "tarefas.minhas_tarefas.cmdIniciar",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r14",
+      "route": "tarefas.minhas_tarefas.cmdRetomar",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r15",
+      "route": "tarefas.minhas_tarefas.cmdSalvarAlteracoes",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r16",
+      "route": "tarefas.minhas_tarefas.qryMinhasTarefas",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefas.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefas.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "output.quantidadeDependeDeMim",
+          "kind": "value",
+          "reason": "Output quantidadeDependeDeMim is a value (number), not an interface; no entity owns it.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "output.quantidadeResponsavel",
+          "kind": "value",
+          "reason": "Output quantidadeResponsavel is a value (number), not an interface; no entity owns it.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "output.quantidadeCriadas",
+          "kind": "value",
+          "reason": "Output quantidadeCriadas is a value (number), not an interface; no entity owns it.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g5",
+          "path": "output.quantidadeVenceHoje",
+          "kind": "value",
+          "reason": "Output quantidadeVenceHoje is a value (number), not an interface; no entity owns it.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g6",
+          "path": "output.quantidadeAtrasadas",
+          "kind": "value",
+          "reason": "Output quantidadeAtrasadas is a value (number), not an interface; no entity owns it.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g7",
+          "path": "output.podeCriarTarefasEfetivo",
+          "kind": "value",
+          "reason": "Output podeCriarTarefasEfetivo is a value (boolean), not an interface; no entity owns it.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r17",
+      "route": "tarefas.minhas_tarefas.qryResponsaveis",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "input.busca",
+          "kind": "filterField",
+          "reason": "Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "participantes:details.identification.name",
+            "participantes:details.identification.tags",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r18",
+      "route": "tarefas.minhas_tarefas.qryTarefa",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "input.tarefaId",
+          "kind": "filterField",
+          "reason": "Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "historico:details.etiquetas",
+            "historico:details.progressoChecklist",
+            "historico:titulo",
+            "tarefa:details.etiquetas",
+            "tarefa:details.progressoChecklist",
+            "tarefa:titulo",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r19",
+      "route": "tarefas.minhas_tarefas.qryTarefasDoGrupo",
+      "pageId": "minhas_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefas.responsavel",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefas.criador",
+          "kind": "relationship",
+          "reason": "Participante inside Tarefa needs one L4 relationship between them; found 2.",
+          "candidates": [
+            "tarefaCriador",
+            "tarefaResponsavel",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "input.grupo",
+          "kind": "filterField",
+          "reason": "Input grupo is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "tarefas:details.etiquetas",
+            "tarefas:details.progressoChecklist",
+            "tarefas:titulo",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r20",
+      "route": "tarefas.painel_tarefas.carregarPainelTarefas",
+      "pageId": "painel_tarefas",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.indicadores",
+          "kind": "computedRule",
+          "reason": "Interface IndicadoresTarefas has no field that is not readonly, so no entity owns it.",
+          "candidates": [
+            "gestorPorAcessoPlataforma",
+            "membroVeResponsavelOuCriador",
+            "tarefaAbertaVencimento",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r21",
+      "route": "tarefas.participantes.buscarUsuarios",
+      "pageId": "participantes",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "input.busca",
+          "kind": "filterField",
+          "reason": "Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "usuarios:details.identification.name",
+            "usuarios:details.identification.tags",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r22",
+      "route": "tarefas.participantes.listarParticipantes",
+      "pageId": "participantes",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "input.busca",
+          "kind": "filterField",
+          "reason": "Input busca is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "participantes:details.identification.name",
+            "participantes:details.identification.tags",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r23",
+      "route": "tarefas.tarefas_equipe.buscarResponsaveisDisponiveis",
+      "pageId": "tarefas_equipe",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "input.nome",
+          "kind": "filterField",
+          "reason": "Input nome is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "participantes:details.identification.name",
+            "participantes:details.identification.tags",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r24",
+      "route": "tarefas.tarefas_equipe.cancelarTarefaEquipe",
+      "pageId": "tarefas_equipe",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.listaTarefas.nome",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.participante.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r25",
+      "route": "tarefas.tarefas_equipe.listarTarefasEquipe",
+      "pageId": "tarefas_equipe",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefas.listaTarefas.nome",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaResumo: field listaTarefas.nome is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefas.participante.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaResumo: field participante.details.identification.name is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "input.page",
+          "kind": "pageParam",
+          "reason": "Page input page pages one of 0 lists; the types do not say which.",
+          "candidates": [
+            "tarefas",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "input.pageSize",
+          "kind": "pageParam",
+          "reason": "Page input pageSize pages one of 0 lists; the types do not say which.",
+          "candidates": [
+            "tarefas",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g4",
+          "path": "input.prazoDe",
+          "kind": "filterField",
+          "reason": "Input prazoDe is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "contagemPorSituacao:details.etiquetas",
+            "contagemPorSituacao:details.progressoChecklist",
+            "contagemPorSituacao:titulo",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g5",
+          "path": "input.prazoAte",
+          "kind": "filterField",
+          "reason": "Input prazoAte is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "contagemPorSituacao:details.etiquetas",
+            "contagemPorSituacao:details.progressoChecklist",
+            "contagemPorSituacao:titulo",
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r26",
+      "route": "tarefas.tarefas_equipe.obterTarefaEquipe",
+      "pageId": "tarefas_equipe",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.listaTarefas.nome",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.participante.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "input.tarefaId",
+          "kind": "filterField",
+          "reason": "Input tarefaId is not the last segment of any field of the output entities; it filters one of their text fields.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r27",
+      "route": "tarefas.tarefas_equipe.trocarResponsavelTarefa",
+      "pageId": "tarefas_equipe",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.listaTarefas.nome",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.participante.details.identification.name",
+          "kind": "fieldPath",
+          "reason": "Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r1b",
+      "route": "tarefas.inicio.carregarInicio",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.pendencias.responsavel.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.pendencias.criador.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r4b",
+      "route": "tarefas.inicio.iniciarTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r3b",
+      "route": "tarefas.inicio.enviarRevisao",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r0b",
+      "route": "tarefas.inicio.aceitarTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r2b",
+      "route": "tarefas.inicio.devolverTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r5b",
+      "route": "tarefas.inicio.retomarTarefa",
+      "pageId": "inicio",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "output.tarefa.responsavel.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "output.tarefa.criador.details.identification",
+          "kind": "relationship",
+          "reason": "Participante inside Participante needs one L4 relationship between them; found 0.",
+          "candidates": [
+            "none"
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "r25b",
+      "route": "tarefas.tarefas_equipe.listarTarefasEquipe",
+      "pageId": "tarefas_equipe",
+      "gaps": [
+        {
+          "gapId": "g0",
+          "path": "input.listaId",
+          "kind": "filterField",
+          "reason": "Input listaId names a field of more than one output entity; the types do not say which it filters.",
+          "candidates": [
+            "contagemPorSituacao:listaId",
+            "tarefas:listaId",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g1",
+          "path": "input.responsavelId",
+          "kind": "filterField",
+          "reason": "Input responsavelId names a field of more than one output entity; the types do not say which it filters.",
+          "candidates": [
+            "contagemPorSituacao:responsavelId",
+            "tarefas:responsavelId",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g2",
+          "path": "input.prioridade",
+          "kind": "filterField",
+          "reason": "Input prioridade names a field of more than one output entity; the types do not say which it filters.",
+          "candidates": [
+            "contagemPorSituacao:prioridade",
+            "tarefas:prioridade",
+            "none"
+          ]
+        },
+        {
+          "gapId": "g3",
+          "path": "input.status",
+          "kind": "filterField",
+          "reason": "Input status names a field of more than one output entity; the types do not say which it filters.",
+          "candidates": [
+            "contagemPorSituacao:status",
+            "tarefas:status",
+            "none"
+          ]
+        }
+      ]
+    }
+  ],
+  "repairs": 0
+}

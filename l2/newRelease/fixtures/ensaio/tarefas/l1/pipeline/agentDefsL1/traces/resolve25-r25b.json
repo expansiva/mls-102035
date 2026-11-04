@@ -1,0 +1,14 @@
+{
+  "unitId": "r25b",
+  "status": "parsed",
+  "trace": "resolve25 recorded 4 answers for tarefas.tarefas_equipe.listarTarefasEquipe.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r25b",
+  "calls": 1,
+  "answers": {
+    "g0": "tarefas:listaId",
+    "g1": "tarefas:responsavelId",
+    "g2": "tarefas:prioridade",
+    "g3": "tarefas:status"
+  }
+}

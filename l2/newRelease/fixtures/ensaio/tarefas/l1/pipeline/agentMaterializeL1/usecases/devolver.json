@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "devolver",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/devolver.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): avisarQuemAgeAgora — The notification is delivered by the platform process (tarefas.processoTarefa) on the state change; this module has no notification port and the usecase declares no effects. The new 'quemAgeAgora' (the responsible) is calculated in the returned record..",
+  "inputHash": "sha256:23506b7d3d529a741f414da134878d5d0099c4486f0f46493f31e76bfa385770",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/devolver.ts": "sha256:2675a4a0b46788e5ba1fd9326f48251b4abe40ba3ba78cc3b0e3a1102390f0f1"
+  },
+  "updatedAt": "2026-10-23T02:35:47.082Z"
+}

@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "2026-09-22-d1-progress-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "step": "controllers60",
+  "unitId": "controllers60",
+  "runId": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "snapshotHash": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "draftHash": "sha256:911373370e20ea0e00480bbcfd555cde583bc198c5cf4f561fe78596dca4a200",
+  "transaction": false,
+  "finalized": true,
+  "invalidated": false,
+  "reported": [
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/inicio.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/participantes.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.ts",
+    "_102047_/l1/tarefas/layer_2_application/requests/inicio.ts",
+    "_102047_/l1/tarefas/layer_2_application/requests/listas_tarefas.ts",
+    "_102047_/l1/tarefas/layer_2_application/requests/minhas_tarefas.ts",
+    "_102047_/l1/tarefas/layer_2_application/requests/painel_tarefas.ts",
+    "_102047_/l1/tarefas/layer_2_application/requests/participantes.ts",
+    "_102047_/l1/tarefas/layer_2_application/requests/tarefas_equipe.ts",
+    "l1/tarefas/layer_1_external/adapters/http/controllers/inicio.ts",
+    "l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.ts",
+    "l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.ts",
+    "l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.ts",
+    "l1/tarefas/layer_1_external/adapters/http/controllers/participantes.ts",
+    "l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.ts",
+    "l1/tarefas/layer_2_application/requests/inicio.ts",
+    "l1/tarefas/layer_2_application/requests/listas_tarefas.ts",
+    "l1/tarefas/layer_2_application/requests/minhas_tarefas.ts",
+    "l1/tarefas/layer_2_application/requests/painel_tarefas.ts",
+    "l1/tarefas/layer_2_application/requests/participantes.ts",
+    "l1/tarefas/layer_2_application/requests/tarefas_equipe.ts"
+  ],
+  "files": [
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/inicio.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:f349d80508ee73de53e45404c99cb473eb54f814fdff8a10cfee06ef6f0fbce3",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/inicio.ts",
+        "l1/tarefas/layer_1_external/adapters/http/controllers/inicio.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:83c60d19f51a5a557af152f3d56839505c1269760a39dbcf6587d34afca61f32",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.ts",
+        "l1/tarefas/layer_1_external/adapters/http/controllers/listas_tarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:b43538e694382d6bfa1c35d5daf1040a5e136f704e8dc29a2408f59393992396",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.ts",
+        "l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:1bc75a4cec09aadc9eddcbfbf8fa8bcad8e01ced61bd29e1912e59c57eb2fde7",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.ts",
+        "l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/participantes.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:3be4b771379fd0aa51466b0c881183077a9b00f5bca01e42e3b346490c3bc4f6",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/participantes.ts",
+        "l1/tarefas/layer_1_external/adapters/http/controllers/participantes.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:0c04033d79b03fe6179418c1b352c7fb5de842930cf8f018517ccc00d12e938f",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.ts",
+        "l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/inicio.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:32ef0b73a81b88e849e01d423f8d5c92a5720bd5584159bec724f65dd6651016",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/requests/inicio.ts",
+        "l1/tarefas/layer_2_application/requests/inicio.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:d888f1246ffbc26eb484137fd920a7d71054579f78462acf0bb30dd7ad8d1953",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/requests/listas_tarefas.ts",
+        "l1/tarefas/layer_2_application/requests/listas_tarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/minhas_tarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:7149f1bd23fe0b08bdfe49cbfb8f761e2334028ec01299454b1b9d3baa521ca1",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/requests/minhas_tarefas.ts",
+        "l1/tarefas/layer_2_application/requests/minhas_tarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/painel_tarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:e31d41f8b3c37ace1949b19414222d05ecc97b2a034b65b6e2065a3413751444",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/requests/painel_tarefas.ts",
+        "l1/tarefas/layer_2_application/requests/painel_tarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/participantes.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:b45515ae40d576b400f43f0ec519eea80257c9fdb3a32a48dcc8183583465b29",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/requests/participantes.ts",
+        "l1/tarefas/layer_2_application/requests/participantes.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/requests/tarefas_equipe.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:385dacbfa0c245d7fe5e1466494b68276bd4b64df1409687be3743605a0ba642",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/requests/tarefas_equipe.ts",
+        "l1/tarefas/layer_2_application/requests/tarefas_equipe.ts"
+      ]
+    }
+  ],
+  "issues": []
+}

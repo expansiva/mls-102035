@@ -1,0 +1,195 @@
+[
+  {
+    "id": "tarefas.inicio.carregarInicio.ok",
+    "routine": "tarefas.inicio.carregarInicio",
+    "params": {},
+    "expect": {
+      "ok": true,
+      "shape": "object"
+    },
+    "mutating": false
+  },
+  {
+    "id": "tarefas.inicio.iniciarTarefa.ok",
+    "routine": "tarefas.inicio.iniciarTarefa",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>"
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.iniciarTarefa.id.required",
+    "routine": "tarefas.inicio.iniciarTarefa",
+    "params": {
+      "version": 1
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.enviarRevisao.ok",
+    "routine": "tarefas.inicio.enviarRevisao",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>"
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.enviarRevisao.id.required",
+    "routine": "tarefas.inicio.enviarRevisao",
+    "params": {
+      "version": 1
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.aceitarTarefa.ok",
+    "routine": "tarefas.inicio.aceitarTarefa",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>"
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.aceitarTarefa.id.required",
+    "routine": "tarefas.inicio.aceitarTarefa",
+    "params": {
+      "version": 1
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.devolverTarefa.ok",
+    "routine": "tarefas.inicio.devolverTarefa",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>",
+      "details": {
+        "motivoDevolucao": "Revisar a checklist e corrigir os itens pendentes"
+      }
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.devolverTarefa.devolucaoExigeMotivo",
+    "routine": "tarefas.inicio.devolverTarefa",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>",
+      "details": {
+        "motivoDevolucao": ""
+      }
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.devolverTarefa.id.required",
+    "routine": "tarefas.inicio.devolverTarefa",
+    "params": {
+      "version": 1,
+      "details": {
+        "motivoDevolucao": "Corrigir"
+      }
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.retomarTarefa.ok",
+    "routine": "tarefas.inicio.retomarTarefa",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>"
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": true
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.retomarTarefa.retomarSoAposDevolucao",
+    "routine": "tarefas.inicio.retomarTarefa",
+    "params": {
+      "id": "<seedRef>",
+      "version": "<seedRef>"
+    },
+    "paramFieldRefs": {
+      "id": "Tarefa.id",
+      "version": "Tarefa.version"
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "INVALID_STATE"
+    },
+    "mutating": true
+  },
+  {
+    "id": "tarefas.inicio.retomarTarefa.id.required",
+    "routine": "tarefas.inicio.retomarTarefa",
+    "params": {
+      "version": 1
+    },
+    "expect": {
+      "ok": false,
+      "errorCode": "VALIDATION_ERROR"
+    },
+    "mutating": true
+  }
+]

@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "2026-09-22-d1-progress-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "step": "domain30",
+  "unitId": "domain30",
+  "runId": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "snapshotHash": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "draftHash": "sha256:0396fd05749bfd24b8bc91d4e177214c714258bcb1d62c2e65f663b0aab27504",
+  "transaction": false,
+  "finalized": true,
+  "invalidated": false,
+  "reported": [
+    "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.ts",
+    "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.ts",
+    "_102047_/l1/tarefas/layer_3_domain/entities/participante.ts",
+    "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.ts",
+    "l1/tarefas/layer_3_domain/entities/itemChecklist.ts",
+    "l1/tarefas/layer_3_domain/entities/listaTarefas.ts",
+    "l1/tarefas/layer_3_domain/entities/participante.ts",
+    "l1/tarefas/layer_3_domain/entities/tarefa.ts"
+  ],
+  "files": [
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:9c462ef67f24fbfc37a8b17126af5517cb8c665a7f6df4b8cb06fbf608afd0e4",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.ts",
+        "l1/tarefas/layer_3_domain/entities/itemChecklist.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:d1ec7e9afe47f6a5a98f849facf6e7c25b49e96d31d5d9b904ad947dbe7df763",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.ts",
+        "l1/tarefas/layer_3_domain/entities/listaTarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/participante.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:83358f0f034758152fdb2eb4bb469bcd9e5e644c6fff9754c83851b9502856b7",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_3_domain/entities/participante.ts",
+        "l1/tarefas/layer_3_domain/entities/participante.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_3_domain/entities/tarefa.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:f248b83640743fd063be80bbc506ceaee318cf0c544904184d5bdc25270dc3cc",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.ts",
+        "l1/tarefas/layer_3_domain/entities/tarefa.ts"
+      ]
+    }
+  ],
+  "issues": []
+}

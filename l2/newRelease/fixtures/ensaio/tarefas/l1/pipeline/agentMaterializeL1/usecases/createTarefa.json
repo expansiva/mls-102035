@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "createTarefa",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/createTarefa.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): podeCriarTarefasExigido — Needs the Participante marks (podeCriarTarefas), but no repository port or MDM read contract for Participante is given, so the check cannot be written without inventing an API. The creator is taken from the session person.; responsavelAceitaTarefas — Needs the Participante marks (aceitaTarefas, active status), but no Participante port is available to read them; inventing one is forbidden.; tarefaPaiDiferenteDaPropria — A new task gets a fresh id, so it can never be its own parent or the parent of its own subtasks; only the existence of the parent is checked.; avisoNaoSobrepostoPorPessoa — About the notification process, not the creation of the record.; edicaoNaoMudaSituacao — About editing a task; this operation is a create and sets the initial state aFazer.; escolhaResponsavelPeloNome — A UI rule about how the responsible is chosen (by name, never by e-mail); the usecase receives the participant id.; membroVeResponsavelOuCriador — A visibility rule for reads and lists, not for create.; quemAgeAgoraPorSituacao — Applied as a derived value: quemAgeAgora is calculated in the output from the status, never stored.; reatribuirApenasCriadorOuGestor — About reassigning the responsible in an update, not creation.; resumoDiarioOitoHoras — About a scheduled daily summary, not this operation..",
+  "inputHash": "sha256:4435390e5f5ed2b76da2ac33c316141f75f3e8baba73f6c849821e464d1779b1",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/createTarefa.ts": "sha256:fcd70efe3c0c45007ebfec919783e9b09eedb6542db9a56796258840b1daf0a6"
+  },
+  "updatedAt": "2026-10-23T02:35:55.404Z"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "updateTarefa",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/updateTarefa.defs.ts",
+  "attempt": 2,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): avisoNaoSobrepostoPorPessoa — About notices (process/notification) per person; the update usecase does not open notices.; podeCriarTarefasExigido — About creating tasks and subtasks; this operation edits an existing task.; resumoDiarioOitoHoras — About the daily 8h summary job, not the update operation.; escolhaResponsavelPeloNome — About the UI choice of the responsible by name (never by e-mail); the usecase receives the participant id.; responsavelAceitaTarefas — Needs the participant records, which are in the platform MDM and have no repository port in this module for the usecase to read..",
+  "inputHash": "sha256:f0503d2ec3882ca3ae0ce4d7135f414b43ddfaf8f7b81d56a32783a2d6c486e2",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateTarefa.ts": "sha256:c6ae1bb1ebc2054255af8dfdfc564a3a2880b057a4ea2df9a22fbfdcd5796852"
+  },
+  "updatedAt": "2026-10-23T02:36:57.734Z"
+}

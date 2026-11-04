@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "workflows",
+  "unitId": "processoTarefa",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/workflows/processoTarefa.defs.ts",
+  "attempt": 2,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:e9d04e57a96566f41eb5e57713d79744c3ebfd61110c848c52bc2dd8404480ab",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/workflows/processoTarefa.ts": "sha256:c06d882e79aa11ce3995bbfbcfdbedb46215351995325cf9660e158eefe596fd"
+  },
+  "updatedAt": "2026-10-23T02:40:03.356Z"
+}

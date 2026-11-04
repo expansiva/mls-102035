@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "2026-09-18-p2-pipeline-v2",
+  "flowId": "agentPlannerL2",
+  "moduleName": "tarefas",
+  "status": "complete",
+  "steps": {
+    "entry10": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:41:59.253Z",
+      "artifactPaths": [
+        "l4/tarefas/pool/l2/pipeline.json"
+      ]
+    },
+    "menu20": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:41:57.996Z",
+      "artifactPaths": [
+        "l4/tarefas/pool/l2/web/menu.json",
+        "l4/tarefas/pool/l2/menu20-draft.json"
+      ]
+    },
+    "needs30": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:41:58.178Z",
+      "artifactPaths": [
+        "l4/tarefas/pool/l1/web/needs.json",
+        "l4/tarefas/pool/l1/20261023014158_tarefas-20261023014130_1.json"
+      ]
+    },
+    "effort40": {
+      "status": "approved",
+      "updatedAt": "2026-10-23T01:41:59.453Z",
+      "artifactPaths": [
+        "l4/tarefas/pool/l2/web/effort.json",
+        "l4/tarefas/pool/l4/20261023014159_tarefas-20261023014130_1.json"
+      ]
+    }
+  },
+  "thread": "tarefas-20261023014130",
+  "round": 1,
+  "messageFile": "l4/tarefas/pool/l2/20261023014158_tarefas-20261023014130_1.json",
+  "sourceMessages": [
+    "20261023014158_tarefas-20261023014130_1.json"
+  ],
+  "webDir": "preserved",
+  "updatedAt": "2026-10-23T01:41:59.453Z",
+  "warnings": [],
+  "device": "web",
+  "actionCounts": {
+    "new": 7,
+    "change": 0,
+    "keep": 0,
+    "remove": 0
+  },
+  "pool": [
+    {
+      "at": "2026-10-23T01:41:58.146Z",
+      "file": "l4/tarefas/pool/l2/20261023014130_tarefas-20261023014130_1.json",
+      "from": "l4",
+      "to": "l2",
+      "thread": "tarefas-20261023014130",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "processed"
+    },
+    {
+      "at": "2026-10-23T01:41:58.146Z",
+      "file": "l4/tarefas/pool/l1/20261023014158_tarefas-20261023014130_1.json",
+      "from": "l2",
+      "to": "l1",
+      "thread": "tarefas-20261023014130",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    },
+    {
+      "at": "2026-10-23T01:41:59.412Z",
+      "file": "l4/tarefas/pool/l2/20261023014158_tarefas-20261023014130_1.json",
+      "from": "l1",
+      "to": "l2",
+      "thread": "tarefas-20261023014130",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "processed"
+    },
+    {
+      "at": "2026-10-23T01:41:59.412Z",
+      "file": "l4/tarefas/pool/l4/20261023014159_tarefas-20261023014130_1.json",
+      "from": "l2",
+      "to": "l4",
+      "thread": "tarefas-20261023014130",
+      "round": 1,
+      "mode": "estimate",
+      "outcome": "delivered"
+    }
+  ]
+}

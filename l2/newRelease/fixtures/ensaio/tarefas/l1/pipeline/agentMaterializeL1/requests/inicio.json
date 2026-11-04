@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "requests",
+  "unitId": "inicio",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/requests/inicio.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:3a4c4bc0abfa2faf7217e09f09d79afaba21800f78c36e8e48d7e48a18b5f6cb",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/requests/inicio.ts": "sha256:6a1efda8ce8ae64e95658da639089e4e92867c71a7c9dc760f8409afac48a57a"
+  },
+  "updatedAt": "2026-10-23T02:41:23.940Z"
+}

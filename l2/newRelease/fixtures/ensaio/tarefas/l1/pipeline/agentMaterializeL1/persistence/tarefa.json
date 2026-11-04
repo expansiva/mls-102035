@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "persistence",
+  "unitId": "tarefa",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:d90dde6415726f8bd50a716cfdb6095019dbad02e4ee651233964beb41584155",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts": "sha256:afc349adca7d54a9382b28189750d12100866e892889c5ef0fc12042704f4c3a"
+  },
+  "updatedAt": "2026-10-23T02:35:19.052Z"
+}

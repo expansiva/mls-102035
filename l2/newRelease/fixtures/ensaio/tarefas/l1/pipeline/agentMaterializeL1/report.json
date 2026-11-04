@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "2026-10-05-m12-report-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "status": "partial",
+  "counts": {
+    "done": 1,
+    "reused": 0,
+    "blocked": 0,
+    "gap": 0,
+    "failed": 1,
+    "skipped": 0
+  },
+  "byLayer": {
+    "controllers": {
+      "done": 1
+    },
+    "tests": {
+      "failed": 1
+    }
+  },
+  "open": [
+    {
+      "layer": "tests",
+      "unitId": "minhas_tarefas",
+      "status": "failed",
+      "code": "PROMPT_FAILED",
+      "diagnostic": "M12_PROMPT_LIMIT: 168187"
+    }
+  ],
+  "notCompiled": [],
+  "missing": [],
+  "defProblems": [],
+  "registration": null,
+  "createdAt": "2026-10-23T02:51:15.130Z",
+  "scope": "",
+  "target": "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/minhas_tarefas.defs.ts",
+  "force": true
+}

@@ -1,0 +1,1736 @@
+{
+  "schemaVersion": "2026-09-21-d1-persistence-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "llmCalls": 0,
+  "ok": true,
+  "enumerations": [
+    {
+      "entityId": "Participante",
+      "path": "details.identification.status",
+      "values": [
+        "Active",
+        "Inactive",
+        "Merged",
+        "Blocked"
+      ],
+      "consumed": false,
+      "source": "domain30.enumerations",
+      "reason": "Table and adapter schemas have no enum values. They stay on the domain draft."
+    },
+    {
+      "entityId": "Participante",
+      "path": "details.identification.subtype",
+      "values": [
+        "Person"
+      ],
+      "consumed": false,
+      "source": "domain30.enumerations",
+      "reason": "Table and adapter schemas have no enum values. They stay on the domain draft."
+    },
+    {
+      "entityId": "Tarefa",
+      "path": "prioridade",
+      "values": [
+        "baixa",
+        "media",
+        "alta"
+      ],
+      "consumed": false,
+      "source": "domain30.enumerations",
+      "reason": "Table and adapter schemas have no enum values. They stay on the domain draft."
+    },
+    {
+      "entityId": "Tarefa",
+      "path": "status",
+      "values": [
+        "aFazer",
+        "emAndamento",
+        "emRevisao",
+        "concluida",
+        "cancelada"
+      ],
+      "consumed": false,
+      "source": "domain30.enumerations",
+      "reason": "Table and adapter schemas have no enum values. They stay on the domain draft."
+    }
+  ],
+  "uniqueKeys": [
+    {
+      "entityId": "ItemChecklist",
+      "tableId": "itemChecklist",
+      "uniqueKeys": [],
+      "consumed": true,
+      "placedOn": "table.data.uniqueKeys"
+    },
+    {
+      "entityId": "ListaTarefas",
+      "tableId": "listaTarefas",
+      "uniqueKeys": [
+        [
+          "nome"
+        ]
+      ],
+      "consumed": true,
+      "placedOn": "table.data.uniqueKeys"
+    },
+    {
+      "entityId": "Tarefa",
+      "tableId": "tarefa",
+      "uniqueKeys": [],
+      "consumed": true,
+      "placedOn": "table.data.uniqueKeys"
+    }
+  ],
+  "ports": [
+    {
+      "portId": "ItemChecklistRepository",
+      "entityId": "ItemChecklist",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+      "methods": [
+        {
+          "name": "create",
+          "params": [
+            "ItemChecklist"
+          ],
+          "returns": "ItemChecklist"
+        },
+        {
+          "name": "list",
+          "params": [
+            "ItemChecklistFilter"
+          ],
+          "returns": "ItemChecklist[]"
+        },
+        {
+          "name": "update",
+          "params": [
+            "ItemChecklist"
+          ],
+          "returns": "ItemChecklist"
+        }
+      ],
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryPort",
+        "artifactId": "ItemChecklistRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "entityId": "ItemChecklist",
+          "interfaceName": "ItemChecklistRepository",
+          "methods": [
+            {
+              "name": "create",
+              "params": [
+                "ItemChecklist"
+              ],
+              "returns": "ItemChecklist"
+            },
+            {
+              "name": "list",
+              "params": [
+                "ItemChecklistFilter"
+              ],
+              "returns": "ItemChecklist[]"
+            },
+            {
+              "name": "update",
+              "params": [
+                "ItemChecklist"
+              ],
+              "returns": "ItemChecklist"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "portId": "ListaTarefasRepository",
+      "entityId": "ListaTarefas",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts",
+      "methods": [
+        {
+          "name": "create",
+          "params": [
+            "ListaTarefas"
+          ],
+          "returns": "ListaTarefas"
+        },
+        {
+          "name": "list",
+          "params": [
+            "ListaTarefasFilter"
+          ],
+          "returns": "ListaTarefas[]"
+        },
+        {
+          "name": "update",
+          "params": [
+            "ListaTarefas"
+          ],
+          "returns": "ListaTarefas"
+        }
+      ],
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryPort",
+        "artifactId": "ListaTarefasRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "entityId": "ListaTarefas",
+          "interfaceName": "ListaTarefasRepository",
+          "methods": [
+            {
+              "name": "create",
+              "params": [
+                "ListaTarefas"
+              ],
+              "returns": "ListaTarefas"
+            },
+            {
+              "name": "list",
+              "params": [
+                "ListaTarefasFilter"
+              ],
+              "returns": "ListaTarefas[]"
+            },
+            {
+              "name": "update",
+              "params": [
+                "ListaTarefas"
+              ],
+              "returns": "ListaTarefas"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "portId": "TarefaRepository",
+      "entityId": "Tarefa",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+      "methods": [
+        {
+          "name": "create",
+          "params": [
+            "Tarefa"
+          ],
+          "returns": "Tarefa"
+        },
+        {
+          "name": "list",
+          "params": [
+            "TarefaFilter"
+          ],
+          "returns": "Tarefa[]"
+        },
+        {
+          "name": "update",
+          "params": [
+            "Tarefa"
+          ],
+          "returns": "Tarefa"
+        },
+        {
+          "name": "transition",
+          "params": [
+            "Tarefa",
+            "transitionId"
+          ],
+          "returns": "Tarefa"
+        }
+      ],
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryPort",
+        "artifactId": "TarefaRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "entityId": "Tarefa",
+          "interfaceName": "TarefaRepository",
+          "methods": [
+            {
+              "name": "create",
+              "params": [
+                "Tarefa"
+              ],
+              "returns": "Tarefa"
+            },
+            {
+              "name": "list",
+              "params": [
+                "TarefaFilter"
+              ],
+              "returns": "Tarefa[]"
+            },
+            {
+              "name": "update",
+              "params": [
+                "Tarefa"
+              ],
+              "returns": "Tarefa"
+            },
+            {
+              "name": "transition",
+              "params": [
+                "Tarefa",
+                "transitionId"
+              ],
+              "returns": "Tarefa"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "tables": [
+    {
+      "tableId": "itemChecklist",
+      "entityId": "ItemChecklist",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+      "physicalName": "tarefas_itemchecklist",
+      "detailsColumn": "details",
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "table",
+        "artifactId": "itemChecklist",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "tableId": "itemChecklist",
+          "entityId": "ItemChecklist",
+          "physicalName": "tarefas_itemchecklist",
+          "primaryKey": [
+            "id"
+          ],
+          "uniqueKeys": [],
+          "indexes": [
+            {
+              "name": "tarefas_itemchecklist_tarefaId",
+              "columns": [
+                "tarefaId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_itemchecklist_ordem",
+              "columns": [
+                "ordem"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tableId": "listaTarefas",
+      "entityId": "ListaTarefas",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+      "physicalName": "tarefas_listatarefas",
+      "detailsColumn": "details",
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "table",
+        "artifactId": "listaTarefas",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "tableId": "listaTarefas",
+          "entityId": "ListaTarefas",
+          "physicalName": "tarefas_listatarefas",
+          "primaryKey": [
+            "id"
+          ],
+          "uniqueKeys": [
+            [
+              "nome"
+            ]
+          ],
+          "indexes": [
+            {
+              "name": "tarefas_listatarefas_nome",
+              "columns": [
+                "nome"
+              ],
+              "unique": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tableId": "tarefa",
+      "entityId": "Tarefa",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+      "physicalName": "tarefas_tarefa",
+      "detailsColumn": "details",
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "table",
+        "artifactId": "tarefa",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "tableId": "tarefa",
+          "entityId": "Tarefa",
+          "physicalName": "tarefas_tarefa",
+          "primaryKey": [
+            "id"
+          ],
+          "uniqueKeys": [],
+          "indexes": [
+            {
+              "name": "tarefas_tarefa_titulo",
+              "columns": [
+                "titulo"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_status",
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_prioridade",
+              "columns": [
+                "prioridade"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_prazo",
+              "columns": [
+                "prazo"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_listaId",
+              "columns": [
+                "listaId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_responsavelId",
+              "columns": [
+                "responsavelId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_criadorId",
+              "columns": [
+                "criadorId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_tarefaPaiId",
+              "columns": [
+                "tarefaPaiId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_criadaEm",
+              "columns": [
+                "criadaEm"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "adapters": [
+    {
+      "portId": "ItemChecklistRepository",
+      "entityId": "ItemChecklist",
+      "tableId": "itemChecklist",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.defs.ts",
+      "methods": [
+        {
+          "name": "create",
+          "params": [
+            "ItemChecklist"
+          ],
+          "returns": "ItemChecklist"
+        },
+        {
+          "name": "list",
+          "params": [
+            "ItemChecklistFilter"
+          ],
+          "returns": "ItemChecklist[]"
+        },
+        {
+          "name": "update",
+          "params": [
+            "ItemChecklist"
+          ],
+          "returns": "ItemChecklist"
+        }
+      ],
+      "bindings": [
+        {
+          "field": "id",
+          "column": "id",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "version",
+          "column": "json:version",
+          "nullable": false,
+          "placement": "json"
+        },
+        {
+          "field": "tarefaId",
+          "column": "tarefaId",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "ordem",
+          "column": "ordem",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "details.descricao",
+          "column": "json:details.descricao",
+          "nullable": false,
+          "placement": "json"
+        },
+        {
+          "field": "details.concluido",
+          "column": "json:details.concluido",
+          "nullable": false,
+          "placement": "json"
+        },
+        {
+          "field": "details.concluidoEm",
+          "column": "json:details.concluidoEm",
+          "nullable": true,
+          "placement": "json"
+        }
+      ],
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryAdapter",
+        "artifactId": "ItemChecklistRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "entityId": "ItemChecklist",
+          "portId": "ItemChecklistRepository",
+          "tableId": "itemChecklist",
+          "columns": [
+            {
+              "field": "id",
+              "column": "id"
+            },
+            {
+              "field": "version",
+              "column": "json:version"
+            },
+            {
+              "field": "tarefaId",
+              "column": "tarefaId"
+            },
+            {
+              "field": "ordem",
+              "column": "ordem"
+            },
+            {
+              "field": "details.descricao",
+              "column": "json:details.descricao"
+            },
+            {
+              "field": "details.concluido",
+              "column": "json:details.concluido"
+            },
+            {
+              "field": "details.concluidoEm",
+              "column": "json:details.concluidoEm"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "portId": "ListaTarefasRepository",
+      "entityId": "ListaTarefas",
+      "tableId": "listaTarefas",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.defs.ts",
+      "methods": [
+        {
+          "name": "create",
+          "params": [
+            "ListaTarefas"
+          ],
+          "returns": "ListaTarefas"
+        },
+        {
+          "name": "list",
+          "params": [
+            "ListaTarefasFilter"
+          ],
+          "returns": "ListaTarefas[]"
+        },
+        {
+          "name": "update",
+          "params": [
+            "ListaTarefas"
+          ],
+          "returns": "ListaTarefas"
+        }
+      ],
+      "bindings": [
+        {
+          "field": "id",
+          "column": "id",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "version",
+          "column": "json:version",
+          "nullable": false,
+          "placement": "json"
+        },
+        {
+          "field": "nome",
+          "column": "nome",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "details.descricao",
+          "column": "json:details.descricao",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.quantidadeTarefasAbertas",
+          "column": "json:details.quantidadeTarefasAbertas",
+          "nullable": true,
+          "placement": "json"
+        }
+      ],
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryAdapter",
+        "artifactId": "ListaTarefasRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "entityId": "ListaTarefas",
+          "portId": "ListaTarefasRepository",
+          "tableId": "listaTarefas",
+          "columns": [
+            {
+              "field": "id",
+              "column": "id"
+            },
+            {
+              "field": "version",
+              "column": "json:version"
+            },
+            {
+              "field": "nome",
+              "column": "nome"
+            },
+            {
+              "field": "details.descricao",
+              "column": "json:details.descricao"
+            },
+            {
+              "field": "details.quantidadeTarefasAbertas",
+              "column": "json:details.quantidadeTarefasAbertas"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "portId": "TarefaRepository",
+      "entityId": "Tarefa",
+      "tableId": "tarefa",
+      "action": "create",
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.defs.ts",
+      "methods": [
+        {
+          "name": "create",
+          "params": [
+            "Tarefa"
+          ],
+          "returns": "Tarefa"
+        },
+        {
+          "name": "list",
+          "params": [
+            "TarefaFilter"
+          ],
+          "returns": "Tarefa[]"
+        },
+        {
+          "name": "update",
+          "params": [
+            "Tarefa"
+          ],
+          "returns": "Tarefa"
+        },
+        {
+          "name": "transition",
+          "params": [
+            "Tarefa",
+            "transitionId"
+          ],
+          "returns": "Tarefa"
+        }
+      ],
+      "bindings": [
+        {
+          "field": "id",
+          "column": "id",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "version",
+          "column": "json:version",
+          "nullable": false,
+          "placement": "json"
+        },
+        {
+          "field": "titulo",
+          "column": "titulo",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "prioridade",
+          "column": "prioridade",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "prazo",
+          "column": "prazo",
+          "nullable": true,
+          "placement": "column"
+        },
+        {
+          "field": "listaId",
+          "column": "listaId",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "responsavelId",
+          "column": "responsavelId",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "criadorId",
+          "column": "criadorId",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "tarefaPaiId",
+          "column": "tarefaPaiId",
+          "nullable": true,
+          "placement": "column"
+        },
+        {
+          "field": "criadaEm",
+          "column": "criadaEm",
+          "nullable": false,
+          "placement": "column"
+        },
+        {
+          "field": "details.descricao",
+          "column": "json:details.descricao",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.etiquetas",
+          "column": "json:details.etiquetas",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.motivoDevolucao",
+          "column": "json:details.motivoDevolucao",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.devolvidaEm",
+          "column": "json:details.devolvidaEm",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.retomadaEm",
+          "column": "json:details.retomadaEm",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.concluidaEm",
+          "column": "json:details.concluidaEm",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.canceladaEm",
+          "column": "json:details.canceladaEm",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.quemAgeAgora",
+          "column": "json:details.quemAgeAgora",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.aberta",
+          "column": "json:details.aberta",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.venceHoje",
+          "column": "json:details.venceHoje",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.atrasada",
+          "column": "json:details.atrasada",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.devolvidaPendente",
+          "column": "json:details.devolvidaPendente",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.quantidadeSubtarefas",
+          "column": "json:details.quantidadeSubtarefas",
+          "nullable": true,
+          "placement": "json"
+        },
+        {
+          "field": "details.progressoChecklist",
+          "column": "json:details.progressoChecklist",
+          "nullable": true,
+          "placement": "json"
+        }
+      ],
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryAdapter",
+        "artifactId": "TarefaRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [],
+        "data": {
+          "entityId": "Tarefa",
+          "portId": "TarefaRepository",
+          "tableId": "tarefa",
+          "columns": [
+            {
+              "field": "id",
+              "column": "id"
+            },
+            {
+              "field": "version",
+              "column": "json:version"
+            },
+            {
+              "field": "titulo",
+              "column": "titulo"
+            },
+            {
+              "field": "status",
+              "column": "status"
+            },
+            {
+              "field": "prioridade",
+              "column": "prioridade"
+            },
+            {
+              "field": "prazo",
+              "column": "prazo"
+            },
+            {
+              "field": "listaId",
+              "column": "listaId"
+            },
+            {
+              "field": "responsavelId",
+              "column": "responsavelId"
+            },
+            {
+              "field": "criadorId",
+              "column": "criadorId"
+            },
+            {
+              "field": "tarefaPaiId",
+              "column": "tarefaPaiId"
+            },
+            {
+              "field": "criadaEm",
+              "column": "criadaEm"
+            },
+            {
+              "field": "details.descricao",
+              "column": "json:details.descricao"
+            },
+            {
+              "field": "details.etiquetas",
+              "column": "json:details.etiquetas"
+            },
+            {
+              "field": "details.motivoDevolucao",
+              "column": "json:details.motivoDevolucao"
+            },
+            {
+              "field": "details.devolvidaEm",
+              "column": "json:details.devolvidaEm"
+            },
+            {
+              "field": "details.retomadaEm",
+              "column": "json:details.retomadaEm"
+            },
+            {
+              "field": "details.concluidaEm",
+              "column": "json:details.concluidaEm"
+            },
+            {
+              "field": "details.canceladaEm",
+              "column": "json:details.canceladaEm"
+            },
+            {
+              "field": "details.quemAgeAgora",
+              "column": "json:details.quemAgeAgora"
+            },
+            {
+              "field": "details.aberta",
+              "column": "json:details.aberta"
+            },
+            {
+              "field": "details.venceHoje",
+              "column": "json:details.venceHoje"
+            },
+            {
+              "field": "details.atrasada",
+              "column": "json:details.atrasada"
+            },
+            {
+              "field": "details.devolvidaPendente",
+              "column": "json:details.devolvidaPendente"
+            },
+            {
+              "field": "details.quantidadeSubtarefas",
+              "column": "json:details.quantidadeSubtarefas"
+            },
+            {
+              "field": "details.progressoChecklist",
+              "column": "json:details.progressoChecklist"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "problems": [],
+  "normalizations": [
+    {
+      "code": "ENUMERATIONS_NOT_CONSUMED",
+      "path": "domain30.enumerations",
+      "detail": "4 enum values stay on the domain draft. persistence40 does not copy them."
+    },
+    {
+      "code": "PK_INDEX_OMITTED",
+      "path": "id",
+      "detail": "The primary key is not repeated as a secondary index."
+    },
+    {
+      "code": "PK_INDEX_OMITTED",
+      "path": "id",
+      "detail": "The primary key is not repeated as a secondary index."
+    },
+    {
+      "code": "PK_INDEX_OMITTED",
+      "path": "id",
+      "detail": "The primary key is not repeated as a secondary index."
+    },
+    {
+      "code": "DETAILS_COLUMN",
+      "path": "ItemChecklist.details",
+      "detail": "Non-indexed fields use the runtime details JSONB column. Keys inside it are the logical paths."
+    },
+    {
+      "code": "ID_COLUMN",
+      "path": "ItemChecklist.id",
+      "detail": "Primary key column name is the logical field id."
+    },
+    {
+      "code": "VERSION_IN_DETAILS",
+      "path": "ItemChecklist.version",
+      "detail": "Row version stays the logical field version inside details JSON. It is not the table schema version and it was not renamed."
+    },
+    {
+      "code": "OUT_OF_STEP",
+      "path": "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.defs.ts",
+      "detail": "persistence40 does not write seeds or the registry."
+    },
+    {
+      "code": "OUT_OF_STEP",
+      "path": "l1/tarefas/layer_1_external/adapters/persistence/seeds.defs.ts",
+      "detail": "persistence40 does not write seeds or the registry."
+    },
+    {
+      "code": "DETAILS_COLUMN",
+      "path": "ListaTarefas.details",
+      "detail": "Non-indexed fields use the runtime details JSONB column. Keys inside it are the logical paths."
+    },
+    {
+      "code": "ID_COLUMN",
+      "path": "ListaTarefas.id",
+      "detail": "Primary key column name is the logical field id."
+    },
+    {
+      "code": "VERSION_IN_DETAILS",
+      "path": "ListaTarefas.version",
+      "detail": "Row version stays the logical field version inside details JSON. It is not the table schema version and it was not renamed."
+    },
+    {
+      "code": "DETAILS_COLUMN",
+      "path": "Tarefa.details",
+      "detail": "Non-indexed fields use the runtime details JSONB column. Keys inside it are the logical paths."
+    },
+    {
+      "code": "ID_COLUMN",
+      "path": "Tarefa.id",
+      "detail": "Primary key column name is the logical field id."
+    },
+    {
+      "code": "VERSION_IN_DETAILS",
+      "path": "Tarefa.version",
+      "detail": "Row version stays the logical field version inside details JSON. It is not the table schema version and it was not renamed."
+    }
+  ],
+  "preserved": [],
+  "removed": [],
+  "emit": [
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "table",
+        "artifactId": "itemChecklist",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts"
+        ],
+        "data": {
+          "tableId": "itemChecklist",
+          "entityId": "ItemChecklist",
+          "physicalName": "tarefas_itemchecklist",
+          "primaryKey": [
+            "id"
+          ],
+          "uniqueKeys": [],
+          "indexes": [
+            {
+              "name": "tarefas_itemchecklist_tarefaId",
+              "columns": [
+                "tarefaId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_itemchecklist_ordem",
+              "columns": [
+                "ordem"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/table/itemChecklist",
+          "type": "table",
+          "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/domainEntity/ItemChecklist"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/table.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryAdapter",
+        "artifactId": "ItemChecklistRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+          "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts"
+        ],
+        "data": {
+          "entityId": "ItemChecklist",
+          "portId": "ItemChecklistRepository",
+          "tableId": "itemChecklist",
+          "columns": [
+            {
+              "field": "id",
+              "column": "id"
+            },
+            {
+              "field": "version",
+              "column": "json:version"
+            },
+            {
+              "field": "tarefaId",
+              "column": "tarefaId"
+            },
+            {
+              "field": "ordem",
+              "column": "ordem"
+            },
+            {
+              "field": "details.descricao",
+              "column": "json:details.descricao"
+            },
+            {
+              "field": "details.concluido",
+              "column": "json:details.concluido"
+            },
+            {
+              "field": "details.concluidoEm",
+              "column": "json:details.concluidoEm"
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/repositoryAdapter/ItemChecklistRepository",
+          "type": "repositoryAdapter",
+          "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklistRepositoryAdapter.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+            "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/repositoryPort/ItemChecklistRepository",
+            "102047/tarefas/table/itemChecklist"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/repositoryAdapter.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "table",
+        "artifactId": "listaTarefas",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts"
+        ],
+        "data": {
+          "tableId": "listaTarefas",
+          "entityId": "ListaTarefas",
+          "physicalName": "tarefas_listatarefas",
+          "primaryKey": [
+            "id"
+          ],
+          "uniqueKeys": [
+            [
+              "nome"
+            ]
+          ],
+          "indexes": [
+            {
+              "name": "tarefas_listatarefas_nome",
+              "columns": [
+                "nome"
+              ],
+              "unique": true
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/table/listaTarefas",
+          "type": "table",
+          "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/domainEntity/ListaTarefas"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/table.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryAdapter",
+        "artifactId": "ListaTarefasRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+          "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts"
+        ],
+        "data": {
+          "entityId": "ListaTarefas",
+          "portId": "ListaTarefasRepository",
+          "tableId": "listaTarefas",
+          "columns": [
+            {
+              "field": "id",
+              "column": "id"
+            },
+            {
+              "field": "version",
+              "column": "json:version"
+            },
+            {
+              "field": "nome",
+              "column": "nome"
+            },
+            {
+              "field": "details.descricao",
+              "column": "json:details.descricao"
+            },
+            {
+              "field": "details.quantidadeTarefasAbertas",
+              "column": "json:details.quantidadeTarefasAbertas"
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/repositoryAdapter/ListaTarefasRepository",
+          "type": "repositoryAdapter",
+          "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefasRepositoryAdapter.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_1_external/adapters/persistence/listaTarefas.defs.ts",
+            "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/repositoryPort/ListaTarefasRepository",
+            "102047/tarefas/table/listaTarefas"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/repositoryAdapter.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "table",
+        "artifactId": "tarefa",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.defs.ts"
+        ],
+        "data": {
+          "tableId": "tarefa",
+          "entityId": "Tarefa",
+          "physicalName": "tarefas_tarefa",
+          "primaryKey": [
+            "id"
+          ],
+          "uniqueKeys": [],
+          "indexes": [
+            {
+              "name": "tarefas_tarefa_titulo",
+              "columns": [
+                "titulo"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_status",
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_prioridade",
+              "columns": [
+                "prioridade"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_prazo",
+              "columns": [
+                "prazo"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_listaId",
+              "columns": [
+                "listaId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_responsavelId",
+              "columns": [
+                "responsavelId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_criadorId",
+              "columns": [
+                "criadorId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_tarefaPaiId",
+              "columns": [
+                "tarefaPaiId"
+              ],
+              "unique": false
+            },
+            {
+              "name": "tarefas_tarefa_criadaEm",
+              "columns": [
+                "criadaEm"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/table/tarefa",
+          "type": "table",
+          "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/domainEntity/Tarefa"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/table.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryAdapter",
+        "artifactId": "TarefaRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+          "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts"
+        ],
+        "data": {
+          "entityId": "Tarefa",
+          "portId": "TarefaRepository",
+          "tableId": "tarefa",
+          "columns": [
+            {
+              "field": "id",
+              "column": "id"
+            },
+            {
+              "field": "version",
+              "column": "json:version"
+            },
+            {
+              "field": "titulo",
+              "column": "titulo"
+            },
+            {
+              "field": "status",
+              "column": "status"
+            },
+            {
+              "field": "prioridade",
+              "column": "prioridade"
+            },
+            {
+              "field": "prazo",
+              "column": "prazo"
+            },
+            {
+              "field": "listaId",
+              "column": "listaId"
+            },
+            {
+              "field": "responsavelId",
+              "column": "responsavelId"
+            },
+            {
+              "field": "criadorId",
+              "column": "criadorId"
+            },
+            {
+              "field": "tarefaPaiId",
+              "column": "tarefaPaiId"
+            },
+            {
+              "field": "criadaEm",
+              "column": "criadaEm"
+            },
+            {
+              "field": "details.descricao",
+              "column": "json:details.descricao"
+            },
+            {
+              "field": "details.etiquetas",
+              "column": "json:details.etiquetas"
+            },
+            {
+              "field": "details.motivoDevolucao",
+              "column": "json:details.motivoDevolucao"
+            },
+            {
+              "field": "details.devolvidaEm",
+              "column": "json:details.devolvidaEm"
+            },
+            {
+              "field": "details.retomadaEm",
+              "column": "json:details.retomadaEm"
+            },
+            {
+              "field": "details.concluidaEm",
+              "column": "json:details.concluidaEm"
+            },
+            {
+              "field": "details.canceladaEm",
+              "column": "json:details.canceladaEm"
+            },
+            {
+              "field": "details.quemAgeAgora",
+              "column": "json:details.quemAgeAgora"
+            },
+            {
+              "field": "details.aberta",
+              "column": "json:details.aberta"
+            },
+            {
+              "field": "details.venceHoje",
+              "column": "json:details.venceHoje"
+            },
+            {
+              "field": "details.atrasada",
+              "column": "json:details.atrasada"
+            },
+            {
+              "field": "details.devolvidaPendente",
+              "column": "json:details.devolvidaPendente"
+            },
+            {
+              "field": "details.quantidadeSubtarefas",
+              "column": "json:details.quantidadeSubtarefas"
+            },
+            {
+              "field": "details.progressoChecklist",
+              "column": "json:details.progressoChecklist"
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/repositoryAdapter/TarefaRepository",
+          "type": "repositoryAdapter",
+          "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefaRepositoryAdapter.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_1_external/adapters/persistence/tarefa.defs.ts",
+            "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/repositoryPort/TarefaRepository",
+            "102047/tarefas/table/tarefa"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/repositoryAdapter.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryPort",
+        "artifactId": "ItemChecklistRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts"
+        ],
+        "data": {
+          "entityId": "ItemChecklist",
+          "interfaceName": "ItemChecklistRepository",
+          "methods": [
+            {
+              "name": "create",
+              "params": [
+                "ItemChecklist"
+              ],
+              "returns": "ItemChecklist"
+            },
+            {
+              "name": "list",
+              "params": [
+                "ItemChecklistFilter"
+              ],
+              "returns": "ItemChecklist[]"
+            },
+            {
+              "name": "update",
+              "params": [
+                "ItemChecklist"
+              ],
+              "returns": "ItemChecklist"
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/repositoryPort/ItemChecklistRepository",
+          "type": "repositoryPort",
+          "defPath": "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_2_application/ports/itemChecklistRepository.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_3_domain/entities/itemChecklist.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/domainEntity/ItemChecklist"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/repositoryPort.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryPort",
+        "artifactId": "ListaTarefasRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts"
+        ],
+        "data": {
+          "entityId": "ListaTarefas",
+          "interfaceName": "ListaTarefasRepository",
+          "methods": [
+            {
+              "name": "create",
+              "params": [
+                "ListaTarefas"
+              ],
+              "returns": "ListaTarefas"
+            },
+            {
+              "name": "list",
+              "params": [
+                "ListaTarefasFilter"
+              ],
+              "returns": "ListaTarefas[]"
+            },
+            {
+              "name": "update",
+              "params": [
+                "ListaTarefas"
+              ],
+              "returns": "ListaTarefas"
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/repositoryPort/ListaTarefasRepository",
+          "type": "repositoryPort",
+          "defPath": "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_2_application/ports/listaTarefasRepository.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/domainEntity/ListaTarefas"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/repositoryPort.md"
+          ]
+        }
+      ]
+    },
+    {
+      "definition": {
+        "schemaVersion": "2026-09-24-d1-definition-v2",
+        "artifactType": "repositoryPort",
+        "artifactId": "TarefaRepository",
+        "moduleName": "tarefas",
+        "status": "pending",
+        "dependencies": [
+          "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.defs.ts"
+        ],
+        "data": {
+          "entityId": "Tarefa",
+          "interfaceName": "TarefaRepository",
+          "methods": [
+            {
+              "name": "create",
+              "params": [
+                "Tarefa"
+              ],
+              "returns": "Tarefa"
+            },
+            {
+              "name": "list",
+              "params": [
+                "TarefaFilter"
+              ],
+              "returns": "Tarefa[]"
+            },
+            {
+              "name": "update",
+              "params": [
+                "Tarefa"
+              ],
+              "returns": "Tarefa"
+            },
+            {
+              "name": "transition",
+              "params": [
+                "Tarefa",
+                "transitionId"
+              ],
+              "returns": "Tarefa"
+            }
+          ]
+        }
+      },
+      "pipeline": [
+        {
+          "id": "102047/tarefas/repositoryPort/TarefaRepository",
+          "type": "repositoryPort",
+          "defPath": "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+          "outputPath": "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.ts",
+          "outputAvailability": "future",
+          "dependsFiles": [
+            "_102047_/l1/tarefas/layer_3_domain/entities/tarefa.defs.ts"
+          ],
+          "dependsOn": [
+            "102047/tarefas/domainEntity/Tarefa"
+          ],
+          "skills": [
+            "_102021_/l2/agentDefsL1/skills/architecture.md",
+            "_102021_/l2/agentDefsL1/skills/repositoryPort.md"
+          ]
+        }
+      ]
+    }
+  ]
+}

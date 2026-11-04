@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2026-09-24-m1-receipt-v1",
+  "runId": "d1",
+  "candidateId": "",
+  "defPath": "_102047_/l1/tarefas/layer_1_external/adapters/integration/outbound.defs.ts",
+  "artifactType": "integrationOutbound",
+  "artifactId": "outbound",
+  "recipeVersion": "d1",
+  "semanticHash": "sha256:d4b1912e62e3c0df6a608dc2c5279100365cac79ec753495a044caf50cb93a18",
+  "dependencyHashes": {},
+  "sourceHashes": {},
+  "outputHashes": {},
+  "stage": "plan",
+  "verifications": [],
+  "failures": [],
+  "attempts": 0,
+  "reason": "INTEGRATION_UNBOUND: tarefaCancelada has no runtime mechanism."
+}

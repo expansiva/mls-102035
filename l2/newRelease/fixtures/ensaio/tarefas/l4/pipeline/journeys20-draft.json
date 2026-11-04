@@ -1,0 +1,623 @@
+{
+  "journeys": [
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "configurarParticipantes",
+      "business": {
+        "actorRef": "gestor",
+        "title": "Configurar participantes",
+        "goal": "Escolher, entre os usuários da organização, quem participa do módulo e marcar quem aceita tarefas e quem pode criar tarefas.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarUsuario",
+            "kind": "locate",
+            "entity": "Participante",
+            "title": "Buscar usuário pelo nome",
+            "description": "O gestor busca o usuário na lista de usuários da organização pelo nome, sem cadastrar ninguém nem pedir dado pessoal."
+          },
+          {
+            "stepId": "incluirParticipante",
+            "kind": "act",
+            "entity": "Participante",
+            "effect": "create",
+            "title": "Incluir participante",
+            "description": "O gestor inclui o usuário como participante; enquanto não configurado, ele aceita tarefas e pode criar tarefas."
+          },
+          {
+            "stepId": "marcarPermissoes",
+            "kind": "act",
+            "entity": "Participante",
+            "effect": "update",
+            "title": "Marcar aceita e pode criar",
+            "description": "O gestor marca se o participante aceita tarefas e se pode criar tarefas; uma escolha já feita nunca é sobrescrita automaticamente."
+          }
+        ],
+        "outcome": {
+          "statement": "O usuário participa do módulo com as marcas de aceitar e criar tarefas definidas pelo gestor.",
+          "evidence": [
+            "O participante aparece na lista de participantes com as marcas escolhidas",
+            "Só quem aceita tarefas aparece na escolha de responsável"
+          ]
+        }
+      },
+      "businessHash": "sha256:86c4ff1298cb0c8d66a7aea5b51615752da30ea29acda68fd2e9cc612ac8ed91"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "manterListas",
+      "business": {
+        "actorRef": "gestor",
+        "title": "Manter listas de tarefas",
+        "goal": "Cadastrar e ajustar as listas que agrupam tarefas por projeto ou área.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "localizarLista",
+            "kind": "locate",
+            "entity": "ListaTarefas",
+            "title": "Ver listas",
+            "description": "O gestor abre as listas existentes, com lista vazia e erro mostrados separadamente."
+          },
+          {
+            "stepId": "criarLista",
+            "kind": "act",
+            "entity": "ListaTarefas",
+            "effect": "create",
+            "title": "Criar lista",
+            "description": "O gestor cria uma nova lista informando seu nome."
+          },
+          {
+            "stepId": "editarLista",
+            "kind": "act",
+            "entity": "ListaTarefas",
+            "effect": "update",
+            "title": "Editar lista",
+            "description": "O gestor altera os dados de uma lista existente."
+          }
+        ],
+        "outcome": {
+          "statement": "As listas estão disponíveis para agrupar as tarefas.",
+          "evidence": [
+            "A lista aparece na escolha de lista ao criar uma tarefa"
+          ]
+        }
+      },
+      "businessHash": "sha256:1124a07b484bb371ce9c91e045b35452806d5b8c2eaf813a45fe54a91699a38b"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "criarTarefa",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Criar tarefa",
+        "goal": "Registrar uma tarefa com responsável, prazo e prioridade para que seja executada.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "preencherTarefa",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "create",
+            "title": "Nova tarefa",
+            "description": "O membro que pode criar tarefas informa título, descrição, prioridade, prazo, lista, tarefa pai opcional, etiquetas e escolhe o responsável pelo nome numa lista com busca entre quem aceita tarefas; o responsável é avisado."
+          },
+          {
+            "stepId": "adicionarChecklist",
+            "kind": "act",
+            "entity": "ItemChecklist",
+            "effect": "create",
+            "title": "Adicionar itens da checklist",
+            "description": "O membro adiciona itens marcáveis à checklist da tarefa."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa existe na situação a fazer e o responsável foi avisado.",
+          "evidence": [
+            "A tarefa aparece em a fazer nas tarefas criadas pelo membro",
+            "O responsável recebe o aviso da nova tarefa"
+          ]
+        }
+      },
+      "businessHash": "sha256:a48a45820c70b44c615adc0d80a9d2ee7ec1a85d963aa064d317380a2b2222bb"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "executarTarefa",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Executar tarefa e enviar para revisão",
+        "goal": "Iniciar a tarefa de que é responsável e enviá-la para revisão de quem criou.",
+        "entry": {
+          "mode": "fromNotification"
+        },
+        "steps": [
+          {
+            "stepId": "abrirTarefa",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Abrir tarefa avisada",
+            "description": "O responsável abre a tarefa a partir do aviso ou das suas tarefas."
+          },
+          {
+            "stepId": "verTarefa",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ver detalhes da tarefa",
+            "description": "O responsável lê descrição, prazo, checklist e a conversa da tarefa."
+          },
+          {
+            "stepId": "iniciarTarefa",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "iniciar",
+            "title": "Iniciar tarefa",
+            "description": "O responsável passa a tarefa de a fazer para em andamento."
+          },
+          {
+            "stepId": "marcarItem",
+            "kind": "act",
+            "entity": "ItemChecklist",
+            "effect": "update",
+            "title": "Marcar item da checklist",
+            "description": "O responsável marca os itens concluídos da checklist."
+          },
+          {
+            "stepId": "enviarRevisao",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "enviarParaRevisao",
+            "title": "Enviar para revisão",
+            "description": "O responsável envia a tarefa para revisão e quem criou passa a ser quem age agora e é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa está em revisão aguardando quem criou.",
+          "evidence": [
+            "A situação da tarefa mostra em revisão",
+            "Quem criou recebe o aviso e vê a tarefa no que depende dele agora"
+          ]
+        }
+      },
+      "businessHash": "sha256:bf9a413baf95b6d695a9f2b0b07f1841cf44081103c9e2f7f60f9a6f72019462"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "revisarTarefa",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Revisar tarefa",
+        "goal": "Aceitar ou devolver com motivo uma tarefa que criou e que está em revisão.",
+        "entry": {
+          "mode": "fromNotification"
+        },
+        "steps": [
+          {
+            "stepId": "abrirRevisao",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Abrir tarefa em revisão",
+            "description": "Quem criou abre a tarefa a partir do aviso ou do que depende dele agora."
+          },
+          {
+            "stepId": "conferirTarefa",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Conferir entrega",
+            "description": "Quem criou confere checklist, campos e a conversa da tarefa."
+          },
+          {
+            "stepId": "decidirRevisao",
+            "kind": "decide",
+            "entity": "Tarefa",
+            "title": "Aceitar ou devolver",
+            "description": "Quem criou decide se aceita a entrega ou devolve ao responsável."
+          },
+          {
+            "stepId": "aceitarTarefa",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "aceitar",
+            "title": "Aceitar tarefa",
+            "description": "Quem criou aceita e a tarefa fica concluída."
+          },
+          {
+            "stepId": "devolverTarefa",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "devolver",
+            "title": "Devolver com motivo",
+            "description": "Quem criou informa o motivo e a tarefa volta a em andamento; o responsável é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa foi concluída ou voltou ao responsável com o motivo.",
+          "evidence": [
+            "A situação mostra concluída, ou em andamento com o motivo da devolução visível",
+            "O responsável é avisado quando a tarefa é devolvida"
+          ]
+        }
+      },
+      "businessHash": "sha256:525054bd6bb269f66350e139f533fc0c9e0c146cbec9c4d3e679ac13b9254afe"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "retomarTarefa",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Retomar tarefa devolvida",
+        "goal": "Retomar a tarefa devolvida, corrigir e enviar novamente para revisão.",
+        "entry": {
+          "mode": "fromNotification"
+        },
+        "steps": [
+          {
+            "stepId": "lerMotivo",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ler motivo da devolução",
+            "description": "O responsável abre a tarefa direto do aviso de devolução e lê o motivo informado por quem criou."
+          },
+          {
+            "stepId": "retomar",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "retomar",
+            "title": "Retomar tarefa",
+            "description": "O responsável retoma a tarefa para continuar o trabalho."
+          },
+          {
+            "stepId": "reenviarRevisao",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "enviarParaRevisao",
+            "title": "Reenviar para revisão",
+            "description": "O responsável envia novamente para revisão e quem criou é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa corrigida voltou para revisão.",
+          "evidence": [
+            "A situação mostra em revisão",
+            "Quem criou recebe novo aviso"
+          ]
+        }
+      },
+      "businessHash": "sha256:9d3e4ded2b1a30e36cb4fa721fcb039837ec5c6c104d17ac37f6359bd723b6fc"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "editarTarefa",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Editar campos da tarefa",
+        "goal": "Ajustar campos de uma tarefa que vê sem mudar sua situação.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarTarefaEdicao",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Localizar tarefa",
+            "description": "O membro localiza a tarefa entre as que é responsável ou criou."
+          },
+          {
+            "stepId": "alterarCampos",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "update",
+            "title": "Editar tarefa",
+            "description": "O membro altera título, descrição, prioridade, prazo, lista ou etiquetas sem mudar a situação."
+          },
+          {
+            "stepId": "ajustarChecklist",
+            "kind": "act",
+            "entity": "ItemChecklist",
+            "effect": "update",
+            "title": "Ajustar checklist",
+            "description": "O membro edita ou marca itens da checklist."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa tem os campos atualizados e mantém a mesma situação.",
+          "evidence": [
+            "Os novos valores aparecem no detalhe da tarefa",
+            "A situação não mudou"
+          ]
+        }
+      },
+      "businessHash": "sha256:9448dda56a93a900b0dce6e4777a18d95cfecdfd0f6201db1b1611ffeffe52a1"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "reatribuirTarefa",
+      "business": {
+        "actorRef": "gestor",
+        "title": "Reatribuir tarefa",
+        "goal": "Trocar o responsável de uma tarefa.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarTarefaReatribuir",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Localizar tarefa",
+            "description": "O gestor localiza a tarefa por lista, responsável ou situação."
+          },
+          {
+            "stepId": "verResponsavelAtual",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ver responsável atual",
+            "description": "O gestor confere o responsável atual, o prazo e a situação antes de trocar."
+          },
+          {
+            "stepId": "trocarResponsavel",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "update",
+            "title": "Trocar responsável",
+            "description": "O gestor escolhe o novo responsável pelo nome entre quem aceita tarefas; quem age agora passa a ser o novo responsável, que é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa tem novo responsável, que passou a ser quem age agora.",
+          "evidence": [
+            "O novo responsável aparece na tarefa",
+            "O novo responsável recebe o aviso"
+          ]
+        }
+      },
+      "businessHash": "sha256:327bac5a7da44364c000049b9b362b7124ccf575df1ad03852a67a389c347a87"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "reatribuirTarefaCriada",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Reatribuir tarefa que criei",
+        "goal": "Trocar o responsável de uma tarefa que o membro criou.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarCriada",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Localizar tarefa criada",
+            "description": "O membro localiza a tarefa entre as que criou."
+          },
+          {
+            "stepId": "verResponsavelCriada",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ver responsável atual",
+            "description": "O membro confere o responsável atual e a situação da tarefa antes de trocar."
+          },
+          {
+            "stepId": "trocarResponsavelCriada",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "update",
+            "title": "Trocar responsável",
+            "description": "O membro escolhe o novo responsável pelo nome entre quem aceita tarefas; o novo responsável passa a agir e é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa criada pelo membro tem novo responsável.",
+          "evidence": [
+            "O novo responsável aparece na tarefa e recebe o aviso"
+          ]
+        }
+      },
+      "businessHash": "sha256:465fe33ef09faeb731b30b39d6645bf9baa107e67822b8c3b056affa97d20360"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cancelarTarefa",
+      "business": {
+        "actorRef": "gestor",
+        "title": "Cancelar tarefa",
+        "goal": "Cancelar uma tarefa que não deve mais ser feita.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarTarefaCancelar",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Localizar tarefa",
+            "description": "O gestor localiza a tarefa em lista ou no quadro."
+          },
+          {
+            "stepId": "cancelar",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "cancelar",
+            "title": "Cancelar tarefa",
+            "description": "O gestor cancela a tarefa e quem estava agindo é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa está cancelada.",
+          "evidence": [
+            "A tarefa aparece na coluna cancelada do quadro"
+          ]
+        }
+      },
+      "businessHash": "sha256:44bfbcc432a73799ad8092eaf75dcb02f0ef3b3c1893856e50bdc6c1395d2ea6"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "cancelarTarefaCriada",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Cancelar tarefa que criei",
+        "goal": "Cancelar uma tarefa que o membro criou.",
+        "entry": {
+          "mode": "contextOrLookup"
+        },
+        "steps": [
+          {
+            "stepId": "localizarCriadaCancelar",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Localizar tarefa criada",
+            "description": "O membro localiza a tarefa entre as que criou."
+          },
+          {
+            "stepId": "cancelarCriada",
+            "kind": "act",
+            "entity": "Tarefa",
+            "effect": "transition",
+            "transitionRef": "cancelar",
+            "title": "Cancelar tarefa",
+            "description": "Quem criou cancela a tarefa e o responsável é avisado."
+          }
+        ],
+        "outcome": {
+          "statement": "A tarefa criada pelo membro está cancelada.",
+          "evidence": [
+            "A situação mostra cancelada"
+          ]
+        }
+      },
+      "businessHash": "sha256:6c373b2c4170600e6e48bd300a158d72c546da16d775cbc50c005e2cd90cff90"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "minhasTarefas",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Ver minhas tarefas",
+        "goal": "Ver as tarefas de que é responsável, as que criou e o que depende dele agora.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "listarMinhas",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Minhas tarefas",
+            "description": "O membro vê suas tarefas separadas em responsável, criadas e o que depende de mim agora, com lista vazia e erro mostrados separadamente."
+          },
+          {
+            "stepId": "verDetalhe",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ver detalhe",
+            "description": "O membro abre uma tarefa e vê campos, subtarefas, checklist e acesso à conversa da tarefa."
+          }
+        ],
+        "outcome": {
+          "statement": "O membro sabe o que tem a fazer e o que aguarda sua ação.",
+          "evidence": [
+            "As tarefas aparecem agrupadas por responsável, criadas e depende de mim agora"
+          ]
+        }
+      },
+      "businessHash": "sha256:26f27a78f883bb10a966e8639e7789a4ba0196bf540f28baf6d3558eeac2da98"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "resumoDiario",
+      "business": {
+        "actorRef": "membroEquipe",
+        "title": "Receber resumo das 8h",
+        "goal": "Ver as tarefas abertas que vencem hoje ou estão atrasadas.",
+        "entry": {
+          "mode": "fromNotification"
+        },
+        "steps": [
+          {
+            "stepId": "lerResumo",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ler resumo do dia",
+            "description": "O responsável lê no aviso diário das 8h suas tarefas abertas que vencem hoje ou estão atrasadas."
+          },
+          {
+            "stepId": "verVencendo",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ver tarefa vencendo",
+            "description": "O responsável abre uma das tarefas do resumo para ver o prazo e o que falta."
+          }
+        ],
+        "outcome": {
+          "statement": "O responsável conhece as tarefas que vencem hoje ou estão atrasadas.",
+          "evidence": [
+            "O aviso lista só tarefas abertas com prazo hoje ou vencido"
+          ]
+        }
+      },
+      "businessHash": "sha256:6405b62daa3f961495fba20ab57d550769d902eda40254b195404139ac6dad8f"
+    },
+    {
+      "schemaVersion": "2026-09-10-ns5-journey-v1",
+      "journeyId": "acompanharTarefas",
+      "business": {
+        "actorRef": "gestor",
+        "title": "Acompanhar todas as tarefas",
+        "goal": "Acompanhar todas as tarefas por lista, responsável, prioridade, prazo e situação, em lista e em quadro.",
+        "entry": {
+          "mode": "coldStart"
+        },
+        "steps": [
+          {
+            "stepId": "filtrarTarefas",
+            "kind": "locate",
+            "entity": "Tarefa",
+            "title": "Filtrar tarefas",
+            "description": "O gestor filtra todas as tarefas por lista, responsável, prioridade, prazo e situação, com lista vazia e erro mostrados separadamente."
+          },
+          {
+            "stepId": "verQuadro",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Ver quadro por situação",
+            "description": "O gestor alterna entre a visão em lista e o quadro com colunas por situação."
+          },
+          {
+            "stepId": "abrirTarefaGestor",
+            "kind": "inspect",
+            "entity": "Tarefa",
+            "title": "Abrir tarefa",
+            "description": "O gestor abre uma tarefa para ver detalhes, checklist e conversa."
+          }
+        ],
+        "outcome": {
+          "statement": "O gestor tem visão de todas as tarefas da equipe.",
+          "evidence": [
+            "O quadro mostra as tarefas nas colunas a fazer, em andamento, em revisão, concluída e cancelada",
+            "Os filtros aplicados restringem a lista e o quadro"
+          ]
+        }
+      },
+      "businessHash": "sha256:b2139d456f412d315d7bf7ba425b5c9722cf3b5170562489b2d0827eb1176ff1"
+    }
+  ],
+  "systemDecisions": [],
+  "droppedActors": [],
+  "removedOrphans": []
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "tests",
+  "unitId": "tarefas_equipe",
+  "defRef": "",
+  "status": "done",
+  "code": "",
+  "attempt": 1,
+  "diagnostic": "",
+  "inputHash": "sha256:a589580bbb93005848afea8a9b0b85e90aeae26e9f20828ff1ad5ebd18ff189c",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/tarefas_equipe.test.ts": "sha256:34ec3699b4fecad41a0cb41aa90b0e3a3f469a2e1600da0f4eda7514cfc0af79"
+  },
+  "updatedAt": "2026-10-23T02:43:49.475Z"
+}

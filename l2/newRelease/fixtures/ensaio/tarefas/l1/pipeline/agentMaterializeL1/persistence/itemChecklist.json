@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "persistence",
+  "unitId": "itemChecklist",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:a8f3c72961313b46eced3f8d49798f837932dba112ad26b70889f2496fb052ee",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/itemChecklist.ts": "sha256:3bb60c8b14dd5d7f7074548d35d9c17b9696800b8971aa75bf324ecf660beead"
+  },
+  "updatedAt": "2026-10-23T02:35:18.916Z"
+}

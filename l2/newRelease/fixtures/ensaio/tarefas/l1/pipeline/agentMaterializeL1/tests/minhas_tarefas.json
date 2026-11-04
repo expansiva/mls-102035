@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "tests",
+  "unitId": "minhas_tarefas",
+  "defRef": "",
+  "status": "failed",
+  "code": "PROMPT_FAILED",
+  "attempt": 1,
+  "diagnostic": "M12_PROMPT_LIMIT: 168187",
+  "inputHash": "",
+  "outputs": {},
+  "updatedAt": "2026-10-23T02:51:14.850Z"
+}

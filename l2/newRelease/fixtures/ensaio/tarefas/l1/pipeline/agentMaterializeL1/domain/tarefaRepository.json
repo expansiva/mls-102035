@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "domain",
+  "unitId": "tarefaRepository",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:1ff3442b905c9b3baeaacca627052f06c016ab51abb97276cf5dada76c4845e2",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/ports/tarefaRepository.ts": "sha256:b3303903aa95b1fb561cc41c8e07361aa9f7af7c59ccac9d6398b5672e91d33f"
+  },
+  "updatedAt": "2026-10-23T02:35:18.425Z"
+}

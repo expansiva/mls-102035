@@ -1,0 +1,11 @@
+{
+  "unitId": "r17",
+  "status": "parsed",
+  "trace": "resolve25 recorded 1 answers for tarefas.minhas_tarefas.qryResponsaveis.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r17",
+  "calls": 1,
+  "answers": {
+    "g0": "participantes:details.identification.name"
+  }
+}

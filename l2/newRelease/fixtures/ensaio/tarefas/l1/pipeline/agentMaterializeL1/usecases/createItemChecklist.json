@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "createItemChecklist",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/createItemChecklist.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): marcarItemNaoMudaSituacao — The rule is about marking or unmarking an existing item; creating an item is not a marking operation. This usecase never writes to the Tarefa, so its status is untouched anyway..",
+  "inputHash": "sha256:e693b3549f2e7e88defb66f92f1f820d13aa14daa909d0cb8d8f1876afc57273",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/createItemChecklist.ts": "sha256:9404a9ff70e53434ae86f45b74caf72850bfa0f3aa3b384312073ae1d15e3139"
+  },
+  "updatedAt": "2026-10-23T02:35:45.771Z"
+}

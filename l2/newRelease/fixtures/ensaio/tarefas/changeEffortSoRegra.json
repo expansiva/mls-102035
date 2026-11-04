@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "2026-10-25-p4-change-effort-v2",
+  "module": "tarefas",
+  "base": {
+    "baseId": "base-fixture",
+    "revisionId": "review-fixture",
+    "candidateRoot": "tarefas/pipeline/changes/change-fixture/revisions/review-fixture/l4"
+  },
+  "request": {
+    "text": "O nome de uma lista de tarefas passa a ter no mínimo 4 caracteres.",
+    "items": [
+      {
+        "changeId": "rule:nomeListaUnico",
+        "kind": "rule",
+        "op": "changed",
+        "entity": "",
+        "source": "rules.defs.ts",
+        "before": {
+          "ruleId": "nomeListaUnico",
+          "description": "O nome de uma lista de tarefas é obrigatório e não pode repetir o nome de outra lista."
+        },
+        "after": {
+          "ruleId": "nomeListaUnico",
+          "description": "O nome de uma lista de tarefas é obrigatório, tem no mínimo 4 caracteres e não pode repetir o nome de outra lista."
+        }
+      }
+    ]
+  },
+  "masters": [
+    {
+      "project": "102020",
+      "kind": "l2",
+      "device": "web"
+    },
+    {
+      "project": "102021",
+      "kind": "l1",
+      "device": "web"
+    }
+  ],
+  "perItem": [
+    {
+      "item": "rule:nomeListaUnico",
+      "answers": [
+        {
+          "master": {
+            "project": "102020",
+            "kind": "l2",
+            "device": "web"
+          },
+          "item": "rule:nomeListaUnico",
+          "status": "computed",
+          "create": [],
+          "regenerateDefs": [],
+          "materialize": [],
+          "remove": [],
+          "runAgents": [],
+          "contract": "keep"
+        },
+        {
+          "master": {
+            "project": "102021",
+            "kind": "l1",
+            "device": "web"
+          },
+          "item": "rule:nomeListaUnico",
+          "status": "computed",
+          "create": [],
+          "regenerateDefs": [],
+          "materialize": [],
+          "remove": [],
+          "runAgents": [],
+          "contract": "keep"
+        }
+      ]
+    }
+  ],
+  "merged": {
+    "create": [],
+    "regenerateDefs": [],
+    "materialize": [],
+    "remove": [],
+    "runAgents": [],
+    "abend": []
+  },
+  "untouched": {
+    "count": 0,
+    "sealHash": "fixture"
+  },
+  "status": "simple"
+}

@@ -1,0 +1,13 @@
+{
+  "unitId": "r19",
+  "status": "parsed",
+  "trace": "resolve25 recorded 3 answers for tarefas.minhas_tarefas.qryTarefasDoGrupo.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r19",
+  "calls": 1,
+  "answers": {
+    "g0": "tarefaResponsavel",
+    "g1": "tarefaCriador",
+    "g2": "none"
+  }
+}

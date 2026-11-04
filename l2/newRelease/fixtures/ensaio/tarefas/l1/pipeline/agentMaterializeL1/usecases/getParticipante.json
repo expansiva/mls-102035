@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "getParticipante",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/getParticipante.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:1c12a75c44afff1eb9e9b8adc16e0736efbd1b0d9447f7aff0b3b117588b8715",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/getParticipante.ts": "sha256:c766809793999b04a60116fa98a9d499860105dd4c23fda6bd1ddcda58c16c6d"
+  },
+  "updatedAt": "2026-10-23T02:35:43.940Z"
+}

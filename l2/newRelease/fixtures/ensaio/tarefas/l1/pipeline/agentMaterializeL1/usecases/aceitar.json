@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "aceitar",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/aceitar.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:a064e57e5df8810b49a675c75f7eb15546b054558bc2a6a80f6d252306388c6e",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/aceitar.ts": "sha256:4497613df1e2023248407935006a146c74260007980a0beb402ff90e08ec818b"
+  },
+  "updatedAt": "2026-10-23T02:35:44.074Z"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "retomar",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/retomar.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:88a43f0f976b77077c460e9a79c8ca485587251f3d65dc3fd72068b5c0d5460e",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/retomar.ts": "sha256:b4c8c10c687599a51d65e5824ae597f9b3f1aa86e70920cbb693a31de94b1fdd"
+  },
+  "updatedAt": "2026-10-23T02:35:47.193Z"
+}

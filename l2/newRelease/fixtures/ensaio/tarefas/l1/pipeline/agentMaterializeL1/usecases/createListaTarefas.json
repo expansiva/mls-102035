@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "createListaTarefas",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:a14f833c12e996474a8f8b301f58fbcb22c96374f741efb497358738ce469260",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/createListaTarefas.ts": "sha256:00a88ae04e204f5e4386bd67e30bc551b7b721f85472177576ca83efff3b6b7b"
+  },
+  "updatedAt": "2026-10-23T02:35:36.293Z"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "listTarefa",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/listTarefa.defs.ts",
+  "attempt": 2,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:744eac4a0c6b22f091f1db58c96733b3827301adb9c03a3658f24469c9d507cf",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/listTarefa.ts": "sha256:52f22bfe683eb386fc2272237b8d7cf18998b5be8ba3e4e94413cb3faef31cc0"
+  },
+  "updatedAt": "2026-10-23T02:36:03.635Z"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "tests",
+  "unitId": "participantes",
+  "defRef": "",
+  "status": "done",
+  "code": "",
+  "attempt": 1,
+  "diagnostic": "",
+  "inputHash": "sha256:9e649d7aea569ede7d68e13a44e2f26ada50013046a5d5603ba04f7ebb55e9a8",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/participantes.test.ts": "sha256:14e2f4b4c4df6c2e34340b6b9890217b51f6fb7542dbb54a17bff428c570197f"
+  },
+  "updatedAt": "2026-10-23T02:43:37.628Z"
+}

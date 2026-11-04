@@ -1,0 +1,12 @@
+{
+  "unitId": "r1b",
+  "status": "parsed",
+  "trace": "resolve25 recorded 2 answers for tarefas.inicio.carregarInicio.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r1b",
+  "calls": 1,
+  "answers": {
+    "g0": "none",
+    "g1": "none"
+  }
+}

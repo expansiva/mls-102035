@@ -1,0 +1,12 @@
+{
+  "unitId": "r4b",
+  "status": "parsed",
+  "trace": "resolve25 recorded 2 answers for tarefas.inicio.iniciarTarefa.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r4b",
+  "calls": 1,
+  "answers": {
+    "g0": "none",
+    "g1": "none"
+  }
+}

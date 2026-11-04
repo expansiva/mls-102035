@@ -1,0 +1,11 @@
+{
+  "unitId": "r22",
+  "status": "parsed",
+  "trace": "resolve25 recorded 1 answers for tarefas.participantes.listarParticipantes.",
+  "unitAttempts": 0,
+  "planId": "resolve25-worker-r22",
+  "calls": 1,
+  "answers": {
+    "g0": "participantes:details.identification.name"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "persistence",
+  "unitId": "outbound",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/adapters/integration/outbound.defs.ts",
+  "attempt": 1,
+  "status": "gap",
+  "code": "MECHANISM_UNBOUND",
+  "diagnostic": "tarefaCancelada, tarefaConcluida have no mechanism. No publisher was written.",
+  "inputHash": "sha256:c06a57a4aa9043f552b63397cbf74cd72a139ec042d5edb0f6f8aad0234a98d1",
+  "outputs": {},
+  "updatedAt": "2026-10-23T02:35:18.825Z"
+}

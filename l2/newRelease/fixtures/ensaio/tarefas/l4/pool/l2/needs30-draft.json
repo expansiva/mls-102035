@@ -1,0 +1,830 @@
+{
+  "thread": "tarefas-20261023014130",
+  "round": 1,
+  "inputFile": "l4/tarefas/pool/l2/20261023014130_tarefas-20261023014130_1.json",
+  "needs": {
+    "schemaVersion": "2026-09-21-p2-needs-v1",
+    "moduleName": "tarefas",
+    "device": "web",
+    "menuSchema": "2026-09-20-p2-menu-v2.2",
+    "pages": [
+      {
+        "pageId": "inicio",
+        "actors": [
+          "membroEquipe"
+        ],
+        "reads": [
+          {
+            "entity": "ItemChecklist",
+            "family": "tdm",
+            "scope": "own",
+            "derived": [
+              "details.concluidoEm"
+            ],
+            "from": [
+              "grant:membroChecklistPropria",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:ItemChecklist/itemChecklistTarefa"
+            ]
+          },
+          {
+            "entity": "ListaTarefas",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.quantidadeTarefasAbertas"
+            ],
+            "from": [
+              "grant:membroConsultarListas",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Tarefa/tarefaLista"
+            ]
+          },
+          {
+            "entity": "Participante",
+            "family": "mdm",
+            "scope": "organization",
+            "derived": [
+              "details.tarefas.aceitaTarefasEfetivo",
+              "details.tarefas.podeCriarTarefasEfetivo"
+            ],
+            "from": [
+              "grant:membroEscolherResponsavel",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:resumoDiario/lerResumo",
+              "journey:resumoDiario/verVencendo",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/tarefaCriador",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "family": "tdm",
+            "scope": "own",
+            "derived": [
+              "criadaEm",
+              "details.aberta",
+              "details.atrasada",
+              "details.devolvidaPendente",
+              "details.progressoChecklist",
+              "details.quantidadeSubtarefas",
+              "details.quemAgeAgora",
+              "details.venceHoje"
+            ],
+            "from": [
+              "grant:membroTarefasProprias",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:resumoDiario/lerResumo",
+              "journey:resumoDiario/verVencendo",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/tarefaCriador",
+              "relationship:Tarefa/tarefaLista",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity": "ItemChecklist",
+            "operation": "update",
+            "transitionRef": "",
+            "from": [
+              "journey:executarTarefa/marcarItem"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "aceitar",
+            "from": [
+              "journey:revisarTarefa/aceitarTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "cancelar",
+            "from": [
+              "journey:revisarTarefa/decidirRevisao"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "devolver",
+            "from": [
+              "journey:revisarTarefa/devolverTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "enviarParaRevisao",
+            "from": [
+              "journey:executarTarefa/enviarRevisao",
+              "journey:retomarTarefa/reenviarRevisao"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "iniciar",
+            "from": [
+              "journey:executarTarefa/iniciarTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "retomar",
+            "from": [
+              "journey:retomarTarefa/retomar"
+            ]
+          }
+        ]
+      },
+      {
+        "pageId": "minhas_tarefas",
+        "actors": [
+          "membroEquipe"
+        ],
+        "reads": [
+          {
+            "entity": "ItemChecklist",
+            "family": "tdm",
+            "scope": "own",
+            "derived": [
+              "details.concluidoEm"
+            ],
+            "from": [
+              "grant:membroChecklistPropria",
+              "journey:cancelarTarefaCriada/cancelarCriada",
+              "journey:cancelarTarefaCriada/localizarCriadaCancelar",
+              "journey:criarTarefa/adicionarChecklist",
+              "journey:criarTarefa/preencherTarefa",
+              "journey:editarTarefa/ajustarChecklist",
+              "journey:editarTarefa/alterarCampos",
+              "journey:editarTarefa/localizarTarefaEdicao",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:minhasTarefas/listarMinhas",
+              "journey:minhasTarefas/verDetalhe",
+              "journey:reatribuirTarefaCriada/localizarCriada",
+              "journey:reatribuirTarefaCriada/trocarResponsavelCriada",
+              "journey:reatribuirTarefaCriada/verResponsavelCriada",
+              "journey:resumoDiario/lerResumo",
+              "journey:resumoDiario/verVencendo",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:Tarefa/itemChecklistTarefa"
+            ]
+          },
+          {
+            "entity": "ListaTarefas",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.quantidadeTarefasAbertas"
+            ],
+            "from": [
+              "grant:membroConsultarListas",
+              "journey:cancelarTarefaCriada/cancelarCriada",
+              "journey:cancelarTarefaCriada/localizarCriadaCancelar",
+              "journey:criarTarefa/adicionarChecklist",
+              "journey:criarTarefa/preencherTarefa",
+              "journey:editarTarefa/ajustarChecklist",
+              "journey:editarTarefa/alterarCampos",
+              "journey:editarTarefa/localizarTarefaEdicao",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:minhasTarefas/listarMinhas",
+              "journey:minhasTarefas/verDetalhe",
+              "journey:reatribuirTarefaCriada/localizarCriada",
+              "journey:reatribuirTarefaCriada/trocarResponsavelCriada",
+              "journey:reatribuirTarefaCriada/verResponsavelCriada",
+              "journey:resumoDiario/lerResumo",
+              "journey:resumoDiario/verVencendo",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Tarefa/tarefaLista"
+            ]
+          },
+          {
+            "entity": "Participante",
+            "family": "mdm",
+            "scope": "organization",
+            "derived": [
+              "details.tarefas.aceitaTarefasEfetivo",
+              "details.tarefas.podeCriarTarefasEfetivo"
+            ],
+            "from": [
+              "grant:membroEscolherResponsavel",
+              "journey:cancelarTarefaCriada/cancelarCriada",
+              "journey:cancelarTarefaCriada/localizarCriadaCancelar",
+              "journey:criarTarefa/adicionarChecklist",
+              "journey:criarTarefa/preencherTarefa",
+              "journey:editarTarefa/ajustarChecklist",
+              "journey:editarTarefa/alterarCampos",
+              "journey:editarTarefa/localizarTarefaEdicao",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:minhasTarefas/listarMinhas",
+              "journey:minhasTarefas/verDetalhe",
+              "journey:reatribuirTarefaCriada/localizarCriada",
+              "journey:reatribuirTarefaCriada/trocarResponsavelCriada",
+              "journey:reatribuirTarefaCriada/verResponsavelCriada",
+              "journey:resumoDiario/lerResumo",
+              "journey:resumoDiario/verVencendo",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/tarefaCriador",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "family": "tdm",
+            "scope": "own",
+            "derived": [
+              "criadaEm",
+              "details.aberta",
+              "details.atrasada",
+              "details.devolvidaPendente",
+              "details.progressoChecklist",
+              "details.quantidadeSubtarefas",
+              "details.quemAgeAgora",
+              "details.venceHoje"
+            ],
+            "from": [
+              "grant:membroTarefasProprias",
+              "journey:cancelarTarefaCriada/cancelarCriada",
+              "journey:cancelarTarefaCriada/localizarCriadaCancelar",
+              "journey:criarTarefa/adicionarChecklist",
+              "journey:criarTarefa/preencherTarefa",
+              "journey:editarTarefa/ajustarChecklist",
+              "journey:editarTarefa/alterarCampos",
+              "journey:editarTarefa/localizarTarefaEdicao",
+              "journey:executarTarefa/abrirTarefa",
+              "journey:executarTarefa/enviarRevisao",
+              "journey:executarTarefa/iniciarTarefa",
+              "journey:executarTarefa/marcarItem",
+              "journey:executarTarefa/verTarefa",
+              "journey:minhasTarefas/listarMinhas",
+              "journey:minhasTarefas/verDetalhe",
+              "journey:reatribuirTarefaCriada/localizarCriada",
+              "journey:reatribuirTarefaCriada/trocarResponsavelCriada",
+              "journey:reatribuirTarefaCriada/verResponsavelCriada",
+              "journey:resumoDiario/lerResumo",
+              "journey:resumoDiario/verVencendo",
+              "journey:retomarTarefa/lerMotivo",
+              "journey:retomarTarefa/reenviarRevisao",
+              "journey:retomarTarefa/retomar",
+              "journey:revisarTarefa/abrirRevisao",
+              "journey:revisarTarefa/aceitarTarefa",
+              "journey:revisarTarefa/conferirTarefa",
+              "journey:revisarTarefa/devolverTarefa",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/itemChecklistTarefa",
+              "relationship:Tarefa/tarefaCriador",
+              "relationship:Tarefa/tarefaLista",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity": "ItemChecklist",
+            "operation": "create",
+            "transitionRef": "",
+            "from": [
+              "journey:criarTarefa/adicionarChecklist"
+            ]
+          },
+          {
+            "entity": "ItemChecklist",
+            "operation": "update",
+            "transitionRef": "",
+            "from": [
+              "journey:editarTarefa/ajustarChecklist",
+              "journey:executarTarefa/marcarItem"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "create",
+            "transitionRef": "",
+            "from": [
+              "journey:criarTarefa/preencherTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "aceitar",
+            "from": [
+              "journey:revisarTarefa/aceitarTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "cancelar",
+            "from": [
+              "journey:cancelarTarefaCriada/cancelarCriada",
+              "journey:revisarTarefa/decidirRevisao"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "devolver",
+            "from": [
+              "journey:revisarTarefa/devolverTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "enviarParaRevisao",
+            "from": [
+              "journey:executarTarefa/enviarRevisao",
+              "journey:retomarTarefa/reenviarRevisao"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "iniciar",
+            "from": [
+              "journey:executarTarefa/iniciarTarefa"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "retomar",
+            "from": [
+              "journey:retomarTarefa/retomar"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "update",
+            "transitionRef": "",
+            "from": [
+              "journey:editarTarefa/alterarCampos",
+              "journey:reatribuirTarefaCriada/trocarResponsavelCriada"
+            ]
+          }
+        ]
+      },
+      {
+        "pageId": "painel_tarefas",
+        "actors": [
+          "gestor"
+        ],
+        "reads": [
+          {
+            "entity": "ItemChecklist",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.concluidoEm"
+            ],
+            "from": [
+              "grant:gestorTodasTarefas",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:Tarefa/itemChecklistTarefa"
+            ]
+          },
+          {
+            "entity": "ListaTarefas",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.quantidadeTarefasAbertas"
+            ],
+            "from": [
+              "grant:gestorListas",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Tarefa/tarefaLista"
+            ]
+          },
+          {
+            "entity": "Participante",
+            "family": "mdm",
+            "scope": "organization",
+            "derived": [
+              "details.tarefas.aceitaTarefasEfetivo",
+              "details.tarefas.podeCriarTarefasEfetivo"
+            ],
+            "from": [
+              "grant:gestorParticipantes",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "criadaEm",
+              "details.aberta",
+              "details.atrasada",
+              "details.devolvidaPendente",
+              "details.progressoChecklist",
+              "details.quantidadeSubtarefas",
+              "details.quemAgeAgora",
+              "details.venceHoje"
+            ],
+            "from": [
+              "grant:gestorTodasTarefas",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/itemChecklistTarefa",
+              "relationship:Tarefa/tarefaLista",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          }
+        ],
+        "writes": []
+      },
+      {
+        "pageId": "tarefas_equipe",
+        "actors": [
+          "gestor"
+        ],
+        "reads": [
+          {
+            "entity": "ItemChecklist",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.concluidoEm"
+            ],
+            "from": [
+              "grant:gestorTodasTarefas",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "journey:cancelarTarefa/cancelar",
+              "journey:cancelarTarefa/localizarTarefaCancelar",
+              "journey:reatribuirTarefa/localizarTarefaReatribuir",
+              "journey:reatribuirTarefa/trocarResponsavel",
+              "journey:reatribuirTarefa/verResponsavelAtual",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:Tarefa/itemChecklistTarefa"
+            ]
+          },
+          {
+            "entity": "ListaTarefas",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.quantidadeTarefasAbertas"
+            ],
+            "from": [
+              "grant:gestorListas",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "journey:cancelarTarefa/cancelar",
+              "journey:cancelarTarefa/localizarTarefaCancelar",
+              "journey:reatribuirTarefa/localizarTarefaReatribuir",
+              "journey:reatribuirTarefa/trocarResponsavel",
+              "journey:reatribuirTarefa/verResponsavelAtual",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Tarefa/tarefaLista"
+            ]
+          },
+          {
+            "entity": "Participante",
+            "family": "mdm",
+            "scope": "organization",
+            "derived": [
+              "details.tarefas.aceitaTarefasEfetivo",
+              "details.tarefas.podeCriarTarefasEfetivo"
+            ],
+            "from": [
+              "grant:gestorParticipantes",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "journey:cancelarTarefa/cancelar",
+              "journey:cancelarTarefa/localizarTarefaCancelar",
+              "journey:reatribuirTarefa/localizarTarefaReatribuir",
+              "journey:reatribuirTarefa/trocarResponsavel",
+              "journey:reatribuirTarefa/verResponsavelAtual",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "criadaEm",
+              "details.aberta",
+              "details.atrasada",
+              "details.devolvidaPendente",
+              "details.progressoChecklist",
+              "details.quantidadeSubtarefas",
+              "details.quemAgeAgora",
+              "details.venceHoje"
+            ],
+            "from": [
+              "grant:gestorTodasTarefas",
+              "journey:acompanharTarefas/abrirTarefaGestor",
+              "journey:acompanharTarefas/filtrarTarefas",
+              "journey:acompanharTarefas/verQuadro",
+              "journey:cancelarTarefa/cancelar",
+              "journey:cancelarTarefa/localizarTarefaCancelar",
+              "journey:reatribuirTarefa/localizarTarefaReatribuir",
+              "journey:reatribuirTarefa/trocarResponsavel",
+              "journey:reatribuirTarefa/verResponsavelAtual",
+              "relationship:ItemChecklist/itemChecklistTarefa",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/itemChecklistTarefa",
+              "relationship:Tarefa/tarefaLista",
+              "relationship:Tarefa/tarefaResponsavel"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity": "Tarefa",
+            "operation": "transition",
+            "transitionRef": "cancelar",
+            "from": [
+              "journey:cancelarTarefa/cancelar"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "operation": "update",
+            "transitionRef": "",
+            "from": [
+              "journey:reatribuirTarefa/trocarResponsavel"
+            ]
+          }
+        ]
+      },
+      {
+        "pageId": "participantes",
+        "actors": [
+          "gestor"
+        ],
+        "reads": [
+          {
+            "entity": "Participante",
+            "family": "mdm",
+            "scope": "organization",
+            "derived": [
+              "details.tarefas.aceitaTarefasEfetivo",
+              "details.tarefas.podeCriarTarefasEfetivo"
+            ],
+            "from": [
+              "grant:gestorParticipantes",
+              "journey:configurarParticipantes/incluirParticipante",
+              "journey:configurarParticipantes/localizarUsuario",
+              "journey:configurarParticipantes/marcarPermissoes",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "criadaEm",
+              "details.aberta",
+              "details.atrasada",
+              "details.devolvidaPendente",
+              "details.progressoChecklist",
+              "details.quantidadeSubtarefas",
+              "details.quemAgeAgora",
+              "details.venceHoje"
+            ],
+            "from": [
+              "grant:gestorTodasTarefas",
+              "journey:configurarParticipantes/incluirParticipante",
+              "journey:configurarParticipantes/localizarUsuario",
+              "journey:configurarParticipantes/marcarPermissoes",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity": "Participante",
+            "operation": "create",
+            "transitionRef": "",
+            "from": [
+              "journey:configurarParticipantes/incluirParticipante"
+            ]
+          },
+          {
+            "entity": "Participante",
+            "operation": "update",
+            "transitionRef": "",
+            "from": [
+              "journey:configurarParticipantes/marcarPermissoes"
+            ]
+          }
+        ]
+      },
+      {
+        "pageId": "listas_tarefas",
+        "actors": [
+          "gestor"
+        ],
+        "reads": [
+          {
+            "entity": "ListaTarefas",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "details.quantidadeTarefasAbertas"
+            ],
+            "from": [
+              "grant:gestorListas",
+              "journey:manterListas/criarLista",
+              "journey:manterListas/editarLista",
+              "journey:manterListas/localizarLista",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Tarefa/tarefaLista"
+            ]
+          },
+          {
+            "entity": "Participante",
+            "family": "mdm",
+            "scope": "organization",
+            "derived": [
+              "details.tarefas.aceitaTarefasEfetivo",
+              "details.tarefas.podeCriarTarefasEfetivo"
+            ],
+            "from": [
+              "grant:gestorParticipantes",
+              "journey:manterListas/criarLista",
+              "journey:manterListas/editarLista",
+              "journey:manterListas/localizarLista",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel"
+            ]
+          },
+          {
+            "entity": "Tarefa",
+            "family": "tdm",
+            "scope": "organization",
+            "derived": [
+              "criadaEm",
+              "details.aberta",
+              "details.atrasada",
+              "details.devolvidaPendente",
+              "details.progressoChecklist",
+              "details.quantidadeSubtarefas",
+              "details.quemAgeAgora",
+              "details.venceHoje"
+            ],
+            "from": [
+              "grant:gestorTodasTarefas",
+              "journey:manterListas/criarLista",
+              "journey:manterListas/editarLista",
+              "journey:manterListas/localizarLista",
+              "relationship:ListaTarefas/tarefaLista",
+              "relationship:Participante/tarefaCriador",
+              "relationship:Participante/tarefaResponsavel",
+              "relationship:Tarefa/tarefaLista"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity": "ListaTarefas",
+            "operation": "create",
+            "transitionRef": "",
+            "from": [
+              "journey:manterListas/criarLista"
+            ]
+          },
+          {
+            "entity": "ListaTarefas",
+            "operation": "update",
+            "transitionRef": "",
+            "from": [
+              "journey:manterListas/editarLista"
+            ]
+          }
+        ]
+      }
+    ],
+    "meta": {
+      "sourceMenu": "pool/l2/web/menu.json",
+      "generatedAt": "2026-10-23T01:41:58.146Z"
+    }
+  }
+}

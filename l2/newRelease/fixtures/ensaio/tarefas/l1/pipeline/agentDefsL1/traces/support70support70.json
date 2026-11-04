@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "2026-09-22-d1-progress-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "step": "support70",
+  "unitId": "support70",
+  "runId": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "snapshotHash": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "draftHash": "sha256:b91b88a3b534910ae91b0b4818143190313a6f964a65ffbabbaf57985507ec8e",
+  "transaction": false,
+  "finalized": true,
+  "invalidated": false,
+  "reported": [
+    "_102047_/l1/tarefas/layer_1_external/adapters/integration/outbound.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.ts",
+    "_102047_/l1/tarefas/layer_1_external/adapters/persistence/seeds.ts",
+    "_102047_/l1/tarefas/layer_1_external/auth/authorityMap.ts",
+    "_102047_/l1/tarefas/layer_2_application/scope/accessScope.ts",
+    "_102047_/l1/tarefas/layer_2_application/workflows/processoTarefa.ts",
+    "_102047_/l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.ts",
+    "l1/tarefas/layer_1_external/adapters/integration/outbound.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.ts",
+    "l1/tarefas/layer_1_external/adapters/persistence/seeds.ts",
+    "l1/tarefas/layer_1_external/auth/authorityMap.ts",
+    "l1/tarefas/layer_2_application/scope/accessScope.ts",
+    "l1/tarefas/layer_2_application/workflows/processoTarefa.ts",
+    "l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.ts"
+  ],
+  "files": [
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/integration/outbound.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:d4b1912e62e3c0df6a608dc2c5279100365cac79ec753495a044caf50cb93a18",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/integration/outbound.ts",
+        "l1/tarefas/layer_1_external/adapters/integration/outbound.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:f43617500ef0bd52d76b6219f1d73593e015dbd161eb9a9b86b0f8418129b605",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/registerRepositories.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/adapters/persistence/seeds.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:e1775c58814f728f8a521e9b3eccb27f1d4ada635705c0285008cad9495844ac",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/adapters/persistence/seeds.ts",
+        "l1/tarefas/layer_1_external/adapters/persistence/seeds.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_1_external/auth/authorityMap.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:1e935efb15c30a0560363cde5657f3e7026ea09af24148521bdcfe655d5188f4",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_1_external/auth/authorityMap.ts",
+        "l1/tarefas/layer_1_external/auth/authorityMap.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/scope/accessScope.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:7cc84dae58c00dd78e914b082c5448799dfbc9baafb043b2ee33f1172afeebdd",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/scope/accessScope.ts",
+        "l1/tarefas/layer_2_application/scope/accessScope.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/workflows/processoTarefa.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:fe6aece55b5f91198091db0304a01f955092b67f18c9e6183253a4f6200b47f0",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/workflows/processoTarefa.ts",
+        "l1/tarefas/layer_2_application/workflows/processoTarefa.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:3775284fbcb508110de343cdffe22bbb84968ff92c8d0bc59fc2ff723c300160",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.ts",
+        "l1/tarefas/layer_2_application/workflows/resumoDiarioTarefas.ts"
+      ]
+    }
+  ],
+  "issues": []
+}

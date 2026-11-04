@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "tests",
+  "unitId": "painel_tarefas",
+  "defRef": "",
+  "status": "done",
+  "code": "",
+  "attempt": 1,
+  "diagnostic": "",
+  "inputHash": "sha256:1819e7271af065d40df59f991f77524745c1f7d1091469671c286281b2ff6377",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/adapters/http/controllers/painel_tarefas.test.ts": "sha256:f6301215d3bfa2e2aee123d7a998993f2655e931cdcc5bdbbfe128b7c19a9e0d"
+  },
+  "updatedAt": "2026-10-23T02:43:30.961Z"
+}

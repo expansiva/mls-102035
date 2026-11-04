@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "updateItemChecklist",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/updateItemChecklist.defs.ts",
+  "attempt": 2,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:dcbbaaad76dee74d2456b76d46d1a3990ed851c85bc49337aedbd69bb761aef8",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateItemChecklist.ts": "sha256:d115972b762475ccda92d51377214b95f0fb75ed60816ec9d00d4e739ba5459b"
+  },
+  "updatedAt": "2026-10-23T02:36:15.810Z"
+}

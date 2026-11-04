@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "updateParticipante",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/updateParticipante.defs.ts",
+  "attempt": 3,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): criarTarefaExigePodeCriar — About creating a task (Tarefa) and its creator; this operation only edits the manager marks of a participant.; responsavelAceitaTarefas — About choosing the responsible of a task on creation or reassignment; not about editing a participant's marks..",
+  "inputHash": "sha256:45feadee4805ae94b547850054ef800e30eccb901cb2db3d74cf190e51d8aa1e",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateParticipante.ts": "sha256:b54650702c93dcc9c81591ab711cf632cbbbb4459e9d200f1ac17dddc56e7d76"
+  },
+  "updatedAt": "2026-10-23T02:36:57.618Z"
+}

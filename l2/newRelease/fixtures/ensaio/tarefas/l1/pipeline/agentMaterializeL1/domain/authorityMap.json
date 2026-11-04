@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "domain",
+  "unitId": "authorityMap",
+  "defRef": "_102047_/l1/tarefas/layer_1_external/auth/authorityMap.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:68afeeb8ae204a47987518e1d842dc81b45b4e460fe1bc316c80d257477ff433",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_1_external/auth/authorityMap.ts": "sha256:eb6263c681a7e4252c6aa8d4933502e3ee8ba8e14f3249b105b1bb2031a4eb88"
+  },
+  "updatedAt": "2026-10-23T02:35:18.202Z"
+}

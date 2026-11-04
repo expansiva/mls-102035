@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "requests",
+  "unitId": "painel_tarefas",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/requests/painel_tarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:710721e3e29ee0ad454e5496b4bd708482059e8cd7bb0e13554c144270f084df",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/requests/painel_tarefas.ts": "sha256:e9dcd04c0b3e7c84b57b120fa3fa57d70aeae5975f0a0d2a9d7b5111ba6161ec"
+  },
+  "updatedAt": "2026-10-23T02:40:32.467Z"
+}

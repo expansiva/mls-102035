@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "usecases",
+  "unitId": "enviarParaRevisao",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/usecases/enviarParaRevisao.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "Not applicable here (declared by the model): avisarQuemAgeAgora — The notification is sent by the platform task process (tarefas.processoTarefa) when the situation changes; this usecase has no effects and no notification port. Who acts now (quemAgeAgora = criadorId) is derived and returned, not stored..",
+  "inputHash": "sha256:92440d6759f7d66526423cee35566e9590223077dcd2ae3a55bae03c41125299",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/usecases/enviarParaRevisao.ts": "sha256:758aaa1a9ba5627fec576557340b31566f3ccf411f656e9ed4cbcd9515244a82"
+  },
+  "updatedAt": "2026-10-23T02:35:45.874Z"
+}

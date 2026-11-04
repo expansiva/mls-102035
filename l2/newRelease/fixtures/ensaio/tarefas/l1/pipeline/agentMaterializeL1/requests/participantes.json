@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "requests",
+  "unitId": "participantes",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/requests/participantes.defs.ts",
+  "attempt": 2,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:44a3589e961526b946ec6c73f1083fcb598992fba41831d382d98f4753606d24",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/requests/participantes.ts": "sha256:4cc5988ae451e293125b99e8a47eef0bba19047b0d825000d10b4a42297b90f4"
+  },
+  "updatedAt": "2026-10-23T02:41:30.470Z"
+}

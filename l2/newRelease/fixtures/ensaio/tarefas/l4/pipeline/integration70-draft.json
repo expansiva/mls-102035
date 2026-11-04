@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "2026-09-12-ns5-integration-v2",
+  "moduleName": "tarefas",
+  "inbound": [
+    {
+      "id": "loginGranted",
+      "kind": "event",
+      "from": "organization",
+      "event": "loginGranted",
+      "writes": [
+        "Participante"
+      ],
+      "effect": "create",
+      "description": "Quando um usuário da organização recebe login (loginGranted), cria o Participante desse usuário com as marcas padrão 'aceita tarefas' e 'pode criar tarefas' ligadas, só se ainda não existir. Uma escolha já feita pelo gestor nunca é sobrescrita. Não guarda nenhum dado pessoal: só a referência ao usuário.",
+      "entityRefs": []
+    }
+  ],
+  "outbound": [
+    {
+      "id": "tarefaConcluida",
+      "kind": "event",
+      "to": "any",
+      "event": "tarefaConcluida",
+      "on": "Tarefa.aceitar",
+      "description": "Publicado quando quem criou aceita a revisão e a tarefa fica concluída. Outros módulos podem usar o registro da tarefa (lista, responsável, prazo) para indicadores ou acompanhamento.",
+      "entityRefs": [
+        "Tarefa",
+        "ListaTarefas"
+      ]
+    },
+    {
+      "id": "tarefaCancelada",
+      "kind": "event",
+      "to": "any",
+      "event": "tarefaCancelada",
+      "on": "Tarefa.cancelar",
+      "description": "Publicado quando quem criou ou o gestor cancela a tarefa. Outros módulos podem usar o registro da tarefa para encerrar o que dependia dela.",
+      "entityRefs": [
+        "Tarefa",
+        "ListaTarefas"
+      ]
+    }
+  ],
+  "plugins": []
+}

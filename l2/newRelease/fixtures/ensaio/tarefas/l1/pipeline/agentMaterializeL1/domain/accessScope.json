@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "domain",
+  "unitId": "accessScope",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/scope/accessScope.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:e4ec816f3851ffccfdfd6d950ddde9974c695ce22632e551bfd957316421633d",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/scope/accessScope.ts": "sha256:ed3fd3dbd6584ee6cd3ea150420fa794001ab0ab35a207baea36eb53c721b7ea"
+  },
+  "updatedAt": "2026-10-23T02:35:18.171Z"
+}

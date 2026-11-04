@@ -1,0 +1,265 @@
+{
+  "schemaVersion": "2026-09-22-d1-progress-v1",
+  "project": 102047,
+  "moduleName": "tarefas",
+  "step": "usecases50",
+  "unitId": "usecases50",
+  "runId": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "snapshotHash": "sha256:c244309e3464b01c6c197f9e28fc59cb29247534c5ef0ca32ced29f8e07987c3",
+  "draftHash": "sha256:1e43fbcad2e747c12c60d8fdc0ae967f38388ca8f6abff8b9bc8ae7b916ecea7",
+  "transaction": false,
+  "finalized": true,
+  "invalidated": false,
+  "reported": [
+    "_102047_/l1/tarefas/layer_2_application/usecases/aceitar.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/cancelar.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/createItemChecklist.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/createListaTarefas.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/createParticipante.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/createTarefa.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/devolver.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/enviarParaRevisao.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/getParticipante.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/iniciar.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/listItemChecklist.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/listListaTarefas.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/listParticipante.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/listTarefa.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/retomar.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateItemChecklist.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateListaTarefas.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateParticipante.ts",
+    "_102047_/l1/tarefas/layer_2_application/usecases/updateTarefa.ts",
+    "l1/tarefas/layer_2_application/usecases/aceitar.ts",
+    "l1/tarefas/layer_2_application/usecases/cancelar.ts",
+    "l1/tarefas/layer_2_application/usecases/createItemChecklist.ts",
+    "l1/tarefas/layer_2_application/usecases/createListaTarefas.ts",
+    "l1/tarefas/layer_2_application/usecases/createParticipante.ts",
+    "l1/tarefas/layer_2_application/usecases/createTarefa.ts",
+    "l1/tarefas/layer_2_application/usecases/devolver.ts",
+    "l1/tarefas/layer_2_application/usecases/enviarParaRevisao.ts",
+    "l1/tarefas/layer_2_application/usecases/getParticipante.ts",
+    "l1/tarefas/layer_2_application/usecases/iniciar.ts",
+    "l1/tarefas/layer_2_application/usecases/listItemChecklist.ts",
+    "l1/tarefas/layer_2_application/usecases/listListaTarefas.ts",
+    "l1/tarefas/layer_2_application/usecases/listParticipante.ts",
+    "l1/tarefas/layer_2_application/usecases/listTarefa.ts",
+    "l1/tarefas/layer_2_application/usecases/retomar.ts",
+    "l1/tarefas/layer_2_application/usecases/updateItemChecklist.ts",
+    "l1/tarefas/layer_2_application/usecases/updateListaTarefas.ts",
+    "l1/tarefas/layer_2_application/usecases/updateParticipante.ts",
+    "l1/tarefas/layer_2_application/usecases/updateTarefa.ts"
+  ],
+  "files": [
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/aceitar.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:d08be72df3701edeedacb4d1584b5f4c19a817e6192758b77f4d7773fcfc0950",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/aceitar.ts",
+        "l1/tarefas/layer_2_application/usecases/aceitar.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/cancelar.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:e6e1454deeb4d6cd966d6c1b1b114e06a39bca07e25221ed2284110beef19973",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/cancelar.ts",
+        "l1/tarefas/layer_2_application/usecases/cancelar.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createItemChecklist.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:40ebf68ffb2f4c43713927be7216a37b11bb8be1c7a791df44bcc11eb1f0293a",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/createItemChecklist.ts",
+        "l1/tarefas/layer_2_application/usecases/createItemChecklist.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:58e071f50e63ee33d1cb4cd994b84fadf33b39be95466c447f3fc8e87d558fa8",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/createListaTarefas.ts",
+        "l1/tarefas/layer_2_application/usecases/createListaTarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createParticipante.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:2f78db17a4b06dca1b4c8cf283526785c4d1827566d4a557c999d978c9017fa5",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/createParticipante.ts",
+        "l1/tarefas/layer_2_application/usecases/createParticipante.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/createTarefa.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:66b8cf95f044787fad2179841133fbbc7f28a0a3421c3a16c3a917a0db957fd5",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/createTarefa.ts",
+        "l1/tarefas/layer_2_application/usecases/createTarefa.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/devolver.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:85cd7ba80560b1e3a31ca5b9e3d26886b55e43835e5c4921d48629136002fedc",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/devolver.ts",
+        "l1/tarefas/layer_2_application/usecases/devolver.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/enviarParaRevisao.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:f85676d52504012c17775c02da9e8a61bb5c2512077252ef5afce332888bedbd",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/enviarParaRevisao.ts",
+        "l1/tarefas/layer_2_application/usecases/enviarParaRevisao.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/getParticipante.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:8a204a3fa3b910900fa0a6150405f2d479a0d3dce6d73631e42bb48b244cc822",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/getParticipante.ts",
+        "l1/tarefas/layer_2_application/usecases/getParticipante.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/iniciar.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:7639d89e8101685ff9311b89ab63cfb69c9f9cbdde4a51567237bb01d5897eaa",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/iniciar.ts",
+        "l1/tarefas/layer_2_application/usecases/iniciar.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listItemChecklist.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:4e74ec38fe53bff8481e23c713fbc57bcca61f912d28ef753c28f890ceacd906",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/listItemChecklist.ts",
+        "l1/tarefas/layer_2_application/usecases/listItemChecklist.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listListaTarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:912e08a1bc1151becaa9cdd45ea72f71a894dbc7ad4886a463fede5b5ee96194",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/listListaTarefas.ts",
+        "l1/tarefas/layer_2_application/usecases/listListaTarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listParticipante.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:725c9d7986269a4521c38f4a064228ce9c642558341467319a7c782651777985",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/listParticipante.ts",
+        "l1/tarefas/layer_2_application/usecases/listParticipante.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/listTarefa.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:4c57e06c90cb0ca06349addb4b134580164b18e65c4effc85dd47564d8f4c018",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/listTarefa.ts",
+        "l1/tarefas/layer_2_application/usecases/listTarefa.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/retomar.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:827bc9ed9dcc3f1b66254764619b51c5c8d8d4a5b623fc0d6901059a5491e212",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/retomar.ts",
+        "l1/tarefas/layer_2_application/usecases/retomar.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateItemChecklist.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:a530c2293cddcf71dbbf17980c4d3656749205fb2f07d9e17e24e266f71e8c23",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/updateItemChecklist.ts",
+        "l1/tarefas/layer_2_application/usecases/updateItemChecklist.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateListaTarefas.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:89aa08b44f7a7c8f4c8f16d7160a2a5f5f6759a70968b8463afbd102f165683c",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/updateListaTarefas.ts",
+        "l1/tarefas/layer_2_application/usecases/updateListaTarefas.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateParticipante.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:fdeaa3c1280c5cb91758ca2d0d86877a3bb103cc198bbfdd76db9d2c8f300e1e",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/updateParticipante.ts",
+        "l1/tarefas/layer_2_application/usecases/updateParticipante.ts"
+      ]
+    },
+    {
+      "defPath": "l1/tarefas/layer_2_application/usecases/updateTarefa.defs.ts",
+      "action": "write",
+      "previousHash": "",
+      "desiredHash": "sha256:87f01cd86136e095443dcba86a7308a6f2e6878c9f9f4cbdb9f030dadc750a95",
+      "status": "done",
+      "outputTs": [
+        "_102047_/l1/tarefas/layer_2_application/usecases/updateTarefa.ts",
+        "l1/tarefas/layer_2_application/usecases/updateTarefa.ts"
+      ]
+    }
+  ],
+  "issues": []
+}

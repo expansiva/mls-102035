@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026-10-05-m12-unit-v1",
+  "layer": "requests",
+  "unitId": "listas_tarefas",
+  "defRef": "_102047_/l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts",
+  "attempt": 1,
+  "status": "done",
+  "code": "",
+  "diagnostic": "",
+  "inputHash": "sha256:9df26d427d0fc6d9288c2aaf3fc3993ffb2f934d13cca7e1c04568eb44118d85",
+  "outputs": {
+    "_102047_/l1/tarefas/layer_2_application/requests/listas_tarefas.ts": "sha256:f847e157253ce72b181ed713dc0c7ee892199b1ae55337de4bd8f743df58c7b7"
+  },
+  "updatedAt": "2026-10-23T02:40:33.379Z"
+}
