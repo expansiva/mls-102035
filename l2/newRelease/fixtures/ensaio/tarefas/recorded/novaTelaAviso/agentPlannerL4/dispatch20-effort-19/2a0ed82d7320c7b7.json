@@ -1,0 +1,69 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"submitEffort\",\"arguments\":{\"existing\":[],\"reason\":\"The rule covers a new action: warning the manager that a task will be late. No existing usecase writes this delay warning. That includes updateTarefa, which edits task fields and does not record a warning with a reason and a new delivery forecast. The transitions (iniciar, enviarParaRevisao, aceitar, devolver, retomar, cancelar) don't write it either. The new operation that enforces the checks (only the task's assignee, only while the task is open, reason and new forecast required) comes from the page contract and isn't picked here. So no existing usecase is affected.\"}},\"status\":\"completed\",\"stepId\":9,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentPlannerL4",
+  "step": "dispatch20-effort-19",
+  "stepId": 11,
+  "taskId": "20261104183853.1001",
+  "request": {
+    "humanPrompt": "Rule avisoAtrasoApenasResponsavelTarefaAberta: Somente o responsável da tarefa pode avisar o gestor de que ela vai atrasar, e apenas enquanto a tarefa está aberta; o aviso exige o motivo do atraso e a nova previsão de entrega.\nUnits:\nentity itemChecklist invariants=[\"itemChecklistSoQuemVeTarefa\",\"marcarItemNaoMudaSituacao\",\"itemChecklistTarefaNaoEncerrada\"]\nentity listaTarefas invariants=[\"nomeListaUnico\",\"somenteGestorMantemListas\"]\nentity participante invariants=[\"participanteNaoConfiguradoAceitaECria\",\"escolhaGestorNuncaSobrescrita\",\"gestorPorAcessoPlataforma\",\"responsavelAceitaTarefas\",\"criarTarefaExigePodeCriar\",\"participanteSemCadastroPessoal\"]\nentity tarefa invariants=[\"podeCriarTarefasExigido\",\"responsavelAceitaTarefas\",\"escolhaResponsavelPeloNome\",\"reatribuirApenasCriadorOuGestor\",\"edicaoNaoMudaSituacao\",\"tarefaPaiDiferenteDaPropria\",\"quemAgeAgoraPorSituacao\",\"resumoDiarioOitoHoras\",\"avisoNaoSobrepostoPorPessoa\",\"membroVeResponsavelOuCriador\"]\nrequest inicio\nroute tarefas.inicio.carregarInicio rules=[\"membroVeResponsavelOuCriador\",\"quemAgeAgoraPorSituacao\",\"retomarSoAposDevolucao\",\"tarefaAbertaVencimento\",\"resumoDiarioOitoHoras\",\"participanteNaoConfiguradoAceitaECria\"]\nroute tarefas.inicio.iniciarTarefa rules=[\"apenasResponsavelExecuta\",\"quemAgeAgoraPorSituacao\"]\nroute tarefas.inicio.enviarRevisao rules=[\"apenasResponsavelExecuta\",\"avisarQuemAgeAgora\",\"avisoNaoSobrepostoPorPessoa\",\"quemAgeAgoraPorSituacao\"]\nroute tarefas.inicio.aceitarTarefa rules=[\"apenasCriadorRevisa\",\"quemAgeAgoraPorSituacao\"]\nroute tarefas.inicio.devolverTarefa rules=[\"apenasCriadorRevisa\",\"devolucaoExigeMotivo\",\"avisarQuemAgeAgora\",\"avisoNaoSobrepostoPorPessoa\",\"quemAgeAgoraPorSituacao\"]\nroute tarefas.inicio.retomarTarefa rules=[\"apenasResponsavelExecuta\",\"retomarSoAposDevolucao\"]\nrequest listas_tarefas\nroute tarefas.listas_tarefas.qryListasTarefas rules=[\"somenteGestorMantemListas\",\"tarefaAbertaVencimento\"]\nroute tarefas.listas_tarefas.cmdCriarLista rules=[\"nomeListaUnico\",\"somenteGestorMantemListas\"]\nroute tarefas.listas_tarefas.cmdSalvarLista rules=[\"nomeListaUnico\",\"somenteGestorMantemListas\"]\nrequest minhas_tarefas\nroute tarefas.minhas_tarefas.qryMinhasTarefas rules=[\"membroVeResponsavelOuCriador\",\"quemAgeAgoraPorSituacao\",\"tarefaAbertaVencimento\",\"participanteNaoConfiguradoAceitaECria\",\"criarTarefaExigePodeCriar\"]\nroute tarefas.minhas_tarefas.qryTarefasDoGrupo rules=[\"membroVeResponsavelOuCriador\",\"quemAgeAgoraPorSituacao\",\"tarefaAbertaVencimento\"]\nroute tarefas.minhas_tarefas.qryTarefa rules=[\"membroVeResponsavelOuCriador\",\"quemAgeAgoraPorSituacao\",\"itemChecklistSoQuemVeTarefa\",\"moduloNaoGuardaComentarios\"]\nroute tarefas.minhas_tarefas.qryResponsaveis rules=[\"escolhaResponsavelPeloNome\",\"responsavelAceitaTarefas\",\"participanteNaoConfiguradoAceitaECria\",\"participanteSemCadastroPessoal\"]\nroute tarefas.minhas_tarefas.qryListas rules=[]\nroute tarefas.minhas_tarefas.cmdCriarTarefa rules=[\"criarTarefaExigePodeCriar\",\"podeCriarTarefasExigido\",\"participanteNaoConfiguradoAceitaECria\",\"responsavelAceitaTarefas\",\"escolhaResponsavelPeloNome\",\"tarefaPaiDiferenteDaPropria\",\"avisarQuemAgeAgora\"]\nroute tarefas.minhas_tarefas.cmdAdicionarItensChecklist rules=[\"itemChecklistSoQuemVeTarefa\",\"itemChecklistTarefaNaoEncerrada\",\"marcarItemNaoMudaSituacao\"]\nroute tarefas.minhas_tarefas.cmdSalvarAlteracoes rules=[\"edicaoNaoMudaSituacao\",\"membroVeResponsavelOuCriador\",\"reatribuirApenasCriadorOuGestor\",\"responsavelAceitaTarefas\",\"escolhaResponsavelPeloNome\",\"tarefaPaiDiferenteDaPropria\",\"avisarQuemAgeAgora\"]\nroute tarefas.minhas_tarefas.cmdAjustarChecklist rules=[\"itemChecklistSoQuemVeTarefa\",\"itemChecklistTarefaNaoEncerrada\",\"marcarItemNaoMudaSituacao\"]\nroute tarefas.minhas_tarefas.cmdIniciar rules=[\"apenasResponsavelExecuta\",\"quemAgeAgoraPorSituacao\"]\nroute tarefas.minhas_tarefas.cmdEnviarParaRevisao rules=[\"apenasResponsavelExecuta\",\"quemAgeAgoraPorSituacao\",\"avisarQuemAgeAgora\"]\nroute tarefas.minhas_tarefas.cmdAceitar rules=[\"apenasCriadorRevisa\",\"quemAgeAgoraPorSituacao\"]\nroute tarefas.minhas_tarefas.cmdDevolver rules=[\"apenasCriadorRevisa\",\"devolucaoExigeMotivo\",\"quemAgeAgoraPorSituacao\",\"avisarQuemAgeAgora\"]\nroute tarefas.minhas_tarefas.cmdRetomar rules=[\"apenasResponsavelExecuta\",\"retomarSoAposDevolucao\"]\nroute tarefas.minhas_tarefas.cmdCancelar rules=[\"cancelarApenasCriadorOuGestor\",\"avisarQuemAgeAgora\",\"quemAgeAgoraPorSituacao\"]\nrequest painel_tarefas\nroute tarefas.painel_tarefas.carregarPainelTarefas rules=[\"tarefaAbertaVencimento\",\"membroVeResponsavelOuCriador\",\"gestorPorAcessoPlataforma\"]\nrequest participantes\nroute tarefas.participantes.listarParticipantes rules=[\"participanteNaoConfiguradoAceitaECria\"]\nroute tarefas.participantes.buscarUsuarios rules=[\"participanteSemCadastroPessoal\"]\nroute tarefas.participantes.incluirParticipante rules=[\"participanteSemCadastroPessoal\",\"participanteNaoConfiguradoAceitaECria\",\"escolhaGestorNuncaSobrescrita\",\"gestorPorAcessoPlataforma\"]\nroute tarefas.participantes.salvarMarcas rules=[\"escolhaGestorNuncaSobrescrita\",\"participanteNaoConfiguradoAceitaECria\",\"gestorPorAcessoPlataforma\"]\nrequest tarefas_equipe\nroute tarefas.tarefas_equipe.carregarFiltrosEquipe rules=[\"participanteNaoConfiguradoAceitaECria\"]\nroute tarefas.tarefas_equipe.listarTarefasEquipe rules=[\"membroVeResponsavelOuCriador\",\"gestorPorAcessoPlataforma\",\"quemAgeAgoraPorSituacao\",\"tarefaAbertaVencimento\"]\nroute tarefas.tarefas_equipe.obterTarefaEquipe rules=[\"quemAgeAgoraPorSituacao\",\"tarefaAbertaVencimento\",\"moduloNaoGuardaComentarios\"]\nroute tarefas.tarefas_equipe.buscarResponsaveisDisponiveis rules=[\"responsavelAceitaTarefas\",\"escolhaResponsavelPeloNome\",\"participanteNaoConfiguradoAceitaECria\"]\nroute tarefas.tarefas_equipe.trocarResponsavelTarefa rules=[\"reatribuirApenasCriadorOuGestor\",\"gestorPorAcessoPlataforma\",\"responsavelAceitaTarefas\",\"edicaoNaoMudaSituacao\",\"quemAgeAgoraPorSituacao\",\"avisarQuemAgeAgora\"]\nroute tarefas.tarefas_equipe.cancelarTarefaEquipe rules=[\"cancelarApenasCriadorOuGestor\",\"gestorPorAcessoPlataforma\",\"avisarQuemAgeAgora\",\"quemAgeAgoraPorSituacao\"]\nusecase aceitar entity=Tarefa operation=transition rules=[\"apenasCriadorRevisa\"]\nusecase cancelar entity=Tarefa operation=transition rules=[\"avisarQuemAgeAgora\",\"cancelarApenasCriadorOuGestor\"]\nusecase createItemChecklist entity=ItemChecklist operation=create rules=[\"itemChecklistSoQuemVeTarefa\",\"itemChecklistTarefaNaoEncerrada\",\"marcarItemNaoMudaSituacao\"]\nusecase createListaTarefas entity=ListaTarefas operation=create rules=[\"nomeListaUnico\",\"somenteGestorMantemListas\"]\nusecase createParticipante entity=Participante operation=create rules=[\"criarTarefaExigePodeCriar\",\"escolhaGestorNuncaSobrescrita\",\"gestorPorAcessoPlataforma\",\"participanteNaoConfiguradoAceitaECria\",\"participanteSemCadastroPessoal\",\"responsavelAceitaTarefas\"]\nusecase createTarefa entity=Tarefa operation=create rules=[\"avisoNaoSobrepostoPorPessoa\",\"edicaoNaoMudaSituacao\",\"escolhaResponsavelPeloNome\",\"membroVeResponsavelOuCriador\",\"podeCriarTarefasExigido\",\"quemAgeAgoraPorSituacao\",\"reatribuirApenasCriadorOuGestor\",\"responsavelAceitaTarefas\",\"resumoDiarioOitoHoras\",\"tarefaPaiDiferenteDaPropria\"]\nusecase devolver entity=Tarefa operation=transition rules=[\"apenasCriadorRevisa\",\"avisarQuemAgeAgora\",\"devolucaoExigeMotivo\"]\nusecase enviarParaRevisao entity=Tarefa operation=transition rules=[\"apenasResponsavelExecuta\",\"avisarQuemAgeAgora\"]\nusecase getParticipante entity=Participante operation=get rules=[]\nusecase iniciar entity=Tarefa operation=transition rules=[\"apenasResponsavelExecuta\"]\nusecase listItemChecklist entity=ItemChecklist operation=list rules=[]\nusecase listListaTarefas entity=ListaTarefas operation=list rules=[]\nusecase listParticipante entity=Participante operation=list rules=[]\nusecase listTarefa entity=Tarefa operation=list rules=[]\nusecase retomar entity=Tarefa operation=transition rules=[\"apenasResponsavelExecuta\",\"retomarSoAposDevolucao\"]\nusecase updateItemChecklist entity=ItemChecklist operation=update rules=[\"itemChecklistSoQuemVeTarefa\",\"itemChecklistTarefaNaoEncerrada\",\"marcarItemNaoMudaSituacao\"]\nusecase updateListaTarefas entity=ListaTarefas operation=update rules=[\"nomeListaUnico\",\"somenteGestorMantemListas\"]\nusecase updateParticipante entity=Participante operation=update rules=[\"criarTarefaExigePodeCriar\",\"escolhaGestorNuncaSobrescrita\",\"gestorPorAcessoPlataforma\",\"participanteNaoConfiguradoAceitaECria\",\"participanteSemCadastroPessoal\",\"responsavelAceitaTarefas\"]\nusecase updateTarefa entity=Tarefa operation=update rules=[\"avisoNaoSobrepostoPorPessoa\",\"edicaoNaoMudaSituacao\",\"escolhaResponsavelPeloNome\",\"membroVeResponsavelOuCriador\",\"podeCriarTarefasExigido\",\"quemAgeAgoraPorSituacao\",\"reatribuirApenasCriadorOuGestor\",\"responsavelAceitaTarefas\",\"resumoDiarioOitoHoras\",\"tarefaPaiDiferenteDaPropria\"]\nworkflow processoTarefa\nworkflow resumoDiarioTarefas\nA rule about data that an operation writes is guaranteed in that operation's usecase: pick it (existing). The requests that call it follow.\nNew routes or usecases are not chosen here: they come from the page contract.\nNothing on the backend only for a rule about display alone; then say why in reason.",
+    "systemPrompt": "<!-- modelType: reasoning -->\nCall submitEffort with the effort answer.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "submitEffort",
+          "description": "Submit the effort answer for this maintenance change.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "existing",
+              "reason"
+            ],
+            "properties": {
+              "existing": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "usecase"
+                  ],
+                  "properties": {
+                    "usecase": {
+                      "type": "string",
+                      "enum": [
+                        "aceitar",
+                        "cancelar",
+                        "createItemChecklist",
+                        "createListaTarefas",
+                        "createParticipante",
+                        "createTarefa",
+                        "devolver",
+                        "enviarParaRevisao",
+                        "getParticipante",
+                        "iniciar",
+                        "listItemChecklist",
+                        "listListaTarefas",
+                        "listParticipante",
+                        "listTarefa",
+                        "retomar",
+                        "updateItemChecklist",
+                        "updateListaTarefas",
+                        "updateParticipante",
+                        "updateTarefa"
+                      ]
+                    }
+                  }
+                }
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
