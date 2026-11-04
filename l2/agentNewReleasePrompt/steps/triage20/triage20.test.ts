@@ -230,3 +230,30 @@ void test('a triage step without a tool-call payload is refused with the real ca
   const ok = { interaction: { payload: [{ valid: false }] } } as unknown as mls.msg.AIAgentStep;
   assert.deepEqual(nrpTriagePayload(ok), { valid: false });
 });
+
+void test('empty or blank text in an optional field is null; a missing field or another type is refused', () => {
+  const valid = {
+    valid: true, reason: '', clarification: ' ', artifacts: ['ontology'], targets: ['WorkItem'],
+    intent: 'Add a field.', mechanical: [], mechanicalOnly: false, assumptions: [], l3Notice: '',
+  };
+  const blank = normalizeNrpTriage(valid);
+  assert.equal(blank.reason, null);
+  assert.equal(blank.clarification, null);
+  assert.equal(blank.l3Notice, null);
+  assert.equal(blank.intent, 'Add a field.');
+  for (const field of ['reason', 'clarification', 'l3Notice'] as const) {
+    assert.equal(normalizeNrpTriage({ ...valid, [field]: '  ' })[field], null, field);
+  }
+  const noIntent = normalizeNrpTriage({
+    valid: false, reason: 'Not about this module.', clarification: '', artifacts: [], targets: [], intent: '  ',
+    mechanical: [], mechanicalOnly: false, assumptions: [], l3Notice: '',
+  });
+  assert.equal(noIntent.intent, null);
+  assert.equal(noIntent.reason, 'Not about this module.');
+  for (const field of ['reason', 'clarification', 'intent', 'l3Notice']) {
+    const { [field]: _removed, ...without } = valid as Record<string, unknown>;
+    assert.throws(() => normalizeNrpTriage(without), /must be text or null/, `${field} missing`);
+    assert.throws(() => normalizeNrpTriage({ ...valid, [field]: 7 }), /must be text or null/, `${field} number`);
+  }
+  assert.throws(() => normalizeNrpTriage({ ...valid, valid: false, reason: '', l3Notice: '' }), /needs a reason or an l3Notice/);
+});

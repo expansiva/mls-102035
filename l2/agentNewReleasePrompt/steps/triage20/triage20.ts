@@ -451,8 +451,9 @@ function marks(value: unknown): NrpMechanicalMark[] {
 
 function nullableText(value: unknown, label: string): string | null {
   if (value === null) return null;
-  if (typeof value !== 'string' || !value.trim()) throw new Error(`Triage ${label} must be text or null.`);
-  return value.trim();
+  if (typeof value !== 'string') throw new Error(`Triage ${label} must be text or null.`);
+  // Strict mode does not enforce minLength: an empty string means "nothing to say", the same as null.
+  return value.trim() || null;
 }
 
 function record(value: unknown): Record<string, unknown> {
