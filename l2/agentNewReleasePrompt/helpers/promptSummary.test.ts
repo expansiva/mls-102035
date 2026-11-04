@@ -41,20 +41,18 @@ void test('prompt summary names added, changed and removed artifacts in pt and e
     },
   ];
   assert.equal(promptChangeSummary('pt-BR', files), [
-    'Mesa mudou',
-    'Anotar pedido entrou',
-    'fechaComanda saiu',
-    'garcomAtendimento mudou',
+    'Adicionada: Anotar pedido',
+    'Alterada: Mesa, garcomAtendimento',
+    'Removida: fechaComanda',
   ].join('\n'));
-  assert.equal(promptChangeSummary('en', [entity('Table', 'added')]), 'Table added');
-  assert.equal(promptChangeSummary(undefined, [entity('Table', 'removed')]), 'Table removed');
+  assert.equal(promptChangeSummary('en', [entity('Table', 'added')]), 'Added: Table');
+  assert.equal(promptChangeSummary(undefined, [entity('Table', 'removed')]), 'Removed: Table');
 });
 
 void test('prompt summary keeps six lines and counts the rest', () => {
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(title => entity(title, 'changed'));
   const text = promptChangeSummary('pt', files);
-  assert.equal(text.split('\n').length, 6);
-  assert.match(text, /e mais 2$/u);
+  assert.equal(text, 'Alterada: a, b, c, d, e\ne mais 2');
   assert.equal(promptChangeSummary('en', files).split('\n').at(-1), 'and 2 more');
 });
 
@@ -107,17 +105,29 @@ void test('a rules map is named by its keys, and a grant stays a list', () => {
     diffs: [{ jsonPath: '$.grants[grantId=caixaFechamento]', after: { grantId: 'caixaFechamento' } }],
   }]);
   assert.equal(text, [
-    'abreMesa entrou',
-    'fechaComanda saiu',
-    'itemComandaOperacaoSomenteComandaAberta mudou',
-    'caixaFechamento entrou',
+    'Adicionada: abreMesa, caixaFechamento',
+    'Alterada: itemComandaOperacaoSomenteComandaAberta',
+    'Removida: fechaComanda',
   ].join('\n'));
   assert.equal(text.includes('rules changed'), false);
 });
 
 void test('the assumptions line is empty without assumptions and follows the language', () => {
   assert.equal(promptAssumptionsLine('pt', []), '');
-  assert.equal(promptAssumptionsLine('pt-BR', ['a', 'b']), 'Assumi: a; b');
-  assert.equal(promptAssumptionsLine('en', ['a']), 'Assumed: a');
-  assert.equal(promptAssumptionsLine(null, ['a']), 'Assumed: a');
+  assert.equal(promptAssumptionsLine('pt-BR', ['a', 'b']), 'Suposições do modelo: a; b');
+  assert.equal(promptAssumptionsLine('en', ['a']), 'Model assumptions: a');
+  assert.equal(promptAssumptionsLine(null, ['a']), 'Model assumptions: a');
+});
+
+void test('a journey that changed is not reported as new, whatever the model assumed', () => {
+  const summary = promptChangeSummary('pt', [{
+    file: 'journeys/minhasTarefas.defs.ts',
+    state: 'changed',
+    before: { journeyId: 'minhasTarefas', business: { title: 'minhasTarefas' } },
+    after: { journeyId: 'minhasTarefas', business: { title: 'minhasTarefas' } },
+    diffs: [{ jsonPath: '$.steps', before: ['verDetalhe'], after: ['listarAtrasadas', 'verDetalhe'] }],
+  }]);
+  const assumed = promptAssumptionsLine('pt', ['A tela entra como uma jornada nova, separada de minhasTarefas.']);
+  assert.equal(summary, 'Alterada: minhasTarefas');
+  assert.equal(assumed.startsWith('Suposições do modelo:'), true);
 });

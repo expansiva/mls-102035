@@ -19,10 +19,12 @@ export interface PromptSummaryFile {
 
 const LINE_CAP = 6;
 
-const VERB: Record<'en' | 'pt', Record<PromptSummaryState, string>> = {
-  en: { added: 'added', changed: 'changed', removed: 'removed' },
-  pt: { added: 'entrou', changed: 'mudou', removed: 'saiu' },
+const LABEL: Record<'en' | 'pt', Record<PromptSummaryState, string>> = {
+  en: { added: 'Added', changed: 'Changed', removed: 'Removed' },
+  pt: { added: 'Adicionada', changed: 'Alterada', removed: 'Removida' },
 };
+
+const ORDER: readonly PromptSummaryState[] = ['added', 'changed', 'removed'];
 
 /** `pt` / `pt-BR` are Portuguese. Anything else, including an empty language, is English. */
 export function promptLanguage(userLanguage: string | null | undefined): 'en' | 'pt' {
@@ -31,23 +33,29 @@ export function promptLanguage(userLanguage: string | null | undefined): 'en' | 
 }
 
 /**
- * Up to six lines, one per journey, entity, rule or grant that the diff touched.
- * Past that, the last line counts the rest. Nothing is named that is not in the files.
+ * One line per state ("Alterada: minhasTarefas"), built only from the files that were written.
+ * Past six names, the last line counts the rest. Nothing is named that is not in the files.
  */
 export function promptChangeSummary(userLanguage: string | null | undefined, files: readonly PromptSummaryFile[]): string {
   const language = promptLanguage(userLanguage);
-  const lines = summaryRows(files).map(row => `${row.title} ${VERB[language][row.state]}`);
-  if (lines.length <= LINE_CAP) return lines.join('\n');
-  const shown = LINE_CAP - 1;
-  const rest = lines.length - shown;
-  const more = language === 'pt' ? `e mais ${rest}` : `and ${rest} more`;
-  return [...lines.slice(0, shown), more].join('\n');
+  const rows = summaryRows(files);
+  const shown = rows.length <= LINE_CAP ? rows : rows.slice(0, LINE_CAP - 1);
+  const lines = ORDER
+    .map(state => ({ state, titles: shown.filter(row => row.state === state).map(row => row.title) }))
+    .filter(group => group.titles.length)
+    .map(group => `${LABEL[language][group.state]}: ${group.titles.join(', ')}`);
+  const rest = rows.length - shown.length;
+  if (rest > 0) lines.push(language === 'pt' ? `e mais ${rest}` : `and ${rest} more`);
+  return lines.join('\n');
 }
 
-/** One line with what the agent decided for the user, in the user's language. Empty when nothing was assumed. */
+/**
+ * What the model assumed when it read the request, before editing, in the user's language. Empty when nothing was assumed.
+ * It is the model's own text: the change list above it is the record of what was written.
+ */
 export function promptAssumptionsLine(userLanguage: string | null | undefined, assumptions: readonly string[]): string {
   if (!assumptions.length) return '';
-  return `${promptLanguage(userLanguage) === 'pt' ? 'Assumi' : 'Assumed'}: ${assumptions.join('; ')}`;
+  return `${promptLanguage(userLanguage) === 'pt' ? 'Suposições do modelo' : 'Model assumptions'}: ${assumptions.join('; ')}`;
 }
 
 /** Question or refusal, in the user's language. Stock English sentences are translated. Free text is kept. */

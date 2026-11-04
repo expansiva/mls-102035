@@ -455,8 +455,8 @@ void test('a written request with assumptions says what it assumed, in the summa
     payload.artifacts.rules = { schemaVersion: 'fixture', rules: [{ ruleId: 'fechaComanda' }] } as typeof payload.artifacts.rules;
     payload.triage = { ...payload.triage, assumptions: ['quem marca pronto: a cozinha (ator novo)', 'o campo aparece para o garçom'], l3Notice: null };
     const result = await persistNrp(payload, '20261102141739.1001');
-    assert.match(result.summary, /fechaComanda entrou/);
-    assert.match(result.summary, /Assumi: quem marca pronto: a cozinha \(ator novo\); o campo aparece para o garçom/);
+    assert.match(result.summary, /Adicionada: fechaComanda/);
+    assert.match(result.summary, /Suposições do modelo: quem marca pronto: a cozinha \(ator novo\); o campo aparece para o garçom/);
   } finally { fixture.restore(); }
 });
 
@@ -477,10 +477,10 @@ void test('a written request stores the pt summary and the operation json paths'
     payload.request = 'Fecha a comanda.';
     const result = await persistNrp(payload, '20261102141739.1001');
     assert.equal(result.reason, null);
-    assert.match(result.summary, /fechaComanda entrou/);
-    assert.match(result.summary, /oldJourney saiu/);
+    assert.match(result.summary, /Adicionada: fechaComanda/);
+    assert.match(result.summary, /Removida: oldJourney/);
     assert.equal(result.summary.includes('alterado'), false);
-    assert.equal(result.summary.includes('Assumi'), false, 'nothing assumed, no assumption line');
+    assert.equal(result.summary.includes('Suposições'), false, 'nothing assumed, no assumption line');
     const opKey = [...fixture.contents.keys()].find(key => key.includes('/tobe/operations:'));
     assert.ok(opKey);
     const record = JSON.parse(fixture.contents.get(opKey || '') || '') as NrpOperationRecord;
