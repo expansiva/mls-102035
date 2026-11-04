@@ -145,8 +145,9 @@ new-release--widgets--review-102035 {
 
   .nr-review__implementation { min-width: 0; font-size: .78rem; }
   .nr-review__implementation progress { display: block; }
-  .nr-review__task-card { width: min(100%, 28rem); margin: .45rem 0; }
-  .nr-review__task-loading { color: var(--text-muted, #92a0b8); margin: .45rem 0; }
+  .nr-review__task-card { display: block; width: min(100%, 222px); min-height: 40px; margin: .45rem 0; }
+  .nr-review__task-loading { display: flex; align-items: center; width: min(100%, 222px); min-height: 40px; color: var(--text-muted, #92a0b8); margin: .45rem 0; }
+  .nr-review__phase-report pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   .nr-review__implementation ol { display: grid; gap: .7rem; margin: 0; padding-left: 1.2rem; }
   .nr-review__implementation li { min-width: 0; overflow-wrap: anywhere; }
   .nr-review__phase-heading { display: flex; flex-wrap: wrap; gap: .3rem .75rem; align-items: baseline; }

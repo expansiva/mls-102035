@@ -258,6 +258,9 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private implementation: L4ImplementationRecord | null = null;
   @state() private implementationTasks: Record<string, TaskData> = {};
   @state() private implementationPolling: ImplementationTaskPolling | null = null;
+  @state() private implementationCheckBusy = false;
+  @state() private implementationCheckFeedback = '';
+  @state() private implementationCopyFeedback = '';
   private implementationTaskChanges: Record<string, number> = {};
   @state() private implementationHashes: L4ImplementationHashes = { changeEffort: '' };
 
@@ -351,6 +354,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.effortCurrent = false;
     this.effortRefreshPending = false;
     this.implementationPolling = null;
+    this.implementationCheckBusy = false;
+    this.implementationCheckFeedback = '';
     this.implementationTasks = {};
     this.implementationTaskChanges = {};
     this.initialPlan = null;
@@ -461,6 +466,33 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
     this.implementationTaskWrite = write.catch(() => undefined);
     return write;
+  }
+
+  private async checkImplementationTask(): Promise<void> {
+    if (this.implementationCheckBusy || !this.implementationPolling?.taskId) return;
+    const token = this.loadToken;
+    const before = this.implementationPolling;
+    const phaseStatus = this.implementation?.phases.find(phase => phase.taskId === before.taskId)?.status;
+    this.implementationCheckBusy = true;
+    this.implementationCheckFeedback = this.t('review.implementation.checking');
+    try {
+      await this.advanceImplementation(token);
+      if (token !== this.loadToken) return;
+      if (this.actionError) throw new Error(this.actionError);
+      const after = this.implementationPolling;
+      const updatedPhaseStatus = this.implementation?.phases.find(phase => phase.taskId === before.taskId)?.status;
+      this.implementationCheckFeedback = this.t('review.implementation.checked', {
+        time: new Date().toLocaleTimeString(),
+        status: this.t(after?.taskId === before.taskId && after?.lastUpdated === before.lastUpdated
+          && after?.paused === before.paused && updatedPhaseStatus === phaseStatus
+          ? 'review.implementation.noUpdate' : 'review.implementation.updated'),
+      });
+    } catch (error) {
+      console.error('[newRelease] task check failed', error);
+      if (token === this.loadToken) this.implementationCheckFeedback = this.t('review.implementation.checkError');
+    } finally {
+      if (token === this.loadToken) this.implementationCheckBusy = false;
+    }
   }
 
   private selectActor(actor: string) {
@@ -1135,6 +1167,16 @@ export class NewReleaseReview102035 extends StateLitElement {
       });
   }
 
+  private async copyImplementationReport(report: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(report);
+      this.implementationCopyFeedback = this.t('common.copied');
+    } catch (error) {
+      console.error('[newRelease] report copy failed', error);
+      this.implementationCopyFeedback = this.t('common.copyFailed');
+    }
+  }
+
   private renderImplementation(placement: 'top' | 'bottom') {
     if (!this.hasImplementation()) return nothing;
     const complete = this.implementationComplete();
@@ -1143,9 +1185,10 @@ export class NewReleaseReview102035 extends StateLitElement {
     return html`
       <section class=${`nr-review__run nr-review__implementation is-${placement}`} aria-live=${placement === 'top' ? 'polite' : 'off'}>
         <h3>${this.t('review.implementation.progress')}</h3>
-        ${this.implementationPolling?.paused ? html`<p role="status">${this.t('review.implementation.pollingPaused', { taskId: this.implementationPolling.taskId })}
-          <button type="button" ?disabled=${this.implementationBusy} @click=${() => this.advanceImplementation()}>${this.t('review.implementation.checkNow')}</button>
+        ${this.implementationPolling?.paused ? html`<p>${this.t('review.implementation.pollingPaused', { taskId: this.implementationPolling.taskId })}
+          <button type="button" ?disabled=${this.implementationCheckBusy} @click=${() => this.checkImplementationTask()}>${this.t('review.implementation.checkNow')}</button>
         </p>` : nothing}
+        ${this.implementationCheckFeedback ? html`<p role="status">${this.implementationCheckFeedback}</p>` : nothing}
         ${!complete && !this.implementation?.phases.some(phase => phase.status === 'failed') ? html`<progress aria-label=${this.t('review.implementation.runningBody')}></progress>` : nothing}
         <p class="nr-review__implementation-note">${this.t(complete ? 'review.implementation.completedBody' : 'review.implementation.changesPendingBody')}</p>
         ${materialize.length ? html`<section class="nr-review__implementation-materialize">
@@ -1162,7 +1205,12 @@ export class NewReleaseReview102035 extends StateLitElement {
                 ${phase.attempt ? html`<small>${this.t('review.implementation.attempt', { attempt: phase.attempt })}</small>` : nothing}
               </div>
               ${this.renderImplementationTask(phase.name)}
-              ${this.implementation?.phases.find(item => item.name === phase.name)?.report ? html`<pre>${this.implementationReport(this.implementation.phases.find(item => item.name === phase.name)!.report!)}</pre>` : nothing}
+              ${this.implementation?.phases.find(item => item.name === phase.name)?.report ? html`<details class="nr-review__phase-report">
+                <summary>${this.t('review.implementation.reportDetails')}</summary>
+                <button type="button" @click=${() => void this.copyImplementationReport(this.implementation!.phases.find(item => item.name === phase.name)!.report!)}>${this.t('common.copy')}</button>
+                ${this.implementationCopyFeedback ? html`<span role="status">${this.implementationCopyFeedback}</span>` : nothing}
+                <pre>${this.implementationReport(this.implementation.phases.find(item => item.name === phase.name)!.report!)}</pre>
+              </details>` : nothing}
               ${phase.error ? html`<p class="nr-review__implementation-error">${this.tStoredReviewError(phase.error)}</p>` : nothing}
               ${phase.previousAttempts?.length ? html`<details>
                 <summary>${this.t('review.implementation.previousAttempts')}</summary>
@@ -1209,10 +1257,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (!phase?.taskId) return nothing;
     const task = this.implementationTasks[phaseName];
     if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== phase.taskId) {
-      return html`<p class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}
-        ${phase.threadId ? html`<button type="button" @click=${() => dispatchThreadOpen(phase.threadId, phase.taskId)}
-          >${this.t('review.implementation.taskDetails', { id: phase.taskId })}</button>` : nothing}
-      </p>`;
+      return html`<div class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}</div>`;
     }
     const messageOrderAt = phase.messageId.split('/').pop() || '';
     const context: ExecutionContext = {

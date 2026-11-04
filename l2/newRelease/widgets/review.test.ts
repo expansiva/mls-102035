@@ -494,6 +494,7 @@ test('task polling backs off, pauses manual checks, resumes on updates and reset
 
 test('Apply stops timers after a stale snapshot, manual check stays single and done closes', async () => {
   const review = widget();
+  review.t = (key: string, args?: { status?: string }) => args?.status ? `${key}:${args.status}` : key;
   const now = Date.now();
   let snapshotTime = now - 3600000;
   let done = false;
@@ -509,7 +510,7 @@ test('Apply stops timers after a stale snapshot, manual check stays single and d
     calls++;
     review.implementationPolling = reviewModule.observeImplementationTask(review.implementationPolling,
       'task1', snapshotTime, done ? 'done' : 'in progress', '', now);
-    return { changeId: 'change1' };
+    return { changeId: 'change1', phases: [{ name: 'runAgents:0', status: done ? 'done' : 'running', taskId: 'task1' }] };
   } };
   const setTimer = window.setTimeout;
   const clearTimer = window.clearTimeout;
@@ -529,16 +530,22 @@ test('Apply stops timers after a stale snapshot, manual check stays single and d
     assert.equal(typeof manual, 'function');
     await manual();
     assert.equal(calls, 2);
+    assert.equal(review.implementation.phases[0].status, 'running');
+    assert.match(review.implementationCheckFeedback, /review.implementation.checked/);
+    assert.match(review.implementationCheckFeedback, /review.implementation.updated/);
     assert.deepEqual(timers, []);
     snapshotTime = now;
     await manual();
     assert.equal(calls, 3);
+    assert.match(review.implementationCheckFeedback, /review.implementation.updated/);
     assert.deepEqual(timers, [1500]);
     done = true;
-    let pendingChecks = 0;
-    review.implementationPending = () => ++pendingChecks === 1;
-    review.implementationComplete = () => done;
-    await review.advanceImplementation();
+    review.implementationPending = () => review.implementation.phases[0].status !== 'done';
+    review.implementationComplete = () => review.implementation.phases[0].status === 'done';
+    review.implementationPolling = { ...review.implementationPolling, paused: true };
+    await manual();
+    assert.equal(calls, 4);
+    assert.equal(review.implementation.phases[0].status, 'done');
     assert.equal(finalized, 1);
     assert.deepEqual(timers, [1500]);
   } finally {
