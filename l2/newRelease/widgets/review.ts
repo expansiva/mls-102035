@@ -1,4 +1,5 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/review.ts" enhancement="_102027_/l2/enhancementLit" />
+import { discardModuleInStudio } from '/_102020_/l2/aura/helpers/draftModuleDiscard.js';
 import { completeTobeImplementation } from '/_102035_/l2/newRelease/tobe.js';
 import { effortMatchesCurrent } from '/_102035_/l2/newRelease/helpers/effortFreshness.js';
 
@@ -280,6 +281,10 @@ export class NewReleaseReview102035 extends StateLitElement {
     void this.rememberImplementationTask(phaseName, task, this.loadToken);
   } });
   private readonly initialApply = applyInitialReview;
+  private readonly discardModule = discardModuleInStudio;
+  @state() private discardBusy = false;
+  @state() private discardError = '';
+
   private loadedFor: { project: number; moduleName: string; version: NewReleaseVersion; data: NewReleaseModuleData | null } | null = null;
 
   createRenderRoot() { return this; }
@@ -341,6 +346,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private async load() {
     const token = ++this.loadToken;
+    this.discardError = '';
     this.changeEffortRead = EMPTY_ARTIFACT;
     this.effortCurrent = false;
     this.effortRefreshPending = false;
@@ -993,7 +999,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private async advanceImplementation(token = this.loadToken, retry?: string): Promise<void> {
     if (this.implementationFlight) await this.implementationFlight;
-    if (!this.implementationContextCurrent(token) || this.implementationFlight) return;
+    if (!this.implementationContextCurrent(token) || this.implementationFlight || this.discardBusy) return;
     const flight = this.runImplementation(token, retry);
     this.implementationFlight = flight;
     try { await flight; } finally {
@@ -1002,7 +1008,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private async runImplementation(token: number, retry?: string): Promise<void> {
-    if (!this.implementationContextCurrent(token) || this.implementationBusy) return;
+    if (!this.implementationContextCurrent(token) || this.implementationBusy || this.discardBusy) return;
     if (retry) {
       const phase = this.implementation?.phases.find(phase => phase.name === retry);
       if (phase?.status !== 'failed' || phase.attempt >= 2) return;
@@ -1085,6 +1091,33 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
   }
 
+  private async discardFailedModule(): Promise<void> {
+    if (this.discardBusy || this.implementationBusy || this.actionBusy || !this.isCurrentLoad()
+      || !this.implementation?.phases.some(phase => phase.status === 'failed')) return;
+    if (!window.confirm(this.t('review.implementation.discardConfirm'))) return;
+    const { project, moduleName, version, data } = this;
+    const token = this.loadToken;
+    const current = () => token === this.loadToken && project === this.project && moduleName === this.moduleName
+      && version === this.version && data === this.data;
+    this.discardBusy = true;
+    this.discardError = '';
+    try {
+      await this.discardModule(project, moduleName);
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, {
+        detail: { project, moduleName, version: 'asis' satisfies NewReleaseVersion },
+      }));
+    } catch (error) {
+      console.error('[newRelease] module discard failed', error);
+      if (current()) {
+        const reason = error instanceof Error ? error.message : String(error);
+        const translated = this.t(reason);
+        this.discardError = this.t('review.implementation.discardError', { reason: translated });
+      }
+    } finally {
+      this.discardBusy = false;
+    }
+  }
+
   /** Localize only the closing receipt; keep the stored agent report untouched. */
   private implementationReport(report: string): string {
     return report.replace(/(^|\r?\n)menu\.json (removed|kept: ([^\r\n]*))(?=(?:\r?\n)*$)/u,
@@ -1140,12 +1173,17 @@ export class NewReleaseReview102035 extends StateLitElement {
                 <ul>${phase.changedDefs.map(file => html`<li><code>${file.path}</code> <span>${this.t(`review.implementation.file.${file.status}`)}</span></li>`)}</ul>
               </details>` : nothing}
               ${phase.podeTentarDeNovo ? html`
-                <button type="button" class="nr-review__implementation-retry" ?disabled=${this.implementationBusy}
+                <button type="button" class="nr-review__implementation-retry" ?disabled=${this.implementationBusy || this.discardBusy}
                   @click=${() => void this.advanceImplementation(this.loadToken, phase.name)}>${this.t('review.implementation.retry')}</button>
               ` : nothing}
             </li>
           `)}
         </ol>` : nothing}
+        ${this.implementation?.phases.some(phase => phase.status === 'failed') ? html`
+          <button type="button" ?disabled=${this.discardBusy || this.implementationBusy || this.actionBusy}
+            @click=${() => this.discardFailedModule()}>${this.t('review.implementation.discardModule')}</button>
+          ${this.discardError ? html`<p role=${placement === 'top' ? 'alert' : nothing}>${this.discardError}</p>` : nothing}
+        ` : nothing}
         ${this.actionError ? html`<p role=${placement === 'top' ? 'alert' : nothing}>${this.tStoredReviewError(this.actionError)}</p>` : nothing}
         ${complete ? html`
           ${this.implementationDiff === null ? html`<p>${this.t('state.loading')}</p>` : html`

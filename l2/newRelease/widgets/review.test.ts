@@ -20,6 +20,7 @@ const previousLoad = loader._load;
 let reviewModule: typeof import('./review.ts');
 try {
   loader._load = function (request, ...args) {
+    if (request === '/_102020_/l2/aura/helpers/draftModuleDiscard.js') return { discardModuleInStudio: async () => { throw new Error('Unexpected real discard'); } };
     if (request === 'lit/decorators.js') return { customElement: () => () => undefined,
       property: () => () => undefined, state: () => () => undefined, query: () => () => undefined };
     return previousLoad.call(this, request, ...args);
@@ -544,4 +545,147 @@ test('Apply stops timers after a stale snapshot, manual check stays single and d
     window.setTimeout = setTimer;
     window.clearTimeout = clearTimer;
   }
+});
+
+function failedImplementationWidget() {
+  const review = widget();
+  review.version = 'tobe';
+  const f = setup();
+  review.implementation = {
+    changeId: 'change1', revisionId: 'rev1',
+    initial: { plan: f.plan, replan: false },
+    merged: { create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [], abend: [] },
+    phases: [{ name: 'runAgents:0', status: 'failed', attempt: 1, error: 'refused: broken page' }],
+  };
+  review.data = { ...review.data, changeId: 'change1', revisionId: 'rev1' };
+  review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
+  return review;
+}
+
+function discardClick(review: Record<string, any>): () => Promise<void> {
+  function find(value: any): (() => Promise<void>) | undefined {
+    if (value?.strings) {
+      if (value.strings.join('').includes('@click=') && value.values.some((item: unknown) => item === 'review.implementation.discardModule')) {
+        return value.values.find((item: unknown) => typeof item === 'function');
+      }
+      for (const item of value.values) { const found = find(item); if (found) return found; }
+    }
+    if (Array.isArray(value)) for (const item of value) { const found = find(item); if (found) return found; }
+    return undefined;
+  }
+  const click = find(review.renderImplementation('top'));
+  assert.ok(click, 'failed phase renders the discard button with its handler');
+  return click;
+}
+
+test('mr51 failed phase discard button confirms, calls Studio once and reloads the published context', async () => {
+  const review = failedImplementationWidget();
+  const record = review.implementation;
+  const calls: unknown[] = [];
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  review.discardModule = async (...args: unknown[]) => { calls.push(args); await pending; };
+  const prior = window.confirm;
+  window.confirm = text => { calls.push(text); return true; };
+  const onReload = (event: Event) => { calls.push((event as CustomEvent).detail); };
+  const previousDispatch = window.dispatchEvent;
+  window.dispatchEvent = event => { if (event.type === 'nr-tobe-updated') onReload(event); return true; };
+  try {
+    assert.match(templateText(review.renderImplementation('top')), /refused: broken page/);
+    const click = discardClick(review);
+    const running = click();
+    assert.equal(review.discardBusy, true);
+    await click();
+    assert.deepEqual(calls, ['review.implementation.discardConfirm', [102035, 'fixture']]);
+    finish(); await running;
+    assert.deepEqual(calls.at(-1), { project: 102035, moduleName: 'fixture', version: 'asis' });
+    assert.equal(review.discardBusy, false);
+    assert.equal(review.implementation, record, 'the in-memory implementation is unchanged before the context owner handles the reload');
+    review.implementation.phases[0].status = 'done';
+    assert.doesNotMatch(templateText(review.renderImplementation('top')), /review.implementation.discardModule/);
+  } finally { window.confirm = prior; window.dispatchEvent = previousDispatch; }
+});
+
+test('mr51 canceled or failed Studio discard never announces success and preserves the phase error', async () => {
+  const review = failedImplementationWidget();
+  const prior = window.confirm;
+  const events: Event[] = [];
+  const onReload = (event: Event) => { events.push(event); };
+  const previousDispatch = window.dispatchEvent;
+  window.dispatchEvent = event => { if (event.type === 'nr-tobe-updated') onReload(event); return true; };
+  let calls = 0;
+  review.discardModule = async () => { calls++; throw new Error('draft.not_owner'); };
+  try {
+    window.confirm = () => false;
+    await discardClick(review)();
+    assert.equal(calls, 0);
+    window.confirm = () => true;
+    const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.js');
+    review.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+    await review.discardFailedModule();
+    assert.equal(calls, 1);
+    assert.equal(events.length, 0);
+    assert.equal(review.discardBusy, false);
+    assert.match(templateText(review.renderImplementation('top')), /Você não é o dono deste rascunho/);
+    assert.match(templateText(review.renderImplementation('top')), /refused: broken page/);
+    assert.equal(review.implementationRestored, false);
+  } finally { window.confirm = prior; window.dispatchEvent = previousDispatch; }
+});
+
+test('mr51 completed discard announces its captured module even after switching version', async () => {
+  const review = failedImplementationWidget();
+  const prior = window.confirm;
+  const previousDispatch = window.dispatchEvent;
+  const events: Event[] = [];
+  window.confirm = () => true;
+  window.dispatchEvent = event => { events.push(event); return true; };
+  review.discardModule = async () => { review.version = 'release:old'; };
+  try {
+    await review.discardFailedModule();
+    assert.equal(events.length, 1);
+    assert.deepEqual((events[0] as CustomEvent).detail, { project: 102035, moduleName: 'fixture', version: 'asis' });
+    assert.equal(review.discardBusy, false);
+  } finally { window.confirm = prior; window.dispatchEvent = previousDispatch; }
+});
+
+test('mr51 loading another context clears its previous discard error', async () => {
+  const review = failedImplementationWidget();
+  review.discardError = 'previous discard failure';
+  review.moduleName = '';
+  await review.load();
+  assert.equal(review.discardError, '');
+});
+
+test('mr51 a pending discard disables and rejects phase retry', async () => {
+  const review = failedImplementationWidget();
+  Object.defineProperty(review, 'isConnected', { value: true });
+  review.implementation.phases[0].podeTentarDeNovo = true;
+  let retries = 0;
+  review.implementationRunner = { retryPhase: async () => { retries++; throw new Error('Unexpected retry'); } };
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  review.discardModule = async () => pending;
+  const prior = window.confirm;
+  const previousDispatch = window.dispatchEvent;
+  window.confirm = () => true;
+  window.dispatchEvent = () => true;
+  function retryDisabled(value: any): boolean | undefined {
+    if (value?.strings) {
+      if (value.strings.some((part: string) => part.includes('nr-review__implementation-retry'))) return value.values[0];
+      for (const item of value.values) { const found = retryDisabled(item); if (found !== undefined) return found; }
+    }
+    if (Array.isArray(value)) for (const item of value) { const found = retryDisabled(item); if (found !== undefined) return found; }
+    return undefined;
+  }
+  try {
+    assert.equal(retryDisabled(review.renderImplementation('top')), false);
+    const discarding = review.discardFailedModule();
+    assert.equal(review.discardBusy, true);
+    assert.equal(retryDisabled(review.renderImplementation('top')), true);
+    await review.advanceImplementation(review.loadToken, 'runAgents:0');
+    await review.runImplementation(review.loadToken, 'runAgents:0');
+    assert.equal(retries, 0);
+    assert.equal(review.implementationFlight, null);
+    finish(); await discarding;
+  } finally { finish(); window.confirm = prior; window.dispatchEvent = previousDispatch; }
 });
