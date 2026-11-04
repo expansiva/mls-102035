@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
-import * as agentNewReleaseL2 from '/_102020_/l2/agentNewReleaseL2/agentNewReleaseL2.js';
+import { planNewReleaseL2 } from '/_102020_/l2/agentNewReleaseL2/helpers/plan.js';
 import * as agentMaterializeL1 from '/_102021_/l2/agentMaterializeL1/agentMaterializeL1.js';
 import * as agentM12Controllers from '/_102021_/l2/agentMaterializeL1/steps/controllers30/agentM12Controllers.js';
 import * as agentM12Domain from '/_102021_/l2/agentMaterializeL1/steps/domain10/agentM12Domain.js';
@@ -205,18 +205,20 @@ void test('tarefas, rule only: the REAL agentMaterializeL1 runs its ten steps in
   } finally { stor.restore(); }
 });
 
-void test('tarefas, rule only: the REAL agentNewReleaseL2 refuses "nothing to apply" when the accepted effort asks for no L2 work, and calls no model', async () => {
-  const stor = installTarefas();
-  try {
-    const asked: string[] = [];
-    const llm = createRecordedLlm({ mode: 'record', call: async request => { asked.push(request.humanPrompt.slice(0, 40)); return '{}'; }, store: { read: () => null, write: () => undefined } });
-    const command = `@@agentNewReleaseL2 ${MODULE}`;
-    const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
-    const result = await runUntilDone(agentNewReleaseL2, context, {}, [], llm);
-    const answer = result.intents.flatMap(intent => intent.type === 'add-message-ai' ? intent.request.inputAI : []).map(item => String(item.content)).join('\n');
-    assert.match(answer, /refused: nothing to apply/u);
-    assert.deepEqual(asked, []);
-  } finally { stor.restore(); }
+void test('tarefas, rule only: the L2 plan of the REAL effort has the page to materialize; the same effort without the L2 page is "nothing to apply"', () => {
+  const effort = JSON.parse(readFileSync(new URL('changeEffortSoRegra.json', FIXTURE), 'utf8')) as { perItem: Array<{ answers: Array<{ master: { kind: string }; materialize: unknown[] }> }>; merged: { materialize: Array<{ project: string }> } };
+  const plan = planNewReleaseL2(effort, '102020');
+  assert.ok(plan.ok, JSON.stringify(plan));
+  assert.deepEqual(plan.ok && { mode: plan.mode, pages: plan.pages }, { mode: 'materialize', pages: ['listas_tarefas'] });
+  const l1Only = structuredClone(effort);
+  for (const answer of l1Only.perItem[0].answers) if (answer.master.kind === 'l2') answer.materialize = [];
+  l1Only.merged.materialize = l1Only.merged.materialize.filter(unit => unit.project !== '102020');
+  const refused = planNewReleaseL2(l1Only, '102020');
+  assert.deepEqual(refused, { ok: false, reason: 'nothing to apply' });
+});
+
+void test('tarefas, rule only: agentNewReleaseL2 with the real effort goes on to agentMaterializeL2 and the model', { todo: 'the host does not model the start of a child agent task: agentNewReleaseL2 step "materialize" neither completes nor prepares a prompt (l4_p4_96)' }, () => {
+  assert.fail('not exercised');
 });
 
 // An effort that materializes a page makes agentNewReleaseL2 schedule agentDefsL2 and agentMaterializeL2, whose pages50 and bff55

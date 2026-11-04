@@ -52,7 +52,13 @@
           "status": "computed",
           "create": [],
           "regenerateDefs": [],
-          "materialize": [],
+          "materialize": [
+            {
+              "kind": "page",
+              "id": "listas_tarefas",
+              "path": "l2/tarefas/web/contracts/listas_tarefas.defs.ts"
+            }
+          ],
           "remove": [],
           "runAgents": [],
           "contract": "keep"
@@ -67,7 +73,28 @@
           "status": "computed",
           "create": [],
           "regenerateDefs": [],
-          "materialize": [],
+          "materialize": [
+            {
+              "kind": "entity",
+              "id": "listaTarefas",
+              "path": "l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts"
+            },
+            {
+              "kind": "request",
+              "id": "listas_tarefas",
+              "path": "l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts"
+            },
+            {
+              "kind": "usecase",
+              "id": "createListaTarefas",
+              "path": "l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts"
+            },
+            {
+              "kind": "usecase",
+              "id": "updateListaTarefas",
+              "path": "l1/tarefas/layer_2_application/usecases/updateListaTarefas.defs.ts"
+            }
+          ],
           "remove": [],
           "runAgents": [],
           "contract": "keep"
@@ -78,7 +105,38 @@
   "merged": {
     "create": [],
     "regenerateDefs": [],
-    "materialize": [],
+    "materialize": [
+      {
+        "project": "102020",
+        "kind": "page",
+        "id": "listas_tarefas",
+        "path": "l2/tarefas/web/contracts/listas_tarefas.defs.ts"
+      },
+      {
+        "project": "102021",
+        "kind": "entity",
+        "id": "listaTarefas",
+        "path": "l1/tarefas/layer_3_domain/entities/listaTarefas.defs.ts"
+      },
+      {
+        "project": "102021",
+        "kind": "request",
+        "id": "listas_tarefas",
+        "path": "l1/tarefas/layer_2_application/requests/listas_tarefas.defs.ts"
+      },
+      {
+        "project": "102021",
+        "kind": "usecase",
+        "id": "createListaTarefas",
+        "path": "l1/tarefas/layer_2_application/usecases/createListaTarefas.defs.ts"
+      },
+      {
+        "project": "102021",
+        "kind": "usecase",
+        "id": "updateListaTarefas",
+        "path": "l1/tarefas/layer_2_application/usecases/updateListaTarefas.defs.ts"
+      }
+    ],
     "remove": [],
     "runAgents": [],
     "abend": []

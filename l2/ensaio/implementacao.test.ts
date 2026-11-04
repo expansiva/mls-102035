@@ -12,15 +12,18 @@ import { acceptL4Implementation, readL4Implementation, type L4ImplementationReco
 import { adoptL4ReviewResult, promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
 import { createAgent as createNewReleaseL1 } from '/_102021_/l2/agentNewReleaseL1/agentNewReleaseL1.js';
+import * as agentNewReleaseL2Real from '/_102020_/l2/agentNewReleaseL2/agentNewReleaseL2.js';
+import { runUntilDone } from './hostSimulado.js';
 import { createSimulatedDefsHost, withReviewScenario, runPlannerScenario, PROJECT, MODULE } from './nodejsCenario.js';
 import { effortRegistry } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
+import type { TaskData } from '/_102036_/l2/shared/interfaces.js';
 
 const languageCommand = '@@agentAddLanguage ' + JSON.stringify([{
   languages: [{ code: 'pt-BR', name: 'pt-BR' }], projectId: PROJECT, moduleName: MODULE,
 }]);
 
-async function withEffort<T>(mode: 'rule' | 'agent' | 'both', run: () => Promise<T>): Promise<T> {
+async function withEffort<T>(mode: 'rule' | 'agent' | 'both' | 'l1only', run: () => Promise<T>): Promise<T> {
   const golden = JSON.parse(readFileSync(new URL(
     '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
   const previous = { ...effortRegistry };
@@ -29,6 +32,7 @@ async function withEffort<T>(mode: 'rule' | 'agent' | 'both', run: () => Promise
       const answer = { ...structuredClone(original), item: input.item.changeId } as EffortAnswer;
       if (mode !== 'rule') {
         if (mode === 'agent') answer.materialize = [];
+        if (mode === 'l1only' && original.master.kind === 'l2') answer.materialize = [];
         answer.runAgents = original.master.kind === 'l2' ? [{ agent: 'agentAddLanguage', command: languageCommand }] : [];
       }
       return answer;
@@ -55,7 +59,7 @@ function captureQa(name: string, record: L4ImplementationRecord, changeEffort: s
   qaRecords[name] = { record: copy, changeEffort };
 }
 
-async function acceptedScenario(mode: 'rule' | 'agent' | 'both', run: (record: L4ImplementationRecord, changeEffort: string) => Promise<void>) {
+async function acceptedScenario(mode: 'rule' | 'agent' | 'both' | 'l1only', run: (record: L4ImplementationRecord, changeEffort: string) => Promise<void>) {
   await withEffort(mode, () => withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async scenario => {
     const planner = await runPlannerScenario(scenario.context);
     assert.equal(planner.context.task?.status, 'done');
@@ -246,5 +250,37 @@ test('l4_p4_96 s4: a module with no plan is refused by the real agentNewReleaseL
     delete mls.stor.files[key];
     const text = await runRealL1();
     assert.match(text, /^refused: postprocess: plan missing: l4\/controleEstoque\/pool\/l2\/web\/backend\.json/u, text.slice(0, 300));
+  });
+});
+
+// l4_p4_96, measured for the planner: an accepted effort that is structural only through L1 sends the runner to agentNewReleaseL2
+// (moduleImplementation.ts:60-67), and the L2 plan has no page to apply. What does the runner do with the answer of the real agent?
+test('l4_p4_96: effort with L1 items and no L2 page: the real agentNewReleaseL2 refuses "nothing to apply" and the runner FAILS that phase', async () => {
+  await acceptedScenario('l1only', async accepted => {
+    assert.ok(accepted.merged.materialize.length > 0 && accepted.merged.materialize.every(unit => unit.project === '102021'), 'the accepted effort has only L1 items');
+    const base = createSimulatedDefsHost('done', true);
+    let l2Text = '';
+    const texts = new Map<string, string[]>();
+    const runner = createImplementationRunner({
+      ...base.dependencies,
+      execute: async (name, context) => {
+        if (name !== 'agentNewReleaseL2') return base.dependencies.execute!(name, context);
+        const ran = await runUntilDone(agentNewReleaseL2Real, context, {}, []);
+        l2Text = ran.intents.flatMap(intent => intent.type === 'add-message-ai' ? intent.request.inputAI : []).map(item => String(item.content)).at(-1) ?? '';
+        const task: TaskData = { PK: 'task/#l2-real', SK: 'metadata', title: name, owner: 'ensaio', team: null, status: 'done', last_updated: 0,
+          last_update_log: null, messageid_created: `${context.message.threadId}/${context.message.createAt}` };
+        texts.set('l2-real', [l2Text]);
+        context.task = task;
+      },
+      task: async (user, id, messageId) => id === 'l2-real'
+        ? { PK: 'task/#l2-real', SK: 'metadata', title: 'agentNewReleaseL2', owner: 'ensaio', team: null, status: 'done', last_updated: 0, last_update_log: null, messageid_created: messageId } as TaskData
+        : base.dependencies.task!(user, id, messageId),
+      // The report of a finished task is the text of its answer (what the host returns as taskResults).
+      message: async (user, threadId, messageId) => ({ taskResults: texts.get('l2-real') ?? [] }) as never,
+    });
+    const record = await runner.runNext(PROJECT, MODULE);
+    assert.match(l2Text, /^refused: nothing to apply/u, 'the real L2 agent answer');
+    assert.equal(record.phases[0].status, 'failed', 'the runner marks a refused answer as a failed phase');
+    assert.match(String(record.phases[0].error), /refused: nothing to apply/u);
   });
 });
