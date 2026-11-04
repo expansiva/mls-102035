@@ -90,7 +90,10 @@ new-release--widgets--review-102035 {
   }
   .nr-review__primary-action.is-top { border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
   .nr-review__primary-action.is-bottom { border-top: 1px solid var(--border-subtle, #e4e9f0); }
+  .nr-review__primary-action.has-undo { grid-template-columns: minmax(0, 1fr) minmax(20rem, 27rem); }
   .nr-review__primary-action > div { display: grid; min-width: 0; gap: .22rem; }
+  .nr-review__primary-action > .nr-review__action-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .nr-review__action-buttons > button { flex: 1 1 10rem; width: auto; }
   .nr-review__primary-action > div > span {
     color: var(--link-text, #0f62b8);
     font-size: .64rem;
@@ -119,6 +122,12 @@ new-release--widgets--review-102035 {
     color: var(--button-primary-text-disabled, #657689);
     cursor: not-allowed;
   }
+  .nr-review__primary-action .nr-review__undo-action {
+    border-color: var(--border-strong, #71849c);
+    background: var(--surface-bg, #fff);
+    color: var(--text-strong, #111827);
+  }
+  .nr-review__undo-feedback { margin: .5rem .85rem; color: var(--text-default, #2f3a48); font-size: .78rem; }
 
   .nr-review__run {
     display: grid;
@@ -406,6 +415,7 @@ new-release--widgets--review-102035 {
 
   @container (max-width: 519px) {
     .nr-review__primary-action { grid-template-columns: minmax(0, 1fr); padding-inline: .85rem; }
+    .nr-review__primary-action.has-undo { grid-template-columns: minmax(0, 1fr); }
     .nr-review__split.has-detail { grid-template-columns: 1fr; }
     .nr-review__menu { border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
     .nr-review__backend { padding-inline: .85rem; }
@@ -418,6 +428,7 @@ new-release--widgets--review-102035 {
     .nr-review__hero,
     .nr-review__toolbar { padding-inline: .85rem; }
     .nr-review__primary-action { grid-template-columns: minmax(0, 1fr); padding-inline: .85rem; }
+    .nr-review__primary-action.has-undo { grid-template-columns: minmax(0, 1fr); }
     .nr-review__split.has-detail { grid-template-columns: 1fr; }
     .nr-review__menu { border-right: 0; border-bottom: 1px solid var(--border-subtle, #e4e9f0); }
     .nr-review__pool { margin-inline: .85rem; }

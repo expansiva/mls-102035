@@ -16,11 +16,11 @@ import type { ReviewRunRecord } from '/_102035_/l2/newRelease/helpers/reviewRun.
 import { IndexedDbReviewRunStore } from '/_102035_/l2/newRelease/helpers/reviewRunStore.js';
 import { readCandidateWorkerGate } from '/_102035_/l2/newRelease/helpers/candidateWorkerGate.js';
 import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate, prepareL4Change, sealL4Revision, readActiveL4Change, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate, prepareL4Change, sealL4Revision, readActiveL4Change, withModuleWriter, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput, type PreparedReviewStart } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
-import { readSourceText } from '/_102035_/l2/solution/fs.js';
-import { sealModuleLayers, restoreModuleFromSeals, diffModuleLayers, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
-import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, type L4ImplementationRecord, type L4ImplementationHashes, readInitialImplementationPlan, type InitialImplementationPlan } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { readJson, readSourceText, writeJson } from '/_102035_/l2/solution/fs.js';
+import { sealModuleLayers, sealModuleApplication, restoreModuleApplication, restoreModuleFromSeals, diffModuleLayers, type ModuleApplicationSeal, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, recordL4ImplementationPhase, type L4ImplementationRecord, type L4ImplementationHashes, readInitialImplementationPlan, type InitialImplementationPlan } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { createImplementationRunner, type ImplementationRunnerDependencies } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
@@ -109,6 +109,32 @@ export function observeImplementationTask(previous: ImplementationTaskPolling | 
 const EMPTY_MENU: MenuReadResult = { status: 'missing', path: '' };
 const EMPTY_ARTIFACT: ReviewArtifactRead = { status: 'missing', path: '' };
 
+function applicationCheckpointInfo(project: number, moduleName: string) {
+  return { project, level: 4, folder: `${moduleName}/pipeline/application`, shortName: 'undo', extension: '.json' };
+}
+
+function hasApplicationCheckpoint(project: number, moduleName: string): boolean {
+  const info = applicationCheckpointInfo(project, moduleName);
+  return Object.values(mls.stor.files).some(file => !!file && file.project === project && file.level === info.level
+    && file.folder === info.folder && file.shortName === info.shortName && file.extension === info.extension && file.status !== 'deleted');
+}
+
+type CancelableApplicationSeal = ModuleApplicationSeal & { cancelRequested?: boolean };
+
+async function applicationCancelRequested(project: number, moduleName: string, changeId: string, revisionId: string): Promise<boolean> {
+  const seal = await readJson<CancelableApplicationSeal>(applicationCheckpointInfo(project, moduleName));
+  return !!seal && seal.changeId === changeId && seal.revisionId === revisionId && seal.cancelRequested === true;
+}
+
+async function requestApplicationCancel(project: number, moduleName: string, changeId: string, revisionId: string): Promise<void> {
+  await withModuleWriter(project, moduleName, async () => {
+    const info = applicationCheckpointInfo(project, moduleName);
+    const seal = await readJson<CancelableApplicationSeal>(info);
+    if (!seal || seal.changeId !== changeId || seal.revisionId !== revisionId) throw new Error('module-application.invalid_seal');
+    if (!seal.cancelRequested) await writeJson(info, { ...seal, cancelRequested: true });
+  });
+}
+
 export interface InitialReviewInput {
   project: number; moduleName: string; acceptedBy: string; changeId: string | null; revisionId: string | null;
 }
@@ -119,6 +145,8 @@ export interface InitialReviewDependencies {
   readSealed?: typeof readSealedL4Candidate;
   review?: (sealed: L4SealedCandidateSnapshot, userId: string) => Promise<L4SealedCandidateSnapshot>;
   sealLayers?: typeof sealModuleLayers;
+  sealApplication?: typeof sealModuleApplication;
+  restoreApplication?: typeof restoreModuleApplication;
   promote?: typeof promoteL4Revision;
   accept?: typeof acceptL4Implementation;
   current?: () => boolean;
@@ -213,11 +241,17 @@ export async function applyInitialReview(input: InitialReviewInput, dependencies
   if (sealed.manifest.changedPaths.length) sealed = await (dependencies.review ?? reviewInitialCandidate)(sealed, acceptedBy);
   current();
   const { changeId, revisionId, baseId } = sealed.manifest;
-  await (dependencies.sealLayers ?? sealModuleLayers)(project, moduleName, baseId);
-  current();
-  await (dependencies.promote ?? promoteL4Revision)(project, moduleName, changeId, revisionId);
-  current();
-  return (dependencies.accept ?? acceptL4Implementation)(project, moduleName, { kind: 'initial', revisionId, acceptedBy, plan });
+  await (dependencies.sealApplication ?? sealModuleApplication)(project, moduleName, changeId, revisionId);
+  try {
+    await (dependencies.sealLayers ?? sealModuleLayers)(project, moduleName, baseId);
+    current();
+    await (dependencies.promote ?? promoteL4Revision)(project, moduleName, changeId, revisionId);
+    current();
+    return await (dependencies.accept ?? acceptL4Implementation)(project, moduleName, { kind: 'initial', revisionId, acceptedBy, plan });
+  } catch (error) {
+    await (dependencies.restoreApplication ?? restoreModuleApplication)(project, moduleName, changeId, revisionId);
+    throw error;
+  }
 }
 
 @customElement('new-release--widgets--review-102035')
@@ -267,6 +301,10 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   @state() private implementationDiff: ModuleLayerDiff[] | null = null;
   @state() private implementationRestored = false;
+  @state() private applicationCheckpoint = false;
+  @state() private implementationCancelBusy = false;
+  @state() private implementationUndoFeedback = '';
+  private implementationCancelRequested = false;
   private implementationFlight: Promise<void> | null = null;
 
   private loadToken = 0;
@@ -302,6 +340,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   updated(changed: PropertyValues) {
     const previousData = changed.get('data') as NewReleaseModuleData | null | undefined;
+    if (changed.has('project') || changed.has('moduleName')) this.implementationUndoFeedback = '';
     if (changed.has('project') || changed.has('moduleName')
       || (changed.has('data') && (previousData?.changeId !== this.data?.changeId
         || previousData?.revisionId !== this.data?.revisionId))) this.supersededRevisionId = '';
@@ -364,6 +403,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.stopImplementationTimer();
     this.implementationDiff = null;
     this.implementationRestored = false;
+    this.applicationCheckpoint = hasApplicationCheckpoint(this.project, this.moduleName);
     const context = { project: this.project, moduleName: this.moduleName, version: this.version, data: this.data };
     this.loadedFor = null;
     this.implementation = null;
@@ -409,6 +449,19 @@ export class NewReleaseReview102035 extends StateLitElement {
       ? await readLatestCompletedL4Implementation(context.project, context.moduleName) : null);
     if (token !== this.loadToken) return;
     this.implementation = reviewImplementationVisible(candidateImplementation, context.data) ? candidateImplementation : null;
+    let cancelReadError = '';
+    let cancelRequested = false;
+    if (this.applicationCheckpoint && this.implementation) {
+      try {
+        cancelRequested = await applicationCancelRequested(context.project, context.moduleName, this.implementation.changeId, this.implementation.revisionId);
+      } catch (error) {
+        cancelRequested = true;
+        cancelReadError = error instanceof Error ? error.message : String(error);
+      }
+    }
+    if (token !== this.loadToken) return;
+    this.implementationCancelRequested = cancelRequested;
+    if (cancelReadError) this.implementationUndoFeedback = this.t('review.implementation.undoError', { reason: cancelReadError });
     if (implementation.error) this.actionError = 'review.implementation.error.load';
     this.menuRead = menuRead;
     this.backendRead = backendRead;
@@ -435,8 +488,19 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.loadedFor = context;
     this.loading = false;
     if (this.implementation) void this.hydrateImplementationTasks(this.implementation, token);
-    if (this.implementationPending()) void this.advanceImplementation(token);
-    else if (this.implementationComplete()) void this.finalizeImplementation(token);
+    if (this.implementationCancelRequested) {
+      this.announceImplementationState(true);
+      if (!cancelReadError && !this.implementationCancelBusy) void this.undoLastApplication(true);
+    } else if (this.implementationPending()) {
+      this.announceImplementationState(true);
+      void this.advanceImplementation(token);
+    } else if (this.implementationComplete()) void this.finalizeImplementation(token);
+    else if (this.implementation?.phases.some(phase => phase.status === 'failed')) this.announceImplementationState(false);
+  }
+
+  private announceImplementationState(active: boolean, project = this.project, moduleName = this.moduleName): void {
+    window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT,
+      { detail: { project, moduleName, active } }));
   }
 
   private async hydrateImplementationTasks(record: L4ImplementationRecord, token: number): Promise<void> {
@@ -972,19 +1036,23 @@ export class NewReleaseReview102035 extends StateLitElement {
     const hashes = { ...this.implementationHashes };
     this.actionBusy = true;
     this.actionError = '';
-    window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, { detail: { project, moduleName, active: true } }));
+    this.announceImplementationState(true, project, moduleName);
     this.querySelectorAll<HTMLButtonElement>('.nr-review__primary-action button').forEach(button => {
       button.disabled = true;
       button.setAttribute('aria-disabled', 'true');
     });
     let accepted = false;
     let phase: 'seal' | 'promote' | 'accept' | 'restore' = 'seal';
+    let applicationSealed = false;
     try {
       if (!await effortMatchesCurrent(project, moduleName, this.changeEffortRead.value)) {
         this.effortCurrent = false;
         this.actionError = 'review.implementation.error.conflict';
         return;
       }
+      await sealModuleApplication(project, moduleName, changeId, revisionId);
+      applicationSealed = true;
+      if (current()) this.applicationCheckpoint = true;
       await sealModuleLayers(project, moduleName, baseId);
       phase = 'promote';
       await promoteL4Revision(project, moduleName, changeId, revisionId);
@@ -993,10 +1061,12 @@ export class NewReleaseReview102035 extends StateLitElement {
       accepted = true;
       if (current()) this.implementation = implementation;
     } catch (error) {
-      if (phase === 'accept') {
+      if (applicationSealed) {
         try {
-          await restoreModuleFromSeals(project, moduleName, baseId);
-        } catch {
+          await restoreModuleApplication(project, moduleName, changeId, revisionId);
+          if (current()) this.applicationCheckpoint = false;
+        } catch (restoreError) {
+          console.error('[newRelease] application rollback failed', restoreError);
           phase = 'restore';
         }
       }
@@ -1010,18 +1080,84 @@ export class NewReleaseReview102035 extends StateLitElement {
       }
     } finally {
       if (current()) this.actionBusy = false;
-      if (!accepted) window.dispatchEvent(new CustomEvent(NEW_RELEASE_IMPLEMENTATION_STATE_EVENT, { detail: { project, moduleName, active: false } }));
+      if (!accepted) this.announceImplementationState(false, project, moduleName);
     }
     // Execution failures must never roll back a successfully accepted revision.
     if (accepted && current()) {
       await this.advanceImplementation(token);
-      if (current()) await this.finalizeImplementation(token);
+      if (current() && !this.implementationCancelRequested) await this.finalizeImplementation(token);
     }
   }
 
   private stopImplementationTimer(): void {
     if (this.implementationTimer !== undefined) window.clearTimeout(this.implementationTimer);
     this.implementationTimer = undefined;
+  }
+
+  private async waitForRunningImplementation(project: number, moduleName: string): Promise<void> {
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < deadline) {
+      const record = await readL4Implementation(project, moduleName);
+      if (!record) {
+        if (this.implementationComplete()) return;
+        throw new Error('implementation.not_accepted');
+      }
+      const phase = record.phases.find(item => item.status === 'running');
+      if (!phase) return;
+      const userId = getUserId();
+      if (!userId) throw new Error('implementation.user_unavailable');
+      let taskId = phase.taskId;
+      if (!taskId) {
+        const message = await msgGetMessage({ userId, threadId: phase.threadId, messageId: phase.messageId });
+        taskId = message.response?.message?.taskId?.replace(/^task(?:\/#?|#)/u, '') || '';
+      }
+      if (taskId) {
+        const update = await msgGetTaskUpdate({ userId, taskId, messageId: phase.messageId });
+        if (!update.success || !update.response?.task) throw new Error(update.error || 'implementation.task_unavailable');
+        const task = update.response.task;
+        if (task.PK.replace(/^task(?:\/#?|#)/u, '') !== taskId) throw new Error('implementation.task_mismatch');
+        if (['done', 'failed', 'paused'].includes(task.status)) {
+          await recordL4ImplementationPhase(project, moduleName, { ...phase, taskId,
+            status: task.status === 'done' ? 'done' : 'failed', endedAt: new Date().toISOString(),
+            ...(task.status !== 'done' ? { error: task.last_update_log || 'review.implementation.error.run' } : {}) });
+          continue;
+        }
+      }
+      await new Promise<void>(resolve => window.setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+    throw new Error('implementation.task_not_terminal');
+  }
+
+  private async undoLastApplication(resume = false): Promise<void> {
+    const record = this.implementation;
+    if (!record || !this.applicationCheckpoint || this.implementationCancelBusy || this.actionBusy && !this.implementationPending()) return;
+    const running = this.implementationPending();
+    if (!resume && !window.confirm(this.t(running ? 'review.implementation.cancelConfirm' : 'review.implementation.undoConfirm'))) return;
+    const { project, moduleName } = this;
+    const token = this.loadToken;
+    this.implementationCancelRequested = true;
+    this.implementationCancelBusy = true;
+    this.implementationUndoFeedback = '';
+    this.stopImplementationTimer();
+    try {
+      await requestApplicationCancel(project, moduleName, record.changeId, record.revisionId);
+      if (this.implementationFlight) await this.implementationFlight;
+      if (running) await this.waitForRunningImplementation(project, moduleName);
+      await restoreModuleApplication(project, moduleName, record.changeId, record.revisionId);
+      this.applicationCheckpoint = false;
+      this.implementation = null;
+      this.implementationDiff = null;
+      this.implementationUndoFeedback = this.t('review.implementation.undone');
+      this.announceImplementationState(false, project, moduleName);
+      window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT,
+        { detail: { project, moduleName, version: 'tobe' satisfies NewReleaseVersion } }));
+    } catch (error) {
+      console.error('[newRelease] last application undo failed', error);
+      if (token === this.loadToken) this.implementationUndoFeedback = this.t('review.implementation.undoError',
+        { reason: error instanceof Error ? error.message : String(error) });
+    } finally {
+      if (token === this.loadToken) this.implementationCancelBusy = false;
+    }
   }
 
   private implementationContextCurrent(token: number): boolean {
@@ -1036,7 +1172,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private async advanceImplementation(token = this.loadToken, retry?: string): Promise<void> {
     if (this.implementationFlight) await this.implementationFlight;
-    if (!this.implementationContextCurrent(token) || this.implementationFlight || this.discardBusy) return;
+    if (!this.implementationContextCurrent(token) || this.implementationFlight || this.discardBusy || this.implementationCancelRequested) return;
     const flight = this.runImplementation(token, retry);
     this.implementationFlight = flight;
     try { await flight; } finally {
@@ -1045,7 +1181,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private async runImplementation(token: number, retry?: string): Promise<void> {
-    if (!this.implementationContextCurrent(token) || this.implementationBusy || this.discardBusy) return;
+    if (!this.implementationContextCurrent(token) || this.implementationBusy || this.discardBusy || this.implementationCancelRequested) return;
     if (retry) {
       const phase = this.implementation?.phases.find(phase => phase.name === retry);
       if (phase?.status !== 'failed' || phase.attempt >= 2) return;
@@ -1060,10 +1196,11 @@ export class NewReleaseReview102035 extends StateLitElement {
         : await this.implementationRunner.runNext(project, moduleName);
       if (!this.implementationContextCurrent(token)) return;
       this.implementation = record.changeId === this.data?.changeId ? record : null;
-      if (this.implementationComplete()) await this.finalizeImplementation(token);
+      if (!this.implementationCancelRequested && this.implementationComplete()) await this.finalizeImplementation(token);
+      if (!this.implementationCancelRequested && record.phases.some(phase => phase.status === 'failed')) this.announceImplementationState(false, project, moduleName);
       if (!this.implementationContextCurrent(token)) return;
       // A synchronous completion can leave the next phase absent, with none running.
-      if (this.implementationPending() && !this.implementationPolling?.paused) {
+      if (!this.implementationCancelRequested && this.implementationPending() && !this.implementationPolling?.paused) {
         this.implementationTimer = window.setTimeout(() => {
           this.implementationTimer = undefined;
           if (this.implementationContextCurrent(token)) void this.advanceImplementation(token);
@@ -1087,7 +1224,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   }
 
   private async finalizeImplementation(token: number): Promise<void> {
-    if (!this.implementationContextCurrent(token) || !this.implementationComplete() || !this.data?.changeId) return;
+    if (!this.implementationContextCurrent(token) || this.implementationCancelRequested || !this.implementationComplete() || !this.data?.changeId) return;
     const record = this.implementation!;
     if (record.changeId !== this.data.changeId || record.revisionId !== this.data.revisionId) return;
     await this.loadImplementationDiff(token);
@@ -1095,6 +1232,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (record.initial) this.hasRelease = moduleHasGeneratedSources(this.project, this.moduleName, Object.values(mls.stor.files));
     try { await completeTobeImplementation(this.project, this.moduleName, record.changeId, record.revisionId); }
     catch (error) { if (this.implementationContextCurrent(token)) this.actionError = error instanceof Error ? error.message : 'review.implementation.error.run'; }
+    finally { if (this.implementationContextCurrent(token)) this.announceImplementationState(false); }
   }
 
   private async loadImplementationDiff(token: number): Promise<void> {
@@ -1547,23 +1685,32 @@ export class NewReleaseReview102035 extends StateLitElement {
     </details>`;
   }
 
-  private renderPrimaryAction(block: ReviewPrimaryActionPlacement) {
+  private renderPrimaryAction(block: ReviewPrimaryActionPlacement, includeUndo = false) {
     const { placement } = block;
     const action = this.identityError ? { ...block.action, disabled: true,
       availabilityKey: this.identityError === 'pending' ? 'request.identityPending' : 'request.identityUnavailable' } : block.action;
+    const showUndo = includeUndo && this.applicationCheckpoint && this.hasImplementation();
+    const running = this.implementationPending();
     return html`
-      <section class=${`nr-review__primary-action is-${placement}`} aria-busy=${action.busy ? 'true' : 'false'}>
+      <section class=${`nr-review__primary-action is-${placement}${showUndo ? ' has-undo' : ''}`} aria-busy=${action.busy ? 'true' : 'false'}>
         <div>
           <p>${this.t(action.descriptionKey)}</p>
           ${action.availabilityKey ? html`<small>${this.t(action.availabilityKey, { reason: this.identityError })}</small>` : nothing}
           ${action.error ? html`<p class="nr-review__action-error" role=${block.announceError ? 'alert' : nothing}>${action.error}</p>` : nothing}
         </div>
-        <button
-          type="button"
-          ?disabled=${action.disabled}
-          aria-disabled=${action.disabled ? 'true' : 'false'}
-          @click=${this.runReviewPrimaryAction}
-        >${this.t(action.labelKey)}</button>
+        <div class="nr-review__action-buttons">
+          ${showUndo ? html`<button type="button" class="nr-review__undo-action"
+            ?disabled=${this.implementationCancelBusy || this.loading}
+            aria-disabled=${this.implementationCancelBusy || this.loading ? 'true' : 'false'}
+            @click=${() => void this.undoLastApplication()}>${this.t(this.implementationCancelBusy
+              ? 'review.implementation.undoWaiting' : running ? 'review.implementation.cancel' : 'review.implementation.undo')}</button>` : nothing}
+          <button
+            type="button"
+            ?disabled=${action.disabled}
+            aria-disabled=${action.disabled ? 'true' : 'false'}
+            @click=${this.runReviewPrimaryAction}
+          >${this.t(action.labelKey)}</button>
+        </div>
       </section>
     `;
   }
@@ -1849,7 +1996,8 @@ export class NewReleaseReview102035 extends StateLitElement {
         ${this.renderEffortPanel(view, changeEffort, resultVisible, calculate)}
         <section class="nr-review__panel nr-review__apply" aria-label=${this.t('review.panels.apply')}>
           <h3>${this.t('review.panels.apply')}</h3>
-          ${apply.map(block => this.renderPrimaryAction(block))}
+          ${apply.map(block => this.renderPrimaryAction(block, true))}
+          ${this.implementationUndoFeedback ? html`<p class="nr-review__undo-feedback" role="status">${this.implementationUndoFeedback}</p>` : nothing}
           ${this.renderCurrentPlan(changeEffort)}
           ${this.actionBusy && action.kind === 'continue' && !this.hasImplementation() ? html`<div class="nr-review__progress" role="status"><span>${this.t('review.implementation.starting')}</span><progress aria-label=${this.t('review.implementation.starting')}></progress></div>` : nothing}
           ${this.hasImplementation() ? this.renderImplementation('top') : nothing}

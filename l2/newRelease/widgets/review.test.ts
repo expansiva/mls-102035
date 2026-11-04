@@ -55,6 +55,12 @@ function setup(edited = false, fresh = true) {
     readSealed: async () => { calls.push('readSealed'); return sealed; },
     review: async (snapshot, userId) => { calls.push('review'); assert.equal(userId, 'reviewer'); return { ...snapshot, manifest: { ...snapshot.manifest, revisionId: 'reviewed' } }; },
     sealLayers: async () => { calls.push('layers'); return { schemaVersion: '2026-10-08-module-layers-v1', project, moduleName, baseId, createdAt: '', files: [] }; },
+    sealApplication: async (_project, _module, expectedChange, revisionId) => {
+      calls.push('application');
+      assert.equal(expectedChange, changeId);
+      return { schemaVersion: '2026-11-04-module-application-v2', project, moduleName, changeId, revisionId, files: [], l5: [] };
+    },
+    restoreApplication: async () => { calls.push('restoreApplication'); },
     promote: async (_project, _module, expectedChange, revisionId) => { calls.push('promote'); assert.equal(expectedChange, changeId); assert.equal(revisionId, edited ? 'reviewed' : 'rev1'); return { ...change, activeRevisionId: revisionId, promotedRevisionId: revisionId }; },
     accept: async (_project, _module, input) => {
       calls.push('accept'); assert.equal(input.kind, 'initial');
@@ -72,7 +78,7 @@ function setup(edited = false, fresh = true) {
 for (const edited of [false, true]) test(`mr41 s3c Apply ${edited ? 'edited' : 'neutral'} creates and accepts initial revision in order`, async () => {
   const f = setup(edited);
   const record = await applyInitialReview(f.input, f.dependencies);
-  assert.deepEqual(f.calls, ['plan', 'prepare', 'seal', 'readSealed', ...(edited ? ['review'] : []), 'layers', 'promote', 'accept']);
+  assert.deepEqual(f.calls, ['plan', 'prepare', 'seal', 'readSealed', ...(edited ? ['review'] : []), 'application', 'layers', 'promote', 'accept']);
   assert.equal(record.revisionId, edited ? 'reviewed' : 'rev1');
   assert.equal(record.initial?.replan, edited);
   assert.equal(implementationCommands(record, 102035, 'fixture')[0].agent, edited ? 'agentPlannerL4' : 'agentDefsL2');
