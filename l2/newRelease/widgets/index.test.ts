@@ -7,6 +7,9 @@ documentStub.createElement = ((tag: string) => ({ tagName: tag.toUpperCase(), te
 documentStub.createComment = (() => ({})) as never;
 documentStub.head = { querySelector: () => null, appendChild: () => undefined } as never;
 (globalThis as unknown as { window: typeof globalThis }).window = globalThis;
+(globalThis as unknown as { localStorage: Storage }).localStorage = {
+  getItem: (key: string) => key === 'collabMessages_userId' ? null : JSON.stringify({ userId: 'user-1' }),
+} as Storage;
 if (!globalThis.customElements) (globalThis as unknown as { customElements: unknown }).customElements = { define() {}, get() {} };
 if (!globalThis.HTMLElement) (globalThis as unknown as { HTMLElement: unknown }).HTMLElement = class extends EventTarget {};
 
@@ -168,6 +171,36 @@ test('prompt result displays assumptions separately and in the active language',
   const view = templateText(index.renderRequest());
   assert.match(view, /Jornada adicionada/);
   assert.match(view, /<strong>Assumi:<\/strong><ul><li>ator: membro da equipe<\/li><li>escopo: próprio<\/li><\/ul>/);
+});
+
+test('failed prompt keeps its task card and shows the terminal log once', async () => {
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.activeTab = 'journeys';
+  index.requestFeedbackTab = 'journeys';
+  index.requestResult = 'request.failed';
+  index.requestError = '';
+  index.requestText = 'Correct this request';
+  index.requestTask = { id: 'task/#failed', threadId: 'thread-1', messageId: 'thread-1/20261104', cost: null,
+    snapshot: { PK: 'task/#failed', SK: 'metadata', owner: 'user-1', status: 'failed', last_updated: 1,
+      last_update_log: 'Terminal failure detail', messageid_created: 'thread-1/20261104' } };
+  const view = templateText(index.renderRequest());
+  assert.match(view, /collab-messages-task-102025[\s\S]*Terminal failure detail/);
+  assert.match(view, /Terminal failure detail/);
+  assert.equal((view.match(/request\.failed/g) || []).length, 1);
+  assert.equal(index.requestTask.snapshot.status, 'failed');
+  assert.equal(index.requestText, 'Correct this request');
+  let releaseStore!: () => void;
+  const stored = new Promise<void>(resolve => { releaseStore = resolve; });
+  const next = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  next.project = 102047;
+  next.moduleName = 'tarefas';
+  next.version = 'tobe';
+  const saving = next.rememberRequestTask(index.requestTask.snapshot,
+    { project: 102047, moduleName: 'tarefas', version: 'tobe' }, async () => { await stored; });
+  assert.equal(next.requestTask, null);
+  releaseStore();
+  await saving;
+  assert.equal(next.requestTask.snapshot.status, 'failed');
 });
 
 test('review counts new warnings and keeps previous observations in closed details', async () => {

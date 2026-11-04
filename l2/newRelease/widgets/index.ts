@@ -1,6 +1,8 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/index.ts" enhancement="_102027_/l2/enhancementLit" />
-import { ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { ensureUserId, getUserId } from '/_102025_/l2/collabMessagesHelper.js';
+import { addOrUpdateTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
+import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { applyDirectLanguages, hasPendingLanguages } from '/_102035_/l2/newRelease/helpers/directLanguages.js';
 import { resolveModuleThread } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 import type { Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
@@ -88,7 +90,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   private requestFeedbackTab: NewReleaseTab | null = null;
   @state() private requestNeedsRetry = false;
   @state() private requestReady = false;
-  @state() private requestTask: { id: string; threadId: string; cost: number | null } | null = null;
+  @state() private requestTask: { id: string; threadId: string; messageId: string; cost: number | null; snapshot: TaskData } | null = null;
+  @state() private requestCopyFeedback = '';
   @state() private changeOrigins: ChangeOrigin[] = [];
   @state() private diffCopyFeedback = '';
 
@@ -678,6 +681,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     this.requestNeedsRetry = false;
     this.requestReady = false;
     this.requestTask = null;
+    this.requestCopyFeedback = '';
     try {
       const active = context.version === 'asis' ? await readActiveL4Change(context.project, context.moduleName) : null;
       if (!contextStillCurrent(context, this)) return;
@@ -695,17 +699,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
       if (!contextStillCurrent(context, this)) return;
       this.requestError = '';
       const summary = summarizeNewReleaseRequest(outcome.results, outcome.task.status);
-      this.requestTask = outcome.task.status === 'done' ? {
-        id: outcome.task.PK,
-        threadId: (outcome.task.messageid_created || '').split('/')[0] || '',
-        cost: newReleaseTaskCost(outcome.task),
-      } : null;
+      await this.rememberRequestTask(outcome.task, context);
+      if (!contextStillCurrent(context, this)) return;
       this.requestResult = summary.summary || this.t(summary.key, summary.values);
       this.requestFileStates = summary.fileStates ?? [];
       this.requestAssumptions = summary.assumptions ?? [];
       this.requestNeedsRetry = summary.retry;
       if (summary.key === 'request.question') this.requestText = '';
-      if (outcome.task.status === 'failed') throw new Error(this.requestResult);
+      if (outcome.task.status === 'failed') return;
       const written = outcome.results.some(result => { try { return JSON.parse(result).written === true; } catch { return false; } });
       if (written) {
         const revision = await sealL4Revision(context.project, context.moduleName, saved.revisionId, text);
@@ -736,6 +737,19 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.stopRequestProgress();
       this.requestBusy = false;
     }
+  }
+
+  private async rememberRequestTask(task: TaskData, context: NewReleaseContext,
+    storeTask: (snapshot: TaskData) => Promise<void> = addOrUpdateTask): Promise<void> {
+    await storeTask(task);
+    if (!contextStillCurrent(context, this)) return;
+    this.requestTask = {
+      id: task.PK,
+      threadId: (task.messageid_created || '').split('/')[0] || '',
+      messageId: task.messageid_created || '',
+      cost: newReleaseTaskCost(task),
+      snapshot: task,
+    };
   }
 
   private async retryLanguages() {
@@ -1168,9 +1182,10 @@ export class NewReleaseIndex102035 extends StateLitElement {
           <p>${this.t('request.description')}</p>
           <label for="nr-change-request">${this.t('request.label')}</label>
           <textarea id="nr-change-request" rows="15" .value=${this.requestText} ?disabled=${this.requestBusy} placeholder=${this.t('request.placeholder')} @input=${(event: Event) => { this.requestText = (event.currentTarget as HTMLTextAreaElement).value; }}></textarea>
-          ${showFeedback && this.requestResult ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
+          ${showFeedback && this.requestResult && this.requestTask?.snapshot.status !== 'failed' ? html`<pre aria-live="polite">${this.requestResult}</pre>` : nothing}
           ${showFeedback && this.requestAssumptions.length ? html`<div><strong>${this.t('request.assumptions')}:</strong><ul>${this.requestAssumptions.map(item => html`<li>${item}</li>`)}</ul></div>` : nothing}
-          ${showFeedback && this.requestTask ? html`<p class="nr-index__request-task">${this.t('request.taskExecuted', { id: this.requestTask.id, cost: this.requestTask.cost === null ? this.t('request.costUnavailable') : `$${this.requestTask.cost.toFixed(2)}` })} ${this.requestTask.threadId ? html`<button type="button" @click=${() => dispatchThreadOpen(this.requestTask!.threadId, this.requestTask!.id)}>${this.t('request.taskDetails')}</button>` : nothing}</p>` : nothing}
+          ${showFeedback && this.requestTask ? this.renderRequestTask() : nothing}
+          ${showFeedback && this.requestTask?.snapshot.status === 'failed' ? html`<div class="nr-index__request-failure" role="alert">${this.requestTask.snapshot.last_update_log ? html`<p>${this.t('request.failed')}</p>` : nothing}<pre>${this.requestTask.snapshot.last_update_log || this.requestResult}</pre><button type="button" @click=${() => void this.copyRequestFailure()}>${this.t('common.copy')}</button><span role="status">${this.requestCopyFeedback}</span></div>` : nothing}
           ${showFeedback && this.requestFileStates.length ? html`<ul>${this.requestFileStates.map(item => html`<li><code>${item.path}</code> — ${this.t(`request.fileState.${item.state}`)}</li>`)}</ul>` : nothing}
           ${this.identityError ? html`<p class="nr-index__request-error" role="alert">${this.identityError === 'pending' ? this.t('request.identityPending') : this.t('request.identityUnavailable', { reason: this.identityError })}</p>` : nothing}
           ${showFeedback && this.requestError ? html`<p class="nr-index__request-error" role="alert">${this.requestError}</p>` : nothing}
@@ -1180,6 +1195,33 @@ export class NewReleaseIndex102035 extends StateLitElement {
         </div>
       </details>
     `;
+  }
+
+  private renderRequestTask() {
+    const requestTask = this.requestTask!;
+    const orderAt = requestTask.messageId.split('/').pop() || '';
+    const context: ExecutionContext = {
+      message: { threadId: requestTask.threadId, orderAt, createAt: orderAt.slice(0, 14), senderId: requestTask.snapshot.owner,
+        content: '', taskId: requestTask.id.replace(/^task(?:\/#?|#)/u, ''), taskStatus: requestTask.snapshot.status },
+      task: requestTask.snapshot,
+      isTest: false,
+    };
+    return html`<div class="nr-index__request-task">
+      <p>${this.t('request.taskExecuted', { id: requestTask.id, cost: requestTask.cost === null ? this.t('request.costUnavailable') : `$${requestTask.cost.toFixed(2)}` })}</p>
+      <collab-messages-task-102025 .context=${context} taskid=${context.message.taskId} threadId=${requestTask.threadId}
+        messageid=${requestTask.messageId} userId=${getUserId() || ''} lastChanged=${`${requestTask.id}:${requestTask.snapshot.last_updated}`}
+        @taskclick=${() => { if (requestTask.threadId) dispatchThreadOpen(requestTask.threadId, context.message.taskId); }}
+      ></collab-messages-task-102025>
+    </div>`;
+  }
+
+  private async copyRequestFailure(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.requestTask?.snapshot.last_update_log || this.requestResult);
+      this.requestCopyFeedback = this.t('common.copied');
+    } catch {
+      this.requestCopyFeedback = this.t('common.copyFailed');
+    }
   }
 
   private renderEmpty() {
