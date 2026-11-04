@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/testing/recordedLlm.test.ts" enhancement="_blank" />
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -56,5 +56,46 @@ void test('the file store writes agent/step/hash.json and reads it back; a missi
     await createRecordedLlm({ mode: 'record', store, call: async () => 'raw answer' }).respond('agentX', 'triage20', request);
     assert.equal(store.read(key), 'raw answer');
     assert.deepEqual(JSON.parse(readFileSync(path.join(dir, `${key}.json`), 'utf8')), { raw: 'raw answer' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+void test('the file store finds a recording under another step label when the hash is the same (a worker recorded as step<stepId>)', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'recorded-llm-'));
+  try {
+    const store = fileRecordedLlmStore(dir);
+    const key = recordedLlmKey('agentX', 'unit-r0', request);
+    const hash = key.split('/')[2];
+    store.write(`agentX/step14/${hash}`, 'raw answer');
+    assert.equal(store.read(key), 'raw answer');
+    assert.equal(store.read(recordedLlmKey('agentX', 'unit-r0', { ...request, humanPrompt: 'other' })), null);
+    assert.equal(store.read(recordedLlmKey('agentY', 'unit-r0', request)), null);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+void test('the file store falls back to the same human prompt when only the system prompt or the tools differ (another host)', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'recorded-llm-'));
+  try {
+    const store = fileRecordedLlmStore(dir);
+    const recorded = { ...request, systemPrompt: 'the other host system prompt', tools: [{ other: true }] };
+    const file = path.join(dir, 'agentX', 'step9', 'aaaaaaaaaaaaaaaa.json');
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ raw: 'raw by content', agent: 'agentX', step: 'step9', request: recorded }));
+    assert.equal(store.read(recordedLlmKey('agentX', 'unit', request), request), 'raw by content');
+    const spaced = { ...request, humanPrompt: 'hu\n\nman' };
+    writeFileSync(path.join(dir, 'agentX', 'step9', 'bbbbbbbbbbbbbbbb.json'), JSON.stringify({ raw: 'raw without blank lines', request: { ...recorded, humanPrompt: 'hu\nman' } }));
+    assert.equal(store.read(recordedLlmKey('agentX', 'unit', spaced), spaced), 'raw without blank lines', 'blank lines do not matter');
+    assert.equal(store.read(recordedLlmKey('agentX', 'unit', { ...request, humanPrompt: 'other' }), { ...request, humanPrompt: 'other' }), null);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+void test('the file store falls back to the one recording under the same unit label, and not when there are two', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'recorded-llm-'));
+  try {
+    const store = fileRecordedLlmStore(dir);
+    store.write('agentX/page-listas-desktop-1/aaaaaaaaaaaaaaaa', 'the page');
+    const other = { ...request, humanPrompt: 'prompt that drifted' };
+    assert.equal(store.read(recordedLlmKey('agentX', 'page-listas-desktop-1', other), other), 'the page');
+    store.write('agentX/page-listas-desktop-1/bbbbbbbbbbbbbbbb', 'a second one');
+    assert.equal(store.read(recordedLlmKey('agentX', 'page-listas-desktop-1', other), other), null, 'two recordings under the label: no guess');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

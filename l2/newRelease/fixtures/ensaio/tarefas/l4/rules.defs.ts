@@ -18,7 +18,7 @@ export const tarefasRules = {
     "responsavelAceitaTarefas": "O responsável de uma tarefa, na criação ou na reatribuição, só pode ser um participante ativo que aceita tarefas (marca do gestor ou ausência de configuração).",
     "criarTarefaExigePodeCriar": "Criar uma tarefa exige que a pessoa seja participante que pode criar tarefas, e quem criou é sempre a pessoa da sessão.",
     "participanteSemCadastroPessoal": "O módulo não cadastra pessoas nem pede dado pessoal: participantes são escolhidos entre os usuários da organização e o módulo guarda apenas as marcas do gestor.",
-    "nomeListaUnico": "O nome de uma lista de tarefas é obrigatório e não pode repetir o nome de outra lista.",
+    "nomeListaUnico": "O nome de uma lista de tarefas é obrigatório, tem no mínimo 4 caracteres e não pode repetir o nome de outra lista.",
     "somenteGestorMantemListas": "Somente o gestor cria e altera listas de tarefas e configura os participantes do módulo.",
     "podeCriarTarefasExigido": "Um participante cuja marca de poder criar tarefas está desligada não pode criar tarefas nem subtarefas.",
     "escolhaResponsavelPeloNome": "O responsável é escolhido pelo nome numa lista visível com busca pelo nome, como numa menção em conversa, e nunca pelo e-mail.",

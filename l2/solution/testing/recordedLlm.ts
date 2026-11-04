@@ -7,13 +7,14 @@
  * The suite runs in `replay`; `record` is for the paid pass that makes the recordings.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 export type RecordedLlmMode = 'record' | 'replay';
 
 export interface RecordedLlmStore {
-  read(key: string): string | null;
+  /** `request` lets a store match by content when the exact key is not there. */
+  read(key: string, request?: RecordedLlmRequest): string | null;
   write(key: string, raw: string): void;
 }
 
@@ -29,6 +30,12 @@ export interface RecordedLlmOptions {
   store: RecordedLlmStore;
   /** The real call. Required in `record` mode, never called in `replay`. */
   call?: (request: RecordedLlmRequest) => Promise<string>;
+}
+
+/** The recording host drops blank lines and the indentation of the lines in the prompts it sends: the same text with or without them is the same prompt. */
+function sameText(left: string, right: string): boolean {
+  const canonical = (text: string) => text.replace(/[ \t]*\n\s*/gu, '\n').trim();
+  return canonical(left) === canonical(right);
 }
 
 /** The same value gives the same text whatever the key order of its objects. */
@@ -50,13 +57,47 @@ export function recordedLlmKey(agent: string, step: string, request: RecordedLlm
 export function fileRecordedLlmStore(dir: string): RecordedLlmStore {
   const fileOf = (key: string) => path.join(dir, `${key}.json`);
   return {
-    read(key) {
-      try {
-        return (JSON.parse(readFileSync(fileOf(key), 'utf8')) as { raw: string }).raw;
-      } catch (error) {
+    read(key, request) {
+      const readRaw = (file: string): string | null => {
+        try {
+          return (JSON.parse(readFileSync(file, 'utf8')) as { raw: string }).raw;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+          throw error;
+        }
+      };
+      const exact = readRaw(fileOf(key));
+      if (exact !== null) return exact;
+      // The step label of a worker is its planId, or `step<stepId>` when it has none, and the stepId depends on the host that
+      // recorded it. The hash is the request, so look for the same agent and hash under any step label.
+      const [agent, , hash] = key.split('/');
+      let steps: string[];
+      try { steps = readdirSync(path.join(dir, agent)); } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
         throw error;
       }
+      for (const step of steps) {
+        const found = readRaw(path.join(dir, agent, step, `${hash}.json`));
+        if (found !== null) return found;
+      }
+      if (!request) return null;
+      // The system prompt and the tools are what the recording host sent: its copy of the agent files and its tool wrapping
+      // differ from this host's. The human prompt is the data of the request, so the same human prompt is the same request.
+      for (const step of steps) {
+        for (const name of readdirSync(path.join(dir, agent, step))) {
+          const saved = JSON.parse(readFileSync(path.join(dir, agent, step, name), 'utf8')) as { raw: string; request?: { humanPrompt?: string } };
+          if (saved.request?.humanPrompt !== undefined && sameText(saved.request.humanPrompt, request.humanPrompt)) return saved.raw;
+        }
+      }
+      // A unit with its own stable label (a page, a usecase) recorded once under that label: the label is the identity of the
+      // request. Last resort, since it does not notice a change in what the prompt carries.
+      const [, label] = key.split('/');
+      let own: string[] = [];
+      try { own = readdirSync(path.join(dir, agent, label)); } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+      if (own.length === 1) return readRaw(path.join(dir, agent, label, own[0]));
+      return null;
     },
     write(key, raw) {
       const file = fileOf(key);
@@ -71,7 +112,7 @@ export function createRecordedLlm(options: RecordedLlmOptions) {
     async respond(agent: string, step: string, request: RecordedLlmRequest): Promise<string> {
       const key = recordedLlmKey(agent, step, request);
       if (options.mode === 'replay') {
-        const raw = options.store.read(key);
+        const raw = options.store.read(key, request);
         if (raw === null) throw new Error(`recordedLlm.missing:${key}`);
         return raw;
       }

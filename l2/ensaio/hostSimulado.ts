@@ -84,6 +84,8 @@ export async function runUntilDone(
   const fanouts = new Map<number, number[]>();
   /** Steps whose beforePrompt left them `in_progress` with no prompt: they wait for fan-out children and a barrier step closes them. */
   const started = new Set<number>();
+  /** Workers added one by one as `parallel_dynamic` steps under the phase step that hosts them: the phase closes when its workers do. */
+  const workers = new Map<number, number[]>();
   let nextId = 1;
   let hookSequential = 0;
   let activeStep: mls.msg.AIAgentStep | undefined;
@@ -115,6 +117,9 @@ export async function runUntilDone(
         (parent.nextSteps ??= []).push(step);
         steps.push(step);
         parents.set(step.stepId, parent);
+        if (step.planning?.executionMode === 'parallel_dynamic' && !(intent as { executionMode?: unknown }).executionMode) {
+          workers.set(parent.stepId, [...(workers.get(parent.stepId) ?? []), step.stepId]);
+        }
         const mode = (intent as { executionMode?: { type?: string; args?: string[] } }).executionMode;
         if (mode?.type === 'parallel') {
           // Like the real host: one child per arg, the arg is the child prompt; the parent closes when its children do.
@@ -174,6 +179,14 @@ export async function runUntilDone(
       if (parentStep && parentStep.status !== 'completed'
         && children.every(id => ['completed', 'failed'].includes(steps.find(item => item.stepId === id)?.status ?? ''))) parentStep.status = 'completed';
     }
+    for (const [parentId, children] of workers) {
+      const parentStep = steps.find(item => item.stepId === parentId);
+      if (parentStep && parentStep.status !== 'completed' && parentStep.status !== 'failed' && started.has(parentId)
+        && children.every(id => ['completed', 'failed'].includes(steps.find(item => item.stepId === id)?.status ?? ''))) {
+        parentStep.status = 'completed';
+        started.delete(parentId);
+      }
+    }
     const unfinished = steps.filter(step => step.status !== 'completed' && !fanouts.has(step.stepId));
     const pending = unfinished.filter(step => !started.has(step.stepId));
     if (!pending.length && unfinished.length) throw new Error(`Replay stopped: ${unfinished.map(step => step.planning?.planId ?? step.stepId).join(', ')} wait for children that never closed them.`);
@@ -184,7 +197,7 @@ export async function runUntilDone(
     }
     const step = pending.find(item => (item.planning?.dependsOn ?? []).every(id =>
       steps.some(dependency => dependency.planning?.planId === id && dependency.status === 'completed')));
-    if (!step || step.type !== 'agent') throw new Error('Replay stopped with unresolved step dependencies.');
+    if (!step || step.type !== 'agent') throw new Error(`Replay stopped with unresolved step dependencies: ${pending.map(item => `${item.planning?.planId ?? item.stepId} [${item.status}] needs ${(item.planning?.dependsOn ?? []).join('+') || '-'}`).join('; ')}.`);
     const parent = parents.get(step.stepId)!;
     const planId = step.planning?.planId ?? String(step.stepId);
     activeStep = step;
@@ -192,9 +205,14 @@ export async function runUntilDone(
     const stepAgent = agents.get(step.agentName);
     if (!stepAgent?.beforePromptStep) throw new Error(`Missing public entry for ${step.agentName}`);
     // A fan-out child gets its arg as the sixth parameter, as the real host passes it.
-    const args = fanouts.has(parent.stepId) ? String(step.prompt ?? '') : undefined;
+    const args = fanouts.has(parent.stepId) || workers.has(parent.stepId) ? String(step.prompt ?? '') : undefined;
     apply(await (stepAgent.beforePromptStep as (...rest: unknown[]) => Promise<mls.msg.AgentIntent[]>)(stepAgent, context, parent, step, ++hookSequential, args));
     if (step.status === 'in_progress' && !step.interaction?.input.length) { started.add(step.stepId); continue; }
+    if (step.status === 'waiting_human_input' && !step.interaction?.input.length) {
+      // A step that only added children under itself runs until they do (the host closes it).
+      const kids = steps.filter(child => parents.get(child.stepId)?.stepId === step.stepId).map(child => child.stepId);
+      if (kids.length) { started.add(step.stepId); workers.set(step.stepId, [...new Set([...(workers.get(step.stepId) ?? []), ...kids])]); continue; }
+    }
     if (step.status !== 'completed' && step.status !== 'failed') {
       if (!step.interaction?.input.length) throw new Error(`Step ${planId} neither completed nor prepared a prompt.`);
       const answer = answers[planId];
@@ -209,7 +227,10 @@ export async function runUntilDone(
           systemPrompt: system ? String(system.content) : '', humanPrompt: human ? String(human.content) : '',
           tools: step.interaction.tools ?? null,
         });
-        step.interaction.payload = [raw as unknown as mls.msg.AIPayload];
+        // collabmsg records the payload array of the step as JSON text; a plain answer stays one element.
+        let parsed: unknown;
+        try { parsed = JSON.parse(raw); } catch { parsed = undefined; }
+        step.interaction.payload = Array.isArray(parsed) ? parsed as mls.msg.AIPayload[] : [raw as unknown as mls.msg.AIPayload];
       }
       step.status = 'waiting_after_prompt';
       if (!stepAgent.afterPromptStep) throw new Error(`${step.agentName} prepared a prompt for ${planId} and has no afterPromptStep.`);

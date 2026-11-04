@@ -8,6 +8,18 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import * as agentNewReleaseL2 from '/_102020_/l2/agentNewReleaseL2/agentNewReleaseL2.js';
+import * as agentMaterializeL2L2 from '/_102020_/l2/agentMaterializeL2/agentMaterializeL2.js';
+import * as agentM4EntryL2 from '/_102020_/l2/agentMaterializeL2/steps/entry10/agentM4Entry.js';
+import * as agentM4FinalizeL2 from '/_102020_/l2/agentMaterializeL2/steps/finalize70/agentM4Finalize.js';
+import * as agentM4InputL2 from '/_102020_/l2/agentMaterializeL2/steps/input20/agentM4Input.js';
+import * as agentM4PagesL2 from '/_102020_/l2/agentMaterializeL2/steps/pages50/agentM4Pages.js';
+import * as agentM4PagesPageL2 from '/_102020_/l2/agentMaterializeL2/steps/pages50/agentM4PagesPage.js';
+import * as agentM4ReviewL2 from '/_102020_/l2/agentMaterializeL2/steps/review55/agentM4Review.js';
+import * as agentM4ReviewPageL2 from '/_102020_/l2/agentMaterializeL2/steps/review55/agentM4ReviewPage.js';
+import * as agentM4ChainPageL2 from '/_102020_/l2/agentMaterializeL2/steps/shared40/agentM4ChainPage.js';
+import * as agentM4SharedL2 from '/_102020_/l2/agentMaterializeL2/steps/shared40/agentM4Shared.js';
+import * as agentM4SharedPageL2 from '/_102020_/l2/agentMaterializeL2/steps/shared40/agentM4SharedPage.js';
 import { planNewReleaseL2 } from '/_102020_/l2/agentNewReleaseL2/helpers/plan.js';
 import * as agentMaterializeL1 from '/_102021_/l2/agentMaterializeL1/agentMaterializeL1.js';
 import * as agentM12Controllers from '/_102021_/l2/agentMaterializeL1/steps/controllers30/agentM12Controllers.js';
@@ -26,8 +38,8 @@ import * as agentM12Usecases from '/_102021_/l2/agentMaterializeL1/steps/usecase
 import * as agentM12WorkflowUnit from '/_102021_/l2/agentMaterializeL1/steps/workflows45/agentM12WorkflowUnit.js';
 import * as agentM12Workflows from '/_102021_/l2/agentMaterializeL1/steps/workflows45/agentM12Workflows.js';
 import * as agentDefsL1 from '/_102021_/l2/agentDefsL1/agentDefsL1.js';
-import { createRecordedLlm } from '/_102035_/l2/solution/testing/recordedLlm.js';
-import { installAgentResources, installProjectFile } from './agentResources.js';
+import { createRecordedLlm, fileRecordedLlmStore } from '/_102035_/l2/solution/testing/recordedLlm.js';
+import { installAgentResources, installProjectFile, installProjectIndexDefs } from './agentResources.js';
 import { runUntilDone } from './hostSimulado.js';
 import { createAgent as createNewReleaseL1 } from '/_102021_/l2/agentNewReleaseL1/agentNewReleaseL1.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
@@ -187,6 +199,46 @@ void test('tarefas, rule only: the fan-out host runs the whole agentDefsL1 /run 
   } finally { stor.restore(); }
 });
 
+/** The answers of the real model for the rule-only change, recorded by `collabmsg send --record-dir` on 04/11. */
+const RECORDED = new URL('recorded/soRegra', FIXTURE).pathname;
+
+void test('tarefas, rule only: agentDefsL1 /run REPLAYS the recorded answers of the real model to done, with no missing recording', async () => {
+  const stor = installTarefas();
+  try {
+    const missing: string[] = [];
+    const files = fileRecordedLlmStore(RECORDED);
+    const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) missing.push(key); return raw; }, write: () => { throw new Error('replay does not record'); } } });
+    const { context, run } = await creationRun(llm);
+    const result = await run();
+    assert.deepEqual(missing, [], 'every model request of the run has a recording');
+    assert.equal(context.task?.status, 'done');
+    assert.ok(result.executedPlans.some(plan => /^resolve25-worker-/u.test(plan)), 'the fan-out ran');
+  } finally { stor.restore(); }
+});
+
+void test('tarefas, rule only: the whole L1 chain on the recorded answers: prepare, creation run, /compare and agentMaterializeL1 (the real agents, replay)', async () => {
+  const stor = installTarefas();
+  try {
+    const missing: string[] = [];
+    const files = fileRecordedLlmStore(RECORDED);
+    const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) missing.push(key); return raw; }, write: () => { throw new Error('replay does not record'); } } });
+    const { context, run } = await creationRun(llm);
+    await run();
+    assert.equal(context.task?.status, 'done', 'agentDefsL1 /run');
+    const compared = await runReal(`@@agentNewReleaseL1 ${MODULE} /compare`);
+    assert.match(compared, /^done: /u, `/compare: ${compared.slice(0, 300)}`);
+    await installAgentResources(102021, 'agentMaterializeL1');
+    const command = '@@agentMaterializeL1 ' + JSON.stringify({ scope: MODULE });
+    const materialize = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm2', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
+    const result = await runUntilDone(agentMaterializeL1, materialize, {}, [
+      agentM12Controllers, agentM12Domain, agentM12Finalize, agentM12Persistence, agentM12Register, agentM12RequestService, agentM12Requests, agentM12SeedRowUnit, agentM12SeedRows, agentM12Tests, agentM12TestsPage, agentM12UsecaseUnit, agentM12Usecases, agentM12WorkflowUnit, agentM12Workflows
+    ], llm);
+    assert.equal(materialize.task?.status, 'done', 'agentMaterializeL1');
+    assert.equal(result.executedPlans.length >= 10, true);
+    assert.deepEqual(missing, [], 'every model request of the chain has a recording');
+  } finally { stor.restore(); }
+});
+
 void test('tarefas, rule only: the REAL agentMaterializeL1 runs its ten steps in the fan-out host and finishes done, with no model call', async () => {
   const stor = installTarefas();
   try {
@@ -217,12 +269,26 @@ void test('tarefas, rule only: the L2 plan of the REAL effort has the page to ma
   assert.deepEqual(refused, { ok: false, reason: 'nothing to apply' });
 });
 
-void test('tarefas, rule only: agentNewReleaseL2 with the real effort goes on to agentMaterializeL2 and the model', { todo: 'the host does not model the start of a child agent task: agentNewReleaseL2 step "materialize" neither completes nor prepares a prompt (l4_p4_96)' }, () => {
-  assert.fail('not exercised');
+void test('tarefas, rule only: the REAL agentNewReleaseL2 with the real effort runs agentMaterializeL2 for the page on the recorded answers', { todo: 'the host reaches the recorded answer of the page (pages50 desktop) and the page step then compiles the generated code with the Studio TypeScript compiler, which is not available in node (M4_PAGE_ENVIRONMENT); the mobile page and the shared and review steps were not reached' }, async () => {
+  const stor = installTarefas();
+  try {
+    await installAgentResources(102020, 'agentMaterializeL2');
+    await installProjectFile(102034, 1, 'mdm/defs', 'ontology', '.ts');
+    await installProjectIndexDefs(102040, 2, 'molecules');
+    await installProjectIndexDefs(102020, 2, 'aura/molecules/skills', 'usage', '.ts');
+    const missing: string[] = [];
+    const files = fileRecordedLlmStore(RECORDED);
+    const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) { missing.push(key); } return raw; }, write: () => { throw new Error('replay does not record'); } } });
+    const command = `@@agentNewReleaseL2 ${MODULE}`;
+    const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
+    const result = await runUntilDone(agentNewReleaseL2, context, {}, [agentMaterializeL2L2, agentM4EntryL2, agentM4FinalizeL2, agentM4InputL2, agentM4PagesL2, agentM4PagesPageL2, agentM4ReviewL2, agentM4ReviewPageL2, agentM4ChainPageL2, agentM4SharedL2, agentM4SharedPageL2], llm);
+    const failed = result.steps.flatMap(step => step.status === 'failed' && step.type === 'agent' ? [`${step.planning?.planId}: ${JSON.stringify(step.interaction?.trace).slice(0, 400)}`] : []);
+    assert.deepEqual(failed, [], 'no step failed');
+    assert.equal(context.task?.status, 'done');
+    assert.deepEqual(missing, [], 'every model request has a recording');
+    assert.ok(result.executedPlans.some(plan => /^pages50/u.test(plan)), `the page was materialized: ${result.executedPlans.join(',')}`);
+  } finally { stor.restore(); }
 });
 
 // An effort that materializes a page makes agentNewReleaseL2 schedule agentDefsL2 and agentMaterializeL2, whose pages50 and bff55
 // steps call the model: that is the recorded pass (s3).
-void test('tarefas, rule only: the comparison of the creation run with the saved copy (/compare)', { todo: 'with a stand-in model the creation run writes no L1 defs, so /compare has nothing to compare: it needs the recorded answers of the real model (s3, by collabmsg --record-dir)' }, () => {
-  assert.fail('not exercised');
-});

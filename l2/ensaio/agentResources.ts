@@ -35,3 +35,16 @@ export async function installProjectFile(project: number, level: number, folder:
   if (!file) throw new Error(`Could not install ${project}/l${level}/${folder}/${shortName}${extension}`);
   await mls.stor.localStor.setContent(file, { content: readFileSync(disk, 'utf8') });
 }
+
+/** The file `shortName`+`extension` of every folder under `root` of another project (for example the `index.defs.ts` of each molecule of the design-system project). */
+export async function installProjectIndexDefs(project: number, level: number, root: string, shortName = 'index', extension = '.defs.ts'): Promise<number> {
+  const base = new URL(`../../../mls-${project}/l${level}/${root}/`, import.meta.url);
+  let installed = 0;
+  for (const entry of readdirSync(base, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    try { readFileSync(new URL(`${entry.name}/${shortName}${extension}`, base)); } catch { continue; }
+    await installProjectFile(project, level, `${root}/${entry.name}`, shortName, extension);
+    installed += 1;
+  }
+  return installed;
+}
