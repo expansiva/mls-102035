@@ -26,6 +26,12 @@ import {
   type Ns5OntologyPlanDraft,
 } from '/_102035_/l2/solution/gates/ontology30/contracts.js';
 import { validateNs5OntologyBindings, validateNs5OntologyPlan } from '/_102035_/l2/solution/gates/ontology30/gate.js';
+import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
+import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
+import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
+import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
+import { normalizeNs5OntologyPlanV3 } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
+import { validateNs5OntologyPlanV3 } from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
 import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
 import type { Ns5ModuleActor, Ns5ModuleArtifact } from '/_102035_/l2/solution/types.js';
 
@@ -54,6 +60,8 @@ interface Step {
   name: string;
   schema: string;
   draft: string;
+  /** The valid example, when there is no `-draft.json` for it. */
+  example?: () => Record<string, unknown>;
   /** Normalizer then gate. Returns the gate issues and what the normalizer produced; a normalizer refusal is a thrown Error. */
   run: (value: unknown) => { issues: readonly GateIssue[]; artifact: unknown };
 }
@@ -129,17 +137,43 @@ const accessContext = (): Ns5AccessGateContext => ({
   journeys: JOURNEYS.map(journey => ({ journeyId: journey.journeyId, business: journey.business })),
 });
 
+/** The v3 plan payload the generator has to reach: derived from the hand-written agendaClinica v3 index (the fixture of form). */
+function planV3Example(): Record<string, unknown> {
+  const form = path.join(SOLUTION, 'fixtures/ontology30/agendaClinica-v3');
+  const load = (shortName: string) => JSON.parse(extractNs4ClassicJsonObject(readFileSync(path.join(form, `${shortName}.defs.ts`), 'utf8'))) as Record<string, unknown>;
+  const index = load('index') as { businessDomain: unknown; relationships: Array<Record<string, unknown>> };
+  return {
+    businessDomain: index.businessDomain,
+    entities: ['Paciente', 'Profissional', 'Consulta'].map(id => {
+      const entity = load(id) as Record<string, unknown>;
+      return {
+        entityId: entity.entityId, kind: entity.kind,
+        ...(entity.kind === 'role' ? { subtype: entity.subtype } : { class: entity.class }),
+        title: entity.title, description: entity.description, displayField: entity.displayField, writer: entity.writer ?? 'journey',
+      };
+    }),
+    relationships: index.relationships.map(row => ({ ...row })),
+  };
+}
+
 const STEPS: Step[] = [
+  {
+    name: 'ontology30 plan V3 (the gate the agent calls)', schema: 'ontology-plan-v3.schema.json', draft: '', example: planV3Example,
+    run: value => {
+      const artifact = normalizeNs5OntologyPlanV3(value, 'agendaClinica');
+      return { artifact, issues: validateNs5OntologyPlanV3(artifact, { moduleName: 'agendaClinica', mdm, tdm, ddm }).issues };
+    },
+  },
   {
     name: 'journeys20', schema: 'journey.schema.json', draft: `journeys20/${MODULE}-draft.json`,
     run: value => { const artifact = normalizeNs5JourneysPayload(value).journeys; return { artifact, issues: validateNs5Journeys(artifact, { actors: ACTORS, moduleName: MODULE }).issues }; },
   },
   {
-    name: 'ontology30 plan', schema: 'ontology-plan.schema.json', draft: `ontology30/${MODULE}-plan-draft.json`,
+    name: 'ontology30 plan v2 (legacy)', schema: 'ontology-plan.schema.json', draft: `ontology30/${MODULE}-plan-draft.json`,
     run: value => { const artifact = normalizeNs5OntologyPlan(value, MODULE); return { artifact, issues: validateNs5OntologyPlan(artifact, ontologyContext).issues }; },
   },
   {
-    name: 'ontology30 bindings', schema: 'ontology-bindings.schema.json', draft: `ontology30/${MODULE}-bindings-draft.json`,
+    name: 'ontology30 bindings v2 (legacy; the v3 agent has no bindings tool)', schema: 'ontology-bindings.schema.json', draft: `ontology30/${MODULE}-bindings-draft.json`,
     run: value => { const artifact = normalizeNs5OntologyBindings(value); return { artifact, issues: validateNs5OntologyBindings(PLAN, DETAILS, artifact, ontologyContext).issues }; },
   },
   {
@@ -177,7 +211,7 @@ const counts = new Map<string, Record<Klass, number>>();
 
 for (const step of STEPS) {
   void test(`${step.name}: provider-only values through normalizer + gate`, t => {
-    const cases = providerEdgeCases(schemaOf(step.schema), fixture(step.draft));
+    const cases = providerEdgeCases(schemaOf(step.schema), step.example ? step.example() : fixture(step.draft));
     assert.ok(cases.length > 0, `no case for ${step.name}`);
     const tally: Record<Klass, number> = { A: 0, B: 0, C: 0, D: 0 };
     for (const item of cases) {
