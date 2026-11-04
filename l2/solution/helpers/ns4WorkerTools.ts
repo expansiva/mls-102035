@@ -51,7 +51,33 @@ function toolArguments(value: unknown): unknown {
 function parse(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   const clean = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  try { return JSON.parse(clean); } catch { return value; }
+  try { return JSON.parse(clean); } catch { /* the provider may close the object twice: see below */ }
+  const trimmed = withoutStrayClosers(clean);
+  if (trimmed === null) return value;
+  console.warn('[ns4WorkerTools] tool arguments carried stray closing brackets after the JSON value; they were dropped.');
+  try { return JSON.parse(trimmed); } catch { return value; }
+}
+
+/** The JSON value without extra `}` or `]` after it, or null when the text is not that case. */
+function withoutStrayClosers(text: string): string | null {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{' || char === '[') depth++;
+    else if ((char === '}' || char === ']') && --depth === 0) {
+      return /^[\s}\]]+$/u.test(text.slice(index + 1)) ? text.slice(0, index + 1) : null;
+    }
+  }
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

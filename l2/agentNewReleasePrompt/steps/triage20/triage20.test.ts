@@ -292,3 +292,14 @@ void test('what the provider lets through (empty, blank, limits) is normalized o
   }
   assert.ok(total >= 12, `cases found: ${total}`);
 });
+
+void test('l4_p4_101: arguments with one closing brace too many still reach the triage', () => {
+  const body = '{"valid":true,"reason":null,"clarification":null,"artifacts":["journeys"],"targets":[],"intent":"Adicionar uma jornada.","mechanical":[],"mechanicalOnly":false,"assumptions":["a"],"l3Notice":null}}';
+  const step = {
+    interaction: { payload: [{ type: 'flexible', result: { toolName: 'submitNrpTriage', arguments: { type: 'flexible', result: body } } }] },
+  } as unknown as mls.msg.AIAgentStep;
+  const triage = normalizeNrpTriage(nrpTriagePayload(step));
+  assert.equal(triage.valid, true);
+  assert.deepEqual(triage.artifacts, ['journeys']);
+  assert.equal(triage.l3Notice, null);
+});
