@@ -47,6 +47,8 @@ export interface NrpWritePayload {
   allowWrite: boolean;
   modelCalls: number;
   repairRounds?: NrpRepairRound[];
+  /** Decisions the code took after the edit (for example who sees a new field). */
+  notes?: string[];
 }
 
 export interface NrpFileState {
@@ -245,7 +247,7 @@ export async function persistNrp(payload: NrpWritePayload, taskId = ''): Promise
   const userLanguage = payload.artifacts.module && 'userLanguage' in payload.artifacts.module
     ? payload.artifacts.module.userLanguage
     : undefined;
-  const summary = [promptChangeSummary(userLanguage, touched), promptAssumptionsLine(userLanguage, payload.triage.assumptions), payload.triage.l3Notice].filter(Boolean).join('\n');
+  const summary = [promptChangeSummary(userLanguage, touched), promptAssumptionsLine(userLanguage, [...(payload.notes || []), ...payload.applied.flatMap(edit => edit.reasons || [])]), payload.triage.l3Notice].filter(Boolean).join('\n');
   if (touched.length) {
     const at = new Date();
     const record: NrpOperationRecord = {

@@ -50,12 +50,12 @@ export function promptChangeSummary(userLanguage: string | null | undefined, fil
 }
 
 /**
- * What the model assumed when it read the request, before editing, in the user's language. Empty when nothing was assumed.
- * It is the model's own text: the change list above it is the record of what was written.
+ * What the model said about its edit (its operation reasons) and what the code decided after it, in the user's language.
+ * Empty when there is nothing to say. The change list above it is the record of what was written.
  */
 export function promptAssumptionsLine(userLanguage: string | null | undefined, assumptions: readonly string[]): string {
   if (!assumptions.length) return '';
-  return `${promptLanguage(userLanguage) === 'pt' ? 'Suposições do modelo' : 'Model assumptions'}: ${assumptions.join('; ')}`;
+  return `${promptLanguage(userLanguage) === 'pt' ? 'Notas do modelo' : 'Model notes'}: ${assumptions.join('; ')}`;
 }
 
 /** Question or refusal, in the user's language. Stock English sentences are translated. Free text is kept. */

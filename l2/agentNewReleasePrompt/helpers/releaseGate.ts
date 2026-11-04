@@ -26,6 +26,8 @@ export interface NrpAppliedEdit {
   mode: 'apply' | 'model';
   kind: NrpArtifactKind | null;
   artifact: unknown;
+  /** What the model said it did, one line per distinct operation reason. Written while editing, after the decision. */
+  reasons?: string[];
 }
 
 export type NrpGateActionName = 'write' | 'repair' | 'stop';

@@ -110,6 +110,8 @@ void test('a recorded edit response applies one operation to the current file', 
   const artifact = edited.files[0].artifact as { rules: Array<{ ruleId: string }> };
   assert.equal(edited.files[0].id, 'rules');
   assert.equal(artifact.rules[0].ruleId, 'defaultPriority');
+  assert.equal(edited.reasons.length > 0 && edited.reasons.every(reason => reason.trim() === reason && reason.length > 0), true, 'the operation reasons come with the edit');
+  assert.equal(new Set(edited.reasons).size, edited.reasons.length);
   assert.throws(() => normalizeNrpEdit('rules', { artifactJson: '{"rules":[]}' }, scope), /list operations/);
   assert.throws(() => normalizeNrpEdit('rules', {
     operations: [{ file: 'rules', op: 'set', pointer: '/rules', expectedJson: '[]', valueJson: '{"journeys":[]}', reason: 'bad' }],

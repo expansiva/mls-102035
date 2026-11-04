@@ -95,16 +95,16 @@ export async function beforeNrpGateStep(
       if (fix.ask) return fieldsOnlyHold(base, step, hookSequential, fix.ask);
       const fixed = fix.notes.length > 0;
       const artifacts = fixed ? { ...merged, access: fix.access } : merged;
-      const triage = fixed ? { ...cursor.triage, assumptions: [...cursor.triage.assumptions, ...fix.notes] } : cursor.triage;
       return [
         {
           type: 'add-step', ...base, step: createWrite50Step({
             moduleName: cursor.moduleName,
             project,
             request: cursor.request,
-            triage,
+            triage: cursor.triage,
             artifacts,
             applied: cursor.applied,
+            notes: fix.notes,
             issues: fixed ? gateIssues(baseArtifacts, artifacts) : issues,
             allowWrite: true,
             modelCalls: cursor.modelCalls,

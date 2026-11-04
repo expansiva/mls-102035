@@ -367,7 +367,7 @@ export function nrpCreatedTwinMessage(scope: NrpFileScope, edited: readonly NrpE
   return `${why}\n${extend}\n${nrpOccupiedSignatureBlock(occupied, actors)}`;
 }
 
-export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: NrpFileScope): { files: NrpEditFile[] } {
+export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: NrpFileScope): { files: NrpEditFile[]; reasons: string[] } {
   try {
     const operations = readOperations(value);
     const working = new Map<string, { artifact: unknown; created: boolean }>();
@@ -384,7 +384,8 @@ export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: N
       assertFile(kind, id, item.artifact);
       files.push({ id, artifact: item.artifact });
     }
-    return { files };
+    const reasons = [...new Set(operations.map(operation => operation.reason.trim()).filter(Boolean))];
+    return { files, reasons };
   } catch (error) {
     if (error instanceof NrpEditRefusal) throw error;
     throw new NrpEditRefusal(error instanceof Error ? error.message : String(error), value);
@@ -958,7 +959,7 @@ export async function afterNrpEditStep(
     const pendingTextMarks = nrpUnresolvedTextMarks(parsed.order.kind, scope, loaded.textMarks, artifact.files, loaded.artifacts);
     const applied: NrpAppliedEdit[] = [
       ...parsed.order.applied,
-      { mode: 'model', kind: parsed.order.kind, artifact },
+      { mode: 'model', kind: parsed.order.kind, artifact: { files: artifact.files }, reasons: artifact.reasons },
     ];
     return [
       {

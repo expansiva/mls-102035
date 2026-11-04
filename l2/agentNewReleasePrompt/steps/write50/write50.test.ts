@@ -447,16 +447,19 @@ void test('a new journey is created without reporting its expected absence as a 
   }
 });
 
-void test('a written request with assumptions says what it assumed, in the summary', async () => {
+void test('the summary carries the model reasons of the edit and the code notes, not the triage predictions', async () => {
   const fixture = installRemovalFixture();
   try {
     const payload = structuredClone(fixture.payload);
     payload.artifacts.module = { ...payload.artifacts.module, userLanguage: 'pt' } as typeof payload.artifacts.module;
     payload.artifacts.rules = { schemaVersion: 'fixture', rules: [{ ruleId: 'fechaComanda' }] } as typeof payload.artifacts.rules;
-    payload.triage = { ...payload.triage, assumptions: ['quem marca pronto: a cozinha (ator novo)', 'o campo aparece para o garçom'], l3Notice: null };
+    payload.triage = { ...payload.triage, assumptions: ['a tela é uma jornada nova e separada'], l3Notice: null };
+    payload.applied = [...payload.applied, { mode: 'model', kind: 'rules', artifact: { files: [] }, reasons: ['estende a regra existente'] }];
+    payload.notes = ['o campo aparece para o garçom'];
     const result = await persistNrp(payload, '20261102141739.1001');
     assert.match(result.summary, /Adicionada: fechaComanda/);
-    assert.match(result.summary, /Suposições do modelo: quem marca pronto: a cozinha \(ator novo\); o campo aparece para o garçom/);
+    assert.match(result.summary, /Notas do modelo: o campo aparece para o garçom; estende a regra existente/);
+    assert.equal(result.summary.includes('jornada nova'), false, 'a triage prediction is not shown');
   } finally { fixture.restore(); }
 });
 
@@ -480,7 +483,7 @@ void test('a written request stores the pt summary and the operation json paths'
     assert.match(result.summary, /Adicionada: fechaComanda/);
     assert.match(result.summary, /Removida: oldJourney/);
     assert.equal(result.summary.includes('alterado'), false);
-    assert.equal(result.summary.includes('Suposições'), false, 'nothing assumed, no assumption line');
+    assert.equal(result.summary.includes('Notas do modelo'), false, 'nothing assumed, no assumption line');
     const opKey = [...fixture.contents.keys()].find(key => key.includes('/tobe/operations:'));
     assert.ok(opKey);
     const record = JSON.parse(fixture.contents.get(opKey || '') || '') as NrpOperationRecord;
