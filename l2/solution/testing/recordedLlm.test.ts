@@ -62,11 +62,13 @@ void test('the file store writes agent/step/hash.json and reads it back; a missi
 void test('the file store finds a recording under another step label when the hash is the same (a worker recorded as step<stepId>)', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'recorded-llm-'));
   try {
-    const store = fileRecordedLlmStore(dir);
+    const used: string[] = [];
+    const store = fileRecordedLlmStore(dir, use => used.push(use.kind));
     const key = recordedLlmKey('agentX', 'unit-r0', request);
     const hash = key.split('/')[2];
     store.write(`agentX/step14/${hash}`, 'raw answer');
     assert.equal(store.read(key), 'raw answer');
+    assert.deepEqual(used, ['hash-other-step'], 'the fallback is reported');
     assert.equal(store.read(recordedLlmKey('agentX', 'unit-r0', { ...request, humanPrompt: 'other' })), null);
     assert.equal(store.read(recordedLlmKey('agentY', 'unit-r0', request)), null);
   } finally { rmSync(dir, { recursive: true, force: true }); }

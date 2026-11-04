@@ -39,6 +39,7 @@ import * as agentM12WorkflowUnit from '/_102021_/l2/agentMaterializeL1/steps/wor
 import * as agentM12Workflows from '/_102021_/l2/agentMaterializeL1/steps/workflows45/agentM12Workflows.js';
 import * as agentDefsL1 from '/_102021_/l2/agentDefsL1/agentDefsL1.js';
 import { createRecordedLlm, fileRecordedLlmStore } from '/_102035_/l2/solution/testing/recordedLlm.js';
+import { createStudioModel, installStudioCompile } from './studioCompileHost.js';
 import { installAgentResources, installProjectFile, installProjectIndexDefs } from './agentResources.js';
 import { runUntilDone } from './hostSimulado.js';
 import { createAgent as createNewReleaseL1 } from '/_102021_/l2/agentNewReleaseL1/agentNewReleaseL1.js';
@@ -54,6 +55,7 @@ interface MemFile {
   status: string; versionRef: string; content: string;
   getContent: () => Promise<string>;
   getValueInfo: () => Promise<{ content: string }>;
+  getOrCreateModel: () => Promise<unknown>;
 }
 
 const keyOf = (file: { project?: number; level?: number; folder?: string; shortName?: string; extension?: string }): string =>
@@ -76,6 +78,7 @@ export function installTarefas(): { files: Record<string, MemFile>; texts: () =>
       project, level, folder, shortName, extension, status: 'unchanged', versionRef: '1', content,
       getContent() { return Promise.resolve(this.content); },
       getValueInfo() { return Promise.resolve({ content: this.content }); },
+      getOrCreateModel() { return createStudioModel(this); },
     };
     files[keyOf(file)] = file;
     return file;
@@ -202,12 +205,19 @@ void test('tarefas, rule only: the fan-out host runs the whole agentDefsL1 /run 
 /** The answers of the real model for the rule-only change, recorded by `collabmsg send --record-dir` on 04/11. */
 const RECORDED = new URL('recorded/soRegra', FIXTURE).pathname;
 
-void test('tarefas, rule only: agentDefsL1 /run REPLAYS the recorded answers of the real model to done, with no missing recording', async () => {
+/** The replay model on the recorded answers. Every fallback match goes to the diagnostics of the test, with the key that was asked. */
+function recordedReplay(log: (line: string) => void) {
+  const missing: string[] = [];
+  const used: string[] = [];
+  const files = fileRecordedLlmStore(RECORDED, use => { used.push(use.kind); log(`recordedLlm fallback ${use.kind}: ${use.key} -> ${use.file.slice(RECORDED.length + 1)}`); });
+  const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) missing.push(key); return raw; }, write: () => { throw new Error('replay does not record'); } } });
+  return { llm, missing, used };
+}
+
+void test('tarefas, rule only: agentDefsL1 /run REPLAYS the recorded answers of the real model to done, with no missing recording', async t => {
   const stor = installTarefas();
   try {
-    const missing: string[] = [];
-    const files = fileRecordedLlmStore(RECORDED);
-    const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) missing.push(key); return raw; }, write: () => { throw new Error('replay does not record'); } } });
+    const { llm, missing } = recordedReplay(line => t.diagnostic(line));
     const { context, run } = await creationRun(llm);
     const result = await run();
     assert.deepEqual(missing, [], 'every model request of the run has a recording');
@@ -216,12 +226,10 @@ void test('tarefas, rule only: agentDefsL1 /run REPLAYS the recorded answers of 
   } finally { stor.restore(); }
 });
 
-void test('tarefas, rule only: the whole L1 chain on the recorded answers: prepare, creation run, /compare and agentMaterializeL1 (the real agents, replay)', async () => {
+void test('tarefas, rule only: the whole L1 chain on the recorded answers: prepare, creation run, /compare and agentMaterializeL1 (the real agents, replay)', async t => {
   const stor = installTarefas();
   try {
-    const missing: string[] = [];
-    const files = fileRecordedLlmStore(RECORDED);
-    const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) missing.push(key); return raw; }, write: () => { throw new Error('replay does not record'); } } });
+    const { llm, missing } = recordedReplay(line => t.diagnostic(line));
     const { context, run } = await creationRun(llm);
     await run();
     assert.equal(context.task?.status, 'done', 'agentDefsL1 /run');
@@ -269,16 +277,15 @@ void test('tarefas, rule only: the L2 plan of the REAL effort has the page to ma
   assert.deepEqual(refused, { ok: false, reason: 'nothing to apply' });
 });
 
-void test('tarefas, rule only: the REAL agentNewReleaseL2 with the real effort runs agentMaterializeL2 for the page on the recorded answers', { todo: 'the host reaches the recorded answer of the page (pages50 desktop) and the page step then compiles the generated code with the Studio TypeScript compiler, which is not available in node (M4_PAGE_ENVIRONMENT); the mobile page and the shared and review steps were not reached' }, async () => {
+void test('tarefas, rule only: the REAL agentNewReleaseL2 with the real effort runs agentMaterializeL2 for the page on the recorded answers', async t => {
   const stor = installTarefas();
   try {
+    installStudioCompile();
     await installAgentResources(102020, 'agentMaterializeL2');
     await installProjectFile(102034, 1, 'mdm/defs', 'ontology', '.ts');
     await installProjectIndexDefs(102040, 2, 'molecules');
     await installProjectIndexDefs(102020, 2, 'aura/molecules/skills', 'usage', '.ts');
-    const missing: string[] = [];
-    const files = fileRecordedLlmStore(RECORDED);
-    const llm = createRecordedLlm({ mode: 'replay', store: { read: (key, request) => { const raw = files.read(key, request); if (raw === null) { missing.push(key); } return raw; }, write: () => { throw new Error('replay does not record'); } } });
+    const { llm, missing } = recordedReplay(line => t.diagnostic(line));
     const command = `@@agentNewReleaseL2 ${MODULE}`;
     const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content: command, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
     const result = await runUntilDone(agentNewReleaseL2, context, {}, [agentMaterializeL2L2, agentM4EntryL2, agentM4FinalizeL2, agentM4InputL2, agentM4PagesL2, agentM4PagesPageL2, agentM4ReviewL2, agentM4ReviewPageL2, agentM4ChainPageL2, agentM4SharedL2, agentM4SharedPageL2], llm);

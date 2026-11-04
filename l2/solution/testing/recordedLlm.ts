@@ -54,7 +54,20 @@ export function recordedLlmKey(agent: string, step: string, request: RecordedLlm
 }
 
 /** Recordings as `<dir>/<agent>/<step>/<hash>.json`, each file `{ "raw": "<provider answer>" }`. */
-export function fileRecordedLlmStore(dir: string): RecordedLlmStore {
+export type RecordedLlmFallbackKind = 'hash-other-step' | 'human-prompt' | 'unit-label';
+
+export interface RecordedLlmFallback {
+  kind: RecordedLlmFallbackKind;
+  /** The key the agent asked for, and the recording that answered it. */
+  key: string;
+  file: string;
+}
+
+/** Every use of a fallback goes to the log of the test: an old answer never enters silently after a prompt changed. */
+export function fileRecordedLlmStore(
+  dir: string,
+  onFallback: (use: RecordedLlmFallback) => void = use => console.warn(`[recordedLlm] fallback ${use.kind}: ${use.key} -> ${use.file}`),
+): RecordedLlmStore {
   const fileOf = (key: string) => path.join(dir, `${key}.json`);
   return {
     read(key, request) {
@@ -77,8 +90,9 @@ export function fileRecordedLlmStore(dir: string): RecordedLlmStore {
         throw error;
       }
       for (const step of steps) {
-        const found = readRaw(path.join(dir, agent, step, `${hash}.json`));
-        if (found !== null) return found;
+        const file = path.join(dir, agent, step, `${hash}.json`);
+        const found = readRaw(file);
+        if (found !== null) { onFallback({ kind: 'hash-other-step', key, file }); return found; }
       }
       if (!request) return null;
       // The system prompt and the tools are what the recording host sent: its copy of the agent files and its tool wrapping
@@ -86,7 +100,10 @@ export function fileRecordedLlmStore(dir: string): RecordedLlmStore {
       for (const step of steps) {
         for (const name of readdirSync(path.join(dir, agent, step))) {
           const saved = JSON.parse(readFileSync(path.join(dir, agent, step, name), 'utf8')) as { raw: string; request?: { humanPrompt?: string } };
-          if (saved.request?.humanPrompt !== undefined && sameText(saved.request.humanPrompt, request.humanPrompt)) return saved.raw;
+          if (saved.request?.humanPrompt !== undefined && sameText(saved.request.humanPrompt, request.humanPrompt)) {
+            onFallback({ kind: 'human-prompt', key, file: path.join(dir, agent, step, name) });
+            return saved.raw;
+          }
         }
       }
       // A unit with its own stable label (a page, a usecase) recorded once under that label: the label is the identity of the
@@ -96,7 +113,11 @@ export function fileRecordedLlmStore(dir: string): RecordedLlmStore {
       try { own = readdirSync(path.join(dir, agent, label)); } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       }
-      if (own.length === 1) return readRaw(path.join(dir, agent, label, own[0]));
+      if (own.length === 1) {
+        const file = path.join(dir, agent, label, own[0]);
+        onFallback({ kind: 'unit-label', key, file });
+        return readRaw(file);
+      }
       return null;
     },
     write(key, raw) {
