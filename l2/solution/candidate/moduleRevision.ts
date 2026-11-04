@@ -288,10 +288,17 @@ export async function prepareL4Change(project: number, moduleName: string, oldMa
     if (active) {
       const release = await readL4Release(project, moduleName, active.baseId);
       if (!release) throw new Error('Captured L4 base is missing or incomplete.');
+      // A candidate that already holds files was copied from the base when the change was prepared: an indexed file (journey,
+      // entity) missing from it was REMOVED by the request, and the seal records that. Only a candidate that holds nothing yet
+      // is still to be copied, and a fixed file is always put back (the seal refuses a candidate without it).
+      const copied = Object.values(mls.stor.files).some(file => !!file && file.project === project && file.level === 4
+        && file.status !== 'deleted' && file.extension === '.defs.ts' && String(file.folder || '').startsWith(`${moduleName}/tobe/plan`));
       for (const rawPath of Object.keys(release.files)) {
         const path = normalizeTobeArtifactPath(rawPath);
         const temporary = artifactInfo(project, moduleName, path, 'tobe');
-        if (!fileExists(temporary)) await writeSourceText(temporary, await readSourceText(originalL4FileInfo(project, moduleName, active.baseId, path)));
+        if (fileExists(temporary)) continue;
+        if (copied && isIndexedLeaf(path)) continue;
+        await writeSourceText(temporary, await readSourceText(originalL4FileInfo(project, moduleName, active.baseId, path)));
       }
       return { release, change: active, created: false };
     }
