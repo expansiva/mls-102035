@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { providerEdgeCases } from '/_102035_/l2/solution/testing/providerEdgeCases.js';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
@@ -379,4 +380,23 @@ void test('human prompt carries the source request and a fixed module name', () 
   assert.match(human, /Source request/);
   assert.match(human, /comandaRestaurante5/);
   assert.match(human, /Modules already in this organization/);
+});
+
+void test('module10: what the provider lets through is normalized or refused with a reason', { todo: 'the normalizer passes an empty actors list and an empty actor description on to the gate (l4_p4_95 s3)' }, () => {
+  const schema = JSON.parse(readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../schemas/module.schema.json'), 'utf8')) as Record<string, unknown>;
+  const example = loadNs5FixtureJson<Record<string, unknown>>('fixtures/module10', 'controleEstoque-draft.json');
+  const leaks: string[] = [];
+  for (const item of providerEdgeCases(schema, example)) {
+    let result: { artifact?: { actors?: unknown } } & Record<string, unknown>;
+    try {
+      result = normalizeNs5ModuleArtifact(item.value, { sourcePrompt: 'prompt' }) as never;
+    } catch (error) {
+      assert.ok(error instanceof Error && error.message.length > 10, `${item.path}: the refusal says why`);
+      continue;
+    }
+    const text = JSON.stringify(result);
+    if (item.rule === 'minItems' && item.path === 'actors' && /"actors":\[\]/u.test(text)) leaks.push(`${item.path} ${item.variant}`);
+    if (item.rule === 'minLength' && /"description":""/u.test(text)) leaks.push(`${item.path} ${item.variant}`);
+  }
+  assert.deepEqual(leaks, []);
 });
