@@ -39,7 +39,7 @@ export interface NrpEditCursor extends NrpEditOrder {
 export const NRP_JOURNEY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, journeyId, business with actorRef, title, goal, entry, steps and outcome).';
 export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, moduleName, entityId, and the same sections the sibling uses).';
 /** Step kinds the journey gate accepts, and the twin rule it enforces. The gate constant is not exported. */
-export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. To tell them apart, change the actor, the entity, or the operations (for example, replace locate plus act with one act step that has an effect). Do not invent a step kind. If the request does not say who acts, ask; do not pick an actor.';
+export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. When a journey of that actor already does what the request asks for, extend that journey with what the request adds (a filter, a column, an action) and do not create another one. Make a separate journey only when the request is about a different actor, entity, or operations. Do not invent a step kind. If the request does not say who acts, ask; do not pick an actor.';
 /** Shown with the signatures the code already measured for the actor. */
 export const NRP_NEW_SIGNATURE_RULE = 'a jornada nova precisa de uma assinatura que não esteja na lista';
 
@@ -360,7 +360,11 @@ export function nrpCreatedTwinMessage(scope: NrpFileScope, edited: readonly NrpE
     .map(([id, artifact]) => ({ id, artifact }));
   const actors = [...new Set(clashes.map(item => item.actorRef))];
   const why = clashes.map(item => `Journey ${item.journeyId} repeats the occupied signature ${item.signature} of ${item.actorRef}.`).join('\n');
-  return `${why}\n${nrpOccupiedSignatureBlock(occupied, actors)}`;
+  const existing = [...new Set(clashes.flatMap(item => signatures
+    .filter(other => !created.has(other.journeyId) && other.actorRef === item.actorRef && other.signature === item.signature)
+    .map(other => other.journeyId)))];
+  const extend = `Extend ${existing.join(', ')} with what the request adds and do not create ${[...created].join(', ')}.`;
+  return `${why}\n${extend}\n${nrpOccupiedSignatureBlock(occupied, actors)}`;
 }
 
 export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: NrpFileScope): { files: NrpEditFile[] } {

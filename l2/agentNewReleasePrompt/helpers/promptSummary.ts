@@ -63,6 +63,15 @@ export function promptHoldSummary(text: string, userLanguage?: string | null): s
   return localizeHold(text.trim(), promptLanguage(userLanguage));
 }
 
+/** The request asked for a screen that a journey already covers. Says which one and what the user can ask instead. */
+export function promptTwinSummary(userLanguage: string | null | undefined, existing: readonly string[]): string {
+  const names = existing.join(', ');
+  if (promptLanguage(userLanguage) === 'pt') {
+    return `Já existe ${existing.length > 1 ? 'as jornadas' : 'a jornada'} ${names} com o mesmo ator e as mesmas operações. Nada foi gravado. Peça para estender ${existing.length > 1 ? 'uma delas' : 'essa jornada'} (um filtro, uma coluna ou uma ação).`;
+  }
+  return `${existing.length > 1 ? `Journeys ${names} already do` : `Journey ${names} already does`} this for the same actor and operations. Nothing was written. Ask to extend ${existing.length > 1 ? 'one of them' : 'it'} (a filter, a column or an action).`;
+}
+
 interface SummaryRow {
   title: string;
   state: PromptSummaryState;

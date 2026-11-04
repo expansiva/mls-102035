@@ -7,6 +7,7 @@ import {
   classifyCandidateIssues,
   verifyCandidateModule,
 } from '/_102035_/l2/solution/candidate/moduleVerification.js';
+import { promptHoldSummary, promptTwinSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES, nrpOccupiedSignatureBlock } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 
@@ -375,6 +376,31 @@ function nrpRepairIssueLines(
     });
 }
 
+/** The journeys of a twin group that were already in the module before this request. Empty when no group names one. */
+export function nrpTwinExisting(issues: readonly NrpGateIssue[], baseJourneyIds: readonly string[]): string[] {
+  const existing: string[] = [];
+  for (const issue of issues) {
+    if (issue.code !== 'NS5_JOURNEY_TWIN') continue;
+    const match = /^Journeys (.+?) are twins/u.exec(issue.message);
+    if (!match) continue;
+    for (const id of match[1].split(',').map(item => item.trim())) {
+      if (baseJourneyIds.includes(id) && !existing.includes(id)) existing.push(id);
+    }
+  }
+  return existing;
+}
+
+/** What the user reads when nothing was written: the journey that already exists for a twin, else the reason. */
+export function nrpStopSummary(
+  reason: string,
+  issues: readonly NrpGateIssue[],
+  baseJourneyIds: readonly string[],
+  userLanguage: string | null | undefined,
+): string {
+  const existing = nrpTwinExisting(issues, baseJourneyIds);
+  return existing.length ? promptTwinSummary(userLanguage, existing) : promptHoldSummary(reason, userLanguage);
+}
+
 function twinActors(issues: readonly NrpGateIssue[]): string[] {
   const actors: string[] = [];
   for (const issue of issues) {
@@ -388,7 +414,7 @@ function twinActors(issues: readonly NrpGateIssue[]): string[] {
 function nrpRepairAsk(issues: readonly NrpGateIssue[]): string {
   const text = issues.map(issue => `${issue.code} ${issue.message}`).join('\n');
   if (/twin|unique/iu.test(text)) {
-    return 'A uniqueness or twin error asks you to change the actor, the entity, or the operations of one cited file, or to remove the redundant file.';
+    return 'A twin error asks you to extend the journey that already existed with what the request adds, and to remove the redundant file. Change the actor, the entity, or the operations only when the request is about something different. A uniqueness error asks you to change the cited file or remove the redundant one.';
   }
   if (/unknown|reference|not found|missing/iu.test(text)) {
     return 'A reference error asks you to create or correct the file the error names.';
@@ -409,7 +435,7 @@ operations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Ev
 op is set, add, remove, or create.
 pointer is an RFC 6901 pointer. add on a list ends with /- or with an index from 0 through the list length, which inserts before that item. add on an object ends with the new key.
 valueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.
-A uniqueness or twin error asks you to change the actor, the entity, or the operations of one cited file, or to remove the redundant file.
+A twin error asks you to extend the journey that already existed with what the request adds, and to remove the redundant file. Change the actor, the entity, or the operations only when the request is about something different. A uniqueness error asks you to change the cited file or remove the redundant one.
 A reference error asks you to create or correct the file the error names.
 An error that is not about the index is not fixed by editing only the index.`;
 

@@ -254,7 +254,8 @@ void test('empty or blank text in an optional field is null; a missing field or 
   assert.equal(noIntent.reason, 'Not about this module.');
   for (const field of ['reason', 'clarification', 'intent', 'l3Notice']) {
     const { [field]: _removed, ...without } = valid as Record<string, unknown>;
-    assert.throws(() => normalizeNrpTriage(without), /must be text or null/, `${field} missing`);
+    if (field === 'l3Notice') assert.equal(normalizeNrpTriage(without).l3Notice, null, 'an absent l3Notice is nothing to say');
+    else assert.throws(() => normalizeNrpTriage(without), /must be text or null/, `${field} missing`);
     assert.throws(() => normalizeNrpTriage({ ...valid, [field]: 7 }), /must be text or null/, `${field} number`);
   }
   assert.throws(() => normalizeNrpTriage({ ...valid, valid: false, reason: '', l3Notice: '' }), /needs a reason or an l3Notice/);

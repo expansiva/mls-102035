@@ -21,6 +21,8 @@ import {
   nrpIssueLines,
   nrpIssueOwner,
   nrpRepairRoundCounts,
+  nrpStopSummary,
+  nrpTwinExisting,
   type NrpRepairRound,
   nrpKindCatalog,
   nrpMayWrite,
@@ -203,6 +205,13 @@ void test('a twin repair sees both journeys, and an index-only repair is refused
   assert.match(human, /"journeyId":"duplicarTarefa"/);
   assert.match(human, /locate, inspect, act, decide, or handoff/);
   assert.match(human, /Do not invent a step kind/);
+  assert.match(human, /extend that journey with what the request adds/);
+  assert.equal(/change the actor, the entity, or the operations of one cited file/.test(human), false);
+  assert.deepEqual(nrpTwinExisting(issues, ['cancelarTarefa']), ['cancelarTarefa']);
+  assert.deepEqual(nrpTwinExisting(issues, ['outra']), []);
+  const stopped = 'Repair of journeys already used 2 rounds. Nothing was written.';
+  assert.match(nrpStopSummary(stopped, issues, ['cancelarTarefa'], 'pt-BR'), /^Já existe a jornada cancelarTarefa .* Nada foi gravado\./u);
+  assert.equal(nrpStopSummary(stopped, issues, ['outra'], 'pt'), 'O reparo de journeys já usou 2 rodadas. Nada foi gravado.');
   let stored: unknown;
   const info = pipelineJsonFileForProject(1, 'sample', 'newReleasePrompt-refused');
   await recordNrpTriageRefusal(info, 'Pointer /journeys/14/business does not exist.', { operations: [] }, async (_file: Ns5FileInfo, value: unknown) => {
@@ -246,7 +255,7 @@ void test('a twin repair sees both journeys, and an index-only repair is refused
   }, scope);
   const refusal = nrpIndexOnlyRepairMessage('journeys', [twin], indexOnly.files);
   assert.match(refusal || '', /Repair changed only the index/);
-  assert.match(refusal || '', /one cited file/);
+  assert.match(refusal || '', /extend the journey that already existed/);
 });
 
 function repairRound(kind: NrpRepairRound['kind'], issues: readonly NrpGateIssue[]): NrpRepairRound {

@@ -148,7 +148,8 @@ export function normalizeNrpTriage(value: unknown): NrpTriage {
     const mechanical = marks(root.mechanical);
     if (typeof root.mechanicalOnly !== 'boolean') throw new Error('Triage mechanicalOnly must be a boolean.');
     const assumptions = texts(root.assumptions, 'assumptions');
-    const l3Notice = nullableText(root.l3Notice, 'l3Notice');
+    // An absent notice is "nothing to say", like null: the provider does not enforce `required` in strict mode, and losing the whole request over a missing optional notice helps nobody.
+    const l3Notice = root.l3Notice === undefined ? null : nullableText(root.l3Notice, 'l3Notice');
     const triage: NrpTriage = {
       valid, reason, clarification, artifacts, targets, intent, mechanical, mechanicalOnly: root.mechanicalOnly, assumptions, l3Notice,
     };

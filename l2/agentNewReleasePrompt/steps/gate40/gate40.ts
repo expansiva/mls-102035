@@ -17,6 +17,7 @@ import {
   nrpKindCatalog,
   nrpRepairPromptFiles,
   nrpRepairRoundCounts,
+  nrpStopSummary,
   type NrpRepairRound,
   NRP_REPAIR_SYSTEM_PROMPT,
   overlayNrpEdits,
@@ -125,7 +126,7 @@ export async function beforeNrpGateStep(
             result: JSON.stringify({
               written: false,
               reason,
-              summary: promptHoldSummary(reason, baseArtifacts.module.userLanguage),
+              summary: nrpStopSummary(reason, issues, baseArtifacts.journeyIndex.journeys.map(item => item.journeyId), baseArtifacts.module.userLanguage),
               issues,
               repairRounds: nrpRepairRoundCounts(cursor.repaired),
             }),

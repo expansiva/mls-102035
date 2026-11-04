@@ -582,6 +582,7 @@ void test('a new gestor journey shows occupied signatures and retries once befor
   assert.match(clash || '', /duplicarTarefa/);
   assert.match(clash || '', /act:Tarefa\+locate:Tarefa/);
   assert.match(clash || '', new RegExp(NRP_NEW_SIGNATURE_RULE));
+  assert.match(clash || '', /Extend reatribuirTarefa, cancelarTarefa with what the request adds and do not create duplicarTarefa\./);
   const order: NrpEditCursor = { mode: 'model', kind: 'journeys', triage: ask, rest: [], applied: [], attempts: 0 };
   const again = nextNrpEditAfterRefusal(order, clash || '');
   assert.equal(again?.attempts, 1);

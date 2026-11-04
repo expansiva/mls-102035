@@ -7,6 +7,7 @@ import {
   promptAssumptionsLine,
   promptChangeSummary,
   promptHoldSummary,
+  promptTwinSummary,
   type PromptSummaryFile,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 
@@ -130,4 +131,15 @@ void test('a journey that changed is not reported as new, whatever the model ass
   const assumed = promptAssumptionsLine('pt', ['A tela entra como uma jornada nova, separada de minhasTarefas.']);
   assert.equal(summary, 'Alterada: minhasTarefas');
   assert.equal(assumed.startsWith('Suposições do modelo:'), true);
+});
+
+void test('a twin request ends with the journey that already exists, in the user language', () => {
+  assert.equal(
+    promptTwinSummary('pt-BR', ['minhasTarefas']),
+    'Já existe a jornada minhasTarefas com o mesmo ator e as mesmas operações. Nada foi gravado. Peça para estender essa jornada (um filtro, uma coluna ou uma ação).',
+  );
+  assert.equal(
+    promptTwinSummary('en', ['a', 'b']),
+    'Journeys a, b already do this for the same actor and operations. Nothing was written. Ask to extend one of them (a filter, a column or an action).',
+  );
 });
