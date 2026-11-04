@@ -1,0 +1,89 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"submitNrpEdit\",\"arguments\":{\"type\":\"flexible\",\"result\":{\"operations\":[{\"file\":\"rules\",\"op\":\"set\",\"pointer\":\"/rules/apenasResponsavelExecuta\",\"expectedJson\":\"\\\"Somente o responsável da tarefa pode iniciá-la, enviá-la para revisão e retomá-la.\\\"\",\"valueJson\":\"\\\"Somente o responsável da tarefa pode iniciá-la, enviá-la para revisão, retomá-la e avisar atraso; o aviso de atraso só pode ser dado enquanto a tarefa está a fazer ou em andamento e exige o motivo do atraso e uma nova data prevista.\\\"\",\"reason\":\"Limitar o aviso de atraso ao responsável e a tarefas a fazer ou em andamento (jornada avisarAtraso).\"}]}}},\"status\":\"completed\",\"stepId\":7,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentNewReleasePrompt",
+  "step": "edit30",
+  "stepId": 11,
+  "taskId": "20261104181724.1001",
+  "request": {
+    "humanPrompt": "Kind: rules\n\nIntent: Adicionar a jornada avisarAtraso do membroEquipe, em que o responsável de uma tarefa aberta informa o motivo do atraso e uma nova data prevista. A informação fica registrada na Tarefa (details.motivoAtraso, details.novaPrevisao, details.atrasoAvisadoEm), uma regra limita o aviso ao responsável e a tarefas a fazer ou em andamento, e um workflow avisa o gestor. O gestor vê essas informações em acompanharTarefas por meio do acesso gestorTodasTarefas.\n\nTargets: [\"Tarefa\",\"avisarAtraso\",\"apenasResponsavelExecuta\",\"membroTarefasProprias\",\"gestorTodasTarefas\",\"acompanharTarefas\"]\n\nCreates: []\n\nRequest:\ncriar uma tela nova para o responsável avisar o gestor quando uma tarefa vai atrasar\n\nAllowed files:\nrules — named by triage\n\nFiles:\nrules\n{\"schemaVersion\":\"2026-09-16-ns5-rules-v2\",\"moduleName\":\"tarefas\",\"rules\":{\"apenasResponsavelExecuta\":\"Somente o responsável da tarefa pode iniciá-la, enviá-la para revisão e retomá-la.\",\"avisarQuemAgeAgora\":\"Ao criar a tarefa o responsável é avisado, e a cada mudança de situação ou reatribuição a pessoa que passa a agir agora é avisada; no cancelamento, quem estava agindo é avisado.\",\"apenasCriadorRevisa\":\"Somente quem criou a tarefa pode aceitá-la ou devolvê-la enquanto ela está em revisão.\",\"devolucaoExigeMotivo\":\"Devolver uma tarefa em revisão exige que quem criou informe o motivo da devolução, e a tarefa volta a em andamento.\",\"retomarSoAposDevolucao\":\"O responsável só pode retomar uma tarefa em andamento que foi devolvida e ainda não foi retomada depois dessa devolução.\",\"cancelarApenasCriadorOuGestor\":\"Somente quem criou a tarefa ou o gestor pode cancelá-la, e apenas enquanto ela está a fazer, em andamento ou em revisão.\",\"participanteNaoConfiguradoAceitaECria\":\"Um participante ainda não configurado pelo gestor aceita tarefas e pode criar tarefas até o gestor marcar outra escolha.\",\"escolhaGestorNuncaSobrescrita\":\"Uma marca de aceitar tarefas ou de poder criar tarefas já feita pelo gestor nunca é sobrescrita automaticamente; só o gestor a altera.\",\"gestorPorAcessoPlataforma\":\"Ser gestor é determinado pelo acesso da plataforma e não pelas marcas de aceitar tarefas ou poder criar tarefas.\",\"responsavelAceitaTarefas\":\"O responsável de uma tarefa, na criação ou na reatribuição, só pode ser um participante ativo que aceita tarefas (marca do gestor ou ausência de configuração).\",\"criarTarefaExigePodeCriar\":\"Criar uma tarefa exige que a pessoa seja participante que pode criar tarefas, e quem criou é sempre a pessoa da sessão.\",\"participanteSemCadastroPessoal\":\"O módulo não cadastra pessoas nem pede dado pessoal: participantes são escolhidos entre os usuários da organização e o módulo guarda apenas as marcas do gestor.\",\"nomeListaUnico\":\"O nome de uma lista de tarefas é obrigatório e não pode repetir o nome de outra lista.\",\"somenteGestorMantemListas\":\"Somente o gestor cria e altera listas de tarefas e configura os participantes do módulo.\",\"podeCriarTarefasExigido\":\"Um participante cuja marca de poder criar tarefas está desligada não pode criar tarefas nem subtarefas.\",\"escolhaResponsavelPeloNome\":\"O responsável é escolhido pelo nome numa lista visível com busca pelo nome, como numa menção em conversa, e nunca pelo e-mail.\",\"reatribuirApenasCriadorOuGestor\":\"Somente quem criou a tarefa ou o gestor pode trocar o responsável, e a troca faz do novo responsável quem age agora quando a tarefa está a fazer ou em andamento.\",\"edicaoNaoMudaSituacao\":\"Quem vê a tarefa pode editar título, descrição, prioridade, prazo, lista, tarefa pai e etiquetas, mas a edição nunca muda a situação da tarefa.\",\"tarefaPaiDiferenteDaPropria\":\"A tarefa pai de uma subtarefa não pode ser a própria tarefa nem uma de suas subtarefas.\",\"quemAgeAgoraPorSituacao\":\"Quem age agora é o responsável quando a tarefa está a fazer ou em andamento, quem criou quando está em revisão, e ninguém quando está concluída ou cancelada.\",\"resumoDiarioOitoHoras\":\"Todo dia às 8h cada responsável recebe um aviso com as suas tarefas abertas que vencem hoje ou estão atrasadas.\",\"avisoNaoSobrepostoPorPessoa\":\"Um aviso ainda não terminado para uma pessoa impede que outro comece para ela, sem nunca bloquear os avisos das demais pessoas.\",\"membroVeResponsavelOuCriador\":\"O membro vê apenas as tarefas de que é responsável, as que criou e as que dependem dele agora; o gestor vê todas as tarefas.\",\"itemChecklistSoQuemVeTarefa\":\"Somente quem vê a tarefa pode adicionar, editar, marcar ou desmarcar itens da sua checklist.\",\"marcarItemNaoMudaSituacao\":\"Marcar ou desmarcar um item da checklist não muda a situação da tarefa.\",\"itemChecklistTarefaNaoEncerrada\":\"Itens da checklist só podem ser adicionados, editados ou marcados enquanto a tarefa não está concluída nem cancelada.\",\"tarefaAbertaVencimento\":\"Uma tarefa é aberta quando não está concluída nem cancelada; vence hoje quando aberta com prazo igual a hoje e está atrasada quando aberta com prazo anterior a hoje.\",\"moduloNaoGuardaComentarios\":\"A discussão e os anexos da tarefa ficam na conversa da própria tarefa na plataforma; o módulo não guarda comentários nem anexos.\"}}",
+    "systemPrompt": "<!-- modelType: reasoning -->\nEdit the L4 files named in the message. You receive only those files, the intent, and the target ids.\nCall submitNrpEdit. Return small operations. Do not repeat a file.\noperations is a list of {file, op, pointer, expectedJson, valueJson, reason}. Every field is required. Use an empty string when a field does not apply.\nop is set, add, remove, or create.\nfile is the id you were given: the entity id or the journey id, index for that kind's index, or the kind name for a single file: rules, access, workflows, integration.\nA file is allowed when triage named it, when the message marks it so its text stops citing a term, or when triage creates it. Stay inside that list.\npointer is an RFC 6901 pointer inside that file. add on a list ends with /- or with an index from 0 through the list length, which inserts before that item. add on an object ends with the new key.\nvalueJson is one small JSON value, not the file. expectedJson is the current JSON value and is required for set and remove.\ncreate adds a journey file or an ontology entity when Creates lists that id, or when this same list adds that id to the index. Its pointer is empty. When the message includes a sibling, the new file uses that shape. The sibling is a reference, not an example module.\nChange only what the request requires. Keep every other value.\nWhen the message lists marked texts, rewrite only those texts so they no longer cite the named item.\nDo not invent an example module.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "submitNrpEdit",
+          "description": "Return small JSON operations for the named files. Do not return a file.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "result"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "flexible"
+              },
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operations"
+                ],
+                "properties": {
+                  "operations": {
+                    "type": "array",
+                    "maxItems": 40,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "file",
+                        "op",
+                        "pointer",
+                        "expectedJson",
+                        "valueJson",
+                        "reason"
+                      ],
+                      "properties": {
+                        "file": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "op": {
+                          "type": "string",
+                          "enum": [
+                            "set",
+                            "add",
+                            "remove",
+                            "create"
+                          ]
+                        },
+                        "pointer": {
+                          "type": "string"
+                        },
+                        "expectedJson": {
+                          "type": "string",
+                          "maxLength": 6000
+                        },
+                        "valueJson": {
+                          "type": "string",
+                          "maxLength": 6000
+                        },
+                        "reason": {
+                          "type": "string",
+                          "maxLength": 300
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

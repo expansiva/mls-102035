@@ -1,0 +1,164 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"submitNrpTriage\",\"arguments\":{\"type\":\"flexible\",\"result\":{\"valid\":true,\"reason\":null,\"clarification\":null,\"artifacts\":[\"ontology\",\"rules\",\"journeys\",\"workflows\",\"access\"],\"targets\":[\"Tarefa\",\"avisarAtraso\",\"apenasResponsavelExecuta\",\"membroTarefasProprias\",\"gestorTodasTarefas\",\"acompanharTarefas\"],\"intent\":\"Adicionar a jornada avisarAtraso do membroEquipe, em que o responsável de uma tarefa aberta informa o motivo do atraso e uma nova data prevista. A informação fica registrada na Tarefa (details.motivoAtraso, details.novaPrevisao, details.atrasoAvisadoEm), uma regra limita o aviso ao responsável e a tarefas a fazer ou em andamento, e um workflow avisa o gestor. O gestor vê essas informações em acompanharTarefas por meio do acesso gestorTodasTarefas.\",\"mechanical\":[],\"mechanicalOnly\":false,\"assumptions\":[\"quem avisa o atraso: o membroEquipe que é responsável pela tarefa\",\"quem recebe o aviso: os gestores do módulo (definidos pelo acesso da plataforma)\",\"informações registradas: motivo do atraso (texto, obrigatório), nova data prevista (opcional) e data e hora do aviso, guardados em details da Tarefa\",\"o aviso só pode ser feito com a tarefa a fazer ou em andamento\",\"avisar atraso não muda a situação nem o prazo da tarefa\",\"o gestor vê o motivo e a nova previsão na jornada acompanharTarefas, e o responsável vê os mesmos campos nas suas tarefas\"],\"l3Notice\":null}}},\"status\":\"completed\",\"stepId\":7,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentNewReleasePrompt",
+  "step": "triage20",
+  "stepId": 6,
+  "taskId": "20261104181724.1001",
+  "request": {
+    "humanPrompt": "Request:\ncriar uma tela nova para o responsável avisar o gestor quando uma tarefa vai atrasar\n\nIndex:\n{\"moduleName\":\"tarefas\",\"entities\":[{\"entityId\":\"Participante\",\"kind\":\"role\",\"fields\":[{\"id\":\"id\",\"type\":\"uuid\",\"required\":true},{\"id\":\"version\",\"type\":\"integer\",\"required\":true},{\"id\":\"details.identification\",\"type\":\"object\",\"required\":false},{\"id\":\"details.base\",\"type\":\"object\",\"required\":false},{\"id\":\"details.person\",\"type\":\"object\",\"required\":false},{\"id\":\"details.general\",\"type\":\"object\",\"required\":false},{\"id\":\"details.tarefas\",\"type\":\"object\",\"required\":false}],\"transitions\":[]},{\"entityId\":\"ListaTarefas\",\"kind\":\"entity\",\"fields\":[{\"id\":\"id\",\"type\":\"uuid\",\"required\":true},{\"id\":\"version\",\"type\":\"integer\",\"required\":true},{\"id\":\"nome\",\"type\":\"string\",\"required\":true},{\"id\":\"details.descricao\",\"type\":\"text\",\"required\":false},{\"id\":\"details.quantidadeTarefasAbertas\",\"type\":\"integer\",\"required\":false}],\"transitions\":[]},{\"entityId\":\"Tarefa\",\"kind\":\"entity\",\"fields\":[{\"id\":\"id\",\"type\":\"uuid\",\"required\":true},{\"id\":\"version\",\"type\":\"integer\",\"required\":true},{\"id\":\"titulo\",\"type\":\"string\",\"required\":true},{\"id\":\"status\",\"type\":\"enum\",\"required\":true,\"values\":[\"aFazer\",\"emAndamento\",\"emRevisao\",\"concluida\",\"cancelada\"]},{\"id\":\"prioridade\",\"type\":\"enum\",\"required\":true,\"values\":[\"baixa\",\"media\",\"alta\"]},{\"id\":\"prazo\",\"type\":\"date\",\"required\":false},{\"id\":\"listaId\",\"type\":\"record\",\"required\":true},{\"id\":\"responsavelId\",\"type\":\"record\",\"required\":true},{\"id\":\"criadorId\",\"type\":\"record\",\"required\":true},{\"id\":\"tarefaPaiId\",\"type\":\"record\",\"required\":false},{\"id\":\"criadaEm\",\"type\":\"timestamp\",\"required\":true},{\"id\":\"details.descricao\",\"type\":\"text\",\"required\":false},{\"id\":\"details.etiquetas\",\"type\":\"string\",\"required\":false},{\"id\":\"details.motivoDevolucao\",\"type\":\"text\",\"required\":false},{\"id\":\"details.devolvidaEm\",\"type\":\"timestamp\",\"required\":false},{\"id\":\"details.retomadaEm\",\"type\":\"timestamp\",\"required\":false},{\"id\":\"details.concluidaEm\",\"type\":\"timestamp\",\"required\":false},{\"id\":\"details.canceladaEm\",\"type\":\"timestamp\",\"required\":false},{\"id\":\"details.quemAgeAgora\",\"type\":\"record\",\"required\":false},{\"id\":\"details.aberta\",\"type\":\"boolean\",\"required\":false},{\"id\":\"details.venceHoje\",\"type\":\"boolean\",\"required\":false},{\"id\":\"details.atrasada\",\"type\":\"boolean\",\"required\":false},{\"id\":\"details.devolvidaPendente\",\"type\":\"boolean\",\"required\":false},{\"id\":\"details.quantidadeSubtarefas\",\"type\":\"integer\",\"required\":false},{\"id\":\"details.progressoChecklist\",\"type\":\"string\",\"required\":false}],\"transitions\":[{\"id\":\"iniciar\",\"from\":[\"aFazer\"],\"to\":\"emAndamento\",\"by\":[\"membroEquipe\"]},{\"id\":\"enviarParaRevisao\",\"from\":[\"emAndamento\"],\"to\":\"emRevisao\",\"by\":[\"membroEquipe\"]},{\"id\":\"aceitar\",\"from\":[\"emRevisao\"],\"to\":\"concluida\",\"by\":[\"membroEquipe\"]},{\"id\":\"devolver\",\"from\":[\"emRevisao\"],\"to\":\"emAndamento\",\"by\":[\"membroEquipe\"]},{\"id\":\"retomar\",\"from\":[\"emAndamento\"],\"to\":\"emAndamento\",\"by\":[\"membroEquipe\"]},{\"id\":\"cancelar\",\"from\":[\"aFazer\",\"emAndamento\",\"emRevisao\"],\"to\":\"cancelada\",\"by\":[\"gestor\",\"membroEquipe\"]}]},{\"entityId\":\"ItemChecklist\",\"kind\":\"entity\",\"fields\":[{\"id\":\"id\",\"type\":\"uuid\",\"required\":true},{\"id\":\"version\",\"type\":\"integer\",\"required\":true},{\"id\":\"tarefaId\",\"type\":\"record\",\"required\":true},{\"id\":\"ordem\",\"type\":\"integer\",\"required\":true},{\"id\":\"details.descricao\",\"type\":\"string\",\"required\":true},{\"id\":\"details.concluido\",\"type\":\"boolean\",\"required\":true},{\"id\":\"details.concluidoEm\",\"type\":\"timestamp\",\"required\":false}],\"transitions\":[]}],\"rules\":[{\"ruleId\":\"apenasResponsavelExecuta\",\"description\":\"Somente o responsável da tarefa pode iniciá-la, enviá-la para revisão e retomá-la.\"},{\"ruleId\":\"avisarQuemAgeAgora\",\"description\":\"Ao criar a tarefa o responsável é avisado, e a cada mudança de situação ou reatribuição a pessoa que passa a agir agora é avisada; no cancelamento, quem estava agindo é avisado.\"},{\"ruleId\":\"apenasCriadorRevisa\",\"description\":\"Somente quem criou a tarefa pode aceitá-la ou devolvê-la enquanto ela está em revisão.\"},{\"ruleId\":\"devolucaoExigeMotivo\",\"description\":\"Devolver uma tarefa em revisão exige que quem criou informe o motivo da devolução, e a tarefa volta a em andamento.\"},{\"ruleId\":\"retomarSoAposDevolucao\",\"description\":\"O responsável só pode retomar uma tarefa em andamento que foi devolvida e ainda não foi retomada depois dessa devolução.\"},{\"ruleId\":\"cancelarApenasCriadorOuGestor\",\"description\":\"Somente quem criou a tarefa ou o gestor pode cancelá-la, e apenas enquanto ela está a fazer, em andamento ou em revisão.\"},{\"ruleId\":\"participanteNaoConfiguradoAceitaECria\",\"description\":\"Um participante ainda não configurado pelo gestor aceita tarefas e pode criar tarefas até o gestor marcar outra escolha.\"},{\"ruleId\":\"escolhaGestorNuncaSobrescrita\",\"description\":\"Uma marca de aceitar tarefas ou de poder criar tarefas já feita pelo gestor nunca é sobrescrita automaticamente; só o gestor a altera.\"},{\"ruleId\":\"gestorPorAcessoPlataforma\",\"description\":\"Ser gestor é determinado pelo acesso da plataforma e não pelas marcas de aceitar tarefas ou poder criar tarefas.\"},{\"ruleId\":\"responsavelAceitaTarefas\",\"description\":\"O responsável de uma tarefa, na criação ou na reatribuição, só pode ser um participante ativo que aceita tarefas (marca do gestor ou ausência de configuração).\"},{\"ruleId\":\"criarTarefaExigePodeCriar\",\"description\":\"Criar uma tarefa exige que a pessoa seja participante que pode criar tarefas, e quem criou é sempre a pessoa da sessão.\"},{\"ruleId\":\"participanteSemCadastroPessoal\",\"description\":\"O módulo não cadastra pessoas nem pede dado pessoal: participantes são escolhidos entre os usuários da organização e o módulo guarda apenas as marcas do gestor.\"},{\"ruleId\":\"nomeListaUnico\",\"description\":\"O nome de uma lista de tarefas é obrigatório e não pode repetir o nome de outra lista.\"},{\"ruleId\":\"somenteGestorMantemListas\",\"description\":\"Somente o gestor cria e altera listas de tarefas e configura os participantes do módulo.\"},{\"ruleId\":\"podeCriarTarefasExigido\",\"description\":\"Um participante cuja marca de poder criar tarefas está desligada não pode criar tarefas nem subtarefas.\"},{\"ruleId\":\"escolhaResponsavelPeloNome\",\"description\":\"O responsável é escolhido pelo nome numa lista visível com busca pelo nome, como numa menção em conversa, e nunca pelo e-mail.\"},{\"ruleId\":\"reatribuirApenasCriadorOuGestor\",\"description\":\"Somente quem criou a tarefa ou o gestor pode trocar o responsável, e a troca faz do novo responsável quem age agora quando a tarefa está a fazer ou em andamento.\"},{\"ruleId\":\"edicaoNaoMudaSituacao\",\"description\":\"Quem vê a tarefa pode editar título, descrição, prioridade, prazo, lista, tarefa pai e etiquetas, mas a edição nunca muda a situação da tarefa.\"},{\"ruleId\":\"tarefaPaiDiferenteDaPropria\",\"description\":\"A tarefa pai de uma subtarefa não pode ser a própria tarefa nem uma de suas subtarefas.\"},{\"ruleId\":\"quemAgeAgoraPorSituacao\",\"description\":\"Quem age agora é o responsável quando a tarefa está a fazer ou em andamento, quem criou quando está em revisão, e ninguém quando está concluída ou cancelada.\"},{\"ruleId\":\"resumoDiarioOitoHoras\",\"description\":\"Todo dia às 8h cada responsável recebe um aviso com as suas tarefas abertas que vencem hoje ou estão atrasadas.\"},{\"ruleId\":\"avisoNaoSobrepostoPorPessoa\",\"description\":\"Um aviso ainda não terminado para uma pessoa impede que outro comece para ela, sem nunca bloquear os avisos das demais pessoas.\"},{\"ruleId\":\"membroVeResponsavelOuCriador\",\"description\":\"O membro vê apenas as tarefas de que é responsável, as que criou e as que dependem dele agora; o gestor vê todas as tarefas.\"},{\"ruleId\":\"itemChecklistSoQuemVeTarefa\",\"description\":\"Somente quem vê a tarefa pode adicionar, editar, marcar ou desmarcar itens da sua checklist.\"},{\"ruleId\":\"marcarItemNaoMudaSituacao\",\"description\":\"Marcar ou desmarcar um item da checklist não muda a situação da tarefa.\"},{\"ruleId\":\"itemChecklistTarefaNaoEncerrada\",\"description\":\"Itens da checklist só podem ser adicionados, editados ou marcados enquanto a tarefa não está concluída nem cancelada.\"},{\"ruleId\":\"tarefaAbertaVencimento\",\"description\":\"Uma tarefa é aberta quando não está concluída nem cancelada; vence hoje quando aberta com prazo igual a hoje e está atrasada quando aberta com prazo anterior a hoje.\"},{\"ruleId\":\"moduloNaoGuardaComentarios\",\"description\":\"A discussão e os anexos da tarefa ficam na conversa da própria tarefa na plataforma; o módulo não guarda comentários nem anexos.\"}],\"journeys\":[{\"journeyId\":\"configurarParticipantes\",\"title\":\"Configurar participantes\",\"actorRef\":\"gestor\",\"stepIds\":[\"localizarUsuario\",\"incluirParticipante\",\"marcarPermissoes\"]},{\"journeyId\":\"manterListas\",\"title\":\"Manter listas de tarefas\",\"actorRef\":\"gestor\",\"stepIds\":[\"localizarLista\",\"criarLista\",\"editarLista\"]},{\"journeyId\":\"criarTarefa\",\"title\":\"Criar tarefa\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"preencherTarefa\",\"adicionarChecklist\"]},{\"journeyId\":\"executarTarefa\",\"title\":\"Executar tarefa e enviar para revisão\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"abrirTarefa\",\"verTarefa\",\"iniciarTarefa\",\"marcarItem\",\"enviarRevisao\"]},{\"journeyId\":\"revisarTarefa\",\"title\":\"Revisar tarefa\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"abrirRevisao\",\"conferirTarefa\",\"decidirRevisao\",\"aceitarTarefa\",\"devolverTarefa\"]},{\"journeyId\":\"retomarTarefa\",\"title\":\"Retomar tarefa devolvida\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"lerMotivo\",\"retomar\",\"reenviarRevisao\"]},{\"journeyId\":\"editarTarefa\",\"title\":\"Editar campos da tarefa\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"localizarTarefaEdicao\",\"alterarCampos\",\"ajustarChecklist\"]},{\"journeyId\":\"reatribuirTarefa\",\"title\":\"Reatribuir tarefa\",\"actorRef\":\"gestor\",\"stepIds\":[\"localizarTarefaReatribuir\",\"verResponsavelAtual\",\"trocarResponsavel\"]},{\"journeyId\":\"reatribuirTarefaCriada\",\"title\":\"Reatribuir tarefa que criei\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"localizarCriada\",\"verResponsavelCriada\",\"trocarResponsavelCriada\"]},{\"journeyId\":\"cancelarTarefa\",\"title\":\"Cancelar tarefa\",\"actorRef\":\"gestor\",\"stepIds\":[\"localizarTarefaCancelar\",\"cancelar\"]},{\"journeyId\":\"cancelarTarefaCriada\",\"title\":\"Cancelar tarefa que criei\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"localizarCriadaCancelar\",\"cancelarCriada\"]},{\"journeyId\":\"minhasTarefas\",\"title\":\"Ver minhas tarefas\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"listarMinhas\",\"verDetalhe\"]},{\"journeyId\":\"resumoDiario\",\"title\":\"Receber resumo das 8h\",\"actorRef\":\"membroEquipe\",\"stepIds\":[\"lerResumo\",\"verVencendo\"]},{\"journeyId\":\"acompanharTarefas\",\"title\":\"Acompanhar todas as tarefas\",\"actorRef\":\"gestor\",\"stepIds\":[\"filtrarTarefas\",\"verQuadro\",\"abrirTarefaGestor\"]}],\"grants\":[{\"grantId\":\"membroTarefasProprias\",\"actorRef\":\"membroEquipe\",\"entityRefs\":[\"Tarefa\"],\"scope\":\"own\"},{\"grantId\":\"membroChecklistPropria\",\"actorRef\":\"membroEquipe\",\"entityRefs\":[\"ItemChecklist\"],\"scope\":\"own\"},{\"grantId\":\"membroEscolherResponsavel\",\"actorRef\":\"membroEquipe\",\"entityRefs\":[\"Participante\"],\"scope\":\"organization\"},{\"grantId\":\"membroConsultarListas\",\"actorRef\":\"membroEquipe\",\"entityRefs\":[\"ListaTarefas\"],\"scope\":\"organization\"},{\"grantId\":\"gestorParticipantes\",\"actorRef\":\"gestor\",\"entityRefs\":[\"Participante\"],\"scope\":\"organization\"},{\"grantId\":\"gestorListas\",\"actorRef\":\"gestor\",\"entityRefs\":[\"ListaTarefas\"],\"scope\":\"organization\"},{\"grantId\":\"gestorTodasTarefas\",\"actorRef\":\"gestor\",\"entityRefs\":[\"Tarefa\",\"ItemChecklist\"],\"scope\":\"organization\"}],\"processes\":[{\"processId\":\"processoTarefa\",\"trigger\":\"manual:membroEquipe\",\"taskIds\":[\"criar\",\"executar\",\"aguardarRevisao\",\"revisar\",\"retomar\"]},{\"processId\":\"resumoDiarioTarefas\",\"trigger\":\"scheduled\",\"taskIds\":[\"avisarVencendo\"]}],\"events\":[{\"id\":\"tarefaConcluida\",\"direction\":\"outbound\",\"event\":\"tarefaConcluida\"},{\"id\":\"tarefaCancelada\",\"direction\":\"outbound\",\"event\":\"tarefaCancelada\"}]}",
+    "systemPrompt": "<!-- modelType: reasoning -->\nDecide whether one free-text request can change the L4 specification that is being edited.\nThe index you receive lists only that specification: entities and their fields, rules, journeys, access grants, workflows, and integration events.\nYou do not edit anything. You only classify the request.\n\nCall submitNrpTriage. Every property is required.\n- valid is true only when the request asks for a concrete change inside that specification.\n- valid is false only when the request has no path in the specification: it is empty, it is not about this module at all (general questions, jokes, infrastructure, deployment, distributing the app), or the specification already satisfies it. When it is already satisfied, reason names the item that satisfies it (field, rule, journey or grant id from the index) and nothing is changed.\n- reason explains an invalid request. Use null when the request is valid, or when the whole request is interface work and l3Notice carries the answer.\n- A request of a few words (\"a field name\", \"a feature\") names something to add: if the index already has it, say so in reason; if not, add it with the most probable default and record it in assumptions. Do not refuse it as vague.\n- clarification is one question for the user, only when applying the request could break the module or its data (removing or renaming an entity or field that exists, changing the type of a field, taking access away from an actor that uses it) or when the request contradicts an indexed rule. State the effect in the question. Do not propose a default. Otherwise null. A clarification means valid is false, artifacts is [], targets is [], intent is null, mechanical is [] and assumptions is [].\n- assumptions are short sentences, in the language of the request, one for each thing the request left open and you decided from the module specification: who performs a step (it may be an actor the index does not have yet), a default value, who sees a new field. Example: 'who marks the dish ready: the kitchen (new actor)'. The change is applied with these choices and the user reads them in the summary, so do not ask about them. Use [] when nothing was assumed or when valid is false.\n- l3Notice is text for the user, in the language of the request, when part or all of the request is about how the interface looks or is drawn: colors, positions, sizes, order of columns, design system or theme, how a screen is rendered. Say that this part is not in the specification and that the user should check the point adjustments in l3. Null otherwise. When the whole request is interface work, valid is false, clarification is null and l3Notice carries the answer. When only part is, treat the rest as usual (apply it, or ask) and still fill l3Notice.\n- artifacts lists the kinds the change would touch. Use [] when the request stops here. Kinds: ontology, rules, journeys, access, workflows, integration.\n- targets lists ids copied from the index. Use [] when there is no id to name. A new id is allowed only when the request explicitly asks to add it.\n- intent is one sentence of the change to apply. Use null when the request stops here.\n- mechanical lists changes the code can apply without a model. A mark covers only making a field optional or required (setOptional, setRequired), removing an item (remove), or replacing one scalar (setScalar). Each mark has op, targetId, fieldId (empty string when the mark is not a field), and value (empty string when the op carries no new scalar). For remove, targetId is the owner of the item (the entity when the item is a field) and fieldId is that field. A field inside details uses a dotted path: details, then the field id. Removing a whole entity is not a mechanical mark.\n  Any other part of the request goes to the model. A default value, a notice, a new rule, or new text is not a mechanical mark. Put that kind in artifacts and describe that part in intent. Use [] when the request stops here, or when every part needs the model and no mark applies.\n- mechanicalOnly is true only when those marks, by themselves, fulfill the whole request. A default value, a notice, a new rule, or new text makes mechanicalOnly false, and the kind that records that part goes in artifacts and in intent.\n\nHow a request in the user's own words becomes a specification change:\n- a screen, list, panel, report, or \"see / follow\" something is a journey that lets an actor find and inspect data, plus the access grant that lets that actor read it. It is a valid request, not interface work. If the request does not say which actor, choose the one the journeys and grants of the index make most probable (it may be an actor the index does not have yet) and record it in assumptions.\n- a button, an action, \"be able to do X\" is a journey step that acts, plus the transition or effect on the entity.\n- a field, a piece of information, \"keep X\" is an entity field, plus the access grant of whoever must see it: put access in artifacts and decide from the journeys which actors see the new field.\n- \"cannot\", \"always\", \"required\" is a rule.\n- a notice, a deadline, an approval, \"after X happens Y\" is a workflow.\n- \"another module\", \"when it arrives from\" is an integration.\n- Removing or renaming an entity or field, changing the type of a field, or taking access away from an actor that uses it can break data or users: ask once, explaining the effect, with no default filled in.\n- When unsure which of these the user means, pick the most probable one, apply it and record the choice in assumptions. Ask only in the cases of the clarification line above.\n- The index lists the journeys and grants that exist today per actor; use it so you do not duplicate a screen or grant.\n\nDo not restate the index. Do not invent an example module.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "submitNrpTriage",
+          "description": "Classify one request against the L4 index. Do not edit artifacts.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "result"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "flexible"
+              },
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valid",
+                  "reason",
+                  "clarification",
+                  "artifacts",
+                  "targets",
+                  "intent",
+                  "mechanical",
+                  "mechanicalOnly",
+                  "assumptions",
+                  "l3Notice"
+                ],
+                "properties": {
+                  "valid": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "clarification": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "artifacts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "ontology",
+                        "rules",
+                        "journeys",
+                        "access",
+                        "workflows",
+                        "integration"
+                      ]
+                    }
+                  },
+                  "targets": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "intent": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "mechanical": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "op",
+                        "targetId",
+                        "fieldId",
+                        "value"
+                      ],
+                      "properties": {
+                        "op": {
+                          "type": "string",
+                          "enum": [
+                            "setOptional",
+                            "setRequired",
+                            "remove",
+                            "setScalar"
+                          ]
+                        },
+                        "targetId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "fieldId": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "mechanicalOnly": {
+                    "type": "boolean"
+                  },
+                  "assumptions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "l3Notice": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
