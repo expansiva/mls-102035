@@ -253,9 +253,10 @@ test('l4_p4_96 s4: a module with no plan is refused by the real agentNewReleaseL
   });
 });
 
-// l4_p4_96, measured for the planner: an accepted effort that is structural only through L1 sends the runner to agentNewReleaseL2
-// (moduleImplementation.ts:60-67), and the L2 plan has no page to apply. What does the runner do with the answer of the real agent?
-test('l4_p4_96: effort with L1 items and no L2 page: the real agentNewReleaseL2 refuses "nothing to apply" and the runner FAILS that phase', async () => {
+// l4_p4_96: an accepted effort that is structural only through L1 sends the runner to agentNewReleaseL2
+// (moduleImplementation.ts:60-67), and the L2 plan has no page to apply. The real agent answers "done: nothing to apply"
+// (d2_166, 102020 5410a134; before it answered "refused" and the runner failed the phase), and the runner goes on to the next phase.
+test('l4_p4_96: effort with L1 items and no L2 page: the real agentNewReleaseL2 answers "done: nothing to apply", the phase is done and the runner goes on to agentNewReleaseL1', async () => {
   await acceptedScenario('l1only', async accepted => {
     assert.ok(accepted.merged.materialize.length > 0 && accepted.merged.materialize.every(unit => unit.project === '102021'), 'the accepted effort has only L1 items');
     const base = createSimulatedDefsHost('done', true);
@@ -278,9 +279,12 @@ test('l4_p4_96: effort with L1 items and no L2 page: the real agentNewReleaseL2 
       // The report of a finished task is the text of its answer (what the host returns as taskResults).
       message: async (user, threadId, messageId) => ({ taskResults: texts.get('l2-real') ?? [] }) as never,
     });
-    const record = await runner.runNext(PROJECT, MODULE);
-    assert.match(l2Text, /^refused: nothing to apply/u, 'the real L2 agent answer');
-    assert.equal(record.phases[0].status, 'failed', 'the runner marks a refused answer as a failed phase');
-    assert.match(String(record.phases[0].error), /refused: nothing to apply/u);
+    const first = await runner.runNext(PROJECT, MODULE);
+    assert.match(l2Text, /^done: nothing to apply/u, 'the real L2 agent answer');
+    assert.equal(first.phases[0].status, 'done', 'a done answer is a done phase');
+    assert.equal(first.phases[0].error, undefined);
+    const second = await runner.runNext(PROJECT, MODULE);
+    assert.equal(second.phases[1]?.agent, 'agentNewReleaseL1', 'the runner went on to the next phase');
+    assert.deepEqual(base.dispatched, [`@@agentNewReleaseL1 ${MODULE}`], 'the next command dispatched is the L1 prepare');
   });
 });
