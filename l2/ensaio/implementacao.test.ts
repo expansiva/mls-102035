@@ -8,16 +8,21 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { installMlsStub } from '../../../test/mlsStub.js';
 import { createImplementationRunner } from '../newRelease/helpers/implementationRunner.js';
-import { acceptL4Implementation, readL4Implementation, type L4ImplementationRecord } from '../solution/candidate/moduleImplementation.js';
+import { acceptL4Implementation, implementationCommands, readL4Implementation, type L4ImplementationRecord } from '../solution/candidate/moduleImplementation.js';
 import { adoptL4ReviewResult, promoteL4Revision, readL4Release } from '../solution/candidate/moduleRevision.js';
 import { diffModuleLayers, restoreModuleFromSeals, sealModuleLayers } from '../solution/candidate/moduleLayers.js';
 import { createAgent as createNewReleaseL1 } from '/_102021_/l2/agentNewReleaseL1/agentNewReleaseL1.js';
 import * as agentNewReleaseL2Real from '/_102020_/l2/agentNewReleaseL2/agentNewReleaseL2.js';
 import { runUntilDone } from './hostSimulado.js';
 import { createSimulatedDefsHost, withReviewScenario, runPlannerScenario, PROJECT, MODULE } from './nodejsCenario.js';
-import { effortRegistry } from '../solution/effortRegistry.js';
+import { effortRegistry, setDescribeEffortImporter } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
 import type { TaskData } from '/_102036_/l2/shared/interfaces.js';
+import { prepareL4Change } from '../solution/candidate/moduleRevision.js';
+import { saveChangeRequest } from '../newRelease/helpers/revisionSelection.js';
+import { sealModuleApplication, restoreModuleApplication } from '../solution/candidate/moduleLayers.js';
+import { installTarefasOn, PROJECT as TAREFAS_PROJECT, MODULE as TAREFAS_MODULE, FIXTURE as TAREFAS_FIXTURE } from './tarefasStor.js';
+import { createMemoryIndexedDb } from './hostSimulado.js';
 
 const languageCommand = '@@agentAddLanguage ' + JSON.stringify([{
   languages: [{ code: 'pt-BR', name: 'pt-BR' }], projectId: PROJECT, moduleName: MODULE,
@@ -287,4 +292,97 @@ test('l4_p4_96: effort with L1 items and no L2 page: the real agentNewReleaseL2 
     assert.equal(second.phases[1]?.agent, 'agentNewReleaseL1', 'the runner went on to the next phase');
     assert.deepEqual(base.dispatched, [`@@agentNewReleaseL1 ${MODULE}`], 'the next command dispatched is the L1 prepare');
   });
+});
+
+test('ui_mr_53 s4: tarefas applies, undoes the complete last batch, and applies the same revision again', async () => {
+  Object.assign(globalThis, {
+    document: { documentElement: { lang: 'en' }, createTreeWalker: () => ({ nextNode: () => null, currentNode: null }),
+      createElement: (tag: string) => ({ tagName: tag.toUpperCase(), textContent: '' }), createComment: () => ({}),
+      head: { querySelector: () => null, appendChild: () => undefined } },
+    window: globalThis, customElements: { define() {}, get() {} }, HTMLElement: class {},
+  });
+  Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: createMemoryIndexedDb() });
+  setDescribeEffortImporter(async () => { throw new Error('no master in this recorded rehearsal'); });
+  installMlsStub({ actualProject: TAREFAS_PROJECT });
+  const stor = installTarefasOn();
+  try {
+    const addText = async (level: number, folder: string, name: string, extension: string, content: string) => {
+      const info = { project: TAREFAS_PROJECT, level, folder, shortName: name, extension, versionRef: '1' };
+      const file = await mls.stor.addOrUpdateFile(info);
+      await mls.stor.localStor.setContent(file, { content });
+    };
+    await addText(5, '', 'config', '.json', '{"projects":{"102047":{"modules":[{"moduleId":"tarefas","frontend":{"pages":["old"]}}]}}}\n');
+    await addText(5, '', 'project', '.json', '{"modules":[{"moduleName":"tarefas","backend":{"version":"old"}}]}\n');
+    const prepared = await prepareL4Change(TAREFAS_PROJECT, TAREFAS_MODULE);
+    const ruleInfo = { project: TAREFAS_PROJECT, level: 4, folder: 'tarefas/tobe/plan', shortName: 'rules', extension: '.defs.ts' };
+    const rule = mls.stor.files[mls.stor.getKeyToFile(ruleInfo)];
+    assert.ok(rule);
+    const oldRule = await rule.getContent();
+    const newRule = oldRule.replace('não pode repetir o nome de outra lista.', 'tem no mínimo 4 caracteres e não pode repetir o nome de outra lista.');
+    assert.notEqual(newRule, oldRule);
+    await mls.stor.localStor.setContent(rule, { content: newRule });
+    const selection = await saveChangeRequest(TAREFAS_PROJECT, TAREFAS_MODULE, 'O nome da lista deve ter no mínimo 4 caracteres.',
+      prepared.change.changeId, prepared.change.activeRevisionId);
+    await adoptL4ReviewResult(TAREFAS_PROJECT, TAREFAS_MODULE,
+      { inputRevisionId: selection.revisionId, outputRevisionId: selection.revisionId });
+    const { changeId } = prepared.change;
+    const revisionId = selection.revisionId;
+    const effort = JSON.parse(readFileSync(new URL('changeEffortSoRegra.json', TAREFAS_FIXTURE), 'utf8')) as ChangeEffortFile;
+    effort.base = { ...effort.base, baseId: prepared.change.baseId, revisionId,
+      candidateRoot: `tarefas/pipeline/changes/${changeId}/revisions/${revisionId}/l4` };
+    const effortSource = `${JSON.stringify(effort, null, 2)}\n`;
+    await addText(4, `${effort.base.candidateRoot}/pool/l4`, 'changeEffort', '.json', effortSource);
+    const baseline = stor.texts();
+    const hash = `sha256:${createHash('sha256').update(effortSource).digest('hex')}`;
+    let pass = 0;
+    const apply = async () => {
+      pass++;
+      await sealModuleApplication(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId);
+      await sealModuleLayers(TAREFAS_PROJECT, TAREFAS_MODULE, prepared.change.baseId);
+      await promoteL4Revision(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId);
+      const accepted = await acceptL4Implementation(TAREFAS_PROJECT, TAREFAS_MODULE,
+        { revisionId, acceptedBy: 'ensaio', hashes: { changeEffort: hash } });
+      const commands = implementationCommands(accepted, TAREFAS_PROJECT, TAREFAS_MODULE);
+      let sequence = 0;
+      const runner = createImplementationRunner({
+        userId: () => 'ensaio', thread: async () => ({ threadId: 'thread-tarefas' }),
+        context: (threadId, senderId, content) => ({ isTest: true,
+          message: { threadId, senderId, content, createAt: `message-${pass}-${++sequence}`, orderAt: '' } }),
+        execute: async (_agent, context) => {
+          if (sequence === 1) {
+            await addText(2, 'tarefas/web/desktop/page11', 'newPage', '.ts', `export const pass = ${pass};\n`);
+            await addText(1, 'tarefas/layer_3_domain/entities', 'newEntity', '.ts', `export const pass = ${pass};\n`);
+            await addText(4, 'tarefas/pool/l2/web', 'generated', '.json', `{"pass":${pass}}\n`);
+            await addText(5, '', 'config', '.json', '{"projects":{"102047":{"modules":[{"moduleId":"tarefas","frontend":{"pages":["new"]}}]}}}\n');
+            await addText(5, '', 'project', '.json', '{"modules":[{"moduleName":"tarefas","backend":{"version":"new"}}]}\n');
+          }
+          context.task = { PK: `task/#pass-${pass}-${sequence}`, SK: 'metadata', title: 'recorded phase', owner: 'ensaio', team: null,
+            status: 'done', last_updated: 0, last_update_log: null,
+            messageid_created: `${context.message.threadId}/${context.message.createAt}` } as TaskData;
+        },
+        message: async () => ({ taskResults: commands.map(item => item.command) }) as never,
+        task: async () => { throw new Error('done task should not be polled'); },
+      });
+      let record = accepted;
+      for (let index = 0; index < commands.length; index++) record = await runner.runNext(TAREFAS_PROJECT, TAREFAS_MODULE);
+      assert.equal(record.phases.length, commands.length);
+      assert.ok(record.phases.every(phase => phase.status === 'done'));
+      const events = mls.events;
+      const dispatch = window.dispatchEvent;
+      window.dispatchEvent = () => true;
+      mls.events = { fireFileAction: () => {} } as typeof mls.events;
+      try { await completeTobeImplementation(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId); }
+      finally { mls.events = events; window.dispatchEvent = dispatch; }
+      return record;
+    };
+    await apply();
+    assert.notDeepEqual(stor.texts(), baseline, 'the first application changed the module');
+    await restoreModuleApplication(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId);
+    assert.deepEqual(stor.texts(), baseline, 'L1, L2, L4 and L5 returned byte for byte to the pre-Apply state');
+    await apply();
+    assert.equal(pass, 2);
+  } finally {
+    setDescribeEffortImporter(undefined);
+    stor.restore();
+  }
 });
