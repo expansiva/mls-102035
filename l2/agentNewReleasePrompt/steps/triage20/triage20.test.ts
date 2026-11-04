@@ -5,10 +5,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { providerEdgeCases } from '/_102035_/l2/solution/testing/providerEdgeCases.js';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import type { NrpCompactIndex } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { pipelineJsonFileForProject } from '/_102035_/l2/solution/fs.js';
 import {
+  NRP_TRIAGE_SCHEMA,
   NRP_TRIAGE_SYSTEM_PROMPT,
   NrpTriageRefusal,
   buildNrpTriageHumanPrompt,
@@ -256,4 +258,36 @@ void test('empty or blank text in an optional field is null; a missing field or 
     assert.throws(() => normalizeNrpTriage({ ...valid, [field]: 7 }), /must be text or null/, `${field} number`);
   }
   assert.throws(() => normalizeNrpTriage({ ...valid, valid: false, reason: '', l3Notice: '' }), /needs a reason or an l3Notice/);
+});
+
+void test('what the provider lets through (empty, blank, limits) is normalized or refused with a typed refusal', () => {
+  const base = { artifacts: [] as string[], targets: [] as string[], intent: null, mechanical: [] as unknown[], mechanicalOnly: false, assumptions: [] as string[], l3Notice: null, reason: null, clarification: null };
+  const examples = [
+    { ...base, valid: true, artifacts: ['ontology'], targets: ['WorkItem'], intent: 'Add a field.',
+      mechanical: [{ op: 'setRequired', targetId: 'WorkItem', fieldId: 'f', value: '' }], assumptions: ['who sees it: the manager'], l3Notice: 'The color is l3.' },
+    { ...base, valid: false, clarification: 'Removing it deletes data. Continue?' },
+    { ...base, valid: false, reason: 'Not about this module.' },
+    { ...base, valid: false, l3Notice: 'This is interface work.' },
+  ];
+  const textFields = ['reason', 'clarification', 'intent', 'l3Notice'] as const;
+  let total = 0;
+  for (const example of examples) {
+    for (const item of providerEdgeCases(NRP_TRIAGE_SCHEMA, example)) {
+      total += 1;
+      const label = `${item.path} ${item.rule} ${item.variant}`;
+      let result: ReturnType<typeof normalizeNrpTriage>;
+      try {
+        result = normalizeNrpTriage(item.value);
+      } catch (error) {
+        assert.ok(error instanceof NrpTriageRefusal, `${label}: the refusal is typed`);
+        assert.ok(error.message.length > 20, `${label}: the refusal says why: ${error.message}`);
+        continue;
+      }
+      for (const field of textFields) assert.notEqual(result[field]?.trim(), '', `${label}: ${field} stays empty`);
+      assert.equal(result.targets.some(text => !text.trim()), false, `${label}: an empty target got through`);
+      assert.equal(result.assumptions.some(text => !text.trim()), false, `${label}: an empty assumption got through`);
+      assert.equal(result.mechanical.some(mark => !mark.targetId.trim()), false, `${label}: an empty targetId got through`);
+    }
+  }
+  assert.ok(total >= 12, `cases found: ${total}`);
 });

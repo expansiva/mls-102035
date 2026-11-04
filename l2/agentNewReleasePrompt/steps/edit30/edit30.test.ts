@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { installMlsStub } from '../../../../../test/mlsStub.js';
+import { providerEdgeCases } from '/_102035_/l2/solution/testing/providerEdgeCases.js';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import { applyNrpMechanical, nrpModelKinds } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
@@ -14,6 +15,7 @@ import {
   NRP_JOURNEY_RULES,
   NRP_JOURNEY_SHAPE,
   NRP_NEW_SIGNATURE_RULE,
+  NRP_EDIT_SCHEMA,
   NrpEditRefusal,
   createEdit30Step,
   nrpEditRefusalIntents,
@@ -742,4 +744,22 @@ void test('a refusal with a repair left is a warning; with none left it is an er
   assert.equal(failed.some(intent => intent.type === 'update-status' && intent.status === 'failed'), true);
   assert.equal(logs.error.length, 1);
   assert.equal(logs.warn.length, 1);
+});
+
+void test('what the provider lets through in an edit (empty file, long values, too many operations) is refused with a typed refusal or leaves the artifact valid', () => {
+  const example = { operations: [op({})] };
+  const cases = providerEdgeCases(NRP_EDIT_SCHEMA, example);
+  assert.ok(cases.length >= 6, `cases found: ${cases.length}`);
+  for (const item of cases) {
+    const label = `${item.path} ${item.rule} ${item.variant}`;
+    try {
+      const result = normalizeNrpEdit('ontology', item.value, workItemScope());
+      for (const file of result.files) assert.ok(file.id.trim(), `${label}: an empty file id got through`);
+      assert.fail(`${label}: an out-of-limit value was accepted`);
+    } catch (error) {
+      if (error instanceof assert.AssertionError) throw error;
+      assert.ok(error instanceof NrpEditRefusal, `${label}: the refusal is typed (${String(error)})`);
+      assert.ok(error.message.length > 20, `${label}: the refusal says why: ${error.message}`);
+    }
+  }
 });
