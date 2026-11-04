@@ -58,7 +58,6 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
   let written: number | null = null;
   let fileStates: NewReleaseRequestFileState[] = [];
   let producerSummary = '';
-  let assumptions: string[] = [];
   for (const result of results) {
     let value: unknown;
     try { value = JSON.parse(result); }
@@ -71,7 +70,6 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
     const outcome = value as { written?: unknown; reason?: unknown; files?: unknown; fileStates?: unknown; summary?: unknown; triage?: { valid?: unknown; clarification?: unknown; reason?: unknown; assumptions?: unknown }; question?: unknown };
     if (typeof outcome.summary === 'string' && outcome.summary.trim()) producerSummary = outcome.summary.trim();
     if (typeof outcome.question === 'string') question = outcome.question;
-    if (Array.isArray(outcome.triage?.assumptions)) assumptions = outcome.triage.assumptions.filter((item): item is string => typeof item === 'string' && !!item.trim());
     if (outcome.triage?.valid === false) {
       if (typeof outcome.triage.clarification === 'string') question = outcome.triage.clarification;
       if (typeof outcome.triage.reason === 'string') refusal = outcome.triage.reason;
@@ -86,7 +84,7 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
         && ['added', 'changed', 'removed'].includes(item.state)) : [];
     }
   }
-  const display = separateAssumptions(producerSummary, assumptions);
+  const display = separateAssumptions(producerSummary);
   const summary = display.summary ? { summary: display.summary } : {};
   if (question) return { key: 'request.question', values: { question }, retry: true, ...summary };
   if (refusal) return { key: 'request.refused', values: { reason: refusal }, retry: true, ...summary };
@@ -96,10 +94,11 @@ export function summarizeNewReleaseRequest(results: readonly string[], status: T
   return { key: 'request.noResult', values: {}, retry: true, ...summary };
 }
 
-function separateAssumptions(summary: string, triageAssumptions: readonly string[]): { summary: string; assumptions: string[] } {
+function separateAssumptions(summary: string): { summary: string; assumptions: string[] } {
   // The final write summary also includes access choices added after triage.
   const line = summary.split('\n').find(value => /^(?:Assumi|Assumed): /u.test(value));
-  if (!line) return { summary, assumptions: [...triageAssumptions] };
+  // The triage assumptions are predictions made before the edit; only what the producer says after editing is shown.
+  if (!line) return { summary, assumptions: [] };
   return {
     summary: summary.split('\n').filter(value => value !== line).join('\n'),
     assumptions: line.slice(line.indexOf(': ') + 2).split('; ').map(value => value.trim()).filter(Boolean),

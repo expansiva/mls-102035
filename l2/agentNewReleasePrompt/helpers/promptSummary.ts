@@ -55,7 +55,7 @@ export function promptChangeSummary(userLanguage: string | null | undefined, fil
  */
 export function promptAssumptionsLine(userLanguage: string | null | undefined, assumptions: readonly string[]): string {
   if (!assumptions.length) return '';
-  return `${promptLanguage(userLanguage) === 'pt' ? 'Notas do modelo' : 'Model notes'}: ${assumptions.join('; ')}`;
+  return `${promptLanguage(userLanguage) === 'pt' ? 'Assumi' : 'Assumed'}: ${assumptions.join('; ')}`;
 }
 
 /** Question or refusal, in the user's language. Stock English sentences are translated. Free text is kept. */
@@ -70,6 +70,14 @@ export function promptTwinSummary(userLanguage: string | null | undefined, exist
     return `Já existe ${existing.length > 1 ? 'as jornadas' : 'a jornada'} ${names} com o mesmo ator e as mesmas operações. Nada foi gravado. Peça para estender ${existing.length > 1 ? 'uma delas' : 'essa jornada'} (um filtro, uma coluna ou uma ação).`;
   }
   return `${existing.length > 1 ? `Journeys ${names} already do` : `Journey ${names} already does`} this for the same actor and operations. Nothing was written. Ask to extend ${existing.length > 1 ? 'one of them' : 'it'} (a filter, a column or an action).`;
+}
+
+/** The model's edit changed no artifact. Nothing was written, and the user is asked to rephrase. */
+export function promptNothingChangedSummary(userLanguage: string | null | undefined, notes: readonly string[]): string {
+  const pt = promptLanguage(userLanguage) === 'pt';
+  const head = pt ? 'Nada foi alterado: o pedido não mudou nenhum artefato.' : 'Nothing was changed: the request did not change any artifact.';
+  const tail = pt ? 'Reformule o pedido com mais detalhes.' : 'Rephrase the request with more detail.';
+  return [head, promptAssumptionsLine(userLanguage, notes), tail].filter(Boolean).join('\n');
 }
 
 interface SummaryRow {

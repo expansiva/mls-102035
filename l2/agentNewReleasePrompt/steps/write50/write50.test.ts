@@ -458,7 +458,7 @@ void test('the summary carries the model reasons of the edit and the code notes,
     payload.notes = ['o campo aparece para o garçom'];
     const result = await persistNrp(payload, '20261102141739.1001');
     assert.match(result.summary, /Adicionada: fechaComanda/);
-    assert.match(result.summary, /Notas do modelo: o campo aparece para o garçom; estende a regra existente/);
+    assert.match(result.summary, /Assumi: o campo aparece para o garçom; estende a regra existente/);
     assert.equal(result.summary.includes('jornada nova'), false, 'a triage prediction is not shown');
   } finally { fixture.restore(); }
 });
@@ -483,7 +483,7 @@ void test('a written request stores the pt summary and the operation json paths'
     assert.match(result.summary, /Adicionada: fechaComanda/);
     assert.match(result.summary, /Removida: oldJourney/);
     assert.equal(result.summary.includes('alterado'), false);
-    assert.equal(result.summary.includes('Notas do modelo'), false, 'nothing assumed, no assumption line');
+    assert.equal(result.summary.includes('Assumi'), false, 'nothing assumed, no assumption line');
     const opKey = [...fixture.contents.keys()].find(key => key.includes('/tobe/operations:'));
     assert.ok(opKey);
     const record = JSON.parse(fixture.contents.get(opKey || '') || '') as NrpOperationRecord;
@@ -511,3 +511,21 @@ function changedSpan(before: string, after: string): string[] {
   }
   return right.slice(start, endRight + 1);
 }
+
+void test('l4_p4_102: an edit that changes no artifact writes nothing and tells the user (never written with zero files)', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    const payload = structuredClone(fixture.payload);
+    payload.artifacts.module = { ...payload.artifacts.module, userLanguage: 'pt' } as typeof payload.artifacts.module;
+    payload.artifacts.journeyIndex = { schemaVersion: 'fixture', journeys: [{ journeyId: 'oldJourney', actorRef: 'actor', title: 'Antiga' }] } as unknown as typeof payload.artifacts.journeyIndex;
+    payload.artifacts.journeys = [{ schemaVersion: 'fixture', journeyId: 'oldJourney' }] as unknown as typeof payload.artifacts.journeys;
+    payload.applied = [{ mode: 'model', kind: 'journeys', artifact: { files: [] }, reasons: ['o pedido já é atendido por oldJourney'] }];
+    const keysBefore = [...fixture.contents.keys()].sort();
+    const result = await persistNrp(payload, '20261104000000.1001');
+    assert.deepEqual(result.files, []);
+    assert.deepEqual(result.fileStates, []);
+    assert.equal(result.reason, 'No artifact changed. Nothing was written.');
+    assert.match(result.summary, /^Nada foi alterado: o pedido não mudou nenhum artefato\.\nAssumi: o pedido já é atendido por oldJourney\nReformule o pedido com mais detalhes\.$/u);
+    assert.deepEqual([...fixture.contents.keys()].sort(), keysBefore, 'no file, not even the report, is created');
+  } finally { fixture.restore(); }
+});

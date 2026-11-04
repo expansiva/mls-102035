@@ -34,7 +34,7 @@ import {
 import { scanNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds } from '/_102035_/l2/solution/ontologyView.js';
 import { tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
-import { promptAssumptionsLine, promptChangeSummary, type PromptSummaryFile } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
+import { promptAssumptionsLine, promptChangeSummary, promptNothingChangedSummary, type PromptSummaryFile } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 
 export interface NrpWritePayload {
   moduleName: string;
@@ -247,7 +247,14 @@ export async function persistNrp(payload: NrpWritePayload, taskId = ''): Promise
   const userLanguage = payload.artifacts.module && 'userLanguage' in payload.artifacts.module
     ? payload.artifacts.module.userLanguage
     : undefined;
-  const summary = [promptChangeSummary(userLanguage, touched), promptAssumptionsLine(userLanguage, [...(payload.notes || []), ...payload.applied.flatMap(edit => edit.reasons || [])]), payload.triage.l3Notice].filter(Boolean).join('\n');
+  const notes = [...(payload.notes || []), ...payload.applied.flatMap(edit => edit.reasons || [])];
+  if (!touched.length) {
+    return {
+      files: [], fileStates: [], reason: 'No artifact changed. Nothing was written.',
+      summary: promptNothingChangedSummary(userLanguage, notes),
+    };
+  }
+  const summary = [promptChangeSummary(userLanguage, touched), promptAssumptionsLine(userLanguage, notes), payload.triage.l3Notice].filter(Boolean).join('\n');
   if (touched.length) {
     const at = new Date();
     const record: NrpOperationRecord = {

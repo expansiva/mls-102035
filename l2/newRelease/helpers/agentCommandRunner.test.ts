@@ -86,6 +86,13 @@ test('successful prompt exposes assumptions as a list without repeating their su
   });
 });
 
+test('l4_p4_100: the triage predictions are not shown as assumptions; only the producer line is', () => {
+  assert.deepEqual(summarizeNewReleaseRequest([
+    JSON.stringify({ triage: { valid: true, assumptions: ['a tela é uma jornada nova'] } }),
+    JSON.stringify({ written: true, files: ['journeys/view.defs.ts'], summary: 'Alterada: minhasTarefas' }),
+  ], 'done'), { key: 'request.success', values: { count: 1 }, retry: false, summary: 'Alterada: minhasTarefas' });
+});
+
 test('empty request never resolves a thread or invokes an agent', async () => {
   let calls = 0;
   await assert.rejects(runNewReleaseRequest('agendaClinica', '  ', () => {}, { thread: async () => { calls++; return { threadId: 'thread' }; }, execute: async () => { calls++; } }), /request_empty/);

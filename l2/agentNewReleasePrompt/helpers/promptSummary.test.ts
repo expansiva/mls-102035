@@ -7,6 +7,7 @@ import {
   promptAssumptionsLine,
   promptChangeSummary,
   promptHoldSummary,
+  promptNothingChangedSummary,
   promptTwinSummary,
   type PromptSummaryFile,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
@@ -115,9 +116,9 @@ void test('a rules map is named by its keys, and a grant stays a list', () => {
 
 void test('the assumptions line is empty without assumptions and follows the language', () => {
   assert.equal(promptAssumptionsLine('pt', []), '');
-  assert.equal(promptAssumptionsLine('pt-BR', ['a', 'b']), 'Notas do modelo: a; b');
-  assert.equal(promptAssumptionsLine('en', ['a']), 'Model notes: a');
-  assert.equal(promptAssumptionsLine(null, ['a']), 'Model notes: a');
+  assert.equal(promptAssumptionsLine('pt-BR', ['a', 'b']), 'Assumi: a; b');
+  assert.equal(promptAssumptionsLine('en', ['a']), 'Assumed: a');
+  assert.equal(promptAssumptionsLine(null, ['a']), 'Assumed: a');
 });
 
 void test('a journey that changed is not reported as new, whatever the model assumed', () => {
@@ -130,7 +131,7 @@ void test('a journey that changed is not reported as new, whatever the model ass
   }]);
   const assumed = promptAssumptionsLine('pt', ['A tela entra como uma jornada nova, separada de minhasTarefas.']);
   assert.equal(summary, 'Alterada: minhasTarefas');
-  assert.equal(assumed.startsWith('Notas do modelo:'), true);
+  assert.equal(assumed.startsWith('Assumi:'), true);
 });
 
 void test('a twin request ends with the journey that already exists, in the user language', () => {
@@ -141,5 +142,13 @@ void test('a twin request ends with the journey that already exists, in the user
   assert.equal(
     promptTwinSummary('en', ['a', 'b']),
     'Journeys a, b already do this for the same actor and operations. Nothing was written. Ask to extend one of them (a filter, a column or an action).',
+  );
+});
+
+void test('an edit that changed nothing asks to rephrase, in the user language', () => {
+  assert.equal(promptNothingChangedSummary('en', []), 'Nothing was changed: the request did not change any artifact.\nRephrase the request with more detail.');
+  assert.equal(
+    promptNothingChangedSummary('pt-BR', ['a']),
+    'Nada foi alterado: o pedido não mudou nenhum artefato.\nAssumi: a\nReformule o pedido com mais detalhes.',
   );
 });
