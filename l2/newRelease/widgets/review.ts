@@ -26,10 +26,10 @@ import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import { resolveModuleThread } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 import { serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
-import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { newReleaseTaskCost, taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 import { getUserId, getTemporaryContext } from '/_102025_/l2/collabMessagesHelper.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
-import { addOrUpdateTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
+import { addOrUpdateTask, getTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
 import '/_102025_/l2/collabMessagesTask.js';
 import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import {
@@ -251,6 +251,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private reviewRun: ReviewRunRecord | null = null;
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
+  @state() private reviewTask: TaskData | null = null;
   @state() private reviewCopyFeedback = '';
   private reviewCopyRunId = '';
 
@@ -316,6 +317,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.reviewRun = null;
       this.reviewRunLoadError = '';
       this.channelRun = null;
+      this.reviewTask = null;
       if (this.workerTimer) window.clearTimeout(this.workerTimer);
       void this.load();
     }
@@ -416,6 +418,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.reviewRun = persistedRun.run;
     this.reviewRunLoadError = persistedRun.errorCode;
     await this.loadChannelRun(context, token);
+    if (token !== this.loadToken) return;
+    await this.loadReviewTask(token);
     if (token !== this.loadToken) return;
     if (!this.effortRefreshPending && !this.effortCurrent && context.version === 'tobe' && context.data?.resultCurrent && context.data.changeId && context.data.revisionId) {
       const root = `${context.moduleName}/pipeline/changes/${context.data.changeId}/revisions/${context.data.revisionId}/l4`;
@@ -733,6 +737,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       : await observeReviewRun(this.identityForRun(run, userId));
     if (token !== this.loadToken) return;
     this.channelRun = current;
+    await this.loadReviewTask(token);
     this.saveOutputAlias(current, userId);
     if (current.status === 'ready') {
       await this.loadCandidateArtifacts(current, userId, token);
@@ -1499,6 +1504,49 @@ export class NewReleaseReview102035 extends StateLitElement {
     `;
   }
 
+  private async loadReviewTask(token: number): Promise<void> {
+    const taskId = this.channelRun?.executions.at(-1)?.taskId ?? this.reviewRun?.taskId;
+    if (!taskId) { this.reviewTask = null; return; }
+    try {
+      const task = await getTask(taskId);
+      if (token === this.loadToken) this.reviewTask = task?.PK.replace(/^task(?:\/#?|#)/u, '') === taskId ? task : null;
+    } catch (error) {
+      console.error('[newRelease] review task snapshot unavailable', error);
+      if (token === this.loadToken) this.reviewTask = null;
+    }
+  }
+
+  private renderReviewTask() {
+    const execution = this.channelRun?.executions.at(-1);
+    const taskId = execution?.taskId ?? this.reviewRun?.taskId;
+    const threadId = execution?.threadId ?? this.reviewRun?.threadId;
+    if (!taskId || !threadId) return nothing;
+    const task = this.reviewTask;
+    if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== taskId) {
+      return html`<div class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}</div>`;
+    }
+    const messageId = task.messageid_created || '';
+    const orderAt = messageId.split('/').pop() || '';
+    const context: ExecutionContext = { message: { threadId, orderAt, createAt: orderAt.slice(0, 14), senderId: getUserId() || '', content: '', taskId, taskStatus: task.status }, task, isTest: false };
+    const cost = newReleaseTaskCost(task);
+    return html`<div class="nr-review__review-task"><collab-messages-task-102025 class="nr-review__task-card"
+      taskid=${taskId} threadId=${threadId} messageid=${messageId} userId=${getUserId() || ''}
+      .context=${context} lastChanged=${`${taskId}:${task.last_updated}`}
+      @taskclick=${() => dispatchThreadOpen(threadId, taskId)}
+    ></collab-messages-task-102025>
+      <span>${this.t('review.implementation.taskCost', { cost: cost === null ? this.t('request.costUnavailable') : `$${cost.toFixed(2)}` })}</span></div>`;
+  }
+
+  private renderCurrentPlan(view: ChangeEffortView) {
+    if (this.version !== 'tobe' || !this.data?.resultCurrent || !this.effortCurrent || this.effortRefreshPending || view.kind !== 'ready') return nothing;
+    const operations = ['create', 'regenerateDefs', 'materialize', 'remove'] as const;
+    return html`<details class="nr-review__current-plan"><summary>${this.t('review.effort.planDetails')}</summary>
+      <ul>${view.items.map(({ item }) => html`<li>${item.kind} · ${item.op} · ${item.entity} <code>${item.id}</code></li>`)}</ul>
+      ${operations.map(operation => html`<section><h4>${this.t(`review.effort.operation.${operation}`)}</h4><ul>${view.merged[operation].map(unit => html`<li>${unit.kind}: ${unit.id} <code>${unit.path}</code></li>`)}</ul></section>`)}
+      <section><h4>${this.t('review.effort.runAgents')}</h4><ul>${view.merged.runAgents.map(agent => html`<li>${agent.agent} <code>${agent.command}</code></li>`)}</ul></section>
+    </details>`;
+  }
+
   private renderPrimaryAction(block: ReviewPrimaryActionPlacement) {
     const { placement } = block;
     const action = this.identityError ? { ...block.action, disabled: true,
@@ -1751,7 +1799,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       </summary>
       ${!this.hasRelease ? html`<p class="nr-review__panel-note">${this.t('review.panels.fullGenerationBody')}</p>` : nothing}
       ${resultVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderBackend(view)}` : nothing}
-    </details>${calculating ? html`<div class="nr-review__progress" role="status"><span>${this.t(this.channelRun && !['ready', 'failed', 'disputed'].includes(this.channelRun.status) ? `review.run.phase.${this.channelRun.status}` : 'review.effort.calculating')}</span><progress aria-label=${this.t('review.effort.calculating')}></progress></div>` : nothing}${calculate.map(block => this.renderPrimaryAction(block))}</section>`;
+    </details>${this.renderReviewTask()}${calculating ? html`<div class="nr-review__progress" role="status"><span>${this.t(this.channelRun && !['ready', 'failed', 'disputed'].includes(this.channelRun.status) ? `review.run.phase.${this.channelRun.status}` : 'review.effort.calculating')}</span><progress aria-label=${this.t('review.effort.calculating')}></progress></div>` : nothing}${calculate.map(block => this.renderPrimaryAction(block))}</section>`;
   }
 
   private renderPublish() {
@@ -1802,6 +1850,7 @@ export class NewReleaseReview102035 extends StateLitElement {
         <section class="nr-review__panel nr-review__apply" aria-label=${this.t('review.panels.apply')}>
           <h3>${this.t('review.panels.apply')}</h3>
           ${apply.map(block => this.renderPrimaryAction(block))}
+          ${this.renderCurrentPlan(changeEffort)}
           ${this.actionBusy && action.kind === 'continue' && !this.hasImplementation() ? html`<div class="nr-review__progress" role="status"><span>${this.t('review.implementation.starting')}</span><progress aria-label=${this.t('review.implementation.starting')}></progress></div>` : nothing}
           ${this.hasImplementation() ? this.renderImplementation('top') : nothing}
         </section>

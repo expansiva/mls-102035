@@ -364,6 +364,47 @@ test('recalculating effort hides the previous summary and shows the active phase
   assert.doesNotMatch(output, /OLD_EFFORT/);
 });
 
+test('current Apply plan shows validated items and commands, then hides when stale', () => {
+  const review = widget();
+  review.version = 'tobe'; review.hasRelease = true;
+  review.data = { ...review.data, resultCurrent: true, changeId: 'change1', revisionId: 'rev1' };
+  review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
+  review.effortCurrent = true;
+  const plan = { kind: 'ready', status: 'simple', errorCode: '', untouched: { count: 0 },
+    items: [{ item: { kind: 'entity', op: 'changed', entity: 'Order', id: 'item1' }, answers: [] }],
+    merged: { create: [{ kind: 'l1', id: 'Order', path: 'l1/Order.ts', project: '102035' }], regenerateDefs: [], materialize: [], remove: [],
+      runAgents: [{ agent: 'agentDefsL1', command: '@@agentDefsL1 fixture' }], abend: [] } };
+  const ready = templateText(review.renderCurrentPlan(plan));
+  assert.match(ready, /<details class="nr-review__current-plan"><summary>/);
+  assert.match(ready, /item1/); assert.match(ready, /l1\/Order.ts/); assert.match(ready, /@@agentDefsL1 fixture/);
+  assert.equal(templateText(review.renderCurrentPlan({ ...plan, kind: 'invalid' })), '');
+  review.effortCurrent = false;
+  assert.equal(templateText(review.renderCurrentPlan(plan)), '');
+});
+
+test('review task shows reported zero cost and opens only on explicit card click', () => {
+  const review = widget();
+  review.t = (key: string, values?: { cost?: string }) => values?.cost ? `${key} ${values.cost}` : key;
+  review.version = 'tobe'; review.hasRelease = true;
+  review.channelRun = { status: 'ready', runId: 'run1', binding: {}, attempt: 1,
+    executions: [{ taskId: 'task1', threadId: 'thread1' }] };
+  assert.match(templateText(review.renderReviewTask()), /review\.implementation\.taskLoading/);
+  review.reviewTask = { PK: 'task1', status: 'done', messageid_created: 'thread1/20261104120000', last_updated: 1,
+    iaCompressed: { nextSteps: [{ interaction: { cost: 0, payload: [] }, nextSteps: [] }] } };
+  const card = review.renderReviewTask();
+  assert.match(templateText(card), /\$0\.00/);
+  const events: Event[] = [];
+  const previousDispatch = window.dispatchEvent;
+  window.dispatchEvent = ((event: Event) => { events.push(event); return true; }) as typeof window.dispatchEvent;
+  try {
+    review.render();
+    assert.equal(events.length, 0);
+    (card.values.find((value: unknown) => typeof value === 'function') as () => void)();
+    assert.equal(events.length, 1);
+  } finally { window.dispatchEvent = previousDispatch; }
+  assert.equal(events[0].type, 'thread-open');
+});
+
 test('Apply embeds the live task card, follows updates and replaces a retried task', () => {
   const review = widget();
   review.version = 'tobe'; review.hasRelease = true;
