@@ -221,15 +221,30 @@ function resultText(intents: mls.msg.AgentIntent[]): string {
   return step && step.type === 'add-step' && 'result' in step.step ? String(step.step.result) : '';
 }
 
-test('l4_p4_96 s4: the REAL agentNewReleaseL1 runs after a promotion in the rehearsal and reports its own outcome', { todo: 'the rehearsal promotes a module with no pool/l2/web/backend.json (the planners write only l4diff.json and changeEffort.json): the real phase refuses "plan missing"; the rehearsal has to run the L1 estimate, or carry the plan, before this phase can pass' }, async () => {
+async function runRealL1(): Promise<string> {
+  const agent = createNewReleaseL1();
+  const meta = { agentName: 'agentNewReleaseL1' } as Parameters<NonNullable<typeof agent.beforePromptImplicit>>[0];
+  const content = `@@agentNewReleaseL1 ${MODULE}`;
+  const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
+  return resultText(await agent.beforePromptImplicit!(meta, context, content));
+}
+
+// A module in maintenance went through the initial generation, which leaves the four plan files in its pool
+// (INITIAL_PLAN_PATHS). The fixture carries them as the generation leaves them.
+test('l4_p4_96 s4: the REAL agentNewReleaseL1 runs after a promotion in the rehearsal and finishes done', { todo: 'with the four plan files the postprocess passes; then prepareModule refuses "l1/controleEstoque has no files": the rehearsal module has no L1 defs, which the initial generation leaves (fixture hole, not an agent defect)' }, async () => {
   await acceptedScenario('rule', async () => {
-    const agent = createNewReleaseL1();
-    const meta = { agentName: 'agentNewReleaseL1' } as Parameters<NonNullable<typeof agent.beforePromptImplicit>>[0];
-    const content = `@@agentNewReleaseL1 ${MODULE}`;
-    const context = { message: { threadId: 'thread-ensaio', senderId: 'ensaio', content, createAt: 'm1', orderAt: '' }, isTest: true } as mls.msg.ExecutionContext;
-    const text = resultText(await agent.beforePromptImplicit!(meta, context, content));
-    // Not simulated: whatever the real phase finds missing in the promoted module shows up here, not on the screen.
-    assert.match(text, /^(done|refused|failed)/u, `the phase answered: ${text.slice(0, 200)}`);
-    assert.doesNotMatch(text, /plan missing/u, `the L1 phase did not find the promoted plan: ${text.slice(0, 300)}`);
+    const text = await runRealL1();
+    assert.match(text, /^done: /u, `the real phase after a promotion: ${text.slice(0, 300)}`);
+  });
+});
+
+test('l4_p4_96 s4: a module with no plan is refused by the real agentNewReleaseL1 with the missing path', async () => {
+  await acceptedScenario('rule', async () => {
+    const info = { project: PROJECT, level: 4, folder: `${MODULE}/pool/l2/web`, shortName: 'backend', extension: '.json' };
+    const key = mls.stor.getKeyToFile(info);
+    assert.ok(mls.stor.files[key], 'the plan is in the fixture before it is removed');
+    delete mls.stor.files[key];
+    const text = await runRealL1();
+    assert.match(text, /^refused: postprocess: plan missing: l4\/controleEstoque\/pool\/l2\/web\/backend\.json/u, text.slice(0, 300));
   });
 });
