@@ -266,9 +266,14 @@ void test('dispatch20 blocks a journey artifact the masters do not compute', asy
   const file = await changeEffortFor([ARTIFACT_ITEM]);
   assert.equal(file.status, 'blocked');
   assert.deepEqual(abendsCiting(file, ARTIFACT_ITEM.changeId).sort(), [
-    '102020: v1 computes only rule changed; artifact changed is not handled',
-    '102021: kind/op fora da v1: artifact changed',
+    '102020: l4 file journeys/atendimento.defs.ts is not a known kind; Apply cannot plan it',
   ]);
+});
+
+void test('dispatch20 does not block the journeys index: the masters answer empty and the model computes the journey', async () => {
+  const file = await changeEffortFor([{ ...ARTIFACT_ITEM, changeId: 'artifact:journeys/index.defs.ts', source: 'journeys/index.defs.ts' }]);
+  assert.notEqual(file.status, 'blocked');
+  assert.deepEqual(abendsCiting(file, 'artifact:journeys/index.defs.ts'), []);
 });
 
 void test('dispatch20 counts module files no answer cites', async () => {
@@ -620,7 +625,6 @@ void test('dispatch20 blocks a rule plus an artifact — no partial accept', asy
   assert.equal(file.status, 'blocked');
   assert.deepEqual(file.request.items.map(item => item.changeId), [RULE_ITEM.changeId, ARTIFACT_ITEM.changeId]);
   assert.deepEqual(abendsCiting(file, ARTIFACT_ITEM.changeId).sort(), [
-    '102020: v1 computes only rule changed; artifact changed is not handled',
-    '102021: kind/op fora da v1: artifact changed',
+    '102020: l4 file journeys/atendimento.defs.ts is not a known kind; Apply cannot plan it',
   ]);
 });
