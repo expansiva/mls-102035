@@ -21,10 +21,10 @@ import type { NewReleaseModuleData } from '/_102035_/l2/newRelease/helpers/l4Rea
 
 import type { L4ImplementationRecord } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import type { ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
-import { implementationProgress, moduleHasGeneratedSources } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { implementationProgress, moduleHasGeneratedSources } from '/_102035_/l2/newRelease/widgets/review/reviewModel.js';
 import { readReviewArtifact } from '/_102035_/l2/newRelease/helpers/backendReader.js';
 import { visibleDiffs } from '/_102035_/l2/newRelease/helpers/visibleDiffs.js';
-import { buildChangeEffortView } from '/_102035_/l2/newRelease/widgets/changeEffortModel.js';
+import { buildChangeEffortView } from '/_102035_/l2/newRelease/widgets/review/changeEffortModel.js';
 
 type QaReviewElement = NewReleaseElement & {
   loading: boolean;

@@ -1,0 +1,26 @@
+/// <mls fileReference="_102035_/l2/newRelease/widgets/rules/rules.less" enhancement="enhancementStyle" />
+new-release--widgets--rules-102035 {
+  display: block; color: #e2e8f0;
+  * { box-sizing: border-box; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid #334155; border-radius: 8px; background: #172334; padding: .65rem; }
+  button:disabled { opacity: .5; cursor: default; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+  .nr-rules { padding: 1rem; }
+  .nr-rules__panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; align-items: start; }
+  .nr-rules__group, .nr-rules__detail { border: 1px solid #334155; border-radius: 12px; background: #101a29; overflow: hidden; }
+  h2 { font-size: 1rem; margin: 0; padding: 1rem; }
+  .nr-rules__group > div { max-height: 30rem; overflow-y: auto; }
+  .nr-rules__group button { display: flex; align-items: center; gap: .5rem; width: 100%; height: 3rem; border-width: 1px 0 0; border-radius: 0; background: transparent; text-align: left; white-space: normal; overflow-wrap: anywhere; font-size: .85rem; line-height: 1.2; }
+  .nr-rules__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nr-rules__count { flex: 0 0 auto; }
+  .nr-rules__group button:hover { background: #203149; }
+  .nr-rules__detail { display: grid; gap: 1rem; padding: 1rem; }
+  .nr-rules__detail header, footer { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+  .nr-rules__detail h2 { padding: 0; flex: 1; }
+  label { display: grid; gap: .5rem; }
+  input, textarea { width: 100%; border: 1px solid #334155; border-radius: 6px; background: #0b1220; padding: .75rem; }
+  textarea { min-height: 10rem; resize: vertical; }
+  p { white-space: pre-wrap; overflow-wrap: anywhere; }
+  footer span { flex: 1; }
+}

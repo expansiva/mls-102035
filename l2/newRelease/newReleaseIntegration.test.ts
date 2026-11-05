@@ -45,7 +45,7 @@ test('new release index exposes the shared edit seam and completed functional ta
 });
 
 test('workflow and integration editors preserve the artifact value in every select option', () => {
-  for (const file of ['./widgets/workflows.ts', './widgets/integration.ts']) {
+  for (const file of ['./widgets/workflows/workflows.ts', './widgets/integration/integration.ts']) {
     const source = readFileSync(new URL(file, import.meta.url), 'utf8');
     const options = [...source.matchAll(/<option\b[^>]*>/g)].map(match => match[0]);
     assert.ok(options.length > 0, `${file} must render select options`);
@@ -55,9 +55,9 @@ test('workflow and integration editors preserve the artifact value in every sele
 
 test('module navigation and complex views expose equivalent keyboard and text paths', () => {
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
-  const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
-  const access = readFileSync(new URL('./widgets/access.ts', import.meta.url), 'utf8');
-  const journeys = readFileSync(new URL('./widgets/journeys.ts', import.meta.url), 'utf8');
+  const ontology = readFileSync(new URL('./widgets/ontology/ontology.ts', import.meta.url), 'utf8');
+  const access = readFileSync(new URL('./widgets/access/access.ts', import.meta.url), 'utf8');
+  const journeys = readFileSync(new URL('./widgets/journeys/journeys.ts', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('./widgets/index.less', import.meta.url), 'utf8');
 
   assert.match(index, /role="tablist"/);
@@ -87,7 +87,7 @@ test('fine-tuned layout keeps context left and prioritizes editable module setti
   const service = readFileSync(new URL('../../../mls-102020/l2/aura/services/serviceBehavior.ts', import.meta.url), 'utf8');
   const serviceStyles = readFileSync(new URL('../../../mls-102020/l2/aura/services/serviceBehavior.less', import.meta.url), 'utf8');
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
-  const general = readFileSync(new URL('./widgets/general.ts', import.meta.url), 'utf8');
+  const general = readFileSync(new URL('./widgets/general/general.ts', import.meta.url), 'utf8');
 
   assert.match(service, /moduleMapDescription/);
   assert.doesNotMatch(service, /module\.sourcePrompt/);
@@ -107,8 +107,8 @@ test('fine-tuned layout keeps context left and prioritizes editable module setti
 });
 
 test('v3 ontology dense sections and object fields are collapsed details with visible counts', () => {
-  const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
-  const styles = readFileSync(new URL('./widgets/ontology.less', import.meta.url), 'utf8');
+  const ontology = readFileSync(new URL('./widgets/ontology/ontology.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./widgets/ontology/ontology.less', import.meta.url), 'utf8');
 
   assert.equal((ontology.match(/<details class="nr-ontology__section nr-v3__section nr-v3__collapsible-section">/g) || []).length, 4);
   assert.doesNotMatch(ontology, /nr-v3__collapsible-section"\s+open/);
@@ -143,7 +143,7 @@ test('review composition hides its request and places changes before its panels 
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
   assert.match(index, /this\.activeTab === 'general' \? this\.renderRequest\(\)/);
   assert.match(index, /this\.presentation === 'prompt'[^\n]*\? this\.renderRequest\(\)/);
-  assert.match(index, /this\.renderDiffs\(\)\}\s*<new-release--widgets--review-102035/);
+  assert.match(index, /\.changesContent=\$\{this\.renderDiffs\(\)\}/);
   assert.match(index, /visibleDiffs\(this\.data\?\.diffs \?\? \[\], this\.activeTab\)/);
   assert.match(index, /this\.renderTobeStatus\(\)/);
 });
@@ -183,9 +183,9 @@ test('QA fixtures settle initialization and preserve loading and historical quer
 
 
 test('workflow has three navigation levels and protects structural identities', () => {
-  const source = readFileSync(new URL('./widgets/workflows.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./widgets/workflows/workflows.ts', import.meta.url), 'utf8');
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
-  const ontology = readFileSync(new URL('./widgets/ontology.ts', import.meta.url), 'utf8');
+  const ontology = readFileSync(new URL('./widgets/ontology/ontology.ts', import.meta.url), 'utf8');
   assert.match(source, /readonly aria-label=\$\{this.t\('workflows.taskId'\)\}/);
   assert.doesNotMatch(source, /removeTask|removeProcess|addProcess/);
   assert.match(source, /workflowEdges\(process\)/);
@@ -200,7 +200,7 @@ test('workflow has three navigation levels and protects structural identities', 
 
 
 test('review panels put implementation progress inside Apply before Publish', () => {
-  const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./widgets/review/review.ts', import.meta.url), 'utf8');
   const render = source.slice(source.lastIndexOf('  render() {'));
   const order = ['this.renderEffortPanel(', 'nr-review__apply', "this.renderImplementation('top')", 'this.renderPublish()', 'this.renderReviewRun()'];
   for (let index = 1; index < order.length; index++) assert.ok(render.indexOf(order[index - 1]) < render.indexOf(order[index]), order[index]);
@@ -208,7 +208,8 @@ test('review panels put implementation progress inside Apply before Publish', ()
   const index = readFileSync(new URL('./widgets/index.ts', import.meta.url), 'utf8');
   assert.ok(index.lastIndexOf('this.renderTabContent()') < index.lastIndexOf('this.renderValidationLog()'));
   const effortPanel = source.slice(source.indexOf('  private renderEffortPanel('), source.indexOf('  private renderPublish()'));
-  assert.match(effortPanel, /<section class="nr-review__panel nr-review__effort-panel"><details>/);
+  assert.match(effortPanel, /<section class="nr-review__panel nr-review__effort-panel">/);
+  assert.match(effortPanel, /review\.panels\.plannedChanges/);
   assert.match(effortPanel, /this.renderEffort\(changeEffort\)/);
   assert.match(effortPanel, /this.renderChangeEffort\(changeEffort\)/);
   assert.match(effortPanel, /this.renderBackend\(view\)/);
@@ -217,12 +218,12 @@ test('review panels put implementation progress inside Apply before Publish', ()
   assert.match(render, /const apply = \[\{ placement: 'top'/);
 });
 
-test('publish is an informational placeholder with no execution call', () => {
-  const source = readFileSync(new URL('./widgets/review.ts', import.meta.url), 'utf8');
+test('publish explains its unavailable action while confirmed changes remain visible', () => {
+  const source = readFileSync(new URL('./widgets/review/review.ts', import.meta.url), 'utf8');
   const publish = source.slice(source.indexOf('  private renderPublish()'), source.lastIndexOf('  render() {'));
   assert.match(publish, /nr-review__primary-action is-top/);
-  assert.match(publish, /<button type="button" disabled aria-disabled="true">/);
-  assert.doesNotMatch(publish, /@click=/);
+  assert.match(publish, /\?disabled=\$\{!pending\}/);
+  assert.match(publish, /review\.panels\.publishUnavailable/);
   assert.match(publish, /role="status"/);
   assert.match(publish, /review.panels.inDevelopment/);
   assert.doesNotMatch(publish, /fetch|transport|publishGit|startReviewRun|runReviewPrimaryAction/);

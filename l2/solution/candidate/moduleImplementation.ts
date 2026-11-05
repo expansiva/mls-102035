@@ -285,12 +285,16 @@ export async function acceptL4Implementation(
   });
 }
 
-export async function readLatestCompletedL4Implementation(project: number, moduleName: string): Promise<L4ImplementationRecord | null> {
+export async function listCompletedL4Implementations(project: number, moduleName: string): Promise<L4ImplementationRecord[]> {
   const records = await Promise.all(Object.values(mls.stor.files).filter(file => file && file.project === project && file.level === 4
     && file.folder.startsWith(`${moduleName}/pipeline/changes/`) && file.shortName === 'implementation'
     && file.extension === '.json' && file.status !== 'deleted').map(file => readJson<L4ImplementationRecord>(file)));
   return records.filter((record): record is L4ImplementationRecord => !!record
     && record.schemaVersion === L4_IMPLEMENTATION_SCHEMA
     && implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done')))
-    .sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
+    .sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt));
+}
+
+export async function readLatestCompletedL4Implementation(project: number, moduleName: string): Promise<L4ImplementationRecord | null> {
+  return (await listCompletedL4Implementations(project, moduleName))[0] ?? null;
 }

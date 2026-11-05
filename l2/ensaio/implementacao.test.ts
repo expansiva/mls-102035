@@ -1,6 +1,6 @@
 import { completeTobeImplementation, readNs5Overlay } from '../newRelease/tobe.js';
 import { readLatestCompletedL4Implementation } from '../solution/candidate/moduleImplementation.js';
-import { reviewImplementationVisible } from '../newRelease/widgets/reviewModel.js';
+import { reviewImplementationVisible } from '../newRelease/widgets/review/reviewModel.js';
 /// <mls fileReference="_102035_/l2/ensaio/implementacao.test.ts" enhancement="_blank" />
 import test from 'node:test';
 import assert from 'node:assert/strict';

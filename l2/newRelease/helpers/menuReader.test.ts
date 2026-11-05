@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MENU_SCHEMA_VERSION } from '/_102035_/l2/solution/poolPlan.js';
-import { buildReviewView } from '/_102035_/l2/newRelease/widgets/reviewModel.js';
+import { buildReviewView } from '/_102035_/l2/newRelease/widgets/review/reviewModel.js';
 import { menuFileForProject, readModuleMenu } from './menuReader.js';
 
 function withFiles<T>(run: (put: (file: object, value: unknown) => void) => Promise<T>): Promise<T> {

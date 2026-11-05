@@ -18,8 +18,8 @@ import {
   parseNewReleaseQaParams,
   qaScenarioRequiresReview,
 } from './qaPreviewModel.js';
-import { buildReviewView, implementationProgress } from './widgets/reviewModel.js';
-import { buildChangeEffortView } from './widgets/changeEffortModel.js';
+import { buildReviewView, implementationProgress } from './widgets/review/reviewModel.js';
+import { buildChangeEffortView } from './widgets/review/changeEffortModel.js';
 
 test('QA query validates and normalizes the complete public context', () => {
   const parsed = parseNewReleaseQaParams('?project=102047&module=agendaClinica&tab=review&version=release:r-1&lang=en-US&theme=dark&fixture=ready&toolbar=hidden');

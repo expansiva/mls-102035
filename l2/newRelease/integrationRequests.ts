@@ -13,7 +13,7 @@ import {
   requestDirection,
   requestExportName,
   type IntegrationRequestView,
-} from '/_102035_/l2/newRelease/widgets/integrationModel.js';
+} from '/_102035_/l2/newRelease/widgets/integration/integrationModel.js';
 
 type FileRecord = Record<string, (mls.stor.IFileInfo & { getContent?: () => Promise<unknown> }) | undefined>;
 

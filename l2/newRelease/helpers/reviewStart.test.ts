@@ -5,7 +5,7 @@ import test from 'node:test';
 import { executePreparedReviewStart, prepareReviewStartInput } from './reviewStart.js';
 import type { L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { buildCandidateSnapshot, type CandidatePointer, type CandidatePublishInput, type CandidateSnapshot } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { canStartReviewRun } from '../widgets/reviewModel.js';
+import { canStartReviewRun } from '../widgets/review/reviewModel.js';
 import {
   candidateRead as hubCandidateRead, candidatePublish as hubCandidatePublish, candidateMarkResult as hubCandidateMarkResult,
   type CandidatePersistence, type CandidateReadInput, type CandidatePublishInput as HubPublishInput, type CandidateMarkResultInput,

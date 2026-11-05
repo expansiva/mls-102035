@@ -17,7 +17,7 @@ import { promoteL4Revision, readL4Release } from '../solution/candidate/moduleRe
 import { withReviewScenario, runPlannerScenario, FIXTURE, PROJECT, MODULE } from './nodejsCenario.js';
 import { effortRegistry } from '../solution/effortRegistry.js';
 import type { ChangeEffortFile, EffortAnswer } from '../solution/poolPlan.js';
-import { buildChangeEffortView } from '../newRelease/widgets/changeEffortModel.js';
+import { buildChangeEffortView } from '../newRelease/widgets/review/changeEffortModel.js';
 import { mergeChangeEffort } from '../solution/gates/changeEffort/gate.js';
 
 async function withSimpleEffort<T>(run: () => Promise<T>): Promise<T> {
@@ -114,14 +114,14 @@ test('mr_28 s1: component hashes the same changeEffort bytes it displays and kee
   await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async () => {
   const loader = NodeModule as unknown as { _load: (request: string, ...args: unknown[]) => unknown };
   const previousLoad = loader._load;
-  let NewReleaseReview102035: typeof import('../newRelease/widgets/review.js').NewReleaseReview102035;
+  let NewReleaseReview102035: typeof import('../newRelease/widgets/review/review.js').NewReleaseReview102035;
   try {
     loader._load = function (request, ...args) {
       if (request === 'lit/decorators.js') return { customElement: () => () => undefined,
         property: () => () => undefined, state: () => () => undefined, query: () => () => undefined };
       return previousLoad.call(this, request, ...args);
     };
-    ({ NewReleaseReview102035 } = await import('../newRelease/widgets/review.js'));
+    ({ NewReleaseReview102035 } = await import('../newRelease/widgets/review/review.js'));
   } finally { loader._load = previousLoad; }
   const golden = JSON.parse(readFileSync(new URL(
     '../solution/fixtures/changeEffort/agendaClinica-regra-anotacao/changeEffort.json', import.meta.url), 'utf8')) as ChangeEffortFile;
@@ -463,7 +463,7 @@ test('mr_24 s3: base with an empty transition by fails publicly without publishi
           property: () => () => undefined, state: () => () => undefined, query: () => () => undefined };
         return previousLoad.call(this, request, ...args);
       };
-      const { NewReleaseReview102035 } = await import('../newRelease/widgets/review.js');
+      const { NewReleaseReview102035 } = await import('../newRelease/widgets/review/review.js');
       const review = NewReleaseReview102035.prototype as unknown as {
         reviewRunErrorKey(code: string): string;
         tReviewRunError(code: string): string;

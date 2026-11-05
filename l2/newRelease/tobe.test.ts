@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/tobe.test.ts" enhancement="_blank" />
 
 import { applyDirectLanguages, languageCommands } from './helpers/directLanguages.js';
+import { listConfirmedRounds } from './helpers/roundHistory.js';
 import { readDefsJson } from '/_102035_/l2/solution/fs.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -449,15 +450,24 @@ test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the 
     ...active, activeRevisionId: 'rev-apply', promotedRevisionId: 'rev-apply',
   });
   plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'implementation' }, {
-    revisionId: 'rev-apply',
+    schemaVersion: '2026-10-08-nr-module-implementation-v1', changeId: again.changeId,
+    revisionId: 'rev-apply', acceptedBy: 'reviewer', acceptedAt: '2026-11-05T10:00:00.000Z', hashes: {},
     merged: { create: [], regenerateDefs: [], remove: [], materialize: [], runAgents: [], abend: [] },
     phases: [],
   });
   plantJson(fixture, { ...candidate, shortName: 'pointer' }, { changeId: again.changeId });
   plantJson(fixture, { project, folder: `${moduleName}/tobe/candidate/results`, shortName: 'result-apply' }, { resultId: 'result-apply' });
-  await completeTobeImplementation(project, moduleName, again.changeId, 'rev-apply');
+  const confirmation = fixture.keyOf({ project, level: 4, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'confirmation', extension: '.json' });
+  assert.equal(fixture.contents.has(confirmation), false);
+  assert.deepEqual(await listConfirmedRounds(project, moduleName), []);
+  await completeTobeImplementation(project, moduleName, again.changeId, 'rev-apply', 'reviewer');
   assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/')), false);
   assert.equal(fixture.contents.has(outside), true);
+  assert.equal(JSON.parse(fixture.contents.get(confirmation) || '{}').confirmedBy, 'reviewer');
+  const rounds = await listConfirmedRounds(project, moduleName);
+  assert.equal(rounds.length, 1);
+  assert.equal(rounds[0].record.revisionId, 'rev-apply');
+  assert.equal(rounds[0].confirmedBy, 'reviewer');
 });
 
 test('base snapshot is complete, byte-stable and separate from the temporary candidate', async () => {
@@ -855,7 +865,7 @@ test('structured values without request bind a valid review preflight without ch
     { expectedRevisionId: null, author: 'tester' });
   const bound = await bindStructuredEditsRequest(project, moduleName, saved.changeId!, saved.revisionId!, 'Review values already edited.');
   const overlay = await readNs5Overlay(project, moduleName, 'tobe');
-  const { canStartReviewRun } = await import('./widgets/reviewModel.js');
+  const { canStartReviewRun } = await import('./widgets/review/reviewModel.js');
   assert.equal(canStartReviewRun({ project, moduleName, changeId: bound.changeId, revisionId: bound.revisionId,
     request: bound.text, userId: 'tester', sealedRevision: overlay.sealedRevision, hasRun: false }), true);
   assert.equal(overlay.sources.module.value?.sourcePrompt, fixture.source.module.sourcePrompt);

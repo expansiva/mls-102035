@@ -44,15 +44,15 @@ import {
   type NewReleaseEditRequest,
   type NewReleaseTabPresentation,
 } from '/_102035_/l2/newRelease/editContract.js';
-import { textTree, filterTextTree, hasDraftChanges, type TextTreeNode } from '/_102035_/l2/newRelease/widgets/commonModel.js';
-import '/_102035_/l2/newRelease/widgets/general.js';
-import '/_102035_/l2/newRelease/widgets/access.js';
-import '/_102035_/l2/newRelease/widgets/journeys.js';
-import '/_102035_/l2/newRelease/widgets/ontology.js';
-import '/_102035_/l2/newRelease/widgets/rules.js';
-import '/_102035_/l2/newRelease/widgets/workflows.js';
-import '/_102035_/l2/newRelease/widgets/integration.js';
-import '/_102035_/l2/newRelease/widgets/review.js';
+import { textTree, filterTextTree, hasDraftChanges, type TextTreeNode } from '/_102035_/l2/newRelease/widgets/shared/commonModel.js';
+import '/_102035_/l2/newRelease/widgets/general/general.js';
+import '/_102035_/l2/newRelease/widgets/access/access.js';
+import '/_102035_/l2/newRelease/widgets/journeys/journeys.js';
+import '/_102035_/l2/newRelease/widgets/ontology/ontology.js';
+import '/_102035_/l2/newRelease/widgets/rules/rules.js';
+import '/_102035_/l2/newRelease/widgets/workflows/workflows.js';
+import '/_102035_/l2/newRelease/widgets/integration/integration.js';
+import '/_102035_/l2/newRelease/widgets/review/review.js';
 
 type NewReleaseTab = 'general' | 'journeys' | 'ontology' | 'access' | 'rules' | 'workflows' | 'integration' | 'review';
 
@@ -1133,7 +1133,6 @@ export class NewReleaseIndex102035 extends StateLitElement {
     }
     if (this.activeTab === 'review') {
       return html`
-        ${this.renderDiffs()}
         <new-release--widgets--review-102035
           .identityError=${this.identityError}
           .project=${this.project}
@@ -1141,6 +1140,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
           .version=${this.version}
           .data=${this.data}
           .request=${this.savedRequest}
+          .changesContent=${this.renderDiffs()}
           .t=${this.t}
         ></new-release--widgets--review-102035>
       `;

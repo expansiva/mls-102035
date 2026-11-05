@@ -486,7 +486,7 @@ export async function readNs5Overlay(
 }
 
 /** Retire only the successfully applied revision, keeping its immutable history. */
-export async function completeTobeImplementation(project: number, moduleName: string, changeId: string, revisionId: string): Promise<void> {
+export async function completeTobeImplementation(project: number, moduleName: string, changeId: string, revisionId: string, confirmedBy = ''): Promise<void> {
   await deactivateL4Change(project, moduleName, async () => {
     const active = await readActiveL4Change(project, moduleName);
     if (active?.changeId !== changeId || active.activeRevisionId !== revisionId || active.promotedRevisionId !== revisionId) {
@@ -495,6 +495,8 @@ export async function completeTobeImplementation(project: number, moduleName: st
     const record = await readL4Implementation(project, moduleName);
     if (!record || record.revisionId !== revisionId || !implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) throw new Error('implementation.not_complete');
     await deleteInventory([...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName), ...listedTobeFolder(project, `${moduleName}/tobe/operations`)]);
+    await writeJson({ project, level: 4, folder: `${moduleName}/pipeline/changes/${changeId}`, shortName: 'confirmation', extension: '.json' },
+      { changeId, revisionId, confirmedAt: new Date().toISOString(), confirmedBy });
   });
   announceTobeUpdated(project, moduleName);
 }
