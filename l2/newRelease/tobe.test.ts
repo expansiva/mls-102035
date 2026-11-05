@@ -2,6 +2,7 @@
 
 import { applyDirectLanguages, languageCommands } from './helpers/directLanguages.js';
 import { listConfirmedRounds } from './helpers/roundHistory.js';
+import { NEW_RELEASE_TOBE_UPDATED_EVENT } from './helpers/context.js';
 import { readDefsJson } from '/_102035_/l2/solution/fs.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -460,7 +461,16 @@ test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the 
   const confirmation = fixture.keyOf({ project, level: 4, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'confirmation', extension: '.json' });
   assert.equal(fixture.contents.has(confirmation), false);
   assert.deepEqual(await listConfirmedRounds(project, moduleName), []);
-  await completeTobeImplementation(project, moduleName, again.changeId, 'rev-apply', 'reviewer');
+  let selectedVersion = '';
+  const browserGlobal = globalThis as typeof globalThis & { window?: { dispatchEvent: (event: Event) => boolean } };
+  const previousWindow = browserGlobal.window;
+  browserGlobal.window = { dispatchEvent: (event: Event) => {
+    if (event.type === NEW_RELEASE_TOBE_UPDATED_EVENT) selectedVersion = (event as CustomEvent<{ version?: string }>).detail.version || '';
+    return true;
+  } };
+  try { await completeTobeImplementation(project, moduleName, again.changeId, 'rev-apply', 'reviewer'); }
+  finally { if (previousWindow) browserGlobal.window = previousWindow; else delete browserGlobal.window; }
+  assert.equal(selectedVersion, 'asis');
   assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/')), false);
   assert.equal(fixture.contents.has(outside), true);
   assert.equal(JSON.parse(fixture.contents.get(confirmation) || '{}').confirmedBy, 'reviewer');

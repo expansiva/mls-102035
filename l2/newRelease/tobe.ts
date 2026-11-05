@@ -138,9 +138,9 @@ async function manifestAuthor(): Promise<string> {
   return user.email || user.name || 'anonymous';
 }
 
-function announceTobeUpdated(project: number, moduleName: string): void {
+function announceTobeUpdated(project: number, moduleName: string, version?: 'asis'): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project, moduleName } }));
+  window.dispatchEvent(new CustomEvent(NEW_RELEASE_TOBE_UPDATED_EVENT, { detail: { project, moduleName, version } }));
 }
 
 export class NewReleaseSaveValidationError extends Error {
@@ -498,5 +498,5 @@ export async function completeTobeImplementation(project: number, moduleName: st
     await writeJson({ project, level: 4, folder: `${moduleName}/pipeline/changes/${changeId}`, shortName: 'confirmation', extension: '.json' },
       { changeId, revisionId, confirmedAt: new Date().toISOString(), confirmedBy });
   });
-  announceTobeUpdated(project, moduleName);
+  announceTobeUpdated(project, moduleName, 'asis');
 }
