@@ -2070,6 +2070,7 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private renderEffortPanel(view: ReviewView, changeEffort: ChangeEffortView, resultVisible: boolean, calculate: readonly ReviewPrimaryActionPlacement[]) {
     const summary = parseEffortSummary(this.effortRead, this.moduleName);
+    const planVisible = resultVisible && (!!this.data?.diffs.some(diff => diff.entries.length) || this.implementationComplete());
     const calculating = this.effortRefreshPending && (this.actionBusy || !!this.channelRun && !['ready', 'failed', 'disputed'].includes(this.channelRun.status));
     const hasTask = !!(this.channelRun?.executions.at(-1)?.taskId ?? this.reviewRun?.taskId);
     return html`<section class="nr-review__panel nr-review__effort-panel">
@@ -2079,9 +2080,9 @@ export class NewReleaseReview102035 extends StateLitElement {
       ${this.changesContent === nothing ? html`<details class="nr-review__effort-detail"><summary>${this.t('tobe.diffTitle', { count: 0 })}</summary>
         <p>${this.t('review.release.unchanged')}</p></details>` : this.changesContent}
       <details class="nr-review__effort-detail"><summary>${this.t('review.panels.plannedChanges')}
-        ${resultVisible && summary.kind === 'counts' ? html`<span>${summary.counts.filter(item => item.category !== 'endpoints').map(item => `${this.t(`review.backend.count.${item.category}`)}: ${item.statuses.reduce((count, value) => count + value.count, 0)}`).join(' · ')}</span>` : nothing}
+        ${planVisible && summary.kind === 'counts' ? html`<span>${summary.counts.filter(item => item.category !== 'endpoints').map(item => `${this.t(`review.backend.count.${item.category}`)}: ${item.statuses.reduce((count, value) => count + value.count, 0)}`).join(' · ')}</span>` : nothing}
       </summary>
-        ${resultVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderBackend(view)}`
+        ${planVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderBackend(view)}`
           : html`<p>${this.t('review.panels.notCalculated')}</p>`}
       </details>
       ${hasTask ? this.renderReviewTask() : calculating ? html`<div class="nr-review__task-loading" role="status">${this.t('review.panels.starting')}</div>` : nothing}

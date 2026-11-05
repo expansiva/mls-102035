@@ -349,6 +349,8 @@ test('review effort keeps coverage and backend without the actor menu', () => {
   review.effortRead = { status: 'missing', path: 'pool' };
   assert.equal(templateText(review.renderEffort(ready)), '');
   assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.panels\.plannedChanges/);
+  assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /review\.panels\.notCalculated/);
+  review.data.diffs = [{ entries: [{}] }];
   assert.match(templateText(review.renderEffortPanel({}, ready, true, [])), /backend remains/);
   review.effortRead = { status: 'invalid', path: 'pool' };
   assert.match(templateText(review.renderEffort(ready)), /review\.backend\.effortInvalid/);
