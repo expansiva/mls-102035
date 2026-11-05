@@ -154,8 +154,12 @@ new-release--widgets--review-102035 {
 
   .nr-review__implementation { min-width: 0; font-size: .78rem; }
   .nr-review__implementation progress { display: block; }
-  .nr-review__task-card { display: block; width: min(100%, 222px); min-height: 40px; margin: .45rem 0; }
-  .nr-review__task-loading { display: flex; align-items: center; width: min(100%, 222px); min-height: 40px; color: var(--text-muted, #92a0b8); margin: .45rem 0; }
+  .nr-review__task-card { display: flex; align-items: center; box-sizing: border-box; width: min(100%, 220px); height: 40px; margin: .45rem 0; }
+  .nr-review__task-card .card { box-sizing: border-box; min-width: 0; padding: 0 .6rem; }
+  .nr-review__task-card .card-header { min-width: 0; }
+  .nr-review__task-card .card-title { min-width: 0; flex: 1 1 auto; }
+  .nr-review__task-card .card-price, .nr-review__task-card .task-icon { flex: none; }
+  .nr-review__task-loading { display: flex; align-items: center; box-sizing: border-box; width: min(100%, 220px); height: 40px; color: var(--text-muted, #92a0b8); margin: .45rem 0; }
   .nr-review__phase-report pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   .nr-review__implementation ol { display: grid; gap: .7rem; margin: 0; padding-left: 1.2rem; }
   .nr-review__implementation li { min-width: 0; overflow-wrap: anywhere; }

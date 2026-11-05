@@ -26,7 +26,7 @@ import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import { resolveModuleThread } from '/_102035_/l2/newRelease/helpers/moduleThread.js';
 import { serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
-import { newReleaseTaskCost, taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
+import { taskResultTexts } from '/_102035_/l2/newRelease/helpers/agentCommandRunner.js';
 import { getUserId, getTemporaryContext } from '/_102025_/l2/collabMessagesHelper.js';
 import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
 import { addOrUpdateTask, getTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
@@ -286,12 +286,14 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private reviewRunLoadError = '';
   @state() private channelRun: PlatformReviewRun | null = null;
   @state() private reviewTask: TaskData | null = null;
+  @state() private reviewTaskSettled = false;
   @state() private reviewCopyFeedback = '';
   private reviewCopyRunId = '';
 
   @state() private implementationBusy = false;
   @state() private implementation: L4ImplementationRecord | null = null;
   @state() private implementationTasks: Record<string, TaskData> = {};
+  @state() private implementationTaskSettled: Record<string, boolean> = {};
   @state() private implementationPolling: ImplementationTaskPolling | null = null;
   @state() private implementationCheckBusy = false;
   @state() private implementationCheckFeedback = '';
@@ -357,6 +359,7 @@ export class NewReleaseReview102035 extends StateLitElement {
       this.reviewRunLoadError = '';
       this.channelRun = null;
       this.reviewTask = null;
+      this.reviewTaskSettled = false;
       if (this.workerTimer) window.clearTimeout(this.workerTimer);
       void this.load();
     }
@@ -398,6 +401,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.implementationCheckBusy = false;
     this.implementationCheckFeedback = '';
     this.implementationTasks = {};
+    this.implementationTaskSettled = {};
     this.implementationTaskChanges = {};
     this.initialPlan = null;
     this.stopImplementationTimer();
@@ -513,7 +517,13 @@ export class NewReleaseReview102035 extends StateLitElement {
         if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== phase.taskId
           || token !== this.loadToken || this.implementation !== record || this.implementationTasks[phase.name]) return;
         await this.rememberImplementationTask(phase.name, task, token);
-      } catch { /* The phase remains usable with an unavailable cost. */ }
+      } catch (error) {
+        console.error('[newRelease] implementation task snapshot unavailable', error);
+      } finally {
+        if (token === this.loadToken && this.implementation === record) {
+          this.implementationTaskSettled = { ...this.implementationTaskSettled, [phase.name]: true };
+        }
+      }
     }));
   }
 
@@ -1400,7 +1410,10 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (!phase?.taskId) return nothing;
     const task = this.implementationTasks[phaseName];
     if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== phase.taskId) {
-      return html`<div class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}</div>`;
+      return this.implementationTaskSettled[phaseName] ? html`<button type="button" class="nr-review__task-loading"
+        @click=${() => { if (phase.threadId) dispatchThreadOpen(phase.threadId, phase.taskId); }}
+      >${this.t('review.implementation.taskDetails', { id: phase.taskId })}</button>`
+        : html`<div class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}</div>`;
     }
     const messageOrderAt = phase.messageId.split('/').pop() || '';
     const context: ExecutionContext = {
@@ -1644,13 +1657,16 @@ export class NewReleaseReview102035 extends StateLitElement {
 
   private async loadReviewTask(token: number): Promise<void> {
     const taskId = this.channelRun?.executions.at(-1)?.taskId ?? this.reviewRun?.taskId;
-    if (!taskId) { this.reviewTask = null; return; }
+    if (!taskId) { this.reviewTask = null; this.reviewTaskSettled = false; return; }
+    this.reviewTaskSettled = false;
     try {
       const task = await getTask(taskId);
       if (token === this.loadToken) this.reviewTask = task?.PK.replace(/^task(?:\/#?|#)/u, '') === taskId ? task : null;
     } catch (error) {
       console.error('[newRelease] review task snapshot unavailable', error);
       if (token === this.loadToken) this.reviewTask = null;
+    } finally {
+      if (token === this.loadToken) this.reviewTaskSettled = true;
     }
   }
 
@@ -1661,18 +1677,18 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (!taskId || !threadId) return nothing;
     const task = this.reviewTask;
     if (!task || task.PK.replace(/^task(?:\/#?|#)/u, '') !== taskId) {
-      return html`<div class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}</div>`;
+      return this.reviewTaskSettled ? html`<button type="button" class="nr-review__task-loading"
+        @click=${() => dispatchThreadOpen(threadId, taskId)}>${this.t('review.implementation.taskDetails', { id: taskId })}</button>`
+        : html`<div class="nr-review__task-loading" role="status">${this.t('review.implementation.taskLoading')}</div>`;
     }
     const messageId = task.messageid_created || '';
     const orderAt = messageId.split('/').pop() || '';
     const context: ExecutionContext = { message: { threadId, orderAt, createAt: orderAt.slice(0, 14), senderId: getUserId() || '', content: '', taskId, taskStatus: task.status }, task, isTest: false };
-    const cost = newReleaseTaskCost(task);
     return html`<div class="nr-review__review-task"><collab-messages-task-102025 class="nr-review__task-card"
       taskid=${taskId} threadId=${threadId} messageid=${messageId} userId=${getUserId() || ''}
       .context=${context} lastChanged=${`${taskId}:${task.last_updated}`}
       @taskclick=${() => dispatchThreadOpen(threadId, taskId)}
-    ></collab-messages-task-102025>
-      <span>${this.t('review.implementation.taskCost', { cost: cost === null ? this.t('request.costUnavailable') : `$${cost.toFixed(2)}` })}</span></div>`;
+    ></collab-messages-task-102025></div>`;
   }
 
   private renderCurrentPlan(view: ChangeEffortView) {
