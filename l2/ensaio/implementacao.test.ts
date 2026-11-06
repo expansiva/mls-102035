@@ -335,10 +335,20 @@ test('ui_mr_53 s4: tarefas applies, undoes the complete last batch, and applies 
     const baseline = stor.texts();
     const hash = `sha256:${createHash('sha256').update(effortSource).digest('hex')}`;
     let pass = 0;
+    let firstUndoBytes = 0;
     const apply = async () => {
       pass++;
       await sealModuleApplication(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId);
       await sealModuleLayers(TAREFAS_PROJECT, TAREFAS_MODULE, prepared.change.baseId);
+      const sealFiles = Object.entries(stor.texts()).filter(([path]) =>
+        path.startsWith('l4/tarefas/pipeline/application/undo')
+        || path.startsWith(`l4/tarefas/pipeline/releases/${prepared.change.baseId}/layers`));
+      assert.ok(sealFiles.length >= 3);
+      for (const [path, content] of sealFiles) assert.ok(Buffer.byteLength(content) < 2_000_000, `${path} exceeds the draft limit`);
+      const undoBytes = sealFiles.filter(([path]) => path.includes('/application/undo'))
+        .reduce((total, [, content]) => total + Buffer.byteLength(content), 0);
+      if (pass === 1) firstUndoBytes = undoBytes;
+      else assert.ok(undoBytes <= firstUndoBytes, 'the undo checkpoint did not grow on reapply');
       await promoteL4Revision(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId);
       const accepted = await acceptL4Implementation(TAREFAS_PROJECT, TAREFAS_MODULE,
         { revisionId, acceptedBy: 'ensaio', hashes: { changeEffort: hash } });
