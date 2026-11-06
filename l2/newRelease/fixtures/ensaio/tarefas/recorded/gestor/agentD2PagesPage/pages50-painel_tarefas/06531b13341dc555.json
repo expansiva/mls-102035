@@ -1,0 +1,686 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"submitD2Pages\",\"arguments\":{\"categoryReason\":\"O painel do gestor é um centro de acompanhamento: indicadores da organização no topo, distribuição das tarefas abertas por lista com progresso das checklists e a produção semanal por pessoa, sem escrita na própria página e com navegação para Todas as tarefas e Listas de tarefas, o que corresponde a dashboardCommandCenter.\",\"desktop\":{\"definition\":{\"template\":{\"category\":\"dashboardCommandCenter\"},\"intent\":\"Dar ao gestor, logo ao abrir, uma visão de toda a organização: quantas tarefas estão abertas, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e ainda não foram retomadas. Ao lado, mostrar como as tarefas abertas se distribuem pelas listas e como andam as checklists, para ele saber onde agir primeiro, e quantas tarefas cada pessoa concluiu nesta semana.\",\"sections\":[{\"id\":\"secaoIndicadores\",\"priority\":\"primary\",\"purpose\":\"Mostrar em destaque os quatro números que indicam a situação geral das tarefas da organização e chamam a atenção para prazos e devoluções pendentes.\",\"organisms\":[\"indicadoresTarefas\"]},{\"id\":\"secaoListas\",\"priority\":\"main\",\"purpose\":\"Mostrar quantas tarefas abertas tem cada lista (projeto ou área) e o progresso das checklists, para identificar onde o trabalho está acumulado ou parado.\",\"organisms\":[\"tarefasPorLista\"]},{\"id\":\"secaoConcluidasSemana\",\"priority\":\"secondary\",\"purpose\":\"Mostrar quantas tarefas cada pessoa responsável concluiu nesta semana, para o gestor acompanhar a entrega da equipe.\",\"organisms\":[\"concluidasSemanaPorPessoa\"]}],\"organisms\":[{\"id\":\"indicadoresTarefas\",\"kind\":\"summary\",\"text\":\"Total de tarefas abertas na organização e, em destaque, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e aguardam o responsável retomar. Assim o gestor vê de imediato o que exige acompanhamento.\",\"intents\":[{\"id\":\"verTodasTarefas\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]},{\"id\":\"tarefasPorLista\",\"kind\":\"highlights\",\"text\":\"Tarefas abertas agrupadas por lista, com a quantidade de cada uma e o progresso das checklists (itens concluídos sobre o total), para comparar o andamento entre projetos e áreas.\",\"intents\":[{\"id\":\"abrirListas\",\"kind\":\"navigate\",\"to\":\"listas_tarefas\"},{\"id\":\"verTarefasDaLista\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]},{\"id\":\"concluidasSemanaPorPessoa\",\"kind\":\"list\",\"text\":\"Cada pessoa responsável com a quantidade de tarefas que concluiu nesta semana; quando ninguém concluiu nada a lista vazia aparece separada de um erro de carregamento.\",\"intents\":[{\"id\":\"verTarefasDaPessoa\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]}],\"molecules\":[{\"id\":\"indicadoresTarefas\",\"recommendations\":[{\"role\":\"indicador de contagem de tarefas\",\"preferred\":\"groupviewmetric--ml-metric-card\",\"alternative\":\"groupviewmetric--ml-metric-big-number\"}]},{\"id\":\"tarefasPorLista\",\"recommendations\":[{\"role\":\"tarefas abertas agrupadas por lista\",\"preferred\":\"groupviewtable--ml-grouping-table\",\"alternative\":\"groupviewtable--ml-data-table\"},{\"role\":\"progresso da checklist\",\"preferred\":\"groupshowprogress--ml-linear-progress\",\"alternative\":\"groupshowprogress--ml-circular-progress\"}]}]},\"needs\":{\"organisms\":[{\"id\":\"indicadoresTarefas\",\"reads\":[\"Tarefa.details.aberta\",\"Tarefa.details.venceHoje\",\"Tarefa.details.atrasada\",\"Tarefa.details.devolvidaPendente\",\"Tarefa.status\",\"Tarefa.prazo\"],\"edits\":[],\"selects\":\"\",\"submits\":[]},{\"id\":\"tarefasPorLista\",\"reads\":[\"ListaTarefas.nome\",\"ListaTarefas.details.quantidadeTarefasAbertas\",\"Tarefa.titulo\",\"Tarefa.listaId\",\"Tarefa.details.aberta\",\"Tarefa.details.progressoChecklist\",\"ItemChecklist.tarefaId\",\"ItemChecklist.details.concluido\"],\"edits\":[],\"selects\":\"\",\"submits\":[]},{\"id\":\"concluidasSemanaPorPessoa\",\"reads\":[\"Tarefa.responsavelId\",\"Tarefa.status\",\"Tarefa.details.concluidaEm\",\"Participante.details.identification.name\"],\"edits\":[],\"selects\":\"\",\"submits\":[]}]}},\"mobile\":{\"definition\":{\"template\":{\"category\":\"dashboardCommandCenter\"},\"intent\":\"Mostrar ao gestor, numa tela estreita (por volta de 390px, também usável entre 360px e 430px), os números que importam primeiro: tarefas abertas, que vencem hoje, atrasadas e devolvidas aguardando retomada. Logo abaixo, em leitura vertical, vem o resumo das tarefas abertas por lista com o progresso das checklists e, por fim, quantas tarefas cada pessoa concluiu nesta semana.\",\"sections\":[{\"id\":\"secaoIndicadores\",\"priority\":\"primary\",\"purpose\":\"Mostrar no topo, em blocos compactos que se reorganizam conforme a largura, os quatro números da situação geral das tarefas da organização.\",\"organisms\":[\"indicadoresTarefas\"]},{\"id\":\"secaoListas\",\"priority\":\"main\",\"purpose\":\"Mostrar as listas uma abaixo da outra, com a quantidade de tarefas abertas e o progresso das checklists, sem precisar rolar para os lados.\",\"organisms\":[\"tarefasPorLista\"]},{\"id\":\"secaoConcluidasSemana\",\"priority\":\"secondary\",\"purpose\":\"Mostrar, em linhas curtas uma abaixo da outra, quantas tarefas cada pessoa concluiu nesta semana.\",\"organisms\":[\"concluidasSemanaPorPessoa\"]}],\"organisms\":[{\"id\":\"indicadoresTarefas\",\"kind\":\"summary\",\"text\":\"Total de tarefas abertas na organização e, em destaque, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e aguardam o responsável retomar. Assim o gestor vê de imediato o que exige acompanhamento.\",\"intents\":[{\"id\":\"verTodasTarefas\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]},{\"id\":\"tarefasPorLista\",\"kind\":\"highlights\",\"text\":\"Tarefas abertas agrupadas por lista, com a quantidade de cada uma e o progresso das checklists (itens concluídos sobre o total), para comparar o andamento entre projetos e áreas.\",\"intents\":[{\"id\":\"abrirListas\",\"kind\":\"navigate\",\"to\":\"listas_tarefas\"},{\"id\":\"verTarefasDaLista\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]},{\"id\":\"concluidasSemanaPorPessoa\",\"kind\":\"list\",\"text\":\"Cada pessoa responsável com a quantidade de tarefas que concluiu nesta semana; quando ninguém concluiu nada a lista vazia aparece separada de um erro de carregamento.\",\"intents\":[{\"id\":\"verTarefasDaPessoa\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]}],\"molecules\":[{\"id\":\"indicadoresTarefas\",\"recommendations\":[{\"role\":\"indicador de contagem de tarefas\",\"preferred\":\"groupviewmetric--ml-metric-big-number\",\"alternative\":\"groupviewmetric--ml-metric-card\"}]},{\"id\":\"tarefasPorLista\",\"recommendations\":[{\"role\":\"tarefas abertas agrupadas por lista\",\"preferred\":\"groupviewtable--ml-responsive-table\",\"alternative\":\"groupviewtable--ml-responsive-data-table\"},{\"role\":\"progresso da checklist\",\"preferred\":\"groupshowprogress--ml-linear-progress\",\"alternative\":\"groupshowprogress--ml-circular-progress\"}]}]},\"needs\":{\"organisms\":[{\"id\":\"indicadoresTarefas\",\"reads\":[\"Tarefa.details.aberta\",\"Tarefa.details.venceHoje\",\"Tarefa.details.atrasada\",\"Tarefa.details.devolvidaPendente\",\"Tarefa.status\",\"Tarefa.prazo\"],\"edits\":[],\"selects\":\"\",\"submits\":[]},{\"id\":\"tarefasPorLista\",\"reads\":[\"ListaTarefas.nome\",\"ListaTarefas.details.quantidadeTarefasAbertas\",\"Tarefa.titulo\",\"Tarefa.listaId\",\"Tarefa.details.aberta\",\"Tarefa.details.progressoChecklist\",\"ItemChecklist.tarefaId\",\"ItemChecklist.details.concluido\"],\"edits\":[],\"selects\":\"\",\"submits\":[]},{\"id\":\"concluidasSemanaPorPessoa\",\"reads\":[\"Tarefa.responsavelId\",\"Tarefa.status\",\"Tarefa.details.concluidaEm\",\"Participante.details.identification.name\"],\"edits\":[],\"selects\":\"\",\"submits\":[]}]}}}},\"status\":\"completed\",\"stepId\":15,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentD2PagesPage",
+  "step": "pages50-painel_tarefas",
+  "stepId": 13,
+  "taskId": "20261104194800.1001",
+  "request": {
+    "humanPrompt": "{\"page\":{\"pageId\":\"painel_tarefas\",\"label\":\"Painel de tarefas\",\"actors\":[\"gestor\"],\"authorityRefs\":[\"actor:gestor\"],\"ancestors\":[],\"organisms\":[{\"organismId\":\"organism1\",\"sourceIndex\":0,\"kind\":\"summary\",\"text\":\"Visão da organização: quantas tarefas estão abertas, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e ainda não foram retomadas.\"},{\"organismId\":\"organism2\",\"sourceIndex\":1,\"kind\":\"highlights\",\"text\":\"Tarefas abertas por lista e progresso das checklists das tarefas em andamento.\"},{\"organismId\":\"organism3\",\"sourceIndex\":2,\"kind\":\"list\",\"text\":\"Quantas tarefas cada pessoa concluiu nesta semana.\"}],\"reads\":[{\"entity\":\"ItemChecklist\",\"family\":\"tdm\",\"scope\":\"organization\",\"derived\":[\"details.concluidoEm\"],\"from\":[\"grant:gestorTodasTarefas\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:ItemChecklist/itemChecklistTarefa\",\"relationship:Tarefa/itemChecklistTarefa\"]},{\"entity\":\"ListaTarefas\",\"family\":\"tdm\",\"scope\":\"organization\",\"derived\":[\"details.quantidadeTarefasAbertas\"],\"from\":[\"grant:gestorListas\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:ListaTarefas/tarefaLista\",\"relationship:Tarefa/tarefaLista\"]},{\"entity\":\"Participante\",\"family\":\"mdm\",\"scope\":\"organization\",\"derived\":[\"details.tarefas.aceitaTarefasEfetivo\",\"details.tarefas.podeCriarTarefasEfetivo\"],\"from\":[\"grant:gestorParticipantes\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:Participante/tarefaCriador\",\"relationship:Participante/tarefaResponsavel\",\"relationship:Tarefa/tarefaResponsavel\"]},{\"entity\":\"Tarefa\",\"family\":\"tdm\",\"scope\":\"organization\",\"derived\":[\"criadaEm\",\"details.aberta\",\"details.atrasada\",\"details.devolvidaPendente\",\"details.progressoChecklist\",\"details.quantidadeSubtarefas\",\"details.quemAgeAgora\",\"details.venceHoje\"],\"from\":[\"grant:gestorTodasTarefas\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:ItemChecklist/itemChecklistTarefa\",\"relationship:ListaTarefas/tarefaLista\",\"relationship:Participante/tarefaCriador\",\"relationship:Participante/tarefaResponsavel\",\"relationship:Tarefa/itemChecklistTarefa\",\"relationship:Tarefa/tarefaLista\",\"relationship:Tarefa/tarefaResponsavel\"]}],\"writes\":[],\"writeKeys\":[],\"journeys\":{\"acompanharTarefas\":{\"schemaVersion\":\"2026-09-10-ns5-journey-v1\",\"journeyId\":\"acompanharTarefas\",\"business\":{\"actorRef\":\"gestor\",\"title\":\"Acompanhar todas as tarefas\",\"goal\":\"Acompanhar todas as tarefas por lista, responsável, prioridade, prazo e situação, em lista e em quadro, e quantas tarefas cada pessoa concluiu na semana.\",\"entry\":{\"mode\":\"coldStart\"},\"steps\":[{\"stepId\":\"filtrarTarefas\",\"kind\":\"locate\",\"entity\":\"Tarefa\",\"title\":\"Filtrar tarefas\",\"description\":\"O gestor filtra todas as tarefas por lista, responsável, prioridade, prazo e situação, com lista vazia e erro mostrados separadamente.\"},{\"stepId\":\"verQuadro\",\"kind\":\"inspect\",\"entity\":\"Tarefa\",\"title\":\"Ver quadro por situação\",\"description\":\"O gestor alterna entre a visão em lista e o quadro com colunas por situação.\"},{\"stepId\":\"abrirTarefaGestor\",\"kind\":\"inspect\",\"entity\":\"Tarefa\",\"title\":\"Abrir tarefa\",\"description\":\"O gestor abre uma tarefa para ver detalhes, checklist e conversa.\"},{\"stepId\":\"verConcluidasSemanaPorPessoa\",\"kind\":\"inspect\",\"entity\":\"Tarefa\",\"title\":\"Ver concluídas na semana por pessoa\",\"description\":\"O gestor vê, para cada pessoa responsável, quantas tarefas ela concluiu na semana, contadas por details.concluidaEm dentro da semana e agrupadas por responsavelId, com lista vazia e erro mostrados separadamente.\"}],\"outcome\":{\"statement\":\"O gestor tem visão de todas as tarefas da equipe.\",\"evidence\":[\"O quadro mostra as tarefas nas colunas a fazer, em andamento, em revisão, concluída e cancelada\",\"Os filtros aplicados restringem a lista e o quadro\",\"A visão semanal mostra, para cada responsável, a quantidade de tarefas com details.concluidaEm na semana\"]}},\"businessHash\":\"sha256:b2139d456f412d315d7bf7ba425b5c9722cf3b5170562489b2d0827eb1176ff1\"}},\"userLanguage\":\"pt-BR\"},\"menu\":{\"schemaVersion\":\"2026-09-20-p2-menu-v2.2\",\"moduleName\":\"tarefas\",\"userLanguage\":\"pt-BR\",\"device\":\"web\",\"tree\":[{\"id\":\"inicio\",\"kind\":\"page\",\"label\":\"Início\",\"organisms\":[{\"kind\":\"highlights\",\"text\":\"Quantas das minhas tarefas abertas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e esperam que eu retome.\"},{\"kind\":\"alerts\",\"text\":\"Resumo das 8h: minhas tarefas abertas que vencem hoje ou estão atrasadas, para abrir cada uma direto.\"},{\"kind\":\"inbox\",\"text\":\"O que depende de mim agora: tarefas para iniciar ou executar, tarefas que criei aguardando minha revisão e tarefas devolvidas para retomar.\"},{\"kind\":\"actions\",\"text\":\"Criar uma nova tarefa.\"}],\"icon\":\"house\",\"action\":\"new\"},{\"id\":\"minhas_tarefas\",\"kind\":\"page\",\"label\":\"Minhas tarefas\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Tarefas de que sou responsável e as que criei, com situação, prazo, prioridade, lista, quem age agora e progresso da checklist, destacando o que vence hoje e o que está atrasado; lista vazia e erro aparecem separados.\"},{\"kind\":\"detail\",\"text\":\"Abrir uma tarefa e ver título, descrição, prioridade, prazo, lista, responsável, quem criou, subtarefas, etiquetas, checklist e o motivo quando foi devolvida.\"},{\"kind\":\"form\",\"text\":\"Criar uma tarefa ou ajustar os campos dela sem mudar a situação: escolher a lista, o responsável pelo nome numa lista com busca e montar a checklist.\"},{\"kind\":\"timeline\",\"text\":\"Histórico da tarefa: criação, mudanças de situação, reatribuições e quem foi avisado em cada momento.\"},{\"kind\":\"actions\",\"text\":\"Iniciar, marcar itens da checklist, enviar para revisão, aceitar ou devolver com motivo, retomar e reenviar; nas tarefas que criei, trocar o responsável ou cancelar.\"}],\"icon\":\"list-checks\",\"action\":\"new\"},{\"id\":\"painel_tarefas\",\"kind\":\"page\",\"label\":\"Painel de tarefas\",\"organisms\":[{\"kind\":\"summary\",\"text\":\"Visão da organização: quantas tarefas estão abertas, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e ainda não foram retomadas.\"},{\"kind\":\"highlights\",\"text\":\"Tarefas abertas por lista e progresso das checklists das tarefas em andamento.\"},{\"kind\":\"list\",\"text\":\"Quantas tarefas cada pessoa concluiu nesta semana.\"}],\"icon\":\"layout-dashboard\",\"action\":\"new\"},{\"id\":\"tarefas_equipe\",\"kind\":\"page\",\"label\":\"Todas as tarefas\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Todas as tarefas da equipe, filtrando por lista, responsável, prioridade, prazo e situação, alternando entre lista e quadro por situação; lista vazia e erro aparecem separados.\"},{\"kind\":\"detail\",\"text\":\"Abrir uma tarefa para conferir responsável, quem age agora, prazo, subtarefas e checklist.\"},{\"kind\":\"timeline\",\"text\":\"Histórico do que aconteceu com a tarefa: criação, mudanças de situação, reatribuições e avisos enviados.\"},{\"kind\":\"actions\",\"text\":\"Trocar o responsável ou cancelar a tarefa.\"}],\"icon\":\"kanban\",\"action\":\"new\"},{\"id\":\"participantes\",\"kind\":\"page\",\"label\":\"Participantes\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Quem participa do módulo de tarefas, com a indicação efetiva de quem aceita tarefas e quem pode criar tarefas.\"},{\"kind\":\"form\",\"text\":\"Incluir um usuário da organização como participante e marcar se aceita tarefas e se pode criar tarefas, sem cadastrar ninguém nem pedir dado pessoal.\"}],\"icon\":\"users\",\"action\":\"new\"},{\"id\":\"listas_tarefas\",\"kind\":\"page\",\"label\":\"Listas de tarefas\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Todas as listas que agrupam tarefas por projeto ou área, com a quantidade de tarefas abertas em cada uma.\"},{\"kind\":\"form\",\"text\":\"Criar uma lista nova ou ajustar nome e descrição de uma existente.\"}],\"icon\":\"folder-kanban\",\"action\":\"new\"}],\"authorities\":{\"actor:membroEquipe\":[\"inicio\",\"minhas_tarefas\"],\"actor:gestor\":[\"painel_tarefas\",\"tarefas_equipe\",\"participantes\",\"listas_tarefas\"]},\"meta\":{\"journeys\":{\"configurarParticipantes\":[\"participantes\"],\"manterListas\":[\"listas_tarefas\"],\"criarTarefa\":[\"minhas_tarefas\",\"inicio\"],\"executarTarefa\":[\"inicio\",\"minhas_tarefas\"],\"revisarTarefa\":[\"inicio\",\"minhas_tarefas\"],\"retomarTarefa\":[\"inicio\",\"minhas_tarefas\"],\"editarTarefa\":[\"minhas_tarefas\"],\"reatribuirTarefa\":[\"tarefas_equipe\"],\"reatribuirTarefaCriada\":[\"minhas_tarefas\"],\"cancelarTarefa\":[\"tarefas_equipe\"],\"cancelarTarefaCriada\":[\"minhas_tarefas\"],\"minhasTarefas\":[\"minhas_tarefas\"],\"resumoDiario\":[\"inicio\"],\"acompanharTarefas\":[\"tarefas_equipe\",\"painel_tarefas\"]},\"processes\":{\"processoTarefa\":[\"inicio\",\"minhas_tarefas\",\"tarefas_equipe\"],\"resumoDiarioTarefas\":[\"inicio\"]},\"records\":{},\"placements\":[{\"journeyId\":\"configurarParticipantes\",\"actorRef\":\"gestor\",\"placement\":\"listWithAdd\",\"pageId\":\"participantes\",\"reason\":\"O gestor administra a lista de participantes e inclui novos pelo \\\"+\\\".\"},{\"journeyId\":\"manterListas\",\"actorRef\":\"gestor\",\"placement\":\"listWithAdd\",\"pageId\":\"listas_tarefas\",\"reason\":\"As listas de tarefas são um cadastro que o gestor mantém, com o \\\"+\\\" para criar.\"},{\"journeyId\":\"criarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"menuItem\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Criar tarefa começa algo novo, para outra pessoa executar, e fica à mão como item próprio.\"},{\"journeyId\":\"executarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Iniciar, marcar a checklist e enviar para revisão age sobre a tarefa aberta na tela.\"},{\"journeyId\":\"revisarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Aceitar ou devolver age sobre a tarefa criada que está em revisão e já aparece na tela.\"},{\"journeyId\":\"retomarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Retomar age sobre a tarefa devolvida que o membro já vê com o motivo.\"},{\"journeyId\":\"editarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Ajustar campos acontece na tarefa aberta, sem mudar a situação.\"},{\"journeyId\":\"reatribuirTarefaCriada\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Trocar o responsável age sobre uma tarefa criada que já está na tela.\"},{\"journeyId\":\"cancelarTarefaCriada\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Cancelar age sobre uma tarefa criada que já está na tela.\"},{\"journeyId\":\"minhasTarefas\",\"actorRef\":\"membroEquipe\",\"placement\":\"menuItem\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Ver as próprias tarefas é a visão principal de trabalho do membro.\"},{\"journeyId\":\"resumoDiario\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"inicio\",\"reason\":\"O resumo das 8h aparece no início e abre cada tarefa a partir dele.\"},{\"journeyId\":\"reatribuirTarefa\",\"actorRef\":\"gestor\",\"placement\":\"screenAction\",\"pageId\":\"tarefas_equipe\",\"reason\":\"O gestor troca o responsável na tarefa aberta em Todas as tarefas.\"},{\"journeyId\":\"cancelarTarefa\",\"actorRef\":\"gestor\",\"placement\":\"screenAction\",\"pageId\":\"tarefas_equipe\",\"reason\":\"O gestor cancela a tarefa aberta em Todas as tarefas.\"},{\"journeyId\":\"acompanharTarefas\",\"actorRef\":\"gestor\",\"placement\":\"menuItem\",\"pageId\":\"tarefas_equipe\",\"reason\":\"Acompanhar todas as tarefas é a visão de trabalho do gestor, com lista e quadro por situação.\"}],\"removed\":[]}},\"needs\":{\"pages\":[{\"pageId\":\"inicio\",\"writes\":[{\"entity\":\"ItemChecklist\",\"operation\":\"create\",\"transitionRef\":\"\",\"from\":[\"journey:criarTarefa/adicionarChecklist\"]},{\"entity\":\"ItemChecklist\",\"operation\":\"update\",\"transitionRef\":\"\",\"from\":[\"journey:executarTarefa/marcarItem\"]},{\"entity\":\"Tarefa\",\"operation\":\"create\",\"transitionRef\":\"\",\"from\":[\"journey:criarTarefa/preencherTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"aceitar\",\"from\":[\"journey:revisarTarefa/aceitarTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"cancelar\",\"from\":[\"journey:revisarTarefa/decidirRevisao\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"devolver\",\"from\":[\"journey:revisarTarefa/devolverTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"enviarParaRevisao\",\"from\":[\"journey:executarTarefa/enviarRevisao\",\"journey:retomarTarefa/reenviarRevisao\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"iniciar\",\"from\":[\"journey:executarTarefa/iniciarTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"retomar\",\"from\":[\"journey:retomarTarefa/retomar\"]}]},{\"pageId\":\"minhas_tarefas\",\"writes\":[{\"entity\":\"ItemChecklist\",\"operation\":\"create\",\"transitionRef\":\"\",\"from\":[\"journey:criarTarefa/adicionarChecklist\"]},{\"entity\":\"ItemChecklist\",\"operation\":\"update\",\"transitionRef\":\"\",\"from\":[\"journey:editarTarefa/ajustarChecklist\",\"journey:executarTarefa/marcarItem\"]},{\"entity\":\"Tarefa\",\"operation\":\"create\",\"transitionRef\":\"\",\"from\":[\"journey:criarTarefa/preencherTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"aceitar\",\"from\":[\"journey:revisarTarefa/aceitarTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"cancelar\",\"from\":[\"journey:cancelarTarefaCriada/cancelarCriada\",\"journey:revisarTarefa/decidirRevisao\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"devolver\",\"from\":[\"journey:revisarTarefa/devolverTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"enviarParaRevisao\",\"from\":[\"journey:executarTarefa/enviarRevisao\",\"journey:retomarTarefa/reenviarRevisao\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"iniciar\",\"from\":[\"journey:executarTarefa/iniciarTarefa\"]},{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"retomar\",\"from\":[\"journey:retomarTarefa/retomar\"]},{\"entity\":\"Tarefa\",\"operation\":\"update\",\"transitionRef\":\"\",\"from\":[\"journey:editarTarefa/alterarCampos\",\"journey:reatribuirTarefaCriada/trocarResponsavelCriada\"]}]},{\"pageId\":\"painel_tarefas\",\"actors\":[\"gestor\"],\"reads\":[{\"entity\":\"ItemChecklist\",\"family\":\"tdm\",\"scope\":\"organization\",\"derived\":[\"details.concluidoEm\"],\"from\":[\"grant:gestorTodasTarefas\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:ItemChecklist/itemChecklistTarefa\",\"relationship:Tarefa/itemChecklistTarefa\"]},{\"entity\":\"ListaTarefas\",\"family\":\"tdm\",\"scope\":\"organization\",\"derived\":[\"details.quantidadeTarefasAbertas\"],\"from\":[\"grant:gestorListas\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:ListaTarefas/tarefaLista\",\"relationship:Tarefa/tarefaLista\"]},{\"entity\":\"Participante\",\"family\":\"mdm\",\"scope\":\"organization\",\"derived\":[\"details.tarefas.aceitaTarefasEfetivo\",\"details.tarefas.podeCriarTarefasEfetivo\"],\"from\":[\"grant:gestorParticipantes\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:Participante/tarefaCriador\",\"relationship:Participante/tarefaResponsavel\",\"relationship:Tarefa/tarefaResponsavel\"]},{\"entity\":\"Tarefa\",\"family\":\"tdm\",\"scope\":\"organization\",\"derived\":[\"criadaEm\",\"details.aberta\",\"details.atrasada\",\"details.devolvidaPendente\",\"details.progressoChecklist\",\"details.quantidadeSubtarefas\",\"details.quemAgeAgora\",\"details.venceHoje\"],\"from\":[\"grant:gestorTodasTarefas\",\"journey:acompanharTarefas/abrirTarefaGestor\",\"journey:acompanharTarefas/filtrarTarefas\",\"journey:acompanharTarefas/verConcluidasSemanaPorPessoa\",\"journey:acompanharTarefas/verQuadro\",\"relationship:ItemChecklist/itemChecklistTarefa\",\"relationship:ListaTarefas/tarefaLista\",\"relationship:Participante/tarefaCriador\",\"relationship:Participante/tarefaResponsavel\",\"relationship:Tarefa/itemChecklistTarefa\",\"relationship:Tarefa/tarefaLista\",\"relationship:Tarefa/tarefaResponsavel\"]}],\"writes\":[]},{\"pageId\":\"tarefas_equipe\",\"writes\":[{\"entity\":\"Tarefa\",\"operation\":\"transition\",\"transitionRef\":\"cancelar\",\"from\":[\"journey:cancelarTarefa/cancelar\"]},{\"entity\":\"Tarefa\",\"operation\":\"update\",\"transitionRef\":\"\",\"from\":[\"journey:reatribuirTarefa/trocarResponsavel\"]}]},{\"pageId\":\"participantes\",\"writes\":[{\"entity\":\"Participante\",\"operation\":\"create\",\"transitionRef\":\"\",\"from\":[\"journey:configurarParticipantes/incluirParticipante\"]},{\"entity\":\"Participante\",\"operation\":\"update\",\"transitionRef\":\"\",\"from\":[\"journey:configurarParticipantes/marcarPermissoes\"]}]},{\"pageId\":\"listas_tarefas\",\"writes\":[{\"entity\":\"ListaTarefas\",\"operation\":\"create\",\"transitionRef\":\"\",\"from\":[\"journey:manterListas/criarLista\"]},{\"entity\":\"ListaTarefas\",\"operation\":\"update\",\"transitionRef\":\"\",\"from\":[\"journey:manterListas/editarLista\"]}]}]},\"ontology\":{\"ItemChecklist\":{\"title\":\"Item da checklist\",\"description\":\"Item marcável da checklist de uma tarefa, adicionado por quem cria ou edita e marcado pelo responsável.\",\"displayField\":\"details.descricao\",\"fields\":[{\"path\":\"ItemChecklist.id\",\"type\":\"uuid\",\"required\":true,\"derived\":true,\"title\":\"Id\"},{\"path\":\"ItemChecklist.version\",\"type\":\"integer\",\"required\":true,\"derived\":true},{\"path\":\"ItemChecklist.tarefaId\",\"type\":\"record\",\"required\":true,\"title\":\"Tarefa\",\"description\":\"Tarefa a que este item da checklist pertence.\"},{\"path\":\"ItemChecklist.ordem\",\"type\":\"integer\",\"required\":true,\"title\":\"Ordem\",\"description\":\"Posição do item na checklist da tarefa; a checklist é mostrada nessa ordem.\"},{\"path\":\"ItemChecklist.details.descricao\",\"type\":\"string\",\"required\":true,\"title\":\"Descrição\",\"description\":\"Texto do item marcável, como aparece na checklist da tarefa.\"},{\"path\":\"ItemChecklist.details.concluido\",\"type\":\"boolean\",\"required\":true,\"title\":\"Concluído\",\"description\":\"Marcado quando o item foi feito; o responsável ou quem vê a tarefa marca e desmarca sem mudar a situação da tarefa.\"},{\"path\":\"ItemChecklist.details.concluidoEm\",\"type\":\"timestamp\",\"derived\":true,\"title\":\"Concluído em\",\"description\":\"Momento em que o item foi marcado como concluído, preenchido pelo sistema ao marcar e limpo ao desmarcar.\"}],\"transitions\":[],\"relationships\":[{\"to\":\"Tarefa\",\"via\":\"ItemChecklist.tarefaId\",\"cardinality\":\"N:1\",\"required\":true}],\"capabilities\":{\"read.byId\":\"Lê um item da checklist pelo id quando o membro abre ou edita o item na tela da tarefa.\",\"listByForeignKey\":\"Lista os itens de uma tarefa pela coluna tarefaId, em ordem, para mostrar a checklist na tela da tarefa; findManyByValues preenche a contagem de itens nas listas e no quadro.\",\"locate.byColumn\":\"Filtra os itens de uma tarefa por tarefa e ordem, paginado, para o responsável percorrer checklists longas.\",\"count\":\"Conta itens totais e concluídos de uma tarefa para o indicador de progresso da checklist mostrado ao membro e ao gestor.\",\"create\":\"Adiciona um item marcável à checklist quando o membro cria ou edita a tarefa.\",\"update\":\"Altera a descrição ou marca e desmarca o item, pelo responsável ou por quem vê a tarefa, sem mudar a situação da tarefa.\",\"delete\":\"Remove um item da checklist quando o membro que edita a tarefa o retira.\",\"transaction\":\"Grava a tarefa e os itens iniciais da checklist juntos ao criar a tarefa, tudo ou nada.\"},\"rules\":[\"itemChecklistSoQuemVeTarefa\",\"marcarItemNaoMudaSituacao\",\"itemChecklistTarefaNaoEncerrada\"]},\"ListaTarefas\":{\"title\":\"Lista de tarefas\",\"description\":\"Cadastro simples do gestor que agrupa tarefas por projeto ou área.\",\"displayField\":\"nome\",\"fields\":[{\"path\":\"ListaTarefas.id\",\"type\":\"uuid\",\"required\":true,\"derived\":true,\"title\":\"Id\"},{\"path\":\"ListaTarefas.version\",\"type\":\"integer\",\"required\":true,\"derived\":true},{\"path\":\"ListaTarefas.nome\",\"type\":\"string\",\"required\":true,\"title\":\"Nome\",\"description\":\"Nome da lista, pelo qual o gestor e a equipe a reconhecem, buscam e ordenam (projeto ou área).\"},{\"path\":\"ListaTarefas.details.descricao\",\"type\":\"text\",\"title\":\"Descrição\",\"description\":\"Texto livre explicando o projeto ou a área que a lista agrupa.\"},{\"path\":\"ListaTarefas.details.quantidadeTarefasAbertas\",\"type\":\"integer\",\"derived\":true,\"title\":\"Tarefas abertas\",\"description\":\"Quantidade de tarefas desta lista que ainda não foram concluídas nem canceladas.\"}],\"transitions\":[],\"relationships\":[{\"to\":\"Tarefa\",\"via\":\"Tarefa.listaId\",\"cardinality\":\"1:N\",\"required\":true}],\"capabilities\":{\"read.byId\":\"Lê uma lista pelo id quando o gestor abre a lista para editar ou quando a tarefa mostra a lista a que pertence.\",\"locate.byColumn\":\"Lista as listas ordenadas pelo nome, paginadas, na tela de listas do gestor e no seletor de lista da tarefa, com lista vazia e erro mostrados separadamente.\",\"locate.byText\":\"Busca listas pelo texto digitado no nome, na caixa de busca da tela de listas e no seletor de lista da tarefa.\",\"count\":\"Conta as listas cadastradas para o total no cabeçalho da tela de listas do gestor.\",\"create\":\"Grava uma nova lista com o nome informado pelo gestor na jornada de manter listas.\",\"update\":\"Altera o nome ou a descrição de uma lista existente, feito pelo gestor.\",\"uniqueKey\":\"Recusa uma segunda lista com o mesmo nome, garantido pelo índice único no nome ao gravar.\"},\"rules\":[\"nomeListaUnico\",\"somenteGestorMantemListas\"]},\"Participante\":{\"title\":\"Participante\",\"description\":\"Usuário da organização escolhido pelo gestor na lista de usuários da plataforma para participar do módulo. O módulo não cadastra nem pede dado pessoal; guarda no seu espaço apenas se aceita tarefas e se pode criar tarefas (sem configuração, aceita e pode criar). É o responsável e quem criou cada tarefa.\",\"displayField\":\"details.identification.name\",\"fields\":[{\"path\":\"Participante.id\",\"type\":\"uuid\",\"required\":true,\"derived\":true,\"description\":\"mdmId; stable through promotion and merge.\"},{\"path\":\"Participante.version\",\"type\":\"integer\",\"required\":true,\"derived\":true,\"description\":\"Bumped by the engine on every write; optimistic concurrency.\"},{\"path\":\"Participante.details.identification.subtype\",\"type\":\"enum\",\"required\":true,\"derived\":true,\"values\":[\"Person\"],\"title\":\"Subtipo\",\"description\":\"Sempre pessoa: o participante é um usuário da organização.\"},{\"path\":\"Participante.details.identification.name\",\"type\":\"string\",\"required\":true,\"title\":\"Nome\",\"description\":\"Nome do usuário, usado para escolher o responsável na lista com busca, como se menciona alguém numa conversa. Lido da plataforma, nunca digitado no módulo.\"},{\"path\":\"Participante.details.identification.status\",\"type\":\"enum\",\"required\":true,\"derived\":true,\"values\":[\"Active\",\"Inactive\",\"Merged\",\"Blocked\"],\"title\":\"Situação no MDM\",\"description\":\"Situação do registro na plataforma; só usuários ativos aparecem para escolha.\"},{\"path\":\"Participante.details.identification.tags\",\"type\":\"string\",\"required\":true,\"derived\":true,\"title\":\"Papéis\",\"description\":\"Papéis do registro nos módulos; tarefas.Participante indica que o usuário participa do módulo de tarefas.\"},{\"path\":\"Participante.details.general\",\"type\":\"object\",\"description\":\"Campos promovidos pela organização; o módulo apenas lê.\"},{\"path\":\"Participante.details.tarefas.aceitaTarefas\",\"type\":\"boolean\",\"title\":\"Aceita tarefas\",\"description\":\"Marca do gestor dizendo se o participante pode ser escolhido como responsável. Vazio enquanto não configurado (vale como sim); uma vez marcada, nunca é sobrescrita automaticamente.\"},{\"path\":\"Participante.details.tarefas.podeCriarTarefas\",\"type\":\"boolean\",\"title\":\"Pode criar tarefas\",\"description\":\"Marca do gestor dizendo se o participante pode criar tarefas. Vazio enquanto não configurado (vale como sim); uma vez marcada, nunca é sobrescrita automaticamente.\"},{\"path\":\"Participante.details.tarefas.aceitaTarefasEfetivo\",\"type\":\"boolean\",\"derived\":true,\"title\":\"Aceita tarefas (efetivo)\",\"description\":\"A marca de aceitar tarefas feita pelo gestor; quando o gestor ainda não configurou o participante, vale sim.\"},{\"path\":\"Participante.details.tarefas.podeCriarTarefasEfetivo\",\"type\":\"boolean\",\"derived\":true,\"title\":\"Pode criar tarefas (efetivo)\",\"description\":\"A marca de poder criar tarefas feita pelo gestor; quando o gestor ainda não configurou o participante, vale sim.\"}],\"transitions\":[],\"relationships\":[{\"to\":\"Tarefa\",\"via\":\"Tarefa.responsavelId\",\"cardinality\":\"1:N\",\"required\":true},{\"to\":\"Tarefa\",\"via\":\"Tarefa.criadorId\",\"cardinality\":\"1:N\",\"required\":true}],\"capabilities\":{\"register.createOrAttach\":\"Só anexa o papel tarefas.Participante a um usuário da organização que já existe, escolhido em locate.users pelo id; nunca cria pessoa nem pede dado pessoal (participanteSemCadastroPessoal).\",\"locate.users\":\"O gestor escolhe, na lista de usuários da organização com busca pelo nome, quem passa a participar do módulo, sem cadastrar ninguém nem pedir dado pessoal; a mesma lista, filtrada pelo papel tarefas.Participante, alimenta a escolha do responsável.\",\"locate.byName\":\"Quem cria ou reatribui uma tarefa busca o responsável pelo nome entre os participantes, nunca pelo e-mail.\",\"read.byId\":\"Telas de tarefas, lista e quadro preenchem o nome do responsável e de quem criou a partir do id do participante.\",\"locate.byTag\":\"O módulo lista todos os participantes pelo papel tarefas.Participante para a tela de configuração do gestor e para os filtros por responsável.\",\"edit.moduleNamespace\":\"O gestor inclui o usuário como participante (marcando o papel no seu registro) e marca se aceita tarefas e se pode criar tarefas, escrevendo só o espaço do módulo de tarefas.\",\"inactivate\":\"O gestor tira um participante de uso sem apagá-lo, mantendo o histórico das tarefas, e pode reativá-lo depois.\",\"listLinks\":\"A tela do participante mostra as tarefas de que é responsável e as que criou.\",\"audit\":\"Registra quem mudou as marcas de aceitar e criar tarefas e quando, lido no módulo de auditoria da plataforma.\",\"tarefas.filtrarAceitaTarefas\":\"Ao escolher o responsável, mostra só participantes ativos que aceitam tarefas (marcados ou ainda não configurados); usado por quem cria ou reatribui.\",\"tarefas.verificarPodeCriar\":\"Antes de abrir o formulário de nova tarefa, verifica se a pessoa da sessão pode criar tarefas (marcada ou ainda não configurada); usado pelo membro da equipe.\"},\"rules\":[\"rule-foreign-namespace-refused\",\"rule-identity-never-in-namespace\",\"rule-document-shape-validated\",\"participanteNaoConfiguradoAceitaECria\",\"escolhaGestorNuncaSobrescrita\",\"gestorPorAcessoPlataforma\",\"responsavelAceitaTarefas\",\"criarTarefaExigePodeCriar\",\"participanteSemCadastroPessoal\"]},\"Tarefa\":{\"title\":\"Tarefa\",\"description\":\"Tarefa com título, descrição, prioridade, prazo, lista, responsável, quem criou, tarefa pai opcional e etiquetas; percorre as situações a fazer, em andamento, em revisão, concluída e cancelada, como ocorrência do processo de tarefa da plataforma, com a conversa da própria tarefa.\",\"displayField\":\"titulo\",\"fields\":[{\"path\":\"Tarefa.id\",\"type\":\"uuid\",\"required\":true,\"derived\":true,\"title\":\"Id\"},{\"path\":\"Tarefa.version\",\"type\":\"integer\",\"required\":true,\"derived\":true},{\"path\":\"Tarefa.titulo\",\"type\":\"string\",\"required\":true,\"title\":\"Título\",\"description\":\"Título curto da tarefa, mostrado nas listas, no quadro e nos avisos; usado na busca por texto.\"},{\"path\":\"Tarefa.status\",\"type\":\"enum\",\"required\":true,\"values\":[\"aFazer\",\"emAndamento\",\"emRevisao\",\"concluida\",\"cancelada\"],\"title\":\"Situação\",\"description\":\"Situação atual da tarefa no seu ciclo; muda só pelas ações de iniciar, enviar para revisão, aceitar, devolver, retomar e cancelar, nunca pela edição dos campos.\"},{\"path\":\"Tarefa.prioridade\",\"type\":\"enum\",\"required\":true,\"values\":[\"baixa\",\"media\",\"alta\"],\"title\":\"Prioridade\",\"description\":\"Prioridade da tarefa, usada para filtrar e ordenar as listas e o quadro do gestor.\"},{\"path\":\"Tarefa.prazo\",\"type\":\"date\",\"title\":\"Prazo\",\"description\":\"Data até a qual a tarefa deve ser concluída; usada no filtro do gestor e no resumo diário das 8h (vence hoje ou atrasada).\"},{\"path\":\"Tarefa.listaId\",\"type\":\"record\",\"required\":true,\"title\":\"Lista\",\"description\":\"Lista (projeto ou área) à qual a tarefa pertence.\"},{\"path\":\"Tarefa.responsavelId\",\"type\":\"record\",\"required\":true,\"title\":\"Responsável\",\"description\":\"Participante que executa a tarefa, escolhido pelo nome numa lista com busca entre quem aceita tarefas; nunca pelo e-mail.\"},{\"path\":\"Tarefa.criadorId\",\"type\":\"record\",\"required\":true,\"title\":\"Quem criou\",\"description\":\"Participante que criou a tarefa; revisa, aceita, devolve, reatribui ou cancela. Preenchido com a pessoa da sessão na criação.\"},{\"path\":\"Tarefa.tarefaPaiId\",\"type\":\"record\",\"title\":\"Tarefa pai\",\"description\":\"Quando preenchida, esta tarefa é uma subtarefa da tarefa indicada.\"},{\"path\":\"Tarefa.criadaEm\",\"type\":\"timestamp\",\"required\":true,\"derived\":true,\"title\":\"Criada em\",\"description\":\"Momento em que a tarefa foi registrada, preenchido pelo sistema; usado para ordenar as listas.\"},{\"path\":\"Tarefa.details.descricao\",\"type\":\"text\",\"title\":\"Descrição\",\"description\":\"Descrição livre do que deve ser feito.\"},{\"path\":\"Tarefa.details.etiquetas\",\"type\":\"string\",\"title\":\"Etiquetas\",\"description\":\"Etiquetas livres que ajudam a identificar a tarefa.\"},{\"path\":\"Tarefa.details.motivoDevolucao\",\"type\":\"text\",\"title\":\"Motivo da devolução\",\"description\":\"Motivo informado por quem criou ao devolver a tarefa para o responsável; lido pelo responsável ao retomar.\"},{\"path\":\"Tarefa.details.devolvidaEm\",\"type\":\"timestamp\",\"title\":\"Devolvida em\",\"description\":\"Momento da última devolução, preenchido pelo sistema ao devolver.\"},{\"path\":\"Tarefa.details.retomadaEm\",\"type\":\"timestamp\",\"title\":\"Retomada em\",\"description\":\"Momento em que o responsável retomou a tarefa devolvida, preenchido pelo sistema.\"},{\"path\":\"Tarefa.details.concluidaEm\",\"type\":\"timestamp\",\"title\":\"Concluída em\",\"description\":\"Momento em que quem criou aceitou a entrega.\"},{\"path\":\"Tarefa.details.canceladaEm\",\"type\":\"timestamp\",\"title\":\"Cancelada em\",\"description\":\"Momento do cancelamento da tarefa.\"},{\"path\":\"Tarefa.details.quemAgeAgora\",\"type\":\"record\",\"derived\":true,\"title\":\"Quem age agora\",\"description\":\"Pessoa de quem a tarefa depende agora: o responsável quando está a fazer ou em andamento, quem criou quando está em revisão, e ninguém quando está concluída ou cancelada; reatribuir troca o responsável e, com ele, quem age agora.\"},{\"path\":\"Tarefa.details.aberta\",\"type\":\"boolean\",\"derived\":true,\"title\":\"Aberta\",\"description\":\"Verdadeiro quando a tarefa não está concluída nem cancelada.\"},{\"path\":\"Tarefa.details.venceHoje\",\"type\":\"boolean\",\"derived\":true,\"title\":\"Vence hoje\",\"description\":\"Tarefa aberta cujo prazo é a data de hoje.\"},{\"path\":\"Tarefa.details.atrasada\",\"type\":\"boolean\",\"derived\":true,\"title\":\"Atrasada\",\"description\":\"Tarefa aberta com prazo anterior a hoje.\"},{\"path\":\"Tarefa.details.devolvidaPendente\",\"type\":\"boolean\",\"derived\":true,\"title\":\"Devolvida aguardando retomada\",\"description\":\"Tarefa em andamento que foi devolvida por quem criou e que o responsável ainda não retomou depois da devolução.\"},{\"path\":\"Tarefa.details.quantidadeSubtarefas\",\"type\":\"integer\",\"derived\":true,\"title\":\"Subtarefas\",\"description\":\"Quantidade de tarefas que apontam esta como tarefa pai.\"},{\"path\":\"Tarefa.details.progressoChecklist\",\"type\":\"string\",\"derived\":true,\"title\":\"Progresso da checklist\",\"description\":\"Itens marcados sobre o total de itens da checklist desta tarefa, por exemplo 3 de 5.\"}],\"transitions\":[{\"transitionId\":\"iniciar\",\"from\":[\"aFazer\"],\"to\":\"emAndamento\",\"by\":[\"membroEquipe\"],\"payload\":[],\"ruleRefs\":[\"apenasResponsavelExecuta\"],\"description\":\"O responsável inicia a tarefa; ele continua sendo quem age agora.\"},{\"transitionId\":\"enviarParaRevisao\",\"from\":[\"emAndamento\"],\"to\":\"emRevisao\",\"by\":[\"membroEquipe\"],\"payload\":[],\"ruleRefs\":[\"apenasResponsavelExecuta\",\"avisarQuemAgeAgora\"],\"description\":\"O responsável envia a tarefa para revisão; quem criou passa a agir agora e é avisado.\"},{\"transitionId\":\"aceitar\",\"from\":[\"emRevisao\"],\"to\":\"concluida\",\"by\":[\"membroEquipe\"],\"payload\":[],\"ruleRefs\":[\"apenasCriadorRevisa\"],\"description\":\"Quem criou aceita a entrega e a tarefa fica concluída.\"},{\"transitionId\":\"devolver\",\"from\":[\"emRevisao\"],\"to\":\"emAndamento\",\"by\":[\"membroEquipe\"],\"payload\":[\"details.motivoDevolucao\"],\"ruleRefs\":[\"apenasCriadorRevisa\",\"devolucaoExigeMotivo\",\"avisarQuemAgeAgora\"],\"description\":\"Quem criou devolve a tarefa com o motivo; ela volta a em andamento e o responsável é avisado.\"},{\"transitionId\":\"retomar\",\"from\":[\"emAndamento\"],\"to\":\"emAndamento\",\"by\":[\"membroEquipe\"],\"payload\":[],\"ruleRefs\":[\"apenasResponsavelExecuta\",\"retomarSoAposDevolucao\"],\"description\":\"O responsável, depois de ler o motivo, retoma a tarefa devolvida para continuar o trabalho; a situação permanece em andamento.\"},{\"transitionId\":\"cancelar\",\"from\":[\"aFazer\",\"emAndamento\",\"emRevisao\"],\"to\":\"cancelada\",\"by\":[\"gestor\",\"membroEquipe\"],\"payload\":[],\"ruleRefs\":[\"cancelarApenasCriadorOuGestor\",\"avisarQuemAgeAgora\"],\"description\":\"Quem criou ou o gestor cancela a tarefa; quem estava agindo é avisado.\"}],\"relationships\":[{\"to\":\"ListaTarefas\",\"via\":\"Tarefa.listaId\",\"cardinality\":\"N:1\",\"required\":true},{\"to\":\"Participante\",\"via\":\"Tarefa.responsavelId\",\"cardinality\":\"N:1\",\"required\":true},{\"to\":\"Participante\",\"via\":\"Tarefa.criadorId\",\"cardinality\":\"N:1\",\"required\":true},{\"to\":\"Tarefa\",\"via\":\"Tarefa.tarefaPaiId\",\"cardinality\":\"N:1\",\"required\":true},{\"to\":\"ItemChecklist\",\"via\":\"ItemChecklist.tarefaId\",\"cardinality\":\"1:N\",\"required\":true}],\"capabilities\":{\"read.byId\":\"Abre a tarefa pelo id, a partir de um aviso, do quadro ou de uma lista; usado pelo membro e pelo gestor.\",\"locate.byColumn\":\"Lista tarefas filtradas por lista, responsável, quem criou, prioridade, prazo e situação, paginadas; alimenta minhas tarefas do membro e a lista e o quadro por situação do gestor, com lista vazia e erro separados.\",\"locate.byText\":\"Busca tarefas pelo título digitado numa caixa de busca; usado pelo membro e pelo gestor.\",\"count\":\"Conta tarefas por situação para os cabeçalhos das colunas do quadro e os totais de minhas tarefas.\",\"listByForeignKey\":\"Lista as subtarefas de uma tarefa pai e as tarefas de uma lista ou de um responsável, no detalhe da tarefa e nas visões do gestor.\",\"create\":\"Registra a tarefa com título, descrição, prioridade, prazo, lista, tarefa pai, etiquetas e responsável; usado pelo membro que pode criar tarefas.\",\"update\":\"Altera os campos da tarefa sem mudar a situação, e troca o responsável quando quem criou ou o gestor reatribui.\",\"transition\":\"Move a tarefa entre a fazer, em andamento, em revisão, concluída e cancelada, com a regra de quem pode cada passo verificada no módulo; usado pelo responsável, por quem criou e pelo gestor.\",\"transaction\":\"Grava a tarefa e os itens iniciais da checklist juntos, tudo ou nada, na criação.\",\"read.mdmRecord\":\"Lê o nome do responsável e de quem criou no registro mestre da pessoa para mostrar nas listas, no quadro e no detalhe.\",\"tarefas.processoTarefa\":\"Abre a ocorrência do processo de tarefa na plataforma ao criar, avisa o responsável e, a cada mudança de situação ou reatribuição, troca e avisa quem age agora.\",\"tarefas.conversaTarefa\":\"Dá acesso à conversa da própria tarefa na plataforma, com os anexos nas mensagens; o módulo não guarda comentários nem anexos.\",\"tarefas.resumoDiario\":\"Todo dia às 8h envia a cada responsável as suas tarefas abertas que vencem hoje ou estão atrasadas, sem iniciar novo aviso para quem tem um em andamento e sem bloquear os demais.\"},\"rules\":[\"podeCriarTarefasExigido\",\"responsavelAceitaTarefas\",\"escolhaResponsavelPeloNome\",\"apenasResponsavelExecuta\",\"apenasCriadorRevisa\",\"devolucaoExigeMotivo\",\"retomarSoAposDevolucao\",\"cancelarApenasCriadorOuGestor\",\"reatribuirApenasCriadorOuGestor\",\"edicaoNaoMudaSituacao\",\"tarefaPaiDiferenteDaPropria\",\"quemAgeAgoraPorSituacao\",\"avisarQuemAgeAgora\",\"resumoDiarioOitoHoras\",\"avisoNaoSobrepostoPorPessoa\",\"membroVeResponsavelOuCriador\"]}},\"access\":{\"grants\":[{\"grantId\":\"gestorParticipantes\",\"actorRef\":\"gestor\",\"title\":\"Configurar participantes\",\"description\":\"O gestor escolhe, entre os usuários da organização, quem participa do módulo e marca se aceita tarefas e se pode criar tarefas, sem cadastrar ninguém nem ver dado pessoal.\",\"entityRefs\":[\"Participante\"],\"dataScope\":{\"mode\":\"organization\",\"description\":\"Usuários da organização e participantes do módulo.\"},\"disclosure\":{\"mode\":\"fieldsOnly\",\"description\":\"Identificação (nome, situação, papéis) e as marcas do módulo de tarefas; sem dados base nem pessoais.\",\"allowedFields\":[\"Participante.details.identification\",\"Participante.details.tarefas\"],\"deniedFields\":[\"Participante.details.base\",\"Participante.details.person\",\"Participante.details.general\"]}},{\"grantId\":\"gestorListas\",\"actorRef\":\"gestor\",\"title\":\"Manter listas\",\"description\":\"O gestor cria e altera as listas que agrupam tarefas por projeto ou área.\",\"entityRefs\":[\"ListaTarefas\"],\"dataScope\":{\"mode\":\"organization\",\"description\":\"Todas as listas da organização.\"},\"disclosure\":{\"mode\":\"fullRecord\",\"description\":\"Todos os campos da lista.\"}},{\"grantId\":\"gestorTodasTarefas\",\"actorRef\":\"gestor\",\"title\":\"Acompanhar, reatribuir e cancelar tarefas\",\"description\":\"O gestor acompanha todas as tarefas por lista, responsável, prioridade, prazo e situação, em lista e em quadro, reatribui o responsável e cancela tarefas.\",\"entityRefs\":[\"Tarefa\",\"ItemChecklist\"],\"dataScope\":{\"mode\":\"organization\",\"description\":\"Todas as tarefas e itens de checklist da organização.\"},\"disclosure\":{\"mode\":\"fullRecord\",\"description\":\"Todos os campos das tarefas e dos itens de checklist.\"}}]},\"categories\":[{\"categoryId\":\"productCatalog\",\"name\":\"Product Catalog\",\"description\":\"Cadastro e manutenção de produtos, SKUs, serviços ou itens vendáveis.\",\"typicalEntities\":[\"Product\",\"SKU\",\"Service\",\"MenuItem\"]},{\"categoryId\":\"inventoryControl\",\"name\":\"Inventory Control\",\"description\":\"Controle de estoque, saldos, níveis mínimos, alertas e ajustes manuais.\",\"typicalEntities\":[\"StockItem\",\"InventoryItem\",\"Supply\",\"Ingredient\",\"Material\"]},{\"categoryId\":\"customerManagement\",\"name\":\"Customer Management\",\"description\":\"Cadastro e gestão de clientes, contatos, dados comerciais e relacionamento.\",\"typicalEntities\":[\"Customer\",\"Contact\",\"Account\"]},{\"categoryId\":\"supplierManagement\",\"name\":\"Supplier Management\",\"description\":\"Cadastro e controle de fornecedores, dados fiscais, contatos e condições comerciais.\",\"typicalEntities\":[\"Supplier\",\"Vendor\",\"Provider\"]},{\"categoryId\":\"orderManagement\",\"name\":\"Order Management\",\"description\":\"Gestão de pedidos, status, itens, valores, clientes e ações operacionais.\",\"typicalEntities\":[\"Order\",\"SalesOrder\",\"PurchaseOrder\"]},{\"categoryId\":\"posWorkbench\",\"name\":\"POS Workbench\",\"description\":\"Tela operacional rápida para venda, lançamento de itens, carrinho e pagamento.\",\"typicalEntities\":[\"Sale\",\"Cart\",\"Order\",\"Payment\"]},{\"categoryId\":\"operationsQueue\",\"name\":\"Operations Queue\",\"description\":\"Fila operacional para acompanhar itens por status, etapa ou prioridade.\",\"typicalEntities\":[\"Task\",\"Ticket\",\"KitchenOrder\",\"WorkItem\"]},{\"categoryId\":\"approvalWorkflow\",\"name\":\"Approval Workflow\",\"description\":\"Fluxo de aprovação com revisão, decisão, comentários e trilha de auditoria.\",\"typicalEntities\":[\"ApprovalRequest\",\"Expense\",\"PurchaseRequest\",\"Document\"]},{\"categoryId\":\"processWizard\",\"name\":\"Process Wizard\",\"description\":\"Processos guiados em etapas, com validação forte e resumo final.\",\"typicalEntities\":[\"Shift\",\"Onboarding\",\"Closing\",\"Setup\"]},{\"categoryId\":\"financialTransactions\",\"name\":\"Financial Transactions\",\"description\":\"Listagem e controle de lançamentos financeiros, contas, pagamentos e recebimentos.\",\"typicalEntities\":[\"Invoice\",\"Payment\",\"Receivable\",\"Payable\",\"Transaction\"]},{\"categoryId\":\"documentManagement\",\"name\":\"Document Management\",\"description\":\"Gestão de documentos, anexos, versões, status e aprovação.\",\"typicalEntities\":[\"Document\",\"Attachment\",\"Contract\",\"Policy\"]},{\"categoryId\":\"userAccessManagement\",\"name\":\"User Access Management\",\"description\":\"Gestão de usuários, papéis, permissões, status de acesso e segurança.\",\"typicalEntities\":[\"User\",\"Role\",\"Permission\",\"Team\"]},{\"categoryId\":\"settingsConsole\",\"name\":\"Settings Console\",\"description\":\"Configurações administrativas do módulo ou organização.\",\"typicalEntities\":[\"Setting\",\"Rule\",\"Preference\",\"Configuration\"]},{\"categoryId\":\"auditTrail\",\"name\":\"Audit Trail\",\"description\":\"Consulta de eventos, alterações, usuários responsáveis e histórico operacional.\",\"typicalEntities\":[\"AuditEvent\",\"LogEntry\",\"ChangeHistory\"]},{\"categoryId\":\"dashboardCommandCenter\",\"name\":\"Dashboard Command Center\",\"description\":\"Dashboard com KPIs, alertas, tendências e ações recomendadas.\",\"typicalEntities\":[\"Metric\",\"Insight\",\"Alert\",\"Recommendation\"]},{\"categoryId\":\"calendarScheduling\",\"name\":\"Calendar Scheduling\",\"description\":\"Agenda, alocação de horários, reservas, turnos ou compromissos.\",\"typicalEntities\":[\"Appointment\",\"Schedule\",\"Shift\",\"Booking\"]},{\"categoryId\":\"assetManagement\",\"name\":\"Asset Management\",\"description\":\"Gestão de ativos, equipamentos, manutenção, localização e ciclo de vida.\",\"typicalEntities\":[\"Asset\",\"Equipment\",\"Machine\",\"Vehicle\"]},{\"categoryId\":\"caseManagement\",\"name\":\"Case Management\",\"description\":\"Gestão de casos, solicitações, incidentes ou atendimento ao cliente.\",\"typicalEntities\":[\"Case\",\"Ticket\",\"Incident\",\"Request\"]},{\"categoryId\":\"reportExplorer\",\"name\":\"Report Explorer\",\"description\":\"Consulta, filtros, visualização e exportação de relatórios operacionais.\",\"typicalEntities\":[\"Report\",\"Dataset\",\"Export\"]},{\"categoryId\":\"masterDataManagement\",\"name\":\"Master Data Management\",\"description\":\"Cadastro base de dados mestres usados por vários módulos.\",\"typicalEntities\":[\"Category\",\"Unit\",\"TaxCode\",\"Location\",\"CostCenter\"]},{\"categoryId\":\"entityRecordManagement\",\"name\":\"Entity Record Management\",\"description\":\"Criação e edição de um registro de negócio (sem listagem), com transições de ciclo de vida por ações contextuais.\",\"typicalEntities\":[\"Project\",\"Contract\",\"Campaign\",\"Property\"]},{\"categoryId\":\"fieldDataCapture\",\"name\":\"Field Data Capture\",\"description\":\"Captura rápida de apontamentos em campo ou operação, geralmente mobile: horas, consumo, leituras, ocorrências. Formulários curtos, reset após envio.\",\"typicalEntities\":[\"TimeLog\",\"MaterialUsage\",\"MeterReading\",\"Inspection\"]},{\"categoryId\":\"readOnlyDetailPortal\",\"name\":\"Read-Only Detail Portal\",\"description\":\"Visão somente-leitura de um registro único para stakeholder externo ou consulta interna, summary-first, sem nenhuma ação de escrita.\",\"typicalEntities\":[\"BillingSummary\",\"StatusReport\",\"OrderConfirmation\",\"Statement\"]},{\"categoryId\":\"workPlanningBoard\",\"name\":\"Work Planning Board\",\"description\":\"Planejamento e acompanhamento de trabalho: criar tarefas, atribuir responsáveis inline, timeline por prazo e edição em master-detail.\",\"typicalEntities\":[\"WorkTask\",\"Milestone\",\"Sprint\",\"JobOrder\"]},{\"categoryId\":\"aiAssistedAuthoring\",\"name\":\"AI-Assisted Authoring\",\"description\":\"Geração de artefato assistida por IA seguida de revisão humana e publicação/compartilhamento: gerar → revisar → publicar.\",\"typicalEntities\":[\"StatusReport\",\"Summary\",\"Draft\",\"Proposal\"]},{\"categoryId\":\"globalSearchResults\",\"name\":\"Global Search Results\",\"description\":\"Tela de resultados de busca transversal por entidades, com agrupamento por tipo, filtros e ações rápidas sobre o resultado.\",\"typicalEntities\":[\"SearchResult\",\"RecordHit\",\"EntityMatch\"]},{\"categoryId\":\"activityNotificationHub\",\"name\":\"Activity / Notification Hub\",\"description\":\"Central de notificações, menções, atividades recentes e alertas operacionais, com marcação de lido e ações contextuais.\",\"typicalEntities\":[\"Notification\",\"Activity\",\"Mention\",\"Alert\"]},{\"categoryId\":\"hierarchyTreeView\",\"name\":\"Hierarchy / Tree View\",\"description\":\"Visualização e edição de estruturas hierárquicas: BOM, organograma, categorias aninhadas ou localizações.\",\"typicalEntities\":[\"BOM\",\"OrgUnit\",\"Category\",\"Location\",\"AccountHierarchy\"]},{\"categoryId\":\"comparisonView\",\"name\":\"Comparison View\",\"description\":\"Comparação lado a lado de dois ou mais registros para análise de diferenças e decisão.\",\"typicalEntities\":[\"Product\",\"Quote\",\"Version\",\"Contract\",\"Candidate\"]},{\"categoryId\":\"importMappingWizard\",\"name\":\"Import / Mapping Wizard\",\"description\":\"Processo guiado de importação com upload de arquivo, mapeamento de colunas, validação e confirmação final.\",\"typicalEntities\":[\"ImportJob\",\"ColumnMapping\",\"ValidationError\"]},{\"categoryId\":\"kanbanBoardView\",\"name\":\"Kanban / Board View\",\"description\":\"Quadro visual por colunas de status com arrastar-e-soltar, filtros e ações rápidas nos cards. Distinto de workPlanningBoard (timeline/master-detail) e operationsQueue (lista por status): a superfície é o board de colunas.\",\"typicalEntities\":[\"Card\",\"Column\",\"WorkItem\",\"Deal\",\"Ticket\"]},{\"categoryId\":\"analyticalList\",\"name\":\"Analytical List\",\"description\":\"Lista analítica combinando tabela, filtros avançados, KPIs e gráficos no mesmo contexto para análise e ação. Distinto de dashboardCommandCenter (monitorar exceções) e reportExplorer (consulta ad-hoc): aqui KPI, gráfico e tabela acionável operam sobre o mesmo conjunto filtrado.\",\"typicalEntities\":[\"AnalyticalRow\",\"KPI\",\"ChartSeries\",\"FilterSet\"]},{\"categoryId\":\"contentLanding\",\"name\":\"Content Landing\",\"description\":\"Página pública de apresentação ou campanha: conteúdo primeiro (textos e imagens), ação(ões) simples embutidas no final, sem cadastro CRUD. Distinto de processWizard (passo a passo operacional) e entityRecordManagement (manutenção de registros).\",\"typicalEntities\":[\"Campaign\",\"Petition\",\"Landing\",\"Announcement\"]}],\"moleculeResearch\":{\"organisms\":{\"organism1\":[\"groupViewMetric\"],\"organism2\":[\"groupViewTable\",\"groupShowProgress\"]},\"groups\":[{\"groupId\":\"groupViewMetric\",\"purpose\":\"Displays a highlighted indicator or metric. Purely visual — all data via slot tags (Label, Value, Icon, Trend with direction attribute, Helper). No value property, no events. Supports loading state. Implementations include big number, KPI card, sparkline, gauge/speedometer, and trend indicator.\",\"tags\":[\"groupviewmetric--ml-compact-metric-sparkline\",\"groupviewmetric--ml-metric-big-number\",\"groupviewmetric--ml-metric-card\",\"groupviewmetric--ml-metric-gauge\",\"groupviewmetric--ml-metric-trend-compare\"],\"scenarios\":[{\"scenario\":\"Single headline KPI that should dominate the dashboard.\",\"recommended\":[\"groupviewmetric--ml-metric-big-number\",\"groupviewmetric--ml-metric-card\"]},{\"scenario\":\"Metric needs to be read against a target or capacity threshold.\",\"recommended\":[\"groupviewmetric--ml-metric-gauge\"]},{\"scenario\":\"Show a short trend line alongside the main value.\",\"recommended\":[\"groupviewmetric--ml-compact-metric-sparkline\"]},{\"scenario\":\"Communicate comparison vs a previous period or benchmark.\",\"recommended\":[\"groupviewmetric--ml-metric-card\",\"groupviewmetric--ml-metric-trend-compare\"]}]},{\"groupId\":\"groupViewTable\",\"purpose\":\"Displays structured data in tabular format. Data provided via TableHeader, TableBody, TableRow, TableHead, and TableCell slot tags. Supports column sorting, row selection with checkboxes, pagination, and isEditing propagation to web components inside cells. Implementations include data table, simple table, editable grid, virtualized table, and tree table.\",\"tags\":[\"groupviewtable--ml-advanced-data-table\",\"groupviewtable--ml-data-table\",\"groupviewtable--ml-data-table-minimal\",\"groupviewtable--ml-grouping-table\",\"groupviewtable--ml-inline-edit-table\",\"groupviewtable--ml-lazy-record-detail-table\",\"groupviewtable--ml-lcrud-detail-grid\",\"groupviewtable--ml-pivot-table\",\"groupviewtable--ml-record-form-table\",\"groupviewtable--ml-responsive-data-table\",\"groupviewtable--ml-responsive-table\",\"groupviewtable--ml-side-detail-table\",\"groupviewtable--ml-view-table\"],\"scenarios\":[{\"scenario\":\"Precisa de ordenação, seleção e recursos completos\",\"recommended\":[\"groupviewtable--ml-advanced-data-table\",\"groupviewtable--ml-data-table\"]},{\"scenario\":\"Leitura simples e com o mínimo de elementos visuais\",\"recommended\":[\"groupviewtable--ml-data-table\",\"groupviewtable--ml-data-table-minimal\",\"groupviewtable--ml-responsive-table\",\"groupviewtable--ml-view-table\"]},{\"scenario\":\"Seleção de várias linhas para ações em lote\",\"recommended\":[\"groupviewtable--ml-advanced-data-table\",\"groupviewtable--ml-lcrud-detail-grid\"]},{\"scenario\":\"Agrupar registros por uma dimensão\",\"recommended\":[\"groupviewtable--ml-advanced-data-table\",\"groupviewtable--ml-grouping-table\",\"groupviewtable--ml-pivot-table\"]},{\"scenario\":\"Editar valores diretamente na tabela\",\"recommended\":[\"groupviewtable--ml-inline-edit-table\",\"groupviewtable--ml-lcrud-detail-grid\"]},{\"scenario\":\"Colunas móveis, redimensionáveis e ações de linha\",\"recommended\":[\"groupviewtable--ml-lcrud-detail-grid\"]},{\"scenario\":\"Abrir detalhes somente quando necessário\",\"recommended\":[\"groupviewtable--ml-lazy-record-detail-table\",\"groupviewtable--ml-lcrud-detail-grid\"]},{\"scenario\":\"Análise cruzada de métricas e dimensões\",\"recommended\":[\"groupviewtable--ml-grouping-table\",\"groupviewtable--ml-pivot-table\"]},{\"scenario\":\"Exibir dados em telas estreitas ou móveis\",\"recommended\":[\"groupviewtable--ml-responsive-data-table\",\"groupviewtable--ml-responsive-table\"]},{\"scenario\":\"Fluxo completo de criação, edição e exclusão\",\"recommended\":[\"groupviewtable--ml-inline-edit-table\",\"groupviewtable--ml-lcrud-detail-grid\"]}]},{\"groupId\":\"groupShowProgress\",\"purpose\":\"Indicates the progress of an operation or process. Visual primitive designed for composition inside other components. Supports determinate mode (0-100%) and indeterminate mode (unknown duration). Implementations include progress bar, progress ring/circle, spinner, and percentage indicator.\",\"tags\":[\"groupshowprogress--ml-circular-progress\",\"groupshowprogress--ml-indeterminate-spinner\",\"groupshowprogress--ml-linear-progress\",\"groupshowprogress--ml-segmented-progress\",\"groupshowprogress--ml-upload-progress-indicator\"],\"scenarios\":[{\"scenario\":\"Need a compact percentage indicator for a determinate task.\",\"recommended\":[\"groupshowprogress--ml-circular-progress\"]},{\"scenario\":\"Duration is unknown and the UI should stay lightweight.\",\"recommended\":[\"groupshowprogress--ml-indeterminate-spinner\"]},{\"scenario\":\"Show a full-width progress bar in a form or modal.\",\"recommended\":[\"groupshowprogress--ml-linear-progress\"]},{\"scenario\":\"Represent a multi-step workflow with segment milestones.\",\"recommended\":[\"groupshowprogress--ml-segmented-progress\"]},{\"scenario\":\"Highlight file transfer completion with a percent readout.\",\"recommended\":[\"groupshowprogress--ml-upload-progress-indicator\"]}]}]},\"approved\":{\"desktop\":{\"definition\":{\"template\":{\"category\":\"_102020_/l4/collabux/templates/dashboardCommandCenter/page21.md\",\"experience\":\"exceptionTriage\"},\"intent\":\"Dar ao gestor, logo ao abrir, uma visão de toda a organização: quantas tarefas estão abertas, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e ainda não foram retomadas. Ao lado, mostrar como as tarefas abertas se distribuem pelas listas e como andam as checklists, para ele saber onde agir primeiro.\",\"sections\":[{\"id\":\"secaoIndicadores\",\"priority\":\"primary\",\"purpose\":\"Mostrar em destaque os quatro números que indicam a situação geral das tarefas da organização e chamam a atenção para prazos e devoluções pendentes.\",\"organisms\":[\"indicadoresTarefas\"]},{\"id\":\"secaoListas\",\"priority\":\"main\",\"purpose\":\"Mostrar quantas tarefas abertas tem cada lista (projeto ou área) e o progresso das checklists, para identificar onde o trabalho está acumulado ou parado.\",\"organisms\":[\"tarefasPorLista\"]}],\"organisms\":{\"indicadoresTarefas\":{\"kind\":\"highlights\",\"text\":\"Total de tarefas abertas na organização e, em destaque, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e aguardam o responsável retomar. Assim o gestor vê de imediato o que exige acompanhamento.\",\"intents\":[{\"id\":\"verTodasTarefas\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]},\"tarefasPorLista\":{\"kind\":\"summary\",\"text\":\"Tarefas abertas agrupadas por lista, com a quantidade de cada uma e o progresso das checklists (itens concluídos sobre o total), para comparar o andamento entre projetos e áreas.\",\"intents\":[{\"id\":\"abrirListas\",\"kind\":\"navigate\",\"to\":\"listas_tarefas\"},{\"id\":\"verTarefasDaLista\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]}},\"molecules\":{\"indicadoresTarefas\":[{\"role\":\"indicador de contagem de tarefas\",\"preferred\":\"groupviewmetric--ml-metric-card\",\"alternative\":\"groupviewmetric--ml-metric-big-number\"}],\"tarefasPorLista\":[{\"role\":\"tarefas abertas agrupadas por lista\",\"preferred\":\"groupviewtable--ml-grouping-table\",\"alternative\":\"groupviewtable--ml-data-table\"},{\"role\":\"progresso da checklist\",\"preferred\":\"groupshowprogress--ml-linear-progress\",\"alternative\":\"groupshowprogress--ml-circular-progress\"}]}},\"needs\":{\"organisms\":{\"indicadoresTarefas\":{\"reads\":[\"Tarefa.details.aberta\",\"Tarefa.details.venceHoje\",\"Tarefa.details.atrasada\",\"Tarefa.details.devolvidaPendente\",\"Tarefa.status\",\"Tarefa.prazo\"],\"edits\":[],\"selects\":\"\",\"submits\":[]},\"tarefasPorLista\":{\"reads\":[\"ListaTarefas.nome\",\"ListaTarefas.details.quantidadeTarefasAbertas\",\"Tarefa.titulo\",\"Tarefa.listaId\",\"Tarefa.details.aberta\",\"Tarefa.details.progressoChecklist\",\"ItemChecklist.tarefaId\",\"ItemChecklist.details.concluido\"],\"edits\":[],\"selects\":\"\",\"submits\":[]}}}},\"mobile\":{\"definition\":{\"template\":{\"category\":\"_102020_/l4/collabux/templates/dashboardCommandCenter/page21.md\",\"experience\":\"exceptionTriage\"},\"intent\":\"Mostrar ao gestor, numa tela estreita (por volta de 390px, também usável entre 360px e 430px), os números que importam primeiro: tarefas abertas, que vencem hoje, atrasadas e devolvidas aguardando retomada. Logo abaixo, em leitura vertical, vem o resumo das tarefas abertas por lista com o progresso das checklists.\",\"sections\":[{\"id\":\"secaoIndicadores\",\"priority\":\"primary\",\"purpose\":\"Mostrar no topo, em blocos compactos que se reorganizam conforme a largura, os quatro números da situação geral das tarefas da organização.\",\"organisms\":[\"indicadoresTarefas\"]},{\"id\":\"secaoListas\",\"priority\":\"main\",\"purpose\":\"Mostrar as listas uma abaixo da outra, com a quantidade de tarefas abertas e o progresso das checklists, sem precisar rolar para os lados.\",\"organisms\":[\"tarefasPorLista\"]}],\"organisms\":{\"indicadoresTarefas\":{\"kind\":\"highlights\",\"text\":\"Total de tarefas abertas na organização e, em destaque, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e aguardam o responsável retomar. Assim o gestor vê de imediato o que exige acompanhamento.\",\"intents\":[{\"id\":\"verTodasTarefas\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]},\"tarefasPorLista\":{\"kind\":\"summary\",\"text\":\"Tarefas abertas agrupadas por lista, com a quantidade de cada uma e o progresso das checklists (itens concluídos sobre o total), para comparar o andamento entre projetos e áreas.\",\"intents\":[{\"id\":\"abrirListas\",\"kind\":\"navigate\",\"to\":\"listas_tarefas\"},{\"id\":\"verTarefasDaLista\",\"kind\":\"navigate\",\"to\":\"tarefas_equipe\"}]}},\"molecules\":{\"indicadoresTarefas\":[{\"role\":\"indicador de contagem de tarefas\",\"preferred\":\"groupviewmetric--ml-metric-big-number\",\"alternative\":\"groupviewmetric--ml-metric-card\"}],\"tarefasPorLista\":[{\"role\":\"tarefas abertas agrupadas por lista\",\"preferred\":\"groupviewtable--ml-responsive-table\",\"alternative\":\"groupviewtable--ml-responsive-data-table\"},{\"role\":\"progresso da checklist\",\"preferred\":\"groupshowprogress--ml-linear-progress\",\"alternative\":\"groupshowprogress--ml-circular-progress\"}]}},\"needs\":{\"organisms\":{\"indicadoresTarefas\":{\"reads\":[\"Tarefa.details.aberta\",\"Tarefa.details.venceHoje\",\"Tarefa.details.atrasada\",\"Tarefa.details.devolvidaPendente\",\"Tarefa.status\",\"Tarefa.prazo\"],\"edits\":[],\"selects\":\"\",\"submits\":[]},\"tarefasPorLista\":{\"reads\":[\"ListaTarefas.nome\",\"ListaTarefas.details.quantidadeTarefasAbertas\",\"Tarefa.titulo\",\"Tarefa.listaId\",\"Tarefa.details.aberta\",\"Tarefa.details.progressoChecklist\",\"ItemChecklist.tarefaId\",\"ItemChecklist.details.concluido\"],\"edits\":[],\"selects\":\"\",\"submits\":[]}}}}},\"regeneration\":{\"reason\":[\"D2_PAGE11_ORGANISMS_MENU at organisms: Organism kinds/count differ from menu page painel_tarefas: expected highlights, list, summary; got highlights, summary.\",\"D2_MOLECULE_ROLE_UNSELECTED at desktop: D2_MOLECULE_ROLE_UNSELECTED: indicadoresTarefas/groupviewmetric--ml-metric-card\",\"D2_MOLECULE_ROLE_UNSELECTED at desktop: D2_MOLECULE_ROLE_UNSELECTED: indicadoresTarefas/groupviewmetric--ml-metric-big-number\",\"D2_MOLECULE_ROLE_UNSELECTED at desktop: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupviewtable--ml-grouping-table\",\"D2_MOLECULE_ROLE_UNSELECTED at desktop: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupviewtable--ml-data-table\",\"D2_MOLECULE_ROLE_UNSELECTED at desktop: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupshowprogress--ml-linear-progress\",\"D2_MOLECULE_ROLE_UNSELECTED at desktop: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupshowprogress--ml-circular-progress\",\"D2_MOLECULE_ROLE_UNSELECTED at mobile: D2_MOLECULE_ROLE_UNSELECTED: indicadoresTarefas/groupviewmetric--ml-metric-big-number\",\"D2_MOLECULE_ROLE_UNSELECTED at mobile: D2_MOLECULE_ROLE_UNSELECTED: indicadoresTarefas/groupviewmetric--ml-metric-card\",\"D2_MOLECULE_ROLE_UNSELECTED at mobile: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupviewtable--ml-responsive-table\",\"D2_MOLECULE_ROLE_UNSELECTED at mobile: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupviewtable--ml-responsive-data-table\",\"D2_MOLECULE_ROLE_UNSELECTED at mobile: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupshowprogress--ml-linear-progress\",\"D2_MOLECULE_ROLE_UNSELECTED at mobile: D2_MOLECULE_ROLE_UNSELECTED: tarefasPorLista/groupshowprogress--ml-circular-progress\"]},\"repair\":null}",
+    "systemPrompt": "<!-- mls fileReference=\"_102020_/l2/agentDefsL2/steps/pages50/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n<!-- reasoningEffort: high -->\n<!-- x-tool-strict: true -->\n\nDefine one page in desktop and mobile. Call submitD2Pages once. Return the exact schema:\ndesktop and mobile each contain definition and needs; categoryReason explains the shared category.\nIn each definition, template contains category only. Code derives experience from the catalog.\nIntent, section purposes and organism text describe what the page shows and why, in userLanguage.\nGive every organism its own intents array, even if empty. Use submit or navigate only.\nFor a submit, to is empty. For navigate, to is an accessible page id from the menu.\n\nThe needs draft is internal: every organism has reads, edits, selects and submits. Field paths\nmust exist in ontology and be disclosed by the actor's grants. selects is a target organism id\nor empty. Every submit intent has a matching intentId and its write is one key of\npage.writeKeys (a transition is Entity.<transitionId>). Cover every page write with a submit or a navigate to an accessible page that\ndeclares the same write. Do not invent writes, fields, routes or permissions.\n\nMolecule recommendations are by organism and role. Preferred and optional alternative must\nbe exact tags from one of that organism's selected group indexes. Do not copy a catalog into\nthe definition. Leave organisms without compatible molecules out of molecules.\nThe research IDs organism1, organism2 and so on refer to menu organisms in source order;\nmap each one to the semantic id you assign to that organism in both definitions.\n\nPage11 is for rendering. Do not include fields, rules, states, functions, pipeline, hashes,\ncapability refs, shared refs, HTML, CSS, fixed grids or implementation classes. Describe mobile\nas fluid narrow content around 390px, also usable at 360px and 430px.\n\nIf approved is given, the page was already approved: return it again and change only what\nregeneration.reason asks; keep section and organism ids, prose and molecules everywhere else.\nIf repairing, replace the whole desktop/mobile pair and the internal drafts using the diagnostic.\n\n/// <mls fileReference=\"_102020_/l2/agentDefsL2/skills/genD2Page11Definition.ts\" enhancement=\"_blank\"/>\n\nexport const skill = `# Describe one page11 v2 pair\n\nDescribe what each organism communicates and why it matters to the authorized actor.\nUse the menu organisms exactly once and preserve their kinds. Give each organism a semantic\nlowerCamel id and place it in exactly one section. The same ids and category serve both devices.\nDesktop and mobile may prioritize reading differently; mobile remains fluid around a narrow\n390px reference and should remain usable at 360px and 430px.\n\nThe public definition only renders intent, sections, organisms, intents and molecule choices.\nPut reads, edits, selection targets and submit write bindings in the separate internal needs\ndraft. Use only real ontology paths covered by the actor's grant and writes from needs.json.\nEvery submit binds one declared write; navigation targets an accessible page of the same actor.\n\nChoose the category from the supplied catalog or bespoke. Code derives the experience.\nChoose molecule roles from the selected groups and exact tags in their indexes; a compatible\ngroup is guidance, and an organism may have no compatible molecule.\n\nDo not prescribe HTML, CSS, coordinates, columns or a fixed grid. Do not put states, functions,\nrules, fieldRefs, capabilityRefs, pipeline, hashes or execution metadata in page11.`;\n",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "submitD2Pages",
+          "description": "Define desktop and mobile page11 v2 and internal needs drafts",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "desktop",
+              "mobile",
+              "categoryReason"
+            ],
+            "properties": {
+              "desktop": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "definition",
+                  "needs"
+                ],
+                "properties": {
+                  "definition": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "template",
+                      "intent",
+                      "sections",
+                      "organisms",
+                      "molecules"
+                    ],
+                    "properties": {
+                      "template": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "category"
+                        ],
+                        "properties": {
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "productCatalog",
+                              "inventoryControl",
+                              "customerManagement",
+                              "supplierManagement",
+                              "orderManagement",
+                              "posWorkbench",
+                              "operationsQueue",
+                              "approvalWorkflow",
+                              "processWizard",
+                              "financialTransactions",
+                              "documentManagement",
+                              "userAccessManagement",
+                              "settingsConsole",
+                              "auditTrail",
+                              "dashboardCommandCenter",
+                              "calendarScheduling",
+                              "assetManagement",
+                              "caseManagement",
+                              "reportExplorer",
+                              "masterDataManagement",
+                              "entityRecordManagement",
+                              "fieldDataCapture",
+                              "readOnlyDetailPortal",
+                              "workPlanningBoard",
+                              "aiAssistedAuthoring",
+                              "globalSearchResults",
+                              "activityNotificationHub",
+                              "hierarchyTreeView",
+                              "comparisonView",
+                              "importMappingWizard",
+                              "kanbanBoardView",
+                              "analyticalList",
+                              "contentLanding",
+                              "bespoke"
+                            ]
+                          }
+                        }
+                      },
+                      "intent": {
+                        "type": "string"
+                      },
+                      "sections": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "priority",
+                            "purpose",
+                            "organisms"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "priority": {
+                              "type": "string",
+                              "enum": [
+                                "primary",
+                                "main",
+                                "secondary"
+                              ]
+                            },
+                            "purpose": {
+                              "type": "string"
+                            },
+                            "organisms": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "organisms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "kind",
+                            "text",
+                            "intents",
+                            "id"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "summary",
+                                "highlights",
+                                "list"
+                              ]
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "intents": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "to"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "submit",
+                                      "navigate"
+                                    ]
+                                  },
+                                  "to": {
+                                    "type": "string",
+                                    "enum": [
+                                      "",
+                                      "inicio",
+                                      "minhas_tarefas",
+                                      "painel_tarefas",
+                                      "tarefas_equipe",
+                                      "participantes",
+                                      "listas_tarefas"
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "molecules": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "recommendations"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "recommendations": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "role",
+                                  "preferred",
+                                  "alternative"
+                                ],
+                                "properties": {
+                                  "role": {
+                                    "type": "string"
+                                  },
+                                  "preferred": {
+                                    "type": "string",
+                                    "enum": [
+                                      "groupviewmetric--ml-compact-metric-sparkline",
+                                      "groupviewmetric--ml-metric-big-number",
+                                      "groupviewmetric--ml-metric-card",
+                                      "groupviewmetric--ml-metric-gauge",
+                                      "groupviewmetric--ml-metric-trend-compare",
+                                      "groupviewtable--ml-advanced-data-table",
+                                      "groupviewtable--ml-data-table",
+                                      "groupviewtable--ml-data-table-minimal",
+                                      "groupviewtable--ml-grouping-table",
+                                      "groupviewtable--ml-inline-edit-table",
+                                      "groupviewtable--ml-lazy-record-detail-table",
+                                      "groupviewtable--ml-lcrud-detail-grid",
+                                      "groupviewtable--ml-pivot-table",
+                                      "groupviewtable--ml-record-form-table",
+                                      "groupviewtable--ml-responsive-data-table",
+                                      "groupviewtable--ml-responsive-table",
+                                      "groupviewtable--ml-side-detail-table",
+                                      "groupviewtable--ml-view-table",
+                                      "groupshowprogress--ml-circular-progress",
+                                      "groupshowprogress--ml-indeterminate-spinner",
+                                      "groupshowprogress--ml-linear-progress",
+                                      "groupshowprogress--ml-segmented-progress",
+                                      "groupshowprogress--ml-upload-progress-indicator"
+                                    ]
+                                  },
+                                  "alternative": {
+                                    "type": "string",
+                                    "enum": [
+                                      "",
+                                      "groupviewmetric--ml-compact-metric-sparkline",
+                                      "groupviewmetric--ml-metric-big-number",
+                                      "groupviewmetric--ml-metric-card",
+                                      "groupviewmetric--ml-metric-gauge",
+                                      "groupviewmetric--ml-metric-trend-compare",
+                                      "groupviewtable--ml-advanced-data-table",
+                                      "groupviewtable--ml-data-table",
+                                      "groupviewtable--ml-data-table-minimal",
+                                      "groupviewtable--ml-grouping-table",
+                                      "groupviewtable--ml-inline-edit-table",
+                                      "groupviewtable--ml-lazy-record-detail-table",
+                                      "groupviewtable--ml-lcrud-detail-grid",
+                                      "groupviewtable--ml-pivot-table",
+                                      "groupviewtable--ml-record-form-table",
+                                      "groupviewtable--ml-responsive-data-table",
+                                      "groupviewtable--ml-responsive-table",
+                                      "groupviewtable--ml-side-detail-table",
+                                      "groupviewtable--ml-view-table",
+                                      "groupshowprogress--ml-circular-progress",
+                                      "groupshowprogress--ml-indeterminate-spinner",
+                                      "groupshowprogress--ml-linear-progress",
+                                      "groupshowprogress--ml-segmented-progress",
+                                      "groupshowprogress--ml-upload-progress-indicator"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "needs": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "organisms"
+                    ],
+                    "properties": {
+                      "organisms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "reads",
+                            "edits",
+                            "selects",
+                            "submits",
+                            "id"
+                          ],
+                          "properties": {
+                            "reads": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "edits": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "selects": {
+                              "type": "string"
+                            },
+                            "submits": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "intentId",
+                                  "write"
+                                ],
+                                "properties": {
+                                  "intentId": {
+                                    "type": "string"
+                                  },
+                                  "write": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "mobile": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "definition",
+                  "needs"
+                ],
+                "properties": {
+                  "definition": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "template",
+                      "intent",
+                      "sections",
+                      "organisms",
+                      "molecules"
+                    ],
+                    "properties": {
+                      "template": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "category"
+                        ],
+                        "properties": {
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "productCatalog",
+                              "inventoryControl",
+                              "customerManagement",
+                              "supplierManagement",
+                              "orderManagement",
+                              "posWorkbench",
+                              "operationsQueue",
+                              "approvalWorkflow",
+                              "processWizard",
+                              "financialTransactions",
+                              "documentManagement",
+                              "userAccessManagement",
+                              "settingsConsole",
+                              "auditTrail",
+                              "dashboardCommandCenter",
+                              "calendarScheduling",
+                              "assetManagement",
+                              "caseManagement",
+                              "reportExplorer",
+                              "masterDataManagement",
+                              "entityRecordManagement",
+                              "fieldDataCapture",
+                              "readOnlyDetailPortal",
+                              "workPlanningBoard",
+                              "aiAssistedAuthoring",
+                              "globalSearchResults",
+                              "activityNotificationHub",
+                              "hierarchyTreeView",
+                              "comparisonView",
+                              "importMappingWizard",
+                              "kanbanBoardView",
+                              "analyticalList",
+                              "contentLanding",
+                              "bespoke"
+                            ]
+                          }
+                        }
+                      },
+                      "intent": {
+                        "type": "string"
+                      },
+                      "sections": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "priority",
+                            "purpose",
+                            "organisms"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "priority": {
+                              "type": "string",
+                              "enum": [
+                                "primary",
+                                "main",
+                                "secondary"
+                              ]
+                            },
+                            "purpose": {
+                              "type": "string"
+                            },
+                            "organisms": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "organisms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "kind",
+                            "text",
+                            "intents",
+                            "id"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "summary",
+                                "highlights",
+                                "list"
+                              ]
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "intents": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "to"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "submit",
+                                      "navigate"
+                                    ]
+                                  },
+                                  "to": {
+                                    "type": "string",
+                                    "enum": [
+                                      "",
+                                      "inicio",
+                                      "minhas_tarefas",
+                                      "painel_tarefas",
+                                      "tarefas_equipe",
+                                      "participantes",
+                                      "listas_tarefas"
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "molecules": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "recommendations"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "recommendations": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "role",
+                                  "preferred",
+                                  "alternative"
+                                ],
+                                "properties": {
+                                  "role": {
+                                    "type": "string"
+                                  },
+                                  "preferred": {
+                                    "type": "string",
+                                    "enum": [
+                                      "groupviewmetric--ml-compact-metric-sparkline",
+                                      "groupviewmetric--ml-metric-big-number",
+                                      "groupviewmetric--ml-metric-card",
+                                      "groupviewmetric--ml-metric-gauge",
+                                      "groupviewmetric--ml-metric-trend-compare",
+                                      "groupviewtable--ml-advanced-data-table",
+                                      "groupviewtable--ml-data-table",
+                                      "groupviewtable--ml-data-table-minimal",
+                                      "groupviewtable--ml-grouping-table",
+                                      "groupviewtable--ml-inline-edit-table",
+                                      "groupviewtable--ml-lazy-record-detail-table",
+                                      "groupviewtable--ml-lcrud-detail-grid",
+                                      "groupviewtable--ml-pivot-table",
+                                      "groupviewtable--ml-record-form-table",
+                                      "groupviewtable--ml-responsive-data-table",
+                                      "groupviewtable--ml-responsive-table",
+                                      "groupviewtable--ml-side-detail-table",
+                                      "groupviewtable--ml-view-table",
+                                      "groupshowprogress--ml-circular-progress",
+                                      "groupshowprogress--ml-indeterminate-spinner",
+                                      "groupshowprogress--ml-linear-progress",
+                                      "groupshowprogress--ml-segmented-progress",
+                                      "groupshowprogress--ml-upload-progress-indicator"
+                                    ]
+                                  },
+                                  "alternative": {
+                                    "type": "string",
+                                    "enum": [
+                                      "",
+                                      "groupviewmetric--ml-compact-metric-sparkline",
+                                      "groupviewmetric--ml-metric-big-number",
+                                      "groupviewmetric--ml-metric-card",
+                                      "groupviewmetric--ml-metric-gauge",
+                                      "groupviewmetric--ml-metric-trend-compare",
+                                      "groupviewtable--ml-advanced-data-table",
+                                      "groupviewtable--ml-data-table",
+                                      "groupviewtable--ml-data-table-minimal",
+                                      "groupviewtable--ml-grouping-table",
+                                      "groupviewtable--ml-inline-edit-table",
+                                      "groupviewtable--ml-lazy-record-detail-table",
+                                      "groupviewtable--ml-lcrud-detail-grid",
+                                      "groupviewtable--ml-pivot-table",
+                                      "groupviewtable--ml-record-form-table",
+                                      "groupviewtable--ml-responsive-data-table",
+                                      "groupviewtable--ml-responsive-table",
+                                      "groupviewtable--ml-side-detail-table",
+                                      "groupviewtable--ml-view-table",
+                                      "groupshowprogress--ml-circular-progress",
+                                      "groupshowprogress--ml-indeterminate-spinner",
+                                      "groupshowprogress--ml-linear-progress",
+                                      "groupshowprogress--ml-segmented-progress",
+                                      "groupshowprogress--ml-upload-progress-indicator"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "needs": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "organisms"
+                    ],
+                    "properties": {
+                      "organisms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "reads",
+                            "edits",
+                            "selects",
+                            "submits",
+                            "id"
+                          ],
+                          "properties": {
+                            "reads": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "edits": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "selects": {
+                              "type": "string"
+                            },
+                            "submits": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "intentId",
+                                  "write"
+                                ],
+                                "properties": {
+                                  "intentId": {
+                                    "type": "string"
+                                  },
+                                  "write": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "categoryReason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

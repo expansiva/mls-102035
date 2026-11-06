@@ -1,0 +1,47 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"resolveRouteGaps\",\"arguments\":{\"answers\":{\"g0\":\"participantes:details.identification.name\"}}},\"status\":\"completed\",\"stepId\":22,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentDefsL1",
+  "step": "resolve25-fanout-item",
+  "stepId": 15,
+  "taskId": "20261104195446.1001",
+  "request": {
+    "humanPrompt": "Route tarefas.participantes.listarParticipantes (qry).\n\nJSDoc:\nFinalidade: Lista os participantes do módulo de tarefas da organização, com busca opcional pelo nome.\nEntrada: busca: trecho do nome do participante (opcional); page e pageSize: página pedida e tamanho da página.\nProcessamento: Localiza pelo papel tarefas.Participante os registros da organização, filtra pelo nome quando há busca e ordena pelo nome. Calcula aceitaTarefasEfetivo e podeCriarTarefasEfetivo pela regra participanteNaoConfiguradoAceitaECria: marca vazia vale sim; os campos efetivos são calculados, nunca gravados. Devolve só identificação e marcas do módulo, sem dado pessoal.\nSaída: Página { items, page, pageSize, hasMore } de participantes com id, versão, nome, situação, papéis, marcas do gestor (vazias quando não configurado) e marcas efetivas.\n\nInput: { busca?: string; page: number; pageSize: number }\nOutput: { participantes: { items: ParticipanteModulo[]; page: number; pageSize: number; hasMore: boolean } }\n\nInterfaces:\n/** Usuário da organização que participa do módulo de tarefas, com sua situação, papéis, as marcas do gestor e as marcas efetivas de aceitar e criar tarefas. */ interface ParticipanteModulo id: string;\n  version: number;\n  details: {\n    identification: {\n      name: string;\n      readonly status: 'Active' | 'Inactive' | 'Merged' | 'Blocked';\n      readonly tags: string;\n    };\n    tarefas: {\n      aceitaTarefas?: boolean;\n      podeCriarTarefas?: boolean;\n      readonly aceitaTarefasEfetivo: boolean;\n      readonly podeCriarTarefasEfetivo: boolean;\n    };\n  };\n\nRules: participanteNaoConfiguradoAceitaECria\n\nOpen parts. Answer each id with one of its candidates:\n- g0: input.busca [filterField] Input busca is not the last segment of any field of the output entities; it filters one of their text fields. Candidates: participantes:details.identification.name, participantes:details.identification.tags, none.",
+    "systemPrompt": "<!-- mls fileReference=\"_102021_/l2/agentDefsL1/steps/resolve25/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n\n# resolve25\n\nThe code already read this contract route from its types, the ontology and the L4 relationships. What it could not decide is listed under \"Open parts\", each with an id, the path in the route, why it is open, and its candidates.\n\nRead the JSDoc first: its purpose, input, processing and output say what the route does. Then answer every open part with one of its candidates, by what the route means.\n\nReturn only the `resolveRouteGaps` tool, with one answer per id.\n\nChoose `none` when the JSDoc and the types do not say which candidate it is. A wrong choice is worse than `none`.\n\nDo not write a value that is not among the candidates. Do not rename a field, an entity, a list or a rule.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "resolveRouteGaps",
+          "description": "One choice per open part of the route, among its candidates. none leaves it open.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "answers"
+            ],
+            "properties": {
+              "answers": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "g0"
+                ],
+                "properties": {
+                  "g0": {
+                    "type": "string",
+                    "enum": [
+                      "participantes:details.identification.name",
+                      "participantes:details.identification.tags",
+                      "none"
+                    ],
+                    "description": "input.busca (filterField)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"resolveRouteGaps\",\"arguments\":{\"answers\":{\"g0\":\"participantes:details.identification.name\"}}},\"status\":\"completed\",\"stepId\":23,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentDefsL1",
+  "step": "resolve25-fanout-item",
+  "stepId": 14,
+  "taskId": "20261104195446.1001",
+  "request": {
+    "humanPrompt": "Route tarefas.tarefas_equipe.buscarResponsaveisDisponiveis (qry).\n\nJSDoc:\nFinalidade: Busca pelo nome os participantes que podem ser escolhidos como novo responsável.\nEntrada: nome: trecho do nome digitado; vazio traz os primeiros por ordem alfabética.\nProcessamento: Filtra participantes ativos que aceitam tarefas (responsavelAceitaTarefas), com aceitaTarefasEfetivo calculado como sim quando o gestor não configurou (participanteNaoConfiguradoAceitaECria). A busca é só pelo nome, nunca pelo e-mail (escolhaResponsavelPeloNome). Limita a uma quantidade curta de resultados ordenados pelo nome.\nSaída: Os participantes elegíveis encontrados, com id, nome, situação e se aceita tarefas.\n\nInput: { nome?: string }\nOutput: { participantes: ParticipanteOpcao[] }\n\nInterfaces:\n/** Participante do módulo identificado pelo nome, com a situação na plataforma e se aceita tarefas. */ interface ParticipanteOpcao id: string;\n  details: {\n    identification: {\n      name: string;\n      readonly status: 'Active' | 'Inactive' | 'Merged' | 'Blocked';\n    };\n    tarefas: {\n      readonly aceitaTarefasEfetivo: boolean;\n    };\n  };\n\nRules: responsavelAceitaTarefas, escolhaResponsavelPeloNome, participanteNaoConfiguradoAceitaECria\n\nOpen parts. Answer each id with one of its candidates:\n- g0: input.nome [filterField] Input nome is not the last segment of any field of the output entities; it filters one of their text fields. Candidates: participantes:details.identification.name, participantes:details.identification.tags, none.",
+    "systemPrompt": "<!-- mls fileReference=\"_102021_/l2/agentDefsL1/steps/resolve25/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n\n# resolve25\n\nThe code already read this contract route from its types, the ontology and the L4 relationships. What it could not decide is listed under \"Open parts\", each with an id, the path in the route, why it is open, and its candidates.\n\nRead the JSDoc first: its purpose, input, processing and output say what the route does. Then answer every open part with one of its candidates, by what the route means.\n\nReturn only the `resolveRouteGaps` tool, with one answer per id.\n\nChoose `none` when the JSDoc and the types do not say which candidate it is. A wrong choice is worse than `none`.\n\nDo not write a value that is not among the candidates. Do not rename a field, an entity, a list or a rule.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "resolveRouteGaps",
+          "description": "One choice per open part of the route, among its candidates. none leaves it open.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "answers"
+            ],
+            "properties": {
+              "answers": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "g0"
+                ],
+                "properties": {
+                  "g0": {
+                    "type": "string",
+                    "enum": [
+                      "participantes:details.identification.name",
+                      "participantes:details.identification.tags",
+                      "none"
+                    ],
+                    "description": "input.nome (filterField)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

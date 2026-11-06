@@ -1,0 +1,53 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"resolveRouteGaps\",\"arguments\":{\"answers\":{\"g0\":\"none\",\"g1\":\"none\"}}},\"status\":\"completed\",\"stepId\":23,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentDefsL1",
+  "step": "resolve25-fanout-item",
+  "stepId": 14,
+  "taskId": "20261104195446.1001",
+  "request": {
+    "humanPrompt": "Route tarefas.tarefas_equipe.trocarResponsavelTarefa (cmd, writes Tarefa.update).\n\nJSDoc:\nFinalidade: Troca o responsável de uma tarefa pelo participante escolhido pelo gestor.\nEntrada: id: tarefa a reatribuir; version: versão lida, para concorrência otimista; responsavelId: novo responsável escolhido pelo nome.\nProcessamento: Recusa quem não é o criador nem gestor pelo acesso da plataforma (reatribuirApenasCriadorOuGestor, gestorPorAcessoPlataforma). Recusa responsável inativo ou que não aceita tarefas (responsavelAceitaTarefas). Recusa versão divergente. Grava só o responsável, sem mudar a situação (edicaoNaoMudaSituacao). Quando a tarefa está a fazer ou em andamento, o novo responsável passa a ser quem age agora (quemAgeAgoraPorSituacao, calculado, não gravado) e a ocorrência do processo da plataforma troca e avisa essa pessoa (avisarQuemAgeAgora).\nSaída: A tarefa no novo estado, com o novo responsável, quem age agora recalculado, checklist e histórico incluindo a troca.\n\nInput: { id: string; version: number; responsavelId: string }\nOutput: { tarefa: TarefaDetalhe }\n\nInterfaces:\n/** Item da checklist de uma tarefa, na sua ordem, com a marca de concluído. */ interface ItemChecklistLinha id: string;\n  ordem: number;\n  details: {\n    descricao: string;\n    concluido: boolean;\n    readonly concluidoEm?: string;\n  };\n/** Evento do ciclo de uma tarefa (criação, início, envio para revisão, devolução, retomada, conclusão, troca de responsável ou cancelamento) com o momento em que ocorreu. */ interface EventoTarefa readonly tipo: string;\n  readonly momento: string;\n  details: {\n    motivoDevolucao?: string;\n  };\n  readonly responsavelNome?: string;\n/** Tarefa completa com lista, responsável, quem criou, quem age agora, subtarefas, checklist em ordem e o histórico de eventos. */ interface TarefaDetalhe id: string;\n  version: number;\n  titulo: string;\n  status: 'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada';\n  prioridade: 'baixa' | 'media' | 'alta';\n  prazo?: string;\n  listaId: string;\n  listaTarefas: {\n    nome: string;\n  };\n  responsavelId: string;\n  participante: {\n    details: {\n      identification: {\n        name: string;\n      };\n    };\n  };\n  criadorId: string;\n  readonly criadorNome: string;\n  details: {\n    readonly quemAgeAgora?: string;\n    descricao?: string;\n    readonly aberta: boolean;\n    readonly quantidadeSubtarefas: number;\n    readonly progressoChecklist: string;\n  };\n  readonly quemAgeAgoraNome?: string;\n  readonly criadaEm: string;\n  checklist: ItemChecklistLinha[];\n  historico: EventoTarefa[];\n\nRules: reatribuirApenasCriadorOuGestor, gestorPorAcessoPlataforma, responsavelAceitaTarefas, edicaoNaoMudaSituacao, quemAgeAgoraPorSituacao, avisarQuemAgeAgora\n\nOpen parts. Answer each id with one of its candidates:\n- g0: output.tarefa.listaTarefas.nome [fieldPath] Interface TarefaDetalhe: field listaTarefas.nome is not a field of any entity. Candidates: none.\n- g1: output.tarefa.participante.details.identification.name [fieldPath] Interface TarefaDetalhe: field participante.details.identification.name is not a field of any entity. Candidates: none.",
+    "systemPrompt": "<!-- mls fileReference=\"_102021_/l2/agentDefsL1/steps/resolve25/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n\n# resolve25\n\nThe code already read this contract route from its types, the ontology and the L4 relationships. What it could not decide is listed under \"Open parts\", each with an id, the path in the route, why it is open, and its candidates.\n\nRead the JSDoc first: its purpose, input, processing and output say what the route does. Then answer every open part with one of its candidates, by what the route means.\n\nReturn only the `resolveRouteGaps` tool, with one answer per id.\n\nChoose `none` when the JSDoc and the types do not say which candidate it is. A wrong choice is worse than `none`.\n\nDo not write a value that is not among the candidates. Do not rename a field, an entity, a list or a rule.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "resolveRouteGaps",
+          "description": "One choice per open part of the route, among its candidates. none leaves it open.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "answers"
+            ],
+            "properties": {
+              "answers": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "g0",
+                  "g1"
+                ],
+                "properties": {
+                  "g0": {
+                    "type": "string",
+                    "enum": [
+                      "none"
+                    ],
+                    "description": "output.tarefa.listaTarefas.nome (fieldPath)"
+                  },
+                  "g1": {
+                    "type": "string",
+                    "enum": [
+                      "none"
+                    ],
+                    "description": "output.tarefa.participante.details.identification.name (fieldPath)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

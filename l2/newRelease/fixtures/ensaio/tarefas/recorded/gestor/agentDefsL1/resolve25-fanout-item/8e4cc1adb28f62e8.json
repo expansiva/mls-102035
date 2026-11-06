@@ -1,0 +1,68 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"resolveRouteGaps\",\"arguments\":{\"answers\":{\"g0\":\"tarefaResponsavel\",\"g1\":\"tarefaCriador\",\"g2\":\"none\"}}},\"status\":\"completed\",\"stepId\":24,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentDefsL1",
+  "step": "resolve25-fanout-item",
+  "stepId": 18,
+  "taskId": "20261104195446.1001",
+  "request": {
+    "humanPrompt": "Route tarefas.minhas_tarefas.qryTarefasDoGrupo (qry).\n\nJSDoc:\nFinalidade: Busca uma página das tarefas da pessoa da sessão num grupo: responsável, criadas ou depende de mim agora.\nEntrada: grupo: ’responsavel’, ’criadas’ ou ’dependeDeMim’; page e pageSize: página pedida e tamanho.\nProcessamento: Filtra por responsavelId, criadorId ou quemAgeAgora igual à pessoa da sessão conforme o grupo (membroVeResponsavelOuCriador), abertas primeiro, atrasadas e que vencem hoje antes, depois criadaEm. Calcula quemAgeAgora (quemAgeAgoraPorSituacao), aberta, venceHoje, atrasada (tarefaAbertaVencimento), devolvidaPendente e progressoChecklist; nada é gravado.\nSaída: Página { items, page, pageSize, hasMore } de tarefas resumidas do grupo pedido.\n\nInput: { grupo: string; page: number; pageSize: number }\nOutput: { tarefas: { items: TarefaResumo[]; page: number; pageSize: number; hasMore: boolean } }\n\nInterfaces:\n/** Lista de tarefas identificada pelo nome. */ interface ListaTarefasNome id: string;\n  nome: string;\n/** Participante identificado pelo nome lido da plataforma. */ interface ParticipanteNome id: string;\n  details: {\n    identification: {\n      name: string;\n    };\n  };\n/** Tarefa em forma resumida, com lista, responsável, quem criou, quem age agora, progresso da checklist e marcações de vencimento e devolução. */ interface TarefaResumo id: string;\n  version: number;\n  titulo: string;\n  status: 'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada';\n  prazo?: string;\n  prioridade: 'baixa' | 'media' | 'alta';\n  listaId: string;\n  listaTarefas: ListaTarefasNome;\n  responsavelId: string;\n  responsavel: ParticipanteNome;\n  criadorId: string;\n  criador: ParticipanteNome;\n  details: {\n    readonly quemAgeAgora?: string;\n    readonly progressoChecklist: string;\n    readonly venceHoje: boolean;\n    readonly atrasada: boolean;\n    readonly devolvidaPendente: boolean;\n    readonly aberta: boolean;\n  };\n  readonly quemAgeAgoraNome?: string;\n  readonly criadaEm: string;\n\nRules: membroVeResponsavelOuCriador, quemAgeAgoraPorSituacao, tarefaAbertaVencimento\n\nOpen parts. Answer each id with one of its candidates:\n- g0: output.tarefas.responsavel [relationship] Participante inside Tarefa needs one L4 relationship between them; found 2. Candidates: tarefaCriador, tarefaResponsavel, none.\n- g1: output.tarefas.criador [relationship] Participante inside Tarefa needs one L4 relationship between them; found 2. Candidates: tarefaCriador, tarefaResponsavel, none.\n- g2: input.grupo [filterField] Input grupo is not the last segment of any field of the output entities; it filters one of their text fields. Candidates: tarefas:details.etiquetas, tarefas:details.progressoChecklist, tarefas:titulo, none.",
+    "systemPrompt": "<!-- mls fileReference=\"_102021_/l2/agentDefsL1/steps/resolve25/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n\n# resolve25\n\nThe code already read this contract route from its types, the ontology and the L4 relationships. What it could not decide is listed under \"Open parts\", each with an id, the path in the route, why it is open, and its candidates.\n\nRead the JSDoc first: its purpose, input, processing and output say what the route does. Then answer every open part with one of its candidates, by what the route means.\n\nReturn only the `resolveRouteGaps` tool, with one answer per id.\n\nChoose `none` when the JSDoc and the types do not say which candidate it is. A wrong choice is worse than `none`.\n\nDo not write a value that is not among the candidates. Do not rename a field, an entity, a list or a rule.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "resolveRouteGaps",
+          "description": "One choice per open part of the route, among its candidates. none leaves it open.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "answers"
+            ],
+            "properties": {
+              "answers": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "g0",
+                  "g1",
+                  "g2"
+                ],
+                "properties": {
+                  "g0": {
+                    "type": "string",
+                    "enum": [
+                      "tarefaCriador",
+                      "tarefaResponsavel",
+                      "none"
+                    ],
+                    "description": "output.tarefas.responsavel (relationship)"
+                  },
+                  "g1": {
+                    "type": "string",
+                    "enum": [
+                      "tarefaCriador",
+                      "tarefaResponsavel",
+                      "none"
+                    ],
+                    "description": "output.tarefas.criador (relationship)"
+                  },
+                  "g2": {
+                    "type": "string",
+                    "enum": [
+                      "tarefas:details.etiquetas",
+                      "tarefas:details.progressoChecklist",
+                      "tarefas:titulo",
+                      "none"
+                    ],
+                    "description": "input.grupo (filterField)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

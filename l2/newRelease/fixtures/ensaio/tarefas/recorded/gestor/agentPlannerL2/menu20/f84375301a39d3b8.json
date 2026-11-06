@@ -1,0 +1,406 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"submitP2Menu\",\"arguments\":{\"type\":\"flexible\",\"result\":{\"tree\":[{\"id\":\"inicio\",\"kind\":\"page\",\"label\":\"Início\",\"icon\":\"house\",\"organisms\":[{\"kind\":\"highlights\",\"text\":\"Quantas das minhas tarefas abertas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e esperam que eu retome.\"},{\"kind\":\"alerts\",\"text\":\"Resumo das 8h: minhas tarefas abertas que vencem hoje ou estão atrasadas, para abrir cada uma direto.\"},{\"kind\":\"inbox\",\"text\":\"O que depende de mim agora: tarefas para iniciar ou executar, tarefas que criei aguardando minha revisão e tarefas devolvidas para retomar.\"},{\"kind\":\"actions\",\"text\":\"Criar uma nova tarefa.\"}]},{\"id\":\"minhas_tarefas\",\"kind\":\"page\",\"label\":\"Minhas tarefas\",\"icon\":\"list-checks\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Tarefas de que sou responsável e as que criei, com situação, prazo, prioridade, lista, quem age agora e progresso da checklist, destacando o que vence hoje e o que está atrasado; lista vazia e erro aparecem separados.\"},{\"kind\":\"detail\",\"text\":\"Abrir uma tarefa e ver título, descrição, prioridade, prazo, lista, responsável, quem criou, subtarefas, etiquetas, checklist e o motivo quando foi devolvida.\"},{\"kind\":\"form\",\"text\":\"Criar uma tarefa ou ajustar os campos dela sem mudar a situação: escolher a lista, o responsável pelo nome numa lista com busca e montar a checklist.\"},{\"kind\":\"timeline\",\"text\":\"Histórico da tarefa: criação, mudanças de situação, reatribuições e quem foi avisado em cada momento.\"},{\"kind\":\"actions\",\"text\":\"Iniciar, marcar itens da checklist, enviar para revisão, aceitar ou devolver com motivo, retomar e reenviar; nas tarefas que criei, trocar o responsável ou cancelar.\"}]},{\"id\":\"painel_tarefas\",\"kind\":\"page\",\"label\":\"Painel de tarefas\",\"icon\":\"layout-dashboard\",\"organisms\":[{\"kind\":\"summary\",\"text\":\"Visão da organização: quantas tarefas estão abertas, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e ainda não foram retomadas.\"},{\"kind\":\"highlights\",\"text\":\"Tarefas abertas por lista e progresso das checklists das tarefas em andamento.\"},{\"kind\":\"list\",\"text\":\"Quantas tarefas cada pessoa concluiu nesta semana.\"}]},{\"id\":\"tarefas_equipe\",\"kind\":\"page\",\"label\":\"Todas as tarefas\",\"icon\":\"kanban\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Todas as tarefas da equipe, filtrando por lista, responsável, prioridade, prazo e situação, alternando entre lista e quadro por situação; lista vazia e erro aparecem separados.\"},{\"kind\":\"detail\",\"text\":\"Abrir uma tarefa para conferir responsável, quem age agora, prazo, subtarefas e checklist.\"},{\"kind\":\"timeline\",\"text\":\"Histórico do que aconteceu com a tarefa: criação, mudanças de situação, reatribuições e avisos enviados.\"},{\"kind\":\"actions\",\"text\":\"Trocar o responsável ou cancelar a tarefa.\"}]},{\"id\":\"participantes\",\"kind\":\"page\",\"label\":\"Participantes\",\"icon\":\"users\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Quem participa do módulo de tarefas, com a indicação efetiva de quem aceita tarefas e quem pode criar tarefas.\"},{\"kind\":\"form\",\"text\":\"Incluir um usuário da organização como participante e marcar se aceita tarefas e se pode criar tarefas, sem cadastrar ninguém nem pedir dado pessoal.\"}]},{\"id\":\"listas_tarefas\",\"kind\":\"page\",\"label\":\"Listas de tarefas\",\"icon\":\"folder-kanban\",\"organisms\":[{\"kind\":\"list\",\"text\":\"Todas as listas que agrupam tarefas por projeto ou área, com a quantidade de tarefas abertas em cada uma.\"},{\"kind\":\"form\",\"text\":\"Criar uma lista nova ou ajustar nome e descrição de uma existente.\"}]}],\"authorities\":[{\"actorRef\":\"membroEquipe\",\"nodes\":[\"inicio\",\"minhas_tarefas\"]},{\"actorRef\":\"gestor\",\"nodes\":[\"painel_tarefas\",\"tarefas_equipe\",\"participantes\",\"listas_tarefas\"]}],\"meta\":{\"journeys\":[{\"journeyId\":\"configurarParticipantes\",\"pages\":[\"participantes\"]},{\"journeyId\":\"manterListas\",\"pages\":[\"listas_tarefas\"]},{\"journeyId\":\"criarTarefa\",\"pages\":[\"minhas_tarefas\",\"inicio\"]},{\"journeyId\":\"executarTarefa\",\"pages\":[\"inicio\",\"minhas_tarefas\"]},{\"journeyId\":\"revisarTarefa\",\"pages\":[\"inicio\",\"minhas_tarefas\"]},{\"journeyId\":\"retomarTarefa\",\"pages\":[\"inicio\",\"minhas_tarefas\"]},{\"journeyId\":\"editarTarefa\",\"pages\":[\"minhas_tarefas\"]},{\"journeyId\":\"reatribuirTarefa\",\"pages\":[\"tarefas_equipe\"]},{\"journeyId\":\"reatribuirTarefaCriada\",\"pages\":[\"minhas_tarefas\"]},{\"journeyId\":\"cancelarTarefa\",\"pages\":[\"tarefas_equipe\"]},{\"journeyId\":\"cancelarTarefaCriada\",\"pages\":[\"minhas_tarefas\"]},{\"journeyId\":\"minhasTarefas\",\"pages\":[\"minhas_tarefas\"]},{\"journeyId\":\"resumoDiario\",\"pages\":[\"inicio\"]},{\"journeyId\":\"acompanharTarefas\",\"pages\":[\"tarefas_equipe\",\"painel_tarefas\"]}],\"processes\":[{\"processId\":\"processoTarefa\",\"pages\":[\"inicio\",\"minhas_tarefas\",\"tarefas_equipe\"]},{\"processId\":\"resumoDiarioTarefas\",\"pages\":[\"inicio\"]}],\"records\":[],\"placements\":[{\"journeyId\":\"configurarParticipantes\",\"actorRef\":\"gestor\",\"placement\":\"listWithAdd\",\"pageId\":\"participantes\",\"reason\":\"O gestor administra a lista de participantes e inclui novos pelo \\\"+\\\".\"},{\"journeyId\":\"manterListas\",\"actorRef\":\"gestor\",\"placement\":\"listWithAdd\",\"pageId\":\"listas_tarefas\",\"reason\":\"As listas de tarefas são um cadastro que o gestor mantém, com o \\\"+\\\" para criar.\"},{\"journeyId\":\"criarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"menuItem\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Criar tarefa começa algo novo, para outra pessoa executar, e fica à mão como item próprio.\"},{\"journeyId\":\"executarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Iniciar, marcar a checklist e enviar para revisão age sobre a tarefa aberta na tela.\"},{\"journeyId\":\"revisarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Aceitar ou devolver age sobre a tarefa criada que está em revisão e já aparece na tela.\"},{\"journeyId\":\"retomarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Retomar age sobre a tarefa devolvida que o membro já vê com o motivo.\"},{\"journeyId\":\"editarTarefa\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Ajustar campos acontece na tarefa aberta, sem mudar a situação.\"},{\"journeyId\":\"reatribuirTarefaCriada\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Trocar o responsável age sobre uma tarefa criada que já está na tela.\"},{\"journeyId\":\"cancelarTarefaCriada\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Cancelar age sobre uma tarefa criada que já está na tela.\"},{\"journeyId\":\"minhasTarefas\",\"actorRef\":\"membroEquipe\",\"placement\":\"menuItem\",\"pageId\":\"minhas_tarefas\",\"reason\":\"Ver as próprias tarefas é a visão principal de trabalho do membro.\"},{\"journeyId\":\"resumoDiario\",\"actorRef\":\"membroEquipe\",\"placement\":\"screenAction\",\"pageId\":\"inicio\",\"reason\":\"O resumo das 8h aparece no início e abre cada tarefa a partir dele.\"},{\"journeyId\":\"reatribuirTarefa\",\"actorRef\":\"gestor\",\"placement\":\"screenAction\",\"pageId\":\"tarefas_equipe\",\"reason\":\"O gestor troca o responsável na tarefa aberta em Todas as tarefas.\"},{\"journeyId\":\"cancelarTarefa\",\"actorRef\":\"gestor\",\"placement\":\"screenAction\",\"pageId\":\"tarefas_equipe\",\"reason\":\"O gestor cancela a tarefa aberta em Todas as tarefas.\"},{\"journeyId\":\"acompanharTarefas\",\"actorRef\":\"gestor\",\"placement\":\"menuItem\",\"pageId\":\"tarefas_equipe\",\"reason\":\"Acompanhar todas as tarefas é a visão de trabalho do gestor, com lista e quadro por situação.\"}]}}}},\"status\":\"completed\",\"stepId\":14,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentPlannerL2",
+  "step": "menu20",
+  "stepId": 10,
+  "taskId": "20261104194700.1001",
+  "request": {
+    "humanPrompt": "## userLanguage\npt-BR\n\n## the module's current screens — keep their ids, labels and wording; change only what the l4 diff changes\n[\n  {\n    \"id\": \"inicio\",\n    \"label\": \"Início\",\n    \"href\": \"/tarefas/inicio\",\n    \"description\": \"Mostrar ao membro da equipe, logo ao entrar, tudo o que depende dele agora — tarefas para iniciar ou executar, tarefas que criou aguardando revisão e tarefas devolvidas para retomar — junto com os prazos que vencem hoje ou estão atrasados, para que aja sem procurar.\",\n    \"actors\": [\n      \"membroEquipe\"\n    ],\n    \"landing\": true\n  },\n  {\n    \"id\": \"minhas_tarefas\",\n    \"label\": \"Minhas tarefas\",\n    \"href\": \"/tarefas/minhas_tarefas\",\n    \"description\": \"Dar ao membro uma visão única das tarefas de que é responsável e das que criou, destacando o que vence hoje, o que está atrasado e quem age agora, para abrir uma tarefa, entender o que falta e avançar o trabalho: executar, revisar, retomar, reatribuir, cancelar ou criar uma nova tarefa.\",\n    \"actors\": [\n      \"membroEquipe\"\n    ]\n  },\n  {\n    \"id\": \"painel_tarefas\",\n    \"label\": \"Painel de tarefas\",\n    \"href\": \"/tarefas/painel_tarefas\",\n    \"description\": \"Dar ao gestor, logo ao abrir, uma visão de toda a organização: quantas tarefas estão abertas, quantas vencem hoje, quantas estão atrasadas e quantas foram devolvidas e ainda não foram retomadas.\",\n    \"actors\": [\n      \"gestor\"\n    ],\n    \"landing\": true\n  },\n  {\n    \"id\": \"tarefas_equipe\",\n    \"label\": \"Todas as tarefas\",\n    \"href\": \"/tarefas/tarefas_equipe\",\n    \"description\": \"O gestor acompanha todas as tarefas da equipe, filtra por lista, responsável, prioridade, prazo e situação, alterna entre lista e quadro por situação, abre uma tarefa para conferir responsável, prazo e checklist e, quando preciso, troca o responsável ou cancela a tarefa, vendo o histórico do que aconteceu.\",\n    \"actors\": [\n      \"gestor\"\n    ]\n  },\n  {\n    \"id\": \"participantes\",\n    \"label\": \"Participantes\",\n    \"href\": \"/tarefas/participantes\",\n    \"description\": \"Permitir que o gestor veja quem participa do módulo de tarefas, inclua usuários da organização como participantes e marque, para cada um, se aceita tarefas e se pode criar tarefas, sem cadastrar ninguém nem pedir dado pessoal.\",\n    \"actors\": [\n      \"gestor\"\n    ]\n  },\n  {\n    \"id\": \"listas_tarefas\",\n    \"label\": \"Listas de tarefas\",\n    \"href\": \"/tarefas/listas_tarefas\",\n    \"description\": \"O gestor vê todas as listas que agrupam tarefas por projeto ou área, com a quantidade de tarefas abertas em cada uma, e cria uma lista nova ou ajusta nome e descrição de uma existente, para que as listas fiquem disponíveis ao criar tarefas.\",\n    \"actors\": [\n      \"gestor\"\n    ]\n  }\n]\n## Candidates (deterministic; candidates, not the answer)\n{\n  \"hubs\": [\n    {\n      \"entityRef\": \"Participante\",\n      \"actorRefs\": [\n        \"membroEquipe\"\n      ]\n    }\n  ],\n  \"pages\": [\n    {\n      \"candidateId\": \"gestorListaTarefasCatalogue\",\n      \"entityRef\": \"ListaTarefas\",\n      \"actorRef\": \"gestor\",\n      \"kind\": \"catalogue\",\n      \"journeyRefs\": [\n        \"manterListas\"\n      ],\n      \"stepRefs\": [\n        \"localizarLista\",\n        \"criarLista\",\n        \"editarLista\"\n      ]\n    },\n    {\n      \"candidateId\": \"gestorParticipanteCatalogue\",\n      \"entityRef\": \"Participante\",\n      \"actorRef\": \"gestor\",\n      \"kind\": \"catalogue\",\n      \"journeyRefs\": [\n        \"configurarParticipantes\"\n      ],\n      \"stepRefs\": [\n        \"localizarUsuario\",\n        \"incluirParticipante\",\n        \"marcarPermissoes\"\n      ]\n    },\n    {\n      \"candidateId\": \"gestorTarefaCatalogue\",\n      \"entityRef\": \"Tarefa\",\n      \"actorRef\": \"gestor\",\n      \"kind\": \"catalogue\",\n      \"journeyRefs\": [\n        \"reatribuirTarefa\",\n        \"cancelarTarefa\",\n        \"acompanharTarefas\"\n      ],\n      \"stepRefs\": [\n        \"localizarTarefaReatribuir\",\n        \"verResponsavelAtual\",\n        \"trocarResponsavel\",\n        \"localizarTarefaCancelar\",\n        \"cancelar\",\n        \"filtrarTarefas\",\n        \"verQuadro\",\n        \"abrirTarefaGestor\",\n        \"verConcluidasSemanaPorPessoa\"\n      ]\n    },\n    {\n      \"candidateId\": \"membroEquipeItemChecklistCatalogue\",\n      \"entityRef\": \"ItemChecklist\",\n      \"actorRef\": \"membroEquipe\",\n      \"kind\": \"catalogue\",\n      \"journeyRefs\": [\n        \"executarTarefa\",\n        \"editarTarefa\"\n      ],\n      \"stepRefs\": [\n        \"marcarItem\",\n        \"ajustarChecklist\"\n      ]\n    },\n    {\n      \"candidateId\": \"membroEquipeItemChecklistCommand\",\n      \"entityRef\": \"ItemChecklist\",\n      \"actorRef\": \"membroEquipe\",\n      \"kind\": \"command\",\n      \"journeyRefs\": [\n        \"criarTarefa\"\n      ],\n      \"stepRefs\": [\n        \"adicionarChecklist\"\n      ]\n    },\n    {\n      \"candidateId\": \"membroEquipeTarefaCatalogue\",\n      \"entityRef\": \"Tarefa\",\n      \"actorRef\": \"membroEquipe\",\n      \"kind\": \"catalogue\",\n      \"journeyRefs\": [\n        \"executarTarefa\",\n        \"revisarTarefa\",\n        \"retomarTarefa\",\n        \"editarTarefa\",\n        \"reatribuirTarefaCriada\",\n        \"cancelarTarefaCriada\",\n        \"minhasTarefas\"\n      ],\n      \"stepRefs\": [\n        \"abrirTarefa\",\n        \"verTarefa\",\n        \"iniciarTarefa\",\n        \"enviarRevisao\",\n        \"abrirRevisao\",\n        \"conferirTarefa\",\n        \"decidirRevisao\",\n        \"aceitarTarefa\",\n        \"devolverTarefa\",\n        \"lerMotivo\",\n        \"retomar\",\n        \"reenviarRevisao\",\n        \"localizarTarefaEdicao\",\n        \"alterarCampos\",\n        \"localizarCriada\",\n        \"verResponsavelCriada\",\n        \"trocarResponsavelCriada\",\n        \"localizarCriadaCancelar\",\n        \"cancelarCriada\",\n        \"listarMinhas\",\n        \"verDetalhe\"\n      ]\n    },\n    {\n      \"candidateId\": \"membroEquipeTarefaCommand\",\n      \"entityRef\": \"Tarefa\",\n      \"actorRef\": \"membroEquipe\",\n      \"kind\": \"command\",\n      \"journeyRefs\": [\n        \"criarTarefa\"\n      ],\n      \"stepRefs\": [\n        \"preencherTarefa\"\n      ]\n    },\n    {\n      \"candidateId\": \"membroEquipeTarefaHub\",\n      \"entityRef\": \"Tarefa\",\n      \"actorRef\": \"membroEquipe\",\n      \"kind\": \"hub\",\n      \"journeyRefs\": [\n        \"resumoDiario\"\n      ],\n      \"stepRefs\": [\n        \"lerResumo\",\n        \"verVencendo\"\n      ]\n    }\n  ],\n  \"recordsKept\": []\n}\n## What this actor must see, beyond journeys\n[\n  {\n    \"actorRef\": \"gestor\",\n    \"human\": [],\n    \"alerts\": [],\n    \"mechanicalEffects\": [],\n    \"derived\": [\n      {\n        \"entityRef\": \"ItemChecklist\",\n        \"fieldId\": \"details.concluidoEm\",\n        \"title\": \"Concluído em\"\n      },\n      {\n        \"entityRef\": \"ListaTarefas\",\n        \"fieldId\": \"details.quantidadeTarefasAbertas\",\n        \"title\": \"Tarefas abertas\"\n      },\n      {\n        \"entityRef\": \"Participante\",\n        \"fieldId\": \"details.tarefas.aceitaTarefasEfetivo\",\n        \"title\": \"Aceita tarefas (efetivo)\"\n      },\n      {\n        \"entityRef\": \"Participante\",\n        \"fieldId\": \"details.tarefas.podeCriarTarefasEfetivo\",\n        \"title\": \"Pode criar tarefas (efetivo)\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"criadaEm\",\n        \"title\": \"Criada em\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.quemAgeAgora\",\n        \"title\": \"Quem age agora\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.aberta\",\n        \"title\": \"Aberta\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.venceHoje\",\n        \"title\": \"Vence hoje\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.atrasada\",\n        \"title\": \"Atrasada\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.devolvidaPendente\",\n        \"title\": \"Devolvida aguardando retomada\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.quantidadeSubtarefas\",\n        \"title\": \"Subtarefas\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.progressoChecklist\",\n        \"title\": \"Progresso da checklist\"\n      }\n    ]\n  },\n  {\n    \"actorRef\": \"membroEquipe\",\n    \"human\": [\n      {\n        \"processId\": \"processoTarefa\",\n        \"taskId\": \"criar\",\n        \"description\": \"Quem pode criar tarefas registra a tarefa e escolhe o responsável pelo nome, que é avisado e passa a agir.\",\n        \"entityRef\": \"\"\n      },\n      {\n        \"processId\": \"processoTarefa\",\n        \"taskId\": \"executar\",\n        \"description\": \"O responsável inicia a tarefa, marca a checklist e envia para revisão de quem criou.\",\n        \"entityRef\": \"\"\n      },\n      {\n        \"processId\": \"processoTarefa\",\n        \"taskId\": \"revisar\",\n        \"description\": \"Quem criou aceita a entrega, encerrando a ocorrência como concluída, ou devolve com o motivo ao responsável, que é avisado.\",\n        \"entityRef\": \"\"\n      },\n      {\n        \"processId\": \"processoTarefa\",\n        \"taskId\": \"retomar\",\n        \"description\": \"O responsável lê o motivo, retoma, corrige e reenvia a tarefa para revisão de quem criou.\",\n        \"entityRef\": \"\"\n      }\n    ],\n    \"alerts\": [\n      {\n        \"processId\": \"resumoDiarioTarefas\",\n        \"taskId\": \"avisarVencendo\",\n        \"description\": \"Ler as suas tarefas abertas que vencem hoje ou estão atrasadas e abri-las pela jornada resumoDiario.\",\n        \"entityRef\": \"\"\n      }\n    ],\n    \"mechanicalEffects\": [],\n    \"derived\": [\n      {\n        \"entityRef\": \"ItemChecklist\",\n        \"fieldId\": \"details.concluidoEm\",\n        \"title\": \"Concluído em\"\n      },\n      {\n        \"entityRef\": \"ListaTarefas\",\n        \"fieldId\": \"details.quantidadeTarefasAbertas\",\n        \"title\": \"Tarefas abertas\"\n      },\n      {\n        \"entityRef\": \"Participante\",\n        \"fieldId\": \"details.tarefas.aceitaTarefasEfetivo\",\n        \"title\": \"Aceita tarefas (efetivo)\"\n      },\n      {\n        \"entityRef\": \"Participante\",\n        \"fieldId\": \"details.tarefas.podeCriarTarefasEfetivo\",\n        \"title\": \"Pode criar tarefas (efetivo)\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"criadaEm\",\n        \"title\": \"Criada em\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.quemAgeAgora\",\n        \"title\": \"Quem age agora\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.aberta\",\n        \"title\": \"Aberta\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.venceHoje\",\n        \"title\": \"Vence hoje\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.atrasada\",\n        \"title\": \"Atrasada\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.devolvidaPendente\",\n        \"title\": \"Devolvida aguardando retomada\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.quantidadeSubtarefas\",\n        \"title\": \"Subtarefas\"\n      },\n      {\n        \"entityRef\": \"Tarefa\",\n        \"fieldId\": \"details.progressoChecklist\",\n        \"title\": \"Progresso da checklist\"\n      }\n    ]\n  }\n]\n## Module\nMódulo de tarefas da equipe Collab, no lugar do ClickUp: telas e ações simples, sem IA, no desktop e no celular. Pessoas: o membro da equipe e o gestor. Os dois são usuários da organização (pessoas que fazem login). O módulo não cadastra ninguém e não pede dado pessoal. O gestor escolhe, entre os usuários da organização, quem participa e marca, para cada um, se aceita tarefas e se pode criar tarefas; um usuário ainda não configurado aceita tarefas e pode criar tarefas até o gestor mudar, e uma escolha já feita nunca é sobrescrita. Ser gestor vem do acesso da plataforma, não dessas marcas. Listas agrupam tarefas (por projeto ou área) e são um cadastro simples do gestor. Uma tarefa tem título, descrição, prioridade (baixa, média, alta), prazo, lista, um responsável e quem criou. Pode ter subtarefas (uma tarefa pai), uma checklist de itens marcáveis e etiquetas. O responsável é escolhido pelo nome, entre os usuários que aceitam tarefas, numa lista visível com busca pelo nome, como se menciona alguém numa conversa; nunca pelo e-mail. Criar tarefa exige \"pode criar tarefas\". Situações: a fazer, em andamento, em revisão, concluída, cancelada. O responsável inicia a tarefa e envia para revisão; quem criou aceita (concluída) ou devolve com o motivo (volta a em andamento) e o responsável retoma; quem criou ou o gestor cancela. Quem vê a tarefa edita os campos sem mudar a situação; só quem criou ou o gestor reatribui. Cada tarefa é uma ocorrência do processo de tarefa na plataforma: ao criar, o responsável é avisado; a cada mudança de situação quem age agora é avisado, e reatribuir troca quem age agora. A discussão da tarefa acontece na conversa da própria tarefa na plataforma, com os anexos nas mensagens; o módulo não guarda comentários nem anexos. Todo dia às 8h cada responsável recebe as suas tarefas abertas que vencem hoje ou estão atrasadas. Um aviso que não terminou para uma pessoa não começa outro para ela, e nunca bloqueia os demais. O que cada pessoa vê: o membro vê as tarefas de que é responsável e as que criou, e o que depende dele agora; o gestor acompanha todas as tarefas por lista, responsável, prioridade, prazo e situação, em lista e em quadro por situação. Lista vazia e erro aparecem separados.\n\n## Actors\n- membroEquipe (internal): Membro da equipe\n- gestor (internal): Gestor\n## Grants\n- membroTarefasProprias actor=membroEquipe scope=own anchor=Participante disclosure=fullRecord entities=Tarefa\n- membroChecklistPropria actor=membroEquipe scope=own anchor=Participante disclosure=fullRecord entities=ItemChecklist\n- membroEscolherResponsavel actor=membroEquipe scope=organization disclosure=fieldsOnly entities=Participante\n- membroConsultarListas actor=membroEquipe scope=organization disclosure=fullRecord entities=ListaTarefas\n- gestorParticipantes actor=gestor scope=organization disclosure=fieldsOnly entities=Participante\n- gestorListas actor=gestor scope=organization disclosure=fullRecord entities=ListaTarefas\n- gestorTodasTarefas actor=gestor scope=organization disclosure=fullRecord entities=Tarefa,ItemChecklist\n## Entities\n- Participante (role, displayField=details.identification.name)\n- ListaTarefas (entity, displayField=nome)\n- Tarefa (entity, displayField=titulo)\n- ItemChecklist (entity, displayField=details.descricao)\n## Processes\n- processoTarefa trigger=manual:membroEquipe\n  stages: criar:human, executar:human, aguardarRevisao:wait, revisar:human, retomar:human\n- resumoDiarioTarefas trigger=scheduled:Todo dia às 8h\n  stages: avisarVencendo:alert\n## Journeys\n- configurarParticipantes actor=gestor — Configurar participantes\n  goal: Escolher, entre os usuários da organização, quem participa do módulo e marcar quem aceita tarefas e quem pode criar tarefas.\n  steps: localizarUsuario:locate:Participante, incluirParticipante:act:Participante, marcarPermissoes:act:Participante\n- manterListas actor=gestor — Manter listas de tarefas\n  goal: Cadastrar e ajustar as listas que agrupam tarefas por projeto ou área.\n  steps: localizarLista:locate:ListaTarefas, criarLista:act:ListaTarefas, editarLista:act:ListaTarefas\n- criarTarefa actor=membroEquipe — Criar tarefa\n  goal: Registrar uma tarefa com responsável, prazo e prioridade para que seja executada.\n  steps: preencherTarefa:act:Tarefa, adicionarChecklist:act:ItemChecklist\n- executarTarefa actor=membroEquipe — Executar tarefa e enviar para revisão\n  goal: Iniciar a tarefa de que é responsável e enviá-la para revisão de quem criou.\n  steps: abrirTarefa:locate:Tarefa, verTarefa:inspect:Tarefa, iniciarTarefa:act:Tarefa, marcarItem:act:ItemChecklist, enviarRevisao:act:Tarefa\n- revisarTarefa actor=membroEquipe — Revisar tarefa\n  goal: Aceitar ou devolver com motivo uma tarefa que criou e que está em revisão.\n  steps: abrirRevisao:locate:Tarefa, conferirTarefa:inspect:Tarefa, decidirRevisao:decide:Tarefa, aceitarTarefa:act:Tarefa, devolverTarefa:act:Tarefa\n- retomarTarefa actor=membroEquipe — Retomar tarefa devolvida\n  goal: Retomar a tarefa devolvida, corrigir e enviar novamente para revisão.\n  steps: lerMotivo:inspect:Tarefa, retomar:act:Tarefa, reenviarRevisao:act:Tarefa\n- editarTarefa actor=membroEquipe — Editar campos da tarefa\n  goal: Ajustar campos de uma tarefa que vê sem mudar sua situação.\n  steps: localizarTarefaEdicao:locate:Tarefa, alterarCampos:act:Tarefa, ajustarChecklist:act:ItemChecklist\n- reatribuirTarefa actor=gestor — Reatribuir tarefa\n  goal: Trocar o responsável de uma tarefa.\n  steps: localizarTarefaReatribuir:locate:Tarefa, verResponsavelAtual:inspect:Tarefa, trocarResponsavel:act:Tarefa\n- reatribuirTarefaCriada actor=membroEquipe — Reatribuir tarefa que criei\n  goal: Trocar o responsável de uma tarefa que o membro criou.\n  steps: localizarCriada:locate:Tarefa, verResponsavelCriada:inspect:Tarefa, trocarResponsavelCriada:act:Tarefa\n- cancelarTarefa actor=gestor — Cancelar tarefa\n  goal: Cancelar uma tarefa que não deve mais ser feita.\n  steps: localizarTarefaCancelar:locate:Tarefa, cancelar:act:Tarefa\n- cancelarTarefaCriada actor=membroEquipe — Cancelar tarefa que criei\n  goal: Cancelar uma tarefa que o membro criou.\n  steps: localizarCriadaCancelar:locate:Tarefa, cancelarCriada:act:Tarefa\n- minhasTarefas actor=membroEquipe — Ver minhas tarefas\n  goal: Ver as tarefas de que é responsável, as que criou e o que depende dele agora.\n  steps: listarMinhas:locate:Tarefa, verDetalhe:inspect:Tarefa\n- resumoDiario actor=membroEquipe — Receber resumo das 8h\n  goal: Ver as tarefas abertas que vencem hoje ou estão atrasadas.\n  steps: lerResumo:inspect:Tarefa, verVencendo:inspect:Tarefa\n- acompanharTarefas actor=gestor — Acompanhar todas as tarefas\n  goal: Acompanhar todas as tarefas por lista, responsável, prioridade, prazo e situação, em lista e em quadro, e quantas tarefas cada pessoa concluiu na semana.\n  steps: filtrarTarefas:locate:Tarefa, verQuadro:inspect:Tarefa, abrirTarefaGestor:inspect:Tarefa, verConcluidasSemanaPorPessoa:inspect:Tarefa",
+    "systemPrompt": "# Menu\n\nThe menu is one tree for the module. Actors are a filter, not a second tree.\n\n- Nodes are `hub` (pick a record of `context`, then act), `page` (a screen of organisms) or `group` (a folder, rare).\n- A page has `organisms[]` (`list`, `detail`, `form`, `summary`, `highlights`, `timeline`, `actions`, `inbox`, `alerts`). Actions are never nodes.\n- `authorities` lists, in order, the node ids each actor sees. Granting a hub grants its children. The first id is that actor's entry.\n- `label`, `text` and `organisms[].text` use `userLanguage`. Ids are snake_case.\n- `meta.journeys` maps every l4 journey to the pages where it happens; an empty list is a visible hole. `meta.processes` maps every l4 process the same way. `meta.records` maps each kept record (from `recordsKept`) to the pages that maintain it outside journeys; a form page without a journey keeps only the records listed for it.\n- The actor's home is `summary`/`highlights` + `alerts` + `inbox`. What the system does on its own, the person must see it happened (`timeline` on the entity page).\n- The deterministic hub/page candidates and \"what this actor must see, beyond journeys\" in the prompt are evidence, not the cut. One journey = one page is the result to avoid.\n\n<!-- mls fileReference=\"_102020_/l2/agentPlannerL2/steps/menu20/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n<!-- reasoningEffort: high -->\n<!-- x-tool-strict: true -->\n\nYou are menu20 of collab.codes agentPlannerL2. Decide the navigation tree of a finished l4 module.\n\nCall the tool `submitP2Menu` once. Do not write Markdown around the tool arguments.\n\n## Inputs (in the human prompt)\n\n- every journey: id, actor, title, goal, steps (kind/entity)\n- actors and grants with data-scope mode, anchor entity, disclosure\n- entities with family and displayField\n- processes: id, trigger, stages\n- **candidates**, labelled \"candidates, not the answer\": hubs = grant anchors; pages = grouping (entity, actor); records kept by this module and who is granted on them; the grant description says whether that actor maintains or only consults\n- **what this actor must see, beyond journeys**: human stages waiting for that actor, alert stages, mechanical effects their grant reaches, derived fields and `ddm` entities their grant reaches\n- **in `/candidate` only**: the module's current screens — keep their ids, labels and wording; change only what the l4 diff changes\n\n## What to emit\n\nOne tree for the module. Actor is visibility, not structure.\n\nTool arguments:\n\n- `tree`: nodes of kind `hub` | `page` | `group`\n- `authorities`: array of `{ actorRef, nodes }` — node ids each actor sees, **in order** (first = that actor's entry). Granting a hub grants its children.\n- `meta.journeys`: array of `{ journeyId, pages }` — every l4 journey, pages where it happens (empty pages = a visible hole)\n- `meta.processes`: array of `{ processId, pages }` — every l4 process, pages where the person sees its cause or effect (empty pages = a visible hole)\n- `meta.records`: array of `{ entityId, pages }` — for each record of `recordsKept` that a page maintains outside journeys, the pages that maintain it. Every page with a `form` and no journey appears under the entity it keeps; a page lists only records an actor of that page has a grant for. A grant that only consults a record does not make the page maintain it. Empty array when no page maintains a record outside journeys\n- `meta.placements`: array of `{ journeyId, actorRef, placement, pageId, reason }` — one row for every journey × actor pair. `placement` is `screenAction`, `menuItem` or `listWithAdd`. `pageId` is a page that actor already sees. `reason` is one sentence in `userLanguage`.\n\nDo not emit `schemaVersion`, `moduleName`, `userLanguage`, `device` or `action`. Code fills those.\n\n## Where each journey goes\n\nFor each journey × actor, pick one place. The signals are the ones already in the human prompt: the module `sourcePrompt`, each grant's `dataScope`, and that journey's actor, step kinds and entities.\n\n- `screenAction`: the journey acts on what the screen already shows.\n- `menuItem`: the journey starts something new that does not belong to a list of that actor. It becomes its own menu item, pointing at a screen that already exists.\n- `listWithAdd`: the main object is a collection that actor administers. The list has the \"+\".\n\n## Node kinds\n\n- `hub`: the person picks a record of `context` (an l4 entity) before acting — the \"Project\". Has `text` and `children`. When the grant is anchored on the person themselves, the hub opens with that record already selected; say so in `text`.\n- `page`: a screen. No `text`. Has `organisms[]`. `icon` is a Lucide icon name that represents the screen, or `\"\"` when none fits. Do not invent a name; an unknown name is dropped by the code.\n- `group`: a folder with no context. Use only when there are many leaves.\n\nIds are `snake_case`. Suffix an actor only when the same thing exists for different actors outside a hub.\n\n## Organisms\n\nEach page is an array of organisms. `kind` is exactly one of: `list`, `detail`, `form`, `summary`, `highlights`, `timeline`, `actions`, `inbox`, `alerts`. Each has `text`: what the person sees and does, as they would say it, in `userLanguage`.\n\n`actions` may only name what that actor's grants allow.\n\nHome organisms come from **what this actor must see, beyond journeys**. `summary` / `highlights` only from derived fields and `ddm` entities in that block; `alerts` only from alert stages; `inbox` only from human stages waiting for that actor. If the block has nothing for a kind, do not emit that organism. Never write text stating that something is absent. If nothing in the block applies to an actor, that actor has no home: their entry is their first work page.\n\nThe five classes (data, not a rule to invent screens):\n- condition on data / derived / `ddm` → `summary` / `highlights`\n- recurring scheduled duty → `alerts`\n- human stage waiting for the actor → `inbox`\n- what the system did on its own (mechanical effect or inbound/outbound integration) → `timeline` on the entity page\n\n## Rules\n\n- One tree per module.\n- A hub for what the person chooses before acting.\n- **One page joins every journey about the same thing.** Do not map one journey to one page.\n- `label`, `text` and `organisms[].text` are in `userLanguage`.\n- Put each actor's entry first in that actor's `nodes`.\n- Candidates are evidence, not the cut. You may merge or nest. You may not invent an actor, an entity, a journey or a process.\n- What the system does on its own, the person must see it happened.\n",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "submitP2Menu",
+          "description": "Submit the module menu tree: hubs, pages with organisms, authorities by actor, and journey/process mapping.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "result"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "flexible"
+              },
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tree",
+                  "authorities",
+                  "meta"
+                ],
+                "properties": {
+                  "tree": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/node"
+                    }
+                  },
+                  "authorities": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/authority"
+                    }
+                  },
+                  "meta": {
+                    "$ref": "#/$defs/meta"
+                  }
+                }
+              }
+            },
+            "$defs": {
+              "node": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/hubNode"
+                  },
+                  {
+                    "$ref": "#/$defs/pageNode"
+                  },
+                  {
+                    "$ref": "#/$defs/groupNode"
+                  }
+                ]
+              },
+              "hubNode": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "kind",
+                  "label",
+                  "context",
+                  "text",
+                  "children"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "hub"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "context": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$",
+                    "enum": [
+                      "Participante",
+                      "ListaTarefas",
+                      "Tarefa",
+                      "ItemChecklist"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "children": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/node"
+                    }
+                  }
+                }
+              },
+              "pageNode": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "kind",
+                  "label",
+                  "organisms",
+                  "icon"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "page"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "organisms": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/organism"
+                    }
+                  }
+                }
+              },
+              "groupNode": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "kind",
+                  "label",
+                  "text",
+                  "children"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "group"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/node"
+                    }
+                  }
+                }
+              },
+              "organism": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "text"
+                ],
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "list",
+                      "detail",
+                      "form",
+                      "summary",
+                      "highlights",
+                      "timeline",
+                      "actions",
+                      "inbox",
+                      "alerts"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "authority": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "actorRef",
+                  "nodes"
+                ],
+                "properties": {
+                  "actorRef": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]*$",
+                    "enum": [
+                      "membroEquipe",
+                      "gestor"
+                    ]
+                  },
+                  "nodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                    }
+                  }
+                }
+              },
+              "meta": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "journeys",
+                  "processes",
+                  "records",
+                  "placements"
+                ],
+                "properties": {
+                  "journeys": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/journeyPages"
+                    }
+                  },
+                  "processes": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/processPages"
+                    }
+                  },
+                  "records": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/recordPages"
+                    }
+                  },
+                  "placements": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/placement"
+                    }
+                  }
+                }
+              },
+              "placement": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "journeyId",
+                  "actorRef",
+                  "placement",
+                  "pageId",
+                  "reason"
+                ],
+                "properties": {
+                  "journeyId": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]*$"
+                  },
+                  "actorRef": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]*$"
+                  },
+                  "placement": {
+                    "type": "string",
+                    "enum": [
+                      "screenAction",
+                      "menuItem",
+                      "listWithAdd"
+                    ]
+                  },
+                  "pageId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "journeyPages": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "journeyId",
+                  "pages"
+                ],
+                "properties": {
+                  "journeyId": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]*$",
+                    "enum": [
+                      "configurarParticipantes",
+                      "manterListas",
+                      "criarTarefa",
+                      "executarTarefa",
+                      "revisarTarefa",
+                      "retomarTarefa",
+                      "editarTarefa",
+                      "reatribuirTarefa",
+                      "reatribuirTarefaCriada",
+                      "cancelarTarefa",
+                      "cancelarTarefaCriada",
+                      "minhasTarefas",
+                      "resumoDiario",
+                      "acompanharTarefas"
+                    ]
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                    }
+                  }
+                }
+              },
+              "processPages": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "processId",
+                  "pages"
+                ],
+                "properties": {
+                  "processId": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]*$",
+                    "enum": [
+                      "processoTarefa",
+                      "resumoDiarioTarefas"
+                    ]
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                    }
+                  }
+                }
+              },
+              "recordPages": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "entityId",
+                  "pages"
+                ],
+                "properties": {
+                  "entityId": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

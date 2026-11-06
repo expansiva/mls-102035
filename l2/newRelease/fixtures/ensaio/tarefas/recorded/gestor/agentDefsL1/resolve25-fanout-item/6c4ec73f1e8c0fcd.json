@@ -1,0 +1,57 @@
+{
+  "raw": "[{\"type\":\"flexible\",\"result\":{\"toolName\":\"resolveRouteGaps\",\"arguments\":{\"answers\":{\"g0\":\"tarefaResponsavel\",\"g1\":\"tarefaCriador\"}}},\"status\":\"completed\",\"stepId\":20,\"interaction\":null,\"nextSteps\":null}]",
+  "agent": "agentDefsL1",
+  "step": "resolve25-fanout-item",
+  "stepId": 18,
+  "taskId": "20261104195446.1001",
+  "request": {
+    "humanPrompt": "Route tarefas.minhas_tarefas.cmdEnviarParaRevisao (cmd, writes Tarefa.enviarParaRevisao).\n\nJSDoc:\nFinalidade: Envia para revisão de quem criou a tarefa em andamento do responsável.\nEntrada: id e version da tarefa.\nProcessamento: Recusa se a pessoa não é o responsável (apenasResponsavelExecuta), se a tarefa não está emAndamento ou se a version mudou. Passa a emRevisao; quem criou passa a agir agora (quemAgeAgoraPorSituacao) e é avisado (avisarQuemAgeAgora).\nSaída: A tarefa completa em revisão e seu histórico com o envio.\n\nInput: { id: string; version: number }\nOutput: { tarefa: TarefaCompleta; historico: EventoHistorico[] }\n\nInterfaces:\n/** Lista de tarefas identificada pelo nome. */ interface ListaTarefasNome id: string;\n  nome: string;\n/** Participante identificado pelo nome lido da plataforma. */ interface ParticipanteNome id: string;\n  details: {\n    identification: {\n      name: string;\n    };\n  };\n/** Item marcável da checklist de uma tarefa. */ interface ItemChecklistLinha id: string;\n  version: number;\n  ordem: number;\n  details: {\n    descricao: string;\n    concluido: boolean;\n    readonly concluidoEm?: string;\n  };\n/** Tarefa pai identificada pelo título. */ interface TarefaPaiRef id: string;\n  titulo: string;\n/** Tarefa com todos os seus campos, nomes do responsável e de quem criou, lista, tarefa pai, marcos de devolução, retomada, conclusão e cancelamento, papel da pessoa da sessão e a checklist em ordem. */ interface TarefaCompleta id: string;\n  version: number;\n  titulo: string;\n  status: 'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada';\n  details: {\n    descricao?: string;\n    etiquetas?: string;\n    readonly quantidadeSubtarefas: number;\n    readonly progressoChecklist: string;\n    motivoDevolucao?: string;\n    devolvidaEm?: string;\n    retomadaEm?: string;\n    concluidaEm?: string;\n    canceladaEm?: string;\n    readonly quemAgeAgora?: string;\n    readonly devolvidaPendente: boolean;\n    readonly aberta: boolean;\n  };\n  prazo?: string;\n  prioridade: 'baixa' | 'media' | 'alta';\n  listaId: string;\n  listaTarefas: ListaTarefasNome;\n  responsavelId: string;\n  responsavel: ParticipanteNome;\n  criadorId: string;\n  criador: ParticipanteNome;\n  readonly criadaEm: string;\n  tarefaPaiId?: string;\n  tarefaPai?: TarefaPaiRef;\n  readonly quemAgeAgoraNome?: string;\n  readonly souResponsavel: boolean;\n  readonly souCriador: boolean;\n  itens: ItemChecklistLinha[];\n/** Marco do ciclo de uma tarefa: criação, início, envio para revisão, devolução com motivo, retomada, aceite, troca de responsável ou cancelamento, com momento e pessoa envolvida. */ interface EventoHistorico readonly tipo: string;\n  readonly momento: string;\n  status?: 'aFazer' | 'emAndamento' | 'emRevisao' | 'concluida' | 'cancelada';\n  readonly responsavelNome?: string;\n  details: {\n    motivoDevolucao?: string;\n  };\n\nRules: apenasResponsavelExecuta, quemAgeAgoraPorSituacao, avisarQuemAgeAgora\n\nOpen parts. Answer each id with one of its candidates:\n- g0: output.tarefa.responsavel [relationship] Participante inside Tarefa needs one L4 relationship between them; found 2. Candidates: tarefaCriador, tarefaResponsavel, none.\n- g1: output.tarefa.criador [relationship] Participante inside Tarefa needs one L4 relationship between them; found 2. Candidates: tarefaCriador, tarefaResponsavel, none.",
+    "systemPrompt": "<!-- mls fileReference=\"_102021_/l2/agentDefsL1/steps/resolve25/prompt.md\" enhancement=\"_blank\" -->\n<!-- modelType: reasoning -->\n\n# resolve25\n\nThe code already read this contract route from its types, the ontology and the L4 relationships. What it could not decide is listed under \"Open parts\", each with an id, the path in the route, why it is open, and its candidates.\n\nRead the JSDoc first: its purpose, input, processing and output say what the route does. Then answer every open part with one of its candidates, by what the route means.\n\nReturn only the `resolveRouteGaps` tool, with one answer per id.\n\nChoose `none` when the JSDoc and the types do not say which candidate it is. A wrong choice is worse than `none`.\n\nDo not write a value that is not among the candidates. Do not rename a field, an entity, a list or a rule.",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "resolveRouteGaps",
+          "description": "One choice per open part of the route, among its candidates. none leaves it open.",
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "answers"
+            ],
+            "properties": {
+              "answers": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "g0",
+                  "g1"
+                ],
+                "properties": {
+                  "g0": {
+                    "type": "string",
+                    "enum": [
+                      "tarefaCriador",
+                      "tarefaResponsavel",
+                      "none"
+                    ],
+                    "description": "output.tarefa.responsavel (relationship)"
+                  },
+                  "g1": {
+                    "type": "string",
+                    "enum": [
+                      "tarefaCriador",
+                      "tarefaResponsavel",
+                      "none"
+                    ],
+                    "description": "output.tarefa.criador (relationship)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
