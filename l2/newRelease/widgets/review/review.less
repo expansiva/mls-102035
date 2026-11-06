@@ -48,11 +48,13 @@ new-release--widgets--review-102035 {
     container-type: inline-size;
   }
   .nr-review__panel { margin: .85rem 1.25rem; border: 1px solid var(--border-subtle, #e4e9f0); border-radius: .7rem; overflow: hidden; }
-  .nr-review__effort-panel > .nr-review__effort-detail > summary { display: flex; flex-wrap: wrap; gap: .35rem 1rem; padding: .85rem; cursor: pointer; }
-  .nr-review__effort-panel > .nr-review__effort-detail > summary span { color: var(--text-muted, #5d6b7e); font-size: .75rem; }
+  .nr-review__text-detail { margin: .5rem .9rem; padding: .35rem .25rem; border: 0; border-radius: 0; background: transparent; font-size: 12px; }
+  .nr-review__text-detail > summary { display: list-item; padding: .25rem 0; cursor: pointer; font-size: 12px; font-weight: 400; }
+  .nr-review__text-detail > summary span { margin-left: .6rem; color: var(--text-muted, #5d6b7e); font-size: 12px; }
+  .nr-review__text-detail > p, .nr-review__text-detail > section, .nr-review__text-detail > details { margin: .55rem .35rem; }
+  .nr-review__detail-copy { display: flex; align-items: center; gap: .5rem; margin: .4rem .35rem .7rem; }
+  .nr-review__detail-copy button { padding: .25rem .55rem; border: 1px solid var(--border-default); border-radius: .35rem; background: var(--surface-bg); color: var(--text-default); font-size: 12px; }
   .nr-review__effort-panel > .nr-index__diff { margin: .6rem .85rem; }
-  .nr-review__effort-detail { margin: .6rem .85rem; border: 1px solid var(--border-subtle); border-radius: .55rem; }
-  .nr-review__effort-detail > p { padding: .75rem; }
   .nr-review__panel > h3 { margin: .85rem; font-size: .95rem; }
   .nr-review__panel-note { margin: .85rem; color: var(--text-muted, #5d6b7e); font-size: .78rem; }
   .nr-review__effort-panel > .nr-review__primary-action, .nr-review__apply > .nr-review__primary-action { padding: .85rem; }
@@ -167,7 +169,7 @@ new-release--widgets--review-102035 {
   .nr-review__task-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .65rem 1rem; padding: .85rem; }
   .nr-review__task-slot { min-width: 0; }
   .nr-review__task-slot > span { display: block; color: var(--text-muted); font-size: .68rem; }
-  .nr-review__implementation-details { margin: .75rem .85rem; border: 1px solid var(--border-subtle); border-radius: .5rem; padding: .2rem .65rem; }
+  .nr-review__implementation-details { margin: .5rem .9rem; padding: .35rem .25rem; border: 0; border-radius: 0; }
   .nr-review__implementation-details > summary { cursor: pointer; }
   .nr-review__history > details { padding: .85rem; }
   .nr-review__round { margin: .7rem 0; padding: .65rem; border: 1px solid var(--border-subtle); border-radius: .5rem; }

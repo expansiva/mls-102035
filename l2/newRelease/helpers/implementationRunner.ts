@@ -22,6 +22,7 @@ export interface ImplementationRunnerDependencies {
   userId?: () => string | null | Promise<string | null>;
   now?: () => string;
   onTask?: (project: number, moduleName: string, phaseName: string, task: TaskData) => void;
+  onTaskChange?: (listener: (context: ExecutionContext) => void) => () => void;
 }
 
 const taskId = (value: string) => value.replace(/^task(?:\/#?|#)/u, '');
@@ -256,13 +257,37 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
       }
     }
     await save(phase);
+    const subscribe = dependencies.onTaskChange ?? ((listener: (changed: ExecutionContext) => void) => {
+      const target = typeof window === 'undefined' ? undefined : window.top ?? window;
+      if (!target?.addEventListener) return () => undefined;
+      const handler = (event: Event) => {
+        const changed = (event as CustomEvent<{ context: ExecutionContext }>).detail?.context;
+        if (changed) listener(changed);
+      };
+      target.addEventListener('task-change', handler);
+      return () => target.removeEventListener('task-change', handler);
+    });
+    let firstPersist: Promise<void> = Promise.resolve();
+    let captured = false;
+    const unsubscribe = subscribe(changed => {
+      if (changed !== ctx || !ctx.task?.PK) return;
+      dependencies.onTask?.(project, moduleName, name, ctx.task);
+      if (captured) return;
+      captured = true;
+      const created = ctx.task;
+      firstPersist = save({ ...phase, taskId: taskId(created.PK), messageId: created.messageid_created || phase.messageId });
+    });
     try {
       await execute(command.agent, ctx);
+      await firstPersist;
     } catch (error) {
+      await firstPersist;
       // The server may already have created a task: keep its identity for observation.
       if (ctx.task?.PK) await save(await observed(project, moduleName, phase, ctx.task, record));
       else await save({ ...phase, status: 'failed', endedAt: now(), error: error instanceof Error ? error.message : String(error) });
       throw error;
+    } finally {
+      unsubscribe();
     }
     if (ctx.task?.PK) await save(await observed(project, moduleName, phase, ctx.task, record));
   }

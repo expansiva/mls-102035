@@ -66,6 +66,7 @@ export interface NewReleaseModuleData {
   sealedRevision: L4SealedCandidateSnapshot | null;
   changeId: string | null;
   revisionId: string | null;
+  confirmedRound?: L4ReleaseManifest['confirmedRound'];
   baseProvenance: L4ReleaseManifest['provenance'] | null;
   resultCurrent: boolean;
   stalePaths: Ns5TobeArtifactPath[];
@@ -229,6 +230,7 @@ export async function readNs5Module(
     sealedRevision: overlay.sealedRevision,
     changeId: overlay.changeId,
     revisionId: overlay.revisionId,
+    confirmedRound: overlay.confirmedRound,
     baseProvenance,
     resultCurrent,
     stalePaths: overlay.stalePaths,

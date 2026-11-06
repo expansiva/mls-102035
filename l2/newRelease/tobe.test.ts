@@ -447,12 +447,17 @@ test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the 
   });
   const active = await readActiveL4Change(project, moduleName);
   assert.ok(active && again.changeId);
+  const applied = await readSealedL4Candidate(project, moduleName, again.changeId!, again.revisionId!);
+  assert.ok(applied);
+  for (const item of applied.sources) {
+    fixture.contents.set(fixture.keyOf(tobeArtifactFileInfo(project, moduleName, item.path, 'asis')), item.source);
+  }
   plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'change' }, {
-    ...active, activeRevisionId: 'rev-apply', promotedRevisionId: 'rev-apply',
+    ...active, activeRevisionId: again.revisionId, promotedRevisionId: again.revisionId,
   });
   plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${again.changeId}`, shortName: 'implementation' }, {
     schemaVersion: '2026-10-08-nr-module-implementation-v1', changeId: again.changeId,
-    revisionId: 'rev-apply', acceptedBy: 'reviewer', acceptedAt: '2026-11-05T10:00:00.000Z', hashes: {},
+    revisionId: again.revisionId, acceptedBy: 'reviewer', acceptedAt: '2026-11-05T10:00:00.000Z', hashes: {},
     merged: { create: [], regenerateDefs: [], remove: [], materialize: [], runAgents: [], abend: [] },
     phases: [],
   });
@@ -468,7 +473,7 @@ test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the 
     if (event.type === NEW_RELEASE_TOBE_UPDATED_EVENT) selectedVersion = (event as CustomEvent<{ version?: string }>).detail.version || '';
     return true;
   } };
-  try { await completeTobeImplementation(project, moduleName, again.changeId, 'rev-apply', 'reviewer'); }
+  try { await completeTobeImplementation(project, moduleName, again.changeId!, again.revisionId!, 'reviewer'); }
   finally { if (previousWindow) browserGlobal.window = previousWindow; else delete browserGlobal.window; }
   assert.equal(selectedVersion, 'asis');
   assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/')), false);
@@ -476,8 +481,19 @@ test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the 
   assert.equal(JSON.parse(fixture.contents.get(confirmation) || '{}').confirmedBy, 'reviewer');
   const rounds = await listConfirmedRounds(project, moduleName);
   assert.equal(rounds.length, 1);
-  assert.equal(rounds[0].record.revisionId, 'rev-apply');
+  assert.equal(rounds[0].record.revisionId, again.revisionId);
   assert.equal(rounds[0].confirmedBy, 'reviewer');
+  const snapshotId = (await listReleaseChoices(project, moduleName))[0]?.baseId;
+  assert.ok(snapshotId?.startsWith('snap-'));
+  const frozen = await readL4Release(project, moduleName, snapshotId);
+  assert.equal(frozen?.confirmedRound?.revisionId, again.revisionId);
+  assert.deepEqual(frozen?.files, applied.manifest.files);
+  assert.equal((await listReleaseChoices(project, moduleName))[0]?.baseId, frozen?.baseId);
+  const history = await readNs5Overlay(project, moduleName, `release:${frozen!.baseId}`);
+  assert.equal(history.sources.module.value?.title, 'Applied title');
+  assert.ok(history.diffs.some(diff => diff.path === 'module.defs.ts' && diff.entries.some(entry => entry.jsonPath === '$.title')));
+  await saveChangeRequest(project, moduleName, 'Next update', null, null);
+  assert.equal((await readActiveL4Change(project, moduleName))?.baseId, frozen?.baseId);
 });
 
 test('base snapshot is complete, byte-stable and separate from the temporary candidate', async () => {

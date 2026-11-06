@@ -20,6 +20,8 @@ export interface L4ReleaseManifest {
   files: L4HashMap;
   schemas: L4SchemaMap;
   provenance: { status: 'unverified' | 'verified'; label: string; deploymentId?: string; evidence?: string };
+  /** A completed update captured after promotion; absent on earlier baseline releases. */
+  confirmedRound?: { changeId: string; revisionId: string; sourceBaseId: string; confirmedAt: string; confirmedBy: string };
 }
 
 export interface L4ReleaseCatalog {
@@ -282,6 +284,56 @@ export async function readL4Release(project: number, moduleName: string, baseId:
   }
 }
 
+/** Called under the module writer when a completed update is confirmed. */
+export async function captureConfirmedL4Release(project: number, moduleName: string, changeId: string,
+  revisionId: string, sourceBaseId: string, confirmedAt: string, confirmedBy: string): Promise<L4ReleaseManifest> {
+  const sealed = await readSealedL4Candidate(project, moduleName, changeId, revisionId);
+  if (!sealed || sealed.manifest.baseId !== sourceBaseId) throw new Error('l4.snapshot_incomplete');
+  const paths = Object.keys(sealed.manifest.files).map(normalizeTobeArtifactPath).sort();
+  const currentPaths = await inventory(project, moduleName);
+  if (paths.length !== currentPaths.length || paths.some((path, index) => path !== currentPaths[index])
+    || !sameHashes(await mapHash(paths, project, moduleName, 'asis'), sealed.manifest.files)) {
+    throw new Error('l4.snapshot_current_mismatch');
+  }
+  const baseId = `snap-${(await sourceHash(changeId)).slice(7, 23)}`;
+  const existing = await readL4Release(project, moduleName, baseId);
+  if (existing) {
+    if (existing.confirmedRound?.revisionId !== revisionId || !sameHashes(existing.files, sealed.manifest.files)) {
+      throw new Error('l4.snapshot_conflict');
+    }
+    const catalog = await readJson<L4ReleaseCatalog>(catalogInfo(project, moduleName));
+    if (!(catalog?.releases ?? []).some(entry => entry.baseId === baseId)) {
+      await writeJson(catalogInfo(project, moduleName), {
+        schemaVersion: L4_REVISION_SCHEMA,
+        releases: [...(catalog?.releases ?? []), { baseId, createdAt: existing.createdAt, provenance: existing.provenance }],
+      } satisfies L4ReleaseCatalog);
+    }
+    return existing;
+  }
+  const schemas = await mapSchemas(paths, project, moduleName, 'asis');
+  for (const { path, source } of sealed.sources) {
+    await writeSourceText(artifactInfo(project, moduleName, path, 'release', baseId), source);
+  }
+  if (!sameHashes(await mapHash(paths, project, moduleName, 'release', baseId), sealed.manifest.files)
+    || !sameSchemas(await mapSchemas(paths, project, moduleName, 'release', baseId), schemas)) {
+    throw new Error('l4.snapshot_incomplete');
+  }
+  const manifest: L4ReleaseManifest = {
+    schemaVersion: L4_REVISION_SCHEMA, project, moduleName, baseId, createdAt: confirmedAt,
+    files: sealed.manifest.files, schemas,
+    provenance: { status: 'unverified', label: 'Confirmed update — publication not verified' },
+    confirmedRound: { changeId, revisionId, sourceBaseId, confirmedAt, confirmedBy },
+  };
+  await writeJson(releaseInfo(project, moduleName, baseId), manifest);
+  const catalog = await readJson<L4ReleaseCatalog>(catalogInfo(project, moduleName));
+  await writeJson(catalogInfo(project, moduleName), {
+    schemaVersion: L4_REVISION_SCHEMA,
+    releases: [...(catalog?.releases ?? []).filter(entry => entry.baseId !== baseId),
+      { baseId, createdAt: confirmedAt, provenance: manifest.provenance }],
+  } satisfies L4ReleaseCatalog);
+  return manifest;
+}
+
 export async function prepareL4Change(project: number, moduleName: string, oldManifest?: Ns5TobeManifest | null): Promise<{ release: L4ReleaseManifest; change: L4ChangeRecord; created: boolean }> {
   return withModuleWriter(project, moduleName, async () => {
     const active = await readActiveL4Change(project, moduleName);
@@ -336,8 +388,23 @@ export async function prepareL4Change(project: number, moduleName: string, oldMa
       }
     }
     const identity = await sourceHash(JSON.stringify(originalHashes));
-    const baseId = `base-${identity.slice(7, 23)}`;
-    const previous = await readL4Release(project, moduleName, baseId);
+    let baseId = `base-${identity.slice(7, 23)}`;
+    let previous = await readL4Release(project, moduleName, baseId);
+    if (!previous) {
+      const catalog = await readJson<L4ReleaseCatalog>(catalogInfo(project, moduleName));
+      const latestSnapshot = [...(catalog?.releases ?? [])].reverse().find(entry => entry.baseId.startsWith('snap-'));
+      if (latestSnapshot) {
+        const snapshot = await readL4Release(project, moduleName, latestSnapshot.baseId);
+        const round = snapshot?.confirmedRound;
+        const marker = round ? await readJson<{ revisionId: string }>(
+          { project, level: 4, folder: `${moduleName}/pipeline/changes/${round.changeId}`, shortName: 'confirmation', extension: '.json' }) : null;
+        if (round && marker?.revisionId === round.revisionId && sameHashes(snapshot.files, originalHashes)
+          && sameSchemas(snapshot.schemas, originalSchemas)) {
+          baseId = snapshot.baseId;
+          previous = snapshot;
+        }
+      }
+    }
     const now = new Date().toISOString();
     const release: L4ReleaseManifest = previous ?? {
       schemaVersion: L4_REVISION_SCHEMA, project, moduleName, baseId, createdAt: now,

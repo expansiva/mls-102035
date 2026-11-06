@@ -301,6 +301,8 @@ export class NewReleaseReview102035 extends StateLitElement {
   @state() private implementationCheckBusy = false;
   @state() private implementationCheckFeedback = '';
   @state() private implementationCopyFeedback = '';
+  @state() private detailCopyKey = '';
+  @state() private detailCopyFeedback = '';
   private implementationTaskChanges: Record<string, number> = {};
   @state() private implementationHashes: L4ImplementationHashes = { changeEffort: '' };
   @state() private confirmedRounds: ConfirmedRound[] = [];
@@ -357,6 +359,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     if (changed.has('project') || changed.has('moduleName') || changed.has('version') || changed.has('data') || changed.has('request')) {
       this.reviewCopyFeedback = '';
       this.reviewCopyRunId = '';
+      this.detailCopyKey = '';
+      this.detailCopyFeedback = '';
       this.selectedActor = '';
       this.selectedId = '';
       this.selectedScope = 'future';
@@ -437,6 +441,9 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
     this.loading = true;
     const hasRelease = moduleHasGeneratedSources(context.project, context.moduleName, Object.values(mls.stor.files).filter(file => !!file));
+    const snapshot = context.data?.confirmedRound;
+    const snapshotRoot = snapshot
+      ? `${context.moduleName}/pipeline/changes/${snapshot.changeId}/revisions/${snapshot.revisionId}/l4` : undefined;
     const runRead = context.version === 'tobe' && context.data?.changeId && context.data.revisionId
       ? this.reviewRunStore.read({
         project: context.project,
@@ -447,9 +454,9 @@ export class NewReleaseReview102035 extends StateLitElement {
       : Promise.resolve({ run: null, errorCode: '' });
     const [menuRead, backendRead, effortRead, changeEffortRead, pool, persistedRun, implementation, confirmedRounds] = await Promise.all([
       readModuleMenu(context.project, context.moduleName, { generated: hasRelease }),
-      readReviewArtifact(context.project, context.moduleName, 'backend'),
-      readReviewArtifact(context.project, context.moduleName, 'effort'),
-      readReviewArtifact(context.project, context.moduleName, 'changeEffort'),
+      readReviewArtifact(context.project, context.moduleName, 'backend', snapshotRoot),
+      readReviewArtifact(context.project, context.moduleName, 'effort', snapshotRoot),
+      readReviewArtifact(context.project, context.moduleName, 'changeEffort', snapshotRoot),
       readReviewPoolBoxes(context.project, context.moduleName),
       runRead,
       (context.data?.changeId ? readL4Implementation(context.project, context.moduleName) : readLatestCompletedL4Implementation(context.project, context.moduleName)).then(value => ({ value, error: false }), () => ({ value: null, error: true })),
@@ -525,7 +532,7 @@ export class NewReleaseReview102035 extends StateLitElement {
   private async hydrateImplementationTasks(record: L4ImplementationRecord, token: number): Promise<void> {
     const userId = getUserId();
     if (!userId) return;
-    await Promise.all(record.phases.filter(phase => phase.status !== 'running' && phase.taskId && phase.messageId).map(async phase => {
+    await Promise.all(record.phases.filter(phase => phase.taskId && phase.messageId).map(async phase => {
       try {
         const result = await msgGetTaskUpdate({ userId, taskId: phase.taskId, messageId: phase.messageId });
         const task = result.success ? result.response?.task : null;
@@ -1372,6 +1379,21 @@ export class NewReleaseReview102035 extends StateLitElement {
     }
   }
 
+  private async copyDetail(key: string, value: unknown): Promise<void> {
+    this.detailCopyKey = key;
+    try {
+      await navigator.clipboard.writeText(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+      this.detailCopyFeedback = this.t('common.copied');
+    } catch {
+      this.detailCopyFeedback = this.t('common.copyFailed');
+    }
+  }
+
+  private renderDetailCopy(key: string, value: unknown) {
+    return html`<div class="nr-review__detail-copy"><button type="button" @click=${() => void this.copyDetail(key, value)}>${this.t('common.copy')}</button>
+      ${this.detailCopyKey === key ? html`<span role="status">${this.detailCopyFeedback}</span>` : nothing}</div>`;
+  }
+
   private renderImplementation(placement: 'top' | 'bottom') {
     if (!this.hasImplementation()) return nothing;
     const complete = this.implementationComplete();
@@ -1384,7 +1406,8 @@ export class NewReleaseReview102035 extends StateLitElement {
           <button type="button" ?disabled=${this.implementationCheckBusy} @click=${() => this.checkImplementationTask()}>${this.t('review.implementation.checkNow')}</button>
         </p>` : nothing}
         ${this.implementationCheckFeedback ? html`<p role="status">${this.implementationCheckFeedback}</p>` : nothing}
-        <details class="nr-review__implementation-details"><summary>${this.t('review.implementation.details')}</summary>
+        <details class="nr-review__implementation-details nr-review__text-detail"><summary>${this.t('review.implementation.details')}</summary>
+        ${this.renderDetailCopy('implementation', { plan: this.implementation?.merged, phases: this.implementation?.phases })}
         <p class="nr-review__implementation-note">${this.t(complete ? 'review.implementation.completedBody' : 'review.implementation.changesPendingBody')}</p>
         ${materialize.length ? html`<section class="nr-review__implementation-materialize">
           <h4>${this.t('review.implementation.materialize')}</h4>
@@ -2077,11 +2100,12 @@ export class NewReleaseReview102035 extends StateLitElement {
       <h3>${this.t('review.panels.effort')}</h3>
       ${!this.hasRelease ? html`<p class="nr-review__panel-note">${this.t('review.panels.fullGenerationBody')}</p>` : nothing}
       ${calculate.map(block => this.renderPrimaryAction(block))}
-      ${this.changesContent === nothing ? html`<details class="nr-review__effort-detail"><summary>${this.t('tobe.diffTitle', { count: 0 })}</summary>
+      ${this.changesContent === nothing ? html`<details class="nr-review__text-detail"><summary>${this.t('tobe.diffTitle', { count: 0 })}</summary>
         <p>${this.t('review.release.unchanged')}</p></details>` : this.changesContent}
-      <details class="nr-review__effort-detail"><summary>${this.t('review.panels.plannedChanges')}
+      <details class="nr-review__text-detail"><summary>${this.t('review.panels.plannedChanges')}
         ${planVisible && summary.kind === 'counts' ? html`<span>${summary.counts.filter(item => item.category !== 'endpoints').map(item => `${this.t(`review.backend.count.${item.category}`)}: ${item.statuses.reduce((count, value) => count + value.count, 0)}`).join(' · ')}</span>` : nothing}
       </summary>
+        ${this.renderDetailCopy('planned', { effort: this.effortRead.value, changeEffort: this.changeEffortRead.value, backend: this.backendRead.value })}
         ${planVisible ? html`${this.renderEffort(changeEffort)}${this.renderChangeEffort(changeEffort)}${this.renderBackend(view)}`
           : html`<p>${this.t('review.panels.notCalculated')}</p>`}
       </details>
@@ -2101,7 +2125,49 @@ export class NewReleaseReview102035 extends StateLitElement {
     </section>`;
   }
 
+  private renderSnapshotReview() {
+    const snapshot = this.data?.confirmedRound;
+    if (!snapshot) return nothing;
+    const round = this.confirmedRounds.find(item => item.record.changeId === snapshot.changeId
+      && item.record.revisionId === snapshot.revisionId);
+    const effort = buildChangeEffortView(this.changeEffortRead);
+    const date = new Date(snapshot.confirmedAt).toLocaleString(document.documentElement.lang || 'pt-BR');
+    return html`<section class="nr-review nr-review--snapshot">
+      <header class="nr-review__hero"><div><span>${this.t('review.snapshot.title')}</span><h2>${date}</h2>
+        <p>${this.t('review.snapshot.readOnly')}</p></div></header>
+      ${this.loading || !this.isCurrentLoad() ? html`<p class="nr-review__loading">${this.t('state.loading')}</p>` : nothing}
+      <section class="nr-review__panel nr-review__effort-panel">
+        <h3>${this.t('review.panels.effort')}</h3>
+        ${this.changesContent === nothing ? html`<details class="nr-review__text-detail"><summary>${this.t('tobe.diffTitle', { count: 0 })}</summary>
+          <p>${this.t('review.release.unchanged')}</p></details>` : this.changesContent}
+        <details class="nr-review__text-detail"><summary>${this.t('review.panels.plannedChanges')}</summary>
+          ${this.renderDetailCopy('snapshot-effort', { effort: this.effortRead.value, changeEffort: this.changeEffortRead.value })}
+          ${this.effortRead.status === 'ok' || this.changeEffortRead.status === 'ok'
+            ? html`${this.renderEffort(effort)}${this.renderChangeEffort(effort)}`
+            : html`<p>${this.t('review.snapshot.effortMissing')}</p>`}
+        </details>
+      </section>
+      <section class="nr-review__panel nr-review__apply">
+        <h3>${this.t('review.panels.apply')}</h3>
+        ${round ? html`<details class="nr-review__text-detail"><summary>${this.t('review.implementation.details')}</summary>
+          ${this.renderDetailCopy('snapshot-implementation', { plan: round.record.merged, phases: round.record.phases })}
+          ${(['create', 'regenerateDefs', 'materialize', 'remove'] as const).map(operation => html`<section>
+            <h4>${this.t(`review.effort.operation.${operation}`)}</h4>
+            ${round.record.merged[operation].length ? html`<ul>${round.record.merged[operation].map(unit => html`<li>${unit.kind}: ${unit.id} <code>${unit.path}</code></li>`)}</ul>`
+              : html`<p>${this.t('review.effort.none')}</p>`}
+          </section>`)}
+          ${round.record.phases.map(phase => phase.report ? html`<details><summary>${phase.agent}</summary><pre>${this.implementationReport(phase.report)}</pre></details>` : nothing)}
+        </details>
+        <div class="nr-review__task-grid">${implementationCommands(round.record, this.project, this.moduleName).map((command, index) => {
+          const phase = round.record.phases.find(item => item.name === `runAgents:${index}`);
+          return html`<div class="nr-review__task-slot"><span>${command.agent}</span>${phase ? this.renderConfirmedTask(phase) : nothing}</div>`;
+        })}</div>` : html`<p class="nr-review__panel-note">${this.t('review.snapshot.missingRound')}</p>`}
+      </section>
+    </section>`;
+  }
+
   render() {
+    if (this.data?.confirmedRound) return this.renderSnapshotReview();
     const view = this.view();
     const current = this.isCurrentLoad();
     const changeEffort = buildChangeEffortView(this.changeEffortRead);

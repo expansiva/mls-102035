@@ -78,6 +78,12 @@ export async function listReleaseChoices(project: number, moduleName: string): P
   const catalog = await readJson<L4ReleaseCatalog>({ project, level: 4, folder: `${moduleName}/pipeline/releases`, shortName: 'index', extension: '.json' });
   const valid = await Promise.all((catalog?.releases ?? []).map(async entry => {
     const release = await readL4Release(project, moduleName, entry.baseId);
+    if (release?.confirmedRound) {
+      const round = release.confirmedRound;
+      const marker = await readJson<{ changeId: string; revisionId: string }>({ project, level: 4,
+        folder: `${moduleName}/pipeline/changes/${round.changeId}`, shortName: 'confirmation', extension: '.json' });
+      if (marker?.changeId !== round.changeId || marker.revisionId !== round.revisionId) return null;
+    }
     return release ? { version: `release:${release.baseId}` as const, baseId: release.baseId, createdAt: release.createdAt, provenance: release.provenance } : null;
   }));
   return valid.filter((release): release is ReleaseChoice => release !== null)

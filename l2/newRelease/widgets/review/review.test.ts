@@ -168,6 +168,28 @@ test('mr41 s3c new planned module without active change enables Apply and keeps 
   assert.notEqual(review.actionPresentation(review.view(), true).labelKey, 'review.implementation.accept');
 });
 
+test('confirmed snapshot shows its own effort and tasks without edit actions', () => {
+  const review = widget();
+  review.version = 'release:snap-change1';
+  review.hasRelease = true;
+  review.data = { ...review.data, confirmedRound: { changeId: 'change1', revisionId: 'rev1',
+    sourceBaseId: 'base1', confirmedAt: '2026-11-06T12:00:00.000Z', confirmedBy: 'reviewer' } };
+  review.loadedFor = { project: review.project, moduleName: review.moduleName, version: review.version, data: review.data };
+  const record: L4ImplementationRecord = { schemaVersion: '2026-10-08-nr-module-implementation-v1',
+    changeId: 'change1', revisionId: 'rev1', acceptedBy: 'reviewer', acceptedAt: '', hashes: {},
+    merged: { create: [], regenerateDefs: [], materialize: [], remove: [],
+      runAgents: [{ agent: 'agentAddLanguage', command: '@@agentAddLanguage [{"languages":[],"moduleName":"fixture","projectId":102035}]' }], abend: [] },
+    phases: [{ name: 'runAgents:0', agent: 'agentNewReleaseL2', command: '@@agentNewReleaseL2 fixture',
+      attempt: 1, taskId: 'task1', threadId: 'thread1', messageId: 'thread1/message1', status: 'done', startedAt: '' }],
+  };
+  review.confirmedRounds = [{ record, confirmedAt: '2026-11-06T12:00:00.000Z', confirmedBy: 'reviewer' }];
+  const output = templateText(review.render());
+  assert.match(output, /review\.snapshot\.title/);
+  assert.match(output, /review\.panels\.plannedChanges/);
+  assert.match(output, /review\.implementation\.taskDetails/);
+  assert.doesNotMatch(output, /review\.panels\.confirmAction|review\.panels\.publishAction|review\.calculate/);
+});
+
 test('mr41 s3c completed initial implementation shows unchanged with generated L2', async () => {
   const f = setup();
   const record = await applyInitialReview(f.input, f.dependencies);

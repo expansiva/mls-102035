@@ -169,6 +169,37 @@ test('implementation task observation reuses the runner poll for live UI cost', 
   } finally { f.restore(); }
 });
 
+test('implementation persists and exposes a task while its command is still running', async () => {
+  const f = fixture();
+  try {
+    await f.accept();
+    let notify: ((context: ExecutionContext) => void) | undefined;
+    let created!: () => void;
+    let release!: () => void;
+    const ready = new Promise<void>(resolve => { created = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const seen: string[] = [];
+    const runner = createImplementationRunner({ ...f.dependencies,
+      onTaskChange: listener => { notify = listener; return () => { notify = undefined; }; },
+      onTask: (_project, _module, _phase, task) => { seen.push(task.PK); },
+      execute: async (_agent, context) => {
+        context.task = f.task('early');
+        notify?.(context);
+        created();
+        await gate;
+      },
+    });
+    const running = runner.runNext(project, moduleName);
+    await ready;
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+    assert.equal((await readL4Implementation(project, moduleName))?.phases[0]?.taskId, 'early');
+    assert.deepEqual(seen, ['task/#early']);
+    release();
+    await running;
+    assert.equal((await readL4Implementation(project, moduleName))?.phases[0]?.taskId, 'early');
+  } finally { f.restore(); }
+});
+
 test('concurrent runners reserve a command once', async () => {
   const f = fixture();
   try {
@@ -318,7 +349,7 @@ for (const failed of [1, 3]) test(`mr39 s10: done task with refusal at L1 phase 
     assert.equal(f.dispatched.length, failed + 1);
   } finally { f.restore(); }
 });
-test('mr39 s10: only a completed implementation retires the active change and retains its fechos', async () => {
+test('confirmation requires an intact sealed snapshot even after all implementation tasks finish', async () => {
   const f = fixture('both');
   try {
     await f.accept();
@@ -327,9 +358,9 @@ test('mr39 s10: only a completed implementation retires the active change and re
     const runner = createImplementationRunner(f.dependencies);
     for (let index = 0; index < 6; index++) await runner.runNext(project, moduleName);
     await assert.rejects(completeTobeImplementation(project, moduleName, 'change1', 'other'), /l4.implementation_conflict/u);
-    await completeTobeImplementation(project, moduleName, 'change1', 'rev1');
-    assert.equal(await readActiveL4Change(project, moduleName), null);
-    const history = await readLatestCompletedL4Implementation(project, moduleName);
+    await assert.rejects(completeTobeImplementation(project, moduleName, 'change1', 'rev1'), /l4.snapshot_incomplete/u);
+    assert.ok(await readActiveL4Change(project, moduleName));
+    const history = await readL4Implementation(project, moduleName);
     assert.equal(history?.phases.length, 6);
     assert.ok(history?.phases[0].report);
   } finally { f.restore(); }

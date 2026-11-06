@@ -46,7 +46,7 @@ import {
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import { clearChangeOrigins, recordManualChangeOrigin } from '/_102035_/l2/newRelease/helpers/changeOrigins.js';
-import { deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, withModuleWriter, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { captureConfirmedL4Release, deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, withModuleWriter, type L4ReleaseManifest, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
 export { NEW_RELEASE_TOBE_UPDATED_EVENT } from '/_102035_/l2/newRelease/helpers/context.js';
@@ -62,6 +62,7 @@ export interface NewReleaseOverlayResult {
   sealedRevision: L4SealedCandidateSnapshot | null;
   changeId: string | null;
   revisionId: string | null;
+  confirmedRound?: L4ReleaseManifest['confirmedRound'];
   stalePaths: Ns5TobeArtifactPath[];
   diffs: NewReleaseTobeDiff[];
   validation: NewReleaseOverlayValidation;
@@ -391,13 +392,14 @@ async function overlayDiffs(
   sources: NewReleaseOverlaySources,
   baseId?: string,
   baseline?: NewReleaseOverlaySources,
+  compareAll = false,
 ): Promise<NewReleaseTobeDiff[]> {
   const result: NewReleaseTobeDiff[] = [];
   for (const artifact of sources.all) {
-    if (artifact.source !== 'tobe' || artifact.value === null) continue;
+    if ((!compareAll && artifact.source !== 'tobe') || artifact.value === null) continue;
     const asis = await readDefsJson<unknown>(baseId ? originalL4FileInfo(project, moduleName, baseId, artifact.path) : tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis'));
-    const published = artifact.path === 'module.defs.ts' ? await readDefsJson<Ns5ModuleArtifact>(tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis')) : null;
-    const entries = tobeDiff(asis === null ? undefined : moduleLanguageBaseline(asis, artifact.value, published), artifact.value);
+    const published = !compareAll && artifact.path === 'module.defs.ts' ? await readDefsJson<Ns5ModuleArtifact>(tobeArtifactFileInfo(project, moduleName, artifact.path, 'asis')) : null;
+    const entries = tobeDiff(asis === null ? undefined : compareAll ? asis : moduleLanguageBaseline(asis, artifact.value, published), artifact.value);
     if (entries.length) result.push({ path: artifact.path, entries });
   }
   if (baseline) {
@@ -451,7 +453,8 @@ export async function readNs5Overlay(
   proposed?: { path: Ns5TobeArtifactPath; value: unknown },
 ): Promise<NewReleaseOverlayResult> {
   const historicalId = historicalReleaseId(version);
-  if (historicalId && !await readL4Release(project, moduleName, historicalId)) throw new Error('Historical release is incomplete.');
+  const historicalRelease = historicalId ? await readL4Release(project, moduleName, historicalId) : null;
+  if (historicalId && !historicalRelease) throw new Error('Historical release is incomplete.');
   let active = version === 'tobe' ? await readActiveL4Change(project, moduleName) : null;
   if (version === 'tobe' && !active) active = (await prepareL4Change(project, moduleName, await readManifest(project, moduleName))).change;
   const baseId = historicalId ?? active?.baseId;
@@ -459,9 +462,11 @@ export async function readNs5Overlay(
   const loaded = await readOverlaySourceBundle(project, moduleName, reading, baseId, proposed);
   const { sources, errors } = loaded;
   let baseline: NewReleaseOverlaySources | undefined;
-  if (version === 'tobe') {
-    const base = await readOverlaySourceBundle(project, moduleName, 'asis', baseId);
+  const comparisonBaseId = historicalRelease?.confirmedRound?.sourceBaseId ?? (version === 'tobe' ? baseId : undefined);
+  if (comparisonBaseId) {
+    const base = await readOverlaySourceBundle(project, moduleName, 'asis', comparisonBaseId);
     if (base.errors.length === 0 && base.sources.all.every(artifact => artifact.value !== null)) baseline = base.sources;
+    else if (historicalRelease?.confirmedRound) errors.push({ path: `pipeline/releases/${comparisonBaseId}`, message: 'Snapshot baseline is incomplete.' });
   }
   const ontologyPlan = !historicalId && isNs5OntologyV3(sources.ontologyIndex.value)
     ? await readJson<Ns5OntologyV3PlanDraft>(pipelineJsonFileForProject(project, moduleName, 'ontology30-plan-draft'))
@@ -480,9 +485,11 @@ export async function readNs5Overlay(
   }
   const [stalePaths, diffs] = await Promise.all([
     staleManifestPaths(project, moduleName, manifest),
-    overlayDiffs(project, moduleName, sources, baseId, baseline),
+    overlayDiffs(project, moduleName, sources, comparisonBaseId ?? baseId, baseline, !!historicalRelease?.confirmedRound && !!baseline),
   ]);
-  return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null, stalePaths, diffs, validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }, baseline), errors };
+  return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null,
+    confirmedRound: historicalRelease?.confirmedRound, stalePaths, diffs,
+    validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }, baseline), errors };
 }
 
 /** Retire only the successfully applied revision, keeping its immutable history. */
@@ -494,9 +501,11 @@ export async function completeTobeImplementation(project: number, moduleName: st
     }
     const record = await readL4Implementation(project, moduleName);
     if (!record || record.revisionId !== revisionId || !implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) throw new Error('implementation.not_complete');
+    const confirmedAt = new Date().toISOString();
+    await captureConfirmedL4Release(project, moduleName, changeId, revisionId, active.baseId, confirmedAt, confirmedBy);
     await deleteInventory([...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName), ...listedTobeFolder(project, `${moduleName}/tobe/operations`)]);
     await writeJson({ project, level: 4, folder: `${moduleName}/pipeline/changes/${changeId}`, shortName: 'confirmation', extension: '.json' },
-      { changeId, revisionId, confirmedAt: new Date().toISOString(), confirmedBy });
+      { changeId, revisionId, confirmedAt, confirmedBy });
   });
   announceTobeUpdated(project, moduleName, 'asis');
 }

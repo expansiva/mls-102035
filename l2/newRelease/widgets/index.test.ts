@@ -65,6 +65,25 @@ test('active implementation keeps content readable and blocks editing until the 
   assert.equal(index.mutationError, 'read failed');
 });
 
+test('confirmed snapshot keeps graph and text navigation but hides prompt and discard', () => {
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.project = 102047;
+  index.moduleName = 'tarefas';
+  index.version = 'release:snap-change1';
+  index.activeTab = 'rules';
+  index.activeEditor = () => null;
+  index.implementationActive = true;
+  index.data = { confirmedRound: { changeId: 'change1', revisionId: 'rev1', sourceBaseId: 'base1', confirmedAt: '', confirmedBy: '' },
+    diffs: [{ path: 'rules.defs.ts', entries: [{ jsonPath: '$.rules.one', before: 'A', after: 'B' }] }] };
+  assert.match(templateText(index.renderTabContent()), /release:snap-change1/);
+  assert.doesNotMatch(templateText(index.renderCommonControls()), /common\.prompt/);
+  assert.equal(templateText(index.renderRequest()), '');
+  index.activeTab = 'review';
+  const changed = templateText(index.renderDiffs());
+  assert.match(changed, /common\.copy/);
+  assert.doesNotMatch(changed, /tobe\.discardPath|review\.clearChanges/);
+});
+
 test('change request controls do not submit empty text and clear prior-tab feedback', async () => {
   const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
   index.activeTab = 'journeys';

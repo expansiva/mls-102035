@@ -264,6 +264,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const languagePending = !historicalReleaseId(context.version) && await hasPendingLanguages(context.project, context.moduleName);
     if (token !== this.loadToken || !contextStillCurrent(context, this)) return;
     this.data = data;
+    if (data.confirmedRound && this.presentation === 'prompt') this.presentation = 'graph';
     if (lockToken === this.implementationLockToken) this.setImplementationActive(implementationActive);
     if (lockError) this.mutationError = lockError;
     this.changeOrigins = changeOrigins;
@@ -448,7 +449,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
         this.tabDetail = false;
       }}>${this.t('common.back')}</button>` : nothing}
       ${!nested ? html`<div role="group" aria-label=${this.t('common.presentation')}>
-        ${(this.implementationActive ? ['graph', 'text'] as const : ['graph', 'text', 'prompt'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
+        ${(this.implementationActive || !!this.data?.confirmedRound ? ['graph', 'text'] as const : ['graph', 'text', 'prompt'] as const).map(view => html`<button type="button" aria-pressed=${this.presentation === view ? 'true' : 'false'} @click=${() => { this.presentation = view; }}>${this.t(`common.${view}`)}</button>`)}
       </div>` : nothing}
       ${this.presentation === 'graph' && !nested ? html`<div role="group" aria-label=${this.t('common.zoom')}>
         <button type="button" aria-label=${this.t('common.zoomOut')} ?disabled=${this.graphZoom <= .5} @click=${() => { this.graphZoom = Math.max(.5, this.graphZoom - .1); }}>−</button>
@@ -547,8 +548,13 @@ export class NewReleaseIndex102035 extends StateLitElement {
       this.mutationError = this.t('request.applicationActive');
       return;
     }
+    if (historicalReleaseId(this.version)) {
+      event.preventDefault();
+      detail?.complete?.(new Error(this.t('review.snapshot.readOnly')));
+      return;
+    }
     const source = event.target as HTMLElement & { project?: number; moduleName?: string; version?: NewReleaseVersion };
-    if (!detail?.path || historicalReleaseId(this.version)
+    if (!detail?.path
       || source.project !== this.project || source.moduleName !== this.moduleName || source.version !== this.version) return;
     event.preventDefault();
     const project = this.project;
@@ -1007,14 +1013,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
     const diffs = visibleDiffs(this.data?.diffs ?? [], this.activeTab);
     if (!diffs.length) return nothing;
     return html`
-      <details class="nr-index__diff">
+      <details class=${`nr-index__diff${this.activeTab === 'review' ? ' nr-index__diff--plain' : ''}`}>
         <summary>${this.t('tobe.diffTitle', { count: diffs.reduce((total, item) => total + item.entries.length, 0) })}</summary>
-        ${this.activeTab === 'review' && this.version === 'tobe' && this.hasPreparedChanges() ? html`
+        ${this.activeTab === 'review' ? html`
           <div class="nr-index__diff-actions">
             <button type="button" class="nr-index__copy-button" ?disabled=${this.loading || this.requestBusy}
               @click=${() => void this.copyDiffs()}>${this.t('common.copy')}</button>
-            <button type="button" ?disabled=${this.loading || this.changing || this.requestBusy || this.implementationActive}
-              @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>
+            ${this.version === 'tobe' && this.hasPreparedChanges() ? html`<button type="button" ?disabled=${this.loading || this.changing || this.requestBusy || this.implementationActive}
+              @click=${() => void this.cancelChanges()}>${this.t('review.clearChanges')}</button>` : nothing}
             ${this.diffCopyFeedback ? html`<span role="status">${this.diffCopyFeedback}</span>` : nothing}
           </div>
         ` : nothing}
@@ -1024,7 +1030,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
               <code>${diff.path}</code>
               <div>
                 <span>${this.t('tobe.diffCount', { count: diff.entries.length })}</span>
-                <button type="button" ?disabled=${this.changing || this.implementationActive} @click=${() => void this.discardPaths([diff.path])}>${this.t('tobe.discardPath')}</button>
+                ${this.version === 'tobe' ? html`<button type="button" ?disabled=${this.changing || this.implementationActive} @click=${() => void this.discardPaths([diff.path])}>${this.t('tobe.discardPath')}</button>` : nothing}
               </div>
             </header>
             <div class="nr-index__diff-lines">
@@ -1053,7 +1059,8 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderTabContent() {
-    const contentVersion: NewReleaseVersion = this.implementationActive ? 'release:implementation-active' : this.version;
+    const contentVersion: NewReleaseVersion = this.implementationActive && !historicalReleaseId(this.version)
+      ? 'release:implementation-active' : this.version;
     if (this.activeTab === 'general') {
       return html`
         <new-release--widgets--general-102035
@@ -1167,6 +1174,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
 
   private renderRequest() {
     if (this.implementationActive) return nothing;
+    if (this.data?.confirmedRound) return nothing;
     if (historicalReleaseId(this.version)) return html`
       <section class="nr-index__request nr-index__request--history">
         <div><strong>${this.t('request.historyTitle')}</strong><p>${this.t('request.historyBody')}</p></div>
@@ -1281,7 +1289,7 @@ export class NewReleaseIndex102035 extends StateLitElement {
             role="tabpanel"
             aria-labelledby=${`nr-tab-${this.activeTab}`}
             tabindex="0"
-          ><fieldset class="nr-index__revision-content" ?disabled=${historical}>
+          ><fieldset class="nr-index__revision-content" ?disabled=${historical && !this.data?.confirmedRound}>
             ${this.renderCommonControls()}
             ${this.presentation === 'prompt' && !this.tabDetail && this.activeTab !== 'review' && this.activeTab !== 'general' && this.activeEditor()?.mode !== 'edit' ? this.renderRequest() : nothing}
             <div class="nr-common__graph" ?hidden=${this.presentation !== 'graph' && !this.tabDetail && this.activeTab !== 'general' && this.activeTab !== 'review' && this.activeEditor()?.mode !== 'edit'}>
