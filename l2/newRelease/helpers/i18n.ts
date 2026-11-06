@@ -5,6 +5,10 @@ export type NewReleaseTranslate = (key: string, values?: Record<string, string |
 
 /// **collab_i18n_start**
 const message_en = {
+  "module-seal.missing_part": "The saved checkpoint is incomplete. Restore stopped before changing module files.",
+  "module-layers.missing_ancestor": "An earlier snapshot is missing. Restore stopped before changing module files.",
+  "module-layers.invalid_seal": "The saved snapshot is invalid. Restore stopped before changing module files.",
+  "module-application.invalid_seal": "The saved undo checkpoint is invalid. Restore stopped before changing module files.",
   "review.implementation.pollingPaused": "Task {{taskId}} has not updated for 10 minutes. Automatic checks are paused; the task may still be running.",
   "review.implementation.checkNow": "Check now",
   "review.implementation.checking": "Checking task…",
@@ -1216,6 +1220,10 @@ const message_en = {
 };
 type MessageType = typeof message_en;
 const message_pt: MessageType = {
+  "module-seal.missing_part": "O checkpoint salvo está incompleto. A restauração parou antes de alterar os arquivos do módulo.",
+  "module-layers.missing_ancestor": "Falta um snapshot anterior. A restauração parou antes de alterar os arquivos do módulo.",
+  "module-layers.invalid_seal": "O snapshot salvo é inválido. A restauração parou antes de alterar os arquivos do módulo.",
+  "module-application.invalid_seal": "O checkpoint de desfazer é inválido. A restauração parou antes de alterar os arquivos do módulo.",
   "review.implementation.pollingPaused": "A task {{taskId}} está sem atualização há 10 minutos. As consultas automáticas foram pausadas; a task pode continuar em execução.",
   "review.implementation.checkNow": "Verificar agora",
   "review.implementation.checking": "Consultando a task…",

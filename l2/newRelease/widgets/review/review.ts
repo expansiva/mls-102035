@@ -1223,7 +1223,7 @@ export class NewReleaseReview102035 extends StateLitElement {
     } catch (error) {
       console.error('[newRelease] last application undo failed', error);
       if (token === this.loadToken) this.implementationUndoFeedback = this.t('review.implementation.undoError',
-        { reason: error instanceof Error ? error.message : String(error) });
+        { reason: this.t(error instanceof Error ? error.message : String(error)) });
     } finally {
       if (token === this.loadToken) this.implementationCancelBusy = false;
     }

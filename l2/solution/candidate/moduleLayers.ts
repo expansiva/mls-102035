@@ -3,7 +3,8 @@
 import { fileExists, readJson, readSourceText, writeJson, writeSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import { originalL4FileInfo, readL4Release, resolveL4Folders, withModuleWriter } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
-export const MODULE_LAYERS_SCHEMA = '2026-10-08-module-layers-v1' as const;
+export const MODULE_LAYERS_SCHEMA = '2026-11-06-module-layers-v2' as const;
+const LEGACY_LAYERS_SCHEMA = '2026-10-08-module-layers-v1' as const;
 export const MODULE_APPLICATION_SCHEMA = '2026-11-06-module-application-v3' as const;
 const LEGACY_APPLICATION_SCHEMA = '2026-11-04-module-application-v2' as const;
 const PART_LIMIT = 1_400_000;
@@ -315,12 +316,15 @@ export interface ModuleLayerFile {
 }
 
 export interface ModuleLayersSeal {
-  schemaVersion: typeof MODULE_LAYERS_SCHEMA;
+  schemaVersion: typeof MODULE_LAYERS_SCHEMA | typeof LEGACY_LAYERS_SCHEMA;
   project: number;
   moduleName: string;
   baseId: string;
   createdAt: string;
   files: ModuleLayerFile[];
+  previousBaseId?: string | null;
+  parts?: SealPart[];
+  sha256?: string;
 }
 
 export interface ModuleLayerDiff {
@@ -333,12 +337,7 @@ export interface ModuleLayerDiff {
 
 export async function diffModuleLayers(project: number, moduleName: string, baseId: string): Promise<ModuleLayerDiff[]> {
   resolveL4Folders(project, moduleName, baseId);
-  const seal = await readJson<ModuleLayersSeal>({ project, level: 4,
-    folder: `${moduleName}/pipeline/releases/${baseId}`, shortName: 'layers', extension: '.json' });
-  if (!seal || seal.schemaVersion !== MODULE_LAYERS_SCHEMA || seal.project !== project
-    || seal.moduleName !== moduleName || seal.baseId !== baseId || !Array.isArray(seal.files)) {
-    throw new Error('module-layers.invalid_seal');
-  }
+  const seal = await readModuleLayers(project, moduleName, baseId);
   const key = (file: ModuleLayerFile) => `${file.level}:${file.path}`;
   const current = new Map((await enumerateModuleLayers(project, moduleName)).map(file => [key(file), file]));
   const diff: ModuleLayerDiff[] = [];
@@ -356,6 +355,58 @@ export async function diffModuleLayers(project: number, moduleName: string, base
     diff.push({ level: file.level, path: file.path, status: 'added', currentSha256: file.sha256 });
   }
   return diff.sort((a, b) => a.level - b.level || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
+function layersInfo(project: number, moduleName: string, baseId: string): Ns5FileInfo {
+  resolveL4Folders(project, moduleName, baseId);
+  return { project, level: 4, folder: `${moduleName}/pipeline/releases/${baseId}`, shortName: 'layers', extension: '.json' };
+}
+
+function layerKey(file: Pick<ModuleLayerFile, 'level' | 'path'>): string {
+  return `${file.level}:${file.path}`;
+}
+
+/** Reconstruct the complete historical L1/L2 state; never expose a partial chain to callers. */
+export async function readModuleLayers(project: number, moduleName: string, baseId: string): Promise<ModuleLayersSeal> {
+  const visit = async (id: string, seen: Set<string>): Promise<ModuleLayersSeal> => {
+    if (seen.has(id)) throw new Error('module-layers.missing_ancestor');
+    seen.add(id);
+    const info = layersInfo(project, moduleName, id);
+    const seal = await readJson<ModuleLayersSeal>(info);
+    if (!seal || seal.project !== project || seal.moduleName !== moduleName || seal.baseId !== id
+      || !Array.isArray(seal.files)) throw new Error('module-layers.invalid_seal');
+    if (seal.schemaVersion === LEGACY_LAYERS_SCHEMA) {
+      await verifyLayerFiles(seal.files);
+      return seal;
+    }
+    if (seal.schemaVersion !== MODULE_LAYERS_SCHEMA || !Array.isArray(seal.parts) || !seal.sha256
+      || (seal.previousBaseId !== null && typeof seal.previousBaseId !== 'string')) throw new Error('module-layers.invalid_seal');
+    const payload = JSON.parse(await readParts(info, seal.parts, seal.sha256)) as {
+      files?: ModuleLayerFile[]; removed?: Array<Pick<ModuleLayerFile, 'level' | 'path'>>;
+    };
+    if (!Array.isArray(payload.files) || !Array.isArray(payload.removed)) throw new Error('module-layers.invalid_seal');
+    await verifyLayerFiles(payload.files);
+    const previous = seal.previousBaseId ? await visit(seal.previousBaseId, seen) : null;
+    const files = new Map((previous?.files ?? []).map(file => [layerKey(file), file]));
+    for (const removed of payload.removed) {
+      if (!files.delete(layerKey(removed))) throw new Error('module-layers.invalid_seal');
+    }
+    for (const file of payload.files) files.set(layerKey(file), file);
+    return { ...seal, files: [...files.values()].sort((a, b) => a.level - b.level || a.path.localeCompare(b.path, 'en')) };
+  };
+  return visit(baseId, new Set());
+}
+
+async function verifyLayerFiles(files: ModuleLayerFile[]): Promise<void> {
+  const seen = new Set<string>();
+  for (const file of files) {
+    if (!file || (file.level !== 1 && file.level !== 2) || typeof file.path !== 'string'
+      || !file.path || file.path.split('/').some(part => !part || part === '.' || part === '..')
+      || typeof file.content !== 'string' || seen.has(layerKey(file)) || await digest(file.content) !== file.sha256) {
+      throw new Error('module-layers.invalid_seal');
+    }
+    seen.add(layerKey(file));
+  }
 }
 
 export async function enumerateModuleLayers(project: number, moduleName: string): Promise<ModuleLayerFile[]> {
@@ -383,21 +434,33 @@ export async function enumerateModuleLayers(project: number, moduleName: string)
 export async function sealModuleLayers(project: number, moduleName: string, baseId: string): Promise<ModuleLayersSeal> {
   resolveL4Folders(project, moduleName, baseId);
   return withModuleWriter(project, moduleName, async () => {
-    const info = { project, level: 4, folder: `${moduleName}/pipeline/releases/${baseId}`, shortName: 'layers', extension: '.json' };
+    const info = layersInfo(project, moduleName, baseId);
     const files = await enumerateModuleLayers(project, moduleName);
     if (fileExists(info)) {
-      const existing = await readJson<ModuleLayersSeal>(info);
-      if (!existing || existing.schemaVersion !== MODULE_LAYERS_SCHEMA || existing.project !== project
-        || existing.moduleName !== moduleName || existing.baseId !== baseId || !Array.isArray(existing.files)
-        || existing.files.length !== files.length || existing.files.some((file, index) =>
+      const existing = await readModuleLayers(project, moduleName, baseId);
+      if (existing.files.length !== files.length || existing.files.some((file, index) =>
           file.level !== files[index].level || file.path !== files[index].path || file.sha256 !== files[index].sha256)) {
         throw new Error('module-layers.seal_conflict');
       }
       return existing;
     }
-    const seal: ModuleLayersSeal = { schemaVersion: MODULE_LAYERS_SCHEMA, project, moduleName, baseId, createdAt: new Date().toISOString(), files };
+    const catalog = await readJson<{ releases: Array<{ baseId: string }> }>({ project, level: 4,
+      folder: `${moduleName}/pipeline/releases`, shortName: 'index', extension: '.json' });
+    const position = catalog?.releases.findIndex(entry => entry.baseId === baseId) ?? -1;
+    const predecessor = position < 1 ? null : [...catalog!.releases.slice(0, position)].reverse()
+      .find(entry => fileExists(layersInfo(project, moduleName, entry.baseId)))?.baseId ?? null;
+    const previous = predecessor ? await readModuleLayers(project, moduleName, predecessor) : null;
+    const prior = new Map((previous?.files ?? []).map(file => [layerKey(file), file]));
+    const next = new Map(files.map(file => [layerKey(file), file]));
+    const changed = files.filter(file => prior.get(layerKey(file))?.sha256 !== file.sha256);
+    const removed = [...prior.values()].filter(file => !next.has(layerKey(file))).map(({ level, path }) => ({ level, path }));
+    const { parts, sha256 } = await writeParts(info, 'layers', JSON.stringify({ files: changed, removed }));
+    const seal: ModuleLayersSeal = { schemaVersion: MODULE_LAYERS_SCHEMA, project, moduleName, baseId,
+      createdAt: new Date().toISOString(), files: [], previousBaseId: predecessor, parts, sha256 };
     await writeJson(info, seal);
-    return seal;
+    // Keep the returned value convenient for existing callers; only the changed payload is stored.
+    const full = { ...seal, files };
+    return full;
   });
 }
 
@@ -407,8 +470,7 @@ export async function restoreModuleFromSeals(project: number, moduleName: string
     const release = await readL4Release(project, moduleName, baseId);
     if (!release) throw new Error('module-restoration.invalid_release');
     const diff = await diffModuleLayers(project, moduleName, baseId);
-    const seal = (await readJson<ModuleLayersSeal>({ project, level: 4,
-      folder: `${moduleName}/pipeline/releases/${baseId}`, shortName: 'layers', extension: '.json' }))!;
+    const seal = await readModuleLayers(project, moduleName, baseId);
     const hash = async (content: string) => {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
       return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;

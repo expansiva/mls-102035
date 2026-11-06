@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { compactModuleApplication, diffModuleLayers, sealModuleLayers, sealModuleApplication, restoreModuleApplication } from './moduleLayers.js';
+import { compactModuleApplication, diffModuleLayers, readModuleLayers, restoreModuleFromSeals, sealModuleLayers, sealModuleApplication, restoreModuleApplication } from './moduleLayers.js';
 
 function installStorFixture() {
   const files: Record<string, any> = {};
@@ -52,7 +52,10 @@ test('mr_14 s1: seals only module defs and receipts, sorted by level and path', 
     [2, 'pipeline/agentDefsL2/result.json'], [2, 'web/contracts/item.defs.ts'],
   ]);
   for (const file of seal.files) assert.equal(file.sha256, `sha256:${createHash('sha256').update(file.content).digest('hex')}`);
-  assert.deepEqual(JSON.parse(fixture.contents.get('102047:4:sample/pipeline/releases/base-1:layers.json')!), seal);
+  const index = JSON.parse(fixture.contents.get('102047:4:sample/pipeline/releases/base-1:layers.json')!);
+  assert.deepEqual(index.files, []);
+  assert.ok(index.parts.length > 0);
+  assert.deepEqual(await readModuleLayers(102047, 'sample', 'base-1'), seal);
 });
 
 test('mr_14 s1: repeated and concurrent sealing is idempotent', async () => {
@@ -98,6 +101,53 @@ test('mr_14 s2: changed, added and removed compare hashes by level and path', as
     { level: 2, path: 'web/added.defs.ts', status: 'added', currentSha256: hash('added L2') },
     { level: 2, path: 'web/item.defs.ts', status: 'removed', sealedSha256: hash('original L2') },
   ]);
+});
+
+test('mr_58 s3: second layer seal stores only changed files and restores either base', async () => {
+  const fixture = installStorFixture();
+  const catalog = { releases: [{ baseId: 'base-1' }, { baseId: 'base-2' }] };
+  fixture.add(4, 'sample/pipeline/releases/index.json', JSON.stringify(catalog));
+  const values: Array<[string, object]> = [
+    ['module.defs.ts', { schemaVersion: '2026-09-10-ns5-module-v2', moduleName: 'sample' }],
+    ['journeys/index.defs.ts', { schemaVersion: 'fixture', journeys: [] }],
+    ['ontology/index.defs.ts', { schemaVersion: 'fixture', entities: [] }],
+    ['rules.defs.ts', { schemaVersion: 'fixture' }], ['workflows.defs.ts', { schemaVersion: 'fixture' }],
+    ['access.defs.ts', { schemaVersion: 'fixture' }], ['integration.defs.ts', { schemaVersion: 'fixture' }],
+  ];
+  const sources = values.map(([path, value]) => ({ path, source: `export const fixture = ${JSON.stringify(value)} as const;\n` }));
+  for (const baseId of ['base-1', 'base-2']) {
+    for (const { path, source } of sources) fixture.add(4, `sample/pipeline/releases/${baseId}/l4/${path}`, source);
+    fixture.add(4, `sample/pipeline/releases/${baseId}/manifest.json`, JSON.stringify({
+      schemaVersion: '2026-09-20-nr-module-revision-v1', project: 102047, moduleName: 'sample', baseId,
+      createdAt: '', files: Object.fromEntries(sources.map(item => [item.path, `sha256:${createHash('sha256').update(item.source).digest('hex')}`])),
+      schemas: Object.fromEntries(values.map(([path, value]) => [path, (value as { schemaVersion: string }).schemaVersion])),
+      provenance: { status: 'unverified', label: '' },
+    }));
+  }
+  fixture.add(1, 'sample/pipeline/agentDefsL1/drafts.json', 'x'.repeat(2_000_000));
+  fixture.add(1, 'sample/usecases/item.defs.ts', 'first');
+  const first = await sealModuleLayers(102047, 'sample', 'base-1');
+  fixture.add(1, 'sample/usecases/item.defs.ts', 'second');
+  const second = await sealModuleLayers(102047, 'sample', 'base-2');
+  const firstIndex = JSON.parse(fixture.contents.get('102047:4:sample/pipeline/releases/base-1:layers.json')!);
+  const secondIndex = JSON.parse(fixture.contents.get('102047:4:sample/pipeline/releases/base-2:layers.json')!);
+  assert.equal(firstIndex.previousBaseId, null);
+  assert.equal(secondIndex.previousBaseId, 'base-1');
+  assert.ok(firstIndex.parts.length > 1);
+  for (const part of firstIndex.parts) assert.ok(Buffer.byteLength(
+    fixture.contents.get(`102047:4:sample/pipeline/releases/base-1:${part.name}.json`)!) < 1_500_000);
+  assert.equal(secondIndex.parts.length, 1);
+  assert.ok(Buffer.byteLength(fixture.contents.get(`102047:4:sample/pipeline/releases/base-2:${secondIndex.parts[0].name}.json`)!) < 1_500_000);
+  assert.ok(!fixture.contents.get(`102047:4:sample/pipeline/releases/base-2:${secondIndex.parts[0].name}.json`)!.includes('x'.repeat(100)));
+  assert.deepEqual((await readModuleLayers(102047, 'sample', 'base-2')).files, second.files);
+  assert.equal(first.files.length, second.files.length);
+  assert.equal((await diffModuleLayers(102047, 'sample', 'base-2')).length, 0);
+  await restoreModuleFromSeals(102047, 'sample', 'base-1');
+  assert.equal(fixture.contents.get('102047:1:sample/usecases:item.defs.ts'), 'first');
+  await restoreModuleFromSeals(102047, 'sample', 'base-2');
+  assert.equal(fixture.contents.get('102047:1:sample/usecases:item.defs.ts'), 'second');
+  fixture.contents.delete(`102047:4:sample/pipeline/releases/base-1:${firstIndex.parts[0].name}.json`);
+  await assert.rejects(readModuleLayers(102047, 'sample', 'base-2'), /module-seal.missing_part/);
 });
 
 test('mr_53 s2: restores changed, created and removed files plus only this module in L5', async () => {

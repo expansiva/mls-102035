@@ -4,7 +4,7 @@ import { fileExists, readDefsJson, readJson, readSourceText, writeJson, writeSou
 import type { Ns5ModuleArtifact, Ns5JourneyIndexArtifact, Ns5OntologyIndexArtifact, Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import { ns5OntologyEntityIds, normalizeTobeArtifactPath, tobeArtifactFileInfo, type Ns5TobeArtifactPath, type Ns5TobeManifest } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
-import { MODULE_LAYERS_SCHEMA, type ModuleLayersSeal } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { readModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 
 export const L4_REVISION_SCHEMA = '2026-09-20-nr-module-revision-v1' as const;
 export type L4HashMap = Record<string, string>;
@@ -810,11 +810,8 @@ export async function promoteL4Revision(project: number, moduleName: string, cha
       const indexed = mls.stor.files[mls.stor.getKeyToFile(artifactInfo(project, moduleName, path, 'asis'))];
       if (!indexed || indexed.status === 'deleted') throw new Error('module-promotion.revision_mismatch');
     }
-    const layers = await readJson<ModuleLayersSeal>(jsonInfo(project, moduleName, `pipeline/releases/${sealed.manifest.baseId}`, 'layers'));
-    if (!layers || layers.schemaVersion !== MODULE_LAYERS_SCHEMA || layers.project !== project
-      || layers.moduleName !== moduleName || layers.baseId !== sealed.manifest.baseId || !Array.isArray(layers.files)) {
-      throw new Error('module-promotion.layers_unsealed');
-    }
+    try { await readModuleLayers(project, moduleName, sealed.manifest.baseId); }
+    catch { throw new Error('module-promotion.layers_unsealed'); }
     const copies = sealed.sources.map(({ path, source }) => ({
       info: artifactInfo(project, moduleName, path, 'asis'), source, sha256: sealed.manifest.files[path],
     }));
