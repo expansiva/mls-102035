@@ -367,18 +367,14 @@ test('ui_mr_53 s4: tarefas applies, undoes the complete last batch, and applies 
       for (let index = 0; index < commands.length; index++) record = await runner.runNext(TAREFAS_PROJECT, TAREFAS_MODULE);
       assert.equal(record.phases.length, commands.length);
       assert.ok(record.phases.every(phase => phase.status === 'done'));
-      const events = mls.events;
-      const dispatch = window.dispatchEvent;
-      window.dispatchEvent = () => true;
-      mls.events = { fireFileAction: () => {} } as typeof mls.events;
-      try { await completeTobeImplementation(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId); }
-      finally { mls.events = events; window.dispatchEvent = dispatch; }
       return record;
     };
     await apply();
     assert.notDeepEqual(stor.texts(), baseline, 'the first application changed the module');
     await restoreModuleApplication(TAREFAS_PROJECT, TAREFAS_MODULE, changeId, revisionId);
-    assert.deepEqual(stor.texts(), baseline, 'L1, L2, L4 and L5 returned byte for byte to the pre-Apply state');
+    const productFiles = (files: Record<string, string>) => Object.fromEntries(Object.entries(files)
+      .filter(([path]) => !/^l4\/tarefas\/pipeline\/(changes|releases|application)\//u.test(path)));
+    assert.deepEqual(productFiles(stor.texts()), productFiles(baseline), 'L1, L2, L4 and L5 returned byte for byte outside revision history');
     await apply();
     assert.equal(pass, 2);
   } finally {

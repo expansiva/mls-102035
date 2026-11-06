@@ -4,18 +4,90 @@ import { fileExists, readJson, readSourceText, writeJson, writeSourceText, type 
 import { originalL4FileInfo, readL4Release, resolveL4Folders, withModuleWriter } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 
 export const MODULE_LAYERS_SCHEMA = '2026-10-08-module-layers-v1' as const;
-export const MODULE_APPLICATION_SCHEMA = '2026-11-04-module-application-v2' as const;
+export const MODULE_APPLICATION_SCHEMA = '2026-11-06-module-application-v3' as const;
+const LEGACY_APPLICATION_SCHEMA = '2026-11-04-module-application-v2' as const;
+const PART_LIMIT = 1_400_000;
+
+interface SealPart { name: string; sha256: string; }
+interface StoredPart { index: number; content: string; }
+
+async function digest(content: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+  return `sha256:${[...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function encodedSize(value: unknown): number {
+  return new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`).length;
+}
+
+async function writeParts(info: Ns5FileInfo, prefix: string, serialized: string): Promise<{ parts: SealPart[]; sha256: string }> {
+  const hash = await digest(serialized);
+  const parts: SealPart[] = [];
+  for (let offset = 0; offset < serialized.length; ) {
+    const index = parts.length;
+    let low = 1;
+    let high = serialized.length - offset;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (encodedSize({ index, content: serialized.slice(offset, offset + mid) }) <= PART_LIMIT) low = mid;
+      else high = mid - 1;
+    }
+    let length = low;
+    if (offset + length < serialized.length && /[\uD800-\uDBFF]/u.test(serialized[offset + length - 1])) length--;
+    if (length < 1 || encodedSize({ index, content: serialized.slice(offset, offset + length) }) > PART_LIMIT) {
+      throw new Error('module-seal.part_too_large');
+    }
+    const content = serialized.slice(offset, offset + length);
+    const name = `${prefix}-${hash.slice(7, 23)}-${String(index).padStart(4, '0')}`;
+    await writeJson({ ...info, shortName: name }, { index, content } satisfies StoredPart);
+    parts.push({ name, sha256: await digest(content) });
+    offset += length;
+  }
+  return { parts, sha256: hash };
+}
+
+async function readParts(info: Ns5FileInfo, parts: SealPart[], sha256: string): Promise<string> {
+  if (!parts.length || !/^sha256:[a-f0-9]{64}$/u.test(sha256)) throw new Error('module-seal.missing_part');
+  const chunks: string[] = [];
+  for (const [index, part] of parts.entries()) {
+    if (!part || !/^(undo|layers)-[a-f0-9]{16}-\d{4}$/u.test(part.name)) throw new Error('module-seal.missing_part');
+    const stored = await readJson<StoredPart>({ ...info, shortName: part.name });
+    if (!stored || stored.index !== index || typeof stored.content !== 'string'
+      || await digest(stored.content) !== part.sha256) throw new Error('module-seal.missing_part');
+    chunks.push(stored.content);
+  }
+  const serialized = chunks.join('');
+  if (await digest(serialized) !== sha256) throw new Error('module-seal.missing_part');
+  return serialized;
+}
+
+async function removeUnusedParts(info: Ns5FileInfo, prefix: string, keep: readonly SealPart[]): Promise<void> {
+  const selected = new Set(keep.map(part => part.name));
+  const { deleteFile } = await import('/_102027_/l2/libStor.js');
+  for (const file of Object.values(mls.stor.files)) {
+    if (!file || file.project !== info.project || file.level !== info.level || file.folder !== info.folder
+      || file.extension !== '.json' || !file.shortName.startsWith(`${prefix}-`) || selected.has(file.shortName)
+      || file.status === 'deleted') continue;
+    await deleteFile(file);
+  }
+}
 
 interface ApplicationFile { level: 1 | 2 | 4; path: string; content: string; }
 interface L5ModuleEntry { document: 'config' | 'project' | 'runtime.project'; existed: boolean; entry: unknown; source: string | null; }
 export interface ModuleApplicationSeal {
-  schemaVersion: typeof MODULE_APPLICATION_SCHEMA;
+  schemaVersion: typeof MODULE_APPLICATION_SCHEMA | typeof LEGACY_APPLICATION_SCHEMA;
   project: number;
   moduleName: string;
   changeId: string;
   revisionId: string;
   files: ApplicationFile[];
   l5: L5ModuleEntry[];
+  /** New checkpoints store their payload in bounded parts. */
+  parts?: SealPart[];
+  sha256?: string;
+  stage?: 'provisional' | 'compacted';
+  added?: Array<Pick<ApplicationFile, 'level' | 'path'>>;
+  cancelRequested?: boolean;
 }
 
 function applicationInfo(project: number, moduleName: string): Ns5FileInfo {
@@ -66,29 +138,66 @@ export async function sealModuleApplication(project: number, moduleName: string,
   return withModuleWriter(project, moduleName, async () => {
     const info = applicationInfo(project, moduleName);
     const existing = await readJson<ModuleApplicationSeal>(info);
-    if (existing && existing.changeId === changeId && existing.revisionId === revisionId) return existing;
+    if (existing && existing.changeId === changeId && existing.revisionId === revisionId) return readApplicationSeal(project, moduleName);
+    const files = await applicationFiles(project, moduleName);
+    const l5 = await applicationL5(project, moduleName);
+    const { parts, sha256 } = await writeParts(info, 'undo', JSON.stringify({ files, l5 }));
     const seal: ModuleApplicationSeal = { schemaVersion: MODULE_APPLICATION_SCHEMA, project, moduleName, changeId, revisionId,
-      files: await applicationFiles(project, moduleName), l5: await applicationL5(project, moduleName) };
+      files: [], l5: [], parts, sha256, stage: 'provisional' };
     await writeJson(info, seal);
-    return seal;
+    await removeUnusedParts(info, 'undo', parts);
+    return { ...seal, files, l5 };
+  });
+}
+
+async function readApplicationSeal(project: number, moduleName: string): Promise<ModuleApplicationSeal> {
+  const info = applicationInfo(project, moduleName);
+  const index = await readJson<ModuleApplicationSeal>(info);
+  if (!index) throw new Error('module-application.invalid_seal');
+  if (index.schemaVersion === LEGACY_APPLICATION_SCHEMA) return index;
+  if (index.schemaVersion !== MODULE_APPLICATION_SCHEMA || !Array.isArray(index.parts) || !index.sha256
+    || (index.stage !== 'provisional' && index.stage !== 'compacted')) throw new Error('module-application.invalid_seal');
+  const payload = JSON.parse(await readParts(info, index.parts, index.sha256)) as Pick<ModuleApplicationSeal, 'files' | 'l5' | 'added'>;
+  if (!Array.isArray(payload.files) || !Array.isArray(payload.l5)
+    || (index.stage === 'compacted' && !Array.isArray(payload.added))) throw new Error('module-application.invalid_seal');
+  return { ...index, files: payload.files, l5: payload.l5, added: payload.added };
+}
+
+/** Reduce a completed application to the files it actually touched. Failed or retryable runs retain their provisional checkpoint. */
+export async function compactModuleApplication(project: number, moduleName: string, changeId: string, revisionId: string): Promise<void> {
+  await withModuleWriter(project, moduleName, async () => {
+    const info = applicationInfo(project, moduleName);
+    const seal = await readApplicationSeal(project, moduleName);
+    if (seal.changeId !== changeId || seal.revisionId !== revisionId) throw new Error('module-application.invalid_seal');
+    if (seal.schemaVersion === LEGACY_APPLICATION_SCHEMA || seal.stage === 'compacted') return;
+    const current = new Map((await applicationFiles(project, moduleName)).map(file => [`${file.level}:${file.path}`, file]));
+    const previous = new Map(seal.files.map(file => [`${file.level}:${file.path}`, file]));
+    const changed = seal.files.filter(file => current.get(`${file.level}:${file.path}`)?.content !== file.content);
+    const added = [...current.values()].filter(file => !previous.has(`${file.level}:${file.path}`))
+      .map(({ level, path }) => ({ level, path }));
+    const { parts, sha256 } = await writeParts(info, 'undo', JSON.stringify({ files: changed, added, l5: seal.l5 }));
+    await writeJson(info, { ...seal, files: [], l5: [], added: undefined, parts, sha256, stage: 'compacted' } satisfies ModuleApplicationSeal);
+    await removeUnusedParts(info, 'undo', parts);
   });
 }
 
 export async function restoreModuleApplication(project: number, moduleName: string, changeId: string, revisionId: string): Promise<void> {
   resolveL4Folders(project, moduleName, 'application', changeId, revisionId);
   await withModuleWriter(project, moduleName, async () => {
-    const seal = await readJson<ModuleApplicationSeal>(applicationInfo(project, moduleName));
-    if (!seal || seal.schemaVersion !== MODULE_APPLICATION_SCHEMA || seal.project !== project || seal.moduleName !== moduleName
+    const seal = await readApplicationSeal(project, moduleName);
+    if (seal.project !== project || seal.moduleName !== moduleName
       || seal.changeId !== changeId || seal.revisionId !== revisionId || !Array.isArray(seal.files) || !Array.isArray(seal.l5)) {
       throw new Error('module-application.invalid_seal');
     }
     const previous = new Map(seal.files.map(file => [`${file.level}:${file.path}`, file]));
     if (previous.size !== seal.files.length) throw new Error('module-application.invalid_seal');
     for (const file of seal.files) moduleFileInfo(project, moduleName, file);
-    const current = await applicationFiles(project, moduleName);
+    const current = seal.schemaVersion === LEGACY_APPLICATION_SCHEMA
+      ? await legacyApplicationFiles(project, moduleName) : await applicationFiles(project, moduleName);
     const { deleteFile } = await import('/_102027_/l2/libStor.js');
-    for (const file of current) {
-      if (previous.has(`${file.level}:${file.path}`)) continue;
+    const remove = seal.stage === 'compacted' ? seal.added ?? []
+      : current.filter(file => !previous.has(`${file.level}:${file.path}`));
+    for (const file of remove) {
       const indexed = mls.stor.files[mls.stor.getKeyToFile(moduleFileInfo(project, moduleName, file))];
       if (indexed) await deleteFile(indexed);
     }
@@ -129,7 +238,24 @@ export async function restoreModuleApplication(project: number, moduleName: stri
       }
       await mls.stor.localStor.setContent(indexed, { contentType: 'string', content: `${JSON.stringify(parsed, null, 2)}\n` });
     }
+    if (seal.schemaVersion === MODULE_APPLICATION_SCHEMA) {
+      // The revision history is preserved, but its live implementation reservation must be released for a retry.
+      const changeFolder = `${moduleName}/pipeline/changes/${changeId}`;
+      const implementation = { project, level: 4, folder: changeFolder, shortName: 'implementation', extension: '.json' };
+      const indexed = mls.stor.files[mls.stor.getKeyToFile(implementation)];
+      if (indexed) await deleteFile(indexed);
+      const changeInfo = { project, level: 4, folder: changeFolder, shortName: 'change', extension: '.json' };
+      const change = await readJson<Record<string, unknown>>(changeInfo);
+      if (change?.promotedRevisionId === revisionId) {
+        const { promotedRevisionId: _revision, promotedAt: _at, ...unpromoted } = change;
+        await writeJson(changeInfo, unpromoted);
+      }
+    }
     const checkpoint = mls.stor.files[mls.stor.getKeyToFile(applicationInfo(project, moduleName))];
+    for (const part of seal.parts ?? []) {
+      const indexed = mls.stor.files[mls.stor.getKeyToFile({ ...applicationInfo(project, moduleName), shortName: part.name })];
+      if (indexed) await deleteFile(indexed);
+    }
     if (checkpoint) await deleteFile(checkpoint);
   });
 }
@@ -158,7 +284,7 @@ function onlyModuleList(value: Record<string, unknown>, document: L5ModuleEntry[
     && Object.keys(projects[String(project)] ?? {}).every(key => key === 'modules');
 }
 
-async function applicationFiles(project: number, moduleName: string): Promise<ApplicationFile[]> {
+async function legacyApplicationFiles(project: number, moduleName: string, includeHistory = true): Promise<ApplicationFile[]> {
   const result: ApplicationFile[] = [];
   for (const file of Object.values(mls.stor.files)) {
     if (!file || file.project !== project || file.status === 'deleted') continue;
@@ -169,9 +295,15 @@ async function applicationFiles(project: number, moduleName: string): Promise<Ap
     if (file.folder !== root && !file.folder.startsWith(`${root}/`)) continue;
     const path = `${root === moduleName ? '' : '_old/'}${file.folder === root ? '' : file.folder.slice(root.length + 1) + '/'}${file.shortName}${file.extension}`;
     if (level === 4 && path.startsWith('pipeline/application/')) continue;
+    if (!includeHistory && level === 4
+      && ['pipeline/changes/', 'pipeline/releases/'].some(prefix => path.startsWith(prefix))) continue;
     result.push({ level, path, content: await readSourceText(file) });
   }
   return result.sort((a, b) => a.level - b.level || a.path.localeCompare(b.path, 'en'));
+}
+
+async function applicationFiles(project: number, moduleName: string): Promise<ApplicationFile[]> {
+  return legacyApplicationFiles(project, moduleName, false);
 }
 
 export interface ModuleLayerFile {

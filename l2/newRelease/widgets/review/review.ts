@@ -19,7 +19,7 @@ import { buildCandidateSnapshot, candidateRead } from '/_102035_/l2/solution/can
 import { adoptL4ReviewResult, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate, prepareL4Change, sealL4Revision, readActiveL4Change, withModuleWriter, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { executePreparedReviewStart, prepareReviewStartInput, type PreparedReviewStart } from '/_102035_/l2/newRelease/helpers/reviewStart.js';
 import { readJson, readSourceText, writeJson } from '/_102035_/l2/solution/fs.js';
-import { sealModuleLayers, sealModuleApplication, restoreModuleApplication, restoreModuleFromSeals, diffModuleLayers, type ModuleApplicationSeal, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
+import { sealModuleLayers, sealModuleApplication, compactModuleApplication, restoreModuleApplication, restoreModuleFromSeals, diffModuleLayers, type ModuleApplicationSeal, type ModuleLayerDiff } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { readLatestCompletedL4Implementation, implementationCommands, acceptL4Implementation, readL4Implementation, recordL4ImplementationPhase, type L4ImplementationRecord, type L4ImplementationPhase, type L4ImplementationHashes, readInitialImplementationPlan, type InitialImplementationPlan } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { createImplementationRunner, type ImplementationRunnerDependencies } from '/_102035_/l2/newRelease/helpers/implementationRunner.js';
 import { environment } from '/_102036_/l2/environmentContract.js';
@@ -475,6 +475,12 @@ export class NewReleaseReview102035 extends StateLitElement {
       ? await readLatestCompletedL4Implementation(context.project, context.moduleName) : null);
     if (token !== this.loadToken) return;
     this.implementation = reviewImplementationVisible(candidateImplementation, context.data) ? candidateImplementation : null;
+    if (this.applicationCheckpoint && this.implementation
+      && implementationCommands(this.implementation, context.project, context.moduleName).every((_, index) =>
+        this.implementation!.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) {
+      try { await compactModuleApplication(context.project, context.moduleName, this.implementation.changeId, this.implementation.revisionId); }
+      catch (error) { console.error('[newRelease] application checkpoint compaction failed', error); }
+    }
     this.confirmedRounds = confirmedRounds;
     void this.hydrateConfirmedTasks(confirmedRounds, token);
     let cancelReadError = '';
@@ -1259,6 +1265,9 @@ export class NewReleaseReview102035 extends StateLitElement {
         : await this.implementationRunner.runNext(project, moduleName);
       if (!this.implementationContextCurrent(token)) return;
       this.implementation = record.changeId === this.data?.changeId ? record : null;
+      if (this.applicationCheckpoint && this.implementationComplete()) {
+        await compactModuleApplication(project, moduleName, record.changeId, record.revisionId);
+      }
       if (!this.implementationCancelRequested && this.implementationComplete()) await this.loadImplementationDiff(token);
       if (!this.implementationCancelRequested && record.phases.some(phase => phase.status === 'failed')) this.announceImplementationState(false, project, moduleName);
       if (!this.implementationContextCurrent(token)) return;

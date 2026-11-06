@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { diffModuleLayers, sealModuleLayers, sealModuleApplication, restoreModuleApplication } from './moduleLayers.js';
+import { compactModuleApplication, diffModuleLayers, sealModuleLayers, sealModuleApplication, restoreModuleApplication } from './moduleLayers.js';
 
 function installStorFixture() {
   const files: Record<string, any> = {};
@@ -181,4 +181,50 @@ test('mr_53 s2: a document created by the application becomes absent', async () 
   assert.equal(fixture.contents.has('102047:5::project.json'), false);
   assert.deepEqual(JSON.parse(fixture.contents.get('102047:5::runtime.project.json')!).modules, [{ moduleName: 'other' }]);
   assert.equal(fixture.contents.has('102047:4:sample/pipeline/application:undo.json'), false);
+});
+
+test('mr_58 s2: checkpoint is split, excludes other history and compacts to changed files', async () => {
+  const fixture = installStorFixture();
+  const large = 'x'.repeat(2_000_000);
+  fixture.add(1, 'sample/pipeline/agentDefsL1/drafts.json', large);
+  fixture.add(1, 'sample/code.ts', 'before');
+  fixture.add(4, 'sample/pipeline/changes/old/revisions/rev1/l4/file.defs.ts', 'history');
+  fixture.add(4, 'sample/pipeline/releases/base1/layers.json', 'other seal');
+  fixture.add(4, 'sample/pipeline/application/previous.json', 'previous');
+  await sealModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  const indexKey = '102047:4:sample/pipeline/application:undo.json';
+  const initial = JSON.parse(fixture.contents.get(indexKey)!);
+  assert.ok(initial.parts.length > 1);
+  for (const part of initial.parts) {
+    const content = fixture.contents.get(`102047:4:sample/pipeline/application:${part.name}.json`)!;
+    assert.ok(Buffer.byteLength(content) < 1_500_000);
+  }
+  fixture.add(1, 'sample/code.ts', 'after');
+  fixture.add(2, 'sample/web/new.ts', 'new');
+  fixture.add(4, 'sample/pipeline/changes/old/revisions/rev1/l4/file.defs.ts', 'new history');
+  fixture.add(4, 'sample/pipeline/releases/base1/layers.json', 'new seal');
+  await compactModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  const compact = JSON.parse(fixture.contents.get(indexKey)!);
+  assert.equal(compact.stage, 'compacted');
+  assert.equal(compact.parts.length, 1);
+  assert.ok(!fixture.contents.get(`102047:4:sample/pipeline/application:${compact.parts[0].name}.json`)!.includes(large.slice(0, 100)));
+  assert.deepEqual(compact.parts.every((part: { name: string }) => fixture.contents.has(`102047:4:sample/pipeline/application:${part.name}.json`)), true);
+  await restoreModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  assert.equal(fixture.contents.get('102047:1:sample:code.ts'), 'before');
+  assert.equal(fixture.contents.get('102047:1:sample/pipeline/agentDefsL1:drafts.json'), large);
+  assert.equal(fixture.contents.has('102047:2:sample/web:new.ts'), false);
+  assert.equal(fixture.contents.get('102047:4:sample/pipeline/changes/old/revisions/rev1/l4:file.defs.ts'), 'new history');
+  assert.equal(fixture.contents.get('102047:4:sample/pipeline/releases/base1:layers.json'), 'new seal');
+  assert.equal(fixture.contents.has(indexKey), false);
+});
+
+test('mr_58 s2: missing checkpoint part refuses before touching module files', async () => {
+  const fixture = installStorFixture();
+  fixture.add(1, 'sample/code.ts', 'before');
+  await sealModuleApplication(102047, 'sample', 'change-1', 'revision-1');
+  const index = JSON.parse(fixture.contents.get('102047:4:sample/pipeline/application:undo.json')!);
+  fixture.add(1, 'sample/code.ts', 'after');
+  fixture.contents.delete(`102047:4:sample/pipeline/application:${index.parts[0].name}.json`);
+  await assert.rejects(restoreModuleApplication(102047, 'sample', 'change-1', 'revision-1'), /module-seal.missing_part/);
+  assert.equal(fixture.contents.get('102047:1:sample:code.ts'), 'after');
 });
