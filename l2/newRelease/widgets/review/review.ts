@@ -333,6 +333,8 @@ export class NewReleaseReview102035 extends StateLitElement {
     this.implementationPolling = observeImplementationTask(this.implementationPolling,
       task.PK.replace(/^task(?:\/#?|#)/u, ''), task.last_updated, task.status, phase?.startedAt ?? '', Date.now());
     void this.rememberImplementationTask(phaseName, task, this.loadToken);
+  }, onPhase: (project, moduleName, phase) => {
+    this.rememberImplementationPhase(project, moduleName, phase);
   } });
   private readonly initialApply = applyInitialReview;
   private readonly discardModule = discardModuleInStudio;
@@ -585,6 +587,13 @@ export class NewReleaseReview102035 extends StateLitElement {
     });
     this.implementationTaskWrite = write.catch(() => undefined);
     return write;
+  }
+
+  private rememberImplementationPhase(project: number, moduleName: string, phase: L4ImplementationPhase): void {
+    if (project !== this.project || moduleName !== this.moduleName || !this.implementation
+      || this.implementation.changeId !== this.data?.changeId || this.implementation.revisionId !== this.data?.revisionId) return;
+    const phases = this.implementation.phases.filter(item => item.name !== phase.name);
+    this.implementation = { ...this.implementation, phases: [...phases, phase] };
   }
 
   private async checkImplementationTask(): Promise<void> {

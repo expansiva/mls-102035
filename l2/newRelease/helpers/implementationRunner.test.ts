@@ -179,9 +179,11 @@ test('implementation persists and exposes a task while its command is still runn
     const ready = new Promise<void>(resolve => { created = resolve; });
     const gate = new Promise<void>(resolve => { release = resolve; });
     const seen: string[] = [];
+    const phases: string[] = [];
     const runner = createImplementationRunner({ ...f.dependencies,
       onTaskChange: listener => { notify = listener; return () => { notify = undefined; }; },
       onTask: (_project, _module, _phase, task) => { seen.push(task.PK); },
+      onPhase: (_project, _module, phase) => { phases.push(phase.taskId); },
       execute: async (_agent, context) => {
         context.task = f.task('early');
         notify?.(context);
@@ -194,6 +196,7 @@ test('implementation persists and exposes a task while its command is still runn
     await new Promise<void>(resolve => setTimeout(resolve, 0));
     assert.equal((await readL4Implementation(project, moduleName))?.phases[0]?.taskId, 'early');
     assert.deepEqual(seen, ['task/#early']);
+    assert.deepEqual(phases, ['early']);
     release();
     await running;
     assert.equal((await readL4Implementation(project, moduleName))?.phases[0]?.taskId, 'early');

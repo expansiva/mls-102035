@@ -483,6 +483,25 @@ test('Apply embeds the live task card, follows updates and replaces a retried ta
   assert.doesNotMatch(complete.slice(complete.indexOf('nr-review__implementation')), /<progress/);
 });
 
+test('Apply mounts the card when the running phase receives its persisted task ID', () => {
+  const review = widget();
+  review.version = 'tobe';
+  const phase = { name: 'runAgents:0', agent: 'agentNewReleaseL2', command: '@@agentNewReleaseL2 fixture',
+    attempt: 1, taskId: '', threadId: 'thread1', messageId: 'thread1/message1', status: 'running', startedAt: '' } as const;
+  const record: L4ImplementationRecord = { schemaVersion: '2026-10-08-nr-module-implementation-v1',
+    changeId: 'change1', revisionId: 'rev1', acceptedBy: 'reviewer', acceptedAt: '', hashes: {},
+    merged: { create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [], abend: [] },
+    phases: [phase] };
+  review.implementation = record;
+  review.data = { ...review.data, changeId: record.changeId, revisionId: record.revisionId };
+  assert.match(templateText(review.renderImplementationTask('runAgents:0')), /review\.implementation\.starting/);
+  review.implementationTasks = { 'runAgents:0': { PK: 'early', status: 'in progress', last_updated: 1 } };
+  review.rememberImplementationPhase(review.project, review.moduleName, { ...phase, taskId: 'early' });
+  assert.notEqual(review.implementation, record);
+  assert.match(templateText(review.renderImplementationTask('runAgents:0')), /<collab-messages-task-102025/);
+  assert.equal(review.implementation.phases[0].status, 'running');
+});
+
 test('task card waits for persisted snapshots and keeps the newest one after reload', async () => {
   const review = widget();
   let releaseFirst!: () => void;

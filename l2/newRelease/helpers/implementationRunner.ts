@@ -22,6 +22,7 @@ export interface ImplementationRunnerDependencies {
   userId?: () => string | null | Promise<string | null>;
   now?: () => string;
   onTask?: (project: number, moduleName: string, phaseName: string, task: TaskData) => void;
+  onPhase?: (project: number, moduleName: string, phase: L4ImplementationPhase) => void;
   onTaskChange?: (listener: (context: ExecutionContext) => void) => () => void;
 }
 
@@ -275,7 +276,8 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
       if (captured) return;
       captured = true;
       const created = ctx.task;
-      firstPersist = save({ ...phase, taskId: taskId(created.PK), messageId: created.messageid_created || phase.messageId });
+      const started = { ...phase, taskId: taskId(created.PK), messageId: created.messageid_created || phase.messageId };
+      firstPersist = save(started).then(() => dependencies.onPhase?.(project, moduleName, started));
     });
     try {
       await execute(command.agent, ctx);
