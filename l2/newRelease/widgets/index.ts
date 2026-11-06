@@ -1233,11 +1233,14 @@ export class NewReleaseIndex102035 extends StateLitElement {
   }
 
   private renderEmpty() {
+    const selectedModule = !!this.project && !!this.moduleName;
     return html`
       <section class="nr-index__empty">
         <span aria-hidden="true"></span>
-        <h2>${this.t('state.emptyTitle')}</h2>
-        <p>${this.t('state.emptyBody')}</p>
+        <h2>${this.t(selectedModule ? 'state.unreadableTitle' : 'state.emptyTitle')}</h2>
+        <p>${this.t(selectedModule ? 'state.unreadableBody' : 'state.emptyBody')}</p>
+        ${selectedModule && this.mutationError ? html`<p role="alert">${this.mutationError}</p>` : nothing}
+        ${selectedModule && this.data?.errors?.length ? html`<ul>${this.data.errors.map(error => html`<li>${this.t('state.errorPath', { path: error.path, message: error.message })}</li>`)}</ul>` : nothing}
       </section>
     `;
   }

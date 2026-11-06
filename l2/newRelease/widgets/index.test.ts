@@ -30,6 +30,20 @@ function templateText(value: any): string {
   return Array.isArray(value) ? value.map(templateText).join('') : typeof value === 'string' ? value : '';
 }
 
+test('selected module with an unreadable snapshot shows its read error instead of the no-module screen', async () => {
+  const { createNewReleaseTranslator, loadNewReleaseMessages } = await import('../helpers/i18n.ts');
+  const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
+  index.t = createNewReleaseTranslator(await loadNewReleaseMessages(102035, 'pt'));
+  assert.match(templateText(index.renderEmpty()), /Nenhum módulo de nível 4 encontrado/);
+  index.project = 102047;
+  index.moduleName = 'tarefas';
+  index.mutationError = 'Historical release is incomplete.';
+  const view = templateText(index.renderEmpty());
+  assert.match(view, /Não foi possível carregar este módulo/);
+  assert.match(view, /Historical release is incomplete/);
+  assert.doesNotMatch(view, /Nenhum módulo de nível 4 encontrado/);
+});
+
 test('active implementation keeps content readable and blocks editing until the stored record clears', async () => {
   const index = new indexModule.NewReleaseIndex102035() as unknown as Record<string, any>;
   index.project = 102047;
