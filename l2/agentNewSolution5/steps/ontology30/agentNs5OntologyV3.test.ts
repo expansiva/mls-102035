@@ -56,6 +56,7 @@ import {
   type Ns5OntologyV3Issue,
 } from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
 import { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
+import { ns5ConnectionSourcePath } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION_V3,
   type Ns5OntologyEntityV3,
@@ -1689,4 +1690,123 @@ void test('l4_p4_47: a column displayField is left as the bare id', () => {
   assert.equal(normalizations.some(item => item.kind === 'displayFieldResolved'), false);
   const gate = validateNs5OntologyEntityV3(built, ns5_47Plan('numero'), { moduleName: 'tarefas', mdm, tdm, ddm });
   assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED'), false);
+});
+
+function externalPlan() {
+  return normalizeNs5OntologyPlanV3({
+    businessDomain: 'Agents',
+    entities: [
+      { entityId: 'AgentRecord', kind: 'external', connectionId: 'cm', title: 'Agent', description: 'a record in cm', displayField: 'title' },
+      { entityId: 'Note', kind: 'entity', class: 'supporting', title: 'Note', description: 'a note', displayField: 'title' },
+    ],
+    relationships: [],
+  }, 'agents');
+}
+
+function externalEntity(plan: ReturnType<typeof externalPlan>) {
+  return normalizeNs5OntologyEntityV3({
+    entityId: 'AgentRecord',
+    record: { fields: [{ id: 'title', type: 'string', required: true, title: 'Title' }] },
+    relationships: [],
+    capabilities: [],
+    rules: [],
+  }, 'AgentRecord', { moduleName: 'agents', mdm, plan })!;
+}
+
+void test('l4_p4_107: external plan requires a catalog connectionId and refuses table shape', () => {
+  const clean = externalPlan();
+  assert.equal(codes(validateNs5OntologyPlanV3(clean, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'), false);
+  assert.equal(codes(validateNs5OntologyPlanV3(clean, gateContext).issues).includes('NS5_ONTOLOGY_CLASS_UNKNOWN'), false);
+
+  const missing = clone(clean);
+  delete missing.entities[0].connectionId;
+  assert.ok(codes(validateNs5OntologyPlanV3(missing, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'));
+
+  const invented = clone(clean);
+  invented.entities[0].connectionId = 'noSuchConnection';
+  assert.ok(codes(validateNs5OntologyPlanV3(invented, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'));
+
+  const withClass = clone(clean);
+  withClass.entities[0].class = 'core';
+  assert.ok(codes(validateNs5OntologyPlanV3(withClass, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_CLASS'));
+
+  const withSubtype = clone(clean);
+  withSubtype.entities[0].subtype = 'Person';
+  assert.ok(codes(validateNs5OntologyPlanV3(withSubtype, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_SUBTYPE'));
+
+  const withInitial = clone(clean);
+  withInitial.entities[0].initialData = 'one row';
+  assert.ok(codes(validateNs5OntologyPlanV3(withInitial, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_INITIAL_DATA'));
+
+  const relational = clone(clean) as ReturnType<typeof externalPlan> & { entities: Array<{ storageKind?: string }> };
+  relational.entities[0].storageKind = 'relational';
+  assert.ok(codes(validateNs5OntologyPlanV3(relational, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_STORAGE'));
+
+  const neutral = clone(clean) as typeof relational;
+  neutral.entities[0].storageKind = 'external';
+  assert.equal(codes(validateNs5OntologyPlanV3(neutral, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_STORAGE'), false);
+
+  const stored = clone(clean);
+  stored.entities[0].storage = { target: 'moduleDatabase', table: 'agents_agentrecord', kind: 'relational' };
+  assert.ok(codes(validateNs5OntologyPlanV3(stored, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_STORAGE'));
+
+  const onRole = clone(clean);
+  onRole.entities.push({
+    entityId: 'Paciente', kind: 'role', subtype: 'Person', family: 'mdm', title: 'Paciente', description: 'x', displayField: 'details.identification.name', connectionId: 'cm',
+  });
+  assert.ok(codes(validateNs5OntologyPlanV3(onRole, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_NOT_EXTERNAL'));
+});
+
+void test('l4_p4_107: an external entity refuses table machinery and checks source', () => {
+  const plan = externalPlan();
+  const built = externalEntity(plan);
+  const clean = codes(validateNs5OntologyEntityV3(built, plan, gateContext).issues);
+  assert.equal(clean.includes('NS5_ONTOLOGY_COLUMN_WITHOUT_INDEX'), false);
+  assert.equal(clean.includes('NS5_ONTOLOGY_EXTERNAL_SOURCE'), false);
+
+  const lifecycle = clone(built);
+  lifecycle.lifecycleStates = [{ state: 'open', reachedBy: 'actor' }];
+  assert.ok(codes(validateNs5OntologyEntityV3(lifecycle, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_LIFECYCLE'));
+
+  const transitions = clone(built);
+  transitions.transitions = [{ transitionId: 'open', from: [], to: 'open', by: [], description: 'x' }];
+  assert.ok(codes(validateNs5OntologyEntityV3(transitions, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_TRANSITIONS'));
+
+  const keys = clone(built);
+  keys.uniqueKeys = [['title']];
+  assert.ok(codes(validateNs5OntologyEntityV3(keys, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_UNIQUE_KEYS'));
+
+  const stored = clone(built) as Ns5OntologyEntityV3 & { storage?: { target: 'moduleDatabase'; table: string; kind: 'relational' } };
+  stored.storage = { target: 'moduleDatabase', table: 'agents_agentrecord', kind: 'relational' };
+  assert.ok(codes(validateNs5OntologyEntityV3(stored, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_STORAGE'));
+
+  const wrongSource = clone(built);
+  wrongSource.source = '/_102034_/l4/ontology/mdm.defs.ts';
+  assert.ok(codes(validateNs5OntologyEntityV3(wrongSource, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_SOURCE'));
+  assert.equal(built.source, ns5ConnectionSourcePath('cm'));
+});
+
+void test('l4_p4_107: external is refused as an mdm, through or composition end, and as the owner of an fk', () => {
+  const base = externalPlan();
+  const link = (mode: 'mdmRelationship' | 'throughTable' | 'composition', extra: Record<string, unknown> = {}) => {
+    const plan = clone(base);
+    plan.relationships = [{
+      relationshipId: 'link', from: 'Note', to: 'AgentRecord', type: 'manyToOne', required: false, mode, description: 'x', ...extra,
+    }];
+    return codes(validateNs5OntologyPlanV3(plan, gateContext).issues);
+  };
+  assert.ok(link('mdmRelationship', { catalogType: 'Employs' }).includes('NS5_ONTOLOGY_EXTERNAL_RELATIONSHIP'));
+  assert.ok(link('throughTable', { through: 'Note' }).includes('NS5_ONTOLOGY_EXTERNAL_RELATIONSHIP'));
+  assert.ok(link('composition').includes('NS5_ONTOLOGY_EXTERNAL_RELATIONSHIP'));
+
+  const fk = clone(base);
+  fk.relationships = [{
+    relationshipId: 'noteAgent', from: 'Note', to: 'AgentRecord', type: 'manyToOne', required: false, mode: 'fk', field: 'Note.agentId', description: 'x',
+  }];
+  assert.equal(codes(validateNs5OntologyPlanV3(fk, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_RELATIONSHIP'), false);
+  assert.equal(codes(validateNs5OntologyPlanV3(fk, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_FK_OWNER'), false);
+
+  const owned = clone(fk);
+  owned.relationships[0].field = 'AgentRecord.noteId';
+  assert.ok(codes(validateNs5OntologyPlanV3(owned, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_FK_OWNER'));
 });

@@ -32,6 +32,7 @@ import {
 import {
   NS5_NAMESPACE_EMPTY_DESCRIPTION,
   NS5_ONTOLOGY_V3_CLASSES,
+  NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND,
   NS5_ONTOLOGY_V3_MODES,
   NS5_ONTOLOGY_V3_RELATIONSHIP_TYPES,
   collectNs5CitedEntitiesV3,
@@ -42,8 +43,10 @@ import {
   ns5RolePlatformPathsV3,
   type Ns5OntologyV3Family,
   type Ns5OntologyV3PlanDraft,
+  type Ns5OntologyV3PlanEntity,
   type Ns5OntologyV3PlanRelationship,
 } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
+import { ns5ConnectionExists, ns5ConnectionSourcePath } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
@@ -170,12 +173,22 @@ export function validateNs5OntologyPlanV3(
           path: `${path}.subtype`,
         });
       }
+    } else if (entity.kind === 'external') {
+      issues.push(...checkExternalPlan(entity, path));
     } else if (!entity.class || !(NS5_ONTOLOGY_V3_CLASSES as readonly string[]).includes(entity.class)) {
       issues.push({
         severity: 'error',
         code: 'NS5_ONTOLOGY_CLASS_UNKNOWN',
         message: `'${entity.class || ''}' is not core, event or supporting.`,
         path: `${path}.class`,
+      });
+    }
+    if (entity.kind !== 'external' && entity.connectionId) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_CONNECTION_NOT_EXTERNAL',
+        message: `${entity.entityId} is a ${entity.kind}; connectionId belongs only to an external entity.`,
+        path: `${path}.connectionId`,
       });
     }
   }
@@ -206,6 +219,14 @@ export function validateNs5OntologyPlanV3(
         });
       }
     }
+    if (externalRelationshipRefused(row, plan)) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_EXTERNAL_RELATIONSHIP',
+        message: `${row.relationshipId} is a ${row.mode} with an external end. An external record is only the target of an fk from a table of this module.`,
+        path,
+      });
+    }
     if (row.mode === 'mdmRelationship') {
       const entry = row.catalogType ? catalog.get(row.catalogType) : undefined;
       if (!entry) {
@@ -234,7 +255,10 @@ export function validateNs5OntologyPlanV3(
       issues.push({ severity: 'error', code: 'NS5_ONTOLOGY_THROUGH_MISSING', message: 'A throughTable link must name the table walked.', path: `${path}.through` });
     }
     if (row.mode === 'composition') issues.push(...checkComposition(row, plan, path));
-    if (row.mode === 'fk') issues.push(...checkRoleFkField(row, plan, context, path));
+    if (row.mode === 'fk') {
+      issues.push(...checkRoleFkField(row, plan, context, path));
+      issues.push(...checkExternalFkOwner(row, plan, path));
+    }
   }
 
   for (const cited of collectNs5CitedEntitiesV3(context.journeys ?? [])) {
@@ -292,7 +316,90 @@ function checkRoleFkField(
   }];
 }
 
-/** The subtype on each end has to be one the catalog accepts on that end. A role stands for its subtype. */
+const EXTERNAL_RELATIONSHIP_MODES = new Set(['mdmRelationship', 'throughTable', 'composition']);
+
+/** An outside record is not a platform subtype, a join table or a document child. */
+function externalRelationshipRefused(row: Ns5OntologyV3PlanRelationship, plan: Ns5OntologyV3PlanDraft): boolean {
+  if (!EXTERNAL_RELATIONSHIP_MODES.has(row.mode)) return false;
+  return plan.entities.some(entity =>
+    entity.kind === 'external' && (entity.entityId === row.from || entity.entityId === row.to));
+}
+
+/** The column of an fk lives on a table of this module. An external record does not store it. */
+function checkExternalFkOwner(
+  row: Ns5OntologyV3PlanRelationship,
+  plan: Ns5OntologyV3PlanDraft,
+  path: string,
+): Ns5OntologyV3Issue[] {
+  const ownerId = (row.field ?? '').split('.')[0];
+  const owner = plan.entities.find(entity => entity.entityId === ownerId);
+  if (owner?.kind !== 'external') return [];
+  return [{
+    severity: 'error',
+    code: 'NS5_ONTOLOGY_EXTERNAL_FK_OWNER',
+    message: `${row.field} sits on ${ownerId}, which is an external record. The table of this module stores the outside id.`,
+    path: `${path}.field`,
+  }];
+}
+
+/**
+ * What an `external` plan may carry. `source` is derived from `connectionId`; table shape is refused.
+ * `storageKind` is read when the draft still has it: normalize drops it, and the neutral value is
+ * `NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND`.
+ */
+function checkExternalPlan(entity: Ns5OntologyV3PlanEntity, path: string): Ns5OntologyV3Issue[] {
+  const issues: Ns5OntologyV3Issue[] = [];
+  if (!entity.connectionId || !ns5ConnectionExists(entity.connectionId)) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_CONNECTION_UNKNOWN',
+      message: `'${entity.connectionId || ''}' is not a connection of the catalog.`,
+      path: `${path}.connectionId`,
+    });
+  }
+  if (entity.class) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_CLASS',
+      message: `${entity.entityId} is external and declares class '${entity.class}'. An outside record has no class.`,
+      path: `${path}.class`,
+    });
+  }
+  if (entity.subtype) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_SUBTYPE',
+      message: `${entity.entityId} is external and declares subtype '${entity.subtype}'. A subtype belongs to a role.`,
+      path: `${path}.subtype`,
+    });
+  }
+  if (entity.initialData) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_INITIAL_DATA',
+      message: `${entity.entityId} is external and declares initial data. The rows live in the connection.`,
+      path: `${path}.initialData`,
+    });
+  }
+  const storageKind = planStorageKind(entity);
+  if ((storageKind !== undefined && storageKind !== NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND) || entity.storage) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_STORAGE',
+      message: `${entity.entityId} is external and declares storage. The neutral storageKind is '${NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND}'.`,
+      path: `${path}.storageKind`,
+    });
+  }
+  return issues;
+}
+
+function planStorageKind(entity: Ns5OntologyV3PlanEntity): string | undefined {
+  if (!Object.prototype.hasOwnProperty.call(entity, 'storageKind')) return undefined;
+  const value = (entity as Ns5OntologyV3PlanEntity & { storageKind?: unknown }).storageKind;
+  return typeof value === 'string' ? value : undefined;
+}
+
+/** The subtype on each end has to be one the catalog accepts on that end. A role stands for its subtype. An external end is not a subtype, so this check stays silent and `externalRelationshipRefused` charges the link. */
 function checkCatalogEndpoints(
   row: Ns5OntologyV3PlanRelationship,
   entry: MdmOntology['relationships'][number],
@@ -417,14 +524,70 @@ export function validateNs5OntologyEntityV3(
   issues.push(...checkRules(entity, context, path));
   issues.push(...checkDecideBranching(entity, context, path));
   issues.push(...checkEntityRelationships(entity, plan, path));
-  if (entity.kind !== 'role') issues.push(...checkTableFkFields(entity, plan, paths, path));
+  if (entity.kind === 'external') {
+    issues.push(...checkExternalEntity(entity, plan, path));
+  } else if (entity.kind !== 'role') {
+    issues.push(...checkTableFkFields(entity, plan, paths, path));
+  }
   if (entity.kind === 'role') {
     issues.push(...checkRoleRecord(entity, context, path));
-  } else {
+  } else if (entity.kind === 'entity') {
     issues.push(...checkTableRecord(entity, plan, path));
     if (family === 'ddm') issues.push(...checkDerivedTable(entity, path));
   }
   return ok(issues);
+}
+
+/** An outside record keeps the fields the module sees. It is not a table and its source is the catalog path. */
+function checkExternalEntity(
+  entity: Extract<Ns5OntologyEntityV3, { kind: 'external' }>,
+  plan: Ns5OntologyV3PlanDraft,
+  path: string,
+): Ns5OntologyV3Issue[] {
+  const issues: Ns5OntologyV3Issue[] = [];
+  if (entity.lifecycleStates?.length) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_LIFECYCLE',
+      message: `${entity.entityId} is external and declares lifecycle states.`,
+      path: `${path}.lifecycleStates`,
+    });
+  }
+  if (entity.transitions?.length) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_TRANSITIONS',
+      message: `${entity.entityId} is external and declares transitions.`,
+      path: `${path}.transitions`,
+    });
+  }
+  if (entity.uniqueKeys?.length) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_UNIQUE_KEYS',
+      message: `${entity.entityId} is external and declares unique keys.`,
+      path: `${path}.uniqueKeys`,
+    });
+  }
+  if ('storage' in entity && entity.storage) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_STORAGE',
+      message: `${entity.entityId} is external and declares storage.`,
+      path: `${path}.storage`,
+    });
+  }
+  const planned = plan.entities.find(item => item.entityId === entity.entityId);
+  const expected = planned?.connectionId ? ns5ConnectionSourcePath(planned.connectionId) : '';
+  if (entity.source !== expected) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_SOURCE',
+      message: `source '${entity.source}' is not the catalog path of connection '${planned?.connectionId || ''}'.`,
+      path: `${path}.source`,
+    });
+  }
+  return issues;
 }
 
 /**
