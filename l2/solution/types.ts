@@ -500,6 +500,17 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
   initialData?: string;
 }
 
+/**
+ * A record that lives outside this module, identified by a connection catalog path.
+ * No local table. Joins `Ns5OntologyEntityV3` in part 2 (ontology30 + gate).
+ */
+export interface Ns5OntologyExternalV3<Cap extends string = string, Rule extends string = string>
+  extends Ns5OntologyEntityV3Base<Cap, Rule> {
+  kind: 'external';
+  /** Path of the connection catalog this entity is read from. */
+  source: string;
+}
+
 export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =
   | Ns5OntologyRoleV3<Cap, Rule>
   | Ns5OntologyTableV3<Cap, Rule>;
@@ -774,6 +785,19 @@ export interface Ns5IntegrationPlugin {
   usedBy: string[];
 }
 
+/** One closed-catalog connection operation this module calls or serves. */
+export interface Ns5IntegrationConnection {
+  connectionId: string;
+  operationId: string;
+  /** Filled from the catalog by normalize; never asked of the model. */
+  direction: 'call' | 'serve';
+  /** call: `journeyId.stepId` or `processId.taskId`. serve: prose of what the arrival does. */
+  usedBy: string[];
+  entityRefs?: string[];
+  effect?: 'list' | 'read' | 'create' | 'update' | 'remove';
+  description: string;
+}
+
 /** Queued request that a sibling (or a predicted module) publish an event. */
 export interface Ns5IntegrationRequestArtifact {
   schemaVersion: typeof NS5_INTEGRATION_REQUEST_SCHEMA_VERSION;
@@ -798,6 +822,8 @@ export interface Ns5IntegrationArtifact {
   outbound: Ns5IntegrationItem[];
   /** Platform plugins this module uses. */
   plugins: Ns5IntegrationPlugin[];
+  /** Closed-catalog connection operations. Optional so existing defs keep compiling; builders write `[]`. */
+  connections?: Ns5IntegrationConnection[];
 }
 
 export type Ns5PipelineStatus = 'inProgress' | 'awaitingStep' | 'complete' | 'failed';

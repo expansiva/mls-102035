@@ -365,6 +365,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     inbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, finalize80 I11', since: '2026-09-10' },
     outbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, registry events, finalize80 I12', since: '2026-09-10' },
     plugins: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, finalize80 I12', since: '2026-09-10' },
+    connections: { reader: 'steps/integration70/gate.ts (l4_p4_107 s2b), finalize80 I12 (s2d), L1 persistence and connection ports', since: '2026-11-17' },
   },
 };
 
