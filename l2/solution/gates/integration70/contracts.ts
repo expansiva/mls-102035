@@ -2,7 +2,7 @@
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
-import { ns5ConnectionOperation, ns5ConnectionTerms } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { ns5ConnectionOperation, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   type Ns5IntegrationArtifact,
@@ -149,9 +149,8 @@ export function collectNs5IntegrationSignals(
     }
   }
 
-  for (const term of ns5ConnectionTerms()) {
-    if (!promptMentionsTerm(sourcePrompt, term)) continue;
-    add({ kind: 'connectionTerm', term });
+  for (const hit of ns5ConnectionSignalHits(sourcePrompt, promptMentionsTerm)) {
+    add({ kind: 'connectionTerm', term: hit.term });
   }
 
   if (siblings.length) add({ kind: 'siblingPresent' });

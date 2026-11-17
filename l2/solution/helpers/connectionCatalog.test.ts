@@ -12,7 +12,7 @@ import {
 
 test('ns5ConnectionCatalogs lists the example cm catalog', () => {
   const catalogs = ns5ConnectionCatalogs();
-  assert.equal(catalogs.length, 1);
+  assert.equal(catalogs.length, 2);
   assert.equal(catalogs[0].schemaVersion, 'connection-catalog-v1');
   assert.equal(catalogs[0].connectionId, 'cm');
   assert.equal(catalogs[0].operations.length, 14);
@@ -57,7 +57,8 @@ test('cm operation ids are unique', () => {
   const ops = ns5ConnectionCatalogs()[0].operations;
   const ids = ops.map(item => item.operationId);
   assert.equal(new Set(ids).size, ids.length);
-  assert.deepEqual(ns5ConnectionTerms(), ['cm']);
+  assert.deepEqual(ns5ConnectionTerms(), ['cm', 'platform']);
+  assert.equal(ns5ConnectionOperation('platform', 'releaseCatalogChanged')?.direction, 'serve');
 });
 
 import fixtureCm from '/_102035_/l2/solution/fixtures/connections/cm.defs.js';
@@ -68,4 +69,12 @@ test('the test copy of cm has the same operations as the real catalog (drift gua
   const pairs = (operations: readonly { operationId: string; direction: string; reply: string }[]) =>
     operations.map(item => `${item.operationId}:${item.direction}:${item.reply}`).sort();
   assert.deepEqual(pairs(fixtureCm.operations), pairs(real.operations));
+});
+
+test('platform releaseCatalogChanged is a serve command hidden from agents', () => {
+  const operation = ns5ConnectionOperation('platform', 'releaseCatalogChanged');
+  assert.ok(operation);
+  assert.equal(operation.direction, 'serve');
+  assert.equal(operation.kind, 'command');
+  assert.equal(operation.hiddenFromAgents, true);
 });

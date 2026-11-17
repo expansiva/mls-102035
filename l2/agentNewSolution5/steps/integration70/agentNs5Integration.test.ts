@@ -641,3 +641,24 @@ void test('serve keeps its usedBy prose; call still drops what is not a ref', ()
   });
   assert.deepEqual(call.connections[0].usedBy, []);
 });
+
+const AGENTS_SOURCE_PROMPT = [
+  'Agents module: the home of the company AI agents inside the app. The agents live in the cm (collab messages).',
+  'This module owns only the tools: the catalog of actions of the app modules and the cm tools.',
+  'Tool catalog: rebuilt when a module is created or a new release arrives.',
+].join('\n');
+
+void test('l4_p4_108 s0: the word platform alone raises no connection signal', () => {
+  const signals = collectNs5IntegrationSignals(COMANDA_ACTORS, 'The platform shows a list of tables. The platform keeps the orders.');
+  assert.equal(signals.some(signal => signal.kind === 'connectionTerm'), false);
+});
+
+void test('l4_p4_108 s0: release and catalog together, or the operation name, raise the platform signal', () => {
+  const agents = collectNs5IntegrationSignals(COMANDA_ACTORS, AGENTS_SOURCE_PROMPT);
+  const terms = agents.filter(signal => signal.kind === 'connectionTerm').map(signal => signal.term);
+  assert.deepEqual(terms, ['cm', 'release + catalog']);
+  const byName = collectNs5IntegrationSignals(COMANDA_ACTORS, 'It answers releaseCatalogChanged.');
+  assert.deepEqual(byName.filter(signal => signal.kind === 'connectionTerm').map(signal => signal.term), ['releaseCatalogChanged']);
+  const onlyRelease = collectNs5IntegrationSignals(COMANDA_ACTORS, 'A new release of the product arrives each month.');
+  assert.equal(onlyRelease.some(signal => signal.kind === 'connectionTerm'), false);
+});
