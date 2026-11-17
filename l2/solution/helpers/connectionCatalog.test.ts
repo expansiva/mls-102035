@@ -59,3 +59,13 @@ test('cm operation ids are unique', () => {
   assert.equal(new Set(ids).size, ids.length);
   assert.deepEqual(ns5ConnectionTerms(), ['cm']);
 });
+
+import fixtureCm from '/_102035_/l2/solution/fixtures/connections/cm.defs.js';
+
+test('the test copy of cm has the same operations as the real catalog (drift guard)', () => {
+  const real = ns5ConnectionCatalogs().find(item => item.connectionId === 'cm');
+  assert.ok(real);
+  const pairs = (operations: readonly { operationId: string; direction: string; reply: string }[]) =>
+    operations.map(item => `${item.operationId}:${item.direction}:${item.reply}`).sort();
+  assert.deepEqual(pairs(fixtureCm.operations), pairs(real.operations));
+});

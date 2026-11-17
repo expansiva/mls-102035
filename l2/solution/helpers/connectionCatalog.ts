@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/solution/helpers/connectionCatalog.ts" enhancement="_blank"/>
 
-import cmCatalog from '/_102035_/l2/solution/fixtures/connections/cm.defs.js';
+import cmCatalog from '/_102034_/l4/ontology/connections/cm.defs.js';
 
 export interface Ns5ConnectionCatalog {
   schemaVersion: 'connection-catalog-v1';
@@ -22,13 +22,15 @@ export interface Ns5ConnectionOperation {
   timeoutMs?: number;
   hiddenFromAgents?: boolean;
   noRowLimit?: boolean;
+  personInputs?: Array<{ from: string; to: string }>;
 }
 
 /**
- * Closed connection catalogs the NS5 gate reads.
- * Swap the import above for `/_102034_/l4/ontology/connections/cm.defs.js` when that file exists.
+ * Closed connection catalogs the NS5 gate reads: the platform's own files in `102034/l4/ontology/connections/`.
+ * `solution/fixtures/connections/cm.defs.ts` is a test copy of the `cm` one (see `connectionCatalog.test.ts`).
  */
 export function ns5ConnectionCatalogs(): readonly Ns5ConnectionCatalog[] {
+  // `platform.defs` (M5) joins when a module uses it: its id is the common word "platform", which would raise the connection signal in any prompt.
   return [cmCatalog];
 }
 
