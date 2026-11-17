@@ -1107,3 +1107,35 @@ void test('workflows50 prompt and schema state task icon as intention', () => {
   const source = readFileSync(path.join(HERE, 'agentNs5Workflows.ts'), 'utf8');
   assert.match(source, /normalizations/);
 });
+
+// --- l4_p4_109: an arrival from a connection can start a process (closed list of serve operations) ---
+
+function arrivalProcess(event: string): Ns5WorkflowProcess {
+  return validProcess({ trigger: { kind: 'event' as const, event } }) as unknown as Ns5WorkflowProcess;
+}
+
+void test('l4_p4_109: a process may be triggered by a serve operation of a catalog connection, and by nothing else of it', () => {
+  const triggerIssues = (event: string) => gateOf([arrivalProcess(event)]).issues
+    .filter(issue => issue.code === 'NS5_WORKFLOWS_TRIGGER_EVENT');
+  assert.deepEqual(triggerIssues('platform.releaseCatalogChanged'), []);
+  assert.deepEqual(triggerIssues('cm.agentDraftReady'), []);
+  // a call operation is not an arrival; an invented operation is not either
+  assert.equal(triggerIssues('cm.listAgents').length, 1);
+  assert.equal(triggerIssues('platform.releaseCatalogInvented').length, 1);
+  // a sibling module (not a connection of the catalog) keeps the old rule: any module.eventId
+  assert.deepEqual(triggerIssues('financeiro.tituloPago'), []);
+});
+
+void test('l4_p4_109: the human prompt lists the arrivals the catalog connections deliver', () => {
+  const human = buildNs5WorkflowsHumanPrompt({
+    sourcePrompt: 'when a new release arrives the catalog is rebuilt.',
+    userLanguage: 'en',
+    actorIds: ORDEN_ACTORS,
+    journeys: [],
+    entities: [],
+  });
+  assert.match(human, /## Arrivals from connections/);
+  assert.match(human, /- platform\.releaseCatalogChanged · /);
+  assert.match(human, /- cm\.agentDraftReady · /);
+  assert.doesNotMatch(human, /- cm\.listAgents · /);
+});

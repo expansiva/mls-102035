@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-11-18 (l4_p4_109 s2)
+
+- `trigger.event` may be `<connectionId>.<operationId>` of a `serve` operation of the catalog (closed list, `## Arrivals from connections` in the human prompt); a call operation or an invented one is `NS5_WORKFLOWS_TRIGGER_EVENT`. finalize80 I1 knows a `serve` row as an arrival.
+
 ## 2026-10-19 (l4_p4_51)
 
 - l4_p4_51: plano revisto de 18/10, §§3, 5, 6, 9.

@@ -34,7 +34,12 @@ with `effect: transition`.
 - `kind: moduleEndpoint` — another module calls this one. `from` is that module.
 - `kind: external` — a system outside the organization. `from` is that system's lowerCamel id.
 
-An entity listed in the human prompt as `writer=inbound` **must** appear in some `inbound.writes`.
+An entity listed in the human prompt as `writer=inbound` **must** appear in some `inbound.writes`, or in the
+`entityRefs` of a `serve` row of `connections` whose `effect` is `create` or `update`.
+
+An arrival from a connection of the catalog (`## Connection catalog`) is **never** an inbound row: it is a `serve`
+row of `connections`. Do not write an `inbound` of `kind: external` whose `from` is a catalog connection; the
+connection publishes only the operations the catalog lists.
 Do not invent an event the request does not name.
 
 ## Outbound

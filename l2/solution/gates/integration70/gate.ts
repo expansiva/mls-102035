@@ -6,6 +6,7 @@ import type { Ns5IntegrationConnection, Ns5IntegrationItem, Ns5IntegrationPlugin
 import {
   collectNs5IntegrationSignals,
   inboundEventId,
+  isNs5ConnectionId,
   isNs5PluginId,
   parseNs5OutboundOn,
   parseNs5UsedBy,
@@ -143,6 +144,14 @@ function validateInbound(
     checkPeer(item, path, 'from', ctx);
   }
   if (item.to) checkPeer(item, path, 'to', ctx);
+  if (item.kind === 'external' && item.from && isNs5ConnectionId(item.from)) {
+    error(
+      ctx.issues,
+      'NS5_INTEGRATION_INBOUND_NO_SERVE',
+      `${item.id} is an inbound from the connection ${item.from}, which publishes no such event. An arrival from a connection is a serve row of connections (an operation of its catalog).`,
+      `${path}.from`,
+    );
+  }
   if (!EFFECTS.has(item.effect || '')) {
     error(ctx.issues, 'NS5_INTEGRATION_EFFECT', "Inbound effect must be 'create', 'update' or 'transition'.", `${path}.effect`);
   }

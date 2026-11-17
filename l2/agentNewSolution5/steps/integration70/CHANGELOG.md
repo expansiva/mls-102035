@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-18 (l4_p4_109 s2)
+
+- An arrival from a catalog connection is a `serve` row of `connections`, never an `inbound` too. Normalize drops an `inbound` (`kind: external`, `from` = a catalog connection) that a `serve` row of that connection repeats (same entity, `create`/`update`); the gate charges any other such `inbound` (`NS5_INTEGRATION_INBOUND_NO_SERVE`). The three texts that told the model to write `inbound.writes` now also name the `serve` row.
+
 ## 2026-11-17 (l4_p4_107 s2c)
 
 - `connections[]` on `submitNs5Integration`: closed catalog in the human prompt, no `direction` or `kind` asked of the model. A connection-catalog term is a signal, so the step runs; it does not by itself require an item.

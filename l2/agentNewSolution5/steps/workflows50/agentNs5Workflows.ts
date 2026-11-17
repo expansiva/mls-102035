@@ -48,6 +48,7 @@ import type {
   Ns5SystemDecision,
   Ns5WorkflowProcess,
 } from '/_102035_/l2/solution/types.js';
+import { ns5ConnectionArrivals } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   buildNs5WorkflowsArtifactV3,
   collectNs5ProcessSignals,
@@ -118,6 +119,9 @@ export function buildNs5WorkflowsHumanPrompt(input: {
     '',
     '## Process signals (why this call ran)',
     signals.length || phrases.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
+    '',
+    '## Arrivals from connections (trigger.event = <connectionId>.<operationId>)',
+    ns5ConnectionArrivals().map(item => `- ${item.ref} · ${item.description}`).join('\n') || '(none)',
     '',
     '## Valid reference ids',
     JSON.stringify({

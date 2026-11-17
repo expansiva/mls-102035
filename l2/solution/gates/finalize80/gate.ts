@@ -193,9 +193,13 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
           }
         }
       } else if (inboundRef) {
-        const inboundIds = new Set(
-          sources.integration.inbound.map(item => `${item.from || ''}.${item.event || item.id}`),
-        );
+        // An arrival is an `inbound` row, or (l4_p4_109) a `serve` row of `connections`: `<connectionId>.<operationId>`.
+        const inboundIds = new Set([
+          ...sources.integration.inbound.map(item => `${item.from || ''}.${item.event || item.id}`),
+          ...(sources.integration.connections || [])
+            .filter(connection => connection.direction === 'serve')
+            .map(connection => `${connection.connectionId}.${connection.operationId}`),
+        ]);
         if (!inboundIds.has(`${inboundRef.moduleName}.${inboundRef.eventId}`)) {
           error('I1', `${base}.trigger.event`, `Unknown inbound event ${process.trigger.event}.`);
         }

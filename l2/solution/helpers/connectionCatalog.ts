@@ -92,3 +92,16 @@ export function ns5ConnectionSourcePath(connectionId: string): string {
 export function ns5ConnectionExists(connectionId: string): boolean {
   return ns5ConnectionCatalogs().some(item => item.connectionId === connectionId);
 }
+
+/** The `serve` operations of one connection: what the connection delivers to a module. */
+export function ns5ServeOperationIds(connectionId: string): string[] {
+  const catalog = ns5ConnectionCatalogs().find(item => item.connectionId === connectionId);
+  return (catalog?.operations ?? []).filter(item => item.direction === 'serve').map(item => item.operationId);
+}
+
+/** Every arrival a connection of the catalog can deliver, as `<connectionId>.<operationId>` and its description. */
+export function ns5ConnectionArrivals(): Array<{ ref: string; description: string }> {
+  return ns5ConnectionCatalogs().flatMap(catalog => catalog.operations
+    .filter(operation => operation.direction === 'serve')
+    .map(operation => ({ ref: `${catalog.connectionId}.${operation.operationId}`, description: operation.description })));
+}

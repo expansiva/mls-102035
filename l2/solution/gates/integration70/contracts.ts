@@ -2,7 +2,7 @@
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
-import { ns5ConnectionOperation, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { ns5ConnectionCatalogs, ns5ConnectionOperation, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   type Ns5IntegrationArtifact,
@@ -37,8 +37,10 @@ export type Ns5IntegrationEffect = 'create' | 'update' | 'transition';
 
 export const NS5_INTEGRATION_DROP_TRANSITION_REF = 'dropTransitionRef' as const;
 
+export const NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE = 'inboundMergedIntoServe' as const;
+
 export interface Ns5IntegrationFormNormalization {
-  kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF;
+  kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF | typeof NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE;
   inboundId: string;
   detail: string;
 }
@@ -93,15 +95,53 @@ export interface Ns5InboundPendingRequest {
 export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNormalization {
   const root = record(value);
   const normalizations: Ns5IntegrationFormNormalization[] = [];
+  const connections = list(root.connections).map(normalizeConnection).filter(item => item.connectionId || item.operationId || item.description);
+  const inbound = list(root.inbound)
+    .map(item => normalizeInbound(item, normalizations))
+    .filter(item => item.id || item.description);
   return {
-    inbound: list(root.inbound)
-      .map(item => normalizeInbound(item, normalizations))
-      .filter(item => item.id || item.description),
+    inbound: mergeInboundIntoServe(inbound, connections, normalizations),
     outbound: list(root.outbound).map(item => normalizeOutbound(item)).filter(item => item.id || item.description),
     plugins: list(root.plugins).map(normalizePlugin).filter(plugin => plugin.pluginId || plugin.description),
-    connections: list(root.connections).map(normalizeConnection).filter(item => item.connectionId || item.operationId || item.description),
+    connections: connections.map(row => row),
     normalizations,
   };
+}
+
+/** True when `from` names a connection of the closed catalog (`cm`, `platform`). */
+export function isNs5ConnectionId(value: string): boolean {
+  return ns5ConnectionCatalogs().some(catalog => catalog.connectionId === value);
+}
+
+/**
+ * An arrival from a connection of the catalog is a `serve` row of `connections`. The same arrival written
+ * again as `inbound` (`kind: external`, `from` = the connection) is a duplicate: the L1 would open two doors
+ * for it. It is dropped when a `serve` row of that connection names the same entity with a write effect
+ * (`create`/`update`: the serve operation is one upsert). An `inbound` that no `serve` row matches stays,
+ * and the gate charges it. The description moves to the serve row when that one has none.
+ */
+function mergeInboundIntoServe(
+  inbound: Ns5IntegrationItem[],
+  connections: Ns5IntegrationConnection[],
+  normalizations: Ns5IntegrationFormNormalization[],
+): Ns5IntegrationItem[] {
+  return inbound.filter(item => {
+    if (item.kind !== 'external' || !item.from || !isNs5ConnectionId(item.from)) return true;
+    if (item.effect !== 'create' && item.effect !== 'update') return true;
+    const writes = item.writes || [];
+    const serve = connections.find(row => row.direction === 'serve'
+      && row.connectionId === item.from
+      && (row.effect === 'create' || row.effect === 'update')
+      && (row.entityRefs || []).some(entity => writes.includes(entity)));
+    if (!serve) return true;
+    if (!serve.description.trim() && item.description.trim()) serve.description = item.description;
+    normalizations.push({
+      kind: NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE,
+      inboundId: item.id,
+      detail: `inbound ${item.id} from ${item.from} repeats serve ${serve.connectionId}.${serve.operationId}; dropped.`,
+    });
+    return false;
+  });
 }
 
 export function buildNs5IntegrationArtifact(

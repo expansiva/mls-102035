@@ -32,6 +32,10 @@ Every process has a trigger:
   and what somebody does about it on a schedule is a `scheduled` process with an `alert` stage.
 - `kind: manual` — a person starts it; `actorRef` is required.
 
+An `event` trigger can also be an arrival from a connection: `<connectionId>.<operationId>`, only one listed under
+`## Arrivals from connections` in the human prompt. Use it when the request says something must happen
+automatically when that arrival comes. Do not invent an arrival.
+
 ## Stages
 
 - `kind: human` — a person does the work. Requires `actorRef` and `journeyRef` (the journey that

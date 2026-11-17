@@ -662,3 +662,57 @@ void test('l4_p4_108 s0: release and catalog together, or the operation name, ra
   const onlyRelease = collectNs5IntegrationSignals(COMANDA_ACTORS, 'A new release of the product arrives each month.');
   assert.equal(onlyRelease.some(signal => signal.kind === 'connectionTerm'), false);
 });
+
+// --- l4_p4_109 s2: an arrival from a connection is one serve row, never an inbound too ----------
+
+function agentsR3Integration(): Record<string, unknown> {
+  const source = readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../solution/fixtures/integration70/agents/integration.defs.ts'),
+    'utf8',
+  );
+  const start = source.indexOf('= {') + 2;
+  const end = source.lastIndexOf('} as const') + 1;
+  return JSON.parse(source.slice(start, end)) as Record<string, unknown>;
+}
+
+void test('l4_p4_109: the integration of agents (71659f7a) loses the 3 inbound that repeat a serve row; toolLeftRelease stays and the gate charges it', () => {
+  const normalized = normalizeNs5IntegrationPayload(agentsR3Integration());
+  assert.deepEqual(normalized.inbound.map(item => item.id), ['toolLeftRelease']);
+  assert.deepEqual(
+    normalized.normalizations.filter(item => item.kind === 'inboundMergedIntoServe').map(item => item.inboundId),
+    ['draftNoticeReceived', 'executionRecorded', 'releaseCatalogDelivered'],
+  );
+  assert.equal(normalized.connections.filter(row => row.direction === 'serve').length, 4);
+  const gate = validateNs5Integration(normalized.inbound, normalized.outbound, normalized.plugins, {
+    actors: [],
+    entities: [{ entityId: 'Tool', writer: 'inbound', transitions: [{ transitionId: 'markRemoved' }] }, { entityId: 'DraftNotice', writer: 'inbound' }, { entityId: 'AgentExecution', writer: 'inbound' }],
+    registryModuleNames: [],
+    sourcePrompt: 'the cm and the release catalog',
+  }, normalized.connections);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_INBOUND_NO_SERVE' && issue.path === 'inbound[0].from'));
+});
+
+void test('l4_p4_109: an inbound from a connection that no serve row matches is a phantom arrival; one from a sibling or a system outside the catalog is not touched', () => {
+  const serve = {
+    connectionId: 'cm', operationId: 'record', direction: 'serve', usedBy: ['the cm tells what an agent did'],
+    entityRefs: ['AgentExecution'], effect: 'create', description: '',
+  };
+  const merged = normalizeNs5IntegrationPayload({
+    inbound: [
+      { id: 'executionRecorded', kind: 'external', from: 'cm', writes: ['AgentExecution'], effect: 'create', description: 'The cm sends a summary of each execution.' },
+      { id: 'otherArrival', kind: 'external', from: 'cm', writes: ['Other'], effect: 'create', description: 'x' },
+      { id: 'billingPing', kind: 'external', from: 'billingSystem', writes: ['AgentExecution'], effect: 'create', description: 'x' },
+    ],
+    outbound: [], plugins: [], connections: [serve],
+  });
+  assert.deepEqual(merged.inbound.map(item => item.id), ['otherArrival', 'billingPing']);
+  assert.equal(merged.connections[0].description, 'The cm sends a summary of each execution.');
+  const context = {
+    actors: [], entities: [{ entityId: 'AgentExecution', writer: 'inbound' as const }, { entityId: 'Other' }], registryModuleNames: [], sourcePrompt: 'cm',
+  };
+  const gate = validateNs5Integration(merged.inbound, merged.outbound, merged.plugins, context, merged.connections);
+  assert.deepEqual(
+    gate.issues.filter(issue => issue.code === 'NS5_INTEGRATION_INBOUND_NO_SERVE').map(issue => issue.path),
+    ['inbound[0].from'],
+  );
+});

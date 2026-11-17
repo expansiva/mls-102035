@@ -6,7 +6,8 @@ import type {
   Ns5WorkflowTask,
   Ns5WorkflowTrigger,
 } from '/_102035_/l2/solution/types.js';
-import { parseNs5InboundEventRef } from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { isNs5ConnectionId, parseNs5InboundEventRef } from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { ns5ConnectionOperation, ns5ServeOperationIds } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   collectNs5Handoffs,
   collectNs5JourneyTransitionRefs,
@@ -190,7 +191,22 @@ function validateTrigger(
   }
   const parsed = parseNs5TriggerEvent(trigger.event);
   if (!parsed) {
-    if (parseNs5InboundEventRef(trigger.event)) return;
+    const inboundRef = parseNs5InboundEventRef(trigger.event);
+    if (inboundRef) {
+      // l4_p4_109: a connection of the catalog delivers only the `serve` operations it lists (closed list).
+      if (isNs5ConnectionId(inboundRef.moduleName)) {
+        const operation = ns5ConnectionOperation(inboundRef.moduleName, inboundRef.eventId);
+        if (operation?.direction !== 'serve') {
+          error(
+            issues,
+            'NS5_WORKFLOWS_TRIGGER_EVENT',
+            `${trigger.event} is not an arrival of the connection ${inboundRef.moduleName}: it delivers only ${ns5ServeOperationIds(inboundRef.moduleName).join(', ') || '(none)'}.`,
+            `${path}.event`,
+          );
+        }
+      }
+      return;
+    }
     error(
       issues,
       'NS5_WORKFLOWS_TRIGGER_EVENT',

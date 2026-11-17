@@ -1632,3 +1632,20 @@ void test('l4_p4_108: a step that moves an external record needs a call row nami
     ['I1 journeys.reviewAndActivateDraft.steps[6].transitionRef'],
   );
 });
+
+void test('l4_p4_109: a process trigger that is a serve operation of the connections is a known arrival; an invented one is not', () => {
+  const base = agentsSources();
+  const withTrigger = (event: string): Ns5OracleSources => {
+    const sources = clone(base);
+    sources.workflows.processes = [{
+      processId: 'chooseNewTools', title: 'Choose new tools', description: 'Each agent gets its new tools.',
+      trigger: { kind: 'event', event },
+      tasks: [{ taskId: 'chooseTools', kind: 'llm', entityRef: 'AgentTool', effect: 'update', next: [], description: 'The model chooses.' }],
+    }] as unknown as Ns5OracleSources['workflows']['processes'];
+    return sources;
+  };
+  const triggerErrors = (event: string) => runNs5Oracle(withTrigger(event)).errors
+    .filter(issue => issue.checkId === 'I1' && issue.path.endsWith('.trigger.event'));
+  assert.deepEqual(triggerErrors('cm.agentDraftReady'), []);
+  assert.equal(triggerErrors('cm.neverDelivered').length, 1);
+});
