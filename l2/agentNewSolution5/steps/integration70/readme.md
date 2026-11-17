@@ -17,7 +17,7 @@ platform plugin (`usedBy` = `journey.step` or `process.task`).
 
 ## Output
 
-`Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`. Inbound is
+`Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`, and `connections[]` when the module names a closed-catalog operation (omitted when empty). Inbound is
 `{ id, kind, from, event?, writes[], effect, transitionRef?, description }`. Outbound is
 `{ id, kind, to, event, on, entityRefs[], description }`. A plugin is
 `{ pluginId, usedBy[], description }`. Empty lists are valid when there is no signal; the step
@@ -30,6 +30,7 @@ The step calls the model only when at least one of:
 
 - an actor `kind: system` on the module
 - `sourcePrompt` contains a term from the platform plugin catalog (`stripe`, `cardPayment`)
+- `sourcePrompt` contains a connection-catalog id (lets the step run; does not by itself require an item)
 - a sibling module is already in the organization registry
 
 No signal ⇒ empty lists, cost 0, `noIntegrationSignal: true`. Shared MDM (`Product`, `Person`) is
@@ -47,7 +48,8 @@ not a signal and is not an integration item.
 - `pluginId` is in the platform catalog; `usedBy` is `journeyId.stepId` or `processId.taskId`.
 - `from` / `to` that is not a registry sibling, `organization` or `any` is a warning
   (`NS5_INTEGRATION_UNKNOWN_MODULE` / `unknownModule`), not an error (`kind: external` never warns).
-- A signal with all three arrays empty fails `NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM`.
+- A signal other than `connectionTerm`, with inbound, outbound, plugins and connections all empty, fails `NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM`.
+- A connection row names `connectionId` and `operationId` from the catalog. `direction` is filled from the catalog. `call` needs a real `usedBy`. `entityRefs` and `effect` come together or not at all.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
   the registry and l5, and marks the pipeline complete.

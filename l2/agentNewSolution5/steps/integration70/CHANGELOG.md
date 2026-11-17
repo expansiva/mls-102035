@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-17 (l4_p4_107 s2c)
+
+- `connections[]` on `submitNs5Integration`: closed catalog in the human prompt, no `direction` or `kind` asked of the model. A connection-catalog term is a signal, so the step runs; it does not by itself require an item.
+
 ## 2026-10-02 (p4_21)
 
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/integration70/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5IntegrationTool) stayed in the agent: it moved, body unchanged, to `agentNs5Integration.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

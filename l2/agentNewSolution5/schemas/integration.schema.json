@@ -7,7 +7,8 @@
     "schemaVersion",
     "inbound",
     "outbound",
-    "plugins"
+    "plugins",
+    "connections"
   ],
   "properties": {
     "schemaVersion": { "type": "string", "const": "2026-09-12-ns5-integration-v2" },
@@ -23,6 +24,10 @@
     "plugins": {
       "type": "array",
       "items": { "$ref": "#/$defs/plugin" }
+    },
+    "connections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/connection" }
     }
   },
   "$defs": {
@@ -72,6 +77,25 @@
           "type": "array",
           "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*$" }
         }
+      }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connectionId", "operationId", "usedBy", "entityRefs", "description"],
+      "properties": {
+        "connectionId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "operationId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "usedBy": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "entityRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+        },
+        "effect": { "type": "string", "enum": ["list", "read", "create", "update", "remove"] },
+        "description": { "type": "string", "minLength": 1 }
       }
     }
   }

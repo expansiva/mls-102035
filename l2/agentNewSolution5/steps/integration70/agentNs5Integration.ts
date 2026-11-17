@@ -41,6 +41,7 @@ import {
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5CompileRecord,
+  Ns5IntegrationConnection,
   Ns5IntegrationItem,
   Ns5IntegrationPlugin,
   Ns5JourneyArtifact,
@@ -51,6 +52,7 @@ import type {
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
+import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_PLUGIN_CATALOG,
   buildNs5IntegrationArtifact,
@@ -68,7 +70,7 @@ export function buildNs5IntegrationTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Integration',
-    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, and platform plugins used by a journey step or process task. Empty lists are valid only when no structural signal exists.',
+    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, platform plugins used by a journey step or process task, and closed-catalog connection operations. Empty lists are valid only when no structural signal exists.',
     schema,
   );
 }
@@ -158,6 +160,11 @@ export function buildNs5IntegrationHumanPrompt(input: {
     '## Platform plugin catalog',
     NS5_PLUGIN_CATALOG.map(item => `- ${item.pluginId} (terms: ${item.terms.join(', ')})`).join('\n'),
     '',
+    '## Connection catalog',
+    ns5ConnectionCatalogs().flatMap(catalog => catalog.operations.map(operation =>
+      `- ${catalog.connectionId}.${operation.operationId} · ${operation.direction} · ${operation.kind} · ${operation.description}`,
+    )).join('\n') || '(none)',
+    '',
     '## Integration signals (why this call ran)',
     signals.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
@@ -185,7 +192,7 @@ export async function beforeNs5IntegrationPromptStep(
     const signals = collectNs5IntegrationSignals(actors, sourcePrompt, siblings);
     if (!signals.length) {
       const pipeline = await requirePipeline(moduleName);
-      const { artifactPath, compile } = await persistArtifacts(moduleName, [], [], [], pipeline, true);
+      const { artifactPath, compile } = await persistArtifacts(moduleName, [], [], [], pipeline, true, [], []);
       // Deterministic artifact, no LLM to repair it: a compile error here is a generator defect.
       if (compile.status === 'errors') throw new Error(formatNs5CompileFeedback(compile));
       return [
@@ -252,7 +259,7 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(failure);
     }
 
-    const { inbound, outbound, plugins, normalizations } = normalizeNs5IntegrationPayload(payload);
+    const { inbound, outbound, plugins, connections, normalizations } = normalizeNs5IntegrationPayload(payload);
     const moduleArtifact = await readModule(moduleName);
     const [entities, actors, siblings, coverage] = await Promise.all([
       readEntities(moduleName),
@@ -270,6 +277,7 @@ export async function afterNs5IntegrationPromptStep(
       inbound,
       outbound,
       plugins,
+      ...(connections.length ? { connections } : {}),
       ...(normalizations.length ? { normalizations } : {}),
     });
     const gate = validateNs5Integration(inbound, outbound, plugins, {
@@ -286,7 +294,7 @@ export async function afterNs5IntegrationPromptStep(
       journeySteps: coverage.journeySteps,
       processTasks: coverage.processTasks,
       platformEventIds: ns5PlatformEventIds(),
-    });
+    }, connections);
     if (!gate.ok) {
       const feedback = formatNs5IntegrationGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -304,7 +312,7 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(feedback);
     }
 
-    const { artifactPath, compile } = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations);
+    const { artifactPath, compile } = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations, connections);
     if (compile.status === 'errors') {
       const feedback = formatNs5CompileFeedback(compile);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -337,8 +345,9 @@ async function persistArtifacts(
   pipeline: Ns5PipelineState,
   noIntegrationSignal: boolean,
   normalizations: Array<{ kind: string; inboundId?: string; detail: string }> = [],
+  connections: Ns5IntegrationConnection[] = [],
 ): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
-  const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins);
+  const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins, connections);
   const artifactPath = await writeDefs(integrationFile(moduleName), `${moduleName}Integration`, artifact, 'Ns5IntegrationArtifact');
   await writeJson(draftFile(moduleName, 'integration70'), {
     ...artifact,

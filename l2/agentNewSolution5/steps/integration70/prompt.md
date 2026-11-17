@@ -14,8 +14,8 @@ A module talks to another module by publishing or receiving an event, calling a 
 talking to an external system, or using a platform plugin. Shared master data (a person, company or
 product already in the organization catalog) is not an integration.
 
-Empty `inbound`, `outbound` and `plugins` arrays are valid only when the human prompt lists no
-structural signal (no `kind: system` actor, no platform-plugin term, and no sibling module). This
+Empty `inbound`, `outbound`, `plugins` and `connections` arrays are valid only when the human prompt lists no
+structural signal (no `kind: system` actor, no platform-plugin term, no connection-catalog term, and no sibling module). This
 call does not run in that case.
 
 The payload of an event is not declared here. `outbound.on` is the entity record at that transition
@@ -45,6 +45,18 @@ sibling folder, `any`, or an external system. `event` is the published event id.
 
 When siblings exist, publish the transitions other modules may need. Do not duplicate a sibling's
 entity; point at it with inbound/outbound.
+
+## Connections
+
+A connection is one operation from the closed catalog in the human prompt (`## Connection catalog`).
+Each row is `{ connectionId, operationId, usedBy, entityRefs, effect?, description }`. Do not send
+`direction` or `kind`; they come from the catalog. Do not invent a connection or an operation.
+
+On a `call`, `usedBy` is `journeyId.stepId` or `processId.taskId` from the human prompt. On a `serve`,
+`usedBy` is a short sentence of what the arrival does.
+
+Send `entityRefs` and `effect` (`list`, `read`, `create`, `update` or `remove`) only when the operation
+reads or writes an entity of this module. Send both, or neither. Leave `entityRefs` empty when it does not.
 
 ## Plugins
 
