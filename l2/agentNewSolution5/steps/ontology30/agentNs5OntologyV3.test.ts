@@ -1821,3 +1821,78 @@ void test('l4_p4_107: an external entity has no capabilities; a table catalog id
   const refused = validateNs5OntologyEntityV3(withCapability, plan, { moduleName: 'agents', mdm, tdm, ddm });
   assert.deepEqual(codes(refused.issues.filter(issue => issue.severity === 'error')), ['NS5_ONTOLOGY_EXTERNAL_CAPABILITIES']);
 });
+
+// --- l4_p4_108: two derivable slips of the model are normalized, not charged -------------------
+
+function agentsPlan(displayField: string): Ns5OntologyV3PlanDraft {
+  return normalizeNs5OntologyPlanV3({
+    businessDomain: 'Agents',
+    entities: [
+      { entityId: 'Tool', kind: 'entity', class: 'supporting', title: 'Tool', description: 'x', displayField: 'name', writer: 'inbound' },
+      { entityId: 'AgentTool', kind: 'entity', class: 'core', title: 'Agent tool', description: 'x', displayField, writer: 'journey' },
+    ],
+    relationships: [
+      { relationshipId: 'agentToolTool', from: 'AgentTool', to: 'Tool', type: 'manyToOne', required: true, mode: 'fk', field: 'AgentTool.toolId', description: 'x' },
+    ],
+  }, 'agents');
+}
+
+function agentToolRaw(columns: Array<Record<string, unknown>>, rules: string[] = []) {
+  return {
+    entityId: 'AgentTool',
+    record: { fields: columns },
+    relationships: [{ name: 'tool', relationshipId: 'agentToolTool', to: 'Tool', via: 'AgentTool.toolId', cardinality: 'N:1', title: 'Tool', description: 'x' }],
+    capabilities: [],
+    rules,
+  };
+}
+
+const TOOL_ID_COLUMN = { id: 'toolId', type: 'uuid', required: true, title: 'Tool' };
+
+void test('l4_p4_108: a displayField that names a fk relationship becomes the one column that holds the fk', () => {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const plan = agentsPlan('tool');
+  const built = normalizeNs5OntologyEntityV3(agentToolRaw([TOOL_ID_COLUMN]), 'AgentTool', { moduleName: 'agents', mdm, plan }, normalizations)!;
+  assert.equal(built.displayField, 'toolId');
+  assert.deepEqual(
+    normalizations.find(item => item.kind === 'displayFieldFromRelationship'),
+    { kind: 'displayFieldFromRelationship', entityId: 'AgentTool', detail: 'tool → toolId' },
+  );
+  const gate = validateNs5OntologyEntityV3(built, plan, { moduleName: 'agents', mdm, tdm, ddm });
+  assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED'), false);
+});
+
+void test('l4_p4_108: a fk name with no column of its own, or with no relationship, is still charged by the gate', () => {
+  const missing: Ns5OntologyV3Normalization[] = [];
+  const plan = agentsPlan('tool');
+  const noColumn = normalizeNs5OntologyEntityV3(agentToolRaw([{ id: 'enabled', type: 'boolean', required: true, title: 'On' }]), 'AgentTool', { moduleName: 'agents', mdm, plan }, missing)!;
+  assert.equal(noColumn.displayField, 'tool');
+  assert.equal(missing.some(item => item.kind === 'displayFieldFromRelationship'), false);
+  assert.ok(codes(validateNs5OntologyEntityV3(noColumn, plan, { moduleName: 'agents', mdm, tdm, ddm }).issues).includes('NS5_ONTOLOGY_DISPLAY_FIELD_UNRESOLVED'));
+  const other = agentsPlan('nothing');
+  const unknownName = normalizeNs5OntologyEntityV3(agentToolRaw([TOOL_ID_COLUMN]), 'AgentTool', { moduleName: 'agents', mdm, plan: other }, [])!;
+  assert.equal(unknownName.displayField, 'nothing');
+});
+
+void test('l4_p4_108: the module prefix on a rule id is taken off and recorded; a collision stays for the gate', () => {
+  const normalizations: Ns5OntologyV3Normalization[] = [];
+  const plan = agentsPlan('toolId');
+  const built = normalizeNs5OntologyEntityV3(
+    agentToolRaw([TOOL_ID_COLUMN], ['agents.simulationSavesNothing', 'agents.memberSimulatesOnlyAsSelf']),
+    'AgentTool', { moduleName: 'agents', mdm, plan }, normalizations,
+  )!;
+  assert.deepEqual([...built.rules], ['simulationSavesNothing', 'memberSimulatesOnlyAsSelf']);
+  assert.deepEqual(
+    normalizations.filter(item => item.kind === 'rulePrefixStripped').map(item => item.detail),
+    ['agents.simulationSavesNothing → simulationSavesNothing', 'agents.memberSimulatesOnlyAsSelf → memberSimulatesOnlyAsSelf'],
+  );
+  const gate = validateNs5OntologyEntityV3(built, plan, { moduleName: 'agents', mdm, tdm, ddm });
+  assert.equal(codes(gate.issues).includes('NS5_ONTOLOGY_RULE_ID'), false);
+
+  const collided = normalizeNs5OntologyEntityV3(
+    agentToolRaw([TOOL_ID_COLUMN], ['simulationSavesNothing', 'agents.simulationSavesNothing']),
+    'AgentTool', { moduleName: 'agents', mdm, plan }, [],
+  )!;
+  assert.deepEqual([...collided.rules], ['simulationSavesNothing', 'agents.simulationSavesNothing']);
+  assert.ok(codes(validateNs5OntologyEntityV3(collided, plan, { moduleName: 'agents', mdm, tdm, ddm }).issues).includes('NS5_ONTOLOGY_RULE_ID'));
+});

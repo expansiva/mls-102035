@@ -185,7 +185,9 @@ export type Ns5OntologyV3NormalizationKind =
   /** ns5_49: a transition cited only by a process stage has no human author; `by` becomes `[]`. */
   | 'transitionOwnedByProcess'
   /** l4_p4_47: a bare displayField names exactly one path under record.fields. */
-  | 'displayFieldResolved';
+  | 'displayFieldResolved'
+  | 'displayFieldFromRelationship'
+  | 'rulePrefixStripped';
 
 export interface Ns5OntologyV3Normalization {
   kind: Ns5OntologyV3NormalizationKind;
@@ -454,7 +456,7 @@ export function normalizeNs5OntologyEntityV3(
       normalizations.push({ kind: 'derivedOnDdmIgnored', entityId, detail: `derived.${item.id}` });
     }
   }
-  const written = list(raw.rules).map(text).filter(Boolean);
+  const written = stripModulePrefixFromRules(list(raw.rules).map(text).filter(Boolean), entityId, context.moduleName, normalizations);
   const cited = derivedItems.flatMap(item => item.ruleRefs).filter(id => !written.includes(id));
   if (cited.length) {
     normalizations.push({ kind: 'derivedRuleRefsLifted', entityId, detail: `rules += ${[...new Set(cited)].join(', ')}` });
@@ -516,8 +518,34 @@ export function normalizeNs5OntologyEntityV3(
 }
 
 /**
+ * `<module>.<ruleId>` is the same rule with the module in front (the platform writes its catalog ids that
+ * way, and the model copies the habit). The id of a rule of this module is lowerCamel, so the prefix is
+ * derivable and is taken off. If the bare id would repeat another id of the list, the written one stays
+ * and the gate says so.
+ */
+function stripModulePrefixFromRules(
+  ids: readonly string[],
+  entityId: string,
+  moduleName: string,
+  normalizations: Ns5OntologyV3Normalization[],
+): string[] {
+  const prefix = `${moduleName}.`;
+  const taken = new Set(ids.filter(id => !id.startsWith(prefix)));
+  return ids.map(id => {
+    if (!id.startsWith(prefix)) return id;
+    const bare = id.slice(prefix.length);
+    if (!bare || taken.has(bare)) return id;
+    taken.add(bare);
+    normalizations.push({ kind: 'rulePrefixStripped', entityId, detail: `${id} → ${bare}` });
+    return bare;
+  });
+}
+
+/**
  * A bare name the plan froze (`descricao`) is the path when exactly one `record.fields` path ends in
- * `.<name>`. A dotted path that misses, or zero or many candidates, stays for the gate.
+ * `.<name>`. A dotted path that misses, or zero or many candidates, stays for the gate. When the name is
+ * instead the name of a fk relationship of this entity (`tool` for `AgentTool.toolId`), it is the one
+ * column that holds that fk, if that column exists in `record.fields` (l4_p4_108).
  */
 function resolveBareDisplayField(
   entity: Ns5OntologyEntityV3,
@@ -528,6 +556,18 @@ function resolveBareDisplayField(
   const paths = ns5ResolvableFieldIdsV3(entity);
   if (paths.includes(frozenDisplayField)) return;
   const matches = paths.filter(path => path.endsWith(`.${frozenDisplayField}`));
+  if (matches.length === 0) {
+    const column = fkColumnOfRelationship(entity, frozenDisplayField, paths);
+    if (column) {
+      entity.displayField = column;
+      normalizations.push({
+        kind: 'displayFieldFromRelationship',
+        entityId: entity.entityId,
+        detail: `${frozenDisplayField} → ${column}`,
+      });
+    }
+    return;
+  }
   if (matches.length !== 1) return;
   entity.displayField = matches[0];
   normalizations.push({
@@ -535,6 +575,21 @@ function resolveBareDisplayField(
     entityId: entity.entityId,
     detail: `${frozenDisplayField} → ${matches[0]}`,
   });
+}
+
+/** The one column of `entity` that holds the fk the relationship `name` stands for, or '' (none, or ambiguous). */
+function fkColumnOfRelationship(entity: Ns5OntologyEntityV3, name: string, paths: readonly string[]): string {
+  const rows = Object.entries(entity.relationships ?? {})
+    .filter(([key, row]) => (key === name || row.relationshipId === name) && row.mode === 'fk');
+  const columns = new Set<string>();
+  for (const [, row] of rows) {
+    const via = (row as { via?: string }).via ?? '';
+    const prefix = `${entity.entityId}.`;
+    if (!via.startsWith(prefix)) continue;
+    const column = via.slice(prefix.length);
+    if (paths.includes(column)) columns.add(column);
+  }
+  return columns.size === 1 ? [...columns][0] : '';
 }
 
 /** The `derived[]` the model wrote, read tolerantly. Items without an id are dropped. */
