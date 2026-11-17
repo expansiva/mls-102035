@@ -281,6 +281,9 @@ function writtenFieldIdsV3(entity: Ns5OntologyEntityV3): string[] {
   const branches = entity.record.fields.details?.fields ?? {};
   const written = (fields: Ns5OntologyFieldsV3): string[] =>
     Object.entries(fields).filter(([, field]) => field.derived !== true).map(([id]) => id);
+  // An external record is not written by this module. A non-empty list makes finalize80 I10
+  // demand a writer ("written fields but no writer").
+  if (entity.kind === 'external') return [];
   if (entity.kind === 'role') return written(branches[entity.moduleName]?.fields ?? {});
   return [
     ...written(entity.record.fields).filter(id => id !== 'details' && id !== 'version'),
