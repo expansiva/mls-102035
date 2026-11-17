@@ -1,5 +1,5 @@
 {
-  "$id": "https://collab.codes/schemas/agentNewSolution5/integration/2026-09-12-ns5-integration-v2",
+  "$id": "https://collab.codes/schemas/agentNewSolution5/integration/2026-11-17-ns5-integration-v3",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
@@ -11,7 +11,7 @@
     "connections"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "2026-09-12-ns5-integration-v2" },
+    "schemaVersion": { "type": "string", "const": "2026-11-17-ns5-integration-v3" },
     "moduleName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "inbound": {
       "type": "array",

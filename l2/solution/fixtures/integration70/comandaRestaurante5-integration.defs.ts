@@ -3,7 +3,7 @@
 import type { Ns5IntegrationArtifact, Ns5Readonly } from '/_102035_/l2/solution/types.js';
 
 export const comandaRestaurante5Integration = {
-  "schemaVersion": "2026-09-12-ns5-integration-v2",
+  "schemaVersion": "2026-11-17-ns5-integration-v3",
   "moduleName": "comandaRestaurante5",
   "inbound": [],
   "outbound": [],

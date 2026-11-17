@@ -340,7 +340,7 @@ void test('normalize maps id to item id and drops empty peers', () => {
 
 void test('buildNs5IntegrationArtifact keeps schemaVersion and empty lists', () => {
   const artifact = buildNs5IntegrationArtifact('comandaRestaurante5', [], [], []);
-  assert.equal(artifact.schemaVersion, '2026-09-12-ns5-integration-v2');
+  assert.equal(artifact.schemaVersion, '2026-11-17-ns5-integration-v3');
   assert.equal(artifact.moduleName, 'comandaRestaurante5');
   assert.deepEqual(artifact.inbound, []);
   assert.deepEqual(artifact.outbound, []);

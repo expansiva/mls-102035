@@ -41,6 +41,13 @@ test('selects integration, I11 and I12 issues only', () => {
   assert.equal(issues.length, 3);
 });
 
+test('reads integration-v3 as the current v2 shape', () => {
+  const view = normalizeIntegration({
+    schemaVersion: '2026-11-17-ns5-integration-v3', moduleName: 'orders', inbound: [], outbound: [], plugins: [],
+  });
+  assert.equal(view.schema, 'v2');
+});
+
 test('reads the frozen compras v2 outbound events', () => {
   const view = normalizeIntegration(comprasIntegration);
   assert.equal(view.schema, 'v2');

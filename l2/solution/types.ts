@@ -31,7 +31,12 @@ export type Ns5WorkflowsSchemaVersion =
   | typeof NS5_WORKFLOWS_SCHEMA_VERSION
   | typeof NS5_WORKFLOWS_SCHEMA_VERSION_V3;
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
-export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-09-12-ns5-integration-v2' as const;
+/** What integration70 writes. v3 adds `connections`. Recorded modules stay on v2. */
+export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-11-17-ns5-integration-v3' as const;
+export const NS5_INTEGRATION_SCHEMA_VERSIONS = [
+  '2026-09-12-ns5-integration-v2',
+  NS5_INTEGRATION_SCHEMA_VERSION,
+] as const;
 export const NS5_INTEGRATION_REQUEST_SCHEMA_VERSION = '2026-09-12-ns5-integration-request-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
 
@@ -813,7 +818,7 @@ export interface Ns5IntegrationRequestArtifact {
 
 export interface Ns5IntegrationArtifact {
   /** Gate of integration70. Empty lists are valid. */
-  schemaVersion: typeof NS5_INTEGRATION_SCHEMA_VERSION;
+  schemaVersion: typeof NS5_INTEGRATION_SCHEMA_VERSIONS[number];
   /** Folder. */
   moduleName: string;
   /** What this module receives. */

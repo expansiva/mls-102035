@@ -70,4 +70,4 @@ data.
 Write every human-facing value (`description`) in the module `userLanguage`. Ids stay lowerCamel.
 Entity ids stay UpperCamel.
 
-`schemaVersion` is `2026-09-12-ns5-integration-v2`.
+`schemaVersion` is `2026-11-17-ns5-integration-v3`.
