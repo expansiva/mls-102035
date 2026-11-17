@@ -48,7 +48,8 @@ import type {
   Ns5SystemDecision,
   Ns5WorkflowProcess,
 } from '/_102035_/l2/solution/types.js';
-import { ns5ConnectionArrivals } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { promptMentionsTerm } from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { ns5ConnectionArrivals, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   buildNs5WorkflowsArtifactV3,
   collectNs5ProcessSignals,
@@ -96,6 +97,7 @@ export function buildNs5WorkflowsHumanPrompt(input: {
   const signals = collectNs5ProcessSignals(input.journeys, input.entities);
   const phrases = collectNs5TimeEventPhrases(input.sourcePrompt);
   const catalog = collectNs5WorkflowsRefCatalog(input.journeys, input.actorIds, input.entities);
+  const connectionHits = ns5ConnectionSignalHits(input.sourcePrompt, promptMentionsTerm);
   return [
     '## Source request',
     input.sourcePrompt,
@@ -118,7 +120,9 @@ export function buildNs5WorkflowsHumanPrompt(input: {
     phrases.length ? phrases.map(phrase => `- ${phrase}`).join('\n') : '(none)',
     '',
     '## Process signals (why this call ran)',
-    signals.length || phrases.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
+    signals.length || phrases.length || connectionHits.length
+      ? JSON.stringify(signals, null, 2) + (connectionHits.length ? `\nConnection terms in the request: ${connectionHits.map(hit => hit.term).join(', ')}` : '')
+      : '(none — this call should not run)',
     '',
     '## Arrivals from connections (trigger.event = <connectionId>.<operationId>)',
     ns5ConnectionArrivals().map(item => `- ${item.ref} · ${item.description}`).join('\n') || '(none)',
@@ -159,7 +163,8 @@ export async function beforeNs5WorkflowsPromptStep(
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     const signals = collectNs5ProcessSignals(journeys, entities);
     const phrases = collectNs5TimeEventPhrases(sourcePrompt);
-    if (!ns5WorkflowsNeedsLlm(signals, phrases)) {
+    const connectionHits = ns5ConnectionSignalHits(sourcePrompt, promptMentionsTerm);
+    if (!ns5WorkflowsNeedsLlm(signals, phrases, connectionHits)) {
       const pipeline = await requirePipeline(moduleName);
       const { artifactPath, compile } = await persistArtifacts(
         moduleName,

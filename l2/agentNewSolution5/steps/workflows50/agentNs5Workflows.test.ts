@@ -1139,3 +1139,21 @@ void test('l4_p4_109: the human prompt lists the arrivals the catalog connection
   assert.match(human, /- cm\.agentDraftReady · /);
   assert.doesNotMatch(human, /- cm\.listAgents · /);
 });
+
+void test('l4_p4_109 s2b: the step also asks the model when the request names a catalog connection, whatever the language', () => {
+  assert.equal(ns5WorkflowsNeedsLlm([], [], []), false);
+  assert.equal(ns5WorkflowsNeedsLlm([], [], [{ term: 'cm' }]), true);
+  const human = buildNs5WorkflowsHumanPrompt({
+    sourcePrompt: 'The agents live in the cm. The tool catalog is rebuilt when a new release arrives.',
+    userLanguage: 'en',
+    actorIds: ORDEN_ACTORS,
+    journeys: [],
+    entities: [],
+  });
+  assert.match(human, /Connection terms in the request: cm, release \+ catalog/);
+  assert.doesNotMatch(human, /this call should not run/);
+  const quiet = buildNs5WorkflowsHumanPrompt({
+    sourcePrompt: 'A list of tables for a restaurant.', userLanguage: 'en', actorIds: ORDEN_ACTORS, journeys: [], entities: [],
+  });
+  assert.match(quiet, /this call should not run/);
+});

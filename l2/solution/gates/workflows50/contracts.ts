@@ -145,11 +145,17 @@ function foldAccents(value: string): string {
   return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
+/**
+ * The step asks the model only when the request or the journeys give a reason: a process signal, a time
+ * or event phrase (pt/es words), or (l4_p4_109) a connection of the catalog named in the request: the
+ * arrival it delivers may be what starts a process, whatever the language of the request.
+ */
 export function ns5WorkflowsNeedsLlm(
   signals: readonly Ns5ProcessSignal[],
   phrases: readonly string[],
+  connectionHits: readonly unknown[] = [],
 ): boolean {
-  return signals.length > 0 || phrases.length > 0;
+  return signals.length > 0 || phrases.length > 0 || connectionHits.length > 0;
 }
 
 export function parseNs5TriggerEvent(event: string): { entityId: string; transitionId: string } | null {

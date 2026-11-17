@@ -1,5 +1,9 @@
 # workflows50
 
+## 2026-11-18 (l4_p4_109 s2b)
+
+- The step asks the model also when the request names a connection of the catalog (`ns5ConnectionSignalHits`: `cm`, `releaseCatalogChanged`, `release` + `catalog`), so an English request with an arrival no longer ends in `noProcessSignal`. The word list (pt/es) is unchanged.
+
 ## 2026-11-18 (l4_p4_109 s2)
 
 - `trigger.event` may be `<connectionId>.<operationId>` of a `serve` operation of the catalog (closed list, `## Arrivals from connections` in the human prompt); a call operation or an invented one is `NS5_WORKFLOWS_TRIGGER_EVENT`. finalize80 I1 knows a `serve` row as an arrival.
