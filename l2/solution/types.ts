@@ -507,7 +507,7 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
 
 /**
  * A record that lives outside this module, identified by a connection catalog path.
- * No local table. Joins `Ns5OntologyEntityV3` in part 2 (ontology30 + gate).
+ * No local table. Part of `Ns5OntologyEntityV3` (l4_p4_107 part 2).
  */
 export interface Ns5OntologyExternalV3<Cap extends string = string, Rule extends string = string>
   extends Ns5OntologyEntityV3Base<Cap, Rule> {
@@ -518,12 +518,13 @@ export interface Ns5OntologyExternalV3<Cap extends string = string, Rule extends
 
 export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =
   | Ns5OntologyRoleV3<Cap, Rule>
-  | Ns5OntologyTableV3<Cap, Rule>;
+  | Ns5OntologyTableV3<Cap, Rule>
+  | Ns5OntologyExternalV3<Cap, Rule>;
 
 /** One row of the v3 index: the canonical list of entities. */
 export interface Ns5OntologyIndexEntityV3 {
   entityId: string;
-  kind: 'role' | 'entity';
+  kind: 'role' | 'entity' | 'external';
   /** On `role` only. */
   subtype?: MdmSubtypeName;
   /** On `entity` only. */

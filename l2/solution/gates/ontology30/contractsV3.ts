@@ -44,7 +44,7 @@ const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 
 export const NS5_ONTOLOGY_V3_MAX_PARALLEL = 20 as const;
 
-export const NS5_ONTOLOGY_V3_KINDS = ['role', 'entity'] as const;
+export const NS5_ONTOLOGY_V3_KINDS = ['role', 'entity', 'external'] as const;
 /**
  * The family of the data, by nature (ns5_46): `mdm` is the master record of the organization, `tdm` the
  * movement of this module, `ddm` what is recalculated and has no writer. It decides which catalog the

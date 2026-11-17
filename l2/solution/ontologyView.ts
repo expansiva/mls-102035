@@ -251,7 +251,7 @@ function viewOfV3(entity: Ns5OntologyEntityV3): Ns5OntologyEntityViewItem {
     title: entity.title,
     description: entity.description,
     kind: entity.kind,
-    writerKind: entity.kind === 'role' ? 'mdm' : entity.class,
+    writerKind: entity.kind === 'role' ? 'mdm' : entity.kind === 'external' ? 'external' : entity.class,
     aggregate: Object.keys(entity.capabilities ?? {}).some(id => id.startsWith('aggregate.')),
     party,
     ...(subtype ? { mdmSubtype: subtype } : {}),
