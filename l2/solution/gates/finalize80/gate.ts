@@ -499,8 +499,8 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  * her own external actor writes her (self-registration); (d) derived `parent`
  * or `attach` — attach by an internal actor is cadastro, by an external actor
  * is self-registration; (e) an inbound event writes her — `writer: 'inbound'`
- * resolved, with the entity named by some `integration.inbound[].writes` (the
- * same pair of predicates I10 applies to an inbound entity). The person arrives
+ * resolved, with the entity named by `integrationWrites` (inbound.writes or a
+ * serve create/update; the same pair of predicates I10 applies). The person arrives
  * with the event that created her record, which is registration by another
  * module or by an external system, not an unwritten login anchor.
  * Journey `entry.mode` has no public value.
@@ -534,8 +534,7 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     }
     const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
     if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
-    if (resolved.kind === 'inbound'
-      && sources.integration.inbound.some(item => (item.writes || []).includes(personId))) return;
+    if (resolved.kind === 'inbound' && integrationWrites(sources).has(personId)) return;
     error(
       'I8',
       `access.grants[${index}]`,
@@ -568,12 +567,13 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
  * Same writer predicates as ontology30 / access60: a written entity is an `act`
  * entity or listed in an act's `affects`, or `writer: 'crud'` / `writer: 'inbound'`,
  * or derived `parent`/`attach`; a crud entity has an internal-actor grant; inbound
- * must appear in inbound.writes. Conflicting crud is dropped by ontology30
- * normalize, not by this check.
+ * must appear in inbound.writes, or in a serve connection whose effect writes
+ * (create or update) and whose entityRefs name it. Conflicting crud is dropped
+ * by ontology30 normalize, not by this check.
  */
 function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
-  const inboundWrites = new Set(sources.integration.inbound.flatMap(item => item.writes || []));
+  const inboundWrites = integrationWrites(sources);
   const writerPlan = {
     entities: sources.entities.map(writerView),
     relationships: ns5OntologyEdges(sources.ontologyIndex),
@@ -683,6 +683,45 @@ function checkI12(sources: Ns5OracleSources, error: IssueFn): void {
       error('I12', path, `Unknown journey or process ${parsed.ownerId}.`);
     });
   });
+  (sources.integration.connections || []).forEach((connection, connectionIndex) => {
+    const base = `integration.connections[${connectionIndex}]`;
+    (connection.entityRefs || []).forEach((entityId, refIndex) => {
+      if (!entityById.has(entityId)) {
+        error('I12', `${base}.entityRefs[${refIndex}]`, `Unknown entity ${entityId}.`);
+      }
+    });
+    if (connection.direction !== 'call') return;
+    connection.usedBy.forEach((ref, refIndex) => {
+      const path = `${base}.usedBy[${refIndex}]`;
+      const parsed = parseNs5UsedBy(ref);
+      if (!parsed) {
+        error('I12', path, 'usedBy must be journeyId.stepId or processId.taskId.');
+        return;
+      }
+      const steps = journeySteps.get(parsed.ownerId);
+      if (steps) {
+        if (!steps.has(parsed.memberId)) error('I12', path, `Unknown step ${ref}.`);
+        return;
+      }
+      const tasks = processTasks.get(parsed.ownerId);
+      if (tasks) {
+        if (!tasks.has(parsed.memberId)) error('I12', path, `Unknown task ${ref}.`);
+        return;
+      }
+      error('I12', path, `Unknown journey or process ${parsed.ownerId}.`);
+    });
+  });
+}
+
+/** Who writes an entity from outside the module: inbound.writes, or a serve row that creates or updates it. */
+function integrationWrites(sources: Ns5OracleSources): Set<string> {
+  const ids = new Set(sources.integration.inbound.flatMap(item => item.writes || []));
+  for (const connection of sources.integration.connections || []) {
+    if (connection.direction !== 'serve') continue;
+    if (connection.effect !== 'create' && connection.effect !== 'update') continue;
+    for (const entityId of connection.entityRefs || []) ids.add(entityId);
+  }
+  return ids;
 }
 
 function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {

@@ -50,6 +50,7 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5AccessArtifact: { file: TYPES, name: 'Ns5AccessArtifact' },
   Ns5IntegrationItem: { file: TYPES, name: 'Ns5IntegrationItem' },
   Ns5IntegrationPlugin: { file: TYPES, name: 'Ns5IntegrationPlugin' },
+  Ns5IntegrationConnection: { file: TYPES, name: 'Ns5IntegrationConnection' },
   Ns5IntegrationRequestArtifact: { file: TYPES, name: 'Ns5IntegrationRequestArtifact' },
   Ns5IntegrationArtifact: { file: TYPES, name: 'Ns5IntegrationArtifact' },
 };
@@ -348,6 +349,15 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     pluginId: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
     usedBy: { reader: 'steps/integration70/gate.ts, finalize80 I12', since: '2026-09-12' },
+  },
+  Ns5IntegrationConnection: {
+    connectionId: { reader: 'steps/integration70/gate.ts', since: '2026-11-17' },
+    operationId: { reader: 'steps/integration70/gate.ts', since: '2026-11-17' },
+    direction: { reader: 'steps/integration70/contracts.ts normalize, gate.ts, finalize80 I12', since: '2026-11-17' },
+    usedBy: { reader: 'steps/integration70/gate.ts, finalize80 I12 (call only)', since: '2026-11-17' },
+    entityRefs: { reader: 'steps/integration70/gate.ts, finalize80 I12', since: '2026-11-17' },
+    effect: { reader: 'steps/integration70/gate.ts, finalize80 I10 (serve create|update)', since: '2026-11-17' },
+    description: { reader: 'steps/integration70 persist (integration.defs.ts)', since: '2026-11-17' },
   },
   Ns5IntegrationRequestArtifact: {
     schemaVersion: { reader: 'finalize80 persist tobe/integration', since: '2026-09-12' },

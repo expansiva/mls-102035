@@ -1191,6 +1191,76 @@ void test('I12 accepts a plugin usedBy that points at an alert stage, and I2/I6 
   assert.equal(report.warnings.some(issue => issue.checkId === 'I6' && /avisarCaixa/.test(issue.message)), false);
 });
 
+void test('I12 checks a call connection usedBy and entityRefs, and ignores serve usedBy prose', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const journey = sources.journeys[0];
+  const step = journey.business.steps[0];
+  const entityId = sources.entities[0].entityId;
+  sources.integration = {
+    ...sources.integration,
+    connections: [
+      {
+        connectionId: 'cm',
+        operationId: 'readAgent',
+        direction: 'call',
+        usedBy: [`${journey.journeyId}.${step.stepId}`],
+        entityRefs: [entityId],
+        effect: 'read',
+        description: 'Reads one agent.',
+      },
+      {
+        connectionId: 'cm',
+        operationId: 'createAgent',
+        direction: 'serve',
+        usedBy: ['prose that is not a journey step'],
+        entityRefs: [entityId],
+        effect: 'create',
+        description: 'An arrival creates the record.',
+      },
+    ],
+  };
+  const ok = runNs5Oracle(sources);
+  assert.equal(ok.errors.some(issue => issue.checkId === 'I12'), false,
+    ok.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'));
+
+  sources.integration.connections = [{
+    connectionId: 'cm',
+    operationId: 'readAgent',
+    direction: 'call',
+    usedBy: [`${journey.journeyId}.naoExiste`],
+    entityRefs: ['Ghost'],
+    effect: 'read',
+    description: 'Bad refs.',
+  }];
+  const report = runNs5Oracle(sources);
+  assert.ok(report.errors.some(issue => issue.checkId === 'I12' && /naoExiste/.test(issue.message)));
+  assert.ok(report.errors.some(issue => issue.checkId === 'I12' && /Ghost/.test(issue.message)));
+});
+
+void test('I10 accepts writer inbound covered by a serve create connection', () => {
+  const sources = clone(loadSources('comandaRestaurante.json'));
+  const entity = sources.entities.find(item => item.entityId === 'Comanda')!;
+  entity.writer = 'inbound';
+  sources.integration = {
+    ...sources.integration,
+    connections: [{
+      connectionId: 'cm',
+      operationId: 'createAgent',
+      direction: 'serve',
+      usedBy: ['the cm asks this module to open the record'],
+      entityRefs: ['Comanda'],
+      effect: 'create',
+      description: 'Opened by a connection.',
+    }],
+  };
+  const report = runNs5Oracle(sources);
+  assert.equal(
+    report.errors.filter(issue => issue.checkId === 'I10' && /Comanda/.test(issue.message)).length,
+    0,
+    report.errors.map(issue => `${issue.code} ${issue.message}`).join('\n'),
+  );
+});
+
 void test('I12 still rejects an unknown task under a process that carries an alert', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   const actorRef = sources.access.actors[0].actorId;
