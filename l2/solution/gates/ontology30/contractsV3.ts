@@ -21,6 +21,7 @@ import type {
   MdmOntology,
   MdmSubtypeName,
 } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
+import { ns5ConnectionSourcePath } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { platformOntologyPath } from '/_102035_/l2/solution/lib.js';
 import {
   collectNs5CitedProcessStages,
@@ -58,6 +59,13 @@ export const NS5_ONTOLOGY_V3_FAMILIES = ['mdm', 'tdm', 'ddm'] as const;
  * coin toss; measured in ns5_28).
  */
 export const NS5_ONTOLOGY_V3_STORAGE_KINDS = ['platform', 'relational', 'timeSeries'] as const;
+/**
+ * Neutral `storageKind` of an `external` entity (l4_p4_107 p2c). The rows live in the connection,
+ * not in a table of the module. Kept out of `NS5_ONTOLOGY_V3_STORAGE_KINDS` so a table that says
+ * this word still falls back to `relational`. The ontology30 gate (p2d) and the plan schema (p2e)
+ * are the places that accept this word.
+ */
+export const NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND = 'external' as const;
 export const NS5_ONTOLOGY_V3_CLASSES = ['core', 'event', 'supporting'] as const;
 export const NS5_ONTOLOGY_V3_RELATIONSHIP_TYPES = ['oneToOne', 'oneToMany', 'manyToOne', 'manyToMany'] as const;
 /** `composition` never reaches the index: the child is embedded in the parent document. */
@@ -131,11 +139,13 @@ export interface Ns5OntologyV3PlanEntity {
   initialData?: string;
   /** Derived: `<moduleName>.<entityId>` on a role. */
   roleTag?: string;
-  /** Derived: the platform ontology a role copies from. */
+  /** Derived: the platform ontology a role copies from, or the connection catalog of an `external`. */
   source?: string;
+  /** `external` only. The connection the entity is read from; `source` is derived from it. */
+  connectionId?: string;
   /**
    * On a table: `target` and `table` are derived, `kind` is what the plan declared (`relational` by
-   * default). A role has no storage of its own — the rows are the platform's.
+   * default). A role and an `external` have no storage of their own.
    */
   storage?: { target: 'moduleDatabase'; table: string; kind: Exclude<Ns5OntologyV3StorageKind, 'platform'> };
 }
@@ -297,6 +307,19 @@ function normalizePlanEntity(
   };
   const writer = optionalOneOf(raw.writer, NS5_ONTOLOGY_V3_WRITERS);
   if (writer && writer !== 'journey') base.writer = writer;
+  if (kind === 'external') {
+    const connectionId = text(raw.connectionId);
+    if (MEMBER_ID.test(connectionId)) {
+      base.connectionId = connectionId;
+      base.source = ns5ConnectionSourcePath(connectionId);
+      normalizations.push({
+        kind: 'derivedFromPlatform',
+        entityId,
+        detail: `source ${base.source}`,
+      });
+    }
+    return base;
+  }
   const initialData = text(raw.initialData);
   if (initialData) base.initialData = initialData;
   if (kind === 'role') {
@@ -469,6 +492,13 @@ export function normalizeNs5OntologyEntityV3(
       source: frozen.source ?? platformOntologyPath(),
       record: { fields: normalizeRoleRecord(raw.record, entityId, frozen.subtype as MdmSubtypeName, context, normalizations, derivedItems) },
       ...(uniqueKeys.length ? { uniqueKeys } : {}),
+    }
+    : frozen.kind === 'external'
+    ? {
+      ...common,
+      kind: 'external',
+      source: frozen.source ?? '',
+      record: { fields: normalizeExternalRecord(raw.record) },
     }
     : {
       ...common,
@@ -652,6 +682,14 @@ function normalizeCapabilities(value: unknown): Record<string, string> {
  * On a `ddm` table every field is `derived` by definition — nobody writes a summary — so the flag is
  * written here instead of being asked for and then refused (ns5_46 T2).
  */
+/** Fields the module sees of a record that lives outside it. No id, version or details are invented. */
+function normalizeExternalRecord(value: unknown): Ns5OntologyFieldsV3 {
+  const written = keyed(record(value).fields);
+  const out: Record<string, Ns5OntologyFieldV3> = {};
+  for (const [id, raw] of Object.entries(written)) out[id] = normalizeField(raw);
+  return out;
+}
+
 function normalizeTableRecord(
   value: unknown,
   entityId: string,
@@ -1020,7 +1058,11 @@ export function assembleNs5OntologyIndexV3(
     entities: plan.entities.map(entity => ({
       entityId: entity.entityId,
       kind: entity.kind,
-      ...(entity.kind === 'role' ? { subtype: entity.subtype as MdmSubtypeName } : { class: entity.class }),
+      ...(entity.kind === 'role'
+        ? { subtype: entity.subtype as MdmSubtypeName }
+        : entity.kind === 'external'
+          ? {}
+          : { class: entity.class }),
     })),
     relationships,
   };

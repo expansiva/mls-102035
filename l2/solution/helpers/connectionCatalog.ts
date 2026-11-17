@@ -44,3 +44,12 @@ export function ns5ConnectionOperation(
 export function ns5ConnectionTerms(): readonly string[] {
   return ns5ConnectionCatalogs().map(item => item.connectionId);
 }
+
+/** `source` of an `external` ontology entity. The L1 catalog reader opens this path. */
+export function ns5ConnectionSourcePath(connectionId: string): string {
+  return `/_102034_/l4/ontology/connections/${connectionId}.defs.ts`;
+}
+
+export function ns5ConnectionExists(connectionId: string): boolean {
+  return ns5ConnectionCatalogs().some(item => item.connectionId === connectionId);
+}

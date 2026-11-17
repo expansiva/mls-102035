@@ -214,6 +214,60 @@ void test('normalize derives roleTag, source and storage, and never asks for the
   assert.ok(plan.normalizations?.some(item => item.kind === 'derivedFromPlatform'));
 });
 
+void test('l4_p4_107: an external plan derives source and never becomes a table', () => {
+  const plan = normalizeNs5OntologyPlanV3({
+    businessDomain: 'Agents',
+    entities: [
+      {
+        entityId: 'AgentRecord',
+        kind: 'external',
+        connectionId: 'cm',
+        class: 'core',
+        subtype: 'Person',
+        storageKind: 'relational',
+        initialData: 'none',
+        title: 'Agent',
+        description: 'a record in cm',
+        displayField: 'title',
+        writer: 'crud',
+      },
+      { entityId: 'NotCamel', kind: 'external', connectionId: 'CM-1', title: 'x', description: 'x', displayField: 'title' },
+    ],
+    relationships: [],
+  }, 'agents');
+  const agent = plan.entities[0];
+  assert.equal(agent.kind, 'external');
+  assert.equal(agent.connectionId, 'cm');
+  assert.equal(agent.source, '/_102034_/l4/ontology/connections/cm.defs.ts');
+  assert.equal(agent.class, undefined);
+  assert.equal(agent.storage, undefined);
+  assert.equal(agent.initialData, undefined);
+  assert.equal(agent.subtype, undefined);
+  assert.equal(agent.roleTag, undefined);
+  assert.equal(agent.family, 'tdm');
+  assert.equal(plan.entities[1].connectionId, undefined);
+  assert.equal(plan.entities[1].source, undefined);
+
+  const built = normalizeNs5OntologyEntityV3({
+    entityId: 'AgentRecord',
+    record: { fields: [{ id: 'title', type: 'string', required: true, title: 'Title' }] },
+    relationships: [],
+    capabilities: [],
+    rules: [],
+    uniqueKeys: [['title']],
+    lifecycleStates: [{ stateId: 'open', title: 'Open' }],
+  }, 'AgentRecord', { moduleName: 'agents', mdm, plan })!;
+  assert.equal(built.kind, 'external');
+  assert.equal('storage' in built, false);
+  assert.equal(built.source, '/_102034_/l4/ontology/connections/cm.defs.ts');
+  assert.deepEqual(Object.keys(built.record.fields), ['title']);
+
+  const index = assembleNs5OntologyIndexV3(plan, 'ns');
+  assert.deepEqual(index.entities[0], { entityId: 'AgentRecord', kind: 'external' });
+  assert.equal('class' in index.entities[0], false);
+  assert.equal('subtype' in index.entities[0], false);
+});
+
 void test('the plan gate refuses an unknown subtype, catalog type, role and endpoint', () => {
   const bad = normalizeNs5OntologyPlanV3({
     businessDomain: 'Clinic',

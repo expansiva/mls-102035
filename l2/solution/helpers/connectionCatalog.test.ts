@@ -4,7 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ns5ConnectionCatalogs,
+  ns5ConnectionExists,
   ns5ConnectionOperation,
+  ns5ConnectionSourcePath,
   ns5ConnectionTerms,
 } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 
@@ -43,6 +45,12 @@ test('serve operations of cm have direction serve', () => {
   const describe = ns5ConnectionOperation('cm', 'describe');
   assert.equal(describe?.hiddenFromAgents, true);
   assert.equal(describe?.noRowLimit, true);
+});
+
+test('ns5ConnectionSourcePath and ns5ConnectionExists', () => {
+  assert.equal(ns5ConnectionSourcePath('cm'), '/_102034_/l4/ontology/connections/cm.defs.ts');
+  assert.equal(ns5ConnectionExists('cm'), true);
+  assert.equal(ns5ConnectionExists('invented'), false);
 });
 
 test('cm operation ids are unique', () => {
