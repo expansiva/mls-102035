@@ -16,7 +16,7 @@
       "required": ["entityId", "kind", "family", "storageKind", "title", "description", "displayField", "writer"],
       "properties": {
         "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
-        "kind": { "type": "string", "enum": ["role", "entity"] },
+        "kind": { "type": "string", "enum": ["role", "entity", "external"] },
         "family": {
           "type": "string",
           "enum": ["mdm", "tdm", "ddm"],
@@ -24,10 +24,15 @@
         },
         "storageKind": {
           "type": "string",
-          "enum": ["platform", "relational", "timeSeries"],
-          "description": "Where the rows live. 'platform' on every role, because the rows are the platform's. 'relational' on a table of the module, which is the usual answer. 'timeSeries' only when the rows are a series chunked by time, read by period and never updated."
+          "enum": ["platform", "relational", "timeSeries", "external"],
+          "description": "Where the rows live. 'platform' on every role, because the rows are the platform's. 'relational' on a table of the module, which is the usual answer. 'timeSeries' only when the rows are a series chunked by time, read by period and never updated. 'external' only on an external entity: the rows live in the connection, and the word is the neutral value of that family."
         },
         "subtype": { "$ref": "#/$defs/subtype" },
+        "connectionId": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]*$",
+          "description": "The connection whose catalog this external entity is read from. Only on kind external. source is derived from it and is never sent."
+        },
         "class": { "type": "string", "enum": ["core", "event", "supporting"] },
         "title": { "type": "string" },
         "description": { "type": "string" },

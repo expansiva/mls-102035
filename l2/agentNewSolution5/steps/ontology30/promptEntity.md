@@ -86,6 +86,16 @@ vencidas do aluno". Write it as a person would say it, naming the data in the wo
 not write a path, a column name or a formula. `ruleRefs` names the rules it obeys, and may be empty.
 A value recalculated over MANY rows by time window and group is not this: that is a `ddm` entity.
 
+## When the entity is `external`
+
+The record lives in a connection, outside this module. This pass only says what the module sees of it.
+It is read here: the module does not store the row.
+
+- `record.fields` is that view. There are no table columns, no index, no `uniqueKeys`.
+- There is no lifecycle and no transition. Do not declare `status`, states or `derived` columns of a table.
+- There is no `tdm` or `ddm` starting point. Do not copy a table catalog.
+- `source` is already derived from `connectionId`. Do not send it.
+
 ## Links, capabilities, rules
 
 - `relationships` repeats, for reading, the links of the frozen plan that touch this entity: `name`,

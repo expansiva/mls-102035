@@ -12,7 +12,7 @@ Human-facing text is in the module `userLanguage`; every id stays in English.
 
 ## What is an entity here
 
-Two kinds, and only two.
+Three kinds, and only three.
 
 - **`role`** — the module's papel over a master record of the platform: a register the organization
   keeps **outside this module and shares between modules** — a person, a company, a product, a service,
@@ -28,6 +28,13 @@ Two kinds, and only two.
   treats it as a shared register the organization maintains for every module. Whether the object is
   free or busy is never a column somebody types: it is a `derived` field of its row, read from the
   movements that point at it. `class` is `core`, `event` or `supporting`.
+- **`external`** — a record that lives in another system and is reached through one connection of the
+  catalog in the human prompt. `connectionId` names that connection, in lowerCamel, and only a
+  connection the catalog lists. The module stores nothing of the row. No `class`, no `subtype`, no
+  `initialData`. `family` is `tdm` and `storageKind` is `external` — both fixed. `writer` is `journey`,
+  the neutral value: what this module reads or writes is chosen later, as operations of the connection.
+  `displayField` is a field of the view this module has of the record. Never send `source`: it is derived
+  from `connectionId`.
 
 ## The family of the data, and where its rows live
 
@@ -43,7 +50,8 @@ catalog the next pass copies from, and the catalog its capabilities are checked 
 
 `storageKind` says where the rows live: `platform` on every role, because the rows are the platform's;
 `relational` on a table of this module, which is the usual answer; `timeSeries` only when the rows are a
-series chunked by time, read by period and never updated.
+series chunked by time, read by period and never updated; `external` on an `external` entity, because
+the rows live in the connection.
 
 Every journey `steps[].entity` and every `affects` entry must match an `entityId` exactly. Entity ids
 are PascalCase nouns; never a page, a form, a menu or a journey action. A total, a count or a current

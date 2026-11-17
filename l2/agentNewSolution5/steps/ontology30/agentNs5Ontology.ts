@@ -9,6 +9,7 @@ import { resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import type { MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
 import { formatNs5Siblings, readNs5Siblings } from '/_102035_/l2/solution/ns5Siblings.js';
+import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_AGENT_NAME,
   createNs5RetryStep,
@@ -128,9 +129,11 @@ export function buildNs5OntologyPlanV3Tool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5OntologyPlan',
-    'Submit the frozen ontology overview: entities (role over an MDM subtype, or a table of the module), '
+    'Submit the frozen ontology overview: entities (role over an MDM subtype, a table of the module, '
+    + 'or an external record reached through a connectionId), '
     + 'each with its family and where its rows live, and the relationships between them. '
-    + 'Never roleTag, source, or the target and the name of the table: those are derived.',
+    + 'Never roleTag, source, or the target and the name of the table: those are derived. '
+    + 'On an external entity, source is derived from connectionId.',
     schema,
   );
 }
@@ -194,6 +197,9 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
     formatProcessStages(input.workflows, ''),
     '',
     input.siblingsText || '',
+    '## Connection catalog',
+    formatNs5ConnectionCatalog(),
+    '',
     input.platformCatalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
     input.previousDraft ? `## Current draft; keep unrelated fields\n${JSON.stringify(input.previousDraft, null, 2)}` : '',
@@ -243,7 +249,14 @@ export function buildNs5OntologyEntityHumanPrompt(input: {
     JSON.stringify(touching, null, 2),
     '',
     '## All entity ids of this module',
-    JSON.stringify(input.plan.entities.map(item => ({ entityId: item.entityId, kind: item.kind, family: item.family, subtype: item.subtype, class: item.class }))),
+    JSON.stringify(input.plan.entities.map(item => ({
+      entityId: item.entityId,
+      kind: item.kind,
+      family: item.family,
+      subtype: item.subtype,
+      class: item.class,
+      connectionId: item.connectionId,
+    }))),
     '',
     input.startingPoint || '',
     // A role's starting point IS the platform record, so the catalog would repeat it. A table now has a
@@ -404,6 +417,8 @@ async function buildEntityPrompt(
  * each call of the fan-out invented what a table may do.
  */
 function startingPointFor(entity: Ns5OntologyV3PlanDraft['entities'][number], moduleName: string): string | undefined {
+  // An external record has no table catalog. tdm/ddm would invent columns the module does not store.
+  if (entity.kind === 'external') return undefined;
   const family = ns5FamilyOfV3(entity);
   if (family === 'mdm') {
     if (entity.kind !== 'role' || !entity.subtype) return undefined;
@@ -412,6 +427,14 @@ function startingPointFor(entity: Ns5OntologyV3PlanDraft['entities'][number], mo
     return formatNs5PlatformStartingPoint(view, entity.subtype);
   }
   return formatNs5FamilyStartingPoint(family === 'ddm' ? ddm : tdm, entity);
+}
+
+/** Connections and their `call` operations. `serve` is chosen later, in integration70. */
+function formatNs5ConnectionCatalog(): string {
+  const lines = ns5ConnectionCatalogs().flatMap(catalog => catalog.operations
+    .filter(operation => operation.direction === 'call')
+    .map(operation => `- ${catalog.connectionId}.${operation.operationId} · ${operation.direction} · ${operation.kind} · ${operation.description}`));
+  return lines.join('\n') || '(none)';
 }
 
 async function handlePlanResult(
