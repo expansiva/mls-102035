@@ -1,7 +1,8 @@
 /// <mls fileReference="_102035_/l2/solution/gates/integration70/gate.ts" enhancement="_blank"/>
 
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
-import type { Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
+import { ns5ConnectionOperation } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import type { Ns5IntegrationConnection, Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
 import {
   collectNs5IntegrationSignals,
   inboundEventId,
@@ -48,6 +49,7 @@ export function validateNs5Integration(
   outbound: Ns5IntegrationItem[],
   plugins: Ns5IntegrationPlugin[],
   context: Ns5IntegrationGateContext,
+  connections: Ns5IntegrationConnection[] = [],
 ): Ns5IntegrationGateResult {
   const issues: Ns5IntegrationGateIssue[] = [];
   const entityById = new Map(context.entities.map(entity => [entity.entityId, entity]));
@@ -55,14 +57,16 @@ export function validateNs5Integration(
   const registry = new Set(context.registryModuleNames.filter(Boolean));
   const itemIds = new Set<string>();
   const pluginIds = new Set<string>();
+  const connectionPairs = new Set<string>();
   const siblings = context.siblings || [];
   const signals = collectNs5IntegrationSignals(context.actors, context.sourcePrompt, siblings);
 
-  if (!inbound.length && !outbound.length && !plugins.length && signals.length) {
+  // A connection term only lets the step run (the prompt may say "cm" for centimeters): it never forces an item.
+  if (!inbound.length && !outbound.length && !plugins.length && !connections.length && signals.some(signal => signal.kind !== 'connectionTerm')) {
     error(
       issues,
       'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM',
-      'A system actor, plugin-catalog term or sibling module is present so inbound, outbound and plugins cannot all be empty.',
+      'A system actor, plugin-catalog term, connection-catalog term or sibling module is present so inbound, outbound, plugins and connections cannot all be empty.',
     );
   }
 
@@ -80,11 +84,25 @@ export function validateNs5Integration(
       processTasks: context.processTasks || [],
     });
   });
+  connections.forEach((connection, index) => {
+    validateConnection(connection, `connections[${index}]`, {
+      connectionPairs,
+      entityIds,
+      issues,
+      journeySteps: context.journeySteps || [],
+      processTasks: context.processTasks || [],
+    });
+  });
 
   for (const entity of context.entities) {
     if (entity.writer !== 'inbound' || !entity.entityId) continue;
-    const covered = inbound.some(item => (item.writes || []).includes(entity.entityId));
-    if (covered) continue;
+    const coveredByInbound = inbound.some(item => (item.writes || []).includes(entity.entityId));
+    const coveredByServe = connections.some(connection => (
+      connection.direction === 'serve'
+      && (connection.effect === 'create' || connection.effect === 'update')
+      && (connection.entityRefs || []).includes(entity.entityId)
+    ));
+    if (coveredByInbound || coveredByServe) continue;
     error(
       issues,
       'NS5_INTEGRATION_INBOUND_WRITER',
@@ -296,6 +314,87 @@ function validatePlugin(
     }
     if (ctx.journeySteps.length || ctx.processTasks.length) {
       error(issues, 'NS5_INTEGRATION_USED_BY', `Unknown journey or process ${parsed.ownerId}.`, refPath);
+    }
+  });
+}
+
+function validateConnection(
+  connection: Ns5IntegrationConnection,
+  path: string,
+  ctx: {
+    connectionPairs: Set<string>;
+    entityIds: Set<string>;
+    issues: Ns5IntegrationGateIssue[];
+    journeySteps: readonly Ns5IntegrationJourneyView[];
+    processTasks: readonly Ns5IntegrationProcessView[];
+  },
+): void {
+  const { issues } = ctx;
+  const operation = ns5ConnectionOperation(connection.connectionId, connection.operationId);
+  if (!operation) {
+    error(
+      issues,
+      'NS5_INTEGRATION_CONNECTION_UNKNOWN',
+      `Connection ${connection.connectionId || '(missing)'}.${connection.operationId || '(missing)'} is not in the connection catalog.`,
+      path,
+    );
+  }
+  const pair = `${connection.connectionId}|${connection.operationId}`;
+  if (connection.connectionId && connection.operationId && ctx.connectionPairs.has(pair)) {
+    error(
+      issues,
+      'NS5_INTEGRATION_CONNECTION_DUPLICATE',
+      `Duplicate connection ${connection.connectionId}.${connection.operationId}.`,
+      path,
+    );
+  }
+  if (connection.connectionId && connection.operationId) ctx.connectionPairs.add(pair);
+  const entityRefs = connection.entityRefs || [];
+  if ((entityRefs.length > 0) !== Boolean(connection.effect)) {
+    error(
+      issues,
+      'NS5_INTEGRATION_CONNECTION_EFFECT',
+      'entityRefs and effect are named together.',
+      path,
+    );
+  }
+  entityRefs.forEach((entityId, position) => {
+    if (!ctx.entityIds.has(entityId)) {
+      error(
+        issues,
+        'NS5_INTEGRATION_CONNECTION_ENTITY',
+        `Unknown entity ${entityId}.`,
+        `${path}.entityRefs[${position}]`,
+      );
+    }
+  });
+  if (connection.direction !== 'call') return;
+  if (!connection.usedBy.length) {
+    error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', 'call connections name usedBy as a journey.step or process.task.', `${path}.usedBy`);
+  }
+  connection.usedBy.forEach((ref, position) => {
+    const parsed = parseNs5UsedBy(ref);
+    const refPath = `${path}.usedBy[${position}]`;
+    if (!parsed) {
+      error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', 'usedBy must be journeyId.stepId or processId.taskId.', refPath);
+      return;
+    }
+    const journey = ctx.journeySteps.find(item => item.journeyId === parsed.ownerId);
+    if (journey) {
+      if (!journey.stepIds.includes(parsed.memberId)) {
+        error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', `Unknown step ${ref}.`, refPath);
+      }
+      return;
+    }
+    const process = ctx.processTasks.find(item => item.processId === parsed.ownerId);
+    if (process) {
+      if (!process.taskIds.includes(parsed.memberId)) {
+        error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', `Unknown task ${ref}.`, refPath);
+      }
+      return;
+    }
+    if (ctx.journeySteps.length || ctx.processTasks.length) {
+      error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', `Unknown journey or process ${parsed.ownerId}.`, refPath);
     }
   });
 }

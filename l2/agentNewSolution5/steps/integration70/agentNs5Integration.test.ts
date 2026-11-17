@@ -508,3 +508,136 @@ void test('collectNs5InboundPending queues sibling and organization inboxes', ()
   assert.equal(pending[1].targetModule, 'organization');
   assert.equal(pending[1].to, 'agendaClinica');
 });
+
+function connectionGate(
+  raw: Record<string, unknown>,
+  extras: Partial<{
+    entities: Ns5IntegrationEntityView[];
+    sourcePrompt: string;
+    actors: Ns5IntegrationActorView[];
+  }> = {},
+) {
+  const { inbound, outbound, plugins, connections } = drafts({ connections: [raw] });
+  return {
+    connections,
+    gate: validateNs5Integration(inbound, outbound, plugins, {
+      actors: extras.actors || COMANDA_ACTORS,
+      entities: extras.entities || CE11_ENTITIES,
+      registryModuleNames: [],
+      sourcePrompt: extras.sourcePrompt || 'the module talks to cm',
+      journeySteps: [{ journeyId: 'pagarComPlugin', stepIds: ['pagarTitulo'] }],
+    }, connections),
+  };
+}
+
+void test('a catalog connection is kept and direction comes from the catalog', () => {
+  const { connections, gate } = connectionGate({
+    connectionId: 'cm',
+    operationId: 'readAgent',
+    direction: 'serve',
+    usedBy: ['pagarComPlugin.pagarTitulo'],
+    description: 'Read one agent.',
+  });
+  assert.equal(connections[0].direction, 'call');
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('an invented connection fails the catalog gate', () => {
+  const { gate } = connectionGate({
+    connectionId: 'slack',
+    operationId: 'readAgent',
+    usedBy: ['pagarComPlugin.pagarTitulo'],
+    description: 'Not a catalog connection.',
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_CONNECTION_UNKNOWN'));
+});
+
+void test('an invented operation fails the catalog gate', () => {
+  const { gate } = connectionGate({
+    connectionId: 'cm',
+    operationId: 'explodeAgent',
+    usedBy: ['pagarComPlugin.pagarTitulo'],
+    description: 'Not a catalog operation.',
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_CONNECTION_UNKNOWN'));
+});
+
+void test('call usedBy that does not exist fails', () => {
+  const { gate } = connectionGate({
+    connectionId: 'cm',
+    operationId: 'readAgent',
+    usedBy: ['pagarComPlugin.naoExiste'],
+    description: 'Read one agent.',
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_CONNECTION_USED_BY'));
+});
+
+void test('entityRefs without effect fails', () => {
+  const { gate } = connectionGate({
+    connectionId: 'cm',
+    operationId: 'readAgent',
+    usedBy: ['pagarComPlugin.pagarTitulo'],
+    entityRefs: ['ReceivableTitle'],
+    description: 'Read one agent into a title.',
+  });
+  assert.equal(gate.ok, false);
+  assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_CONNECTION_EFFECT'));
+});
+
+void test('serve create covers writer inbound', () => {
+  const { connections, gate } = connectionGate({
+    connectionId: 'cm',
+    operationId: 'record',
+    direction: 'call',
+    usedBy: ['not a ref'],
+    entityRefs: ['ReceivableTitle'],
+    effect: 'create',
+    description: 'An arrival records the title.',
+  }, {
+    entities: [{ entityId: 'ReceivableTitle', writer: 'inbound' }],
+  });
+  assert.equal(connections[0].direction, 'serve');
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_INBOUND_WRITER'), false);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_CONNECTION_USED_BY'), false);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('prompt that names cm raises a connectionTerm signal', () => {
+  const signals = collectNs5IntegrationSignals(COMANDA_ACTORS, 'the module talks to cm');
+  assert.ok(signals.some(signal => signal.kind === 'connectionTerm' && signal.term === 'cm'));
+});
+
+void test('buildNs5IntegrationArtifact omits connections when there is none', () => {
+  const artifact = buildNs5IntegrationArtifact('comandaRestaurante5', [], [], []);
+  assert.equal('connections' in artifact, false);
+});
+
+void test('a connection term alone never forces an item (cm may be centimeters)', () => {
+  const gate = validateNs5Integration([], [], [], {
+    actors: [],
+    entities: CE11_ENTITIES,
+    registryModuleNames: [],
+    sourcePrompt: 'the shelf is 40 cm wide',
+  }, []);
+  assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM'), false);
+});
+
+void test('serve keeps its usedBy prose; call still drops what is not a ref', () => {
+  const serve = connectionGate({
+    connectionId: 'cm',
+    operationId: 'describe',
+    usedBy: ['the cm asks which tools the agent has'],
+    description: 'Describe the agent tools.',
+  });
+  assert.deepEqual(serve.connections[0].usedBy, ['the cm asks which tools the agent has']);
+  const call = connectionGate({
+    connectionId: 'cm',
+    operationId: 'readAgent',
+    usedBy: ['not a ref'],
+    description: 'Read one agent.',
+  });
+  assert.deepEqual(call.connections[0].usedBy, []);
+});

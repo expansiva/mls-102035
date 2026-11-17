@@ -2,9 +2,11 @@
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
+import { ns5ConnectionOperation, ns5ConnectionTerms } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   type Ns5IntegrationArtifact,
+  type Ns5IntegrationConnection,
   type Ns5IntegrationItem,
   type Ns5IntegrationPlugin,
 } from '/_102035_/l2/solution/types.js';
@@ -13,6 +15,7 @@ const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const ITEM_KINDS = new Set(['moduleEndpoint', 'event', 'external']);
 const EFFECTS = new Set(['create', 'update', 'transition']);
+const CONNECTION_EFFECTS = new Set(['list', 'read', 'create', 'update', 'remove']);
 const OUTBOUND_ON = /^([A-Z][A-Za-z0-9]*)\.(create|[a-z][A-Za-z0-9]*)$/;
 const USED_BY = /^([a-z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/;
 const INBOUND_EVENT_REF = /^([a-z][A-Za-z0-9]*)\.([a-z][A-Za-z0-9]*)$/;
@@ -44,6 +47,7 @@ export interface Ns5IntegrationNormalization {
   inbound: Ns5IntegrationItem[];
   outbound: Ns5IntegrationItem[];
   plugins: Ns5IntegrationPlugin[];
+  connections: Ns5IntegrationConnection[];
   normalizations: Ns5IntegrationFormNormalization[];
 }
 
@@ -69,7 +73,7 @@ export interface Ns5IntegrationProcessView {
 }
 
 export interface Ns5IntegrationSignal {
-  kind: 'systemActor' | 'pluginTerm' | 'siblingPresent' | 'siblingTerm';
+  kind: 'systemActor' | 'pluginTerm' | 'connectionTerm' | 'siblingPresent' | 'siblingTerm';
   actorId?: string;
   pluginId?: string;
   term?: string;
@@ -95,6 +99,7 @@ export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNo
       .filter(item => item.id || item.description),
     outbound: list(root.outbound).map(item => normalizeOutbound(item)).filter(item => item.id || item.description),
     plugins: list(root.plugins).map(normalizePlugin).filter(plugin => plugin.pluginId || plugin.description),
+    connections: list(root.connections).map(normalizeConnection).filter(item => item.connectionId || item.operationId || item.description),
     normalizations,
   };
 }
@@ -104,6 +109,7 @@ export function buildNs5IntegrationArtifact(
   inbound: Ns5IntegrationItem[],
   outbound: Ns5IntegrationItem[],
   plugins: Ns5IntegrationPlugin[],
+  connections: Ns5IntegrationConnection[] = [],
 ): Ns5IntegrationArtifact {
   return {
     schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
@@ -111,6 +117,8 @@ export function buildNs5IntegrationArtifact(
     inbound,
     outbound,
     plugins,
+    // Omitted when empty, so artifacts that name no connection stay byte-identical (replay fixtures).
+    ...(connections.length ? { connections } : {}),
   };
 }
 
@@ -139,6 +147,11 @@ export function collectNs5IntegrationSignals(
       if (!promptMentionsTerm(sourcePrompt, term)) continue;
       add({ kind: 'pluginTerm', pluginId: plugin.pluginId, term });
     }
+  }
+
+  for (const term of ns5ConnectionTerms()) {
+    if (!promptMentionsTerm(sourcePrompt, term)) continue;
+    add({ kind: 'connectionTerm', term });
   }
 
   if (siblings.length) add({ kind: 'siblingPresent' });
@@ -279,6 +292,25 @@ function normalizeOutbound(value: unknown): Ns5IntegrationItem {
     ...(OUTBOUND_ON.test(on) ? { on } : {}),
     description: text(source.description),
     entityRefs: unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean)),
+  };
+}
+
+function normalizeConnection(value: unknown): Ns5IntegrationConnection {
+  const source = record(value);
+  const connectionId = text(source.connectionId);
+  const operationId = text(source.operationId);
+  const operation = ns5ConnectionOperation(connectionId, operationId);
+  const effect = text(source.effect);
+  const entityRefs = unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean));
+  return {
+    connectionId,
+    operationId,
+    direction: operation?.direction ?? 'call',
+    // call names a journey.step or process.task; serve is prose of what the arrival does.
+    usedBy: unique(strings(source.usedBy).filter(item => (operation?.direction ?? 'call') === 'serve' || USED_BY.test(item))),
+    ...(entityRefs.length ? { entityRefs } : {}),
+    ...(CONNECTION_EFFECTS.has(effect) ? { effect: effect as Ns5IntegrationConnection['effect'] } : {}),
+    description: text(source.description),
   };
 }
 

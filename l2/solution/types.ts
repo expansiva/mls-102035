@@ -822,7 +822,7 @@ export interface Ns5IntegrationArtifact {
   outbound: Ns5IntegrationItem[];
   /** Platform plugins this module uses. */
   plugins: Ns5IntegrationPlugin[];
-  /** Closed-catalog connection operations. Optional so existing defs keep compiling; builders write `[]`. */
+  /** Closed-catalog connection operations. Optional so existing defs keep compiling; builders omit it when empty. */
   connections?: Ns5IntegrationConnection[];
 }
 
