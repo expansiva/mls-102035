@@ -94,6 +94,7 @@ It is read here: the module does not store the row.
 - `record.fields` is that view. There are no table columns, no index, no `uniqueKeys`.
 - There is no lifecycle and no transition. Do not declare `status`, states or `derived` columns of a table.
 - There is no `tdm` or `ddm` starting point. Do not copy a table catalog.
+- `capabilities` is `{}`. There is no catalog id to pick and none of the module to invent: what the module does with the record is chosen later, as operations of the connection.
 - `source` is already derived from `connectionId`. Do not send it.
 
 ## Links, capabilities, rules

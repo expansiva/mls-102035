@@ -1810,3 +1810,14 @@ void test('l4_p4_107: external is refused as an mdm, through or composition end,
   owned.relationships[0].field = 'AgentRecord.noteId';
   assert.ok(codes(validateNs5OntologyPlanV3(owned, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_FK_OWNER'));
 });
+
+void test('l4_p4_107: an external entity has no capabilities; a table catalog id is refused with a clear reason (bancada s3)', () => {
+  const plan = externalPlan();
+  const built = externalEntity(plan);
+  const ok = validateNs5OntologyEntityV3(built, plan, { moduleName: 'agents', mdm, tdm, ddm });
+  assert.deepEqual(codes(ok.issues.filter(issue => issue.severity === 'error')), []);
+  const withCapability = clone(built) as typeof built;
+  (withCapability as { capabilities: Record<string, string> }).capabilities = { 'read.byId': 'Reads the record.' };
+  const refused = validateNs5OntologyEntityV3(withCapability, plan, { moduleName: 'agents', mdm, tdm, ddm });
+  assert.deepEqual(codes(refused.issues.filter(issue => issue.severity === 'error')), ['NS5_ONTOLOGY_EXTERNAL_CAPABILITIES']);
+});

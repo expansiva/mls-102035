@@ -520,7 +520,9 @@ export function validateNs5OntologyEntityV3(
     });
   }
   const family = familyOf(entity, plan);
-  issues.push(...checkCapabilities(entity, family, context, path));
+  // An external record has no capabilities: what the module does with it is chosen later, as operations
+  // of the connection (integration70). A table catalog would be asked of a model that was not shown it.
+  if (entity.kind !== 'external') issues.push(...checkCapabilities(entity, family, context, path));
   issues.push(...checkRules(entity, context, path));
   issues.push(...checkDecideBranching(entity, context, path));
   issues.push(...checkEntityRelationships(entity, plan, path));
@@ -575,6 +577,14 @@ function checkExternalEntity(
       code: 'NS5_ONTOLOGY_EXTERNAL_STORAGE',
       message: `${entity.entityId} is external and declares storage.`,
       path: `${path}.storage`,
+    });
+  }
+  if (Object.keys(entity.capabilities ?? {}).length) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_CAPABILITIES',
+      message: `${entity.entityId} is external and declares capabilities. Send capabilities as {}: the operations on the record are chosen later, from the connection.`,
+      path: `${path}.capabilities`,
     });
   }
   const planned = plan.entities.find(item => item.entityId === entity.entityId);
