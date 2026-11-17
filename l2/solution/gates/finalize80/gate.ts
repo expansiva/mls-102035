@@ -145,7 +145,12 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
       if (step.transitionRef) {
         const entity = entityById.get(step.entity);
         const ids = new Set((entity?.transitions || []).map(item => item.transitionId).filter(Boolean));
-        if (!ids.has(step.transitionRef)) {
+        if (entity?.kind === 'external') {
+          // l4_p4_108: an outside record has no lifecycle; what moves it is an operation of the connection.
+          if (!externalCallCoversUse(sources, `${journey.journeyId}.${step.stepId}`)) {
+            error('I1', `${path}.transitionRef`, `${step.entity} is external: ${step.transitionRef} needs a \`call\` row of integration.connections whose usedBy is ${journey.journeyId}.${step.stepId}.`);
+          }
+        } else if (!ids.has(step.transitionRef)) {
           error('I1', `${path}.transitionRef`, `Unknown transition ${step.transitionRef}.`);
         }
       }
@@ -211,7 +216,11 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
       }
       if (task.transitionRef && task.entityRef) {
         const ids = new Set((entityById.get(task.entityRef)?.transitions || []).map(item => item.transitionId));
-        if (!ids.has(task.transitionRef)) {
+        if (entityById.get(task.entityRef)?.kind === 'external') {
+          if (!externalCallCoversUse(sources, `${process.processId}.${task.taskId}`)) {
+            error('I1', `${path}.transitionRef`, `${task.entityRef} is external: ${task.transitionRef} needs a \`call\` row of integration.connections whose usedBy is ${process.processId}.${task.taskId}.`);
+          }
+        } else if (!ids.has(task.transitionRef)) {
           error('I1', `${path}.transitionRef`, `Unknown transition ${task.transitionRef}.`);
         }
       }
@@ -271,6 +280,8 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
       if (step.kind === 'decide') {
         const signal = collectNs5LifecycleSignal(sources.journeys, step.entity);
         const entity = entityById.get(step.entity);
+        // An outside record has no lifecycle to branch: the person's choice is followed by one `call` step per branch.
+        if (entity?.kind === 'external') return;
         if (signal.requiresBranching && (!entity || !ns5LifecycleHasBranchingOrigin(entity))) {
           error(
             'I2',
@@ -284,6 +295,7 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
       const entity = entityById.get(step.entity);
       if (step.effect === 'transition') {
         if (!step.transitionRef) return;
+        if (entity?.kind === 'external') return;
         const transition = (entity?.transitions || []).find(item => item.transitionId === step.transitionRef);
         if (!transition) return;
         if (!actorMatches(transition.by, actor)) {
@@ -324,6 +336,7 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
       if (!task.transitionRef || !task.entityRef) return;
       const path = `workflows.processes[${processIndex}].tasks[${taskIndex}]`;
       const entity = entityById.get(task.entityRef);
+      if (entity?.kind === 'external') return;
       const transition = (entity?.transitions || []).find(item => item.transitionId === task.transitionRef);
       if (!transition) return;
       if (!taskTransitionByAllows(transition.by, task.actorRef)) {
@@ -794,6 +807,12 @@ function fromIntersects(from: readonly string[], reachable: Set<string> | null):
 }
 
 
+
+/** A `call` row of integration.connections names the step or task (`journey.step`, `process.task`) that uses it. */
+function externalCallCoversUse(sources: Ns5OracleSources, use: string): boolean {
+  return (sources.integration.connections || []).some(connection =>
+    connection.direction === 'call' && connection.usedBy.includes(use));
+}
 
 function entityMap(sources: Ns5OracleSources): Map<string, Ns5OntologyEntityViewItem> {
   return new Map(sources.entities.map(entity => [entity.entityId, entity]));

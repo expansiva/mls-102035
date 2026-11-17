@@ -1574,3 +1574,61 @@ void test('tarefas passa no workflows50 e no finalize80 (I1–I13) sem erro', ()
     assert.equal(report.checks.find(check => check.checkId === checkId)?.status, 'passed', checkId);
   }
 });
+
+// l4_p4_108 rodada 1: the L4 the NS5 generated for `agents` (external entities of the cm).
+function agentsDefs<T>(name: string): T {
+  return loadNs5Defs<T>('fixtures/finalize80/agents', name);
+}
+
+function agentsSources(): Ns5OracleSources {
+  const journeyIndex = agentsDefs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
+  const journeys = journeyIndex.journeys.map(entry =>
+    agentsDefs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`),
+  );
+  const ontologyIndex = agentsDefs<Ns5OntologyAnyIndex>('ontology/index.defs.ts');
+  const entityIds = (ontologyIndex as unknown as { entities: Array<{ entityId: string }> }).entities.map(row => row.entityId);
+  const entities = entityIds.map(entityId => agentsDefs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`));
+  return {
+    module: agentsDefs<Ns5ModuleArtifact>('module.defs.ts'),
+    journeys,
+    journeyIndex,
+    entities: ns5OntologyEntityViews(entities),
+    ontologyIndex,
+    rules: agentsDefs<Ns5RulesArtifact>('rules.defs.ts'),
+    workflows: agentsDefs<Ns5WorkflowsArtifact>('workflows.defs.ts'),
+    access: agentsDefs<Ns5AccessArtifact>('access.defs.ts'),
+    integration: agentsDefs<Ns5IntegrationArtifact>('integration.defs.ts'),
+    journeyDiskFiles: ['index', ...journeyIndex.journeys.map(entry => entry.journeyId)],
+    ontologyDiskFiles: ['index', ...entityIds],
+  };
+}
+
+void test('l4_p4_108: agents (external entities) passes the finalize without transition lookups on the outside records', () => {
+  const report = runNs5Oracle(agentsSources());
+  assert.deepEqual(
+    report.errors.map(issue => `${issue.checkId} ${issue.path}: ${issue.message}`),
+    [],
+  );
+  assert.equal(report.finalStatus, 'passed');
+});
+
+void test('l4_p4_108: a step that moves an external record needs a call row naming it; the check is stronger, not weaker', () => {
+  const sources = agentsSources();
+  const without = clone(sources);
+  const rows = (without.integration.connections || []) as Array<{ usedBy: string[]; direction: string }>;
+  for (const row of rows) row.usedBy = row.usedBy.filter(use => use !== 'reviewAndActivateDraft.activateDraft');
+  const report = runNs5Oracle(without);
+  assert.deepEqual(
+    report.errors.map(issue => `${issue.checkId} ${issue.path}`),
+    ['I1 journeys.reviewAndActivateDraft.steps[5].transitionRef'],
+  );
+  // a `serve` row never covers a step that calls out
+  const asServe = clone(sources);
+  for (const row of (asServe.integration.connections || []) as Array<{ usedBy: string[]; direction: string }>) {
+    if (row.usedBy.includes('reviewAndActivateDraft.discardDraft')) row.direction = 'serve';
+  }
+  assert.deepEqual(
+    runNs5Oracle(asServe).errors.map(issue => `${issue.checkId} ${issue.path}`),
+    ['I1 journeys.reviewAndActivateDraft.steps[6].transitionRef'],
+  );
+});
