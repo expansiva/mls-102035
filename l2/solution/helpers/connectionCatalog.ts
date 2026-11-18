@@ -24,6 +24,9 @@ export interface Ns5ConnectionOperation {
   hiddenFromAgents?: boolean;
   noRowLimit?: boolean;
   personInputs?: Array<{ from: string; to: string }>;
+  /** The operation is served by the platform, not by a module (e.g. `cm.ensureAgentMember`). */
+  servedBy?: 'platform';
+  expectsVersion?: true;
 }
 
 /**
@@ -31,9 +34,13 @@ export interface Ns5ConnectionOperation {
  * `solution/fixtures/connections/cm.defs.ts` is a test copy of the `cm` one (see `connectionCatalog.test.ts`).
  */
 export function ns5ConnectionCatalogs(): readonly Ns5ConnectionCatalog[] {
+  // An operation `servedBy: 'platform'` is the platform's to answer: a module never chooses it nor serves it.
   // `platform` (releaseCatalogChanged, M5): the module that serves the catalog of the release uses it (l4_p4_108).
   // Its signal is its own operation, never the word `platform` (see CONNECTION_SIGNAL_GROUPS).
-  return [cmCatalog, platformCatalog];
+  return [cmCatalog, platformCatalog].map(catalog => ({
+    ...catalog,
+    operations: catalog.operations.filter(operation => !operation.servedBy),
+  }));
 }
 
 export function ns5ConnectionOperation(

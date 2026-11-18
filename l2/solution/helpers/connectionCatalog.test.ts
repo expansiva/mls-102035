@@ -78,3 +78,8 @@ test('platform releaseCatalogChanged is a serve command hidden from agents', () 
   assert.equal(operation.kind, 'command');
   assert.equal(operation.hiddenFromAgents, true);
 });
+
+test('an operation served by the platform is not offered to a module (cm.ensureAgentMember)', () => {
+  assert.equal(ns5ConnectionOperation('cm', 'ensureAgentMember'), undefined);
+  assert.equal(ns5ConnectionCatalogs().find(item => item.connectionId === 'cm')?.operations.some(item => item.operationId === 'ensureAgentMember'), false);
+});
