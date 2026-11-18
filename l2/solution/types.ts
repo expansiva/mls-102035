@@ -506,14 +506,14 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
 }
 
 /**
- * A record that lives outside this module, identified by a connection catalog path.
+ * A record that lives outside this module, identified by a connection catalog id.
  * No local table. Part of `Ns5OntologyEntityV3` (l4_p4_107 part 2).
  */
 export interface Ns5OntologyExternalV3<Cap extends string = string, Rule extends string = string>
   extends Ns5OntologyEntityV3Base<Cap, Rule> {
   kind: 'external';
-  /** Path of the connection catalog this entity is read from. */
-  source: string;
+  /** Connection catalog id (the same name as in `integration.defs.ts`). */
+  connectionId: string;
 }
 
 export type Ns5OntologyEntityV3<Cap extends string = string, Rule extends string = string> =

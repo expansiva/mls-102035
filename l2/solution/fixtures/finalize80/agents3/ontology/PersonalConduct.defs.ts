@@ -16,7 +16,7 @@ export const agentsEntityPersonalConduct = {
     "conductOnlyForAgentActingOnBehalf"
   ],
   "kind": "external",
-  "source": "/_102034_/l4/ontology/connections/cm.defs.ts",
+  "connectionId": "cm",
   "record": {
     "fields": {
       "agent": {

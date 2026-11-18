@@ -21,7 +21,6 @@ import type {
   MdmOntology,
   MdmSubtypeName,
 } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
-import { ns5ConnectionSourcePath } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { platformOntologyPath } from '/_102035_/l2/solution/lib.js';
 import {
   collectNs5CitedProcessStages,
@@ -139,9 +138,9 @@ export interface Ns5OntologyV3PlanEntity {
   initialData?: string;
   /** Derived: `<moduleName>.<entityId>` on a role. */
   roleTag?: string;
-  /** Derived: the platform ontology a role copies from, or the connection catalog of an `external`. */
+  /** Derived: the platform ontology a role copies from. Never the connection of an `external`. */
   source?: string;
-  /** `external` only. The connection the entity is read from; `source` is derived from it. */
+  /** `external` only. The connection the entity is read from, by catalog id. */
   connectionId?: string;
   /**
    * On a table: `target` and `table` are derived, `kind` is what the plan declared (`relational` by
@@ -266,7 +265,7 @@ function keyed(value: unknown, idKey = 'id'): Record<string, unknown> {
 
 /**
  * The frozen cross-entity plan, v3. The model writes `entities` and `relationships`; `roleTag`,
- * `storage` and `source` are derived here and never asked for.
+ * `storage` and role `source` are derived here and never asked for. An `external` writes `connectionId`.
  */
 export function normalizeNs5OntologyPlanV3(value: unknown, moduleName: string): Ns5OntologyV3PlanDraft {
   const root = record(value);
@@ -313,12 +312,6 @@ function normalizePlanEntity(
     const connectionId = text(raw.connectionId);
     if (MEMBER_ID.test(connectionId)) {
       base.connectionId = connectionId;
-      base.source = ns5ConnectionSourcePath(connectionId);
-      normalizations.push({
-        kind: 'derivedFromPlatform',
-        entityId,
-        detail: `source ${base.source}`,
-      });
     }
     return base;
   }
@@ -499,7 +492,7 @@ export function normalizeNs5OntologyEntityV3(
     ? {
       ...common,
       kind: 'external',
-      source: frozen.source ?? '',
+      connectionId: frozen.connectionId ?? '',
       record: { fields: normalizeExternalRecord(raw.record) },
     }
     : {

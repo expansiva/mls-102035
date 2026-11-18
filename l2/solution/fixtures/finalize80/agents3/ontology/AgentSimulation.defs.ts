@@ -20,7 +20,7 @@ export const agentsEntityAgentSimulation = {
     "noTechnicalIdsOnScreen"
   ],
   "kind": "external",
-  "source": "/_102034_/l4/ontology/connections/cm.defs.ts",
+  "connectionId": "cm",
   "record": {
     "fields": {
       "agent": {

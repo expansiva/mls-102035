@@ -66,16 +66,16 @@ test('deriveOntologyPlan keeps frozen family and derives the rest from the editi
   assert.equal(edited.relationships.find(row => row.relationshipId === 'mesaGarcom')?.mode, 'throughTable');
 });
 
-test('deriveOntologyPlan keeps the source and the connectionId of an external entity (l4_p4_107 p2f)', () => {
+test('deriveOntologyPlan keeps the connectionId of an external entity (l4_p4_107 p2f)', () => {
   const agente = {
     entityId: 'Agente', kind: 'external', title: 'Agente', description: 'Agente do cm', displayField: 'name',
-    source: '/_102034_/l4/ontology/connections/cm.defs.ts', record: { fields: {} },
+    connectionId: 'cm', record: { fields: {} },
   } as unknown as Ns5OntologyEntityV3;
   const withExternal = { ...index, entities: [...index.entities, { entityId: 'Agente', kind: 'external' }] } as Ns5OntologyIndexV3;
   const plan = deriveOntologyPlan(withExternal, [mesa, garcom, agente], null);
   const row = plan.entities.find(item => item.entityId === 'Agente');
   assert.equal(row?.kind, 'external');
-  assert.equal(row?.source, '/_102034_/l4/ontology/connections/cm.defs.ts');
+  assert.equal(row?.source, undefined);
   assert.equal(row?.connectionId, 'cm');
   assert.equal(row?.class, undefined);
   assert.equal(row?.storage, undefined);

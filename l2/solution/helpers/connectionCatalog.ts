@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/helpers/connectionCatalog.ts" enhancement="_blank"/>
 
-import cmCatalog from '/_102034_/l4/ontology/connections/cm.defs.js';
-import platformCatalog from '/_102034_/l4/ontology/connections/platform.defs.js';
+import cmCatalog from '/_102034_/l1/server/layer_1_external/connections/catalogs/cm.js';
+import platformCatalog from '/_102034_/l1/server/layer_1_external/connections/catalogs/platform.js';
 
 export interface Ns5ConnectionCatalog {
   schemaVersion: 'connection-catalog-v1';
@@ -30,7 +30,7 @@ export interface Ns5ConnectionOperation {
 }
 
 /**
- * Closed connection catalogs the NS5 gate reads: the platform's own files in `102034/l4/ontology/connections/`.
+ * Closed connection catalogs the NS5 gate reads: the platform's own files in `102034/l1/server/layer_1_external/connections/catalogs/`.
  * `solution/fixtures/connections/cm.defs.ts` is a test copy of the `cm` one (see `connectionCatalog.test.ts`).
  */
 export function ns5ConnectionCatalogs(): readonly Ns5ConnectionCatalog[] {
@@ -89,11 +89,6 @@ export function ns5ConnectionSignalHits(
 
 export function ns5ConnectionTerms(): readonly string[] {
   return ns5ConnectionCatalogs().map(item => item.connectionId);
-}
-
-/** `source` of an `external` ontology entity. The L1 catalog reader opens this path. */
-export function ns5ConnectionSourcePath(connectionId: string): string {
-  return `/_102034_/l4/ontology/connections/${connectionId}.defs.ts`;
 }
 
 export function ns5ConnectionExists(connectionId: string): boolean {

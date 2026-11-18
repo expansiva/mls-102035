@@ -56,7 +56,6 @@ import {
   type Ns5OntologyV3Issue,
 } from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
 import { resolvableFieldPaths } from '/_102035_/l2/solution/ontologyPaths.js';
-import { ns5ConnectionSourcePath } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_ONTOLOGY_SCHEMA_VERSION_V3,
   type Ns5OntologyEntityV3,
@@ -239,7 +238,7 @@ void test('l4_p4_107: an external plan derives source and never becomes a table'
   const agent = plan.entities[0];
   assert.equal(agent.kind, 'external');
   assert.equal(agent.connectionId, 'cm');
-  assert.equal(agent.source, '/_102034_/l4/ontology/connections/cm.defs.ts');
+  assert.equal(agent.source, undefined);
   assert.equal(agent.class, undefined);
   assert.equal(agent.storage, undefined);
   assert.equal(agent.initialData, undefined);
@@ -260,7 +259,8 @@ void test('l4_p4_107: an external plan derives source and never becomes a table'
   }, 'AgentRecord', { moduleName: 'agents', mdm, plan })!;
   assert.equal(built.kind, 'external');
   assert.equal('storage' in built, false);
-  assert.equal(built.source, '/_102034_/l4/ontology/connections/cm.defs.ts');
+  assert.equal(built.kind === 'external' ? built.connectionId : '', 'cm');
+  assert.equal('source' in built, false);
   assert.deepEqual(Object.keys(built.record.fields), ['title']);
 
   const index = assembleNs5OntologyIndexV3(plan, 'ns');
@@ -1757,12 +1757,12 @@ void test('l4_p4_107: external plan requires a catalog connectionId and refuses 
   assert.ok(codes(validateNs5OntologyPlanV3(onRole, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_NOT_EXTERNAL'));
 });
 
-void test('l4_p4_107: an external entity refuses table machinery and checks source', () => {
+void test('l4_p4_107: an external entity refuses table machinery and checks connectionId', () => {
   const plan = externalPlan();
   const built = externalEntity(plan);
   const clean = codes(validateNs5OntologyEntityV3(built, plan, gateContext).issues);
   assert.equal(clean.includes('NS5_ONTOLOGY_COLUMN_WITHOUT_INDEX'), false);
-  assert.equal(clean.includes('NS5_ONTOLOGY_EXTERNAL_SOURCE'), false);
+  assert.equal(clean.includes('NS5_ONTOLOGY_EXTERNAL_CONNECTION'), false);
 
   const lifecycle = clone(built);
   lifecycle.lifecycleStates = [{ state: 'open', reachedBy: 'actor' }];
@@ -1780,10 +1780,10 @@ void test('l4_p4_107: an external entity refuses table machinery and checks sour
   stored.storage = { target: 'moduleDatabase', table: 'agents_agentrecord', kind: 'relational' };
   assert.ok(codes(validateNs5OntologyEntityV3(stored, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_STORAGE'));
 
-  const wrongSource = clone(built);
-  wrongSource.source = '/_102034_/l4/ontology/mdm.defs.ts';
-  assert.ok(codes(validateNs5OntologyEntityV3(wrongSource, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_SOURCE'));
-  assert.equal(built.source, ns5ConnectionSourcePath('cm'));
+  const wrongConnection = clone(built);
+  if (wrongConnection.kind === 'external') wrongConnection.connectionId = 'noSuchConnection';
+  assert.ok(codes(validateNs5OntologyEntityV3(wrongConnection, plan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_CONNECTION'));
+  assert.equal(built.kind === 'external' ? built.connectionId : '', 'cm');
 });
 
 void test('l4_p4_107: external is refused as an mdm, through or composition end, and as the owner of an fk', () => {

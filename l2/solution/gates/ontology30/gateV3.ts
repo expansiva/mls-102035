@@ -46,7 +46,7 @@ import {
   type Ns5OntologyV3PlanEntity,
   type Ns5OntologyV3PlanRelationship,
 } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
-import { ns5ConnectionExists, ns5ConnectionSourcePath } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { ns5ConnectionExists } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
@@ -343,7 +343,7 @@ function checkExternalFkOwner(
 }
 
 /**
- * What an `external` plan may carry. `source` is derived from `connectionId`; table shape is refused.
+ * What an `external` plan may carry. `connectionId` is the catalog name; table shape is refused.
  * `storageKind` is read when the draft still has it: normalize drops it, and the neutral value is
  * `NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND`.
  */
@@ -540,7 +540,7 @@ export function validateNs5OntologyEntityV3(
   return ok(issues);
 }
 
-/** An outside record keeps the fields the module sees. It is not a table and its source is the catalog path. */
+/** An outside record keeps the fields the module sees. It is not a table and its connectionId is the catalog name. */
 function checkExternalEntity(
   entity: Extract<Ns5OntologyEntityV3, { kind: 'external' }>,
   plan: Ns5OntologyV3PlanDraft,
@@ -588,13 +588,13 @@ function checkExternalEntity(
     });
   }
   const planned = plan.entities.find(item => item.entityId === entity.entityId);
-  const expected = planned?.connectionId ? ns5ConnectionSourcePath(planned.connectionId) : '';
-  if (entity.source !== expected) {
+  const expected = planned?.connectionId || '';
+  if (!entity.connectionId || entity.connectionId !== expected || !ns5ConnectionExists(entity.connectionId)) {
     issues.push({
       severity: 'error',
-      code: 'NS5_ONTOLOGY_EXTERNAL_SOURCE',
-      message: `source '${entity.source}' is not the catalog path of connection '${planned?.connectionId || ''}'.`,
-      path: `${path}.source`,
+      code: 'NS5_ONTOLOGY_EXTERNAL_CONNECTION',
+      message: `connectionId '${entity.connectionId}' is not the catalog connection '${expected}'.`,
+      path: `${path}.connectionId`,
     });
   }
   return issues;

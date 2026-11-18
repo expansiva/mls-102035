@@ -31,9 +31,7 @@ export function deriveOntologyPlan(
       entity.storage = { target: file.storage.target, table: file.storage.table, kind: file.storage.kind ?? 'relational' };
     }
     if (file.kind === 'external') {
-      entity.source = file.source;
-      const connectionId = connectionIdFromSource(file.source);
-      if (connectionId) entity.connectionId = connectionId;
+      entity.connectionId = file.connectionId;
     }
     planEntities.push(entity);
   }
@@ -62,10 +60,4 @@ export function deriveOntologyPlan(
     relationships,
     normalizations: frozen?.normalizations ?? [],
   };
-}
-
-/** Inverse of `ns5ConnectionSourcePath`: the catalog id is the stem of `.../connections/<id>.defs.ts`. */
-function connectionIdFromSource(source: string): string | undefined {
-  const match = /\/connections\/([A-Za-z][A-Za-z0-9]*)\.defs\.ts$/.exec(source);
-  return match?.[1];
 }

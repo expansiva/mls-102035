@@ -195,7 +195,7 @@ test('an external entity has no written fields: this module does not write the r
   const external = {
     schemaVersion: '2026-09-15-ns5-ontology-v3', moduleName: 'agents',
     entityId: 'Agente', kind: 'external', title: 'Agente', description: 'Agente do cm', displayField: 'name',
-    source: '/_102034_/l4/ontology/connections/cm.defs.ts',
+    connectionId: 'cm',
     record: { fields: { name: { type: 'string', required: true } } },
     relationships: [], capabilities: {}, rules: [],
   } as unknown as Ns5OntologyEntityV3;
