@@ -1576,28 +1576,28 @@ void test('tarefas passa no workflows50 e no finalize80 (I1–I13) sem erro', ()
 });
 
 // l4_p4_108 rodada 1: the L4 the NS5 generated for `agents` (external entities of the cm).
-function agentsDefs<T>(name: string): T {
-  return loadNs5Defs<T>('fixtures/finalize80/agents', name);
+function agentsDefs<T>(name: string, dir = 'fixtures/finalize80/agents'): T {
+  return loadNs5Defs<T>(dir, name);
 }
 
-function agentsSources(): Ns5OracleSources {
-  const journeyIndex = agentsDefs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
+function agentsSources(dir = 'fixtures/finalize80/agents'): Ns5OracleSources {
+  const journeyIndex = agentsDefs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts', dir);
   const journeys = journeyIndex.journeys.map(entry =>
-    agentsDefs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`),
+    agentsDefs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`, dir),
   );
-  const ontologyIndex = agentsDefs<Ns5OntologyAnyIndex>('ontology/index.defs.ts');
+  const ontologyIndex = agentsDefs<Ns5OntologyAnyIndex>('ontology/index.defs.ts', dir);
   const entityIds = (ontologyIndex as unknown as { entities: Array<{ entityId: string }> }).entities.map(row => row.entityId);
-  const entities = entityIds.map(entityId => agentsDefs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`));
+  const entities = entityIds.map(entityId => agentsDefs<Ns5OntologyAnyEntity>(`ontology/${entityId}.defs.ts`, dir));
   return {
-    module: agentsDefs<Ns5ModuleArtifact>('module.defs.ts'),
+    module: agentsDefs<Ns5ModuleArtifact>('module.defs.ts', dir),
     journeys,
     journeyIndex,
     entities: ns5OntologyEntityViews(entities),
     ontologyIndex,
-    rules: agentsDefs<Ns5RulesArtifact>('rules.defs.ts'),
-    workflows: agentsDefs<Ns5WorkflowsArtifact>('workflows.defs.ts'),
-    access: agentsDefs<Ns5AccessArtifact>('access.defs.ts'),
-    integration: agentsDefs<Ns5IntegrationArtifact>('integration.defs.ts'),
+    rules: agentsDefs<Ns5RulesArtifact>('rules.defs.ts', dir),
+    workflows: agentsDefs<Ns5WorkflowsArtifact>('workflows.defs.ts', dir),
+    access: agentsDefs<Ns5AccessArtifact>('access.defs.ts', dir),
+    integration: agentsDefs<Ns5IntegrationArtifact>('integration.defs.ts', dir),
     journeyDiskFiles: ['index', ...journeyIndex.journeys.map(entry => entry.journeyId)],
     ontologyDiskFiles: ['index', ...entityIds],
   };
@@ -1648,4 +1648,28 @@ void test('l4_p4_109: a process trigger that is a serve operation of the connect
     .filter(issue => issue.checkId === 'I1' && issue.path.endsWith('.trigger.event'));
   assert.deepEqual(triggerErrors('cm.agentDraftReady'), []);
   assert.equal(triggerErrors('cm.neverDelivered').length, 1);
+});
+
+void test('l4_p4_109 s3 r2: the agents L4 with a process triggered by a serve operation passes the finalize', () => {
+  const report = runNs5Oracle(agentsSources('fixtures/finalize80/agents2'));
+  assert.deepEqual(report.errors.map(issue => `${issue.checkId} ${issue.path}: ${issue.message}`.slice(0, 200)), []);
+  assert.equal(report.finalStatus, 'passed');
+});
+
+void test('l4_p4_109 s3 r2: a record written by a process stage or a serve operation has a writer; one nobody writes still has none', () => {
+  const sources = agentsSources('fixtures/finalize80/agents2');
+  const i10 = (candidate: Ns5OracleSources) => runNs5Oracle(candidate).errors
+    .filter(issue => issue.checkId === 'I10').map(issue => issue.path);
+  assert.deepEqual(i10(sources), []);
+  // no serve row and no process stage writes Tool any more: I10 charges it again
+  const nobody = clone(sources);
+  for (const row of (nobody.integration.connections || []) as Array<{ entityRefs?: string[] }>) {
+    row.entityRefs = (row.entityRefs || []).filter(entity => entity !== 'Tool');
+  }
+  for (const process of nobody.workflows.processes) {
+    for (const task of process.tasks as Array<{ entityRef?: string }>) {
+      if (task.entityRef === 'Tool') task.entityRef = 'AgentTool';
+    }
+  }
+  assert.deepEqual(i10(nobody), ['ontology.Tool.writer']);
 });

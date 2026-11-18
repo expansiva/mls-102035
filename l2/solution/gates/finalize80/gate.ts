@@ -585,12 +585,18 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
  * entity or listed in an act's `affects`, or `writer: 'crud'` / `writer: 'inbound'`,
  * or derived `parent`/`attach`; a crud entity has an internal-actor grant; inbound
  * must appear in inbound.writes, or in a serve connection whose effect writes
- * (create or update) and whose entityRefs name it. Conflicting crud is dropped
+ * (create or update) and whose entityRefs name it. A record that a process stage
+ * (`mechanical`/`llm`, effect create/update/transition) or a serve operation writes
+ * has a writer outside the journeys. Conflicting crud is dropped
  * by ontology30 normalize, not by this check.
  */
 function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   const inboundWrites = integrationWrites(sources);
+  const processWrites = new Set(sources.workflows.processes.flatMap(process => process.tasks)
+    .filter(task => (task.kind === 'mechanical' || task.kind === 'llm') && task.entityRef
+      && (task.effect === 'create' || task.effect === 'update' || task.effect === 'transition'))
+    .map(task => task.entityRef as string));
   const writerPlan = {
     entities: sources.entities.map(writerView),
     relationships: ns5OntologyEdges(sources.ontologyIndex),
@@ -600,7 +606,10 @@ function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
     const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
     const crud = resolved.kind === 'crud';
     const inbound = resolved.kind === 'inbound';
-    if (resolved.kind === 'none' && ns5EntityHasWrittenFields(writtenFieldsView(entity))) {
+    // l4_p4_109: a record a `mechanical`/`llm` stage of a process writes, or that a `serve` operation creates or
+    // updates, has a writer outside the journeys (the ontology honours what those stages cite).
+    const writtenOutsideJourneys = processWrites.has(entity.entityId) || inboundWrites.has(entity.entityId);
+    if (resolved.kind === 'none' && !writtenOutsideJourneys && ns5EntityHasWrittenFields(writtenFieldsView(entity))) {
       error(
         'I10',
         `${path}.writer`,
