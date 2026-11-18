@@ -142,12 +142,20 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
       if (step.handoffTo && !actorIds.has(step.handoffTo)) {
         error('I1', `${path}.handoffTo`, `Unknown actor ${step.handoffTo}.`);
       }
+      // l4_p4_110: on an `external` entity the operation of a step is the `call` row that names the step in its
+      // usedBy (`journeyId.stepId`). The step's own effect (create, update, transition) and the call's
+      // entityRefs/effect are no longer what ties the two. Applies to `act` and `inspect`.
+      if ((step.kind === 'act' || step.kind === 'inspect') && entityById.get(step.entity)?.kind === 'external'
+        && !externalCallCoversUse(sources, `${journey.journeyId}.${step.stepId}`)) {
+        error('I1', `${path}.entity`, `${step.entity} is external: ${step.kind} ${step.stepId} needs a \`call\` row of integration.connections whose usedBy is ${journey.journeyId}.${step.stepId}.`);
+      }
       if (step.transitionRef) {
         const entity = entityById.get(step.entity);
         const ids = new Set((entity?.transitions || []).map(item => item.transitionId).filter(Boolean));
         if (entity?.kind === 'external') {
           // l4_p4_108: an outside record has no lifecycle; what moves it is an operation of the connection.
-          if (!externalCallCoversUse(sources, `${journey.journeyId}.${step.stepId}`)) {
+          // (`act`/`inspect` are charged above, once.)
+          if (step.kind !== 'act' && step.kind !== 'inspect' && !externalCallCoversUse(sources, `${journey.journeyId}.${step.stepId}`)) {
             error('I1', `${path}.transitionRef`, `${step.entity} is external: ${step.transitionRef} needs a \`call\` row of integration.connections whose usedBy is ${journey.journeyId}.${step.stepId}.`);
           }
         } else if (!ids.has(step.transitionRef)) {

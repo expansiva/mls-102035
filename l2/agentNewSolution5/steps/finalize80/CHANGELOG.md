@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-11-18 (l4_p4_110)
+
+- I1: on an `external` entity, an `act` or `inspect` step needs a `call` row of `integration.connections` whose `usedBy` is `journeyId.stepId`; the step's own effect and the call's `entityRefs`/`effect` are not what ties the two. I10 also counts a record written by a process stage or a `serve` row.
+
 ## 2026-10-02 (p4_21)
 
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/finalize80/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

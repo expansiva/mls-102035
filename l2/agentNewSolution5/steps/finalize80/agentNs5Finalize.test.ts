@@ -1620,7 +1620,7 @@ void test('l4_p4_108: a step that moves an external record needs a call row nami
   const report = runNs5Oracle(without);
   assert.deepEqual(
     report.errors.map(issue => `${issue.checkId} ${issue.path}`),
-    ['I1 journeys.reviewAndActivateDraft.steps[5].transitionRef'],
+    ['I1 journeys.reviewAndActivateDraft.steps[5].entity'],
   );
   // a `serve` row never covers a step that calls out
   const asServe = clone(sources);
@@ -1629,7 +1629,7 @@ void test('l4_p4_108: a step that moves an external record needs a call row nami
   }
   assert.deepEqual(
     runNs5Oracle(asServe).errors.map(issue => `${issue.checkId} ${issue.path}`),
-    ['I1 journeys.reviewAndActivateDraft.steps[6].transitionRef'],
+    ['I1 journeys.reviewAndActivateDraft.steps[6].entity'],
   );
 });
 
@@ -1672,4 +1672,25 @@ void test('l4_p4_109 s3 r2: a record written by a process stage or a serve opera
     }
   }
   assert.deepEqual(i10(nobody), ['ontology.Tool.writer']);
+});
+
+void test('l4_p4_110: every act and inspect on an external entity names a call row; the L4 of agents (229d05b9) does, and a step without one is charged', () => {
+  const sources = agentsSources('fixtures/finalize80/agents3');
+  const i1 = (candidate: Ns5OracleSources) => runNs5Oracle(candidate).errors
+    .filter(issue => issue.checkId === 'I1').map(issue => issue.path);
+  assert.deepEqual(i1(sources), []);
+  const without = (use: string): Ns5OracleSources => {
+    const copy = clone(sources);
+    for (const row of (copy.integration.connections || []) as Array<{ usedBy: string[] }>) {
+      row.usedBy = row.usedBy.filter(item => item !== use);
+    }
+    return copy;
+  };
+  // an inspect (a read of AgentSimulation) and an act (a transition) are charged the same way
+  const inspect = i1(without('reviewAndActivateDraft.simulateDraft'));
+  assert.equal(inspect.length, 1);
+  assert.match(inspect[0], /^journeys\.reviewAndActivateDraft\.steps\[\d+\]\.entity$/);
+  const act = i1(without('changeMyConduct.changeConduct'));
+  assert.equal(act.length, 1);
+  assert.match(act[0], /^journeys\.changeMyConduct\.steps\[\d+\]\.entity$/);
 });
