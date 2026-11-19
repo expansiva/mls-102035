@@ -164,3 +164,17 @@ void test('the version is one function of the content', () => {
   assert.equal(ns5IntegrationSchemaVersion(undefined), '2026-11-17-ns5-integration-v3');
   assert.equal(ns5IntegrationSchemaVersion([OWN]), '2026-11-19-ns5-integration-v4');
 });
+
+void test('l4_p4_123: a system with a serve operation needs a secret setting', () => {
+  const serveOnly = { ...OWN, settings: [OWN.settings[0]] };
+  const refused = run({ externalSystems: [serveOnly] }).gate;
+  assert.equal(refused.ok, false);
+  const issue = refused.issues.find(item => item.code === 'NS5_INTEGRATION_SYSTEM_SERVE_SECRET');
+  assert.ok(issue);
+  assert.match(issue.message, /repoHost/);
+  assert.equal(issue.path, 'externalSystems[0].settings');
+  assert.equal(run({ externalSystems: [{ ...serveOnly, settings: [] }] }).gate.ok, false);
+  assert.equal(run({ externalSystems: [OWN] }).gate.ok, true);
+  // A system that only calls needs no secret (a public lookup).
+  assert.equal(run({ externalSystems: [SIBLING] }).gate.ok, true);
+});

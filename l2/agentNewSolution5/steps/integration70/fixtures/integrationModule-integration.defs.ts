@@ -23,7 +23,9 @@ export const integrationModuleIntegration = {
       "id": "zipLookup",
       "title": "Zip code lookup",
       "description": "A public service that gives the address of a zip code; other modules ask the integration module for it.",
-      "settings": [],
+      "settings": [
+        { "id": "sharedSecret", "title": "Shared secret", "description": "The secret agreed with the lookup service, to check what it sends.", "secret": true }
+      ],
       "operations": [
         { "operationId": "findAddress", "direction": "call", "description": "The address of one zip code." },
         { "operationId": "addressFound", "direction": "serve", "description": "The service sends an address it found." }

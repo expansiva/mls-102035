@@ -64,6 +64,8 @@ When the request names a system outside the app that this module must talk to, d
 - `settings` are the values an admin must give to the module for this system, in business words (for example
   where the system is, or the key that gives access). Each is `{ id, title, description, secret }`; `secret` is
   true when the value must never be shown again after it is saved. A system that needs none has an empty list.
+- A system with any `serve` operation has at least one setting with `secret: true`: the secret agreed with the
+  system, so the module can check that what arrives really comes from it. Without it the notice is refused.
 - `operations` are what the module asks of the system (`call`) and what the system tells the module (`serve`).
   Each is `{ operationId, direction, description }`; the description says what is asked or what arrives.
 - Say nothing about how: no address, method, header, body format, authentication scheme, library or types of

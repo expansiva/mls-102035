@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-19 (l4_p4_123)
+
+- A system with a `serve` operation declares at least one setting with `secret: true` (the secret agreed with the system, to check what it sends): intent in `prompt.md`, and `NS5_INTEGRATION_SYSTEM_SERVE_SECRET` in the gate sends a system without it to the repair.
+
 ## 2026-11-19 (l4_p4_120)
 
 - `prompt.md` (`## External systems`): a language model or any AI service is never declared in `externalSystems`; the module's AI goes through the catalog connection that offers it (`cm`). Prompt only, no gate.

@@ -455,6 +455,15 @@ function validateExternalSystems(
         error(issues, 'NS5_INTEGRATION_SYSTEM_SETTING', 'A setting says whether it is secret (true or false).', `${settingPath}.secret`);
       }
     });
+    // A notice from outside enters only if it can be checked: a system that serves needs a secret the admin gives (M12).
+    if (system.operations.some(operation => operation.direction === 'serve') && !system.settings.some(setting => setting.secret === true)) {
+      error(
+        issues,
+        'NS5_INTEGRATION_SYSTEM_SERVE_SECRET',
+        `External system ${system.id || '(missing)'} has a serve operation, so it needs at least one setting with secret: true (the secret agreed with the system, to check what it sends). Add it to settings.`,
+        `${path}.settings`,
+      );
+    }
     const operationIds = new Set<string>();
     system.operations.forEach((operation, position) => {
       const operationPath = `${path}.operations[${position}]`;

@@ -736,6 +736,7 @@ void test('the prompt explains the declared system as intent only', () => {
   assert.match(prompt, /Say nothing about how/);
   assert.match(prompt, /already declares the system/);
   assert.match(prompt, /do not declare it again/);
+  assert.match(prompt, /any `serve` operation has at least one setting with `secret: true`/);
   assert.doesNotMatch(prompt, /github|zip ?code|\bcep\b/i);
 });
 
