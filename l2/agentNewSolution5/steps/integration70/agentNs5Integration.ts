@@ -111,7 +111,7 @@ async function readUsedByRefs(moduleName: string): Promise<string[]> {
  * The systems the siblings declare, read from the L4 each sibling wrote (`integration.defs.ts`), never from a
  * written list. A sibling with no integration artifact, or one that declares none, adds nothing.
  */
-async function readSiblingSystems(
+export async function readSiblingSystems(
   siblings: readonly Ns5SiblingModule[],
 ): Promise<Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }>> {
   const out: Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }> = [];

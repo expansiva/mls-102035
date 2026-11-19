@@ -14,7 +14,7 @@ import { repoInsideModuleIntegration } from '/_102035_/l2/agentNewSolution5/step
 import { integrationModuleIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/integrationModule-integration.defs.js';
 import { usesSiblingSystemIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/usesSiblingSystem-integration.defs.js';
 import { agendaClinicaIntegration } from '/_102035_/l2/solution/fixtures/integration70/agendaClinica-integration.defs.js';
-import { buildNs5IntegrationHumanPrompt, buildNs5IntegrationTool } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
+import { buildNs5IntegrationHumanPrompt, buildNs5IntegrationTool, readSiblingSystems } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
 import {
   NS5_INTEGRATION_DROP_TRANSITION_REF,
   NS5_PLUGIN_CATALOG,
@@ -826,4 +826,33 @@ void test('rehearsal 4: a recorded v2 artifact is still read and rebuilt without
   assert.deepEqual(normalized.externalSystems, []);
   assert.equal('externalSystems' in rebuilt, false);
   assert.equal(rebuilt.schemaVersion, '2026-11-17-ns5-integration-v3');
+});
+
+// l4_p4_118 s0: the sibling is read from the L4 it wrote (`integration.defs.ts`), through the Studio fs (faked here).
+void test('readSiblingSystems reads the systems from the L4 of each sibling: one declares, one uses, one has no file', async () => {
+  const files: Record<string, { project: number; level: number; folder: string; shortName: string; extension: string; status: string; getValueInfo: () => Promise<{ content: string }>; getContent: () => Promise<string> }> = {};
+  const keyOf = (info: { project?: number; level?: number; folder?: string; shortName?: string; extension?: string }) =>
+    [info.project, info.level, info.folder, info.shortName, info.extension].join('|');
+  const before = { files: mls.stor.files, getKey: mls.stor.getKeyToFile, project: mls.actualProject };
+  mls.actualProject = 102047;
+  mls.stor.getKeyToFile = keyOf as typeof mls.stor.getKeyToFile;
+  mls.stor.files = files as unknown as typeof mls.stor.files;
+  const put = (moduleName: string, artifact: unknown) => {
+    const content = `export const ${moduleName}Integration = ${JSON.stringify(artifact, null, 2)};\n`;
+    const info = { project: 102047, level: 4, folder: moduleName, shortName: 'integration', extension: '.defs.ts' };
+    files[keyOf(info)] = { ...info, status: 'changed', getValueInfo: async () => ({ content }), getContent: async () => content };
+  };
+  try {
+    put('integrations', integrationModuleIntegration);
+    put('customers', usesSiblingSystemIntegration);
+    const names = ['integrations', 'customers', 'noL4Yet'];
+    const found = await readSiblingSystems(names.map(moduleName => ({ moduleName, roles: [], entities: [], events: [] })));
+    assert.deepEqual(found.map(item => item.moduleName), ['integrations']);
+    assert.deepEqual(found[0].systems.map(system => system.id), ['zipLookup']);
+    assert.deepEqual(found[0].systems[0].operations.map(operation => operation.operationId), ['findAddress', 'addressFound']);
+  } finally {
+    mls.stor.files = before.files;
+    mls.stor.getKeyToFile = before.getKey;
+    mls.actualProject = before.project;
+  }
 });
