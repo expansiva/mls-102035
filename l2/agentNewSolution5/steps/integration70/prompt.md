@@ -69,6 +69,10 @@ When the request names a system outside the app that this module must talk to, d
 - Say nothing about how: no address, method, header, body format, authentication scheme, library or types of
   input and output. The next layer decides those.
 
+A language model, or any other AI service, is never an external system. When the module needs AI, it uses the
+operations of the catalog connection that offers it (`cm`, see `## Connection catalog`); do not declare an AI
+service in `externalSystems`.
+
 When a sibling already declares the system (`## External systems the sibling modules already declare`), use it in
 `connections` and do not declare it again. Declare a system only when the request names one; do not invent one.
 

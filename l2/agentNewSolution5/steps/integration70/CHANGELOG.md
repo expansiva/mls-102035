@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-19 (l4_p4_120)
+
+- `prompt.md` (`## External systems`): a language model or any AI service is never declared in `externalSystems`; the module's AI goes through the catalog connection that offers it (`cm`). Prompt only, no gate.
+
 ## 2026-11-19 (l4_p4_117)
 
 - `externalSystems[]` on `submitNs5Integration`: the module declares the system outside the app it talks to (`{ id, title, description, settings[], operations[] }`, no address, method, format or authentication). A row of `connections` resolves against the platform catalog, then this module's systems, then a sibling's (read from the sibling's own `integration.defs.ts`). The artifact is `...-integration-v4` only when it declares a system; otherwise it stays v3. The model no longer writes `inbound`/`outbound` with `kind: external`; the gate still accepts what exists. The human prompt lists the siblings' systems.

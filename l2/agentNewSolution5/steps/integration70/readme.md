@@ -52,6 +52,7 @@ not a signal and is not an integration item.
 - A signal other than `connectionTerm`, with inbound, outbound, plugins and connections all empty, fails `NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM`.
 - A connection row names `connectionId` and `operationId` that resolve, in this order, against the platform catalog, a system this module declares, a system a sibling declares. `direction` is filled from the operation found. `call` needs a real `usedBy`. `entityRefs` and `effect` come together or not at all.
 - An external system: `id`, `settings[].id` and `operations[].operationId` are lowerCamel and unique at their level; `direction` is `call` or `serve`; `title` and `description` are not empty; `secret` is a boolean; `id` repeats neither a platform catalog connection nor a sibling's system (`NS5_INTEGRATION_SYSTEM_*`). The model no longer writes `inbound`/`outbound` with `kind: external`; the gate still accepts what already exists.
+- A language model or any AI service is never an `externalSystems` entry: the prompt sends the module to the catalog connection that offers AI (`cm`). Intent only, no gate (l4_p4_120); if a live run declares one anyway, it goes back to the planner.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
   the registry and l5, and marks the pipeline complete.
