@@ -949,3 +949,122 @@ void test('loadSnapshot reads journeys/index and each journey file', async () =>
     setModuleRoot(MODULE, null);
   }
 });
+
+// l4_p4_118 s1: connections[], plugins[] and externalSystems of the integration artifact are diff items with every attribute.
+const integrationSnap = (patch: Record<string, unknown> = {}): L4DiffSnapshot => snapshotFromParsed({
+  entities: [], rules: null, access: null, workflows: null,
+  integration: {
+    schemaVersion: '2026-11-19-ns5-integration-v4',
+    moduleName: 'codeReview',
+    inbound: [],
+    outbound: [],
+    plugins: [{ pluginId: 'stripe', usedBy: ['pay.charge'], description: 'Cards.' }],
+    connections: [
+      { connectionId: 'repoHost', operationId: 'listChanges', direction: 'call', usedBy: ['review.pick'], description: 'Reads the changes.' },
+      { connectionId: 'cm', operationId: 'readAgent', direction: 'call', usedBy: ['review.pick'], description: 'Reads an agent.' },
+    ],
+    externalSystems: [{
+      id: 'repoHost',
+      title: 'Repository host',
+      description: 'Where the code lives.',
+      settings: [{ id: 'repositoryAddress', title: 'Repository address', description: 'The repository.', secret: false }],
+      operations: [
+        { operationId: 'listChanges', direction: 'call', description: 'The latest changes.' },
+        { operationId: 'changePushed', direction: 'serve', description: 'A change was pushed.' },
+      ],
+    }],
+    ...patch,
+  } as unknown as Ns5IntegrationArtifact,
+});
+
+void test('p4_118: the same integration artifact has no diff', () => {
+  assert.deepEqual(diffL4Snapshots(integrationSnap(), integrationSnap()), []);
+});
+
+void test('p4_118: a connection row added, removed and changed is an item keyed by connectionId.operationId', () => {
+  const rows = (extra: unknown[]) => [
+    { connectionId: 'repoHost', operationId: 'listChanges', direction: 'call', usedBy: ['review.pick'], description: 'Reads the changes.' },
+    ...extra,
+  ];
+  const added = diffL4Snapshots(integrationSnap(), integrationSnap({
+    connections: rows([{ connectionId: 'cm', operationId: 'readAgent', direction: 'call', usedBy: ['review.pick'], description: 'Reads an agent.' }, { connectionId: 'cm', operationId: 'listAgents', direction: 'call', usedBy: ['review.pick'], description: 'Lists.' }]),
+  }));
+  assert.deepEqual(added.map(item => [item.changeId, item.op, item.kind]), [['connection:cm.listAgents', 'added', 'connection']]);
+  assert.equal(added[0].source, 'integration.defs.ts');
+  const removed = diffL4Snapshots(integrationSnap(), integrationSnap({ connections: rows([]) }));
+  assert.deepEqual(removed.map(item => [item.changeId, item.op]), [['connection:cm.readAgent', 'removed']]);
+  const changed = diffL4Snapshots(integrationSnap(), integrationSnap({
+    connections: rows([{ connectionId: 'cm', operationId: 'readAgent', direction: 'call', usedBy: ['review.other'], description: 'Reads an agent.' }]),
+  }));
+  assert.deepEqual(changed.map(item => [item.changeId, item.op]), [['connection:cm.readAgent', 'changed']]);
+  assert.equal(isTextOnlyChange(changed[0]), false);
+});
+
+void test('p4_118: a connection whose only difference is the description is text only', () => {
+  const items = diffL4Snapshots(integrationSnap(), integrationSnap({
+    connections: [
+      { connectionId: 'repoHost', operationId: 'listChanges', direction: 'call', usedBy: ['review.pick'], description: 'Reads the changes, newest first.' },
+      { connectionId: 'cm', operationId: 'readAgent', direction: 'call', usedBy: ['review.pick'], description: 'Reads an agent.' },
+    ],
+  }));
+  assert.equal(items.length, 1);
+  assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+void test('p4_118: a plugin row is an item keyed by pluginId', () => {
+  const items = diffL4Snapshots(integrationSnap(), integrationSnap({ plugins: [{ pluginId: 'stripe', usedBy: ['pay.charge', 'pay.refund'], description: 'Cards.' }] }));
+  assert.deepEqual(items.map(item => [item.changeId, item.op, item.kind]), [['plugin:stripe', 'changed', 'plugin']]);
+  const gone = diffL4Snapshots(integrationSnap(), integrationSnap({ plugins: [] }));
+  assert.deepEqual(gone.map(item => [item.changeId, item.op]), [['plugin:stripe', 'removed']]);
+});
+
+void test('p4_118: a new system, a new setting and a removed operation are items of the system, with all its attributes', () => {
+  const system = (settings: unknown[], operations: unknown[]) => ({
+    externalSystems: [{
+      id: 'repoHost', title: 'Repository host', description: 'Where the code lives.', settings, operations,
+    }],
+  });
+  const setting = { id: 'repositoryAddress', title: 'Repository address', description: 'The repository.', secret: false };
+  const list = { operationId: 'listChanges', direction: 'call', description: 'The latest changes.' };
+  const pushed = { operationId: 'changePushed', direction: 'serve', description: 'A change was pushed.' };
+  const newSetting = diffL4Snapshots(integrationSnap(), integrationSnap(system([setting, { id: 'accessKey', title: 'Access key', description: 'Reads.', secret: true }], [list, pushed])));
+  assert.deepEqual(newSetting.map(item => [item.changeId, item.op]), [['externalSystem:repoHost', 'changed']]);
+  assert.equal((newSetting[0].after as { settings: unknown[] }).settings.length, 2);
+  assert.equal((newSetting[0].before as { settings: unknown[] }).settings.length, 1);
+  assert.equal(isTextOnlyChange(newSetting[0]), false);
+  const noOperation = diffL4Snapshots(integrationSnap(), integrationSnap(system([setting], [list])));
+  assert.deepEqual(noOperation.map(item => [item.changeId, item.op]), [['externalSystem:repoHost', 'changed']]);
+  assert.equal((noOperation[0].before as { operations: unknown[] }).operations.length, 2);
+  const secretFlag = diffL4Snapshots(integrationSnap(), integrationSnap(system([{ ...setting, secret: true }], [list, pushed])));
+  assert.equal(secretFlag.length, 1);
+  const added = diffL4Snapshots(integrationSnap({ externalSystems: [] }), integrationSnap());
+  assert.deepEqual(added.map(item => [item.changeId, item.op]), [['externalSystem:repoHost', 'added']]);
+  const removed = diffL4Snapshots(integrationSnap(), integrationSnap({ externalSystems: [] }));
+  assert.deepEqual(removed.map(item => [item.changeId, item.op]), [['externalSystem:repoHost', 'removed']]);
+});
+
+void test('p4_118: a system whose only difference is title or description is text only', () => {
+  const items = diffL4Snapshots(integrationSnap(), integrationSnap({
+    externalSystems: [{
+      id: 'repoHost', title: 'Code host', description: 'Where the code of a project lives.',
+      settings: [{ id: 'repositoryAddress', title: 'Repository address', description: 'The repository.', secret: false }],
+      operations: [
+        { operationId: 'listChanges', direction: 'call', description: 'The latest changes.' },
+        { operationId: 'changePushed', direction: 'serve', description: 'A change was pushed.' },
+      ],
+    }],
+  }));
+  assert.equal(items.length, 1);
+  assert.equal(isTextOnlyChange(items[0]), true);
+});
+
+void test('p4_118: an artifact with none of the new lists (v2, v3) gives no new item', () => {
+  const old = snapshotFromParsed({
+    entities: [], rules: null, access: null, workflows: null,
+    integration: { schemaVersion: '2026-09-12-ns5-integration-v2', moduleName: 'm', inbound: [], outbound: [], plugins: [] } as unknown as Ns5IntegrationArtifact,
+  });
+  assert.deepEqual(old.connections, {});
+  assert.deepEqual(old.plugins, {});
+  assert.deepEqual(old.externalSystems, {});
+  assert.deepEqual(diffL4Snapshots(old, old), []);
+});

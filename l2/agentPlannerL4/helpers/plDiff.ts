@@ -168,6 +168,12 @@ export interface L4DiffSnapshot {
   processes: Record<string, ProcessSlice>;
   inbound: Record<string, IntegrationSlice>;
   outbound: Record<string, IntegrationSlice>;
+  /** `connectionId.operationId` → the whole row of `connections[]`. */
+  connections: Record<string, object>;
+  /** `pluginId` → the whole row of `plugins[]`. */
+  plugins: Record<string, object>;
+  /** `id` → the whole system, `settings` and `operations` inside: a changed, added or removed item shows. */
+  externalSystems: Record<string, object>;
   journeys: Record<string, JourneySlice>;
   steps: Record<string, StepSlice>;
 }
@@ -175,6 +181,7 @@ export interface L4DiffSnapshot {
 function emptySnapshot(): L4DiffSnapshot {
   return {
     entities: {}, rules: {}, grants: {}, processes: {}, inbound: {}, outbound: {},
+    connections: {}, plugins: {}, externalSystems: {},
     journeys: {}, steps: {},
   };
 }
@@ -504,6 +511,9 @@ export function snapshotFromParsed(input: {
   if (input.integration) {
     for (const item of input.integration.inbound || []) snap.inbound[item.id] = integrationSlice(item);
     for (const item of input.integration.outbound || []) snap.outbound[item.id] = integrationSlice(item);
+    for (const row of input.integration.connections || []) snap.connections[`${row.connectionId}.${row.operationId}`] = structuredClone(row);
+    for (const row of input.integration.plugins || []) snap.plugins[row.pluginId] = structuredClone(row);
+    for (const row of input.integration.externalSystems || []) snap.externalSystems[row.id] = structuredClone(row);
   }
   for (const row of input.journeys || []) {
     const journeyId = row.index.journeyId || row.journey.journeyId;
@@ -608,6 +618,9 @@ export function diffL4Snapshots(base: L4DiffSnapshot, candidate: L4DiffSnapshot)
   pushMapDiff(items, 'task', beforeTasks, afterTasks, () => 'workflows.defs.ts', () => '');
   pushMapDiff(items, 'inbound', base.inbound, candidate.inbound, () => 'integration.defs.ts', () => '');
   pushMapDiff(items, 'outbound', base.outbound, candidate.outbound, () => 'integration.defs.ts', () => '');
+  pushMapDiff(items, 'connection', base.connections, candidate.connections, () => 'integration.defs.ts', () => '');
+  pushMapDiff(items, 'plugin', base.plugins, candidate.plugins, () => 'integration.defs.ts', () => '');
+  pushMapDiff(items, 'externalSystem', base.externalSystems, candidate.externalSystems, () => 'integration.defs.ts', () => '');
   pushMapDiff(
     items, 'journey', base.journeys, candidate.journeys,
     (id) => `journeys/${id}.defs.ts`,
