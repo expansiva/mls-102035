@@ -9,7 +9,11 @@ import { fileURLToPath } from 'node:url';
 import { lintToolSchema } from '/_102025_/l2/toolSchemaLint.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { ownerStepId } from '/_102035_/l2/agentNewSolution5/helpers/ns5Core.js';
-import type { Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
+import type { Ns5IntegrationExternalSystem, Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
+import { repoInsideModuleIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/repoInsideModule-integration.defs.js';
+import { integrationModuleIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/integrationModule-integration.defs.js';
+import { usesSiblingSystemIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/usesSiblingSystem-integration.defs.js';
+import { agendaClinicaIntegration } from '/_102035_/l2/solution/fixtures/integration70/agendaClinica-integration.defs.js';
 import { buildNs5IntegrationHumanPrompt, buildNs5IntegrationTool } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
 import {
   NS5_INTEGRATION_DROP_TRANSITION_REF,
@@ -763,4 +767,63 @@ void test('human prompt lists the systems the siblings declare', () => {
     sourcePrompt: 'x', userLanguage: 'en', actors: [], entities: [], usedByRefs: [], siblings: [], inboundWriters: [], platformEventIds: [],
   });
   assert.match(none, /External systems the sibling modules already declare[^\n]*\n\(none\)/);
+});
+
+// l4_p4_117 s5: three artifacts of the three cases and one recorded v2, with no model call. The `.defs.ts`
+// fixtures are compiled by the project typecheck (`satisfies Ns5Readonly<Ns5IntegrationArtifact>`).
+const REHEARSAL_JOURNEYS = [
+  { journeyId: 'reviewChanges', stepIds: ['pickProject'] },
+  { journeyId: 'registerCustomer', stepIds: ['typeZipCode'] },
+];
+
+function rehearse(
+  artifact: unknown,
+  siblingSystems: Ns5IntegrationExternalSystem[] = [],
+  siblingNames: string[] = [],
+) {
+  const normalized = normalizeNs5IntegrationPayload(structuredClone(artifact), siblingSystems);
+  const gate = validateNs5Integration(normalized.inbound, normalized.outbound, normalized.plugins, {
+    actors: [],
+    entities: [],
+    registryModuleNames: siblingNames,
+    siblings: siblingNames.map(name => ({ moduleName: name, roles: [], entities: [], events: [] })),
+    sourcePrompt: 'rehearsal',
+    journeySteps: REHEARSAL_JOURNEYS,
+    siblingSystems,
+  }, normalized.connections, normalized.externalSystems);
+  const rebuilt = buildNs5IntegrationArtifact(
+    (artifact as { moduleName: string }).moduleName,
+    normalized.inbound, normalized.outbound, normalized.plugins, normalized.connections, normalized.externalSystems,
+  );
+  return { normalized, gate, rebuilt };
+}
+
+void test('rehearsal 1: the module declares its system and uses it', () => {
+  const { gate, rebuilt } = rehearse(repoInsideModuleIntegration);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.deepEqual(rebuilt, JSON.parse(JSON.stringify(repoInsideModuleIntegration)));
+});
+
+void test('rehearsal 2: the integration module declares the system and serves; it has no call of its own', () => {
+  const { gate, normalized, rebuilt } = rehearse(integrationModuleIntegration);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.deepEqual(normalized.connections.map(row => row.direction), ['serve']);
+  assert.deepEqual(rebuilt, JSON.parse(JSON.stringify(integrationModuleIntegration)));
+});
+
+void test('rehearsal 3: a module uses the system its sibling declares', () => {
+  const siblingSystems = JSON.parse(JSON.stringify(integrationModuleIntegration.externalSystems)) as Ns5IntegrationExternalSystem[];
+  const { gate, rebuilt } = rehearse(usesSiblingSystemIntegration, siblingSystems, ['integrations']);
+  assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  assert.deepEqual(rebuilt, JSON.parse(JSON.stringify(usesSiblingSystemIntegration)));
+  // Without the sibling's declaration the same row has nowhere to resolve.
+  const alone = rehearse(usesSiblingSystemIntegration);
+  assert.ok(alone.gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_CONNECTION_UNKNOWN'));
+});
+
+void test('rehearsal 4: a recorded v2 artifact is still read and rebuilt without a system', () => {
+  const { normalized, rebuilt } = rehearse(agendaClinicaIntegration);
+  assert.deepEqual(normalized.externalSystems, []);
+  assert.equal('externalSystems' in rebuilt, false);
+  assert.equal(rebuilt.schemaVersion, '2026-11-17-ns5-integration-v3');
 });
