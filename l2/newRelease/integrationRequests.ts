@@ -2,9 +2,10 @@
 
 import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
-import type { Ns5IntegrationRequestArtifact } from '/_102035_/l2/solution/types.js';
+import type { Ns5IntegrationExternalSystem, Ns5IntegrationRequestArtifact, Ns5IntegrationArtifact } from '/_102035_/l2/solution/types.js';
 import {
   normalizeModuleName,
+  indexedFile,
   readDefsJson,
   writeDefs,
   type Ns5FileInfo,
@@ -19,6 +20,7 @@ type FileRecord = Record<string, (mls.stor.IFileInfo & { getContent?: () => Prom
 
 export interface IntegrationWorkspace {
   siblings: Ns5SiblingModule[];
+  siblingSystems: Ns5IntegrationExternalSystem[];
   received: IntegrationRequestView[];
   sent: IntegrationRequestView[];
   errors: Array<{ path: string; message: string }>;
@@ -87,8 +89,24 @@ export async function readIntegrationWorkspace(project: number, moduleName: stri
       errors.push({ path, message: error instanceof Error ? error.message : String(error) });
     }
   }
+  const siblings = siblingsFromRegistry(registry, moduleName);
+  const siblingSystems: Ns5IntegrationExternalSystem[] = [];
+  for (const sibling of siblings) {
+    const file: Ns5FileInfo = { project, level: 4, folder: sibling.moduleName, shortName: 'integration', extension: '.defs.ts' };
+    const indexed = indexedFile(file);
+    if (!indexed || indexed.status === 'deleted') continue;
+    const path = `l4/${file.folder}/integration.defs.ts`;
+    try {
+      const value = await readDefsJson<Ns5IntegrationArtifact>(file);
+      if (!value) throw new Error('Invalid integration artifact');
+      siblingSystems.push(...(value.externalSystems || []));
+    } catch (error) {
+      errors.push({ path, message: error instanceof Error ? error.message : String(error) });
+    }
+  }
   return {
-    siblings: siblingsFromRegistry(registry, moduleName),
+    siblings,
+    siblingSystems,
     received: requests.filter(request => requestDirection(request, moduleName) === 'received'),
     sent: requests.filter(request => requestDirection(request, moduleName) === 'sent'),
     errors,

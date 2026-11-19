@@ -61,7 +61,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
   @state() private saving = false;
   private snapshot = '';
   @state() private draft: Ns5IntegrationArtifact | null = null;
-  @state() private workspace: IntegrationWorkspace = { siblings: [], received: [], sent: [], errors: [] };
+  @state() private workspace: IntegrationWorkspace = { siblings: [], siblingSystems: [], received: [], sent: [], errors: [] };
   @state() private loadingWorkspace = false;
   @state() private gateIssues: IntegrationIssueView[] = [];
   @state() private suppliedIssues: NewReleaseValidationIssue[] = [];
@@ -155,6 +155,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
     if (!this.draft || !this.dirty || this.saving || this.version.startsWith('release:')) return;
     this.saving = true;
     try {
+      if (this.loadingWorkspace || this.workspace.errors.length) throw new Error(this.workspace.errors.map(error => `${error.path}: ${error.message}`).join('\n') || 'Integration workspace is loading');
       const gate = await import('/_102035_/l2/solution/gates/integration70/gate.js');
       const result = gate.validateNs5Integration(this.draft.inbound, this.draft.outbound, this.draft.plugins, {
         moduleName: this.moduleName,
@@ -162,10 +163,11 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
         entities: this.entities().map(ns5OntologyEntityView),
         registryModuleNames: [this.moduleName, ...this.workspace.siblings.map(sibling => sibling.moduleName)],
         siblings: this.siblingsForGate(),
+        siblingSystems: this.workspace.siblingSystems,
         sourcePrompt: this.data?.module?.sourcePrompt || '',
         journeySteps: this.journeys().map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
         processTasks: this.workflows()?.processes.map(process => ({ processId: process.processId, taskIds: process.tasks.map(task => task.taskId) })) || [],
-      });
+      }, this.draft.connections || [], this.draft.externalSystems || []);
       this.gateIssues = result.issues;
       if (!result.ok) {
         this.editMessage = this.t('integration.gateBlocked');
