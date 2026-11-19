@@ -33,9 +33,12 @@ export type Ns5WorkflowsSchemaVersion =
 export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 /** What integration70 writes. v3 adds `connections`. Recorded modules stay on v2. */
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-11-17-ns5-integration-v3' as const;
+/** v4 adds `externalSystems`. Written only by an artifact that declares one; every other artifact stays on v3. */
+export const NS5_INTEGRATION_SCHEMA_VERSION_V4 = '2026-11-19-ns5-integration-v4' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSIONS = [
   '2026-09-12-ns5-integration-v2',
   NS5_INTEGRATION_SCHEMA_VERSION,
+  NS5_INTEGRATION_SCHEMA_VERSION_V4,
 ] as const;
 export const NS5_INTEGRATION_REQUEST_SCHEMA_VERSION = '2026-09-12-ns5-integration-request-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
@@ -804,6 +807,32 @@ export interface Ns5IntegrationConnection {
   description: string;
 }
 
+/** A system outside the app that this module talks to. Declared by the module; the platform knows none of it. */
+export interface Ns5IntegrationExternalSystem {
+  /** lowerCamel, unique in the project. It is the `connectionId` of the rows of `connections`. */
+  id: string;
+  title: string;
+  /** What the system is and what the module uses it for. Intent, in the user language. */
+  description: string;
+  /** What an admin fills in on the configuration page of the module. Empty is valid. */
+  settings: Array<{
+    /** lowerCamel, unique in the system. */
+    id: string;
+    title: string;
+    description: string;
+    /** true: never shown again after it is saved (an access key). */
+    secret: boolean;
+  }>;
+  /** What the module asks of the system (call) and what the system tells the module (serve). */
+  operations: Array<{
+    /** lowerCamel, unique in the system. */
+    operationId: string;
+    direction: 'call' | 'serve';
+    /** Intent, not a script: what is asked or what arrives. */
+    description: string;
+  }>;
+}
+
 /** Queued request that a sibling (or a predicted module) publish an event. */
 export interface Ns5IntegrationRequestArtifact {
   schemaVersion: typeof NS5_INTEGRATION_REQUEST_SCHEMA_VERSION;
@@ -830,6 +859,8 @@ export interface Ns5IntegrationArtifact {
   plugins: Ns5IntegrationPlugin[];
   /** Closed-catalog connection operations. Optional so existing defs keep compiling; builders omit it when empty. */
   connections?: Ns5IntegrationConnection[];
+  /** Systems outside the app declared by this module (v4). Omitted when none. */
+  externalSystems?: Ns5IntegrationExternalSystem[];
 }
 
 export type Ns5PipelineStatus = 'inProgress' | 'awaitingStep' | 'complete' | 'failed';
