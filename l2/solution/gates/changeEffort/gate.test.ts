@@ -256,3 +256,28 @@ test('a fixture dourada agendaClinica regra anotação passa no gate', () => {
     '102021:usecase:registrarAtendimento',
   ]);
 });
+
+test('l4_p4_121: a unidade externalConnection (um def: declaração e adaptador) é aceita; um kind inventado é recusado', () => {
+  const connection = { kind: 'externalConnection' as const, id: 'repoHost', path: 'l1/codeReview/layer_1_external/connections/repoHost.defs.ts' };
+  const perItem = [{
+    item: 'externalSystem:repoHost',
+    answers: [answer(l1, { item: 'externalSystem:repoHost', status: 'computed', regenerateDefs: [connection], materialize: [connection] })],
+  }];
+  const merged = mergeChangeEffort(perItem);
+  assert.deepEqual(merged.regenerateDefs, [{ ...connection, project: '102021' }]);
+  const result = validateChangeEffort(file({
+    perItem,
+    merged,
+    request: {
+      text: 'declare o sistema',
+      items: [{ changeId: 'externalSystem:repoHost', kind: 'externalSystem', op: 'added', entity: '', source: 'integration.defs.ts' }],
+    },
+  }));
+  assert.equal(result.ok, true, result.ok ? '' : JSON.stringify(result.issues));
+  const bogus = { ...connection, kind: 'externalConnexion' as 'page' };
+  const refused = validateChangeEffort(file({
+    perItem: [{ item: 'rule:anotacao', answers: [answer(l1, { status: 'computed', materialize: [bogus] })] }],
+  }));
+  assert.equal(refused.ok, false);
+  assert.equal(!refused.ok && refused.issues.some(issue => issue.code === 'schema' && /\.kind$/.test(issue.path)), true);
+});
