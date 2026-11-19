@@ -2,6 +2,8 @@
 
 import type {
   Ns5IntegrationArtifact,
+  Ns5IntegrationConnection,
+  Ns5IntegrationExternalSystem,
   Ns5IntegrationItem,
   Ns5IntegrationPlugin,
   Ns5IntegrationRequestArtifact,
@@ -33,6 +35,8 @@ export interface IntegrationView {
   inbound: Ns5IntegrationItem[];
   outbound: Ns5IntegrationItem[];
   plugins: IntegrationPluginView[];
+  connections: Ns5IntegrationConnection[];
+  externalSystems: Ns5IntegrationExternalSystem[];
   raw: unknown;
 }
 
@@ -94,6 +98,37 @@ export function normalizeIntegration(value: unknown): IntegrationView {
     inbound: Array.isArray(root.inbound) ? root.inbound.map(itemOf) : [],
     outbound: Array.isArray(root.outbound) ? root.outbound.map(itemOf) : [],
     plugins,
+    connections: Array.isArray(root.connections) ? root.connections.map(value => {
+      const item = record(value);
+      return {
+        connectionId: String(item.connectionId || ''),
+        operationId: String(item.operationId || ''),
+        direction: item.direction === 'serve' ? 'serve' as const : 'call' as const,
+        usedBy: strings(item.usedBy),
+        ...(Array.isArray(item.entityRefs) ? {entityRefs: strings(item.entityRefs)} : {}),
+        ...(typeof item.effect === 'string' ? {effect: item.effect as Ns5IntegrationConnection['effect']} : {}),
+        description: String(item.description || ''),
+      };
+    }) : [],
+    externalSystems: Array.isArray(root.externalSystems) ? root.externalSystems.map(value => {
+      const system = record(value);
+      return {
+        id: String(system.id || ''),
+        title: String(system.title || ''),
+        description: String(system.description || ''),
+        settings: Array.isArray(system.settings) ? system.settings.map(value => {
+          const setting = record(value);
+          return {id: String(setting.id || ''), title: String(setting.title || ''),
+            description: String(setting.description || ''), secret: setting.secret === true};
+        }) : [],
+        operations: Array.isArray(system.operations) ? system.operations.map(value => {
+          const operation = record(value);
+          return {operationId: String(operation.operationId || ''),
+            direction: operation.direction === 'serve' ? 'serve' as const : 'call' as const,
+            description: String(operation.description || '')};
+        }) : [],
+      };
+    }) : [],
     raw: value,
   };
 }
@@ -139,4 +174,46 @@ export function patchIntegrationItem(
   return {...artifact, [lane]: artifact[lane].map((item, position) => position === index
     ? {...item, ...values}
     : item)};
+}
+
+type Setting = Ns5IntegrationExternalSystem['settings'][number];
+type Operation = Ns5IntegrationExternalSystem['operations'][number];
+
+export function patchExternalSystem(
+  artifact: Ns5IntegrationArtifact, systemId: string,
+  patch: Partial<Pick<Ns5IntegrationExternalSystem, 'title' | 'description'>>,
+): Ns5IntegrationArtifact {
+  const {title, description} = patch;
+  return {...artifact, externalSystems: artifact.externalSystems?.map(system => system.id === systemId
+    ? {...system, ...(title !== undefined ? {title} : {}), ...(description !== undefined ? {description} : {})}
+    : system)};
+}
+
+export function patchExternalSetting(
+  artifact: Ns5IntegrationArtifact, systemId: string, settingId: string,
+  patch: Partial<Pick<Setting, 'title' | 'description' | 'secret'>>,
+): Ns5IntegrationArtifact {
+  const {title, description, secret} = patch;
+  return {...artifact, externalSystems: artifact.externalSystems?.map(system => system.id === systemId
+    ? {...system, settings: system.settings.map(setting => setting.id === settingId
+      ? {...setting, ...(title !== undefined ? {title} : {}), ...(description !== undefined ? {description} : {}),
+        ...(secret !== undefined ? {secret} : {})}
+      : setting)}
+    : system)};
+}
+
+export function patchExternalOperation(
+  artifact: Ns5IntegrationArtifact, systemId: string, operationId: string,
+  patch: Partial<Pick<Operation, 'direction' | 'description'>>,
+): Ns5IntegrationArtifact {
+  const {direction, description} = patch;
+  return {...artifact, externalSystems: artifact.externalSystems?.map(system => system.id === systemId
+    ? {...system, operations: system.operations.map(operation => operation.operationId === operationId
+      ? {...operation, ...(direction !== undefined ? {direction} : {}), ...(description !== undefined ? {description} : {})}
+      : operation)}
+    : system),
+    ...(direction !== undefined && artifact.connections ? {connections: artifact.connections.map(connection =>
+      connection.connectionId === systemId && connection.operationId === operationId
+        ? {...connection, direction}
+        : connection)} : {})};
 }

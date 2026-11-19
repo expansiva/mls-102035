@@ -11,6 +11,9 @@ import {
   integrationOracleIssues,
   normalizeIntegration,
   patchIntegrationItem,
+  patchExternalSystem,
+  patchExternalSetting,
+  patchExternalOperation,
   requestDirection,
   requestExportName,
 } from './integrationModel.js';
@@ -64,8 +67,61 @@ test('reads v4 as current while preserving legacy lists and the complete artifac
   assert.equal(view.inbound[0].id, 'received');
   assert.equal(view.outbound[0].id, 'sent');
   assert.equal(view.plugins[0].pluginId, 'stripe');
+  assert.deepEqual(view.connections, artifact.connections);
+  assert.deepEqual(view.externalSystems, artifact.externalSystems);
   assert.strictEqual(view.raw, artifact);
   assert.strictEqual(integrationArtifactFromView(view), artifact);
+});
+
+test('normalizes nested v4 systems and connections while retaining raw input', () => {
+  const raw = {schemaVersion: '2026-11-19-ns5-integration-v4',
+    connections: [{connectionId: 'mail', operationId: 'send', direction: 'call', usedBy: ['flow.send'], description: 'Send'}],
+    externalSystems: [{id: 'mail', title: 'Mail', description: 'Email',
+      settings: [{id: 'key', title: 'API key', description: 'Credential', secret: true}],
+      operations: [{operationId: 'send', direction: 'call', description: 'Send mail'}]}]};
+  const view = normalizeIntegration(raw);
+  assert.deepEqual(view.connections, raw.connections);
+  assert.deepEqual(view.externalSystems, raw.externalSystems);
+  assert.strictEqual(view.raw, raw);
+  for (const version of ['integration-v1', 'integration-v2', 'integration-v3']) {
+    const legacy = normalizeIntegration({schemaVersion: version});
+    assert.deepEqual(legacy.connections, []);
+    assert.deepEqual(legacy.externalSystems, []);
+  }
+});
+
+test('system, setting and operation patches preserve identities, sibling lists and source', () => {
+  const original: Ns5IntegrationArtifact = {
+    schemaVersion: '2026-11-19-ns5-integration-v4', moduleName: 'orders', inbound: [], outbound: [], plugins: [],
+    connections: [
+      {connectionId: 'mail', operationId: 'send', direction: 'call', usedBy: [], description: 'Send'},
+      {connectionId: 'mail', operationId: 'receive', direction: 'serve', usedBy: ['flow.receive'], description: 'Receive'},
+      {connectionId: 'other', operationId: 'send', direction: 'call', usedBy: [], description: 'Other send'},
+    ],
+    externalSystems: [
+      {id: 'mail', title: 'Mail', description: 'Email',
+        settings: [{id: 'key', title: 'Key', description: 'Old', secret: true}, {id: 'url', title: 'URL', description: 'Host', secret: false}],
+        operations: [{operationId: 'send', direction: 'call', description: 'Old'}, {operationId: 'receive', direction: 'serve', description: 'Arrival'}]},
+      {id: 'other', title: 'Other', description: 'Other system', settings: [], operations: []},
+    ],
+  };
+  const snapshot = structuredClone(original);
+  const system = patchExternalSystem(original, 'mail', {title: 'Mailer', ...{id: 'renamed', settings: []}});
+  const setting = patchExternalSetting(system, 'mail', 'key', {secret: false, description: 'New', ...{id: 'renamed'}});
+  assert.deepEqual(system.connections, snapshot.connections);
+  assert.deepEqual(setting.connections, snapshot.connections);
+  const operation = patchExternalOperation(setting, 'mail', 'send', {direction: 'serve', description: 'New', ...{operationId: 'renamed'}});
+  assert.deepEqual(operation.externalSystems?.[0], {
+    ...snapshot.externalSystems?.[0], title: 'Mailer',
+    settings: [{id: 'key', title: 'Key', description: 'New', secret: false}, snapshot.externalSystems?.[0].settings[1]],
+    operations: [{operationId: 'send', direction: 'serve', description: 'New'}, snapshot.externalSystems?.[0].operations[1]],
+  });
+  assert.deepEqual(operation.externalSystems?.[1], snapshot.externalSystems?.[1]);
+  assert.deepEqual(operation.connections, [
+    {...snapshot.connections?.[0], direction: 'serve'},
+    snapshot.connections?.[1], snapshot.connections?.[2],
+  ]);
+  assert.deepEqual(original, snapshot);
 });
 
 test('only recognized current versions expose their raw artifact', () => {
