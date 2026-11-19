@@ -41,7 +41,9 @@ import {
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5CompileRecord,
+  Ns5IntegrationArtifact,
   Ns5IntegrationConnection,
+  Ns5IntegrationExternalSystem,
   Ns5IntegrationItem,
   Ns5IntegrationPlugin,
   Ns5JourneyArtifact,
@@ -70,7 +72,7 @@ export function buildNs5IntegrationTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Integration',
-    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, platform plugins used by a journey step or process task, and closed-catalog connection operations. Empty lists are valid only when no structural signal exists.',
+    'Submit what enters and leaves the module: inbound events that write entities, outbound events bound to a transition or create, platform plugins used by a journey step or process task, systems outside the app the module declares, and the connection operations (platform catalog, this module\'s systems or a sibling\'s) it calls or serves. Empty lists are valid only when no structural signal exists.',
     schema,
   );
 }
@@ -105,6 +107,32 @@ async function readUsedByRefs(moduleName: string): Promise<string[]> {
   return refs;
 }
 
+/**
+ * The systems the siblings declare, read from the L4 each sibling wrote (`integration.defs.ts`), never from a
+ * written list. A sibling with no integration artifact, or one that declares none, adds nothing.
+ */
+async function readSiblingSystems(
+  siblings: readonly Ns5SiblingModule[],
+): Promise<Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }>> {
+  const out: Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }> = [];
+  for (const sibling of siblings) {
+    const artifact = await readDefsJson<Ns5IntegrationArtifact>(integrationFile(sibling.moduleName));
+    const systems = artifact?.externalSystems ?? [];
+    if (systems.length) out.push({ moduleName: sibling.moduleName, systems });
+  }
+  return out;
+}
+
+function formatSiblingSystems(
+  siblingSystems: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>,
+): string {
+  const lines = siblingSystems.flatMap(({ moduleName, systems }) => systems.map(system => {
+    const operations = system.operations.map(operation => `${operation.operationId} (${operation.direction}: ${operation.description})`).join('; ') || '(none)';
+    return `- ${system.id} · declared by ${moduleName} · ${system.description} · operations: ${operations}`;
+  }));
+  return lines.length ? lines.join('\n') : '(none)';
+}
+
 export function buildNs5IntegrationHumanPrompt(input: {
   sourcePrompt: string;
   userLanguage: string;
@@ -113,6 +141,8 @@ export function buildNs5IntegrationHumanPrompt(input: {
   /** Every `journeyId.stepId` and `processId.taskId` that exists. `usedBy` may name nothing else. */
   usedByRefs: readonly string[];
   siblings: readonly Ns5SiblingModule[];
+  /** `externalSystems` the sibling modules declare in their own L4. A row of `connections` may name them. */
+  siblingSystems?: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>;
   inboundWriters: string[];
   platformEventIds: string[];
   gateFeedback?: string;
@@ -165,6 +195,9 @@ export function buildNs5IntegrationHumanPrompt(input: {
       `- ${catalog.connectionId}.${operation.operationId} · ${operation.direction} · ${operation.kind} · ${operation.description}`,
     )).join('\n') || '(none)',
     '',
+    '## External systems the sibling modules already declare (use theirs in connections; never declare one again)',
+    formatSiblingSystems(input.siblingSystems || []),
+    '',
     '## Integration signals (why this call ran)',
     signals.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
@@ -200,9 +233,10 @@ export async function beforeNs5IntegrationPromptStep(
         updateStatus(context, parentStep, step, hookSequential, 'completed', `integration70 approved with noIntegrationSignal: ${artifactPath}`),
       ];
     }
-    const [entities, usedByRefs, prompt, schema, previous] = await Promise.all([
+    const [entities, usedByRefs, siblingSystems, prompt, schema, previous] = await Promise.all([
       readEntities(moduleName),
       readUsedByRefs(moduleName),
+      readSiblingSystems(siblings),
       readAgentText('steps/integration70', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'integration.schema', '.json'),
       moduleName ? readJson(draftFile(moduleName, 'integration70')) : Promise.resolve(null),
@@ -218,6 +252,7 @@ export async function beforeNs5IntegrationPromptStep(
         transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
       })),
       siblings,
+      siblingSystems,
       usedByRefs,
       inboundWriters: entities.filter(entity => entity.writer === 'inbound').map(entity => entity.entityId),
       platformEventIds: ns5PlatformEventIds(),
@@ -259,7 +294,6 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(failure);
     }
 
-    const { inbound, outbound, plugins, connections, normalizations } = normalizeNs5IntegrationPayload(payload);
     const moduleArtifact = await readModule(moduleName);
     const [entities, actors, siblings, coverage] = await Promise.all([
       readEntities(moduleName),
@@ -267,6 +301,8 @@ export async function afterNs5IntegrationPromptStep(
       readNs5Siblings(moduleName),
       readCoverage(moduleName),
     ]);
+    const siblingSystems = (await readSiblingSystems(siblings)).flatMap(item => item.systems);
+    const { inbound, outbound, plugins, connections, externalSystems, normalizations } = normalizeNs5IntegrationPayload(payload, siblingSystems);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     let pipeline = await requirePipeline(moduleName);
     pipeline = await writeStepState(pipeline, {
@@ -278,6 +314,7 @@ export async function afterNs5IntegrationPromptStep(
       outbound,
       plugins,
       ...(connections.length ? { connections } : {}),
+      ...(externalSystems.length ? { externalSystems } : {}),
       ...(normalizations.length ? { normalizations } : {}),
     });
     const gate = validateNs5Integration(inbound, outbound, plugins, {
@@ -294,7 +331,8 @@ export async function afterNs5IntegrationPromptStep(
       journeySteps: coverage.journeySteps,
       processTasks: coverage.processTasks,
       platformEventIds: ns5PlatformEventIds(),
-    }, connections);
+      siblingSystems,
+    }, connections, externalSystems);
     if (!gate.ok) {
       const feedback = formatNs5IntegrationGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -312,7 +350,7 @@ export async function afterNs5IntegrationPromptStep(
       throw new Error(feedback);
     }
 
-    const { artifactPath, compile } = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations, connections);
+    const { artifactPath, compile } = await persistArtifacts(moduleName, inbound, outbound, plugins, pipeline, false, normalizations, connections, externalSystems);
     if (compile.status === 'errors') {
       const feedback = formatNs5CompileFeedback(compile);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -346,8 +384,9 @@ async function persistArtifacts(
   noIntegrationSignal: boolean,
   normalizations: Array<{ kind: string; inboundId?: string; detail: string }> = [],
   connections: Ns5IntegrationConnection[] = [],
+  externalSystems: Ns5IntegrationExternalSystem[] = [],
 ): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
-  const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins, connections);
+  const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins, connections, externalSystems);
   const artifactPath = await writeDefs(integrationFile(moduleName), `${moduleName}Integration`, artifact, 'Ns5IntegrationArtifact');
   await writeJson(draftFile(moduleName, 'integration70'), {
     ...artifact,

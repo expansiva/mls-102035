@@ -716,3 +716,51 @@ void test('l4_p4_109: an inbound from a connection that no serve row matches is 
     ['inbound[0].from'],
   );
 });
+
+void test('the tool asks for externalSystems, always present, with no field about how to reach the system', () => {
+  const schema = loadSchema() as { required: string[]; $defs: Record<string, { properties: Record<string, unknown>; required: string[] }> };
+  assert.ok(schema.required.includes('externalSystems'));
+  const system = schema.$defs.externalSystem;
+  assert.deepEqual(Object.keys(system.properties).sort(), ['description', 'id', 'operations', 'settings', 'title']);
+  assert.deepEqual([...system.required].sort(), ['description', 'id', 'operations', 'settings', 'title']);
+  assert.doesNotMatch(JSON.stringify(system), /url|address|endpoint|method|header|auth|format|inputType|outputType/i);
+});
+
+void test('the prompt explains the declared system as intent only', () => {
+  const prompt = readFileSync(path.join(HERE, 'prompt.md'), 'utf8');
+  assert.match(prompt, /externalSystems/);
+  assert.match(prompt, /Say nothing about how/);
+  assert.match(prompt, /already declares the system/);
+  assert.match(prompt, /do not declare it again/);
+  assert.doesNotMatch(prompt, /github|zip ?code|\bcep\b/i);
+});
+
+void test('human prompt lists the systems the siblings declare', () => {
+  const human = buildNs5IntegrationHumanPrompt({
+    sourcePrompt: 'the module reads the address of a zip code',
+    userLanguage: 'en',
+    actors: [],
+    entities: [],
+    usedByRefs: [],
+    siblings: [{ moduleName: 'lookups', roles: [], entities: [], events: [] }],
+    siblingSystems: [{
+      moduleName: 'lookups',
+      systems: [{
+        id: 'zipLookup',
+        title: 'Zip code lookup',
+        description: 'Finds the address of a zip code.',
+        settings: [],
+        operations: [{ operationId: 'findAddress', direction: 'call', description: 'The address of one zip code.' }],
+      }],
+    }],
+    inboundWriters: [],
+    platformEventIds: [],
+  });
+  assert.match(human, /External systems the sibling modules already declare/);
+  assert.match(human, /zipLookup · declared by lookups/);
+  assert.match(human, /findAddress \(call: The address of one zip code\.\)/);
+  const none = buildNs5IntegrationHumanPrompt({
+    sourcePrompt: 'x', userLanguage: 'en', actors: [], entities: [], usedByRefs: [], siblings: [], inboundWriters: [], platformEventIds: [],
+  });
+  assert.match(none, /External systems the sibling modules already declare[^\n]*\n\(none\)/);
+});

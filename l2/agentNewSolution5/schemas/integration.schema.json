@@ -8,7 +8,8 @@
     "inbound",
     "outbound",
     "plugins",
-    "connections"
+    "connections",
+    "externalSystems"
   ],
   "properties": {
     "schemaVersion": { "type": "string", "const": "2026-11-17-ns5-integration-v3" },
@@ -28,9 +29,50 @@
     "connections": {
       "type": "array",
       "items": { "$ref": "#/$defs/connection" }
+    },
+    "externalSystems": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/externalSystem" }
     }
   },
   "$defs": {
+    "externalSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "description", "settings", "operations"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "description", "secret"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+              "title": { "type": "string", "minLength": 1 },
+              "description": { "type": "string", "minLength": 1 },
+              "secret": { "type": "boolean" }
+            }
+          }
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["operationId", "direction", "description"],
+            "properties": {
+              "operationId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+              "direction": { "type": "string", "enum": ["call", "serve"] },
+              "description": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
     "inboundItem": {
       "type": "object",
       "additionalProperties": false,

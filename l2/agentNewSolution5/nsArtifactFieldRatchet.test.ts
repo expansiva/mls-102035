@@ -51,6 +51,7 @@ const CONTRACTS: Record<string, { file: string; name: string }> = {
   Ns5IntegrationItem: { file: TYPES, name: 'Ns5IntegrationItem' },
   Ns5IntegrationPlugin: { file: TYPES, name: 'Ns5IntegrationPlugin' },
   Ns5IntegrationConnection: { file: TYPES, name: 'Ns5IntegrationConnection' },
+  Ns5IntegrationExternalSystem: { file: TYPES, name: 'Ns5IntegrationExternalSystem' },
   Ns5IntegrationRequestArtifact: { file: TYPES, name: 'Ns5IntegrationRequestArtifact' },
   Ns5IntegrationArtifact: { file: TYPES, name: 'Ns5IntegrationArtifact' },
 };
@@ -376,6 +377,14 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     outbound: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, registry events, finalize80 I12', since: '2026-09-10' },
     plugins: { reader: 'steps/integration70/gate.ts, sidecar / basic backend, finalize80 I12', since: '2026-09-10' },
     connections: { reader: 'steps/integration70/gate.ts (l4_p4_107 s2b), finalize80 I12 (s2d), L1 persistence and connection ports', since: '2026-11-17' },
+    externalSystems: { reader: 'steps/integration70/gate.ts (validateExternalSystems), solution/helpers/connectionCatalog.ts, the step reading a sibling\'s systems (l4_p4_117)', since: '2026-11-19' },
+  },
+  Ns5IntegrationExternalSystem: {
+    id: { reader: 'steps/integration70/gate.ts (id shape, uniqueness, no platform or sibling repeat), connectionCatalog.ts', since: '2026-11-19' },
+    title: { reader: 'steps/integration70/gate.ts (not empty), planner / UI', since: '2026-11-19' },
+    description: { reader: 'steps/integration70/gate.ts (not empty), planner / UI', since: '2026-11-19' },
+    settings: { reader: 'steps/integration70/gate.ts (validateExternalSystems)', since: '2026-11-19' },
+    operations: { reader: 'steps/integration70/gate.ts (validateExternalSystems), connectionCatalog.ts', since: '2026-11-19' },
   },
 };
 

@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-19 (l4_p4_117)
+
+- `externalSystems[]` on `submitNs5Integration`: the module declares the system outside the app it talks to (`{ id, title, description, settings[], operations[] }`, no address, method, format or authentication). A row of `connections` resolves against the platform catalog, then this module's systems, then a sibling's (read from the sibling's own `integration.defs.ts`). The artifact is `...-integration-v4` only when it declares a system; otherwise it stays v3. The model no longer writes `inbound`/`outbound` with `kind: external`; the gate still accepts what exists. The human prompt lists the siblings' systems.
+
 ## 2026-11-18 (l4_p4_109 s2)
 
 - An arrival from a catalog connection is a `serve` row of `connections`, never an `inbound` too. Normalize drops an `inbound` (`kind: external`, `from` = a catalog connection) that a `serve` row of that connection repeats (same entity, `create`/`update`); the gate charges any other such `inbound` (`NS5_INTEGRATION_INBOUND_NO_SERVE`). The three texts that told the model to write `inbound.writes` now also name the `serve` row.

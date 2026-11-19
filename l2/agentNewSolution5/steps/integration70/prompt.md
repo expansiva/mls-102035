@@ -14,7 +14,7 @@ A module talks to another module by publishing or receiving an event, calling a 
 talking to an external system, or using a platform plugin. Shared master data (a person, company or
 product already in the organization catalog) is not an integration.
 
-Empty `inbound`, `outbound`, `plugins` and `connections` arrays are valid only when the human prompt lists no
+Empty `inbound`, `outbound`, `plugins`, `connections` and `externalSystems` arrays are valid only when the human prompt lists no
 structural signal (no `kind: system` actor, no platform-plugin term, no connection-catalog term, and no sibling module). This
 call does not run in that case.
 
@@ -32,30 +32,53 @@ with `effect: transition`.
   (platform catalog events listed in the human prompt), or a predicted sibling not yet in the
   registry (allowed; the gate marks `unknownModule`). `event` defaults to `id`.
 - `kind: moduleEndpoint` — another module calls this one. `from` is that module.
-- `kind: external` — a system outside the organization. `from` is that system's lowerCamel id.
+- `kind: external` — do not write it. Anything exchanged with a system outside the app is an entry of
+  `externalSystems` plus rows of `connections` (see below).
 
 An entity listed in the human prompt as `writer=inbound` **must** appear in some `inbound.writes`, or in the
 `entityRefs` of a `serve` row of `connections` whose `effect` is `create` or `update`.
 
-An arrival from a connection of the catalog (`## Connection catalog`) is **never** an inbound row: it is a `serve`
-row of `connections`. Do not write an `inbound` of `kind: external` whose `from` is a catalog connection; the
-connection publishes only the operations the catalog lists.
+An arrival from a connection (the platform catalog `## Connection catalog` or a system declared in
+`externalSystems`) is **never** an inbound row: it is a `serve` row of `connections`. Do not write an `inbound` of
+`kind: external`; a connection delivers only the operations it lists.
 Do not invent an event the request does not name.
 
 ## Outbound
 
 Each outbound row is `{ id, kind, to, event, on, entityRefs[], description }`. `on` is
 `Entity.transitionId` or `Entity.create` of **this** module — the gate checks it exists. `to` is a
-sibling folder, `any`, or an external system. `event` is the published event id.
+sibling folder or `any`. `event` is the published event id.
 
 When siblings exist, publish the transitions other modules may need. Do not duplicate a sibling's
 entity; point at it with inbound/outbound.
 
+## External systems
+
+When the request names a system outside the app that this module must talk to, declare it in
+`externalSystems`; the platform knows nothing about it. Each entry is
+`{ id, title, description, settings[], operations[] }`.
+
+- `id` is lowerCamel and unique in the project. It is the `connectionId` of the rows in `connections`. It must
+  not repeat a connection of the platform catalog, nor a system a sibling already declares.
+- `description` says what the system is and what this module uses it for, in the user language.
+- `settings` are the values an admin must give to the module for this system, in business words (for example
+  where the system is, or the key that gives access). Each is `{ id, title, description, secret }`; `secret` is
+  true when the value must never be shown again after it is saved. A system that needs none has an empty list.
+- `operations` are what the module asks of the system (`call`) and what the system tells the module (`serve`).
+  Each is `{ operationId, direction, description }`; the description says what is asked or what arrives.
+- Say nothing about how: no address, method, header, body format, authentication scheme, library or types of
+  input and output. The next layer decides those.
+
+When a sibling already declares the system (`## External systems the sibling modules already declare`), use it in
+`connections` and do not declare it again. Declare a system only when the request names one; do not invent one.
+
 ## Connections
 
-A connection is one operation from the closed catalog in the human prompt (`## Connection catalog`).
+A connection row is one operation of one connection: from the platform catalog in the human prompt
+(`## Connection catalog`), from a system this module declares in `externalSystems`, or from a system a sibling
+declares. Everything exchanged with a system outside the app is a row here.
 Each row is `{ connectionId, operationId, usedBy, entityRefs, effect?, description }`. Do not send
-`direction` or `kind`; they come from the catalog. Do not invent a connection or an operation.
+`direction` or `kind`; they come from the operation. Do not invent a connection or an operation.
 
 On a `call`, `usedBy` is `journeyId.stepId` or `processId.taskId` from the human prompt. On a `serve`,
 `usedBy` is a short sentence of what the arrival does.
@@ -75,4 +98,4 @@ data.
 Write every human-facing value (`description`) in the module `userLanguage`. Ids stay lowerCamel.
 Entity ids stay UpperCamel.
 
-`schemaVersion` is `2026-11-17-ns5-integration-v3`.
+`schemaVersion` is `2026-11-17-ns5-integration-v3`; the code sets the real version of the artifact.

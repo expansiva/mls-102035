@@ -14,13 +14,14 @@ platform plugin (`usedBy` = `journey.step` or `process.task`).
 - Ontology entity ids
 - Solution registry module names (siblings)
 - Platform plugin catalog (closed; same ids E6 has named)
+- `externalSystems` that the sibling modules declare, read from each sibling's own `l4/<sibling>/integration.defs.ts` (never from a written list)
 
 ## Output
 
-`Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`, and `connections[]` when the module names a closed-catalog operation (omitted when empty). Inbound is
+`Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`, `connections[]` when the module names an operation (omitted when empty), and `externalSystems[]` when the module declares a system outside the app (omitted when empty; the artifact is then `...-integration-v4`, otherwise v3). Inbound is
 `{ id, kind, from, event?, writes[], effect, transitionRef?, description }`. Outbound is
 `{ id, kind, to, event, on, entityRefs[], description }`. A plugin is
-`{ pluginId, usedBy[], description }`. Empty lists are valid when there is no signal; the step
+`{ pluginId, usedBy[], description }`. An external system is `{ id, title, description, settings[{ id, title, description, secret }], operations[{ operationId, direction, description }] }`: intent only, never address, method, header, format, authentication or input/output types. Empty lists are valid when there is no signal; the step
 then writes that artifact **without** an LLM call and records `noIntegrationSignal` on the pipeline
 step.
 
@@ -49,7 +50,8 @@ not a signal and is not an integration item.
 - `from` / `to` that is not a registry sibling, `organization` or `any` is a warning
   (`NS5_INTEGRATION_UNKNOWN_MODULE` / `unknownModule`), not an error (`kind: external` never warns).
 - A signal other than `connectionTerm`, with inbound, outbound, plugins and connections all empty, fails `NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM`.
-- A connection row names `connectionId` and `operationId` from the catalog. `direction` is filled from the catalog. `call` needs a real `usedBy`. `entityRefs` and `effect` come together or not at all.
+- A connection row names `connectionId` and `operationId` that resolve, in this order, against the platform catalog, a system this module declares, a system a sibling declares. `direction` is filled from the operation found. `call` needs a real `usedBy`. `entityRefs` and `effect` come together or not at all.
+- An external system: `id`, `settings[].id` and `operations[].operationId` are lowerCamel and unique at their level; `direction` is `call` or `serve`; `title` and `description` are not empty; `secret` is a boolean; `id` repeats neither a platform catalog connection nor a sibling's system (`NS5_INTEGRATION_SYSTEM_*`). The model no longer writes `inbound`/`outbound` with `kind: external`; the gate still accepts what already exists.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
   the registry and l5, and marks the pipeline complete.
