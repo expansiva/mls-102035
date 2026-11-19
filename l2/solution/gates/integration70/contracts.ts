@@ -158,6 +158,16 @@ function mergeInboundIntoServe(
   });
 }
 
+/**
+ * The schema version of an integration artifact is a function of its content, computed here and nowhere else:
+ * a declared system makes it v4, otherwise it stays v3, byte for byte. Any writer of the artifact uses this.
+ */
+export function ns5IntegrationSchemaVersion(
+  externalSystems: readonly Ns5IntegrationExternalSystem[] | undefined,
+): typeof NS5_INTEGRATION_SCHEMA_VERSION | typeof NS5_INTEGRATION_SCHEMA_VERSION_V4 {
+  return externalSystems?.length ? NS5_INTEGRATION_SCHEMA_VERSION_V4 : NS5_INTEGRATION_SCHEMA_VERSION;
+}
+
 export function buildNs5IntegrationArtifact(
   moduleName: string,
   inbound: Ns5IntegrationItem[],
@@ -167,8 +177,7 @@ export function buildNs5IntegrationArtifact(
   externalSystems: Ns5IntegrationExternalSystem[] = [],
 ): Ns5IntegrationArtifact {
   return {
-    // v4 only when the module declares a system; every other artifact stays v3, byte for byte.
-    schemaVersion: externalSystems.length ? NS5_INTEGRATION_SCHEMA_VERSION_V4 : NS5_INTEGRATION_SCHEMA_VERSION,
+    schemaVersion: ns5IntegrationSchemaVersion(externalSystems),
     moduleName,
     inbound,
     outbound,

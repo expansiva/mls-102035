@@ -6,6 +6,7 @@ import test from 'node:test';
 import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5IntegrationArtifact,
+  ns5IntegrationSchemaVersion,
   normalizeNs5IntegrationPayload,
 } from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
@@ -156,4 +157,10 @@ void test('the artifact is v4 only when it declares a system; the rest stays v3 
   const withSystem = buildNs5IntegrationArtifact('orders', [], [], [], [], [OWN]);
   assert.equal(withSystem.schemaVersion, '2026-11-19-ns5-integration-v4');
   assert.deepEqual(withSystem.externalSystems, [OWN]);
+});
+
+void test('the version is one function of the content', () => {
+  assert.equal(ns5IntegrationSchemaVersion([]), '2026-11-17-ns5-integration-v3');
+  assert.equal(ns5IntegrationSchemaVersion(undefined), '2026-11-17-ns5-integration-v3');
+  assert.equal(ns5IntegrationSchemaVersion([OWN]), '2026-11-19-ns5-integration-v4');
 });
