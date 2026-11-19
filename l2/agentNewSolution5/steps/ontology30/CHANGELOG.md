@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-19 (l4_p4_125)
+
+- `prompt.md`: what an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not an entity, a field or a role of the module; the platform keeps it and has the screen. Intent only, no gate.
+
 ## 2026-10-22 (l4_p4_56 B2)
 
 - `NS5_ONTOLOGY_PLATFORM_FIELD_UNKNOWN` also below the first level of a platform branch: a sub-field of an inline platform object or of `of: <ValueType>` must exist in the platform (existence only; tightening below the first level is not checked). Measured on the 25 recorded roles: two refusals, the Onboarding `privacyConsent.acceptedAt`/`method` (PrivacyConsent has `consentedAt`/`channel`).

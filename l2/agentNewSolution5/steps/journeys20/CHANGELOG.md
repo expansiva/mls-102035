@@ -1,5 +1,9 @@
 # journeys20
 
+## 2026-11-19 (l4_p4_125)
+
+- `prompt.md`: what an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey of the module; the platform keeps it and has the screen. Intent only, no gate.
+
 ## 2026-10-02 (p4_21)
 
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/journeys20/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5JourneysTool) stayed in the agent: it moved, body unchanged, to `agentNs5Journeys.ts`. Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
