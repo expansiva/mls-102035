@@ -1,8 +1,8 @@
 /// <mls fileReference="_102035_/l2/solution/gates/integration70/gate.ts" enhancement="_blank"/>
 
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
-import { ns5ConnectionOperation } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
-import type { Ns5IntegrationConnection, Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
+import { ns5ConnectionCatalogs, ns5ConnectionOperation } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import type { Ns5IntegrationConnection, Ns5IntegrationExternalSystem, Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
 import {
   collectNs5IntegrationSignals,
   inboundEventId,
@@ -43,6 +43,8 @@ export interface Ns5IntegrationGateContext {
   journeySteps?: readonly Ns5IntegrationJourneyView[];
   processTasks?: readonly Ns5IntegrationProcessView[];
   platformEventIds?: readonly string[];
+  /** `externalSystems` the sibling modules declare in their own L4 (read by the caller, never from a written list). */
+  siblingSystems?: readonly Ns5IntegrationExternalSystem[];
 }
 
 export function validateNs5Integration(
@@ -51,6 +53,7 @@ export function validateNs5Integration(
   plugins: Ns5IntegrationPlugin[],
   context: Ns5IntegrationGateContext,
   connections: Ns5IntegrationConnection[] = [],
+  externalSystems: Ns5IntegrationExternalSystem[] = [],
 ): Ns5IntegrationGateResult {
   const issues: Ns5IntegrationGateIssue[] = [];
   const entityById = new Map(context.entities.map(entity => [entity.entityId, entity]));
@@ -61,9 +64,11 @@ export function validateNs5Integration(
   const connectionPairs = new Set<string>();
   const siblings = context.siblings || [];
   const signals = collectNs5IntegrationSignals(context.actors, context.sourcePrompt, siblings);
+  const siblingSystems = context.siblingSystems || [];
+  const systems = [...externalSystems, ...siblingSystems];
 
   // A connection term only lets the step run (the prompt may say "cm" for centimeters): it never forces an item.
-  if (!inbound.length && !outbound.length && !plugins.length && !connections.length && signals.some(signal => signal.kind !== 'connectionTerm')) {
+  if (!inbound.length && !outbound.length && !plugins.length && !connections.length && !externalSystems.length && signals.some(signal => signal.kind !== 'connectionTerm')) {
     error(
       issues,
       'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM',
@@ -85,8 +90,10 @@ export function validateNs5Integration(
       processTasks: context.processTasks || [],
     });
   });
+  validateExternalSystems(externalSystems, siblingSystems, issues);
   connections.forEach((connection, index) => {
     validateConnection(connection, `connections[${index}]`, {
+      systems,
       connectionPairs,
       entityIds,
       issues,
@@ -331,6 +338,7 @@ function validateConnection(
   connection: Ns5IntegrationConnection,
   path: string,
   ctx: {
+    systems: readonly Ns5IntegrationExternalSystem[];
     connectionPairs: Set<string>;
     entityIds: Set<string>;
     issues: Ns5IntegrationGateIssue[];
@@ -339,12 +347,12 @@ function validateConnection(
   },
 ): void {
   const { issues } = ctx;
-  const operation = ns5ConnectionOperation(connection.connectionId, connection.operationId);
+  const operation = ns5ConnectionOperation(connection.connectionId, connection.operationId, ctx.systems);
   if (!operation) {
     error(
       issues,
       'NS5_INTEGRATION_CONNECTION_UNKNOWN',
-      `Connection ${connection.connectionId || '(missing)'}.${connection.operationId || '(missing)'} is not in the connection catalog.`,
+      `Connection ${connection.connectionId || '(missing)'}.${connection.operationId || '(missing)'} is neither in the platform catalogs nor an operation of a declared system.`,
       path,
     );
   }
@@ -405,6 +413,64 @@ function validateConnection(
     if (ctx.journeySteps.length || ctx.processTasks.length) {
       error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', `Unknown journey or process ${parsed.ownerId}.`, refPath);
     }
+  });
+}
+
+/** Shape of the systems this module declares. The same id may not repeat a platform catalog or a sibling's system. */
+function validateExternalSystems(
+  systems: readonly Ns5IntegrationExternalSystem[],
+  siblingSystems: readonly Ns5IntegrationExternalSystem[],
+  issues: Ns5IntegrationGateIssue[],
+): void {
+  const platformIds = new Set(ns5ConnectionCatalogs().map(catalog => catalog.connectionId));
+  const siblingIds = new Set(siblingSystems.map(system => system.id));
+  const systemIds = new Set<string>();
+  systems.forEach((system, index) => {
+    const path = `externalSystems[${index}]`;
+    if (!MEMBER_ID.test(system.id)) {
+      error(issues, 'NS5_INTEGRATION_SYSTEM_ID', 'external system ids must be lowerCamel.', `${path}.id`);
+    } else if (platformIds.has(system.id)) {
+      error(issues, 'NS5_INTEGRATION_SYSTEM_ID', `${system.id} is a connection of the platform catalog; a module cannot declare it again.`, `${path}.id`);
+    } else if (siblingIds.has(system.id)) {
+      error(issues, 'NS5_INTEGRATION_SYSTEM_ID', `${system.id} is already declared by a sibling module; use that system, do not declare it again.`, `${path}.id`);
+    } else if (systemIds.has(system.id)) {
+      error(issues, 'NS5_INTEGRATION_SYSTEM_ID', `Duplicate external system ${system.id}.`, `${path}.id`);
+    }
+    systemIds.add(system.id);
+    if (!system.title) error(issues, 'NS5_INTEGRATION_SYSTEM_TEXT', 'An external system names its title.', `${path}.title`);
+    if (!system.description) error(issues, 'NS5_INTEGRATION_SYSTEM_TEXT', 'An external system describes what it is and what the module uses it for.', `${path}.description`);
+    const settingIds = new Set<string>();
+    system.settings.forEach((setting, position) => {
+      const settingPath = `${path}.settings[${position}]`;
+      if (!MEMBER_ID.test(setting.id)) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_SETTING', 'setting ids must be lowerCamel.', `${settingPath}.id`);
+      } else if (settingIds.has(setting.id)) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_SETTING', `Duplicate setting ${setting.id} in ${system.id}.`, `${settingPath}.id`);
+      }
+      settingIds.add(setting.id);
+      if (!setting.title || !setting.description) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_TEXT', 'A setting names its title and describes what the admin fills in.', settingPath);
+      }
+      if (typeof setting.secret !== 'boolean') {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_SETTING', 'A setting says whether it is secret (true or false).', `${settingPath}.secret`);
+      }
+    });
+    const operationIds = new Set<string>();
+    system.operations.forEach((operation, position) => {
+      const operationPath = `${path}.operations[${position}]`;
+      if (!MEMBER_ID.test(operation.operationId)) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_OPERATION', 'operation ids must be lowerCamel.', `${operationPath}.operationId`);
+      } else if (operationIds.has(operation.operationId)) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_OPERATION', `Duplicate operation ${operation.operationId} in ${system.id}.`, `${operationPath}.operationId`);
+      }
+      operationIds.add(operation.operationId);
+      if (operation.direction !== 'call' && operation.direction !== 'serve') {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_OPERATION', "An operation direction is 'call' or 'serve'.", `${operationPath}.direction`);
+      }
+      if (!operation.description) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_TEXT', 'An operation describes what is asked or what arrives.', `${operationPath}.description`);
+      }
+    });
   });
 }
 

@@ -5,8 +5,10 @@ import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import { ns5ConnectionCatalogs, ns5ConnectionOperation, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
+  NS5_INTEGRATION_SCHEMA_VERSION_V4,
   type Ns5IntegrationArtifact,
   type Ns5IntegrationConnection,
+  type Ns5IntegrationExternalSystem,
   type Ns5IntegrationItem,
   type Ns5IntegrationPlugin,
 } from '/_102035_/l2/solution/types.js';
@@ -50,6 +52,8 @@ export interface Ns5IntegrationNormalization {
   outbound: Ns5IntegrationItem[];
   plugins: Ns5IntegrationPlugin[];
   connections: Ns5IntegrationConnection[];
+  /** Declared by this module (v4). Empty when it declares none. */
+  externalSystems: Ns5IntegrationExternalSystem[];
   normalizations: Ns5IntegrationFormNormalization[];
 }
 
@@ -92,10 +96,19 @@ export interface Ns5InboundPendingRequest {
   to?: string;
 }
 
-export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNormalization {
+/**
+ * `siblingSystems` are the `externalSystems` the sibling modules declare in their own L4: a row of `connections`
+ * resolves against the platform catalogs, then this module's systems, then these.
+ */
+export function normalizeNs5IntegrationPayload(
+  value: unknown,
+  siblingSystems: readonly Ns5IntegrationExternalSystem[] = [],
+): Ns5IntegrationNormalization {
   const root = record(value);
   const normalizations: Ns5IntegrationFormNormalization[] = [];
-  const connections = list(root.connections).map(normalizeConnection).filter(item => item.connectionId || item.operationId || item.description);
+  const externalSystems = list(root.externalSystems).map(normalizeExternalSystem);
+  const systems = [...externalSystems, ...siblingSystems];
+  const connections = list(root.connections).map(row => normalizeConnection(row, systems)).filter(item => item.connectionId || item.operationId || item.description);
   const inbound = list(root.inbound)
     .map(item => normalizeInbound(item, normalizations))
     .filter(item => item.id || item.description);
@@ -104,6 +117,7 @@ export function normalizeNs5IntegrationPayload(value: unknown): Ns5IntegrationNo
     outbound: list(root.outbound).map(item => normalizeOutbound(item)).filter(item => item.id || item.description),
     plugins: list(root.plugins).map(normalizePlugin).filter(plugin => plugin.pluginId || plugin.description),
     connections: connections.map(row => row),
+    externalSystems,
     normalizations,
   };
 }
@@ -150,15 +164,18 @@ export function buildNs5IntegrationArtifact(
   outbound: Ns5IntegrationItem[],
   plugins: Ns5IntegrationPlugin[],
   connections: Ns5IntegrationConnection[] = [],
+  externalSystems: Ns5IntegrationExternalSystem[] = [],
 ): Ns5IntegrationArtifact {
   return {
-    schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
+    // v4 only when the module declares a system; every other artifact stays v3, byte for byte.
+    schemaVersion: externalSystems.length ? NS5_INTEGRATION_SCHEMA_VERSION_V4 : NS5_INTEGRATION_SCHEMA_VERSION,
     moduleName,
     inbound,
     outbound,
     plugins,
     // Omitted when empty, so artifacts that name no connection stay byte-identical (replay fixtures).
     ...(connections.length ? { connections } : {}),
+    ...(externalSystems.length ? { externalSystems } : {}),
   };
 }
 
@@ -334,11 +351,32 @@ function normalizeOutbound(value: unknown): Ns5IntegrationItem {
   };
 }
 
-function normalizeConnection(value: unknown): Ns5IntegrationConnection {
+function normalizeExternalSystem(value: unknown): Ns5IntegrationExternalSystem {
+  const source = record(value);
+  return {
+    id: text(source.id),
+    title: text(source.title),
+    description: text(source.description),
+    settings: list(source.settings).map(item => {
+      const setting = record(item);
+      return { id: text(setting.id), title: text(setting.title), description: text(setting.description), secret: setting.secret as boolean };  // not coerced: the gate refuses a missing flag
+    }),
+    operations: list(source.operations).map(item => {
+      const operation = record(item);
+      return {
+        operationId: text(operation.operationId),
+        direction: text(operation.direction) as 'call' | 'serve',  // not coerced: the gate refuses any other value
+        description: text(operation.description),
+      };
+    }),
+  };
+}
+
+function normalizeConnection(value: unknown, systems: readonly Ns5IntegrationExternalSystem[]): Ns5IntegrationConnection {
   const source = record(value);
   const connectionId = text(source.connectionId);
   const operationId = text(source.operationId);
-  const operation = ns5ConnectionOperation(connectionId, operationId);
+  const operation = ns5ConnectionOperation(connectionId, operationId, systems);
   const effect = text(source.effect);
   const entityRefs = unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean));
   return {
