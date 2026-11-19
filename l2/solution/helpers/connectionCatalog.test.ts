@@ -4,8 +4,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ns5ConnectionCatalogs,
+  ns5ConnectionArrivals,
   ns5ConnectionExists,
   ns5ConnectionOperation,
+  ns5ServeOperationIds,
   ns5ConnectionTerms,
 } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 
@@ -80,4 +82,30 @@ test('platform releaseCatalogChanged is a serve command hidden from agents', () 
 test('an operation served by the platform is not offered to a module (cm.ensureAgentMember)', () => {
   assert.equal(ns5ConnectionOperation('cm', 'ensureAgentMember'), undefined);
   assert.equal(ns5ConnectionCatalogs().find(item => item.connectionId === 'cm')?.operations.some(item => item.operationId === 'ensureAgentMember'), false);
+});
+
+const declared = [{
+  id: 'githubRepo',
+  title: 'GitHub repository',
+  description: 'Where the module reads pull requests.',
+  settings: [],
+  operations: [
+    { operationId: 'listPullRequests', direction: 'call' as const, description: 'The open pull requests.' },
+    { operationId: 'pullRequestOpened', direction: 'serve' as const, description: 'A pull request was opened.' },
+  ],
+}];
+
+test('a declared system answers beside the platform catalogs', () => {
+  assert.equal(ns5ConnectionOperation('cm', 'readAgent', declared)?.direction, 'call');
+  assert.equal(ns5ConnectionOperation('githubRepo', 'listPullRequests', declared)?.direction, 'call');
+  assert.equal(ns5ConnectionOperation('githubRepo', 'pullRequestOpened', declared)?.direction, 'serve');
+  assert.equal(ns5ConnectionOperation('githubRepo', 'invented', declared), undefined);
+  assert.equal(ns5ConnectionOperation('githubRepo', 'listPullRequests'), undefined);
+  assert.equal(ns5ConnectionExists('githubRepo', declared), true);
+  assert.equal(ns5ConnectionExists('githubRepo'), false);
+  assert.deepEqual(ns5ServeOperationIds('githubRepo', declared), ['pullRequestOpened']);
+  assert.deepEqual(ns5ServeOperationIds('githubRepo'), []);
+  assert.ok(ns5ConnectionArrivals(declared).some(item => item.ref === 'githubRepo.pullRequestOpened'));
+  assert.ok(ns5ConnectionArrivals(declared).some(item => item.ref.startsWith('cm.')));
+  assert.ok(!ns5ConnectionArrivals().some(item => item.ref.startsWith('githubRepo.')));
 });

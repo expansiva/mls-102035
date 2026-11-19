@@ -2,6 +2,7 @@
 
 import cmCatalog from '/_102034_/l1/server/layer_1_external/connections/catalogs/cm.js';
 import platformCatalog from '/_102034_/l1/server/layer_1_external/connections/catalogs/platform.js';
+import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 
 export interface Ns5ConnectionCatalog {
   schemaVersion: 'connection-catalog-v1';
@@ -43,13 +44,28 @@ export function ns5ConnectionCatalogs(): readonly Ns5ConnectionCatalog[] {
   }));
 }
 
+/** What the L4 knows of an operation of a declared system: no kind, no types, no reply mode (the How decides them). */
+export type Ns5DeclaredOperation = Pick<Ns5ConnectionOperation, 'operationId' | 'direction' | 'description'>;
+
+/**
+ * `systems` are the `externalSystems` the caller read from the L4 (this module's and its siblings'). The platform
+ * catalogs come first, so a declared system never shadows `cm` or `platform` (the gate refuses that id).
+ */
+export function ns5ConnectionOperation(connectionId: string, operationId: string): Ns5ConnectionOperation | undefined;
 export function ns5ConnectionOperation(
   connectionId: string,
   operationId: string,
-): Ns5ConnectionOperation | undefined {
+  systems: readonly Ns5IntegrationExternalSystem[],
+): Ns5ConnectionOperation | Ns5DeclaredOperation | undefined;
+export function ns5ConnectionOperation(
+  connectionId: string,
+  operationId: string,
+  systems: readonly Ns5IntegrationExternalSystem[] = [],
+): Ns5ConnectionOperation | Ns5DeclaredOperation | undefined {
   const catalog = ns5ConnectionCatalogs().find(item => item.connectionId === connectionId);
-  if (catalog === undefined) return undefined;
-  return catalog.operations.find(item => item.operationId === operationId);
+  if (catalog !== undefined) return catalog.operations.find(item => item.operationId === operationId);
+  const system = systems.find(item => item.id === connectionId);
+  return system?.operations.find(item => item.operationId === operationId);
 }
 
 /**
@@ -91,19 +107,24 @@ export function ns5ConnectionTerms(): readonly string[] {
   return ns5ConnectionCatalogs().map(item => item.connectionId);
 }
 
-export function ns5ConnectionExists(connectionId: string): boolean {
-  return ns5ConnectionCatalogs().some(item => item.connectionId === connectionId);
+export function ns5ConnectionExists(connectionId: string, systems: readonly Ns5IntegrationExternalSystem[] = []): boolean {
+  return ns5ConnectionCatalogs().some(item => item.connectionId === connectionId)
+    || systems.some(item => item.id === connectionId);
 }
 
 /** The `serve` operations of one connection: what the connection delivers to a module. */
-export function ns5ServeOperationIds(connectionId: string): string[] {
+export function ns5ServeOperationIds(connectionId: string, systems: readonly Ns5IntegrationExternalSystem[] = []): string[] {
   const catalog = ns5ConnectionCatalogs().find(item => item.connectionId === connectionId);
-  return (catalog?.operations ?? []).filter(item => item.direction === 'serve').map(item => item.operationId);
+  const operations: readonly Ns5DeclaredOperation[] = catalog?.operations
+    ?? systems.find(item => item.id === connectionId)?.operations
+    ?? [];
+  return operations.filter(item => item.direction === 'serve').map(item => item.operationId);
 }
 
-/** Every arrival a connection of the catalog can deliver, as `<connectionId>.<operationId>` and its description. */
-export function ns5ConnectionArrivals(): Array<{ ref: string; description: string }> {
-  return ns5ConnectionCatalogs().flatMap(catalog => catalog.operations
+/** Every arrival a connection can deliver, as `<connectionId>.<operationId>` and its description. */
+export function ns5ConnectionArrivals(systems: readonly Ns5IntegrationExternalSystem[] = []): Array<{ ref: string; description: string }> {
+  const declared = systems.map(system => ({ connectionId: system.id, operations: system.operations as readonly Ns5DeclaredOperation[] }));
+  return [...ns5ConnectionCatalogs(), ...declared].flatMap(catalog => catalog.operations
     .filter(operation => operation.direction === 'serve')
     .map(operation => ({ ref: `${catalog.connectionId}.${operation.operationId}`, description: operation.description })));
 }
