@@ -2,10 +2,12 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { Ns5IntegrationArtifact } from '../../../solution/types.js';
 import { loadNewReleaseMessages } from '../../helpers/i18n.js';
 import { comprasIntegration } from '../fixtures/compras-integration.defs.js';
 import {
   INTEGRATION_ITEM_LABELS,
+  integrationArtifactFromView,
   integrationOracleIssues,
   normalizeIntegration,
   patchIntegrationItem,
@@ -46,6 +48,35 @@ test('reads integration-v3 as the current v2 shape', () => {
     schemaVersion: '2026-11-17-ns5-integration-v3', moduleName: 'orders', inbound: [], outbound: [], plugins: [],
   });
   assert.equal(view.schema, 'v2');
+});
+
+test('reads v4 as current while preserving legacy lists and the complete artifact', () => {
+  const artifact = {
+    schemaVersion: '2026-11-19-ns5-integration-v4', moduleName: 'orders',
+    inbound: [{ id: 'received', kind: 'event', from: 'billing', description: 'Received', entityRefs: ['Order'] }],
+    outbound: [{ id: 'sent', kind: 'event', to: 'billing', description: 'Sent', entityRefs: ['Order'] }],
+    plugins: [{ pluginId: 'stripe', description: 'Payment', usedBy: ['checkout.pay'] }],
+    connections: [{ connectionId: 'stripe', operationId: 'charge', direction: 'call', usedBy: ['checkout.pay'], description: 'Charge' }],
+    externalSystems: [{ id: 'stripe', title: 'Stripe', description: 'Payments', settings: [], operations: [] }],
+  } satisfies Ns5IntegrationArtifact;
+  const view = normalizeIntegration(artifact);
+  assert.equal(view.schema, 'v2');
+  assert.equal(view.inbound[0].id, 'received');
+  assert.equal(view.outbound[0].id, 'sent');
+  assert.equal(view.plugins[0].pluginId, 'stripe');
+  assert.strictEqual(view.raw, artifact);
+  assert.strictEqual(integrationArtifactFromView(view), artifact);
+});
+
+test('only recognized current versions expose their raw artifact', () => {
+  for (const version of ['2026-09-12-ns5-integration-v2', '2026-11-17-ns5-integration-v3']) {
+    const artifact = { schemaVersion: version, moduleName: 'orders', inbound: [], outbound: [], plugins: [] };
+    assert.strictEqual(integrationArtifactFromView(normalizeIntegration(artifact)), artifact);
+  }
+  for (const version of ['2026-09-10-ns5-integration-v1', 'unrecognized']) {
+    const artifact = { schemaVersion: version, moduleName: 'orders', inbound: [], outbound: [], plugins: [] };
+    assert.equal(integrationArtifactFromView(normalizeIntegration(artifact)), null);
+  }
 });
 
 test('reads the frozen compras v2 outbound events', () => {

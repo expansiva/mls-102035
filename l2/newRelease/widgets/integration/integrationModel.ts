@@ -71,7 +71,7 @@ function itemOf(value: unknown): Ns5IntegrationItem {
 
 export function integrationSchemaKind(value: unknown): IntegrationSchemaKind {
   const version = String(record(value).schemaVersion || '');
-  if (version.includes('integration-v3') || version.includes('integration-v2')) return 'v2';
+  if (version.includes('integration-v4') || version.includes('integration-v3') || version.includes('integration-v2')) return 'v2';
   if (version.includes('integration-v1')) return 'v1';
   return 'unknown';
 }
