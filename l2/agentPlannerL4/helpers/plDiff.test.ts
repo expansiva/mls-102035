@@ -28,7 +28,8 @@ import {
   snapshotFromParsed,
   type L4DiffSnapshot,
 } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
-import { isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
+import { CHANGE_EFFORT_SCHEMA_VERSION, isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
+import { validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
 import type { Ns5AccessArtifact, Ns5JourneyArtifact, Ns5JourneyIndexEntry, Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 
 type Stored = {
@@ -1067,4 +1068,65 @@ void test('p4_118: an artifact with none of the new lists (v2, v3) gives no new 
   assert.deepEqual(old.plugins, {});
   assert.deepEqual(old.externalSystems, {});
   assert.deepEqual(diffL4Snapshots(old, old), []);
+});
+
+void test('p4_118 s2 ensaio: a candidate that declares a system lists connection and externalSystem items; the outbound control stays out', async () => {
+  const files = loadFixtureFiles();
+  const baseIntegration = files.get('integration.defs.ts') || '';
+  assert.match(baseIntegration, /"plugins": \[\]/);
+  const candidateIntegration = baseIntegration
+    .replace('2026-09-12-ns5-integration-v2', '2026-11-19-ns5-integration-v4')
+    .replace('"plugins": []', `"plugins": [],
+  "connections": [
+    { "connectionId": "repoHost", "operationId": "listChanges", "direction": "call", "usedBy": ["agendar.escolher"], "description": "Reads the changes." }
+  ],
+  "externalSystems": [
+    {
+      "id": "repoHost", "title": "Repository host", "description": "Where the code lives.",
+      "settings": [{ "id": "accessKey", "title": "Access key", "description": "Reads the repository.", "secret": true }],
+      "operations": [{ "operationId": "listChanges", "direction": "call", "description": "The latest changes." }]
+    }
+  ]`);
+  assert.notEqual(candidateIntegration, baseIntegration);
+  const candidateFiles = new Map(files);
+  candidateFiles.set('integration.defs.ts', candidateIntegration);
+  const host = installHost();
+  seedTree(host, MODULE, files);
+  seedTree(host, `${MODULE}/pipeline/releases/base1/l4`, files);
+  seedTree(host, `${MODULE}/tobe/plan`, candidateFiles);
+  seed(
+    host,
+    { level: 4, folder: `${MODULE}/pipeline/releases`, shortName: 'index', extension: '.json' },
+    `${JSON.stringify({
+      schemaVersion: '2026-09-20-nr-module-revision-v1',
+      releases: [{ baseId: 'base1', createdAt: '2026-09-20T00:00:00.000Z', provenance: { status: 'unverified', label: 'test' } }],
+    }, null, 2)}\n`,
+  );
+  try {
+    setModuleRoot(MODULE, `${MODULE}/tobe/plan`);
+    const diff = await runPlDiff(MODULE);
+    assert.deepEqual(diff.items.map(item => `${item.changeId} ${item.op}`), [
+      'connection:repoHost.listChanges added',
+      'externalSystem:repoHost added',
+    ]);
+    assert.equal(diff.items.every(item => item.source === 'integration.defs.ts'), true);
+    // The transport accepts the new kinds: the effort file that carries them passes its gate.
+    const effort = validateChangeEffort({
+      schemaVersion: CHANGE_EFFORT_SCHEMA_VERSION,
+      module: MODULE,
+      base: { baseId: 'base1', revisionId: 'rev-1', candidateRoot: 'tobe/plan' },
+      request: { text: 'declare the repository host', items: diff.items },
+      masters: [],
+      perItem: [],
+      merged: { create: [], regenerateDefs: [], materialize: [], remove: [], runAgents: [], abend: [] },
+      untouched: { count: 0, sealHash: 'sha256:abc' },
+      status: 'simple',
+    });
+    assert.equal(effort.ok || !effort.issues.some(issue => /request\.items/.test(issue.path)), true, JSON.stringify(effort));
+    // Control: the same check does refuse a kind that does not exist.
+    const bogus = validateChangeEffort({ schemaVersion: CHANGE_EFFORT_SCHEMA_VERSION, module: MODULE, base: { baseId: 'b', revisionId: 'r', candidateRoot: 'c' }, request: { text: 't', items: [{ ...diff.items[0], kind: 'notAKind' }] }, masters: [], perItem: [], merged: {}, untouched: { count: 0, sealHash: 'x' }, status: 'simple' });
+    assert.equal(!bogus.ok && bogus.issues.some(issue => issue.path === 'request.items[0].kind'), true);
+  } finally {
+    setModuleRoot(MODULE, null);
+  }
 });
