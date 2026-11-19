@@ -79,3 +79,5 @@ No signal and no phrase ⇒ `processes: []`, cost 0, `noProcessSignal: true`.
 - `handoffTo` on a non-handoff step is dropped by journeys20; this step only reads real handoffs.
 - A stage is a business step, never `locate`/`inspect`.
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/workflows50/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5WorkflowsTool) stayed in the agent: it moved, body unchanged, to `agentNs5Workflows.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
+
+- l4_p4_126: what an administrator gives to connect the module to a system outside the app is neither a journey, an entity, a field, a rule, a permission nor a process of the module; the platform keeps it (`integration70` declares it in `externalSystems.settings`). One sentence in `prompt.md`, no gate.

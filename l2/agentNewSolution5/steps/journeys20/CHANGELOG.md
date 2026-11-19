@@ -1,5 +1,10 @@
 # journeys20
 
+## 2026-11-19 (l4_p4_126)
+
+- `prompt`: the same sentence in every step that writes a journey, an entity, a field, a rule, a permission or a process: what an administrator gives to connect the module to a system outside the app is none of them; the platform keeps it and has the screen. Intent only, no gate. `integration70` declares it in `externalSystems.settings`; `module10` and `judge35` write none of those and do not carry it.
+
+
 ## 2026-11-19 (l4_p4_125)
 
 - `prompt.md`: what an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey of the module; the platform keeps it and has the screen. Intent only, no gate.

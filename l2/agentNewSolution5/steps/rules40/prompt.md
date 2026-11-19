@@ -24,6 +24,8 @@ request or a journey. An empty catalog is valid when neither names a constraint.
 If a transition in the ontology already lists `ruleRefs`, those ids must appear in this catalog.
 Platform rules already defined by the platform — cite them, never restate or rename them.
 
+What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey, an entity, a field, a rule, a permission or a process of the module: the platform keeps it and has the screen for it.
+
 Do not add scope, source references, triggers, conditions, authorities, error codes, frontend
 messages, acceptance cases, implementation advice or technical fields.
 

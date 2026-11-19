@@ -51,3 +51,5 @@ and `businessHash`. Index: order plus `systemDecisions`. No `useRules`, no `feat
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/journeys20/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5JourneysTool) stayed in the agent: it moved, body unchanged, to `agentNs5Journeys.ts`. Dated reexport left at the old path of `gate.ts`, `contracts.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
 
 - l4_p4_125: what an administrator gives to connect the module to a system outside the app (where it is, the key, a secret agreed with it) is neither a journey nor an entity of the module; the platform keeps it (`integration70` declares it in `externalSystems.settings`). Intent in `prompt.md`, no gate.
+
+- l4_p4_126: what an administrator gives to connect the module to a system outside the app is neither a journey, an entity, a field, a rule, a permission nor a process of the module; the platform keeps it (`integration70` declares it in `externalSystems.settings`). One sentence in `prompt.md`, no gate.

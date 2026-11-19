@@ -1,5 +1,10 @@
 # access60
 
+## 2026-11-19 (l4_p4_126)
+
+- `prompt`: the same sentence in every step that writes a journey, an entity, a field, a rule, a permission or a process: what an administrator gives to connect the module to a system outside the app is none of them; the platform keeps it and has the screen. Intent only, no gate. `integration70` declares it in `externalSystems.settings`; `module10` and `judge35` write none of those and do not carry it.
+
+
 ## 2026-10-02 (p4_21)
 
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/access60/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5AccessTool) stayed in the agent: it moved, body unchanged, to `agentNs5Access.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.

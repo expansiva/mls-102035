@@ -13,7 +13,7 @@ Call the tool `submitNs5Journeys` once with every journey. Do not write Markdown
 One actor, one goal, a sequence of steps that locate, inspect, act or decide on a business object.
 A journey is what a person does to reach an outcome. It is not a screen and not a catalogue of records.
 
-What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey of the module: the platform keeps it and has the screen for it.
+What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey, an entity, a field, a rule, a permission or a process of the module: the platform keeps it and has the screen for it.
 
 ## Steps
 

@@ -1,5 +1,10 @@
 # workflows50
 
+## 2026-11-19 (l4_p4_126)
+
+- `prompt`: the same sentence in every step that writes a journey, an entity, a field, a rule, a permission or a process: what an administrator gives to connect the module to a system outside the app is none of them; the platform keeps it and has the screen. Intent only, no gate. `integration70` declares it in `externalSystems.settings`; `module10` and `judge35` write none of those and do not carry it.
+
+
 ## 2026-11-18 (l4_p4_109 s2b)
 
 - The step asks the model also when the request names a connection of the catalog (`ns5ConnectionSignalHits`: `cm`, `releaseCatalogChanged`, `release` + `catalog`), so an English request with an arrival no longer ends in `noProcessSignal`. The word list (pt/es) is unchanged.

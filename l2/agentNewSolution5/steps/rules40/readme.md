@@ -41,3 +41,5 @@ recorded module holds; readers go through `solution/rulesView.ts`, which answers
 - Do not invent a rule that is not grounded in the request or a journey. Empty is valid.
 - Do not add prompt examples of a domain.
 - p4_21: `gate.ts`, `contracts.ts` moved to `solution/gates/rules40/` (pure normalize/validate, used outside the agent; `mls-base/skills/agentCodeIsPrivate.md`). The LLM tool (buildNs5RulesTool) stayed in the agent: it moved, body unchanged, to `agentNs5Rules.ts`. Dated reexport left at the old path of `gate.ts` for consumers of another owner (newRelease, agentReviewSolution); delete it when they switch.
+
+- l4_p4_126: what an administrator gives to connect the module to a system outside the app is neither a journey, an entity, a field, a rule, a permission nor a process of the module; the platform keeps it (`integration70` declares it in `externalSystems.settings`). One sentence in `prompt.md`, no gate.
