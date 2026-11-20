@@ -46,7 +46,7 @@ function agentsModule(): CandidateModule {
 }
 
 function inboundWriter(artifacts: CandidateModule): string[] {
-  return verifyCandidateModule(artifacts, ['integration'])
+  return verifyCandidateModule(artifacts, ['integration'], [])
     .filter(issue => issue.code === 'NS5_INTEGRATION_INBOUND_WRITER')
     .map(issue => issue.message);
 }

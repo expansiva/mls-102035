@@ -14,7 +14,7 @@ import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { artifactForOraclePath, runCandidateOracle, type CandidateModule } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { deriveOntologyPlan } from '/_102035_/l2/solution/candidate/ontologyPlanDerive.js';
-import { isNs5OntologyV3Version, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
+import { isNs5OntologyV3Version, type Ns5IntegrationExternalSystem, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
 export type CandidateArea = 'module' | 'journeys' | 'ontologyAssembly' | 'ontologyEntities' | 'rules' | 'workflows' | 'access' | 'integration' | 'oracle';
@@ -27,6 +27,7 @@ export interface CandidateV3Context {
   ddm?: DataFamilyOntology;
   ontologyPlan?: Ns5OntologyV3PlanDraft | null;
   registryModuleNames?: string[];
+  siblingSystems: readonly Ns5IntegrationExternalSystem[];
 }
 
 const AREAS: CandidateArea[] = ['module', 'journeys', 'ontologyAssembly', 'ontologyEntities', 'rules', 'workflows', 'access', 'integration', 'oracle'];
@@ -71,7 +72,7 @@ export function applyScreenBaseline(
 
 export function validateV3Candidate(
   sources: NewReleaseOverlaySources,
-  context: CandidateV3Context = {},
+  context: CandidateV3Context,
   base?: NewReleaseOverlaySources,
 ): NewReleaseOverlayValidation {
   const run = validateV3CandidateRun(sources, context);
@@ -194,6 +195,7 @@ function validateV3CandidateRun(
       registryModuleNames: context.registryModuleNames || [module.moduleName], sourcePrompt: module.sourcePrompt,
       journeySteps: journeys.map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
       processTasks: workflows?.processes.map(process => ({ processId: process.processId, taskIds: process.tasks.map(task => task.taskId) })) || [],
+      siblingSystems: context.siblingSystems,
     },
     integration.connections || [],
     integration.externalSystems || [],

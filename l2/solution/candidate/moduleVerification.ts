@@ -13,6 +13,7 @@ import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
+  Ns5IntegrationExternalSystem,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
@@ -80,12 +81,13 @@ export function assembleCandidateModule(base: CandidateModule, applied: Candidat
 export function verifyCandidateModule(
   artifacts: CandidateModule,
   kinds: readonly CandidateGateKind[],
+  siblingSystems: readonly Ns5IntegrationExternalSystem[],
   extras?: CandidateOracleExtras,
 ): CandidateGateIssue[] {
   const issues: CandidateGateIssue[] = [];
   for (const kind of kinds) {
     if (kind === 'ontology') continue;
-    issues.push(...gateIssuesForKind(artifacts, kind));
+    issues.push(...gateIssuesForKind(artifacts, kind, siblingSystems));
   }
   issues.push(...runCandidateOracle(artifacts, extras).issues);
   return issues;
@@ -161,7 +163,11 @@ export function artifactForOraclePath(path: string): `journeys/${string}.defs.ts
   return 'module';
 }
 
-function gateIssuesForKind(artifacts: CandidateModule, kind: CandidateGateKind): CandidateGateIssue[] {
+function gateIssuesForKind(
+  artifacts: CandidateModule,
+  kind: CandidateGateKind,
+  siblingSystems: readonly Ns5IntegrationExternalSystem[],
+): CandidateGateIssue[] {
   try {
     if (kind === 'rules') {
       return mapIssues(kind, validateNs5Rules(ns5RuleRecord(artifacts.rules), { moduleName: artifacts.module.moduleName }).issues);
@@ -211,6 +217,7 @@ function gateIssuesForKind(artifacts: CandidateModule, kind: CandidateGateKind):
             processId: process.processId,
             taskIds: process.tasks.map(task => task.taskId),
           })),
+          siblingSystems,
         },
         artifacts.integration.connections || [],
         artifacts.integration.externalSystems || [],

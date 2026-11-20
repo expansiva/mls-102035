@@ -10,6 +10,7 @@ import {
 import { promptHoldSummary, promptTwinSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES, nrpOccupiedSignatureBlock } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
+import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 
 export type NrpGateKind = NrpArtifactKind | 'coherence';
 
@@ -54,8 +55,12 @@ export function overlayNrpEdits(base: NrpModuleArtifacts, applied: NrpAppliedEdi
 }
 
 /** Per-kind NS5 gate, then finalize80. Ontology v3 entity gates need platform catalogs this agent does not load. */
-export function checkNrpGates(artifacts: NrpModuleArtifacts, kinds: readonly NrpArtifactKind[]): NrpGateIssue[] {
-  return verifyCandidateModule(artifacts, kinds);
+export function checkNrpGates(
+  artifacts: NrpModuleArtifacts,
+  kinds: readonly NrpArtifactKind[],
+  siblingSystems: readonly Ns5IntegrationExternalSystem[],
+): NrpGateIssue[] {
+  return verifyCandidateModule(artifacts, kinds, siblingSystems);
 }
 
 export function nrpIssueKey(issue: NrpGateIssue): string {

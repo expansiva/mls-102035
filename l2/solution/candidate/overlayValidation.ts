@@ -15,6 +15,7 @@ import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import type {
+  Ns5IntegrationExternalSystem,
   Ns5JourneyArtifact,
   Ns5OntologyEntityArtifact,
   Ns5PipelineState,
@@ -47,7 +48,12 @@ function pushGate(issues: NewReleaseValidationIssue[], artifact: Ns5TobeArtifact
 
 export async function validateNs5Overlay(
   sources: NewReleaseOverlaySources,
-  context?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[]; ontologyPlan?: Ns5OntologyV3PlanDraft | null },
+  context: {
+    pipeline?: Ns5PipelineState | null;
+    registryModuleNames?: string[];
+    ontologyPlan?: Ns5OntologyV3PlanDraft | null;
+    siblingSystems: readonly Ns5IntegrationExternalSystem[];
+  },
   base?: NewReleaseOverlaySources,
 ): Promise<NewReleaseOverlayValidation> {
   const module = sources.module.value;
@@ -55,7 +61,9 @@ export async function validateNs5Overlay(
   const journeys = sources.journeys.map(item => item.value).filter((value): value is Ns5JourneyArtifact => !!value);
   const ontologyIndex = sources.ontologyIndex.value;
   if (isNs5OntologyV3(ontologyIndex)) {
-    return validateV3Candidate(sources, { mdm, tdm, ddm, ontologyPlan: context?.ontologyPlan, registryModuleNames: context?.registryModuleNames }, base);
+    return validateV3Candidate(sources, {
+      mdm, tdm, ddm, ontologyPlan: context.ontologyPlan, registryModuleNames: context.registryModuleNames, siblingSystems: context.siblingSystems,
+    }, base);
   }
   const issues: NewReleaseValidationIssue[] = [];
   const entities = sources.entities.map(item => item.value).filter((value): value is Ns5OntologyEntityArtifact => !!value);
@@ -118,6 +126,7 @@ export async function validateNs5Overlay(
       sourcePrompt: module.sourcePrompt,
       journeySteps: journeys.map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
       processTasks: workflows?.processes.map(process => ({ processId: process.processId, taskIds: process.tasks.map(task => task.taskId) })) || [],
+      siblingSystems: context.siblingSystems,
     },
     integration.connections || [],
     integration.externalSystems || [],

@@ -370,8 +370,8 @@ void test('the recorded hour-estimate operations apply to Tarefa and pass the ga
     record: { fields: { details: { fields: Record<string, { title: string }> } } };
   };
   assert.equal(entity.record.fields.details.fields.estimativaHoras.title, 'Estimativa de horas');
-  const before = checkNrpGates(artifacts, ['ontology']);
-  const after = classifyNrpGateIssues(before, checkNrpGates(merged, ['ontology']));
+  const before = checkNrpGates(artifacts, ['ontology'], []);
+  const after = classifyNrpGateIssues(before, checkNrpGates(merged, ['ontology'], []));
   assert.deepEqual(nrpFreshIssues(after), []);
 });
 
@@ -420,7 +420,7 @@ void test('remove of a details field keeps the entity and drops only that field'
     access: defs<Ns5AccessArtifact>('access.defs.ts'),
     integration: defs<Ns5IntegrationArtifact>('integration.defs.ts'),
   } as unknown as NrpModuleArtifacts;
-  const baseline = checkNrpGates(artifacts, [...NRP_ARTIFACT_KINDS]);
+  const baseline = checkNrpGates(artifacts, [...NRP_ARTIFACT_KINDS], []);
   const entityRefs = (module: NrpModuleArtifacts) => module.journeys.reduce((count, journey) => {
     const steps = (journey as unknown as { business: { steps: Array<{ entity?: string }> } }).business.steps;
     return count + steps.filter(step => step.entity === 'Tarefa').length;
@@ -473,7 +473,7 @@ void test('remove of a details field keeps the entity and drops only that field'
   assert.equal(orders.some(order => order.mode === 'model' && order.kind === 'journeys'), true);
   assert.equal(orders.some(order => order.mode === 'model' && order.kind === 'rules'), true);
   assert.equal(entityRefs(removed.artifacts), refsBefore);
-  const after = classifyNrpGateIssues(baseline, checkNrpGates(removed.artifacts, [...NRP_ARTIFACT_KINDS]));
+  const after = classifyNrpGateIssues(baseline, checkNrpGates(removed.artifacts, [...NRP_ARTIFACT_KINDS], []));
   assert.deepEqual(nrpFreshIssues(after), []);
   assert.throws(
     () => applyNrpMechanical(artifacts, [{ op: 'remove', targetId: 'Tarefa', fieldId: '', value: '' }]),
@@ -719,8 +719,8 @@ void test('the recorded duplicate-journey response, rewritten with business, pas
   }, scope);
   assert.equal(nrpIndexFileGaps('journeys', scope, edited.files).messages.length, 0);
   const merged = overlayNrpEdits(artifacts, [{ mode: 'model', kind: 'journeys', artifact: edited }]);
-  const baseline = checkNrpGates(artifacts, [...NRP_ARTIFACT_KINDS]);
-  const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(merged, [...NRP_ARTIFACT_KINDS])));
+  const baseline = checkNrpGates(artifacts, [...NRP_ARTIFACT_KINDS], []);
+  const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(merged, [...NRP_ARTIFACT_KINDS], [])));
   assert.deepEqual(fresh, [], fresh.map(issue => `${issue.code} ${issue.path} ${issue.message}`).join('; '));
   assert.equal(index.journeys.some(entry => entry.journeyId === 'duplicarTarefa'), false);
 });

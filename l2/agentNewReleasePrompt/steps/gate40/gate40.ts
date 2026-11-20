@@ -27,6 +27,8 @@ import {
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { applyNrpMechanical } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import { pipelineJsonFileForProject, setModuleRoot, writeJson } from '/_102035_/l2/solution/fs.js';
+import { readNs5SiblingSystems, readNs5Siblings } from '/_102035_/l2/solution/ns5Siblings.js';
+import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 import { unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import {
   NrpEditRefusal,
@@ -88,7 +90,8 @@ export async function beforeNrpGateStep(
     setModuleRoot(cursor.moduleName, `${cursor.moduleName}/${NRP_CANDIDATE_REL}`);
     const baseArtifacts = await loadNrpArtifacts(cursor.moduleName);
     const merged = overlayNrpEdits(baseArtifacts, cursor.applied);
-    const issues = gateIssues(baseArtifacts, merged);
+    const siblingSystems = await readGateSiblingSystems(cursor.moduleName);
+    const issues = gateIssues(baseArtifacts, merged, siblingSystems);
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action === 'write') {
       const fix = fieldsOnlyFix(baseArtifacts, merged, baseArtifacts.module.userLanguage);
@@ -105,7 +108,7 @@ export async function beforeNrpGateStep(
             artifacts,
             applied: cursor.applied,
             notes: fix.notes,
-            issues: fixed ? gateIssues(baseArtifacts, artifacts) : issues,
+            issues: fixed ? gateIssues(baseArtifacts, artifacts, siblingSystems) : issues,
             allowWrite: true,
             modelCalls: cursor.modelCalls,
             repairRounds: cursor.repaired,
@@ -146,7 +149,7 @@ export async function beforeNrpGateStep(
       hookSequential,
       parentStepId: parentStep.stepId,
       systemPrompt: NRP_REPAIR_SYSTEM_PROMPT,
-      humanPrompt: repairHumanPrompt(cursor, baseArtifacts),
+      humanPrompt: repairHumanPrompt(cursor, baseArtifacts, siblingSystems),
       tools: [tool],
       toolChoice: { type: 'function', function: { name: tool.function.name } },
     }];
@@ -173,7 +176,8 @@ export async function afterNrpGateStep(
     setModuleRoot(cursor.moduleName, `${cursor.moduleName}/${NRP_CANDIDATE_REL}`);
     const baseArtifacts = await loadNrpArtifacts(cursor.moduleName);
     const merged = overlayNrpEdits(baseArtifacts, cursor.applied);
-    const issues = gateIssues(baseArtifacts, merged);
+    const siblingSystems = await readGateSiblingSystems(cursor.moduleName);
+    const issues = gateIssues(baseArtifacts, merged, siblingSystems);
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action !== 'repair' || !decision.kind) return [];
     const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
@@ -205,7 +209,8 @@ async function citeRepairRefusal(step: mls.msg.AIAgentStep, error: unknown): Pro
     const cursor = readCursor(String(step.prompt || ''), project);
     const info = pipelineJsonFileForProject(project, cursor.moduleName, 'newReleasePrompt-refused');
     const baseArtifacts = await loadNrpArtifacts(cursor.moduleName);
-    const citation = await recordNrpTriageRefusal(info, error.message, error.raw, writeJson, repairHumanPrompt(cursor, baseArtifacts));
+    const siblingSystems = await readGateSiblingSystems(cursor.moduleName);
+    const citation = await recordNrpTriageRefusal(info, error.message, error.raw, writeJson, repairHumanPrompt(cursor, baseArtifacts, siblingSystems));
     return new NrpEditRefusal(`${error.message} See ${citation}.`, error.raw);
   } catch (writeError) {
     console.error('[agentNewReleasePrompt] gate40 could not record the refused response', writeError);
@@ -214,9 +219,13 @@ async function citeRepairRefusal(step: mls.msg.AIAgentStep, error: unknown): Pro
   }
 }
 
-function repairHumanPrompt(cursor: NrpGateCursor, baseArtifacts: NrpModuleArtifacts): string {
+function repairHumanPrompt(
+  cursor: NrpGateCursor,
+  baseArtifacts: NrpModuleArtifacts,
+  siblingSystems: readonly Ns5IntegrationExternalSystem[],
+): string {
   const merged = overlayNrpEdits(baseArtifacts, cursor.applied);
-  const issues = gateIssues(baseArtifacts, merged);
+  const issues = gateIssues(baseArtifacts, merged, siblingSystems);
   const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
   if (!decision.kind) return '';
   const marks = applyNrpMechanical(baseArtifacts, cursor.triage.mechanical).textMarks;
@@ -303,9 +312,20 @@ function roundNote(rounds: readonly NrpRepairRound[]): string {
   return text || 'none';
 }
 
-function gateIssues(base: NrpModuleArtifacts, merged: NrpModuleArtifacts): NrpGateIssue[] {
+async function readGateSiblingSystems(moduleName: string): Promise<Ns5IntegrationExternalSystem[]> {
+  const read = await readNs5SiblingSystems(await readNs5Siblings(moduleName));
+  const first = read.errors[0];
+  if (first) throw new Error(`${first.path}: ${first.message}`);
+  return read.groups.flatMap(group => group.systems);
+}
+
+function gateIssues(
+  base: NrpModuleArtifacts,
+  merged: NrpModuleArtifacts,
+  siblingSystems: readonly Ns5IntegrationExternalSystem[],
+): NrpGateIssue[] {
   const kinds = NRP_ARTIFACT_KINDS;
-  return classifyNrpGateIssues(checkNrpGates(base, kinds), checkNrpGates(merged, kinds));
+  return classifyNrpGateIssues(checkNrpGates(base, kinds, siblingSystems), checkNrpGates(merged, kinds, siblingSystems));
 }
 
 function readCursor(prompt: string, project: number): NrpGateCursor {

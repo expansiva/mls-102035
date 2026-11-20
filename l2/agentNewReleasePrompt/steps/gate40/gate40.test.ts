@@ -67,7 +67,7 @@ function failingRules(): NrpModuleArtifacts {
 }
 
 void test('a failing artifact is not written, and the repair sees the whole request', () => {
-  const issues = checkNrpGates(failingRules(), ['rules']);
+  const issues = checkNrpGates(failingRules(), ['rules'], []);
   assert.equal(issues.some(issue => issue.kind === 'rules' && issue.code === 'NS5_RULES_ID'), true);
   const repair = nrpGateAction(issues, ['rules'], []);
   assert.equal(repair.action, 'repair');
@@ -125,8 +125,8 @@ function counts(issues: readonly NrpGateIssue[]): string {
 
 void test('the tarefas fixture has no new gate error, and an edit that keeps it does not block', () => {
   const artifacts = tarefasModule();
-  const baseline = checkNrpGates(artifacts, NRP_ARTIFACT_KINDS);
-  const same = classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS));
+  const baseline = checkNrpGates(artifacts, NRP_ARTIFACT_KINDS, []);
+  const same = classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS, []));
   const fresh = nrpFreshIssues(same);
   assert.deepEqual(fresh, [], `new errors: ${fresh.map(issue => `${issue.kind} ${issue.code} ${issue.path}`).join('; ')}`);
   console.log(`[s3b] tarefas baseline ${baseline.length}: ${counts(baseline)}`);
@@ -134,7 +134,7 @@ void test('the tarefas fixture has no new gate error, and an edit that keeps it 
   const edited = applyNrpMechanical(artifacts, [
     { op: 'setScalar', targetId: 'Tarefa', fieldId: 'title', value: 'Tarefa' },
   ]).artifacts;
-  const after = classifyNrpGateIssues(baseline, checkNrpGates(edited, NRP_ARTIFACT_KINDS));
+  const after = classifyNrpGateIssues(baseline, checkNrpGates(edited, NRP_ARTIFACT_KINDS, []));
   assert.equal(nrpFreshIssues(after).length, 0);
   assert.equal(nrpGateAction(after, ['ontology'], []).action, 'write');
   const journeyError: NrpGateIssue = {
@@ -191,8 +191,8 @@ void test('a twin repair sees both journeys, and an index-only repair is refused
       { journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'duplicarTarefa' },
     ],
   };
-  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS);
-  const issues = classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS));
+  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS, []);
+  const issues = classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS, []));
   const twin = nrpFreshIssues(issues).find(issue => issue.code === 'NS5_JOURNEY_TWIN');
   assert.ok(twin, nrpFreshIssues(issues).map(issue => `${issue.code} ${issue.message}`).join('; '));
   assert.match(twin.message, /cancelarTarefa/);
@@ -241,7 +241,7 @@ void test('a twin repair sees both journeys, and an index-only repair is refused
       return (hit ? hit.artifact : journey) as Ns5JourneyArtifact;
     }),
   };
-  const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(next, NRP_ARTIFACT_KINDS)));
+  const fresh = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(next, NRP_ARTIFACT_KINDS, [])));
   assert.deepEqual(fresh.map(issue => `${issue.code} ${issue.path}: ${issue.message}`), []);
   const indexOnly = normalizeNrpEdit('journeys', {
     operations: [{
@@ -336,14 +336,14 @@ void test('a new error gets a second repair, the same error stops, and a third r
       { journeyId: 'duplicarTarefa', actorRef: 'gestor', title: 'duplicarTarefa' },
     ],
   };
-  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS);
+  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS, []);
   const catalog = nrpKindCatalog(artifacts, 'journeys');
   const scope = { present: catalog.map(file => file.id), creates: [] as string[], files: catalog };
   const withView = applyJourneyOps(artifacts, scope, [{
     file: 'duplicarTarefa', op: 'set', pointer: '/business/steps/2/kind',
     expectedJson: '"locate"', valueJson: '"view"', reason: 'A first repair that trades the twin for a bad kind.',
   }]);
-  const afterView = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(withView, NRP_ARTIFACT_KINDS)));
+  const afterView = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(withView, NRP_ARTIFACT_KINDS, [])));
   assert.equal(afterView.some(issue => issue.code === 'NS5_JOURNEY_STEP_KIND'), true);
   assert.equal(afterView.some(issue => issue.code === 'NS5_JOURNEY_TWIN'), false);
   const round2 = nrpGateAction(afterView, ['journeys'], [repairRound('journeys', [twin])]);
@@ -363,7 +363,7 @@ void test('a new error gets a second repair, the same error stops, and a third r
       expectedJson: '"Tarefa"', valueJson: '"Lista"', reason: 'Separate the operations of one cited journey.',
     },
   ]);
-  const left = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(fixed, NRP_ARTIFACT_KINDS)));
+  const left = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(fixed, NRP_ARTIFACT_KINDS, [])));
   assert.deepEqual(left.map(issue => `${issue.code} ${issue.path}`), []);
   assert.equal(nrpGateAction(left, ['journeys'], [
     repairRound('journeys', [twin]),
@@ -383,8 +383,8 @@ void test('a step-kind error names the journey file and the pointer inside it', 
     { stepId: 'ver', kind: 'view', entity: 'Tarefa', title: 'Ver', description: 'Mostra a tarefa.' },
   ];
   artifacts.journeys.push(journey);
-  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS);
-  const issues = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS)));
+  const baseline = checkNrpGates(tarefasModule(), NRP_ARTIFACT_KINDS, []);
+  const issues = nrpFreshIssues(classifyNrpGateIssues(baseline, checkNrpGates(artifacts, NRP_ARTIFACT_KINDS, [])));
   const stepKind = issues.find(issue => issue.code === 'NS5_JOURNEY_STEP_KIND');
   assert.ok(stepKind, issues.map(issue => `${issue.code} ${issue.path}`).join('; '));
   const catalog = nrpKindCatalog(artifacts, 'journeys');

@@ -38,6 +38,7 @@ function actualV3(): NewReleaseOverlaySources {
 const context = {
   mdm, tdm, ddm,
   registryModuleNames: ['agendaClinica'],
+  siblingSystems: [],
 };
 
 test('existing v3 fixture records every area and exposes its real access defect', async () => {
@@ -145,12 +146,12 @@ test('warning baseline matches artifact, path and code without changing verdicts
 
 test('missing platform catalog is unsupported; a missing frozen plan still checks entity gates', async () => {
   const sources = actualV3();
-  const withoutCatalog = validateV3Candidate(sources);
+  const withoutCatalog = validateV3Candidate(sources, { siblingSystems: [] });
   assert.equal(withoutCatalog.coverage.ontologyAssembly.status, 'unsupported');
   assert.equal(withoutCatalog.ok, false);
-  const withoutTdm = validateV3Candidate(sources, { mdm, ddm });
+  const withoutTdm = validateV3Candidate(sources, { mdm, ddm, siblingSystems: [] });
   assert.equal(withoutTdm.coverage.ontologyAssembly.status, 'unsupported');
-  const withoutPlan = validateV3Candidate(sources, { mdm, tdm, ddm });
+  const withoutPlan = validateV3Candidate(sources, { mdm, tdm, ddm, siblingSystems: [] });
   assert.equal(withoutPlan.coverage.ontologyEntities.status, 'checked');
   assert.notEqual(withoutPlan.coverage.ontologyEntities.status, 'unsupported');
   assert.equal(withoutPlan.ok, false);

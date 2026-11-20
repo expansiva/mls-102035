@@ -100,7 +100,7 @@ function realOverlay(): NewReleaseOverlaySources {
 
 test('overlay gates and in-memory oracle accept a real NS5 fixture', async () => {
   const sources = realOverlay();
-  const result = await validateNs5Overlay(sources, { registryModuleNames: ['ordenServicio5'] });
+  const result = await validateNs5Overlay(sources, { registryModuleNames: ['ordenServicio5'], siblingSystems: [] });
   assert.equal(result.oracle?.finalStatus, 'passed', result.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
   assert.equal(result.ok, true, result.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
@@ -108,13 +108,13 @@ test('overlay gates and in-memory oracle accept a real NS5 fixture', async () =>
 test('overlay reports an invalid prepared artifact before apply or execute', async () => {
   const sources = realOverlay();
   sources.module.value = { ...sources.module.value!, defaultLanguage: 'fr' };
-  const result = await validateNs5Overlay(sources, { registryModuleNames: ['ordenServicio5'] });
+  const result = await validateNs5Overlay(sources, { registryModuleNames: ['ordenServicio5'], siblingSystems: [] });
   assert.equal(result.ok, false);
   assert.ok(result.issues.some(issue => issue.code === 'NS5_MODULE_DEFAULT_LANGUAGE' && issue.artifact === 'module.defs.ts' && !issue.baseline));
 });
 
 test('overlay baseline ignores an error already on the module and still blocks a new one', async () => {
-  const context = { registryModuleNames: ['ordenServicio5'] };
+  const context = { registryModuleNames: ['ordenServicio5'], siblingSystems: [] };
   const base = realOverlay();
   base.module.value = { ...base.module.value!, defaultLanguage: 'fr' };
   const same = realOverlay();

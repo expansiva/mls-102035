@@ -45,16 +45,16 @@ function tarefasModule(): CandidateModule {
 
 test('tarefas v3 has no fresh gate error', () => {
   const artifacts = tarefasModule();
-  const baseline = verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS);
-  const fresh = freshCandidateIssues(classifyCandidateIssues(baseline, verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS)));
+  const baseline = verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []);
+  const fresh = freshCandidateIssues(classifyCandidateIssues(baseline, verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, [])));
   assert.deepEqual(fresh, [], fresh.map(issue => `${issue.kind} ${issue.code} ${issue.path}`).join('; '));
   assert.equal(baseline.filter(issue => issue.kind === 'coherence').length, 0);
 });
 
 test('a new rules error blocks and an error already on the module does not', () => {
   const artifacts = tarefasModule();
-  const baseline = verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS);
-  const stale = classifyCandidateIssues(baseline, verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS));
+  const baseline = verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []);
+  const stale = classifyCandidateIssues(baseline, verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []));
   assert.equal(freshCandidateIssues(stale).length, 0);
   assert.ok(stale.filter(issue => issue.baseline).length === baseline.length);
 
@@ -69,6 +69,6 @@ test('a new rules error blocks and an error already on the module does not', () 
       }],
     },
   }]);
-  const fresh = freshCandidateIssues(classifyCandidateIssues(baseline, verifyCandidateModule(broken, CANDIDATE_GATE_KINDS)));
+  const fresh = freshCandidateIssues(classifyCandidateIssues(baseline, verifyCandidateModule(broken, CANDIDATE_GATE_KINDS, [])));
   assert.ok(fresh.some(issue => issue.code === 'NS5_RULES_DESCRIPTION'), fresh.map(issue => `${issue.kind} ${issue.code}`).join(','));
 });
