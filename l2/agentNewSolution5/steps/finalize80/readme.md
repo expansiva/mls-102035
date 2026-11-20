@@ -19,6 +19,8 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 - `l4/<mod>/pipeline/pipeline.json` — `status: complete`, `finalize80: approved`
 - `l4/<mod>/pipeline/runNN_newsolution5.json` — command, cost sum, verdict, `handoff: never`
 
+I8 and I10 ask `solution/entityWriter.ts` who writes an entity (`ns5WriterPlanOfOntology`).
+
 ## Oracle
 
 | check | meaning | on fail |

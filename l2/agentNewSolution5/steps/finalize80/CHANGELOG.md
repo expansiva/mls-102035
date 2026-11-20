@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-11-20 (l4_p4_129 s1)
+
+- I8 and I10 build the writer plan with `ns5WriterPlanOfOntology` / `ns5WriterViewOfEntity` from `solution/entityWriter.ts`. The checks themselves are unchanged.
+
 ## 2026-11-18 (l4_p4_110)
 
 - I1: on an `external` entity, an `act` or `inspect` step needs a `call` row of `integration.connections` whose `usedBy` is `journeyId.stepId`; the step's own effect and the call's `entityRefs`/`effect` are not what ties the two. I10 also counts a record written by a process stage or a `serve` row.

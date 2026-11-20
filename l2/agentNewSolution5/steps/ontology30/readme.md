@@ -22,9 +22,9 @@ started from nothing and each call of the fan-out invented what a table may do.
 An `external` entity names a `connectionId`: a connection of the platform catalog, or a system a sibling module declares (the plan prompt lists both), or, if neither serves, the name (lowerCamel, new) of a system this module declares in integration. The ontology gate checks the form. Integration checks the origin.
 
 The generation lives in `contractsV3.ts` + `gateV3.ts` + `schemas/ontology-{plan,entity}-v3.schema.json`.
-`contracts.ts` and `gate.ts` next door are the **v2** normalize and gate, untouched: the eleven other
+`contracts.ts` and `gate.ts` next door are the **v2** normalize and gate: the eleven other
 modules are recorded in v2 and `replayRealRuns.test.ts` replays them byte for byte through those exact
-functions. They stay v2 until ns5_44 regenerates them (ns5_43 T7). The v3 form is proved against the
+functions. Who writes each entity is not in those files: `solution/entityWriter.ts` (no `fs`, no gate). They stay v2 until ns5_44 regenerates them (ns5_43 T7). The v3 form is proved against the
 four hand-written `agendaClinica` files in `fixtures/agendaClinica-v3/` by `agentNs5OntologyV3.test.ts`.
 
 The tool schemas ask for **arrays** of `{ id, … }` where the artifact keeps a string-keyed map

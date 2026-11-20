@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-20 (l4_p4_129 s1)
+
+- Who writes an entity (`ns5ResolveEntityWriter`, its types, and the v3 view adapter) lives in `solution/entityWriter.ts`. `contracts.ts` still records derived writers. An `external` parent still resolves `parent`.
+
 ## 2026-11-20 (l4_p4_127 s2)
 
 - An `external` `connectionId` may also be the name (lowerCamel, new) of a system this module declares in integration. The ontology gate checks the form (`lowerCamel`, not empty). Integration checks the origin.

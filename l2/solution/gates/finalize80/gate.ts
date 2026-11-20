@@ -16,12 +16,16 @@ import {
   collectNs5LifecycleSignal,
   ns5EntityHasActOrAffects,
   ns5EntityHasWrittenFields,
-  ns5EntityWriter,
   ns5LifecycleHasBranchingOrigin,
   ns5ReachableStates,
-  ns5ResolveEntityWriter,
   ns5SourceSccStates,
 } from '/_102035_/l2/solution/gates/ontology30/contracts.js';
+import {
+  ns5EntityWriter,
+  ns5ResolveEntityWriter,
+  ns5WriterPlanOfOntology,
+  ns5WriterViewOfEntity,
+} from '/_102035_/l2/solution/entityWriter.js';
 import { ns5RuleEntries, ns5RuleIds } from '/_102035_/l2/solution/rulesView.js';
 import {
   ns5FieldRefExists,
@@ -533,10 +537,7 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
 function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
-  const writerPlan = {
-    entities: sources.entities.map(writerView),
-    relationships: ns5OntologyEdges(sources.ontologyIndex),
-  };
+  const writerPlan = ns5WriterPlanOfOntology(sources.entities, sources.ontologyIndex);
   const internalJourneys = rootedJourneys(sources.journeys).filter(journey =>
     actorById.get(journey.business.actorRef)?.kind === 'internal');
   sources.access.grants.forEach((grant, index) => {
@@ -557,7 +558,7 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
       const ownJourneys = rootedJourneys(sources.journeys).filter(journey => journey.business.actorRef === grant.actorRef);
       if (ns5EntityHasActOrAffects(ownJourneys, personId)) return;
     }
-    const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
+    const resolved = ns5ResolveEntityWriter(ns5WriterViewOfEntity(entity), writerPlan, rootedJourneys(sources.journeys));
     if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
     if (resolved.kind === 'inbound' && integrationWrites(sources).has(personId)) return;
     error(
@@ -605,13 +606,10 @@ function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
     .filter(task => (task.kind === 'mechanical' || task.kind === 'llm') && task.entityRef
       && (task.effect === 'create' || task.effect === 'update' || task.effect === 'transition'))
     .map(task => task.entityRef as string));
-  const writerPlan = {
-    entities: sources.entities.map(writerView),
-    relationships: ns5OntologyEdges(sources.ontologyIndex),
-  };
+  const writerPlan = ns5WriterPlanOfOntology(sources.entities, sources.ontologyIndex);
   for (const entity of sources.entities) {
     const path = `ontology.${entity.entityId}`;
-    const resolved = ns5ResolveEntityWriter(writerView(entity), writerPlan, rootedJourneys(sources.journeys));
+    const resolved = ns5ResolveEntityWriter(ns5WriterViewOfEntity(entity), writerPlan, rootedJourneys(sources.journeys));
     const crud = resolved.kind === 'crud';
     const inbound = resolved.kind === 'inbound';
     // l4_p4_109: a record a `mechanical`/`llm` stage of a process writes, or that a `serve` operation creates or
@@ -840,12 +838,14 @@ function entityMap(sources: Ns5OracleSources): Map<string, Ns5OntologyEntityView
 }
 
 /**
- * ns5_43 T5. `ns5ResolveEntityWriter` and `ns5EntityHasWrittenFields` live in ontology30 and are closed
- * (ns5_42), so the view is said in the vocabulary they branch on: a v3 `role` IS `kind: 'mdm'`, and the
- * fields a module writes are `writtenFieldIds` (the `details.<moduleName>` branch on a role).
+ * ns5_43 T5. `ns5ResolveEntityWriter` lives in `solution/entityWriter.ts` and `ns5EntityHasWrittenFields`
+ * stays in ontology30; both are closed (ns5_42), so the view is said in the vocabulary they branch on:
+ * a v3 `role` IS `kind: 'mdm'`, and the fields a module writes are `writtenFieldIds` (the
+ * `details.<moduleName>` branch on a role).
  */
 /**
- * ns5_43 T1. `ns5EntityHasActOrAffects` and `ns5ResolveEntityWriter` live in ontology30 (closed, ns5_42)
+ * ns5_43 T1. `ns5EntityHasActOrAffects` stays in ontology30 and `ns5ResolveEntityWriter` lives in
+ * `solution/entityWriter.ts` (closed, ns5_42)
  * and compare `affects` entries to entity ids. An act that writes an embedded child
  * (`PedidoCompra.details.itens`) writes the entity that owns it, so the journeys handed to those helpers
  * carry the ROOT of each reference.
@@ -865,10 +865,6 @@ function rootedJourneys(journeys: Ns5OracleSources['journeys']): Ns5OracleSource
       )),
     },
   }));
-}
-
-function writerView(entity: Ns5OntologyEntityViewItem): { entityId: string; kind: string; writer?: 'journey' | 'crud' | 'inbound' } {
-  return { entityId: entity.entityId, kind: entity.writerKind, ...(entity.writer ? { writer: entity.writer } : {}) };
 }
 
 function writtenFieldsView(entity: Ns5OntologyEntityViewItem): {

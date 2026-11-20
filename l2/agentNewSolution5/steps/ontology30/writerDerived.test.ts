@@ -15,10 +15,10 @@ import {
   assembleNs5Ontology,
   normalizeNs5OntologyEntity,
   normalizeNs5OntologyPlan,
-  ns5ResolveEntityWriter,
   type Ns5OntologyEntityDraft,
   type Ns5OntologyPlanDraft,
 } from '/_102035_/l2/solution/gates/ontology30/contracts.js';
+import { ns5ResolveEntityWriter } from '/_102035_/l2/solution/entityWriter.js';
 import { validateNs5OntologyEntity } from '/_102035_/l2/solution/gates/ontology30/gate.js';
 import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION } from '/_102035_/l2/solution/gates/finalize80/contracts.js';

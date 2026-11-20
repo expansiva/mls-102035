@@ -20,7 +20,7 @@ import {
   type Ns5AccessEntityView,
   type Ns5AccessRelationshipView,
 } from '/_102035_/l2/solution/gates/access60/contracts.js';
-import { ns5ResolveEntityWriter } from '/_102035_/l2/solution/gates/ontology30/contracts.js';
+import { ns5ResolveEntityWriter } from '/_102035_/l2/solution/entityWriter.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
