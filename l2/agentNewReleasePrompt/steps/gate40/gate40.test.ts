@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
+import { NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { applyNrpMechanical } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import {
   buildNrpRepairHumanPrompt,
@@ -20,6 +21,7 @@ import {
   nrpIssueKey,
   nrpIssueLines,
   nrpIssueOwner,
+  nrpRepairPromptFiles,
   nrpRepairRoundCounts,
   nrpStopSummary,
   nrpTwinExisting,
@@ -409,6 +411,29 @@ void test('a step-kind error names the journey file and the pointer inside it', 
   }
   assert.match(refused, /does not exist/);
   assert.match(refused, /Expected file: duplicarTarefa pointer: \/business\/steps\/2\/kind/);
+});
+
+void test('an uncited rule is owned by ontology and the repair sees every entity', () => {
+  const issue: NrpGateIssue = {
+    kind: 'coherence',
+    code: 'NS5_FINALIZE_I4',
+    path: 'rules.releaseRuleWithoutReader',
+    message: `Rule releaseRuleWithoutReader ${NS5_RULE_CITED_BY_NO_ENTITY}`,
+  };
+  assert.equal(nrpIssueOwner(issue), 'ontology');
+  const other: NrpGateIssue = { kind: 'coherence', code: 'NS5_FINALIZE_I4', path: 'rules.other', message: 'Unknown rule other.' };
+  assert.equal(nrpIssueOwner(other), 'rules');
+  const catalog = [
+    { id: 'index', artifact: { entities: ['Agent', 'Tool'] } },
+    { id: 'Agent', artifact: { entityId: 'Agent', rules: [] } },
+    { id: 'Tool', artifact: { entityId: 'Tool', rules: [] } },
+  ];
+  assert.deepEqual(nrpRepairPromptFiles('ontology', [issue], catalog).map(file => file.id), ['index', 'Agent', 'Tool']);
+  assert.deepEqual(nrpRepairPromptFiles('ontology', [other], catalog).map(file => file.id), ['index']);
+  const human = buildNrpRepairHumanPrompt('Add the rule.', 'ontology', [issue], catalog);
+  assert.match(human, /Cite the rule id in `rules` of the entity it governs/);
+  assert.match(human, /"entityId":"Agent"/);
+  assert.match(human, /"entityId":"Tool"/);
 });
 
 function applyJourneyOps(

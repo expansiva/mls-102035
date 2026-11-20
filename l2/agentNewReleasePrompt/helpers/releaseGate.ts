@@ -11,6 +11,7 @@ import { promptHoldSummary, promptTwinSummary } from '/_102035_/l2/agentNewRelea
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES, nrpOccupiedSignatureBlock } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
+import { NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 
 export type NrpGateKind = NrpArtifactKind | 'coherence';
 
@@ -94,7 +95,15 @@ const PATH_OWNER: Record<string, NrpArtifactKind> = {
 };
 
 /** The artifact kind that owns an error. Coherence uses the path prefix, including an index path. */
+function nrpUncitedRule(issue: NrpGateIssue): boolean {
+  return issue.kind === 'coherence'
+    && issue.code === 'NS5_FINALIZE_I4'
+    && issue.path.startsWith('rules.')
+    && issue.message.includes(NS5_RULE_CITED_BY_NO_ENTITY);
+}
+
 export function nrpIssueOwner(issue: NrpGateIssue): NrpArtifactKind | null {
+  if (nrpUncitedRule(issue)) return 'ontology';
   if (issue.kind !== 'coherence') return issue.kind;
   const head = issue.path.split(/[./[]/u)[0];
   return PATH_OWNER[head] || null;
@@ -310,6 +319,12 @@ export function nrpRepairPromptFiles(
   const cited = new Set(nrpCitedFileIds(issues, kind, catalog.map(file => file.id)));
   const chosen: NrpRepairFile[] = [];
   const index = catalog.find(file => file.id === 'index');
+  const owned = nrpFreshIssues(issues).filter(issue => nrpIssueOwner(issue) === kind);
+  if (kind === 'ontology' && owned.some(nrpUncitedRule)) {
+    if (index) chosen.push(index);
+    for (const file of catalog) if (file.id !== 'index') chosen.push(file);
+    return chosen;
+  }
   if (index && (kind === 'journeys' || kind === 'ontology')) chosen.push(index);
   for (const file of catalog) {
     if (file.id === 'index') continue;

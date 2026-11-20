@@ -2,7 +2,7 @@
 
 ## 2026-11-20 (l4_p4_136 s1b)
 
-- I4 on a v3 ontology: every non-platform rule in `rules.defs.ts` must be cited by some entity (`entity.rules` or `transitions[].ruleRefs`). Path `rules.<id>`, message `Rule X is cited by no entity`. v2 modules keep the old behaviour (uncited rule is not a defect).
+- I4 on a v3 ontology: every non-platform rule in `rules.defs.ts` must be cited by some entity (`entity.rules` or `transitions[].ruleRefs`). Path `rules.<id>`, message `Rule X is cited by no entity. Cite the rule id in rules of the entity it governs; do not delete the rule`. v2 modules keep the old behaviour (uncited rule is not a defect).
 
 ## 2026-11-20 (l4_p4_131 s2)
 

@@ -11,7 +11,7 @@ import type {
   Ns5OntologyAnyEntity,
   Ns5OntologyIndexArtifact,
   Ns5OntologyIndexV3,
-  Ns5RulesArtifact,
+  Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import type { CandidateCoverage } from '/_102035_/l2/solution/candidate/candidateValidation.js';
@@ -62,7 +62,7 @@ export interface NewReleaseOverlaySources {
   journeys: NewReleaseArtifact<Ns5JourneyArtifact>[];
   ontologyIndex: NewReleaseArtifact<Ns5OntologyIndexArtifact | Ns5OntologyIndexV3>;
   entities: NewReleaseArtifact<Ns5OntologyAnyEntity>[];
-  rules: NewReleaseArtifact<Ns5RulesArtifact>;
+  rules: NewReleaseArtifact<Ns5RulesAny>;
   workflows: NewReleaseArtifact<Ns5WorkflowsArtifact>;
   access: NewReleaseArtifact<Ns5AccessArtifact>;
   integration: NewReleaseArtifact<Ns5IntegrationArtifact>;

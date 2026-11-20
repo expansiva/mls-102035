@@ -633,7 +633,8 @@ export class NewReleaseOntology102035 extends StateLitElement implements NewRele
   private renderLifecycle(entity: Ns5OntologyEntityArtifact) {
     const states = entity.lifecycleStates.map(item => item.state);
     const actors = this.data?.artifacts.access.value?.actors || this.data?.pipeline?.steps.module10?.actors || [];
-    const rules = this.data?.artifacts.rules.value?.rules || [];
+    const catalog = this.data?.artifacts.rules.value?.rules;
+    const rules = Array.isArray(catalog) ? catalog : [];
     return html`
       <section class="nr-ontology__section nr-ontology__lifecycle">
         <header><div><h3>${this.t('ontology.lifecycle')}</h3><p>${this.t('ontology.lifecycleDescription')}</p></div></header>

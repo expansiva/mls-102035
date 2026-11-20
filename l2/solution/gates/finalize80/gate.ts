@@ -66,6 +66,10 @@ import {
   type Ns5OracleSources,
 } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 
+/** Suffix of an I4 error whose rule has no entity reader. The New Release repair matches this text. */
+export const NS5_RULE_CITED_BY_NO_ENTITY =
+  'is cited by no entity. Cite the rule id in `rules` of the entity it governs; do not delete the rule';
+
 export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   const errors: Ns5OracleIssue[] = [];
   const warnings: Ns5OracleIssue[] = [];
@@ -427,7 +431,7 @@ function checkI4(sources: Ns5OracleSources, error: IssueFn): void {
   for (const ruleId of ruleIds) {
     if (platformRuleIdOf(ruleId)) continue;
     if (cited.has(ruleId)) continue;
-    error('I4', `rules.${ruleId}`, `Rule ${ruleId} is cited by no entity`);
+    error('I4', `rules.${ruleId}`, `Rule ${ruleId} ${NS5_RULE_CITED_BY_NO_ENTITY}`);
   }
 }
 
