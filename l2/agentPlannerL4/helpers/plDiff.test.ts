@@ -708,6 +708,47 @@ void test('p4_57: initialData from empty to a sentence is one entity item', () =
   assert.equal(items[0].entity, 'Country');
 });
 
+// l4_p4_127 s3: an entity that lives outside, as the diff sees it. Table to external, another connection and
+// fields of the record are each an item; the diff reads `kind`, `connectionId` and `record.fields` as they are.
+function outside(patch: { kind?: string; connectionId?: string; fields?: Record<string, unknown> } = {}): L4DiffSnapshot {
+  const external = (patch.kind ?? 'external') === 'external';
+  const entity = {
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Remote',
+    kind: patch.kind ?? 'external',
+    ...(external ? { connectionId: patch.connectionId ?? 'cm' } : {}),
+    record: { fields: patch.fields ?? { name: { type: 'string', derived: false } } },
+    transitions: [],
+  } as unknown as Ns5OntologyAnyEntity;
+  return snapshotFromParsed({
+    entities: [{ entity, source: 'ontology/Remote.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+}
+
+void test('p4_127: an external entity with the same connection and fields emits no item', () => {
+  assert.deepEqual(diffL4Snapshots(outside(), outside()), []);
+});
+
+void test('p4_127: a table that becomes external is one entity item', () => {
+  const items = diffL4Snapshots(outside({ kind: 'entity' }), outside());
+  assert.deepEqual(items.map(item => [item.changeId, item.op]), [['entity:Remote', 'changed']]);
+});
+
+void test('p4_127: another connectionId on an external entity is one entity item', () => {
+  const items = diffL4Snapshots(outside({ connectionId: 'cm' }), outside({ connectionId: 'someSystem' }));
+  assert.deepEqual(items.map(item => [item.changeId, item.op]), [['entity:Remote', 'changed']]);
+  assert.equal(isTextOnlyChange(items[0]), false, 'another connection is never a text change: it goes to the masters');
+});
+
+void test('p4_127: a field added to and a field removed from an external record are field items', () => {
+  const two = { name: { type: 'string', derived: false }, body: { type: 'string', derived: false } };
+  const added = diffL4Snapshots(outside(), outside({ fields: two }));
+  assert.deepEqual(added.map(item => [item.kind, item.op]), [['field', 'added']]);
+  const removed = diffL4Snapshots(outside({ fields: two }), outside());
+  assert.deepEqual(removed.map(item => [item.kind, item.op]), [['field', 'removed']]);
+});
+
 void test('p4_35: an unchanged field with text emits no item', () => {
   const snap = paciente({ title: 'Sexo', description: 'Sexo informado', values: [{ value: 'M', title: 'Masculino' }] });
   assert.deepEqual(diffL4Snapshots(snap, snap), []);
