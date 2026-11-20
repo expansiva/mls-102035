@@ -421,6 +421,35 @@ void test('human prompt carries source request, catalog, registry and signals', 
   assert.match(human, /"kind": "systemActor"/);
   assert.match(human, /"kind": "pluginTerm"/);
   assert.match(human, /"kind": "siblingPresent"/);
+  assert.match(human, /- registrarRecebimento\.localizarTitulo\n/);
+  assert.doesNotMatch(human, /registrarRecebimento\.localizarTitulo ·/);
+});
+
+void test('human prompt lists the text of each usedBy ref and cuts it at 240 characters', () => {
+  const long = `x${'y'.repeat(300)}`;
+  const human = buildNs5IntegrationHumanPrompt({
+    sourcePrompt: 'a request',
+    userLanguage: 'en',
+    actors: [],
+    entities: [],
+    usedByRefs: ['openItem.lookUp', 'refreshList.chooseRows', 'refreshList.untouched'],
+    usedByTexts: {
+      openItem: 'ignored because the key is not a ref',
+      'openItem.lookUp': 'Look up: Find one local row.',
+      'refreshList.chooseRows': `llm: ${long}`,
+    },
+    siblings: [],
+    inboundWriters: [],
+    platformEventIds: [],
+  });
+  assert.match(human, /- openItem\.lookUp · Look up: Find one local row\./);
+  const cut = human.split('\n').find(line => line.startsWith('- refreshList.chooseRows · '));
+  assert.ok(cut);
+  const text = cut.slice('- refreshList.chooseRows · '.length);
+  assert.equal(text.length, 240);
+  assert.equal(text, `llm: ${long}`.replace(/\s+/g, ' ').trim().slice(0, 240));
+  assert.match(human, /- refreshList\.untouched\n/);
+  assert.doesNotMatch(human, /untouched ·/);
 });
 
 void test('integration70 prompt has no domain examples and keeps MDM out of integration', () => {
@@ -738,6 +767,7 @@ void test('the prompt explains the declared system as intent only', () => {
   assert.match(prompt, /already declares the system/);
   assert.match(prompt, /do not declare it again/);
   assert.match(prompt, /any `serve` operation has at least one setting with `secret: true`/);
+  assert.match(prompt, /A step or stage that goes over the records of an entity that lives outside the module \(for each \.\.\., every \.\.\.\) is in `usedBy` of the `call` that lists or reads that entity/);
   assert.doesNotMatch(prompt, /github|zip ?code|\bcep\b/i);
 });
 

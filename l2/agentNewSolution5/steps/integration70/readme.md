@@ -5,7 +5,7 @@ One LLM call with tool `submitNs5Integration` **only when a structural signal ex
 
 v2 form (ns5_31), and v5 when an arrival carries `entityEffects`. A module talks to another by event (`outbound.on` = `Entity.transitionId` or
 `Entity.create`; an inbound arrival writes by `entityEffects`, or by `writes` + `effect` on an older artifact), module endpoint, external system, or
-platform plugin (`usedBy` = `journey.step` or `process.task`).
+platform plugin (`usedBy` = `journey.step` or `process.task`). The human prompt shows each ref with what it does (step `title: description`, stage `kind: description`, cut at 240 characters) so the model can put a step or stage that goes over outside records on the `call` that lists or reads them.
 
 ## Input
 

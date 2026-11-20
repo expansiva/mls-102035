@@ -79,6 +79,13 @@ export function buildNs5IntegrationTool(
 const MAX_REPAIRS = 2;
 const MAX_TRANSPORT_RETRIES = 1;
 const REQUIRED_STEPS = ['rules40', 'workflows50', 'access60'] as const;
+/** One line in the human prompt. Longer stage prose is cut so the list stays scannable. */
+const USED_BY_TEXT_MAX = 240;
+
+function clipUsedByText(text: string): string {
+  const oneLine = text.replace(/\s+/g, ' ').trim();
+  return oneLine.length <= USED_BY_TEXT_MAX ? oneLine : oneLine.slice(0, USED_BY_TEXT_MAX);
+}
 
 interface IntegrationArgs {
   planId: string;
@@ -92,18 +99,27 @@ interface IntegrationArgs {
  * Every ref `usedBy` may name. The gate refuses anything else (`NS5_INTEGRATION_USED_BY`), and the prompt
  * used to promise this list without anyone building it — so the model invented plausible names.
  */
-async function readUsedByRefs(moduleName: string): Promise<string[]> {
+async function readUsedByRefs(moduleName: string): Promise<{ refs: string[]; texts: Record<string, string> }> {
   const refs: string[] = [];
+  const texts: Record<string, string> = {};
   const index = await readDefsJson<Ns5JourneyIndexArtifact>(journeyIndexFile(moduleName));
   for (const entry of index?.journeys || []) {
     const journey = await readDefsJson<Ns5JourneyArtifact>(journeyFile(moduleName, entry.journeyId));
-    for (const step of journey?.business.steps || []) refs.push(`${entry.journeyId}.${step.stepId}`);
+    for (const step of journey?.business.steps || []) {
+      const ref = `${entry.journeyId}.${step.stepId}`;
+      refs.push(ref);
+      texts[ref] = clipUsedByText(`${step.title}: ${step.description}`);
+    }
   }
   const workflows = await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
   for (const process of workflows?.processes || []) {
-    for (const task of process.tasks || []) refs.push(`${process.processId}.${task.taskId}`);
+    for (const task of process.tasks || []) {
+      const ref = `${process.processId}.${task.taskId}`;
+      refs.push(ref);
+      texts[ref] = clipUsedByText(`${task.kind}: ${task.description}`);
+    }
   }
-  return refs;
+  return { refs, texts };
 }
 
 export function buildNs5IntegrationHumanPrompt(input: {
@@ -113,6 +129,8 @@ export function buildNs5IntegrationHumanPrompt(input: {
   entities: ReadonlyArray<{ entityId: string; writer?: 'journey' | 'crud' | 'inbound'; transitions?: ReadonlyArray<{ transitionId: string }>; externalConnectionId?: string }>;
   /** Every `journeyId.stepId` and `processId.taskId` that exists. `usedBy` may name nothing else. */
   usedByRefs: readonly string[];
+  /** Text of each ref (`title: description` or `kind: description`), already clipped. Absent keeps the id-only list. */
+  usedByTexts?: Readonly<Record<string, string>>;
   siblings: readonly Ns5SiblingModule[];
   /** `externalSystems` the sibling modules declare in their own L4. A row of `connections` may name them. */
   siblingSystems?: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>;
@@ -149,7 +167,12 @@ export function buildNs5IntegrationHumanPrompt(input: {
     entityLines,
     '',
     '## usedBy — the only refs that exist (journeyId.stepId and processId.taskId)',
-    input.usedByRefs.length ? input.usedByRefs.map(ref => `- ${ref}`).join('\n') : '(none)',
+    input.usedByRefs.length
+      ? input.usedByRefs.map(ref => {
+        const text = input.usedByTexts?.[ref];
+        return text ? `- ${ref} · ${clipUsedByText(text)}` : `- ${ref}`;
+      }).join('\n')
+      : '(none)',
     '',
     formatNs5Siblings(input.siblings) || '## Sibling modules already in this organization\n(none)',
     '',
@@ -219,7 +242,7 @@ export async function beforeNs5IntegrationPromptStep(
         updateStatus(context, parentStep, step, hookSequential, 'completed', `integration70 approved with noIntegrationSignal: ${artifactPath}`),
       ];
     }
-    const [usedByRefs, prompt, schema, previous] = await Promise.all([
+    const [usedBy, prompt, schema, previous] = await Promise.all([
       readUsedByRefs(moduleName),
       readAgentText('steps/integration70', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'integration.schema', '.json'),
@@ -234,7 +257,8 @@ export async function beforeNs5IntegrationPromptStep(
       entities: integrationEntities,
       siblings,
       siblingSystems,
-      usedByRefs,
+      usedByRefs: usedBy.refs,
+      usedByTexts: usedBy.texts,
       inboundWriters: entities.filter(entity => entity.writer === 'inbound').map(entity => entity.entityId),
       platformEventIds: ns5PlatformEventIds(),
       gateFeedback: parsed.gateFeedback,

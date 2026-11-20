@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-20 (usedBy text)
+
+- The human prompt lists each `usedBy` ref with the step text (`title: description`) or the stage text (`kind: description`), cut at 240 characters. `prompt.md` says a step or stage that goes over the records of an entity that lives outside the module belongs in `usedBy` of the `call` that lists or reads that entity. No new gate.
+
 ## 2026-11-20 (arrival effects on the tool)
 
 - `submitNs5Integration` asks for `entityEffects` on each inbound row and on each connection row. `writes` and `effect` leave the inbound tool schema. A connection row keeps `entityRefs` and `effect` for `call` (`entityEffects` is `[]` there) and uses `entityEffects` on `serve` (`entityRefs` is `[]`). One entity may list more than one effect. An arrival that only informs sends `entityEffects: []`. An entity that lives outside the module is not written by an arrival.
