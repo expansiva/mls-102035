@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { tobeDiff } from '../../solution/candidate/tobeDiff.js';
-import { hasItemDiff, hasPluginDiff, idScope, ontologyFieldScope, ruleScopes } from './itemDiffs.js';
+import { connectionScope, hasConnectionDiff, hasExternalSystemDiff, hasItemDiff, hasPluginDiff, idScope, ontologyFieldScope, ruleScopes } from './itemDiffs.js';
 import type { NewReleaseTobeDiff } from '../tobe.js';
 
 function artifact(path: NewReleaseTobeDiff['path'], before: unknown, after: unknown): NewReleaseTobeDiff[] {
@@ -49,4 +49,49 @@ test('plugin changes mark only the matching plugin, including an internal descri
   const siblings = [{pluginId: 'first'}, {pluginId: 'second'}];
   assert.equal(hasPluginDiff(description, siblings, 'first'), true);
   assert.equal(hasPluginDiff(description, siblings, 'second'), false);
+});
+
+test('connection marker isolates one pair across two systems and a root artifact diff', () => {
+  const before = { connections: [
+    { connectionId: 'alpha', operationId: 'read', description: 'Old' },
+    { connectionId: 'beta', operationId: 'read', description: 'Same' },
+  ] };
+  const after = { connections: [before.connections[1], { ...before.connections[0], description: 'New' }] };
+  const scoped = artifact('integration.defs.ts', before, after);
+  assert.equal(connectionScope('alpha', 'read'), '$.connections[connectionId=alpha][operationId=read]');
+  for (const diffs of [scoped, [{ path: 'integration.defs.ts', entries: [{ jsonPath: '$', before, after }] }] as NewReleaseTobeDiff[]]) {
+    assert.equal(hasConnectionDiff(diffs, 'alpha', 'read'), true);
+    assert.equal(hasConnectionDiff(diffs, 'beta', 'read'), false);
+    assert.equal(hasConnectionDiff(diffs, 'alpha', 'write'), false);
+  }
+});
+
+test('external system marker isolates one of two systems in scoped and root diffs', () => {
+  const before = { externalSystems: [
+    { id: 'alpha', title: 'Old' }, { id: 'beta', title: 'Same' },
+  ] };
+  const after = { externalSystems: [before.externalSystems[1], { id: 'alpha', title: 'New' }] };
+  const scoped = artifact('integration.defs.ts', before, after);
+  const root: NewReleaseTobeDiff[] = [{ path: 'integration.defs.ts', entries: [{ jsonPath: '$', before, after }] }];
+  for (const diffs of [scoped, root]) {
+    assert.equal(hasExternalSystemDiff(diffs, 'alpha'), true);
+    assert.equal(hasExternalSystemDiff(diffs, 'beta'), false);
+  }
+});
+
+test('array-level additions and removals mark only their connection or system', () => {
+  const connections = [
+    { connectionId: 'alpha', operationId: 'read' }, { connectionId: 'beta', operationId: 'write' },
+  ];
+  const systems = [{ id: 'alpha' }, { id: 'beta' }];
+  for (const [before, after] of [[{}, { connections, externalSystems: systems }],
+    [{ connections, externalSystems: systems }, {}]]) {
+    const diffs = artifact('integration.defs.ts', before, after);
+    assert.equal(hasConnectionDiff(diffs, 'alpha', 'read'), true);
+    assert.equal(hasConnectionDiff(diffs, 'beta', 'write'), true);
+    assert.equal(hasConnectionDiff(diffs, 'alpha', 'write'), false);
+    assert.equal(hasExternalSystemDiff(diffs, 'alpha'), true);
+    assert.equal(hasExternalSystemDiff(diffs, 'beta'), true);
+    assert.equal(hasExternalSystemDiff(diffs, 'gamma'), false);
+  }
 });

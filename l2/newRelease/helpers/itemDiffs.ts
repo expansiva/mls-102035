@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/itemDiffs.ts" enhancement="_blank" />
 
 import type { NewReleaseTobeDiff } from '/_102035_/l2/newRelease/tobe.js';
+import { stableStringifyTobe } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 
 /** Match a JSON member boundary, so `taskId=one` never marks `taskId=oneMore`. */
 export function hasItemDiff(diffs: readonly NewReleaseTobeDiff[], path: string, selectors?: string | readonly string[]): boolean {
@@ -16,6 +17,41 @@ export function hasItemDiff(diffs: readonly NewReleaseTobeDiff[], path: string, 
 
 export function idScope(array: string, key: string, id: string): string {
   return `$.${array}[${key}=${encodeURIComponent(id)}]`;
+}
+
+export function connectionScope(connectionId: string, operationId: string): string {
+  return `${idScope('connections', 'connectionId', connectionId)}[operationId=${encodeURIComponent(operationId)}]`;
+}
+
+/** Root entries contain whole artifacts; compare only the requested connection pair. */
+export function hasConnectionDiff(diffs: readonly NewReleaseTobeDiff[], connectionId: string, operationId: string): boolean {
+  const scope = connectionScope(connectionId, operationId);
+  const member = (value: unknown): unknown => {
+    const connections = Array.isArray(value) ? value
+      : value && typeof value === 'object' ? (value as { connections?: unknown }).connections : undefined;
+    if (!Array.isArray(connections)) return undefined;
+    return connections.find(item => item && typeof item === 'object'
+      && item.connectionId === connectionId && item.operationId === operationId);
+  };
+  return diffs.some(diff => diff.path === 'integration.defs.ts' && diff.entries.some(entry => {
+    if (entry.jsonPath === '$' || entry.jsonPath === '$.connections')
+      return stableStringifyTobe(member(entry.before)) !== stableStringifyTobe(member(entry.after));
+    return entry.jsonPath === scope || entry.jsonPath.startsWith(`${scope}.`) || entry.jsonPath.startsWith(`${scope}[`);
+  }));
+}
+
+export function hasExternalSystemDiff(diffs: readonly NewReleaseTobeDiff[], id: string): boolean {
+  const scope = idScope('externalSystems', 'id', id);
+  const system = (value: unknown): unknown => {
+    const systems = Array.isArray(value) ? value
+      : value && typeof value === 'object' ? (value as { externalSystems?: unknown }).externalSystems : undefined;
+    if (!Array.isArray(systems)) return undefined;
+    return systems.find(item => item && typeof item === 'object' && item.id === id);
+  };
+  return diffs.some(diff => diff.path === 'integration.defs.ts' && diff.entries.some(entry =>
+    entry.jsonPath === '$' || entry.jsonPath === '$.externalSystems'
+      ? stableStringifyTobe(system(entry.before)) !== stableStringifyTobe(system(entry.after))
+      : entry.jsonPath === scope || entry.jsonPath.startsWith(`${scope}.`) || entry.jsonPath.startsWith(`${scope}[`)));
 }
 
 export function ontologyFieldScope(fieldPath: string, v3: boolean): string {

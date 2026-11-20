@@ -22,6 +22,18 @@ test('diff represents identifier replacement as remove and add, never rename', (
   assert.equal(diff.some(item => item.jsonPath === '$.journeyId'), false);
 });
 
+test('connections compare by connection and operation pair despite insertion and reorder', () => {
+  const first = { connectionId: 'system', operationId: 'read', description: 'Same' };
+  const second = { connectionId: 'system', operationId: 'write', description: 'Old' };
+  const added = { connectionId: 'other', operationId: 'read', description: 'Added' };
+  assert.deepEqual(tobeDiff({ connections: [first, second] }, { connections: [added, { ...second, description: 'New' }, first] }), [
+    { jsonPath: '$.connections[connectionId=system][operationId=write].description', before: 'Old', after: 'New' },
+    { jsonPath: '$.connections[connectionId=other][operationId=read]', after: added },
+  ]);
+  assert.ok(tobeDiff({ other: [first, second] }, { other: [second, first] })
+    .some(entry => entry.jsonPath === '$.other[0].operationId[removed=read]'));
+});
+
 test('stable sha ignores object key ordering', async () => {
   assert.equal(await sha256Tobe({ b: 2, a: 1 }), await sha256Tobe({ a: 1, b: 2 }));
 });

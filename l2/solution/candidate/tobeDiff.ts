@@ -52,6 +52,20 @@ function walk(before: unknown, after: unknown, path: string, result: NewReleaseD
   if (same(before, after)) return;
 
   if (Array.isArray(before) && Array.isArray(after)) {
+    if (path === '$.connections' && [...before, ...after].every(item =>
+      isRecord(item) && typeof item.connectionId === 'string' && typeof item.operationId === 'string')) {
+      const keyOf = (item: unknown) => {
+        const record = item as Record<string, unknown>;
+        return JSON.stringify([record.connectionId, record.operationId]);
+      };
+      const left = new Map(before.map(item => [keyOf(item), item]));
+      const right = new Map(after.map(item => [keyOf(item), item]));
+      for (const id of new Set([...left.keys(), ...right.keys()])) {
+        const [connectionId, operationId] = JSON.parse(id) as [string, string];
+        walk(left.get(id), right.get(id), `${path}[connectionId=${token(connectionId)}][operationId=${token(operationId)}]`, result);
+      }
+      return;
+    }
     const key = identityKey(before, after);
     if (key) {
       const left = new Map(before.map(item => [String((item as Record<string, unknown>)[key]), item]));
