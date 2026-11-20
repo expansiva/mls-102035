@@ -24,6 +24,7 @@ import {
   type Ns5PipelineState,
   type Ns5RulesArtifact,
   type Ns5WorkflowsArtifact,
+  type Ns5IntegrationExternalSystem,
 } from '/_102035_/l2/solution/types.js';
 
 export const VALIDATE40_MAX_ATTEMPTS = 3 as const;
@@ -35,7 +36,7 @@ export interface Validate40CorrectionState {
 
 export interface Validate40Context {
   v3?: CandidateV3Context;
-  v2?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[] };
+  v2?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[]; siblingSystems: readonly Ns5IntegrationExternalSystem[] };
 }
 
 export interface Validate40Input {
@@ -170,14 +171,18 @@ export async function validate40Private(input: Validate40Input): Promise<Validat
   try {
     const sources = validate40Sources(input.base, input.proposal);
     if (schemaFamily === 'v3') {
-      validation = validateV3Candidate(sources, input.context.v3 || {});
-      if (!input.context.v3?.registryModuleNames) {
+      const v3 = input.context.v3;
+      if (!v3) throw new Error('The caller did not provide the v3 validation context.');
+      validation = validateV3Candidate(sources, v3);
+      if (!v3.registryModuleNames) {
         validation = { ...validation, ok: false, coverage: { ...validation.coverage,
           integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
       }
     } else if (schemaFamily === 'v2') {
-      validation = await validateNs5Overlay(sources, input.context.v2);
-      if (!input.context.v2?.registryModuleNames) {
+      const v2 = input.context.v2;
+      if (!v2) throw new Error('The caller did not provide the v2 validation context.');
+      validation = await validateNs5Overlay(sources, v2);
+      if (!v2.registryModuleNames) {
         validation = { ...validation, ok: false, coverage: { ...validation.coverage,
           integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
       }

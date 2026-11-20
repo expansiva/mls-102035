@@ -5,12 +5,15 @@ import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
 import { mdm } from '/_102034_/l4/ontology/mdm.defs.js';
 import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
+import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 import {
   listNs5Modules,
   pipelineJsonFileForProject,
   readJson,
   readPipelineForProject,
+  readSolutionRegistry,
 } from '/_102035_/l2/solution/fs.js';
+import { ns5SiblingsFromRegistry, readSiblingSystems, type Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import type {
   Validate40Context,
   Validate40CorrectionState,
@@ -116,6 +119,22 @@ async function readRealValidationContext(project: number, moduleName: string): P
     readJson<Ns5OntologyV3PlanDraft>(pipelineJsonFileForProject(project, moduleName, 'ontology30-plan-draft')),
   ]);
   const registryModuleNames = listNs5Modules(project);
+  const previousProject = mls.actualProject;
+  mls.actualProject = project;
+  let siblingSystems: readonly Ns5IntegrationExternalSystem[];
+  try {
+    const registry = await readSolutionRegistry();
+    const byName = new Map<string, Ns5SiblingModule>();
+    for (const sibling of ns5SiblingsFromRegistry(registry, moduleName)) byName.set(sibling.moduleName, sibling);
+    for (const name of registryModuleNames) {
+      if (name === moduleName || byName.has(name)) continue;
+      byName.set(name, { moduleName: name, roles: [], entities: [], events: [] });
+    }
+    const groups = await readSiblingSystems([...byName.values()]);
+    siblingSystems = groups.flatMap(group => group.systems);
+  } finally {
+    mls.actualProject = previousProject;
+  }
   return {
     v3: {
       ...(mdm ? { mdm: mdm as MdmOntology } : {}),
@@ -123,8 +142,9 @@ async function readRealValidationContext(project: number, moduleName: string): P
       ...(ddm ? { ddm: ddm as DataFamilyOntology } : {}),
       ontologyPlan,
       registryModuleNames,
+      siblingSystems,
     },
-    v2: { pipeline, registryModuleNames },
+    v2: { pipeline, registryModuleNames, siblingSystems },
   };
 }
 

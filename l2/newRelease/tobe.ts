@@ -29,6 +29,9 @@ import type {
 } from '/_102035_/l2/solution/types.js';
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
+import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
+import { readNs5SiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
+import { siblingsFromRegistry } from '/_102035_/l2/newRelease/integrationRequests.js';
 import {
   assertProject,
   isNs5OntologyV3,
@@ -487,9 +490,27 @@ export async function readNs5Overlay(
     staleManifestPaths(project, moduleName, manifest),
     overlayDiffs(project, moduleName, sources, comparisonBaseId ?? baseId, baseline, !!historicalRelease?.confirmedRound && !!baseline),
   ]);
+  let registry: Ns4SolutionRegistryArtifact | null = null;
+  try {
+    registry = await readDefsJson<Ns4SolutionRegistryArtifact>({
+      project, level: 4, folder: 'organization', shortName: 'registry', extension: '.defs.ts',
+    });
+  } catch (error) {
+    errors.push({ path: 'l4/organization/registry.defs.ts', message: error instanceof Error ? error.message : String(error) });
+  }
+  const previousProject = mls.actualProject;
+  mls.actualProject = project;
+  let siblingRead: Awaited<ReturnType<typeof readNs5SiblingSystems>>;
+  try {
+    siblingRead = await readNs5SiblingSystems(siblingsFromRegistry(registry, moduleName));
+  } finally {
+    mls.actualProject = previousProject;
+  }
+  errors.push(...siblingRead.errors);
+  const siblingSystems = siblingRead.groups.flatMap(group => group.systems);
   return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null,
     confirmedRound: historicalRelease?.confirmedRound, stalePaths, diffs,
-    validation: await validateNs5Overlay(sources, { ...context, ontologyPlan }, baseline), errors };
+    validation: await validateNs5Overlay(sources, { ...context, siblingSystems, ontologyPlan }, baseline), errors };
 }
 
 /** Retire only the successfully applied revision, keeping its immutable history. */

@@ -86,7 +86,7 @@ function unavailable(reason: string): NewReleaseOverlayValidation {
 export async function reconcile30Private(
   base: Record<string, unknown>,
   proposal: Record<string, unknown>,
-  context: Validate40Context = {},
+  context: Validate40Context,
 ): Promise<Reconcile30Result> {
   const draft = cloneInventory(proposal);
   const paths = [...new Set([...Object.keys(base), ...Object.keys(proposal)])].sort();
@@ -109,12 +109,16 @@ export async function reconcile30Private(
   try {
     const sources = validate40Sources(base, proposal);
     if (schemaFamily === 'v3') {
-      validation = validateV3Candidate(sources, context.v3 || {});
-      if (!context.v3?.registryModuleNames) validation = { ...validation, ok: false, coverage: { ...validation.coverage,
+      const v3 = context.v3;
+      if (!v3) throw new Error('The caller did not provide the v3 validation context.');
+      validation = validateV3Candidate(sources, v3);
+      if (!v3.registryModuleNames) validation = { ...validation, ok: false, coverage: { ...validation.coverage,
         integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
     } else if (schemaFamily === 'v2') {
-      validation = await validateNs5Overlay(sources, context.v2);
-      if (!context.v2?.registryModuleNames) validation = { ...validation, ok: false, coverage: { ...validation.coverage,
+      const v2 = context.v2;
+      if (!v2) throw new Error('The caller did not provide the v2 validation context.');
+      validation = await validateNs5Overlay(sources, v2);
+      if (!v2.registryModuleNames) validation = { ...validation, ok: false, coverage: { ...validation.coverage,
         integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
     } else {
       operationalReason = 'Ontology schema family is unavailable.';
