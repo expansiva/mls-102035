@@ -7,6 +7,7 @@ import { isNs5IntegrationSchemaVersion, type Ns5IntegrationExternalSystem } from
 import {
   buildNs5IntegrationArtifact,
   ns5IntegrationSchemaVersion,
+  ns5UpgradeArrivalForm,
   collectNs5IntegrationSignals,
   normalizeNs5IntegrationPayload,
 } from '/_102035_/l2/solution/gates/integration70/contracts.js';
@@ -500,4 +501,104 @@ void test('entityEffects names each entity, and a list of an outside entity is n
   }], [], []);
   assert.equal(v3.schemaVersion, '2026-11-17-ns5-integration-v3');
   assert.equal('entityEffects' in v3.inbound[0], false);
+});
+
+void test('a v5 artifact rewrites every other arrival, and an old artifact is the same arrays', () => {
+  const inboundOld = {
+    id: 'arrived',
+    kind: 'event' as const,
+    description: 'An item arrived.',
+    writes: ['Item'],
+    effect: 'create' as const,
+    entityRefs: [] as string[],
+  };
+  const inboundMissing = {
+    id: 'noted',
+    kind: 'event' as const,
+    description: 'Noted.',
+    writes: ['Item'],
+    entityRefs: [] as string[],
+  };
+  const serveOld = {
+    connectionId: 'remote',
+    operationId: 'changed',
+    direction: 'serve' as const,
+    usedBy: ['A notice arrived.'],
+    description: 'A notice arrived.',
+    entityRefs: ['Local'],
+    effect: 'list' as const,
+  };
+  const callRow = {
+    connectionId: 'remote',
+    operationId: 'ask',
+    direction: 'call' as const,
+    usedBy: ['keep.saveRow'],
+    description: 'Asks the host.',
+    entityRefs: ['Item'],
+    effect: 'read' as const,
+  };
+  const inboundNew = {
+    id: 'opened',
+    kind: 'event' as const,
+    description: 'Opened.',
+    entityRefs: [] as string[],
+    entityEffects: [{ entityId: 'Item', effects: ['create' as const] }],
+  };
+  const mixed = ns5UpgradeArrivalForm(
+    [inboundNew, inboundOld, inboundMissing],
+    [serveOld, callRow],
+  );
+  assert.equal(mixed.inbound[0], inboundNew);
+  assert.equal(mixed.inbound[1].writes, undefined);
+  assert.equal(mixed.inbound[1].effect, undefined);
+  assert.deepEqual(mixed.inbound[1].entityRefs, []);
+  assert.deepEqual(mixed.inbound[1].entityEffects, [{ entityId: 'Item', effects: ['create'] }]);
+  assert.deepEqual(mixed.inbound[2].entityEffects, [{ entityId: 'Item', effects: [] }]);
+  assert.equal(mixed.connections[1], callRow);
+  assert.equal(mixed.connections[0].entityRefs, undefined);
+  assert.equal(mixed.connections[0].effect, undefined);
+  assert.deepEqual(mixed.connections[0].entityEffects, [{ entityId: 'Local', effects: ['list'] }]);
+
+  const oldInbound = [inboundOld];
+  const oldConnections = [serveOld, callRow];
+  const oldOnly = ns5UpgradeArrivalForm(oldInbound, oldConnections);
+  assert.equal(oldOnly.inbound, oldInbound);
+  assert.equal(oldOnly.connections, oldConnections);
+  assert.equal(oldOnly.converted.length, 0);
+
+  const host = {
+    id: 'remote',
+    title: 'Remote',
+    description: 'Outside.',
+    settings: [],
+    operations: [
+      { operationId: 'changed', direction: 'serve' as const, description: 'A notice arrived.' },
+      { operationId: 'ask', direction: 'call' as const, description: 'Asks the host.' },
+    ],
+  };
+  const normalized = normalizeNs5IntegrationPayload({
+    externalSystems: [host],
+    inbound: [inboundNew, inboundOld],
+    connections: [serveOld, callRow],
+  });
+  assert.equal(normalized.inbound.every(item => Array.isArray(item.entityEffects) && item.writes === undefined && item.effect === undefined), true);
+  assert.equal(normalized.connections[0].entityRefs, undefined);
+  assert.deepEqual(normalized.connections[0].entityEffects, [{ entityId: 'Local', effects: ['list'] }]);
+  assert.equal(normalized.connections[1].entityEffects, undefined);
+  assert.deepEqual(normalized.connections[1].entityRefs, ['Item']);
+  assert.deepEqual(
+    normalized.normalizations.filter(item => item.kind === 'upgradeArrivalForm').map(item => item.inboundId).sort(),
+    ['arrived', 'remote.changed'],
+  );
+
+  const v2 = normalizeNs5IntegrationPayload({ inbound: [inboundOld], connections: [callRow] });
+  assert.equal(v2.normalizations.some(item => item.kind === 'upgradeArrivalForm'), false);
+  assert.deepEqual(v2.inbound[0].writes, ['Item']);
+  assert.equal(v2.inbound[0].effect, 'create');
+  const v4 = normalizeNs5IntegrationPayload({
+    externalSystems: [{ id: 'remote', title: 'Remote', description: 'Outside.', settings: [], operations: [] }],
+    inbound: [inboundOld],
+  });
+  assert.equal('entityEffects' in v4.inbound[0], false);
+  assert.equal(v4.normalizations.some(item => item.kind === 'upgradeArrivalForm'), false);
 });

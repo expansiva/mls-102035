@@ -48,11 +48,15 @@ export const NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES = 'dropEffectWithoutWrit
 /** The arrival named `entityEffects` and also the older pair. The older pair is not stored. */
 export const NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS = 'dropArrivalLegacyFields' as const;
 
+/** Another arrival in the same artifact still used the old pair, so it was rewritten. */
+export const NS5_INTEGRATION_UPGRADE_ARRIVAL_FORM = 'upgradeArrivalForm' as const;
+
 export interface Ns5IntegrationFormNormalization {
   kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF
     | typeof NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE
     | typeof NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES
-    | typeof NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS;
+    | typeof NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS
+    | typeof NS5_INTEGRATION_UPGRADE_ARRIVAL_FORM;
   inboundId: string;
   detail: string;
 }
@@ -125,11 +129,20 @@ export function normalizeNs5IntegrationPayload(
   const inbound = list(root.inbound)
     .map(item => normalizeInbound(item, normalizations))
     .filter(item => item.id || item.description);
+  const merged = mergeInboundIntoServe(inbound, connections, normalizations);
+  const upgraded = ns5UpgradeArrivalForm(merged, connections);
+  for (const row of upgraded.converted) {
+    normalizations.push({
+      kind: NS5_INTEGRATION_UPGRADE_ARRIVAL_FORM,
+      inboundId: row.inboundId,
+      detail: row.detail,
+    });
+  }
   return {
-    inbound: mergeInboundIntoServe(inbound, connections, normalizations),
+    inbound: upgraded.inbound,
     outbound: list(root.outbound).map(item => normalizeOutbound(item)).filter(item => item.id || item.description),
     plugins: list(root.plugins).map(normalizePlugin).filter(plugin => plugin.pluginId || plugin.description),
-    connections: connections.map(row => row),
+    connections: upgraded.connections,
     externalSystems,
     normalizations,
   };
@@ -191,6 +204,51 @@ export function ns5IntegrationSchemaVersion(
   const serveHas = (arrivals?.connections || []).some(row => row.direction === 'serve' && Array.isArray(row.entityEffects));
   if (inboundHas || serveHas) return NS5_INTEGRATION_SCHEMA_VERSION_V5;
   return externalSystems?.length ? NS5_INTEGRATION_SCHEMA_VERSION_V4 : NS5_INTEGRATION_SCHEMA_VERSION;
+}
+
+/**
+ * When any arrival already says `entityEffects` (even `[]`), every other arrival is rewritten
+ * to that form. An artifact with none is returned as the same arrays, byte for byte.
+ * `call` rows and outbound rows are not arrivals.
+ */
+export function ns5UpgradeArrivalForm(
+  inbound: readonly Ns5IntegrationItem[],
+  connections: readonly Ns5IntegrationConnection[],
+): {
+  inbound: Ns5IntegrationItem[];
+  connections: Ns5IntegrationConnection[];
+  converted: Array<{ inboundId: string; detail: string }>;
+} {
+  const inboundNew = inbound.some(item => Array.isArray(item.entityEffects));
+  const serveNew = connections.some(row => row.direction === 'serve' && Array.isArray(row.entityEffects));
+  if (!inboundNew && !serveNew) {
+    return {
+      inbound: inbound as Ns5IntegrationItem[],
+      connections: connections as Ns5IntegrationConnection[],
+      converted: [],
+    };
+  }
+  const converted: Array<{ inboundId: string; detail: string }> = [];
+  const nextInbound = inbound.map(item => {
+    if (Array.isArray(item.entityEffects)) return item;
+    converted.push({
+      inboundId: item.id,
+      detail: `inbound ${item.id || '(missing)'} rewritten as entityEffects.`,
+    });
+    const { writes: _writes, effect: _effect, ...rest } = item;
+    return { ...rest, entityEffects: ns5ArrivalEffects(item, 'inbound') };
+  });
+  const nextConnections = connections.map(row => {
+    if (row.direction !== 'serve' || Array.isArray(row.entityEffects)) return row;
+    const inboundId = `${row.connectionId}.${row.operationId}`;
+    converted.push({
+      inboundId,
+      detail: `serve ${inboundId} rewritten as entityEffects.`,
+    });
+    const { entityRefs: _entityRefs, effect: _effect, ...rest } = row;
+    return { ...rest, entityEffects: ns5ArrivalEffects(row, 'serve') };
+  });
+  return { inbound: nextInbound, connections: nextConnections, converted };
 }
 
 export function buildNs5IntegrationArtifact(

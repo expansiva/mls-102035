@@ -6,12 +6,14 @@ import { applyNrpMechanical, nrpFreeTextHits, nrpModelKinds, type NrpTextMark } 
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import type { NrpAppliedEdit } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { pipelineJsonFileForProject, setModuleRoot } from '/_102035_/l2/solution/fs.js';
-import { ns5IntegrationSchemaVersion } from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import { ns5IntegrationSchemaVersion, ns5UpgradeArrivalForm } from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   NS5_INTEGRATION_SCHEMA_VERSION_V4,
   NS5_INTEGRATION_SCHEMA_VERSION_V5,
+  type Ns5IntegrationConnection,
   type Ns5IntegrationExternalSystem,
+  type Ns5IntegrationItem,
 } from '/_102035_/l2/solution/types.js';
 import { createNs4FlexibleWorkerTool, unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import {
@@ -389,6 +391,7 @@ export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: N
     for (const operation of creates) applyOperation(kind, scope, working, operation);
     const files: NrpEditFile[] = [];
     for (const [id, item] of working) {
+      if (kind === 'integration' && isRecord(item.artifact)) upgradeIntegrationArrivals(item.artifact);
       const before = scope.files.find(file => file.id === id);
       if (!item.created && before && sameJson(before.artifact, item.artifact)) continue;
       if (kind === 'integration' && isRecord(item.artifact)) refreshIntegrationSchemaVersion(item.artifact);
@@ -510,6 +513,15 @@ function assertMutable(tokens: readonly string[]): void {
  * function the integration step uses. A recorded v2 file is not a version that function emits,
  * so an edit that adds no entityEffects leaves it; v5 is written whenever an arrival carries entityEffects.
  */
+/** Other arrivals follow the one that already names entityEffects, before the edit is compared or versioned. */
+function upgradeIntegrationArrivals(artifact: Record<string, unknown>): void {
+  const inbound = Array.isArray(artifact.inbound) ? artifact.inbound as Ns5IntegrationItem[] : [];
+  const connections = Array.isArray(artifact.connections) ? artifact.connections as Ns5IntegrationConnection[] : [];
+  const next = ns5UpgradeArrivalForm(inbound, connections);
+  if (next.inbound !== inbound) artifact.inbound = next.inbound;
+  if (next.connections !== connections) artifact.connections = next.connections;
+}
+
 function refreshIntegrationSchemaVersion(artifact: Record<string, unknown>): void {
   const externalSystems = Array.isArray(artifact.externalSystems)
     ? artifact.externalSystems as Ns5IntegrationExternalSystem[]

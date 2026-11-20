@@ -890,6 +890,85 @@ void test('a call description edit and an old file with no new arrival keep thei
   assert.deepEqual(untouched.files, []);
 });
 
+void test('editing one arrival into entityEffects rewrites the other arrivals and sets v5', () => {
+  const before = {
+    schemaVersion: V2,
+    moduleName: 'sample',
+    inbound: [
+      {
+        id: 'catalog',
+        kind: 'event',
+        description: 'Catalog.',
+        writes: ['Item'],
+        effect: 'update',
+        entityRefs: [],
+      },
+      {
+        id: 'noted',
+        kind: 'event',
+        description: 'Noted.',
+        writes: ['Remote'],
+        effect: 'create',
+        entityRefs: [],
+      },
+    ],
+    connections: [
+      {
+        connectionId: 'remote',
+        operationId: 'describe',
+        direction: 'serve',
+        usedBy: ['What it lists.'],
+        description: 'Lists.',
+        entityRefs: ['Item', 'Remote'],
+        effect: 'list',
+      },
+      {
+        connectionId: 'remote',
+        operationId: 'ask',
+        direction: 'call',
+        usedBy: ['keep.saveRow'],
+        description: 'Asks.',
+        entityRefs: ['Item'],
+        effect: 'read',
+      },
+    ],
+    outbound: [],
+  };
+  const edited = normalizeNrpEdit('integration', {
+    operations: [
+      integrationOp({ op: 'remove', pointer: '/inbound/0/writes', expectedJson: '["Item"]', valueJson: '', reason: 'arrival names effects' }),
+      integrationOp({ op: 'remove', pointer: '/inbound/0/effect', expectedJson: '"update"', valueJson: '', reason: 'arrival names effects' }),
+      integrationOp({
+        op: 'add',
+        pointer: '/inbound/0/entityEffects',
+        expectedJson: '',
+        valueJson: '[{"entityId":"Item","effects":["create","update"]}]',
+        reason: 'arrival names effects',
+      }),
+    ],
+  }, integrationScope(before));
+  const artifact = edited.files[0].artifact as {
+    schemaVersion: string;
+    inbound: Array<{ id: string; writes?: unknown; effect?: unknown; entityEffects?: unknown }>;
+    connections: Array<{ operationId: string; entityRefs?: unknown; effect?: unknown; entityEffects?: unknown; description: string }>;
+  };
+  assert.equal(artifact.schemaVersion, NS5_INTEGRATION_SCHEMA_VERSION_V5);
+  assert.deepEqual(artifact.inbound[0].entityEffects, [{ entityId: 'Item', effects: ['create', 'update'] }]);
+  assert.equal(artifact.inbound[0].writes, undefined);
+  assert.deepEqual(artifact.inbound[1].entityEffects, [{ entityId: 'Remote', effects: ['create'] }]);
+  assert.equal(artifact.inbound[1].writes, undefined);
+  assert.equal(artifact.inbound[1].effect, undefined);
+  assert.deepEqual(artifact.connections[0].entityEffects, [
+    { entityId: 'Item', effects: ['list'] },
+    { entityId: 'Remote', effects: ['list'] },
+  ]);
+  assert.equal(artifact.connections[0].entityRefs, undefined);
+  assert.equal(artifact.connections[0].effect, undefined);
+  assert.equal(artifact.connections[1].entityEffects, undefined);
+  assert.deepEqual(artifact.connections[1].entityRefs, ['Item']);
+  assert.equal(artifact.connections[1].effect, 'read');
+});
+
 void test('set on schemaVersion is still refused', () => {
   const file = {
     schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
