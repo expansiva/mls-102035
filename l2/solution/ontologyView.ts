@@ -74,6 +74,8 @@ export interface Ns5OntologyEntityViewItem {
   /** v2 `mdmSubtype`, v3 `subtype` of a `role`. */
   mdmSubtype?: string;
   writer?: 'journey' | 'crud' | 'inbound';
+  /** `connectionId` of an `external` entity. Integration checks the origin. */
+  externalConnectionId?: string;
   displayField: string;
   idField: string;
   /**
@@ -256,6 +258,7 @@ function viewOfV3(entity: Ns5OntologyEntityV3): Ns5OntologyEntityViewItem {
     party,
     ...(subtype ? { mdmSubtype: subtype } : {}),
     ...(entity.writer ? { writer: entity.writer } : {}),
+    ...(entity.kind === 'external' && entity.connectionId ? { externalConnectionId: entity.connectionId } : {}),
     displayField: entity.displayField,
     idField: 'id',
     fields: [],

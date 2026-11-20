@@ -30,6 +30,7 @@ Three kinds, and only three.
   movements that point at it. `class` is `core`, `event` or `supporting`.
 - **`external`** — a record that lives in another system and is reached through one connection of the
   platform catalog, or through a system a sibling module declares. Both are listed in the human prompt.
+  If neither serves, `connectionId` is the name (lowerCamel, new) of a system this module declares in integration.
   `connectionId` names that connection, in lowerCamel. The module stores nothing of the row. No `class`, no `subtype`, no
   `initialData`. `family` is `tdm` and `storageKind` is `external` — both fixed. `writer` is `journey`,
   the neutral value: what this module reads or writes is chosen later, as operations of the connection.

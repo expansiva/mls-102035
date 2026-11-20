@@ -7,6 +7,7 @@ import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.j
 import {
   buildNs5IntegrationArtifact,
   ns5IntegrationSchemaVersion,
+  collectNs5IntegrationSignals,
   normalizeNs5IntegrationPayload,
 } from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
@@ -177,4 +178,47 @@ void test('l4_p4_123: a system with a serve operation needs a secret setting', (
   assert.equal(run({ externalSystems: [OWN] }).gate.ok, true);
   // A system that only calls needs no secret (a public lookup).
   assert.equal(run({ externalSystems: [SIBLING] }).gate.ok, true);
+});
+
+void test('l4_p4_127 s2: an ontology connectionId is declared, refused, or already known', () => {
+  const citedSystem = {
+    id: 'citedSystem', title: 'Cited', description: 'A system this module declares.', settings: [], operations: [],
+  };
+  const cited = [{ entityId: 'OwnNote', externalConnectionId: 'citedSystem' }];
+  const declared = validateNs5Integration([], [], [], {
+    actors: [], entities: cited, registryModuleNames: [], sourcePrompt: 'a note',
+  }, [], [citedSystem]);
+  assert.equal(declared.ok, true, declared.issues.map(issue => issue.message).join('\n'));
+
+  const missing = validateNs5Integration([], [], [], {
+    actors: [], entities: cited, registryModuleNames: [], sourcePrompt: 'a note',
+  });
+  assert.equal(missing.ok, false);
+  const issue = missing.issues.find(item => item.code === 'NS5_INTEGRATION_ENTITY_SYSTEM_MISSING');
+  assert.equal(issue?.path, 'externalSystems');
+  assert.match(issue?.message || '', /platform catalog/);
+  assert.match(issue?.message || '', /sibling/);
+  assert.match(issue?.message || '', /Declare a system with this id in externalSystems/);
+
+  const known = validateNs5Integration([], [], [], {
+    actors: [],
+    entities: [
+      { entityId: 'CatalogNote', externalConnectionId: 'cm' },
+      { entityId: 'SiblingNote', externalConnectionId: 'siblingSystem' },
+    ],
+    registryModuleNames: [],
+    sourcePrompt: 'a note',
+    siblingSystems: [{ id: 'siblingSystem', title: 'Sibling', description: 'A system a sibling declares.', settings: [], operations: [] }],
+  });
+  assert.equal(known.issues.some(item => item.code === 'NS5_INTEGRATION_ENTITY_SYSTEM_MISSING'), false);
+  assert.equal(known.ok, true, known.issues.map(item => item.message).join('\n'));
+
+  const signals = collectNs5IntegrationSignals([], 'a note', [], { entities: cited });
+  assert.ok(signals.some(signal => signal.kind === 'externalEntitySystem' && signal.entityId === 'OwnNote' && signal.term === 'citedSystem'));
+  const catalogOnly = collectNs5IntegrationSignals([], 'a note', [], {
+    entities: [{ entityId: 'CatalogNote', externalConnectionId: 'cm' }, { entityId: 'SiblingNote', externalConnectionId: 'siblingSystem' }],
+    siblingSystems: [{ id: 'siblingSystem' }],
+  });
+  assert.equal(catalogOnly.some(signal => signal.kind === 'externalEntitySystem'), false);
+  assert.ok(missing.issues.some(item => item.code === 'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM'));
 });

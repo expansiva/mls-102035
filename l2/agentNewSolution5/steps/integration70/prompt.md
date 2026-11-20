@@ -15,8 +15,8 @@ talking to an external system, or using a platform plugin. Shared master data (a
 product already in the organization catalog) is not an integration.
 
 Empty `inbound`, `outbound`, `plugins`, `connections` and `externalSystems` arrays are valid only when the human prompt lists no
-structural signal (no `kind: system` actor, no platform-plugin term, no connection-catalog term, and no sibling module). This
-call does not run in that case.
+structural signal (no `kind: system` actor, no platform-plugin term, no connection-catalog term, no sibling module, and no
+ontology entity whose connection this module must declare). This call does not run in that case.
 
 The payload of an event is not declared here. `outbound.on` is the entity record at that transition
 or create. The receiving module maps that record in the inbound `description` (cite `inbound.id`).
@@ -57,6 +57,8 @@ entity; point at it with inbound/outbound.
 When the request names a system outside the app that this module must talk to, declare it in
 `externalSystems`; the platform knows nothing about it. Each entry is
 `{ id, title, description, settings[], operations[] }`.
+
+When the ontology cites a `connectionId` that is not a platform catalog connection and not a system a sibling declares, declare an external system with that same id. The human prompt lists those ids under Systems the ontology cites.
 
 - `id` is lowerCamel and unique in the project. It is the `connectionId` of the rows in `connections`. It must
   not repeat a connection of the platform catalog, nor a system a sibling already declares.

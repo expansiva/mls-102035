@@ -769,6 +769,32 @@ void test('human prompt lists the systems the siblings declare', () => {
     sourcePrompt: 'x', userLanguage: 'en', actors: [], entities: [], usedByRefs: [], siblings: [], inboundWriters: [], platformEventIds: [],
   });
   assert.match(none, /External systems the sibling modules already declare[^\n]*\n\(none\)/);
+  assert.doesNotMatch(none, /## Systems the ontology cites/);
+});
+
+void test('l4_p4_127 s2: the prompt lists the systems the ontology cites and marks the one this module declares', () => {
+  const human = buildNs5IntegrationHumanPrompt({
+    sourcePrompt: 'a request',
+    userLanguage: 'en',
+    actors: [],
+    entities: [
+      { entityId: 'CatalogNote', externalConnectionId: 'cm' },
+      { entityId: 'SiblingNote', externalConnectionId: 'siblingSystem' },
+      { entityId: 'OwnNote', externalConnectionId: 'citedSystem' },
+    ],
+    usedByRefs: [],
+    siblings: [],
+    siblingSystems: [{
+      moduleName: 'sibling',
+      systems: [{ id: 'siblingSystem', title: 'Sibling', description: 'A system a sibling declares.', settings: [], operations: [] }],
+    }],
+    inboundWriters: [],
+    platformEventIds: [],
+  });
+  assert.match(human, /## Systems the ontology cites/);
+  assert.match(human, /- CatalogNote → cm/);
+  assert.match(human, /- SiblingNote → siblingSystem/);
+  assert.match(human, /- OwnNote → citedSystem · this module declares it/);
 });
 
 // l4_p4_117 s5: three artifacts of the three cases and one recorded v2, with no model call. The `.defs.ts`

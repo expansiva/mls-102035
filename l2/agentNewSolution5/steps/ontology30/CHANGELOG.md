@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-20 (l4_p4_127 s2)
+
+- An `external` `connectionId` may also be the name (lowerCamel, new) of a system this module declares in integration. The ontology gate checks the form (`lowerCamel`, not empty). Integration checks the origin.
+
 ## 2026-11-20 (l4_p4_127 s1)
 
 - An `external` `connectionId` is a connection of the platform catalog or a system a sibling module declares. The plan prompt lists the sibling `call` operations under Connection catalog. The gate reads those systems (`NS5_ONTOLOGY_CONNECTION_UNKNOWN`, `NS5_ONTOLOGY_EXTERNAL_CONNECTION`).

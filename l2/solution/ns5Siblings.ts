@@ -57,12 +57,6 @@ export async function readSiblingSystems(
   return out;
 }
 
-/** Systems declared by siblings of `currentModule`, flattened. A caller with no Studio storage gets none. */
-export async function declaredSiblingSystems(currentModule?: string): Promise<Ns5IntegrationExternalSystem[]> {
-  if (typeof mls.stor?.getKeyToFile !== 'function') return [];
-  return (await readSiblingSystems(await readNs5Siblings(currentModule))).flatMap(item => item.systems);
-}
-
 export function formatSiblingSystems(
   siblingSystems: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>,
 ): string {

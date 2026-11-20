@@ -31,7 +31,7 @@
         "connectionId": {
           "type": "string",
           "pattern": "^[a-z][A-Za-z0-9]*$",
-          "description": "A connection of the platform catalog, or a system a sibling module declares. Only on kind external. source is derived from it and is never sent."
+          "description": "A connection of the platform catalog, or a system a sibling module declares (both listed in the plan prompt), or, if neither serves, the name (lowerCamel, new) of a system this module declares in integration. Only on kind external. source is derived from it and is never sent."
         },
         "class": { "type": "string", "enum": ["core", "event", "supporting"] },
         "title": { "type": "string" },

@@ -92,7 +92,8 @@ A value recalculated over MANY rows by time window and group is not this: that i
 
 The record lives in a connection, outside this module. This pass only says what the module sees of it.
 It is read here: the module does not store the row. `connectionId` is a connection of the platform catalog
-or a system a sibling module declares. Both are listed in the plan prompt.
+or a system a sibling module declares. Both are listed in the plan prompt. If neither serves, it is the
+name (lowerCamel, new) of a system this module declares in integration.
 
 - `record.fields` is that view. There are no table columns, no index, no `uniqueKeys`.
 - There is no lifecycle and no transition. Do not declare `status`, states or `derived` columns of a table.

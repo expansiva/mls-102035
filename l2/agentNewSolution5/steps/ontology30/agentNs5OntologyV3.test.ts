@@ -1724,7 +1724,7 @@ void test('l4_p4_107: external plan requires a catalog connectionId and refuses 
 
   const invented = clone(clean);
   invented.entities[0].connectionId = 'noSuchConnection';
-  assert.ok(codes(validateNs5OntologyPlanV3(invented, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'));
+  assert.equal(codes(validateNs5OntologyPlanV3(invented, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'), false);
 
   const withClass = clone(clean);
   withClass.entities[0].class = 'core';
@@ -1786,7 +1786,7 @@ void test('l4_p4_107: an external entity refuses table machinery and checks conn
   assert.equal(built.kind === 'external' ? built.connectionId : '', 'cm');
 });
 
-void test('l4_p4_127: a system a sibling declares is a connectionId; an unknown id names both origins; cm still passes', () => {
+void test('l4_p4_127: a new lowerCamel connectionId passes the ontology; a bad form says integration checks the origin; the prompt still lists a sibling call', () => {
   const sibling = {
     id: 'outside',
     title: 'Outside',
@@ -1794,34 +1794,21 @@ void test('l4_p4_127: a system a sibling declares is a connectionId; an unknown 
     settings: [],
     operations: [{ operationId: 'ask', direction: 'call' as const, description: 'Asks.' }],
   };
-  const withSibling = { ...gateContext, systems: [sibling] };
+  const cited = externalPlan();
+  cited.entities[0].connectionId = 'citedSystem';
+  assert.equal(codes(validateNs5OntologyPlanV3(cited, gateContext).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'), false);
 
-  const accepted = externalPlan();
-  accepted.entities[0].connectionId = 'outside';
-  assert.equal(codes(validateNs5OntologyPlanV3(accepted, withSibling).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'), false);
-
-  const cmPlan = externalPlan();
-  assert.equal(codes(validateNs5OntologyPlanV3(cmPlan, withSibling).issues).includes('NS5_ONTOLOGY_CONNECTION_UNKNOWN'), false);
-
-  const invented = clone(accepted);
-  invented.entities[0].connectionId = 'noSuchConnection';
-  const planIssue = validateNs5OntologyPlanV3(invented, withSibling).issues.find(issue => issue.code === 'NS5_ONTOLOGY_CONNECTION_UNKNOWN');
-  assert.match(planIssue?.message || '', /platform catalog/);
-  assert.match(planIssue?.message || '', /sibling module declares/);
+  const bad = externalPlan();
+  bad.entities[0].connectionId = 'Bad';
+  const planIssue = validateNs5OntologyPlanV3(bad, gateContext).issues.find(issue => issue.code === 'NS5_ONTOLOGY_CONNECTION_UNKNOWN');
+  assert.match(planIssue?.message || '', /lowerCamel/);
+  assert.match(planIssue?.message || '', /integration/i);
 
   const entityPlan = externalPlan();
-  entityPlan.entities[0].connectionId = 'outside';
+  entityPlan.entities[0].connectionId = 'citedSystem';
   const built = externalEntity(entityPlan);
-  if (built.kind === 'external') built.connectionId = 'outside';
-  assert.equal(codes(validateNs5OntologyEntityV3(built, entityPlan, withSibling).issues).includes('NS5_ONTOLOGY_EXTERNAL_CONNECTION'), false);
-
-  const cmEntity = externalEntity(externalPlan());
-  assert.equal(codes(validateNs5OntologyEntityV3(cmEntity, externalPlan(), withSibling).issues).includes('NS5_ONTOLOGY_EXTERNAL_CONNECTION'), false);
-
-  if (built.kind === 'external') built.connectionId = 'noSuchConnection';
-  const entityIssue = validateNs5OntologyEntityV3(built, entityPlan, withSibling).issues.find(issue => issue.code === 'NS5_ONTOLOGY_EXTERNAL_CONNECTION');
-  assert.match(entityIssue?.message || '', /platform catalog/);
-  assert.match(entityIssue?.message || '', /sibling module declares/);
+  if (built.kind === 'external') built.connectionId = 'citedSystem';
+  assert.equal(codes(validateNs5OntologyEntityV3(built, entityPlan, gateContext).issues).includes('NS5_ONTOLOGY_EXTERNAL_CONNECTION'), false);
 
   const prompt = buildNs5OntologyPlanHumanPrompt({
     sourcePrompt: 'A module reaches a record outside.',

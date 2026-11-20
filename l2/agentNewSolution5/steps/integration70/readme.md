@@ -33,6 +33,7 @@ The step calls the model only when at least one of:
 - `sourcePrompt` contains a term from the platform plugin catalog (`stripe`, `cardPayment`)
 - `sourcePrompt` contains a connection-catalog id (lets the step run; does not by itself require an item)
 - a sibling module is already in the organization registry
+- an ontology entity `external` cites a `connectionId` that is not a platform catalog connection and not a system a sibling declares (the step then requires that id in `externalSystems`)
 
 No signal ⇒ empty lists, cost 0, `noIntegrationSignal: true`. Shared MDM (`Product`, `Person`) is
 not a signal and is not an integration item.

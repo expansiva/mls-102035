@@ -110,7 +110,7 @@ export function buildNs5IntegrationHumanPrompt(input: {
   sourcePrompt: string;
   userLanguage: string;
   actors: ReadonlyArray<{ actorId: string; kind: string; title: string; description: string }>;
-  entities: ReadonlyArray<{ entityId: string; writer?: 'journey' | 'crud' | 'inbound'; transitions?: ReadonlyArray<{ transitionId: string }> }>;
+  entities: ReadonlyArray<{ entityId: string; writer?: 'journey' | 'crud' | 'inbound'; transitions?: ReadonlyArray<{ transitionId: string }>; externalConnectionId?: string }>;
   /** Every `journeyId.stepId` and `processId.taskId` that exists. `usedBy` may name nothing else. */
   usedByRefs: readonly string[];
   siblings: readonly Ns5SiblingModule[];
@@ -121,7 +121,11 @@ export function buildNs5IntegrationHumanPrompt(input: {
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
-  const signals = collectNs5IntegrationSignals(input.actors, input.sourcePrompt, input.siblings);
+  const signals = collectNs5IntegrationSignals(input.actors, input.sourcePrompt, input.siblings, {
+    entities: input.entities,
+    siblingSystems: (input.siblingSystems || []).flatMap(item => item.systems),
+  });
+  const citedSystems = formatCitedSystems(input.entities, input.siblingSystems || []);
   const entityLines = input.entities.length
     ? input.entities.map(entity => {
       const writer = entity.writer && entity.writer !== 'journey' ? ` writer=${entity.writer}` : '';
@@ -170,6 +174,7 @@ export function buildNs5IntegrationHumanPrompt(input: {
     '',
     '## External systems the sibling modules already declare (use theirs in connections; never declare one again)',
     formatSiblingSystems(input.siblingSystems || []),
+    citedSystems,
     '',
     '## Integration signals (why this call ran)',
     signals.length ? JSON.stringify(signals, null, 2) : '(none — this call should not run)',
@@ -195,7 +200,15 @@ export async function beforeNs5IntegrationPromptStep(
     const actors = await readNs5Actors(moduleName);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
     const siblings = await readNs5Siblings(moduleName);
-    const signals = collectNs5IntegrationSignals(actors, sourcePrompt, siblings);
+    const [entities, siblingSystemGroups] = await Promise.all([
+      readEntities(moduleName),
+      readSiblingSystems(siblings),
+    ]);
+    const integrationEntities = entities.map(integrationEntityOf);
+    const signals = collectNs5IntegrationSignals(actors, sourcePrompt, siblings, {
+      entities: integrationEntities,
+      siblingSystems: siblingSystemGroups.flatMap(item => item.systems),
+    });
     if (!signals.length) {
       const pipeline = await requirePipeline(moduleName);
       const { artifactPath, compile } = await persistArtifacts(moduleName, [], [], [], pipeline, true, [], []);
@@ -206,24 +219,19 @@ export async function beforeNs5IntegrationPromptStep(
         updateStatus(context, parentStep, step, hookSequential, 'completed', `integration70 approved with noIntegrationSignal: ${artifactPath}`),
       ];
     }
-    const [entities, usedByRefs, siblingSystems, prompt, schema, previous] = await Promise.all([
-      readEntities(moduleName),
+    const [usedByRefs, prompt, schema, previous] = await Promise.all([
       readUsedByRefs(moduleName),
-      readSiblingSystems(siblings),
       readAgentText('steps/integration70', 'prompt', '.md'),
       readAgentJson<Record<string, unknown>>('schemas', 'integration.schema', '.json'),
       moduleName ? readJson(draftFile(moduleName, 'integration70')) : Promise.resolve(null),
     ]);
+    const siblingSystems = siblingSystemGroups;
     const tool = buildNs5IntegrationTool(schema, createStrictArtifactTool);
     const humanPrompt = buildNs5IntegrationHumanPrompt({
       sourcePrompt,
       userLanguage: moduleArtifact.userLanguage,
       actors,
-      entities: entities.map(entity => ({
-        entityId: entity.entityId,
-        ...(entity.writer ? { writer: entity.writer } : {}),
-        transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
-      })),
+      entities: integrationEntities,
       siblings,
       siblingSystems,
       usedByRefs,
@@ -293,11 +301,7 @@ export async function afterNs5IntegrationPromptStep(
     const gate = validateNs5Integration(inbound, outbound, plugins, {
       moduleName,
       actors,
-      entities: entities.map(entity => ({
-        entityId: entity.entityId,
-        ...(entity.writer ? { writer: entity.writer } : {}),
-        transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
-      })),
+      entities: entities.map(integrationEntityOf),
       registryModuleNames: siblings.map(item => item.moduleName),
       siblings,
       sourcePrompt,
@@ -390,6 +394,35 @@ async function readModule(moduleName: string): Promise<Ns5ModuleArtifact> {
     }
   }
   return artifact;
+}
+
+function integrationEntityOf(entity: Ns5OntologyEntityViewItem): {
+  entityId: string;
+  writer?: 'journey' | 'crud' | 'inbound';
+  transitions: Array<{ transitionId: string }>;
+  externalConnectionId?: string;
+} {
+  return {
+    entityId: entity.entityId,
+    ...(entity.writer ? { writer: entity.writer } : {}),
+    transitions: entity.transitions.map(item => ({ transitionId: item.transitionId })),
+    ...(entity.externalConnectionId ? { externalConnectionId: entity.externalConnectionId } : {}),
+  };
+}
+
+function formatCitedSystems(
+  entities: ReadonlyArray<{ entityId: string; externalConnectionId?: string }>,
+  siblingSystems: ReadonlyArray<{ systems: readonly { id: string }[] }>,
+): string {
+  const catalogIds = new Set(ns5ConnectionCatalogs().map(catalog => catalog.connectionId));
+  const siblingIds = new Set(siblingSystems.flatMap(item => item.systems.map(system => system.id)));
+  const lines = entities.flatMap(entity => {
+    const id = entity.externalConnectionId;
+    if (!id) return [];
+    const mark = !catalogIds.has(id) && !siblingIds.has(id) ? ' · this module declares it' : '';
+    return [`- ${entity.entityId} → ${id}${mark}`];
+  });
+  return lines.length ? ['## Systems the ontology cites', ...lines].join('\n') : '';
 }
 
 async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {

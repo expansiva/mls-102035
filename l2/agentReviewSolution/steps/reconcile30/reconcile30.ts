@@ -109,7 +109,7 @@ export async function reconcile30Private(
   try {
     const sources = validate40Sources(base, proposal);
     if (schemaFamily === 'v3') {
-      validation = await validateV3Candidate(sources, context.v3 || {});
+      validation = validateV3Candidate(sources, context.v3 || {});
       if (!context.v3?.registryModuleNames) validation = { ...validation, ok: false, coverage: { ...validation.coverage,
         integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };
     } else if (schemaFamily === 'v2') {

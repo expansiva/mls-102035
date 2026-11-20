@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-20 (l4_p4_127 s2)
+
+- An ontology entity `external` that cites a `connectionId` outside the platform catalog and outside the systems a sibling declares is a signal (`externalEntitySystem`). The human prompt lists those ids under `## Systems the ontology cites`. The gate requires that id in `externalSystems` (`NS5_INTEGRATION_ENTITY_SYSTEM_MISSING`). A catalog connection and a sibling system do not require a declaration.
+
 ## 2026-11-19 (l4_p4_123)
 
 - A system with a `serve` operation declares at least one setting with `secret: true` (the secret agreed with the system, to check what it sends): intent in `prompt.md`, and `NS5_INTEGRATION_SYSTEM_SERVE_SECRET` in the gate sends a system without it to the repair.

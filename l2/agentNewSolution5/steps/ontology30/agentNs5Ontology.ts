@@ -8,7 +8,7 @@ import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import type { MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
-import { declaredSiblingSystems, formatNs5Siblings, readNs5Siblings, readSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
+import { formatNs5Siblings, readNs5Siblings, readSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_AGENT_NAME,
@@ -476,7 +476,6 @@ async function handlePlanResult(
   await writeJson(draftFile(parsed.moduleName, 'ontology30-plan'), plan);
   const gate = validateNs5OntologyPlanV3(plan, {
     moduleName: parsed.moduleName, mdm, tdm, ddm, journeys, workflows,
-    systems: await declaredSiblingSystems(parsed.moduleName),
   });
   if (!gate.ok) {
     const feedback = formatNs5OntologyV3Gate(gate.issues);
@@ -543,7 +542,6 @@ async function handleEntityResult(
     workflows,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: (await readNs5Actors(parsed.moduleName)).map(actor => actor.actorId),
-    systems: await declaredSiblingSystems(parsed.moduleName),
   });
   if (!gate.ok) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} gate failed; finalizer will repair it. | ${formatNs5OntologyV3Gate(gate.issues)}`)];
@@ -590,7 +588,6 @@ async function finalizeOntology(
     workflows,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: actors.map(actor => actor.actorId),
-    systems: await declaredSiblingSystems(parsed.moduleName),
   };
   const invalid: string[] = [];
   const entityFeedback: Record<string, string> = {};

@@ -63,8 +63,11 @@ export function validateNs5Integration(
   const pluginIds = new Set<string>();
   const connectionPairs = new Set<string>();
   const siblings = context.siblings || [];
-  const signals = collectNs5IntegrationSignals(context.actors, context.sourcePrompt, siblings);
   const siblingSystems = context.siblingSystems || [];
+  const signals = collectNs5IntegrationSignals(context.actors, context.sourcePrompt, siblings, {
+    entities: context.entities,
+    siblingSystems,
+  });
   const systems = [...externalSystems, ...siblingSystems];
 
   // A connection term only lets the step run (the prompt may say "cm" for centimeters): it never forces an item.
@@ -72,7 +75,7 @@ export function validateNs5Integration(
     error(
       issues,
       'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM',
-      'A system actor, plugin-catalog term, connection-catalog term or sibling module is present so inbound, outbound, plugins and connections cannot all be empty.',
+      'A system actor, plugin-catalog term, connection-catalog term, sibling module or ontology entity that names a system this module declares is present so inbound, outbound, plugins, connections and externalSystems cannot all be empty.',
     );
   }
 
@@ -101,6 +104,21 @@ export function validateNs5Integration(
       processTasks: context.processTasks || [],
     });
   });
+
+  const catalogIds = new Set(ns5ConnectionCatalogs().map(catalog => catalog.connectionId));
+  const siblingIds = new Set(siblingSystems.map(system => system.id));
+  const declaredIds = new Set(externalSystems.map(system => system.id));
+  for (const entity of context.entities) {
+    const id = entity.externalConnectionId;
+    if (!id) continue;
+    if (catalogIds.has(id) || siblingIds.has(id) || declaredIds.has(id)) continue;
+    error(
+      issues,
+      'NS5_INTEGRATION_ENTITY_SYSTEM_MISSING',
+      `${entity.entityId} cites '${id}', which is not a connection of the platform catalog, not a system a sibling module declares, and not declared here. Declare a system with this id in externalSystems, or use a system that exists.`,
+      'externalSystems',
+    );
+  }
 
   for (const entity of context.entities) {
     if (entity.writer !== 'inbound' || !entity.entityId) continue;

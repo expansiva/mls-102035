@@ -19,7 +19,7 @@ The family is the catalog the fan-out starts from — `mdm.defs.ts`, `tdm.defs.t
 `mls-102034/l4/ontology/` — and the catalog its capability ids are checked against. Before it, a table
 started from nothing and each call of the fan-out invented what a table may do.
 
-An `external` entity names a `connectionId`: a connection of the platform catalog, or a system a sibling module declares. The plan prompt lists both. The gate accepts either.
+An `external` entity names a `connectionId`: a connection of the platform catalog, or a system a sibling module declares (the plan prompt lists both), or, if neither serves, the name (lowerCamel, new) of a system this module declares in integration. The ontology gate checks the form. Integration checks the origin.
 
 The generation lives in `contractsV3.ts` + `gateV3.ts` + `schemas/ontology-{plan,entity}-v3.schema.json`.
 `contracts.ts` and `gate.ts` next door are the **v2** normalize and gate, untouched: the eleven other

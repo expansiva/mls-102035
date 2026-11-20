@@ -66,6 +66,8 @@ export interface Ns5IntegrationEntityView {
   entityId: string;
   writer?: 'journey' | 'crud' | 'inbound';
   transitions?: ReadonlyArray<{ transitionId: string }>;
+  /** `connectionId` of an ontology entity `external`. Empty when the entity is not external. */
+  externalConnectionId?: string;
 }
 
 export interface Ns5IntegrationJourneyView {
@@ -79,11 +81,12 @@ export interface Ns5IntegrationProcessView {
 }
 
 export interface Ns5IntegrationSignal {
-  kind: 'systemActor' | 'pluginTerm' | 'connectionTerm' | 'siblingPresent' | 'siblingTerm';
+  kind: 'systemActor' | 'pluginTerm' | 'connectionTerm' | 'siblingPresent' | 'siblingTerm' | 'externalEntitySystem';
   actorId?: string;
   pluginId?: string;
   term?: string;
   moduleName?: string;
+  entityId?: string;
 }
 
 export interface Ns5InboundPendingRequest {
@@ -192,11 +195,15 @@ export function collectNs5IntegrationSignals(
   actors: readonly Ns5IntegrationActorView[],
   sourcePrompt: string,
   siblings: readonly { moduleName: string }[] = [],
+  cited: {
+    entities?: readonly { entityId?: string; externalConnectionId?: string }[];
+    siblingSystems?: readonly { id: string }[];
+  } = {},
 ): Ns5IntegrationSignal[] {
   const signals: Ns5IntegrationSignal[] = [];
   const seen = new Set<string>();
   const add = (signal: Ns5IntegrationSignal) => {
-    const key = [signal.kind, signal.actorId || '', signal.pluginId || '', signal.term || '', signal.moduleName || ''].join('|');
+    const key = [signal.kind, signal.actorId || '', signal.pluginId || '', signal.term || '', signal.moduleName || '', signal.entityId || ''].join('|');
     if (seen.has(key)) return;
     seen.add(key);
     signals.push(signal);
@@ -224,6 +231,15 @@ export function collectNs5IntegrationSignals(
     if (!sibling.moduleName) continue;
     if (!promptMentionsTerm(sourcePrompt, sibling.moduleName)) continue;
     add({ kind: 'siblingTerm', moduleName: sibling.moduleName, term: sibling.moduleName });
+  }
+
+  const catalogIds = new Set(ns5ConnectionCatalogs().map(catalog => catalog.connectionId));
+  const siblingIds = new Set((cited.siblingSystems || []).map(system => system.id));
+  for (const entity of cited.entities || []) {
+    const id = entity.externalConnectionId;
+    if (!entity.entityId || !id) continue;
+    if (catalogIds.has(id) || siblingIds.has(id)) continue;
+    add({ kind: 'externalEntitySystem', entityId: entity.entityId, term: id });
   }
 
   return signals;
