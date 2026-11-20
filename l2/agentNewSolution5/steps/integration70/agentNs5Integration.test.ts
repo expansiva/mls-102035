@@ -98,7 +98,7 @@ function gateOf(
     siblings: registryModuleNames.map(name => ({ moduleName: name, roles: [], entities: [], events: [] })),
     sourcePrompt: extras.sourcePrompt || CE11_PROMPT,
     journeySteps: extras.journeySteps || [{ journeyId: 'pagarComPlugin', stepIds: ['pagarTitulo'] }],
-  });
+  }, [], []);
 }
 
 void test('inbound transitionRef with effect other than transition is dropped', () => {
@@ -128,7 +128,7 @@ void test('inbound transitionRef with effect other than transition is dropped', 
     registryModuleNames: CE11_REGISTRY,
     sourcePrompt: CE11_PROMPT,
     platformEventIds: ['mdmCreated'],
-  });
+  }, [], []);
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_TRANSITION_UNKNOWN'), false);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
@@ -191,7 +191,7 @@ void test('comanda-like module has no integration signal (skip LLM)', () => {
     entities: [{ entityId: 'Comanda' }],
     registryModuleNames: [],
     sourcePrompt: COMANDA_PROMPT,
-  });
+  }, [], []);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
@@ -470,7 +470,7 @@ void test('siblings in the registry are an integration signal', () => {
     registryModuleNames: ['controleEstoque'],
     siblings: [{ moduleName: 'controleEstoque', roles: [], entities: [], events: [] }],
     sourcePrompt: COMANDA_PROMPT,
-  });
+  }, [], []);
   assert.equal(empty.ok, false);
   assert.ok(empty.issues.some(issue => issue.code === 'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM'));
 });
@@ -560,7 +560,7 @@ function connectionGate(
       registryModuleNames: [],
       sourcePrompt: extras.sourcePrompt || 'the module talks to cm',
       journeySteps: [{ journeyId: 'pagarComPlugin', stepIds: ['pagarTitulo'] }],
-    }, connections),
+    }, connections, []),
   };
 }
 
@@ -655,7 +655,7 @@ void test('a connection term alone never forces an item (cm may be centimeters)'
     entities: CE11_ENTITIES,
     registryModuleNames: [],
     sourcePrompt: 'the shelf is 40 cm wide',
-  }, []);
+  }, [], []);
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM'), false);
 });
 
@@ -722,7 +722,7 @@ void test('l4_p4_109: the integration of agents (71659f7a) loses the 3 inbound t
     entities: [{ entityId: 'Tool', writer: 'inbound', transitions: [{ transitionId: 'markRemoved' }] }, { entityId: 'DraftNotice', writer: 'inbound' }, { entityId: 'AgentExecution', writer: 'inbound' }],
     registryModuleNames: [],
     sourcePrompt: 'the cm and the release catalog',
-  }, normalized.connections);
+  }, normalized.connections, []);
   assert.ok(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_INBOUND_NO_SERVE' && issue.path === 'inbound[0].from'));
 });
 
@@ -744,7 +744,7 @@ void test('l4_p4_109: an inbound from a connection that no serve row matches is 
   const context = {
     actors: [], entities: [{ entityId: 'AgentExecution', writer: 'inbound' as const }, { entityId: 'Other' }], registryModuleNames: [], sourcePrompt: 'cm',
   };
-  const gate = validateNs5Integration(merged.inbound, merged.outbound, merged.plugins, context, merged.connections);
+  const gate = validateNs5Integration(merged.inbound, merged.outbound, merged.plugins, context, merged.connections, []);
   assert.deepEqual(
     gate.issues.filter(issue => issue.code === 'NS5_INTEGRATION_INBOUND_NO_SERVE').map(issue => issue.path),
     ['inbound[0].from'],

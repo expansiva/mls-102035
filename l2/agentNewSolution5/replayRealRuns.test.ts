@@ -320,7 +320,7 @@ for (const moduleName of ns5ReplayModules()) {
       entities: entities.map(entity => ({ entityId: entity.entityId })),
       registryModuleNames: [],
       sourcePrompt: moduleArtifact.sourcePrompt,
-    });
+    }, [], []);
     assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
     const artifact = buildNs5IntegrationArtifact(moduleName, inbound, outbound, plugins);
     const rendered = render(moduleName, 'integration', `${moduleName}Integration`, artifact, 'Ns5IntegrationArtifact');

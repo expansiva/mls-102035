@@ -55,8 +55,8 @@ export function validateNs5Integration(
   outbound: Ns5IntegrationItem[],
   plugins: Ns5IntegrationPlugin[],
   context: Ns5IntegrationGateContext,
-  connections: Ns5IntegrationConnection[] = [],
-  externalSystems: Ns5IntegrationExternalSystem[] = [],
+  connections: Ns5IntegrationConnection[],
+  externalSystems: Ns5IntegrationExternalSystem[],
 ): Ns5IntegrationGateResult {
   const issues: Ns5IntegrationGateIssue[] = [];
   const entityById = new Map(context.entities.map(entity => [entity.entityId, entity]));

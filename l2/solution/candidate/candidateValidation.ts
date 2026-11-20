@@ -195,6 +195,8 @@ function validateV3CandidateRun(
       journeySteps: journeys.map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
       processTasks: workflows?.processes.map(process => ({ processId: process.processId, taskIds: process.tasks.map(task => task.taskId) })) || [],
     },
+    integration.connections || [],
+    integration.externalSystems || [],
   ).issues);
   else missing('integration', 'integration.defs.ts', 'Integration, module or ontology context is missing.');
 

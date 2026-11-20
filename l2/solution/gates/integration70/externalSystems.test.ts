@@ -205,7 +205,7 @@ void test('l4_p4_127 s2: an ontology connectionId is declared, refused, or alrea
 
   const missing = validateNs5Integration([], [], [], {
     actors: [], entities: cited, registryModuleNames: [], sourcePrompt: 'a note',
-  });
+  }, [], []);
   assert.equal(missing.ok, false);
   const issue = missing.issues.find(item => item.code === 'NS5_INTEGRATION_ENTITY_SYSTEM_MISSING');
   assert.equal(issue?.path, 'externalSystems');
@@ -222,7 +222,7 @@ void test('l4_p4_127 s2: an ontology connectionId is declared, refused, or alrea
     registryModuleNames: [],
     sourcePrompt: 'a note',
     siblingSystems: [{ id: 'siblingSystem', title: 'Sibling', description: 'A system a sibling declares.', settings: [], operations: [] }],
-  });
+  }, [], []);
   assert.equal(known.issues.some(item => item.code === 'NS5_INTEGRATION_ENTITY_SYSTEM_MISSING'), false);
   assert.equal(known.ok, true, known.issues.map(item => item.message).join('\n'));
 
@@ -356,11 +356,11 @@ void test('l4_p4_130 s3b: an arrival with no writes has no effect', () => {
     description: 'A notice arrived.',
     entityRefs: [] as string[],
   };
-  const accepted = validateNs5Integration([{ ...bare, writes: [] }], [], [], context);
+  const accepted = validateNs5Integration([{ ...bare, writes: [] }], [], [], context, [], []);
   assert.equal(accepted.issues.some(item => item.code === 'NS5_INTEGRATION_EFFECT'), false);
   assert.equal(accepted.ok, true, accepted.issues.map(item => item.message).join('\n'));
 
-  const refused = validateNs5Integration([{ ...bare, writes: ['LocalTable'] }], [], [], context);
+  const refused = validateNs5Integration([{ ...bare, writes: ['LocalTable'] }], [], [], context, [], []);
   assert.equal(refused.issues.some(item => item.code === 'NS5_INTEGRATION_EFFECT' && item.path === 'inbound[0].effect'), true);
 });
 
@@ -484,7 +484,7 @@ void test('entityEffects names each entity, and a list of an outside entity is n
       { entityId: 'Item', effects: ['transition'] },
       { entityId: 'Local', effects: ['transition'] },
     ],
-  }], [], [], context);
+  }], [], [], context, [], []);
   const transitionIssue = twoTransitions.issues.find(item => item.code === 'NS5_INTEGRATION_TRANSITION_REF');
   assert.match(transitionIssue?.message || '', /at most one/i);
 

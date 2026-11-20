@@ -193,7 +193,7 @@ const STEPS: Step[] = [
         siblings: [],
         sourcePrompt: SOURCE_PROMPT,
         journeySteps: JOURNEYS.map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
-      }).issues };
+      }, [], []).issues };
     },
   },
   {

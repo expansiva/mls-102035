@@ -119,6 +119,8 @@ export async function validateNs5Overlay(
       journeySteps: journeys.map(journey => ({ journeyId: journey.journeyId, stepIds: journey.business.steps.map(step => step.stepId) })),
       processTasks: workflows?.processes.map(process => ({ processId: process.processId, taskIds: process.tasks.map(task => task.taskId) })) || [],
     },
+    integration.connections || [],
+    integration.externalSystems || [],
   ).issues); checked('integration'); }
 
   if (module && journeyIndex && ontologyIndex && rules && workflows && access && integration

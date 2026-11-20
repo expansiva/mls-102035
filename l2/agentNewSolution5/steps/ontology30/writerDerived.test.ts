@@ -172,7 +172,7 @@ void test('compras inbound transitionRef with effect create is dropped; gate ok'
     siblings: [{ moduleName: 'controleEstoque', roles: [], entities: [], events: [] }],
     sourcePrompt: 'compras',
     platformEventIds: ['mdmCreated'],
-  });
+  }, [], []);
   assert.equal(gate.issues.some(issue => issue.code === 'NS5_INTEGRATION_TRANSITION_UNKNOWN'), false);
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });

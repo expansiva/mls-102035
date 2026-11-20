@@ -838,7 +838,7 @@ void test('replacing the old arrival pair with entityEffects writes schema versi
     entities: [{ entityId: 'Item' }, { entityId: 'Remote' }],
     registryModuleNames: [],
     sourcePrompt: 'a local note',
-  });
+  }, [], []);
   assert.equal(accepted.ok, true, accepted.issues.map(item => item.message).join('\n'));
 });
 

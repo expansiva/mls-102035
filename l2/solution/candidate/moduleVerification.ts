@@ -212,6 +212,8 @@ function gateIssuesForKind(artifacts: CandidateModule, kind: CandidateGateKind):
             taskIds: process.tasks.map(task => task.taskId),
           })),
         },
+        artifacts.integration.connections || [],
+        artifacts.integration.externalSystems || [],
       ).issues);
     }
     return [];
