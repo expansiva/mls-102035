@@ -33,6 +33,7 @@ import {
 } from '/_102035_/l2/newRelease/editContract.js';
 import type { NewReleaseValidationIssue } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { ns5OntologyEntityView } from '/_102035_/l2/solution/ontologyView.js';
+import { ns5ArrivalEffects, ns5ArrivalEntityIds, type Ns5ArrivalEffect, type Ns5ArrivalEntityEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 import {
   INTEGRATION_ITEM_LABELS,
   integrationOracleIssues,
@@ -41,6 +42,7 @@ import {
   patchExternalSystem,
   patchExternalSetting,
   patchExternalOperation,
+  patchServeConnectionEntityEffects,
   type IntegrationPluginView,
 } from '/_102035_/l2/newRelease/widgets/integration/integrationModel.js';
 
@@ -51,6 +53,7 @@ type IntegrationLane = 'inbound' | 'outbound';
 // re-exports level-1 values that are intentionally unavailable in the browser.
 const INTEGRATION_KINDS: readonly Ns5IntegrationItem['kind'][] = ['event', 'moduleEndpoint', 'external'];
 const INTEGRATION_EFFECTS: readonly NonNullable<Ns5IntegrationItem['effect']>[] = ['create', 'update', 'transition'];
+const SERVE_EFFECTS: readonly NonNullable<Ns5IntegrationConnection['effect']>[] = ['list', 'read', 'create', 'update', 'remove'];
 
 @customElement('new-release--widgets--integration-102035')
 export class NewReleaseIntegration102035 extends StateLitElement implements NewReleaseEditableTab<Ns5IntegrationArtifact | null> {
@@ -178,7 +181,72 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
     return html`<div class="nr-integration__system-detail"><label><span>${this.t('integration.externalSystemId')}</span><input readonly .value=${system.id}></label><label><span>${this.t('integration.externalSystemTitle')}</span><input ?readonly=${!editing} .value=${system.title} @input=${(event: Event) => this.updateSystem(system.id, {title: (event.currentTarget as HTMLInputElement).value})}></label><label><span>${this.t('integration.externalSystemDescription')}</span><textarea ?readonly=${!editing} .value=${system.description} @input=${(event: Event) => this.updateSystem(system.id, {description: (event.currentTarget as HTMLTextAreaElement).value})}></textarea></label><section class="nr-integration__settings"><h3>${this.t('integration.settings')}</h3>${system.settings.map(setting => html`<article><label><span>${this.t('integration.settingId')}</span><input readonly .value=${setting.id}></label><label><span>${this.t('integration.settingTitle')}</span><input ?readonly=${!editing} .value=${setting.title} @input=${(event: Event) => this.updateSetting(system.id, setting.id, {title: (event.currentTarget as HTMLInputElement).value})}></label><label><span>${this.t('integration.settingDescription')}</span><textarea ?readonly=${!editing} .value=${setting.description} @input=${(event: Event) => this.updateSetting(system.id, setting.id, {description: (event.currentTarget as HTMLTextAreaElement).value})}></textarea></label><label class="nr-integration__secret"><span>${this.t('integration.settingSecret')}</span><input type="checkbox" ?disabled=${!editing} .checked=${setting.secret} @change=${(event: Event) => this.updateSetting(system.id, setting.id, {secret: (event.currentTarget as HTMLInputElement).checked})}></label></article>`)}</section><section class="nr-integration__operations"><h3>${this.t('integration.operations')}</h3>${system.operations.map(operation => html`<article><label><span>${this.t('integration.operationId')}</span><input readonly .value=${operation.operationId}></label><label><span>${this.t('integration.operationDirection')}</span><select ?disabled=${!editing} @change=${(event: Event) => this.updateOperation(system.id, operation.operationId, {direction: (event.currentTarget as HTMLSelectElement).value as 'call' | 'serve'})}><option value="call" ?selected=${operation.direction === 'call'}>${this.t('integration.operationCall')}</option><option value="serve" ?selected=${operation.direction === 'serve'}>${this.t('integration.operationServe')}</option></select></label><label><span>${this.t('integration.operationDescription')}</span><textarea ?readonly=${!editing} .value=${operation.description} @input=${(event: Event) => this.updateOperation(system.id, operation.operationId, {description: (event.currentTarget as HTMLTextAreaElement).value})}></textarea></label>${this.systemConnections(system, operation.operationId).map(connection => this.renderConnection(connection))}</article>`)}</section></div>`;
   }
   private renderConnectionDetail(connection: Ns5IntegrationConnection) {
-    return html`<dl>${Object.entries(connection).map(([key, value]) => html`<div><dt>${this.t(`integration.connection${key[0].toUpperCase()}${key.slice(1)}`)}</dt><dd>${key === 'direction' ? this.t(`integration.operation${connection.direction === 'call' ? 'Call' : 'Serve'}`) : key === 'effect' ? this.t(`integration.connectionEffect.${connection.effect}`) : Array.isArray(value) ? value.join(', ') : String(value)}</dd></div>`)}</dl>`;
+    const arrival = connection.direction === 'serve' && Array.isArray(connection.entityEffects);
+    return html`<dl>${Object.entries(connection).filter(([key]) => arrival ? !['entityEffects', 'entityRefs', 'effect'].includes(key) : key !== 'entityEffects').map(([key, value]) => html`<div><dt>${this.t(`integration.connection${key[0].toUpperCase()}${key.slice(1)}`)}</dt><dd>${key === 'direction' ? this.t(`integration.operation${connection.direction === 'call' ? 'Call' : 'Serve'}`) : key === 'effect' ? this.t(`integration.connectionEffect.${connection.effect}`) : Array.isArray(value) ? value.join(', ') : String(value)}</dd></div>`)}</dl>
+      ${arrival ? (this.mode === 'edit'
+        ? this.renderArrivalEditor(ns5ArrivalEffects(connection, 'serve'), 'serve', entityEffects => {
+          if (this.draft) this.updateDraft(patchServeConnectionEntityEffects(this.draft, connection.connectionId, connection.operationId, entityEffects));
+        })
+        : html`<dl>${this.renderArrivalDetail(ns5ArrivalEffects(connection, 'serve'), 'serve')}</dl>`) : nothing}`;
+  }
+
+  private arrivalEffectLabel(kind: 'inbound' | 'serve', effect: Ns5ArrivalEffect) {
+    return this.t(`integration.${kind === 'inbound' ? 'effect' : 'connectionEffect'}.${effect}`);
+  }
+
+  private renderArrivalDetail(entries: Ns5ArrivalEntityEffects[], kind: 'inbound' | 'serve') {
+    return html`<div><dt>${this.t('integration.entityEffects')}</dt><dd>${entries.length ? html`<ul>${entries.map(({ entityId, effects }) => html`<li><code>${entityId}</code> ${effects.map(effect => this.arrivalEffectLabel(kind, effect)).join(', ')}</li>`)}</ul>` : this.t('integration.notDeclared')}</dd></div>`;
+  }
+
+  private renderArrivalEditor(entries: Ns5ArrivalEntityEffects[], kind: 'inbound' | 'serve', update: (entries: Ns5ArrivalEntityEffects[]) => void) {
+    const vocabulary: readonly Ns5ArrivalEffect[] = kind === 'inbound' ? INTEGRATION_EFFECTS : SERVE_EFFECTS;
+    const entities = this.entities();
+    return html`<fieldset class="nr-integration__arrival is-wide">
+      <legend>${this.t('integration.entityEffects')}</legend>
+      ${entries.map((entry, index) => {
+        const otherEntries = entries.filter((_, position) => position !== index);
+        const entityIds = [...new Set([entry.entityId, ...entities.map(entity => entity.entityId)])]
+          .filter(id => id && (id === entry.entityId || !otherEntries.some(other => other.entityId === id)));
+        const replace = (next: Ns5ArrivalEntityEffects) => update(entries.map((row, position) => position === index ? next : row));
+        return html`<div class="nr-integration__arrival-row">
+          <label><span>${this.t('integration.arrivalEntity')}</span><select @change=${(event: Event) => replace({ ...entry, entityId: (event.currentTarget as HTMLSelectElement).value })}>
+            <option value="" ?selected=${!entry.entityId}>${this.t('integration.choose')}</option>
+            ${entityIds.map(id => html`<option value=${id} ?selected=${id === entry.entityId}>${entities.find(entity => entity.entityId === id)?.title || id}</option>`)}
+          </select></label>
+          <div class="nr-integration__arrival-effects" role="group" aria-label=${this.t('integration.effect')}>
+            ${vocabulary.map(effect => html`<label><input type="checkbox" .checked=${entry.effects.includes(effect)} ?disabled=${effect === 'transition' && otherEntries.some(other => other.effects.includes(effect)) && !entry.effects.includes(effect)} @change=${(event: Event) => {
+              const checked = (event.currentTarget as HTMLInputElement).checked;
+              replace({ ...entry, effects: checked ? [...entry.effects, effect] : entry.effects.filter(value => value !== effect) });
+            }}><span>${this.arrivalEffectLabel(kind, effect)}</span></label>`)}
+          </div>
+          <button type="button" @click=${() => update(otherEntries)}>${this.t('integration.removeArrivalEntity')}</button>
+        </div>`;
+      })}
+      <button type="button" @click=${() => update([...entries, { entityId: '', effects: [] }])}>${this.t('integration.addArrivalEntity')}</button>
+    </fieldset>`;
+  }
+
+  private renderInboundArrivalEditor(item: Ns5IntegrationItem, index: number) {
+    const entries = ns5ArrivalEffects(item, 'inbound');
+    const transitioning = entries.find(entry => entry.effects.includes('transition'));
+    const entity = this.entities().find(entity => entity.entityId === transitioning?.entityId);
+    const transitions = entity ? ns5OntologyEntityView(entity).transitions.map(transition => transition.transitionId) : [];
+    return html`${this.renderArrivalEditor(entries, 'inbound', entityEffects => {
+      const nextTransitioning = entityEffects.find(entry => entry.effects.includes('transition'));
+      const transitionRef = nextTransitioning && nextTransitioning.entityId === transitioning?.entityId ? item.transitionRef : undefined;
+      this.updateItem('inbound', index, { entityEffects, transitionRef });
+    })}
+    ${transitioning ? html`<label><span>${this.t('integration.transition')}</span><select @change=${(event: Event) => this.updateItem('inbound', index, { transitionRef: (event.currentTarget as HTMLSelectElement).value || undefined })}>
+      <option value="" ?selected=${!item.transitionRef}>${this.t('integration.choose')}</option>
+      ${[...new Set([...(item.transitionRef ? [item.transitionRef] : []), ...transitions])].map(id => html`<option value=${id} ?selected=${item.transitionRef === id}>${id}</option>`)}
+    </select></label>` : nothing}`;
+  }
+
+  private renderItemDetail(item: Ns5IntegrationItem, lane: IntegrationLane) {
+    const arrival = lane === 'inbound' && Array.isArray(item.entityEffects);
+    return html`<dl>${Object.entries(item).filter(([key]) => !arrival || !['writes', 'effect', 'entityRefs'].includes(key)).map(([key, value]) => key === 'entityEffects'
+      ? (arrival ? this.renderArrivalDetail(ns5ArrivalEffects(item, 'inbound'), 'inbound') : nothing)
+      : html`<div><dt>${this.t(INTEGRATION_ITEM_LABELS[key as keyof Ns5IntegrationItem])}</dt><dd>${Array.isArray(value) ? value.join(', ') : value}</dd></div>`)}</dl>`;
   }
 
   private transitionOptions() { return this.entities().flatMap(entity => ['create', ...ns5OntologyEntityView(entity).transitions.map(transition => transition.transitionId)].map(transition => `${entity.entityId}.${transition}`)); }
@@ -233,6 +301,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
   }
 
   private renderItem(item: Ns5IntegrationItem, lane: IntegrationLane, index: number) {
+    const arrival = lane === 'inbound' && Array.isArray(item.entityEffects);
     if (this.mode === 'edit' && this.draft) {
       const peer = lane === 'inbound' ? item.from || '' : item.to || '';
 
@@ -244,7 +313,7 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
           <label><span>${lane === 'inbound' ? this.t('integration.from') : this.t('integration.to')}</span>${item.kind === 'external' ? html`<input .value=${peer} @input=${(event: Event) => this.updateItem(lane, index, lane === 'inbound' ? { from: (event.currentTarget as HTMLInputElement).value } : { to: (event.currentTarget as HTMLInputElement).value })}>` : html`<select @change=${(event: Event) => this.updateItem(lane, index, lane === 'inbound' ? { from: (event.currentTarget as HTMLSelectElement).value } : { to: (event.currentTarget as HTMLSelectElement).value })}>${lane === 'inbound' ? html`<option value="organization" ?selected=${peer === 'organization'}>${this.t('integration.organization')}</option>` : html`<option value="any" ?selected=${peer === 'any'}>${this.t('integration.any')}</option>`}${[...new Set([peer, ...this.workspace.siblings.map(sibling => sibling.moduleName)])].filter(value => value && value !== "any" && value !== "organization").map(value => html`<option value=${value} ?selected=${peer === value}>${value}</option>`)}</select>`}</label>
           <label><span>${this.t('integration.id')}</span><input readonly .value=${item.id}></label>
           <label><span>${this.t('integration.event')}</span><input readonly .value=${item.event || ''}></label>
-          ${lane === 'inbound' ? html`
+          ${lane === 'inbound' ? (arrival ? this.renderInboundArrivalEditor(item, index) : html`
             <label><span>${this.t('integration.effect')}</span><select @change=${(event: Event) => {
               const value = (event.currentTarget as HTMLSelectElement).value;
               this.updateItem(lane, index, value
@@ -253,16 +322,18 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
             }}><option value="" ?selected=${!item.effect}>${this.t('integration.choose')}</option>${INTEGRATION_EFFECTS.map(effect => html`<option value=${effect} ?selected=${item.effect === effect}>${this.t(`integration.effect.${effect}`)}</option>`)}</select></label>
             <label><span>${this.t('integration.writes')}</span><select multiple @change=${(event: Event) => this.updateItem(lane, index, { writes: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value) })}>${[...new Set([...(item.writes || []), ...this.entities().map(entity => entity.entityId)])].map(id => html`<option value=${id} ?selected=${item.writes?.includes(id)}>${this.entities().find(entity => entity.entityId === id)?.title || id}</option>`)}</select></label>
             ${item.effect === 'transition' ? html`<label><span>${this.t('integration.transition')}</span><select @change=${(event: Event) => this.updateItem(lane, index, { transitionRef: (event.currentTarget as HTMLSelectElement).value })}><option value="" ?selected=${!item.transitionRef}>${this.t('integration.choose')}</option>${[...new Set([...(item.transitionRef ? [item.transitionRef] : []), ...transitions.map(transition => transition.transitionId)])].map(id => html`<option value=${id} ?selected=${item.transitionRef === id}>${id}</option>`)}</select></label>` : nothing}
-          ` : html`
+          `) : html`
             <label><span>${this.t('integration.on')}</span><select @change=${(event: Event) => this.updateItem(lane, index, { on: (event.currentTarget as HTMLSelectElement).value })}><option value="" ?selected=${!item.on}>${this.t('integration.choose')}</option>${[...new Set([...(item.on ? [item.on] : []), ...this.transitionOptions()])].map(option => html`<option value=${option} ?selected=${item.on === option}>${option}</option>`)}</select></label>
           `}
-            <label><span>${this.t('integration.entities')}</span><select multiple @change=${(event: Event) => this.updateItem(lane, index, { entityRefs: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value) })}>${[...new Set([...item.entityRefs, ...this.entities().map(entity => entity.entityId)])].map(id => html`<option value=${id} ?selected=${item.entityRefs.includes(id)}>${this.entities().find(entity => entity.entityId === id)?.title || id}</option>`)}</select></label>
+          ${arrival ? nothing : html`<label><span>${this.t('integration.entities')}</span><select multiple @change=${(event: Event) => this.updateItem(lane, index, { entityRefs: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value) })}>${[...new Set([...item.entityRefs, ...this.entities().map(entity => entity.entityId)])].map(id => html`<option value=${id} ?selected=${item.entityRefs.includes(id)}>${this.entities().find(entity => entity.entityId === id)?.title || id}</option>`)}</select></label>`}
           <label class="is-wide"><span>${this.t('integration.itemDescription')}</span><textarea .value=${item.description} @input=${(event: Event) => this.updateItem(lane, index, { description: (event.currentTarget as HTMLTextAreaElement).value })}></textarea></label>
         </div>
       </article>`;
     }
     const trigger = lane === 'inbound' ? item.from : item.on;
-    const destination = lane === 'inbound' ? (item.writes || item.entityRefs).join(', ') : item.to;
+    const destination = lane === 'inbound'
+      ? (arrival ? ns5ArrivalEntityIds(item, 'inbound') : item.writes || item.entityRefs).join(', ')
+      : item.to;
     return html`<article class="nr-integration__flow"><span>${trigger || this.t('integration.notDeclared')}</span><span aria-hidden="true">→</span><button type="button" @click=${() => this.select(`${lane}:${index}`)}>${item.event || item.id}${changedDot(this.changedItem(lane, item.id), this.t)}</button><span aria-hidden="true">→</span><span>${destination === 'any' ? this.t('integration.any') : destination || this.t('integration.notDeclared')}</span></article>`;
   }
 
@@ -327,8 +398,8 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
     const connection = lane === 'connection' ? view.connections.find(value => value.connectionId === position && value.operationId === this.selected.split(':')[2]) : null;
     const detailSystem = system || (lane === 'setting' || lane === 'operation' ? view.externalSystems.find(value => value.id === position) : null);
     return html`<section class="nr-integration">
-      ${this.selected ? html`<section class="nr-integration__detail"><header><h2>${detailSystem?.title || connection?.connectionId || plugin?.pluginId || item?.event || item?.id}</h2>${view.schema === 'v2' && this.mode === 'view' && !this.version.startsWith('release:') && !connection ? html`<button type="button" @click=${this.beginEdit}>${this.t('integration.edit')}</button>` : nothing}</header>
-        <fieldset ?disabled=${this.saving}>${item && (lane === 'inbound' || lane === 'outbound') ? (this.mode === 'edit' ? this.renderItem(item, lane, index) : html`<dl>${Object.entries(item).map(([key, value]) => html`<div><dt>${this.t(INTEGRATION_ITEM_LABELS[key as keyof Ns5IntegrationItem])}</dt><dd>${Array.isArray(value) ? value.join(', ') : value}</dd></div>`)}</dl>`) : plugin ? this.renderPlugin(plugin, index) : detailSystem ? this.renderSystemDetail(detailSystem) : connection ? this.renderConnectionDetail(connection) : nothing}</fieldset>
+      ${this.selected ? html`<section class="nr-integration__detail"><header><h2>${detailSystem?.title || connection?.connectionId || plugin?.pluginId || item?.event || item?.id}</h2>${view.schema === 'v2' && this.mode === 'view' && !this.version.startsWith('release:') && (!connection || (connection.direction === 'serve' && Array.isArray(connection.entityEffects))) ? html`<button type="button" @click=${this.beginEdit}>${this.t('integration.edit')}</button>` : nothing}</header>
+        <fieldset ?disabled=${this.saving}>${item && (lane === 'inbound' || lane === 'outbound') ? (this.mode === 'edit' ? this.renderItem(item, lane, index) : this.renderItemDetail(item, lane)) : plugin ? this.renderPlugin(plugin, index) : detailSystem ? this.renderSystemDetail(detailSystem) : connection ? this.renderConnectionDetail(connection) : nothing}</fieldset>
         ${this.mode === 'edit' ? html`<footer class="nr-integration__edit-footer"><span>${this.t(this.dirty ? 'integration.unsaved' : 'integration.noChanges')}</span><div><button type="button" ?disabled=${this.saving} @click=${() => {if (canDiscardNewReleaseDraft(this)) this.cancelEdit();}}>${this.t('integration.cancel')}</button><button class="is-primary" type="button" ?disabled=${!this.dirty || this.saving} @click=${this.saveEdit}>${this.t('integration.save')}</button></div></footer>` : nothing}
       </section>` : html`<div class="nr-integration__lanes">${this.renderLane('inbound', view.inbound)}${this.renderLane('outbound', view.outbound)}</div><section class="nr-integration__plugins"><header><span>${this.t('integration.plugins')}</span><strong>${view.plugins.length}</strong></header><div>${view.plugins.map((plugin, index) => this.renderPlugin(plugin, index))}${!view.plugins.length ? html`<p>${this.t('integration.pluginsEmpty')}</p>` : nothing}</div></section><section class="nr-integration__systems"><header><span>${this.t('integration.externalSystems')}</span><strong>${view.externalSystems.length}</strong></header><p>${this.t('integration.externalSystemsDescription')}</p><div class="nr-integration__system-list">${view.externalSystems.map(system => this.renderSystem(system))}${!view.externalSystems.length ? html`<p>${this.t('integration.externalSystemsEmpty')}</p>` : nothing}</div></section><section class="nr-integration__connections"><h3>${this.t('integration.otherConnections')}</h3>${this.otherConnections().map(connection => this.renderConnection(connection))}${!this.otherConnections().length ? html`<p>${this.t('integration.connectionsEmpty')}</p>` : nothing}</section>${this.renderRequests()}`}
       ${this.renderIssues()}
