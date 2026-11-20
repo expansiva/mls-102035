@@ -30,6 +30,7 @@ import {
 import { ns5RuleEntries, ns5RuleIds } from '/_102035_/l2/solution/rulesView.js';
 import {
   ns5FieldRefExists,
+  platformRuleIdOf,
   splitFieldRef,
   type Ns5RulesEntityView,
 } from '/_102035_/l2/solution/gates/rules40/contracts.js';
@@ -411,6 +412,22 @@ function checkI4(sources: Ns5OracleSources, error: IssueFn): void {
         );
       });
     });
+  }
+  const hasV3 = sources.entities.some(entity => isNs5OntologyV3Entity(entity.source));
+  if (!hasV3) return;
+  const cited = new Set<string>();
+  for (const entity of sources.entities) {
+    if (isNs5OntologyV3Entity(entity.source)) {
+      for (const id of entity.source.rules) if (id) cited.add(id);
+    }
+    for (const transition of entity.transitions) {
+      for (const id of transition.ruleRefs || []) if (id) cited.add(id);
+    }
+  }
+  for (const ruleId of ruleIds) {
+    if (platformRuleIdOf(ruleId)) continue;
+    if (cited.has(ruleId)) continue;
+    error('I4', `rules.${ruleId}`, `Rule ${ruleId} is cited by no entity`);
   }
 }
 

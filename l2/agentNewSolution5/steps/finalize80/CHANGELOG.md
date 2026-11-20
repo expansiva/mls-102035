@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-11-20 (l4_p4_136 s1b)
+
+- I4 on a v3 ontology: every non-platform rule in `rules.defs.ts` must be cited by some entity (`entity.rules` or `transitions[].ruleRefs`). Path `rules.<id>`, message `Rule X is cited by no entity`. v2 modules keep the old behaviour (uncited rule is not a defect).
+
 ## 2026-11-20 (l4_p4_131 s2)
 
 - I10 mounts `ns5WrittenOutsideJourneys` once and passes it to the resolver; I8 uses the same map for arrival `.has` and still calls the resolver without `outside`.
@@ -97,7 +101,7 @@
   `module.details` still has keys). An unknown id that was not lifted stays an error.
   Fixture: live `acompanharIndicadoresDaAcademia` / `PainelGerencial`.
 - I4 is integrity of cited `ruleRefs`: a `transitions[].ruleRefs` id must exist in
-  `rules.defs.ts` (error). An uncited rule is not a defect at l4. I2 does not apply to a
+  `rules.defs.ts` (error). On v2, an uncited rule is not a defect at l4. I2 does not apply to a
   locate→inspect journey; fixture `consultarMisOrdenes` no longer has the fabricated `act`.
 - I2 walks journeys in index order and tracks reachable origin states per entity
   (birth on first create; `any` if first seen via locate/inspect). An `act` on an

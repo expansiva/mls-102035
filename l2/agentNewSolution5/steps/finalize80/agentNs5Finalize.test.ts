@@ -38,7 +38,7 @@ import {
 import { afterNs5FinalizePromptStep, beforeNs5FinalizePromptStep } from '/_102035_/l2/agentNewSolution5/steps/finalize80/agentNs5Finalize.js';
 import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { formatNs5WorkflowsGate, validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
-import { ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
+import { isNs5OntologyV3Entity, ns5OntologyEntityViews } from '/_102035_/l2/solution/ontologyView.js';
 import agendaClinicaConsulta from '/_102035_/l2/solution/fixtures/ontology30/agendaClinica-v3/Consulta.defs.js';
 import type { Ns5OntologyEntityV3 } from '/_102035_/l2/solution/types.js';
 import { ns5DefsOrphans } from '/_102035_/l2/solution/fs.js';
@@ -634,7 +634,7 @@ void test('I3 fails when an actor has no grant', () => {
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I3' && /caixa/.test(issue.message)));
 });
 
-void test('I4 ignores an uncited rule and fails an unknown ruleRef on a transition', () => {
+void test('I4 on v2 ignores an uncited rule and fails an unknown ruleRef on a transition', () => {
   const sources = clone(loadSources('comandaRestaurante.json'));
   sources.rules.rules.push({
     ruleId: 'orphanHint',
@@ -648,6 +648,54 @@ void test('I4 ignores an uncited rule and fails an unknown ruleRef on a transiti
   const report = runNs5Oracle(sources);
   assert.equal(report.finalStatus, 'failed');
   assert.ok(report.errors.some(issue => issue.code === 'NS5_FINALIZE_I4' && /ghostRule/.test(issue.message)));
+});
+
+void test('I4 on v3 fails a module rule cited by no entity', () => {
+  const sources = clone(agentsSources());
+  const rules = sources.rules.rules as Record<string, string>;
+  rules.orphanHint = 'Not cited by any entity.';
+  const report = runNs5Oracle(sources);
+  assert.equal(report.finalStatus, 'failed');
+  assert.ok(
+    report.errors.some(
+      issue =>
+        issue.code === 'NS5_FINALIZE_I4' &&
+        issue.path === 'rules.orphanHint' &&
+        /Rule orphanHint is cited by no entity/.test(issue.message),
+    ),
+    report.errors.map(issue => `${issue.path}: ${issue.message}`).join('\n'),
+  );
+});
+
+void test('I4 on v3 passes a module rule cited on the entity or on a transition', () => {
+  const onEntity = clone(agentsSources());
+  const entityRules = (onEntity.rules.rules as Record<string, string>);
+  entityRules.citedOnEntity = 'Cited on the entity rules list.';
+  const v3 = onEntity.entities.find(entity => isNs5OntologyV3Entity(entity.source));
+  assert.ok(v3);
+  if (!isNs5OntologyV3Entity(v3.source)) throw new Error('expected v3');
+  v3.source.rules = [...v3.source.rules, 'citedOnEntity'];
+  const entityReport = runNs5Oracle(onEntity);
+  assert.equal(
+    entityReport.errors.filter(issue => issue.path === 'rules.citedOnEntity').length,
+    0,
+    entityReport.errors.map(issue => `${issue.path}: ${issue.message}`).join('\n'),
+  );
+
+  const onTransition = clone(agentsSources());
+  (onTransition.rules.rules as Record<string, string>).citedOnTransition = 'Cited on a transition.';
+  const withLife = onTransition.entities.find(entity => entity.transitions.length > 0);
+  assert.ok(withLife);
+  withLife.transitions[0] = {
+    ...withLife.transitions[0],
+    ruleRefs: [...(withLife.transitions[0].ruleRefs || []), 'citedOnTransition'],
+  };
+  const transitionReport = runNs5Oracle(onTransition);
+  assert.equal(
+    transitionReport.errors.filter(issue => issue.path === 'rules.citedOnTransition').length,
+    0,
+    transitionReport.errors.map(issue => `${issue.path}: ${issue.message}`).join('\n'),
+  );
 });
 
 void test('I8 passes live matricularAluno + access (registrarMatricula affects Aluno)', () => {
