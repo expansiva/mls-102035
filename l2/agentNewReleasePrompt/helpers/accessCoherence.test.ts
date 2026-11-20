@@ -60,7 +60,6 @@ const withStatus = (allowed: string[] | null, journeyEntity: string | null = 'Me
 void test('a new field on a fieldsOnly grant of an actor whose journey works on the entity is included, not asked', () => {
   const merged = withStatus(['Mesa.code', 'Mesa.details.disponivel']);
   const pt = fieldsOnlyFix(base, merged, 'pt');
-  assert.equal(pt.ask, null);
   assert.deepEqual(pt.notes, ['o campo Mesa.details.statusAtendimento também aparece para Garçom']);
   assert.deepEqual(pt.access.grants[0].disclosure.allowedFields, ['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
   assert.deepEqual(merged.access.grants[0].disclosure.allowedFields, ['Mesa.code', 'Mesa.details.disponivel'], 'the input is not changed');
@@ -68,25 +67,23 @@ void test('a new field on a fieldsOnly grant of an actor whose journey works on 
   assert.deepEqual(en.notes, ['field Mesa.details.statusAtendimento is also visible to Garçom']);
 });
 
-void test('a new field for an actor with no journey on the entity asks once, with no default filled in', () => {
+void test('a new field for an actor with no journey on the entity stays out of the grant and the notes say so', () => {
   const merged = withStatus(['Mesa.code', 'Mesa.details.disponivel'], 'Comanda');
   const pt = fieldsOnlyFix(base, merged, 'pt');
-  assert.equal(pt.ask, 'Quem deve ver o campo Mesa.details.statusAtendimento? Nenhuma jornada do ator Garçom usa Mesa.');
-  assert.deepEqual(pt.notes, []);
+  assert.deepEqual(pt.notes, ['o campo Mesa.details.statusAtendimento não é visto por Garçom']);
+  assert.deepEqual(pt.access.grants[0].disclosure.allowedFields, ['Mesa.code', 'Mesa.details.disponivel']);
   const en = fieldsOnlyFix(base, merged, 'en');
-  assert.equal(en.ask, 'Who should see field Mesa.details.statusAtendimento? No journey of actor Garçom works on Mesa.');
+  assert.deepEqual(en.notes, ['field Mesa.details.statusAtendimento is not visible to Garçom']);
 });
 
 void test('the same field listed on the grant is not a question and nothing is added', () => {
   const merged = withStatus(['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
   const outcome = fieldsOnlyFix(base, merged, 'pt');
-  assert.equal(outcome.ask, null);
   assert.deepEqual(outcome.notes, []);
   assert.equal(outcome.access, merged.access);
 });
 
 void test('a new field on an entity with no fieldsOnly grant needs nothing', () => {
   const outcome = fieldsOnlyFix(base, withStatus(null), 'pt');
-  assert.equal(outcome.ask, null);
   assert.deepEqual(outcome.notes, []);
 });

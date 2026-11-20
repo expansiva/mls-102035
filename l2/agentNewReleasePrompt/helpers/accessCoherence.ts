@@ -4,8 +4,6 @@ import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/help
 import { promptLanguage } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import type { Ns5AccessArtifact, Ns5OntologyAnyEntity } from '/_102035_/l2/solution/types.js';
 
-const QUESTION_MAX = 1000;
-
 interface NewField {
   entityId: string;
   path: string;
@@ -17,8 +15,6 @@ interface FieldsOnlyGap extends NewField {
 }
 
 export interface FieldsOnlyOutcome {
-  /** One question, only when a gap has no journey that points at the actor. Nothing is written then. */
-  ask: string | null;
   /** The access artifact with the new fields added to the grants of the actors that use them. */
   access: Ns5AccessArtifact;
   /** One sentence per field included, for the summary. */
@@ -27,7 +23,8 @@ export interface FieldsOnlyOutcome {
 
 /**
  * A new entity field is invisible to an actor whose grant is `fieldsOnly` on that entity and does not list it.
- * When a journey of that actor works on the entity, the field is included in the grant. Otherwise one question.
+ * When a journey of that actor works on the entity, the field is included in the grant. Otherwise the field stays
+ * out of the grant (the actor does not see it) and the notes say so.
  */
 export function fieldsOnlyFix(
   base: NrpModuleArtifacts,
@@ -40,10 +37,10 @@ export function fieldsOnlyFix(
   const notes: string[] = [];
   for (const gap of gaps) {
     if (!actorWorksOn(merged, gap.actorRef, gap.entityId)) {
-      const text = pt
-        ? `Quem deve ver o campo ${gap.entityId}.${gap.path}? Nenhuma jornada do ator ${gap.actor} usa ${gap.entityId}.`
-        : `Who should see field ${gap.entityId}.${gap.path}? No journey of actor ${gap.actor} works on ${gap.entityId}.`;
-      return { ask: text.length <= QUESTION_MAX ? text : text.slice(0, QUESTION_MAX), access: merged.access, notes: [] };
+      notes.push(pt
+        ? `o campo ${gap.entityId}.${gap.path} não é visto por ${gap.actor}`
+        : `field ${gap.entityId}.${gap.path} is not visible to ${gap.actor}`);
+      continue;
     }
     for (const grant of access.grants || []) {
       if (grant.actorRef !== gap.actorRef || grant.disclosure?.mode !== 'fieldsOnly') continue;
@@ -56,7 +53,7 @@ export function fieldsOnlyFix(
       ? `o campo ${gap.entityId}.${gap.path} também aparece para ${gap.actor}`
       : `field ${gap.entityId}.${gap.path} is also visible to ${gap.actor}`);
   }
-  return { ask: null, access: gaps.length ? access : merged.access, notes };
+  return { access: gaps.length ? access : merged.access, notes };
 }
 
 function actorWorksOn(artifacts: NrpModuleArtifacts, actorRef: string, entityId: string): boolean {

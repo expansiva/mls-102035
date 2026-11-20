@@ -47,7 +47,6 @@ import {
   recordNrpTriageRefusal,
 } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import { fieldsOnlyFix } from '/_102035_/l2/agentNewReleasePrompt/helpers/accessCoherence.js';
-import { promptHoldSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createWrite50Step } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 
 export interface NrpGateCursor {
@@ -95,7 +94,6 @@ export async function beforeNrpGateStep(
     const decision = nrpGateAction(issues, cursor.triage.artifacts, cursor.repaired);
     if (decision.action === 'write') {
       const fix = fieldsOnlyFix(baseArtifacts, merged, baseArtifacts.module.userLanguage);
-      if (fix.ask) return fieldsOnlyHold(base, step, hookSequential, fix.ask);
       const fixed = fix.notes.length > 0;
       const artifacts = fixed ? { ...merged, access: fix.access } : merged;
       return [
@@ -398,26 +396,6 @@ function strip(value: string): string {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return value;
   const { nrpGate: _ignored, ...invocation } = raw as Record<string, unknown>;
   return JSON.stringify(invocation);
-}
-
-/** The gate asks instead of writing: the task ends with `{ written:false, summary }` (no step waits for a human; the user sends a new request). */
-export function fieldsOnlyHold(
-  base: { messageId: string; threadId: string; taskId: string; parentStepId: number },
-  step: mls.msg.AIAgentStep,
-  hookSequential: number,
-  question: string,
-): mls.msg.AgentIntent[] {
-  return [
-    {
-      type: 'add-step', ...base, step: {
-        type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
-        stepTitle: 'Verification needs clarification',
-        result: JSON.stringify({ written: false, summary: promptHoldSummary(question) }),
-        planning: { planId: 'gate40-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
-      } as mls.msg.AIResultStep,
-    },
-    done(base, step, hookSequential, question),
-  ];
 }
 
 function done(

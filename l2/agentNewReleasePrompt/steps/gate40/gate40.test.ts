@@ -28,7 +28,6 @@ import {
   nrpMayWrite,
   type NrpGateIssue,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
-import { fieldsOnlyHold } from '/_102035_/l2/agentNewReleasePrompt/steps/gate40/gate40.js';
 import { normalizeNrpEdit, nrpFileScope, NrpEditRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import { nrpReport, planNrpPersistence } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { NRP_ARTIFACT_KINDS, recordNrpTriageRefusal } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
@@ -410,22 +409,6 @@ void test('a step-kind error names the journey file and the pointer inside it', 
   }
   assert.match(refused, /does not exist/);
   assert.match(refused, /Expected file: duplicarTarefa pointer: \/business\/steps\/2\/kind/);
-});
-
-void test('fieldsOnly hold ends the task with the question alone and no step waits for a human', () => {
-  const question = 'Quem deve ver o campo Mesa.details.statusAtendimento? Nenhuma jornada do ator Garçom usa Mesa.';
-  const intents = fieldsOnlyHold(
-    { messageId: 'm', threadId: 't', taskId: 'task', parentStepId: 1 },
-    { stepId: 4 } as mls.msg.AIAgentStep,
-    2,
-    question,
-  );
-  const steps = intents.filter(intent => intent.type === 'add-step').map(intent => intent.step);
-  assert.equal(steps.some(step => step.type === 'clarification'), false);
-  assert.equal(steps.some(step => step.status === 'waiting_human_input'), false);
-  const result = steps.find(step => step.type === 'result');
-  assert.deepEqual(JSON.parse(String(result && 'result' in result ? result.result : '')), { written: false, summary: question });
-  assert.equal(steps.some(step => step.planning?.planId === 'write50'), false);
 });
 
 function applyJourneyOps(
