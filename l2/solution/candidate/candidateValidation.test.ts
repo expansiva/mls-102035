@@ -40,8 +40,8 @@ const context = {
   registryModuleNames: ['agendaClinica'],
 };
 
-test('existing v3 fixture records every area and exposes its real access defect', () => {
-  const result = validateV3Candidate(actualV3(), context);
+test('existing v3 fixture records every area and exposes its real access defect', async () => {
+  const result = await validateV3Candidate(actualV3(), context);
   for (const area of ['module', 'journeys', 'ontologyAssembly', 'rules', 'workflows', 'integration'] as const) {
     assert.equal(result.coverage[area].status, 'checked', `${area}: ${result.coverage[area].reason}; ${JSON.stringify(result.issues.filter(issue => issue.severity === 'error').slice(0, 5))}`);
   }
@@ -55,17 +55,17 @@ test('existing v3 fixture records every area and exposes its real access defect'
   assert.equal(candidateCanPublish(result, ['rules']), false, 'an unrelated L4 error still blocks publication');
 });
 
-test('v3 relationship endpoint mutation is reported by the assembly gate', () => {
+test('v3 relationship endpoint mutation is reported by the assembly gate', async () => {
   const source = actualV3();
   const index = source.ontologyIndex.value!;
   if (!('platformOntology' in index)) throw new Error('Expected v3 index');
   source.ontologyIndex.value = { ...index, relationships: [{ ...index.relationships[0], to: 'UnknownEntity' }, ...index.relationships.slice(1)] };
-  const result = validateV3Candidate(source, context);
+  const result = await validateV3Candidate(source, context);
   assert.equal(result.coverage.ontologyAssembly.status, 'error');
   assert.ok(result.issues.some(issue => issue.code === 'NS5_ONTOLOGY_RELATIONSHIP_ENDPOINT'));
 });
 
-test('v3 grant, workflow and integration mutations cannot be silently approved', () => {
+test('v3 grant, workflow and integration mutations cannot be silently approved', async () => {
   const cases = [
     { mutate: (s: NewReleaseOverlaySources) => { s.access.value!.grants[0].entityRefs = ['UnknownEntity']; }, area: 'access' as const },
     { mutate: (s: NewReleaseOverlaySources) => { s.workflows.value!.processes[0].tasks[0].next = ['unknownTask']; }, area: 'workflows' as const },
@@ -74,24 +74,24 @@ test('v3 grant, workflow and integration mutations cannot be silently approved',
   for (const one of cases) {
     const source = actualV3();
     one.mutate(source);
-    const result = validateV3Candidate(source, context);
+    const result = await validateV3Candidate(source, context);
     assert.notEqual(result.coverage[one.area].status, 'checked', one.area);
     assert.ok(result.issues.some(issue => issue.artifact === `${one.area}.defs.ts` && issue.severity === 'error'), one.area);
   }
 });
 
-test('a new rules error blocks publication and an error already on the module does not', () => {
+test('a new rules error blocks publication and an error already on the module does not', async () => {
   const base = actualV3();
   const broken = actualV3();
   const rule = broken.rules.value!;
   if (!('rules' in rule) || !Array.isArray(rule.rules)) throw new Error('Expected a rules catalog');
   rule.rules[0].description = '';
-  const result = validateV3Candidate(broken, context, base);
+  const result = await validateV3Candidate(broken, context, base);
   assert.equal(result.coverage.rules.status, 'error');
   assert.ok(result.issues.some(issue => issue.artifact === 'rules.defs.ts' && issue.severity === 'error' && !issue.baseline));
   assert.equal(candidateCanPublish(result, ['rules']), false);
 
-  const same = validateV3Candidate(actualV3(), context, actualV3());
+  const same = await validateV3Candidate(actualV3(), context, actualV3());
   const oldErrors = same.issues.filter(issue => issue.severity === 'error');
   assert.ok(oldErrors.length > 0);
   assert.ok(oldErrors.every(issue => issue.baseline === true));
@@ -104,7 +104,7 @@ test('a new rules error blocks publication and an error already on the module do
   assert.ok(oldWarnings.length > 0);
   assert.ok(oldWarnings.every(issue => issue.baseline === true));
 
-  const noBase = validateV3Candidate(actualV3(), context);
+  const noBase = await validateV3Candidate(actualV3(), context);
   assert.ok(noBase.issues.some(issue => issue.severity === 'error' && !issue.baseline));
   assert.equal(noBase.coverage.oracle.status, 'error');
   assert.equal(candidateCanPublish(noBase, ['oracle']), false);
@@ -143,20 +143,20 @@ test('warning baseline matches artifact, path and code without changing verdicts
   assert.equal(candidateCanPublish(failed, ['workflows']), false);
 });
 
-test('missing platform catalog is unsupported; a missing frozen plan still checks entity gates', () => {
+test('missing platform catalog is unsupported; a missing frozen plan still checks entity gates', async () => {
   const sources = actualV3();
-  const withoutCatalog = validateV3Candidate(sources);
+  const withoutCatalog = await validateV3Candidate(sources);
   assert.equal(withoutCatalog.coverage.ontologyAssembly.status, 'unsupported');
   assert.equal(withoutCatalog.ok, false);
-  const withoutTdm = validateV3Candidate(sources, { mdm, ddm });
+  const withoutTdm = await validateV3Candidate(sources, { mdm, ddm });
   assert.equal(withoutTdm.coverage.ontologyAssembly.status, 'unsupported');
-  const withoutPlan = validateV3Candidate(sources, { mdm, tdm, ddm });
+  const withoutPlan = await validateV3Candidate(sources, { mdm, tdm, ddm });
   assert.equal(withoutPlan.coverage.ontologyEntities.status, 'checked');
   assert.notEqual(withoutPlan.coverage.ontologyEntities.status, 'unsupported');
   assert.equal(withoutPlan.ok, false);
 });
 
-test('edited ontology index still runs entity gates, and a real content error is refused', () => {
+test('edited ontology index still runs entity gates, and a real content error is refused', async () => {
   const index = actualV3().ontologyIndex.value!;
   const fk = index.relationships.find(row => row.mode === 'fk' && row.field && row.field.includes('.'));
   assert.ok(fk, 'fixture has an fk relationship');
@@ -167,7 +167,7 @@ test('edited ontology index still runs entity gates, and a real content error is
     ...addedIndex,
     relationships: [...addedIndex.relationships, { ...fk!, relationshipId: 'extraSeating' }],
   };
-  const addedResult = validateV3Candidate(added, context);
+  const addedResult = await validateV3Candidate(added, context);
   assert.equal(addedResult.coverage.ontologyEntities.status, 'checked', addedResult.coverage.ontologyEntities.reason);
 
   const donor = added.entities.find(item => item.value && 'kind' in item.value && item.value.kind === 'entity');
@@ -183,7 +183,7 @@ test('edited ontology index still runs entity gates, and a real content error is
     ...createdIndex,
     entities: [...createdIndex.entities, { entityId: 'SideNote', kind: 'entity', class: file.class }],
   };
-  const createdResult = validateV3Candidate(created, context);
+  const createdResult = await validateV3Candidate(created, context);
   assert.equal(createdResult.coverage.ontologyEntities.status, 'checked', JSON.stringify(createdResult.issues.filter(issue => issue.code.startsWith('NS5_ONTOLOGY')).slice(0, 4)));
 
   const retargeted = actualV3();
@@ -194,7 +194,7 @@ test('edited ontology index still runs entity gates, and a real content error is
       ? { ...row, mode: 'throughTable' as const, through: row.to }
       : row),
   };
-  const retargetedResult = validateV3Candidate(retargeted, context);
+  const retargetedResult = await validateV3Candidate(retargeted, context);
   assert.equal(retargetedResult.coverage.ontologyEntities.status, 'checked', retargetedResult.coverage.ontologyEntities.reason);
 
   const broken = actualV3();
@@ -206,7 +206,7 @@ test('edited ontology index still runs entity gates, and a real content error is
       ? { ...row, field: `${owner}.missingColumn` }
       : row),
   };
-  const brokenResult = validateV3Candidate(broken, context);
+  const brokenResult = await validateV3Candidate(broken, context);
   assert.equal(brokenResult.coverage.ontologyEntities.status, 'error');
   assert.ok(brokenResult.issues.some(issue => issue.code === 'NS5_ONTOLOGY_FK_FIELD_UNRESOLVED'));
 
@@ -223,7 +223,7 @@ test('edited ontology index still runs entity gates, and a real content error is
   const derived = deriveOntologyPlan(createdIndex, files, frozen);
   assert.equal(derived.entities.find(row => row.entityId === table.entityId)?.family, 'ddm');
   assert.equal(derived.normalizations?.[0]?.kind, 'tightened');
-  const withFamily = validateV3Candidate(actualV3(), { ...context, ontologyPlan: frozen });
+  const withFamily = await validateV3Candidate(actualV3(), { ...context, ontologyPlan: frozen });
   const kept = withFamily.issues.some(issue => issue.code === 'NS5_ONTOLOGY_DDM_HAS_STATE' || issue.code === 'NS5_ONTOLOGY_DDM_UNIQUE_KEY');
   assert.equal(kept, true);
 });

@@ -170,7 +170,7 @@ export async function validate40Private(input: Validate40Input): Promise<Validat
   try {
     const sources = validate40Sources(input.base, input.proposal);
     if (schemaFamily === 'v3') {
-      validation = validateV3Candidate(sources, input.context.v3 || {});
+      validation = await validateV3Candidate(sources, input.context.v3 || {});
       if (!input.context.v3?.registryModuleNames) {
         validation = { ...validation, ok: false, coverage: { ...validation.coverage,
           integration: { status: 'unsupported', reason: 'The caller did not provide the real module registry.' } } };

@@ -29,8 +29,8 @@ Three kinds, and only three.
   free or busy is never a column somebody types: it is a `derived` field of its row, read from the
   movements that point at it. `class` is `core`, `event` or `supporting`.
 - **`external`** — a record that lives in another system and is reached through one connection of the
-  catalog in the human prompt. `connectionId` names that connection, in lowerCamel, and only a
-  connection the catalog lists. The module stores nothing of the row. No `class`, no `subtype`, no
+  platform catalog, or through a system a sibling module declares. Both are listed in the human prompt.
+  `connectionId` names that connection, in lowerCamel. The module stores nothing of the row. No `class`, no `subtype`, no
   `initialData`. `family` is `tdm` and `storageKind` is `external` — both fixed. `writer` is `journey`,
   the neutral value: what this module reads or writes is chosen later, as operations of the connection.
   `displayField` is a field of the view this module has of the record. Never send `source`: it is derived

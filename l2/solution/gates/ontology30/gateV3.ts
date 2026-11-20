@@ -47,6 +47,7 @@ import {
   type Ns5OntologyV3PlanRelationship,
 } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import { ns5ConnectionExists } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
@@ -83,6 +84,8 @@ export interface Ns5OntologyV3GateContext {
   evidenceText?: string;
   /** Actor ids, for `transitions[].by`. */
   actors?: readonly string[];
+  /** Systems sibling modules declare. A `connectionId` may name one of them. */
+  systems?: readonly Ns5IntegrationExternalSystem[];
 }
 
 function ok(issues: Ns5OntologyV3Issue[]): Ns5OntologyV3GateResult {
@@ -174,7 +177,7 @@ export function validateNs5OntologyPlanV3(
         });
       }
     } else if (entity.kind === 'external') {
-      issues.push(...checkExternalPlan(entity, path));
+      issues.push(...checkExternalPlan(entity, path, context));
     } else if (!entity.class || !(NS5_ONTOLOGY_V3_CLASSES as readonly string[]).includes(entity.class)) {
       issues.push({
         severity: 'error',
@@ -343,17 +346,18 @@ function checkExternalFkOwner(
 }
 
 /**
- * What an `external` plan may carry. `connectionId` is the catalog name; table shape is refused.
+ * What an `external` plan may carry. `connectionId` is a connection of the platform catalog or a system
+ * a sibling module declares; table shape is refused.
  * `storageKind` is read when the draft still has it: normalize drops it, and the neutral value is
  * `NS5_ONTOLOGY_V3_EXTERNAL_STORAGE_KIND`.
  */
-function checkExternalPlan(entity: Ns5OntologyV3PlanEntity, path: string): Ns5OntologyV3Issue[] {
+function checkExternalPlan(entity: Ns5OntologyV3PlanEntity, path: string, context: Ns5OntologyV3GateContext): Ns5OntologyV3Issue[] {
   const issues: Ns5OntologyV3Issue[] = [];
-  if (!entity.connectionId || !ns5ConnectionExists(entity.connectionId)) {
+  if (!entity.connectionId || !ns5ConnectionExists(entity.connectionId, context.systems)) {
     issues.push({
       severity: 'error',
       code: 'NS5_ONTOLOGY_CONNECTION_UNKNOWN',
-      message: `'${entity.connectionId || ''}' is not a connection of the catalog.`,
+      message: `'${entity.connectionId || ''}' is not a connection of the platform catalog or a system a sibling module declares.`,
       path: `${path}.connectionId`,
     });
   }
@@ -527,7 +531,7 @@ export function validateNs5OntologyEntityV3(
   issues.push(...checkDecideBranching(entity, context, path));
   issues.push(...checkEntityRelationships(entity, plan, path));
   if (entity.kind === 'external') {
-    issues.push(...checkExternalEntity(entity, plan, path));
+    issues.push(...checkExternalEntity(entity, plan, path, context));
   } else if (entity.kind !== 'role') {
     issues.push(...checkTableFkFields(entity, plan, paths, path));
   }
@@ -540,11 +544,12 @@ export function validateNs5OntologyEntityV3(
   return ok(issues);
 }
 
-/** An outside record keeps the fields the module sees. It is not a table and its connectionId is the catalog name. */
+/** An outside record keeps the fields the module sees. It is not a table. Its connectionId is a platform-catalog connection or a system a sibling module declares. */
 function checkExternalEntity(
   entity: Extract<Ns5OntologyEntityV3, { kind: 'external' }>,
   plan: Ns5OntologyV3PlanDraft,
   path: string,
+  context: Ns5OntologyV3GateContext,
 ): Ns5OntologyV3Issue[] {
   const issues: Ns5OntologyV3Issue[] = [];
   if (entity.lifecycleStates?.length) {
@@ -589,11 +594,11 @@ function checkExternalEntity(
   }
   const planned = plan.entities.find(item => item.entityId === entity.entityId);
   const expected = planned?.connectionId || '';
-  if (!entity.connectionId || entity.connectionId !== expected || !ns5ConnectionExists(entity.connectionId)) {
+  if (!entity.connectionId || entity.connectionId !== expected || !ns5ConnectionExists(entity.connectionId, context.systems)) {
     issues.push({
       severity: 'error',
       code: 'NS5_ONTOLOGY_EXTERNAL_CONNECTION',
-      message: `connectionId '${entity.connectionId}' is not the catalog connection '${expected}'.`,
+      message: `connectionId '${entity.connectionId}' is not '${expected}', a connection of the platform catalog or a system a sibling module declares.`,
       path: `${path}.connectionId`,
     });
   }

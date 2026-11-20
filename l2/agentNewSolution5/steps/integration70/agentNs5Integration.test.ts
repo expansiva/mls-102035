@@ -14,7 +14,8 @@ import { repoInsideModuleIntegration } from '/_102035_/l2/agentNewSolution5/step
 import { integrationModuleIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/integrationModule-integration.defs.js';
 import { usesSiblingSystemIntegration } from '/_102035_/l2/agentNewSolution5/steps/integration70/fixtures/usesSiblingSystem-integration.defs.js';
 import { agendaClinicaIntegration } from '/_102035_/l2/solution/fixtures/integration70/agendaClinica-integration.defs.js';
-import { buildNs5IntegrationHumanPrompt, buildNs5IntegrationTool, readSiblingSystems } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
+import { buildNs5IntegrationHumanPrompt, buildNs5IntegrationTool } from '/_102035_/l2/agentNewSolution5/steps/integration70/agentNs5Integration.js';
+import { readSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   NS5_INTEGRATION_DROP_TRANSITION_REF,
   NS5_PLUGIN_CATALOG,

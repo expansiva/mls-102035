@@ -31,7 +31,7 @@
         "connectionId": {
           "type": "string",
           "pattern": "^[a-z][A-Za-z0-9]*$",
-          "description": "The connection whose catalog this external entity is read from. Only on kind external. source is derived from it and is never sent."
+          "description": "A connection of the platform catalog, or a system a sibling module declares. Only on kind external. source is derived from it and is never sent."
         },
         "class": { "type": "string", "enum": ["core", "event", "supporting"] },
         "title": { "type": "string" },

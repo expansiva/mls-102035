@@ -13,7 +13,7 @@ import {
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { compileNs5Defs, formatNs5CompileFeedback } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
-import { readNs5Siblings, formatNs5Siblings, ns5PlatformEventIds } from '/_102035_/l2/solution/ns5Siblings.js';
+import { formatNs5Siblings, formatSiblingSystems, ns5PlatformEventIds, readNs5Siblings, readSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   draftFile,
   integrationFile,
@@ -41,7 +41,6 @@ import {
 } from '/_102035_/l2/solution/ontologyView.js';
 import type {
   Ns5CompileRecord,
-  Ns5IntegrationArtifact,
   Ns5IntegrationConnection,
   Ns5IntegrationExternalSystem,
   Ns5IntegrationItem,
@@ -105,32 +104,6 @@ async function readUsedByRefs(moduleName: string): Promise<string[]> {
     for (const task of process.tasks || []) refs.push(`${process.processId}.${task.taskId}`);
   }
   return refs;
-}
-
-/**
- * The systems the siblings declare, read from the L4 each sibling wrote (`integration.defs.ts`), never from a
- * written list. A sibling with no integration artifact, or one that declares none, adds nothing.
- */
-export async function readSiblingSystems(
-  siblings: readonly Ns5SiblingModule[],
-): Promise<Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }>> {
-  const out: Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }> = [];
-  for (const sibling of siblings) {
-    const artifact = await readDefsJson<Ns5IntegrationArtifact>(integrationFile(sibling.moduleName));
-    const systems = artifact?.externalSystems ?? [];
-    if (systems.length) out.push({ moduleName: sibling.moduleName, systems });
-  }
-  return out;
-}
-
-function formatSiblingSystems(
-  siblingSystems: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>,
-): string {
-  const lines = siblingSystems.flatMap(({ moduleName, systems }) => systems.map(system => {
-    const operations = system.operations.map(operation => `${operation.operationId} (${operation.direction}: ${operation.description})`).join('; ') || '(none)';
-    return `- ${system.id} · declared by ${moduleName} · ${system.description} · operations: ${operations}`;
-  }));
-  return lines.length ? lines.join('\n') : '(none)';
 }
 
 export function buildNs5IntegrationHumanPrompt(input: {

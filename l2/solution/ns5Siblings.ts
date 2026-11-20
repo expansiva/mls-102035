@@ -10,8 +10,9 @@ import type {
   Ns4SolutionRegistryEvent,
   Ns4SolutionRegistryRole,
 } from '/_102035_/l2/solution/helpers/organizationTypes.js';
+import { integrationFile, readDefsJson, readSolutionRegistry } from '/_102035_/l2/solution/fs.js';
 import { level1PlatformCatalog } from '/_102035_/l2/solution/lib.js';
-import { readSolutionRegistry } from '/_102035_/l2/solution/fs.js';
+import type { Ns5IntegrationArtifact, Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 
 export interface Ns5SiblingModule {
   moduleName: string;
@@ -38,6 +39,38 @@ export function ns5SiblingsFromRegistry(
 
 export async function readNs5Siblings(currentModule?: string): Promise<Ns5SiblingModule[]> {
   return ns5SiblingsFromRegistry(await readSolutionRegistry(), currentModule);
+}
+
+/**
+ * The systems the siblings declare, read from the L4 each sibling wrote (`integration.defs.ts`), never from a
+ * written list. A sibling with no integration artifact, or one that declares none, adds nothing.
+ */
+export async function readSiblingSystems(
+  siblings: readonly Ns5SiblingModule[],
+): Promise<Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }>> {
+  const out: Array<{ moduleName: string; systems: Ns5IntegrationExternalSystem[] }> = [];
+  for (const sibling of siblings) {
+    const artifact = await readDefsJson<Ns5IntegrationArtifact>(integrationFile(sibling.moduleName));
+    const systems = artifact?.externalSystems ?? [];
+    if (systems.length) out.push({ moduleName: sibling.moduleName, systems });
+  }
+  return out;
+}
+
+/** Systems declared by siblings of `currentModule`, flattened. A caller with no Studio storage gets none. */
+export async function declaredSiblingSystems(currentModule?: string): Promise<Ns5IntegrationExternalSystem[]> {
+  if (typeof mls.stor?.getKeyToFile !== 'function') return [];
+  return (await readSiblingSystems(await readNs5Siblings(currentModule))).flatMap(item => item.systems);
+}
+
+export function formatSiblingSystems(
+  siblingSystems: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>,
+): string {
+  const lines = siblingSystems.flatMap(({ moduleName, systems }) => systems.map(system => {
+    const operations = system.operations.map(operation => `${operation.operationId} (${operation.direction}: ${operation.description})`).join('; ') || '(none)';
+    return `- ${system.id} · declared by ${moduleName} · ${system.description} · operations: ${operations}`;
+  }));
+  return lines.length ? lines.join('\n') : '(none)';
 }
 
 export function ns5PlatformEventIds(): string[] {

@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-20 (l4_p4_127 s1)
+
+- An `external` `connectionId` is a connection of the platform catalog or a system a sibling module declares. The plan prompt lists the sibling `call` operations under Connection catalog. The gate reads those systems (`NS5_ONTOLOGY_CONNECTION_UNKNOWN`, `NS5_ONTOLOGY_EXTERNAL_CONNECTION`).
+
 ## 2026-11-19 (l4_p4_126)
 
 - `prompt and promptEntity`: the same sentence in every step that writes a journey, an entity, a field, a rule, a permission or a process: what an administrator gives to connect the module to a system outside the app is none of them; the platform keeps it and has the screen. Intent only, no gate. `integration70` declares it in `externalSystems.settings`; `module10` and `judge35` write none of those and do not carry it.

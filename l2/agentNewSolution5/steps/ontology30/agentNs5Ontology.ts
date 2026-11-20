@@ -8,7 +8,7 @@ import { tdm } from '/_102034_/l4/ontology/tdm.defs.js';
 import { resolvePlatformEntity } from '/_102034_/l2/mdm/resolveMdmEntity.js';
 import type { MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
-import { formatNs5Siblings, readNs5Siblings } from '/_102035_/l2/solution/ns5Siblings.js';
+import { declaredSiblingSystems, formatNs5Siblings, readNs5Siblings, readSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_AGENT_NAME,
@@ -52,6 +52,7 @@ import {
 } from '/_102035_/l2/solution/lib.js';
 import type {
   Ns5CompileRecord,
+  Ns5IntegrationExternalSystem,
   Ns5JourneyArtifact,
   Ns5JourneyIndexArtifact,
   Ns5ModuleActor,
@@ -175,6 +176,8 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
   workflows?: Ns5WorkflowsArtifact | null;
   platformCatalog: string;
   siblingsText?: string;
+  /** Systems sibling modules declare, with the module that declares each one. */
+  siblingSystems?: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>;
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
@@ -198,7 +201,7 @@ export function buildNs5OntologyPlanHumanPrompt(input: {
     '',
     input.siblingsText || '',
     '## Connection catalog',
-    formatNs5ConnectionCatalog(),
+    formatNs5ConnectionCatalog(input.siblingSystems),
     '',
     input.platformCatalog,
     input.gateFeedback ? `## Deterministic repair required\n${input.gateFeedback}` : '',
@@ -356,6 +359,7 @@ async function buildPlanPrompt(
     readJson(draftFile(parsed.moduleName, 'ontology30-plan')),
     readNs5Siblings(parsed.moduleName),
   ]);
+  const siblingSystems = await readSiblingSystems(siblings);
   const sourcePrompt = await readSourcePrompt(context, parsed.moduleName, moduleArtifact);
   const tool = buildNs5OntologyPlanV3Tool(schema, createStrictArtifactTool);
   const humanPrompt = buildNs5OntologyPlanHumanPrompt({
@@ -366,6 +370,7 @@ async function buildPlanPrompt(
     workflows,
     platformCatalog: formatNs5PlatformCatalog(mdm),
     siblingsText: formatNs5Siblings(siblings),
+    siblingSystems,
     gateFeedback: parsed.gateFeedback,
     previousDraft: previous,
   });
@@ -429,12 +434,17 @@ function startingPointFor(entity: Ns5OntologyV3PlanDraft['entities'][number], mo
   return formatNs5FamilyStartingPoint(family === 'ddm' ? ddm : tdm, entity);
 }
 
-/** Connections and their `call` operations. `serve` is chosen later, in integration70. */
-function formatNs5ConnectionCatalog(): string {
+/** Connections and their `call` operations, plus `call` operations of systems a sibling declares. `serve` is chosen later, in integration70. */
+function formatNs5ConnectionCatalog(
+  siblingSystems: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }> = [],
+): string {
   const lines = ns5ConnectionCatalogs().flatMap(catalog => catalog.operations
     .filter(operation => operation.direction === 'call')
     .map(operation => `- ${catalog.connectionId}.${operation.operationId} · ${operation.direction} · ${operation.kind} · ${operation.description}`));
-  return lines.join('\n') || '(none)';
+  const declared = siblingSystems.flatMap(({ moduleName, systems }) => systems.flatMap(system => system.operations
+    .filter(operation => operation.direction === 'call')
+    .map(operation => `- ${system.id}.${operation.operationId} · call · ${operation.description} · declared by ${moduleName}`)));
+  return [...lines, ...declared].join('\n') || '(none)';
 }
 
 async function handlePlanResult(
@@ -464,7 +474,10 @@ async function handlePlanResult(
   let pipeline = await requirePipeline(parsed.moduleName);
   pipeline = await writeStepState(pipeline, { status: 'running', updatedAt: new Date().toISOString() });
   await writeJson(draftFile(parsed.moduleName, 'ontology30-plan'), plan);
-  const gate = validateNs5OntologyPlanV3(plan, { moduleName: parsed.moduleName, mdm, tdm, ddm, journeys, workflows });
+  const gate = validateNs5OntologyPlanV3(plan, {
+    moduleName: parsed.moduleName, mdm, tdm, ddm, journeys, workflows,
+    systems: await declaredSiblingSystems(parsed.moduleName),
+  });
   if (!gate.ok) {
     const feedback = formatNs5OntologyV3Gate(gate.issues);
     if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -530,6 +543,7 @@ async function handleEntityResult(
     workflows,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: (await readNs5Actors(parsed.moduleName)).map(actor => actor.actorId),
+    systems: await declaredSiblingSystems(parsed.moduleName),
   });
   if (!gate.ok) {
     return [updateStatus(context, mutationParent, step, hookSequential, 'completed', `Entity ${entityId} gate failed; finalizer will repair it. | ${formatNs5OntologyV3Gate(gate.issues)}`)];
@@ -576,6 +590,7 @@ async function finalizeOntology(
     workflows,
     evidenceText: await evidenceText(context, parsed.moduleName, moduleArtifact, journeys),
     actors: actors.map(actor => actor.actorId),
+    systems: await declaredSiblingSystems(parsed.moduleName),
   };
   const invalid: string[] = [];
   const entityFeedback: Record<string, string> = {};

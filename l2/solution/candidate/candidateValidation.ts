@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/solution/candidate/candidateValidation.ts" enhancement="_blank" />
 
-/** Pure validation of an already assembled L4 candidate. No NS5 hooks or writes. */
+/** Validation of an already assembled L4 candidate. Reads the systems sibling modules declare. No writes. */
 import type { MdmOntology, DataFamilyOntology } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
 import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/gate.js';
 import { validateNs5Journeys } from '/_102035_/l2/solution/gates/journeys20/gate.js';
@@ -14,6 +14,7 @@ import { ns5OntologyEdges, ns5OntologyEntityViews } from '/_102035_/l2/solution/
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import { artifactForOraclePath, runCandidateOracle, type CandidateModule } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { deriveOntologyPlan } from '/_102035_/l2/solution/candidate/ontologyPlanDerive.js';
+import { declaredSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import { isNs5OntologyV3Version, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
@@ -69,20 +70,20 @@ export function applyScreenBaseline(
   return { ok, issues, oracle: current.oracle, coverage };
 }
 
-export function validateV3Candidate(
+export async function validateV3Candidate(
   sources: NewReleaseOverlaySources,
   context: CandidateV3Context = {},
   base?: NewReleaseOverlaySources,
-): NewReleaseOverlayValidation {
-  const run = validateV3CandidateRun(sources, context);
+): Promise<NewReleaseOverlayValidation> {
+  const run = await validateV3CandidateRun(sources, context);
   if (!base) return run.validation;
-  return applyScreenBaseline(run.validation, validateV3Candidate(base, context).issues, run.blame);
+  return applyScreenBaseline(run.validation, (await validateV3Candidate(base, context)).issues, run.blame);
 }
 
-function validateV3CandidateRun(
+async function validateV3CandidateRun(
   sources: NewReleaseOverlaySources,
   context: CandidateV3Context,
-): { validation: NewReleaseOverlayValidation; blame: ScreenBlame[] } {
+): Promise<{ validation: NewReleaseOverlayValidation; blame: ScreenBlame[] }> {
   const coverage = unavailableCandidateCoverage('Gate has not run.');
   const issues: NewReleaseValidationIssue[] = [];
   const blame: ScreenBlame[] = [];
@@ -159,10 +160,12 @@ function validateV3CandidateRun(
       return found;
     });
     const plan = deriveOntologyPlan(v3Index, v3Entities, context.ontologyPlan);
+    const systems = await declaredSiblingSystems(v3Index.moduleName);
     check('ontologyEntities', 'ontology/index.defs.ts', () => v3Entities.flatMap(entity => validateNs5OntologyEntityV3(entity, plan, {
       moduleName: v3Index.moduleName, mdm: context.mdm!, tdm: context.tdm!, ddm: context.ddm!,
       journeys, workflows, evidenceText: [module?.sourcePrompt || '', ...journeys.map(journey => JSON.stringify(journey.business))].join('\n'),
       actors: access?.actors.map(actor => actor.actorId) || [],
+      systems,
     }).issues), path => {
       const match = /^entities\.([A-Z][A-Za-z0-9]*)/u.exec(path);
       return match ? `ontology/${match[1]}.defs.ts` : 'ontology/index.defs.ts';
