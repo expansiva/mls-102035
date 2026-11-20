@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-20 (l4_p4_130 s3b)
+
+- `normalizeInbound` drops `effect` and `transitionRef` when `writes` is empty and records `dropEffectWithoutWrites` (detail is the discarded effect, or `missing`). With `writes`, an invalid `effect` still becomes `create`. `NS5_INTEGRATION_EFFECT` requires `effect` only when `writes` is non-empty; a present `effect` is still one of `create`, `update`, `transition`. The Integration tab select has an empty first option (`integration.choose`). `integration.schema.json` is unchanged.
+
 ## 2026-11-20 (l4_p4_130 s2)
 
 - `NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL`: an `inbound.writes` entry, or a `connections` row with `direction: serve` and `effect` `create` or `update`, that names an ontology entity `external`. The record lives on that connection; the module does not store a row of it, and an arrival does not rewrite it. `direction: call` and `effect: transition` are not checked. No new sentence in `prompt.md`.

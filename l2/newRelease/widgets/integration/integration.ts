@@ -245,7 +245,12 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
           <label><span>${this.t('integration.id')}</span><input readonly .value=${item.id}></label>
           <label><span>${this.t('integration.event')}</span><input readonly .value=${item.event || ''}></label>
           ${lane === 'inbound' ? html`
-            <label><span>${this.t('integration.effect')}</span><select @change=${(event: Event) => this.updateItem(lane, index, { effect: (event.currentTarget as HTMLSelectElement).value as Ns5IntegrationItem['effect'], transitionRef: undefined })}>${INTEGRATION_EFFECTS.map(effect => html`<option value=${effect} ?selected=${item.effect === effect}>${this.t(`integration.effect.${effect}`)}</option>`)}</select></label>
+            <label><span>${this.t('integration.effect')}</span><select @change=${(event: Event) => {
+              const value = (event.currentTarget as HTMLSelectElement).value;
+              this.updateItem(lane, index, value
+                ? { effect: value as Ns5IntegrationItem['effect'], transitionRef: undefined }
+                : { effect: undefined, transitionRef: undefined });
+            }}><option value="" ?selected=${!item.effect}>${this.t('integration.choose')}</option>${INTEGRATION_EFFECTS.map(effect => html`<option value=${effect} ?selected=${item.effect === effect}>${this.t(`integration.effect.${effect}`)}</option>`)}</select></label>
             <label><span>${this.t('integration.writes')}</span><select multiple @change=${(event: Event) => this.updateItem(lane, index, { writes: [...(event.currentTarget as HTMLSelectElement).selectedOptions].map(option => option.value) })}>${[...new Set([...(item.writes || []), ...this.entities().map(entity => entity.entityId)])].map(id => html`<option value=${id} ?selected=${item.writes?.includes(id)}>${this.entities().find(entity => entity.entityId === id)?.title || id}</option>`)}</select></label>
             ${item.effect === 'transition' ? html`<label><span>${this.t('integration.transition')}</span><select @change=${(event: Event) => this.updateItem(lane, index, { transitionRef: (event.currentTarget as HTMLSelectElement).value })}><option value="" ?selected=${!item.transitionRef}>${this.t('integration.choose')}</option>${[...new Set([...(item.transitionRef ? [item.transitionRef] : []), ...transitions.map(transition => transition.transitionId)])].map(id => html`<option value=${id} ?selected=${item.transitionRef === id}>${id}</option>`)}</select></label>` : nothing}
           ` : html`

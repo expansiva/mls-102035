@@ -19,7 +19,7 @@ platform plugin (`usedBy` = `journey.step` or `process.task`).
 ## Output
 
 `Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`, `connections[]` when the module names an operation (omitted when empty), and `externalSystems[]` when the module declares a system outside the app (omitted when empty; the artifact is then `...-integration-v4`, otherwise v3). Inbound is
-`{ id, kind, from, event?, writes[], effect, transitionRef?, description }`. Outbound is
+`{ id, kind, from, event?, writes[], effect?, transitionRef?, description }`. `effect` and `transitionRef` are omitted when `writes` is empty: an arrival that writes nothing has no effect. Outbound is
 `{ id, kind, to, event, on, entityRefs[], description }`. A plugin is
 `{ pluginId, usedBy[], description }`. An external system is `{ id, title, description, settings[{ id, title, description, secret }], operations[{ operationId, direction, description }] }`: intent only, never address, method, header, format, authentication or input/output types. Empty lists are valid when there is no signal; the step
 then writes that artifact **without** an LLM call and records `noIntegrationSignal` on the pipeline

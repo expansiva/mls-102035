@@ -206,7 +206,12 @@ function validateInbound(
       `${path}.from`,
     );
   }
-  if (!EFFECTS.has(item.effect || '')) {
+  const hasWrites = (item.writes || []).length > 0;
+  if (item.effect) {
+    if (!EFFECTS.has(item.effect)) {
+      error(ctx.issues, 'NS5_INTEGRATION_EFFECT', "Inbound effect must be 'create', 'update' or 'transition'.", `${path}.effect`);
+    }
+  } else if (hasWrites) {
     error(ctx.issues, 'NS5_INTEGRATION_EFFECT', "Inbound effect must be 'create', 'update' or 'transition'.", `${path}.effect`);
   }
   if (item.effect === 'transition' && !item.transitionRef) {

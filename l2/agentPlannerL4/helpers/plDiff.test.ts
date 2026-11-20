@@ -30,7 +30,7 @@ import {
 } from '/_102035_/l2/agentPlannerL4/helpers/plDiff.js';
 import { CHANGE_EFFORT_SCHEMA_VERSION, isTextOnlyChange } from '/_102035_/l2/solution/poolPlan.js';
 import { validateChangeEffort } from '/_102035_/l2/solution/gates/changeEffort/gate.js';
-import type { Ns5AccessArtifact, Ns5JourneyArtifact, Ns5JourneyIndexEntry, Ns5OntologyAnyEntity, Ns5RulesAny, Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
+import { NS5_INTEGRATION_SCHEMA_VERSION, type Ns5AccessArtifact, type Ns5IntegrationArtifact, type Ns5JourneyArtifact, type Ns5JourneyIndexEntry, type Ns5OntologyAnyEntity, type Ns5RulesAny, type Ns5WorkflowsArtifact } from '/_102035_/l2/solution/types.js';
 
 type Stored = {
   project: number; level: number; folder: string; shortName: string; extension: string;
@@ -1170,4 +1170,29 @@ void test('p4_118 s2 ensaio: a candidate that declares a system lists connection
   } finally {
     setModuleRoot(MODULE, null);
   }
+});
+
+void test('l4_p4_130 s3b: a missing effect against a present effect is an inbound change', () => {
+  const row = (effect?: 'update'): Ns5IntegrationArtifact => ({
+    schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
+    moduleName: 'localModule',
+    inbound: [{
+      id: 'noteArrived',
+      kind: 'event',
+      from: 'organization',
+      writes: [],
+      ...(effect ? { effect } : {}),
+      description: 'A notice arrived.',
+      entityRefs: [],
+    }],
+    outbound: [],
+    plugins: [],
+  });
+  const empty = { entities: [], rules: null, access: null, workflows: null };
+  const items = diffL4Snapshots(
+    snapshotFromParsed({ ...empty, integration: row() }),
+    snapshotFromParsed({ ...empty, integration: row('update') }),
+  );
+  assert.deepEqual(items.map(item => `${item.kind} ${item.op}`), ['inbound changed']);
+  assert.equal(isTextOnlyChange(items[0]), false);
 });

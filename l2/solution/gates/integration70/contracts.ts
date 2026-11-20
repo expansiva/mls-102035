@@ -41,8 +41,12 @@ export const NS5_INTEGRATION_DROP_TRANSITION_REF = 'dropTransitionRef' as const;
 
 export const NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE = 'inboundMergedIntoServe' as const;
 
+export const NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES = 'dropEffectWithoutWrites' as const;
+
 export interface Ns5IntegrationFormNormalization {
-  kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF | typeof NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE;
+  kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF
+    | typeof NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE
+    | typeof NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES;
   inboundId: string;
   detail: string;
 }
@@ -333,9 +337,27 @@ function normalizeInbound(value: unknown, normalizations: Ns5IntegrationFormNorm
   const writes = unique(strings(source.writes).map(item => entityId(item)).filter(Boolean));
   const entityRefs = unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean));
   const resolvedWrites = writes.length ? writes : entityRefs;
-  const resolvedEffect = EFFECTS.has(effect) ? effect as Ns5IntegrationEffect : 'create';
+  const rawEffect = EFFECTS.has(effect) ? effect as Ns5IntegrationEffect : '';
   const rawTransitionRef = memberId(text(source.transitionRef), '');
   const id = memberId(text(source.id) || text(source.itemId), '');
+  const base = {
+    id,
+    kind: ITEM_KINDS.has(kind) ? kind as Ns5IntegrationItemKind : 'event' as const,
+    ...(from ? { from } : {}),
+    ...(event ? { event } : {}),
+    writes: resolvedWrites,
+    description: text(source.description),
+    entityRefs: [] as string[],
+  };
+  if (!resolvedWrites.length) {
+    normalizations.push({
+      kind: NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES,
+      inboundId: id,
+      detail: rawEffect || 'missing',
+    });
+    return base;
+  }
+  const resolvedEffect = rawEffect || 'create';
   if (rawTransitionRef && resolvedEffect !== 'transition') {
     normalizations.push({
       kind: NS5_INTEGRATION_DROP_TRANSITION_REF,
@@ -345,15 +367,9 @@ function normalizeInbound(value: unknown, normalizations: Ns5IntegrationFormNorm
   }
   const transitionRef = resolvedEffect === 'transition' ? rawTransitionRef : '';
   return {
-    id,
-    kind: ITEM_KINDS.has(kind) ? kind as Ns5IntegrationItemKind : 'event',
-    ...(from ? { from } : {}),
-    ...(event ? { event } : {}),
-    writes: resolvedWrites,
+    ...base,
     effect: resolvedEffect,
     ...(transitionRef ? { transitionRef } : {}),
-    description: text(source.description),
-    entityRefs: [],
   };
 }
 

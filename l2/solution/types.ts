@@ -770,7 +770,7 @@ export interface Ns5IntegrationItem {
    * Counts as a writer (ontology30 WITHOUT_WRITER, access60, I10) and as `trigger.event`.
    */
   writes?: string[];
-  /** Inbound: what the arrival does to `writes`. Required on inbound. */
+  /** Inbound: what the arrival does to `writes`. Present when `writes` is non-empty. */
   effect?: 'create' | 'update' | 'transition';
   /** Inbound, required iff `effect === 'transition'`. */
   transitionRef?: string;

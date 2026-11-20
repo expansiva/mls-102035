@@ -298,3 +298,55 @@ void test('l4_p4_130 s2: an arrival does not write an entity that lives outside'
   assert.equal(call.issues.some(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL'), false);
   assert.equal(call.ok, true, call.issues.map(item => item.message).join('\n'));
 });
+
+void test('l4_p4_130 s3b: an arrival with no writes has no effect', () => {
+  const dropped = normalizeNs5IntegrationPayload({
+    inbound: [{
+      id: 'noteArrived',
+      kind: 'event',
+      from: 'organization',
+      writes: [],
+      effect: 'update',
+      transitionRef: 'LocalTable.publish',
+      description: 'A notice arrived.',
+    }],
+  });
+  assert.equal(dropped.inbound[0].effect, undefined);
+  assert.equal(dropped.inbound[0].transitionRef, undefined);
+  assert.deepEqual(dropped.normalizations.map(item => ({ kind: item.kind, detail: item.detail })), [
+    { kind: 'dropEffectWithoutWrites', detail: 'update' },
+  ]);
+
+  const kept = normalizeNs5IntegrationPayload({
+    inbound: [{
+      id: 'noteArrived',
+      kind: 'event',
+      from: 'organization',
+      writes: ['LocalTable'],
+      effect: 'update',
+      description: 'A notice arrived.',
+    }],
+  });
+  assert.equal(kept.inbound[0].effect, 'update');
+  assert.equal(kept.normalizations.length, 0);
+
+  const context = {
+    actors: [],
+    entities: [{ entityId: 'LocalTable' }],
+    registryModuleNames: [],
+    sourcePrompt: 'a notice',
+  };
+  const bare = {
+    id: 'noteArrived',
+    kind: 'event' as const,
+    from: 'organization',
+    description: 'A notice arrived.',
+    entityRefs: [] as string[],
+  };
+  const accepted = validateNs5Integration([{ ...bare, writes: [] }], [], [], context);
+  assert.equal(accepted.issues.some(item => item.code === 'NS5_INTEGRATION_EFFECT'), false);
+  assert.equal(accepted.ok, true, accepted.issues.map(item => item.message).join('\n'));
+
+  const refused = validateNs5Integration([{ ...bare, writes: ['LocalTable'] }], [], [], context);
+  assert.equal(refused.issues.some(item => item.code === 'NS5_INTEGRATION_EFFECT' && item.path === 'inbound[0].effect'), true);
+});
