@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-20 (l4_p4_131 s2)
+
+- `ns5ResolveEntityWriter` prefers the best N:1 parent (`journey`/`affects` over `crud`) and, when `outside` is passed, a process/inbound/serve writer over a parent. Ontology30 still calls it without `outside`.
+
 ## 2026-11-20 (l4_p4_129 s1)
 
 - Who writes an entity (`ns5ResolveEntityWriter`, its types, and the v3 view adapter) lives in `solution/entityWriter.ts`. `contracts.ts` still records derived writers. An `external` parent still resolves `parent`.

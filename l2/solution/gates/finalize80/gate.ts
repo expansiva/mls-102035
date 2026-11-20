@@ -23,6 +23,7 @@ import {
 import {
   ns5EntityWriter,
   ns5ResolveEntityWriter,
+  ns5WrittenOutsideJourneys,
   ns5WriterPlanOfOntology,
   ns5WriterViewOfEntity,
 } from '/_102035_/l2/solution/entityWriter.js';
@@ -528,8 +529,8 @@ function checkI7(sources: Ns5OracleSources, error: IssueFn): void {
  * her own external actor writes her (self-registration); (d) derived `parent`
  * or `attach` — attach by an internal actor is cadastro, by an external actor
  * is self-registration; (e) an inbound event writes her — `writer: 'inbound'`
- * resolved, with the entity named by `integrationWrites` (inbound.writes or a
- * serve create/update; the same pair of predicates I10 applies). The person arrives
+ * resolved, with the entity named by `ns5WrittenOutsideJourneys` on an arrival
+ * source (`inbound.writes` or a serve create/update). The person arrives
  * with the event that created her record, which is registration by another
  * module or by an external system, not an unwritten login anchor.
  * Journey `entry.mode` has no public value.
@@ -538,6 +539,7 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
   const entityById = entityMap(sources);
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
   const writerPlan = ns5WriterPlanOfOntology(sources.entities, sources.ontologyIndex);
+  const outside = ns5WrittenOutsideJourneys(sources);
   const internalJourneys = rootedJourneys(sources.journeys).filter(journey =>
     actorById.get(journey.business.actorRef)?.kind === 'internal');
   sources.access.grants.forEach((grant, index) => {
@@ -560,7 +562,8 @@ function checkI8(sources: Ns5OracleSources, error: IssueFn): void {
     }
     const resolved = ns5ResolveEntityWriter(ns5WriterViewOfEntity(entity), writerPlan, rootedJourneys(sources.journeys));
     if (resolved.kind === 'parent' || resolved.kind === 'attach') return;
-    if (resolved.kind === 'inbound' && integrationWrites(sources).has(personId)) return;
+    const arrival = outside.get(personId);
+    if (resolved.kind === 'inbound' && arrival && arrival.source !== 'process') return;
     error(
       'I8',
       `access.grants[${index}]`,
@@ -601,20 +604,16 @@ function checkI9(sources: Ns5OracleSources, error: IssueFn): void {
  */
 function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
   const actorById = new Map(sources.access.actors.map(actor => [actor.actorId, actor]));
-  const inboundWrites = integrationWrites(sources);
-  const processWrites = new Set(sources.workflows.processes.flatMap(process => process.tasks)
-    .filter(task => (task.kind === 'mechanical' || task.kind === 'llm') && task.entityRef
-      && (task.effect === 'create' || task.effect === 'update' || task.effect === 'transition'))
-    .map(task => task.entityRef as string));
+  const outside = ns5WrittenOutsideJourneys(sources);
   const writerPlan = ns5WriterPlanOfOntology(sources.entities, sources.ontologyIndex);
   for (const entity of sources.entities) {
     const path = `ontology.${entity.entityId}`;
-    const resolved = ns5ResolveEntityWriter(ns5WriterViewOfEntity(entity), writerPlan, rootedJourneys(sources.journeys));
+    const resolved = ns5ResolveEntityWriter(
+      ns5WriterViewOfEntity(entity), writerPlan, rootedJourneys(sources.journeys), outside,
+    );
     const crud = resolved.kind === 'crud';
     const inbound = resolved.kind === 'inbound';
-    // l4_p4_109: a record a `mechanical`/`llm` stage of a process writes, or that a `serve` operation creates or
-    // updates, has a writer outside the journeys (the ontology honours what those stages cite).
-    const writtenOutsideJourneys = processWrites.has(entity.entityId) || inboundWrites.has(entity.entityId);
+    const writtenOutsideJourneys = outside.has(entity.entityId);
     if (resolved.kind === 'none' && !writtenOutsideJourneys && ns5EntityHasWrittenFields(writtenFieldsView(entity))) {
       error(
         'I10',
@@ -622,7 +621,8 @@ function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
         `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare writer: 'crud' (a reference catalog with no lifecycle), or writer: 'inbound' (created by an integration event).`,
       );
     }
-    if (inbound && !inboundWrites.has(entity.entityId)) {
+    const arrival = outside.get(entity.entityId);
+    if (inbound && (!arrival || arrival.source === 'process')) {
       error(
         'I10',
         `${path}.writer`,
@@ -743,17 +743,6 @@ function checkI12(sources: Ns5OracleSources, error: IssueFn): void {
       error('I12', path, `Unknown journey or process ${parsed.ownerId}.`);
     });
   });
-}
-
-/** Who writes an entity from outside the module: inbound.writes, or a serve row that creates or updates it. */
-function integrationWrites(sources: Ns5OracleSources): Set<string> {
-  const ids = new Set(sources.integration.inbound.flatMap(item => item.writes || []));
-  for (const connection of sources.integration.connections || []) {
-    if (connection.direction !== 'serve') continue;
-    if (connection.effect !== 'create' && connection.effect !== 'update') continue;
-    for (const entityId of connection.entityRefs || []) ids.add(entityId);
-  }
-  return ids;
 }
 
 function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {

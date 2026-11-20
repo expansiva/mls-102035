@@ -71,8 +71,8 @@ one-sentence `description`. Organization-wide aggregates go in typed `module.det
 - An entity with written fields (`fields` besides `idField`; mdm namespace) is the
   `entity` of an `act`, listed in an act's `affects`, **or** `writer: 'crud'` / `'inbound'`,
   **or** derived `parent` (many-side of a `manyToOne`/`oneToMany` whose other side has a
-  writer) / `attach` (mdm referenced by a required FK of a create `act`)
-  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). Derived writers land on `normalizations[]`
+  writer; among several parents, a journey writer wins over `crud`) / `attach` (mdm referenced by a required FK of a create `act`)
+  (`NS5_ONTOLOGY_ENTITY_WITHOUT_WRITER`). This gate does not pass `outside` (processes and integration come later). Derived writers land on `normalizations[]`
   as `writerDerived`. Normalize drops `crud`/`inbound` when an `act` already writes it;
   crud plus lifecycle is also dropped. `valueObject` is out; normalize also drops its
   `writer`/`mutability` (`dropValueObjectTableAttrs` — no table).

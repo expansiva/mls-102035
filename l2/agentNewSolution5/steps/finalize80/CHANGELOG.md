@@ -1,5 +1,9 @@
 # finalize80
 
+## 2026-11-20 (l4_p4_131 s2)
+
+- I10 mounts `ns5WrittenOutsideJourneys` once and passes it to the resolver; I8 uses the same map for arrival `.has` and still calls the resolver without `outside`.
+
 ## 2026-11-20 (l4_p4_129 s1)
 
 - I8 and I10 build the writer plan with `ns5WriterPlanOfOntology` / `ns5WriterViewOfEntity` from `solution/entityWriter.ts`. The checks themselves are unchanged.

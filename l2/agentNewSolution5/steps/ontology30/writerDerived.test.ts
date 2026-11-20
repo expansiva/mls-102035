@@ -177,6 +177,72 @@ void test('compras inbound transitionRef with effect create is dropped; gate ok'
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
+void test('among two parents the journey writer wins over crud', () => {
+  const journeys = [{
+    journeyId: 'save',
+    business: {
+      actorRef: 'editor',
+      steps: [{ stepId: 'write', kind: 'act', entity: 'File', effect: 'create' }],
+    },
+  }];
+  const plan = normalizeNs5OntologyPlan({
+    businessDomain: 'Files',
+    entities: [
+      {
+        entityId: 'Editor',
+        title: 'Editor',
+        description: 'Catalog.',
+        kind: 'core',
+        party: 'none',
+        writer: 'crud',
+        displayField: 'id',
+        storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+      },
+      {
+        entityId: 'File',
+        title: 'File',
+        description: 'File.',
+        kind: 'core',
+        party: 'none',
+        displayField: 'id',
+        storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+      },
+      {
+        entityId: 'Publication',
+        title: 'Publication',
+        description: 'Record of a save.',
+        kind: 'event',
+        party: 'none',
+        displayField: 'id',
+        storage: { target: 'moduleDatabase', scope: 'module', idField: 'id' },
+      },
+    ],
+    relationships: [
+      {
+        relationshipId: 'publicationEditor',
+        fromEntity: 'Publication',
+        toEntity: 'Editor',
+        type: 'manyToOne',
+        required: true,
+        description: 'Who edited.',
+        persistence: { mode: 'moduleReference' },
+      },
+      {
+        relationshipId: 'publicationFile',
+        fromEntity: 'Publication',
+        toEntity: 'File',
+        type: 'manyToOne',
+        required: true,
+        description: 'Which file.',
+        persistence: { mode: 'moduleReference' },
+      },
+    ],
+  }, 'files', journeys);
+  const resolved = ns5ResolveEntityWriter(plan.entities.find(item => item.entityId === 'Publication')!, plan, journeys);
+  assert.equal(resolved.kind, 'parent');
+  assert.equal(resolved.via?.entityId, 'File');
+});
+
 void test('child of a parent without a writer still fails WITHOUT_WRITER', () => {
   const journeys = [{
     journeyId: 'lookup',

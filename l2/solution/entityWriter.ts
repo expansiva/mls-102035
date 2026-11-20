@@ -28,6 +28,7 @@ export type Ns5ResolvedWriterKind =
   | 'attach'
   | 'crud'
   | 'inbound'
+  | 'process'
   | 'none';
 
 export interface Ns5ResolvedWriterVia {
@@ -36,9 +37,89 @@ export interface Ns5ResolvedWriterVia {
   stepRef?: string;
 }
 
+/** Stage, inbound id, or serve operation that writes the entity outside journeys. */
+export interface Ns5ResolvedOutsideVia {
+  source: 'process' | 'inbound' | 'serve';
+  ref: string;
+}
+
 export interface Ns5ResolvedEntityWriter {
   kind: Ns5ResolvedWriterKind;
   via?: Ns5ResolvedWriterVia;
+  outside?: Ns5ResolvedOutsideVia;
+}
+
+/** Structural slice: processes, inbound.writes, serve create/update. No gate contracts. */
+export type Ns5OutsideJourneysInput = {
+  workflows?: {
+    processes?: ReadonlyArray<{
+      processId?: string;
+      tasks?: ReadonlyArray<{
+        taskId?: string;
+        kind?: string;
+        entityRef?: string;
+        effect?: string;
+      }>;
+    }>;
+  };
+  integration?: {
+    inbound?: ReadonlyArray<{
+      id?: string;
+      writes?: readonly string[];
+    }>;
+    connections?: ReadonlyArray<{
+      connectionId?: string;
+      operationId?: string;
+      direction?: string;
+      effect?: string;
+      entityRefs?: readonly string[];
+    }>;
+  };
+};
+
+/**
+ * Entities written outside journeys. Same predicates I10 used: inbound.writes;
+ * serve create/update entityRefs; mechanical/llm create/update/transition.
+ * First source wins: inbound, then serve, then process.
+ */
+export function ns5WrittenOutsideJourneys(
+  input: Ns5OutsideJourneysInput,
+): ReadonlyMap<string, Ns5ResolvedOutsideVia> {
+  const out = new Map<string, Ns5ResolvedOutsideVia>();
+  const take = (entityId: string | undefined, via: Ns5ResolvedOutsideVia): void => {
+    if (!entityId || out.has(entityId)) return;
+    out.set(entityId, via);
+  };
+  for (const item of input.integration?.inbound || []) {
+    const ref = item.id || '';
+    for (const entityId of item.writes || []) take(entityId, { source: 'inbound', ref });
+  }
+  for (const connection of input.integration?.connections || []) {
+    if (connection.direction !== 'serve') continue;
+    if (connection.effect !== 'create' && connection.effect !== 'update') continue;
+    const ref = `${connection.connectionId || ''}.${connection.operationId || ''}`;
+    for (const entityId of connection.entityRefs || []) take(entityId, { source: 'serve', ref });
+  }
+  for (const process of input.workflows?.processes || []) {
+    for (const task of process.tasks || []) {
+      if (task.kind !== 'mechanical' && task.kind !== 'llm') continue;
+      if (task.effect !== 'create' && task.effect !== 'update' && task.effect !== 'transition') continue;
+      take(task.entityRef, {
+        source: 'process',
+        ref: `${process.processId || ''}.${task.taskId || ''}`,
+      });
+    }
+  }
+  return out;
+}
+
+function parentWriterRank(kind: Ns5ResolvedWriterKind): number {
+  if (kind === 'journey' || kind === 'affects') return 5;
+  if (kind === 'parent') return 4;
+  if (kind === 'crud') return 3;
+  if (kind === 'inbound' || kind === 'process') return 2;
+  if (kind === 'attach') return 1;
+  return 0;
 }
 
 export type Ns5WriterPlanView = {
@@ -122,14 +203,18 @@ function findCreateActStepRef(
 }
 
 /**
- * Single writer resolution: declared act/affects/crud/inbound, else derived parent
- * (non-mdm many-side of a manyToOne/oneToMany whose other side has a writer) or
- * attach (mdm referenced by a required FK of a record created by an act).
+ * Single writer resolution: declared act/affects/crud/inbound, else written
+ * outside journeys, else derived parent (best N:1 parent whose writer is not
+ * `none`) or attach (mdm referenced by a required FK of a record created by an act).
+ *
+ * `outside` is optional because ontology30 runs before processes and integration
+ * exist. Without it, resolution is the same as before this parameter existed.
  */
 export function ns5ResolveEntityWriter(
   entity: Ns5WriterEntityView,
   plan: Ns5WriterPlanView | undefined,
   journeys: ReadonlyArray<Ns5WriterJourneyView>,
+  outside?: ReadonlyMap<string, Ns5ResolvedOutsideVia>,
   depth = 0,
   visiting: ReadonlySet<string> = new Set(),
 ): Ns5ResolvedEntityWriter {
@@ -139,25 +224,45 @@ export function ns5ResolveEntityWriter(
   if (direct) return { kind: direct.kind };
   if (entity.writer === 'crud') return { kind: 'crud' };
   if (entity.writer === 'inbound') return { kind: 'inbound' };
+  const outsideVia = outside?.get(entityId);
+  if (outsideVia) {
+    return {
+      kind: outsideVia.source === 'process' ? 'process' : 'inbound',
+      outside: outsideVia,
+    };
+  }
   if (!plan) return { kind: 'none' };
 
   const nextVisiting = new Set(visiting);
   nextVisiting.add(entityId);
 
   if (entity.kind !== 'mdm') {
+    let best: {
+      rank: number;
+      parentWriter: Ns5ResolvedEntityWriter;
+      one: string;
+      relationshipId: string;
+    } | undefined;
     for (const rel of plan.relationships) {
       const sides = manySideOf(rel);
       if (!sides || sides.many !== entityId) continue;
       const parentEntity = plan.entities.find(item => item.entityId === sides.one);
       if (!parentEntity) continue;
-      const parentWriter = ns5ResolveEntityWriter(parentEntity, plan, journeys, depth + 1, nextVisiting);
+      const parentWriter = ns5ResolveEntityWriter(
+        parentEntity, plan, journeys, outside, depth + 1, nextVisiting,
+      );
       if (parentWriter.kind === 'none') continue;
+      const rank = parentWriterRank(parentWriter.kind);
+      if (best && rank <= best.rank) continue;
+      best = { rank, parentWriter, one: sides.one, relationshipId: rel.relationshipId };
+    }
+    if (best) {
       return {
         kind: 'parent',
         via: {
-          entityId: sides.one,
-          relationshipId: rel.relationshipId,
-          ...(parentWriter.via?.stepRef ? { stepRef: parentWriter.via.stepRef } : {}),
+          entityId: best.one,
+          relationshipId: best.relationshipId,
+          ...(best.parentWriter.via?.stepRef ? { stepRef: best.parentWriter.via.stepRef } : {}),
         },
       };
     }

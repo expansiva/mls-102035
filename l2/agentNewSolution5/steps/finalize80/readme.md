@@ -19,7 +19,7 @@ The six approved sources plus `pipeline.json` with `integration70: approved`.
 - `l4/<mod>/pipeline/pipeline.json` — `status: complete`, `finalize80: approved`
 - `l4/<mod>/pipeline/runNN_newsolution5.json` — command, cost sum, verdict, `handoff: never`
 
-I8 and I10 ask `solution/entityWriter.ts` who writes an entity (`ns5WriterPlanOfOntology`).
+I8 and I10 ask `solution/entityWriter.ts` who writes an entity (`ns5WriterPlanOfOntology`). I10 also passes `ns5WrittenOutsideJourneys` (process, inbound, serve) into the resolver. I8 uses that map for inbound arrival and still calls the resolver without `outside`.
 
 ## Oracle
 
@@ -34,7 +34,7 @@ I8 and I10 ask `solution/entityWriter.ts` who writes an entity (`ns5WriterPlanOf
 | I7 | `journeys/*.defs.ts` and `ontology/*.defs.ts` on disk equal the index plus `index.defs.ts` | error (`NS5_FINALIZE_I7_ORPHAN_FILE`) |
 | I8 | every `own`/`related` grant whose `anchorEntity` is `party: person` is registered: internal-actor write (`act` entity or `affects`), or `writer: 'crud'` with an internal-actor grant, or an `act` of her own external actor (self-registration), or derived `parent`/`attach` (attach by an internal create is cadastro; by an external create is self-registration). No public `entry.mode` exists | error (`NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION`) |
 | I9 | every `uniqueKeys` fieldId exists on the entity | error (`NS5_FINALIZE_I9`) |
-| I10 | written entity is an `act` `entity` or `affects`, or `writer: 'crud'` / `'inbound'`, or derived `parent`/`attach`; crud has an internal-actor grant; inbound appears in `inbound.writes`. Same predicates as ontology30 / access60 | error (`NS5_FINALIZE_I10`) |
+| I10 | written entity is an `act` `entity` or `affects`, or `writer: 'crud'` / `'inbound'`, or written outside journeys (`ns5WrittenOutsideJourneys`: process stage, inbound.writes, serve create/update), or derived `parent`/`attach`; crud has an internal-actor grant; declared inbound needs an arrival source (`inbound.writes` or serve), not a process stage | error (`NS5_FINALIZE_I10`) |
 | I11 | inbound event from a sibling (or predicted module) that does not publish it; queues `l4/<target>/tobe/integration/<requestedBy>--<eventId>.defs.ts` | warning (`NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING`) |
 | I12 | `outbound.on` is `Entity.transitionId` or `Entity.create` of this module; `plugins.usedBy` is an existing journey.step or process.task; `from: organization` events are in the platform catalog | error (`NS5_FINALIZE_I12`) |
 | I13 | remaining `custom` grants (count in `checks.I13.warningCount`) | warning (`NS5_FINALIZE_I13`) |
