@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/helpers/connectionCatalog.ts" enhancement="_blank"/>
 
-import cmCatalog from '/_102034_/l1/server/layer_1_external/connections/catalogs/cm.js';
-import platformCatalog from '/_102034_/l1/server/layer_1_external/connections/catalogs/platform.js';
+import cmCatalog from '/_102034_/l2/shared/contracts/connections/cm.js';
+import platformCatalog from '/_102034_/l2/shared/contracts/connections/platform.js';
 import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 
 export interface Ns5ConnectionCatalog {
@@ -31,7 +31,7 @@ export interface Ns5ConnectionOperation {
 }
 
 /**
- * Closed connection catalogs the NS5 gate reads: the platform's own files in `102034/l1/server/layer_1_external/connections/catalogs/`.
+ * Closed connection catalogs the NS5 gate reads: the platform's own files in `102034/l2/shared/contracts/connections/`.
  * `solution/fixtures/connections/cm.defs.ts` is a test copy of the `cm` one (see `connectionCatalog.test.ts`).
  */
 export function ns5ConnectionCatalogs(): readonly Ns5ConnectionCatalog[] {
