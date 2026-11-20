@@ -1,6 +1,9 @@
 /// <mls fileReference="_102035_/l2/solution/types.ts" enhancement="_blank"/>
 
 import type { MdmDefField, MdmSubtypeName } from '/_102034_/l1/mdm/defs/ontologyTypes.js';
+import type { Ns5ArrivalEntityEffects } from '/_102035_/l2/solution/arrivalEffects.js';
+
+export type { Ns5ArrivalEffect, Ns5ArrivalEntityEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 
 /**
  * p4_20: the read-only view of an artifact type, read only by the `.defs.ts` emitter
@@ -35,11 +38,20 @@ export const NS5_ACCESS_SCHEMA_VERSION = '2026-09-12-ns5-access-v3' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSION = '2026-11-17-ns5-integration-v3' as const;
 /** v4 adds `externalSystems`. Written only by an artifact that declares one; every other artifact stays on v3. */
 export const NS5_INTEGRATION_SCHEMA_VERSION_V4 = '2026-11-19-ns5-integration-v4' as const;
+/** v5 adds `entityEffects` on an arrival. Written only when one arrival uses that form. */
+export const NS5_INTEGRATION_SCHEMA_VERSION_V5 = '2026-11-20-ns5-integration-v5' as const;
 export const NS5_INTEGRATION_SCHEMA_VERSIONS = [
   '2026-09-12-ns5-integration-v2',
   NS5_INTEGRATION_SCHEMA_VERSION,
   NS5_INTEGRATION_SCHEMA_VERSION_V4,
+  NS5_INTEGRATION_SCHEMA_VERSION_V5,
 ] as const;
+
+export function isNs5IntegrationSchemaVersion(
+  value: unknown,
+): value is typeof NS5_INTEGRATION_SCHEMA_VERSIONS[number] {
+  return (NS5_INTEGRATION_SCHEMA_VERSIONS as readonly unknown[]).includes(value);
+}
 export const NS5_INTEGRATION_REQUEST_SCHEMA_VERSION = '2026-09-12-ns5-integration-request-v1' as const;
 export const NS5_PIPELINE_SCHEMA_VERSION = '2026-09-10-ns5-pipeline-v1' as const;
 
@@ -772,8 +784,12 @@ export interface Ns5IntegrationItem {
   writes?: string[];
   /** Inbound: what the arrival does to `writes`. Present when `writes` is non-empty. */
   effect?: 'create' | 'update' | 'transition';
-  /** Inbound, required iff `effect === 'transition'`. */
+  /** Inbound, required iff one entry transitions. */
   transitionRef?: string;
+  /**
+   * v5 arrival: one or more effects per entity. When this array is present, `writes` and `effect` are absent.
+   */
+  entityEffects?: Ns5ArrivalEntityEffects[];
   /**
    * Outbound: when this module publishes. `Entity.transitionId` or `Entity.create`.
    * Payload is the entity record at that moment (not declared in l4). I12 checks it exists.
@@ -804,6 +820,8 @@ export interface Ns5IntegrationConnection {
   usedBy: string[];
   entityRefs?: string[];
   effect?: 'list' | 'read' | 'create' | 'update' | 'remove';
+  /** v5 serve arrival. Absent on a call, and absent when the row still uses `entityRefs` and `effect`. */
+  entityEffects?: Ns5ArrivalEntityEffects[];
   description: string;
 }
 

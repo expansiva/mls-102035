@@ -345,6 +345,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     on: { reader: 'steps/integration70/gate.ts, finalize80 I12, registry events', since: '2026-09-12' },
     description: { reader: 'steps/integration70/gate.ts, master backend (payload mapping rule)', since: '2026-09-10' },
     entityRefs: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
+    entityEffects: { reader: 'solution/arrivalEffects.ts, steps/integration70/gate.ts, solution/entityWriter.ts, finalize80 I1', since: '2026-11-20' },
   },
   Ns5IntegrationPlugin: {
     pluginId: { reader: 'steps/integration70/gate.ts', since: '2026-09-10' },
@@ -358,6 +359,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     usedBy: { reader: 'steps/integration70/gate.ts, finalize80 I12 (call only)', since: '2026-11-17' },
     entityRefs: { reader: 'steps/integration70/gate.ts, finalize80 I12', since: '2026-11-17' },
     effect: { reader: 'steps/integration70/gate.ts, finalize80 I10 (serve create|update)', since: '2026-11-17' },
+    entityEffects: { reader: 'solution/arrivalEffects.ts, steps/integration70/gate.ts, solution/entityWriter.ts, finalize80 I12', since: '2026-11-20' },
     description: { reader: 'steps/integration70 persist (integration.defs.ts)', since: '2026-11-17' },
   },
   Ns5IntegrationRequestArtifact: {

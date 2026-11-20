@@ -9,6 +9,7 @@
  * The parent of an `external` entity still resolves `parent` (M16). Nothing here special-cases storage.
  */
 
+import { ns5ArrivalEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 import {
   ns5OntologyEdges,
   type Ns5OntologyAnyIndex,
@@ -66,6 +67,8 @@ export type Ns5OutsideJourneysInput = {
     inbound?: ReadonlyArray<{
       id?: string;
       writes?: readonly string[];
+      effect?: string;
+      entityEffects?: ReadonlyArray<{ entityId?: string; effects?: readonly string[] }>;
     }>;
     connections?: ReadonlyArray<{
       connectionId?: string;
@@ -73,6 +76,7 @@ export type Ns5OutsideJourneysInput = {
       direction?: string;
       effect?: string;
       entityRefs?: readonly string[];
+      entityEffects?: ReadonlyArray<{ entityId?: string; effects?: readonly string[] }>;
     }>;
   };
 };
@@ -92,13 +96,18 @@ export function ns5WrittenOutsideJourneys(
   };
   for (const item of input.integration?.inbound || []) {
     const ref = item.id || '';
-    for (const entityId of item.writes || []) take(entityId, { source: 'inbound', ref });
+    for (const entry of ns5ArrivalEffects(item, 'inbound')) {
+      if (!entry.effects.some(effect => effect === 'create' || effect === 'update' || effect === 'transition')) continue;
+      take(entry.entityId, { source: 'inbound', ref });
+    }
   }
   for (const connection of input.integration?.connections || []) {
     if (connection.direction !== 'serve') continue;
-    if (connection.effect !== 'create' && connection.effect !== 'update') continue;
     const ref = `${connection.connectionId || ''}.${connection.operationId || ''}`;
-    for (const entityId of connection.entityRefs || []) take(entityId, { source: 'serve', ref });
+    for (const entry of ns5ArrivalEffects(connection, 'serve')) {
+      if (!entry.effects.includes('create') && !entry.effects.includes('update')) continue;
+      take(entry.entityId, { source: 'serve', ref });
+    }
   }
   for (const process of input.workflows?.processes || []) {
     for (const task of process.tasks || []) {

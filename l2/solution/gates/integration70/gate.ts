@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/solution/gates/integration70/gate.ts" enhancement="_blank"/>
 
+import { ns5ArrivalEffects, ns5ArrivalWriteEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import { ns5ConnectionCatalogs, ns5ConnectionOperation } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import type { Ns5IntegrationConnection, Ns5IntegrationExternalSystem, Ns5IntegrationItem, Ns5IntegrationPlugin } from '/_102035_/l2/solution/types.js';
@@ -20,6 +21,8 @@ const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
 const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 const ITEM_KINDS = new Set(['moduleEndpoint', 'event', 'external']);
 const EFFECTS = new Set(['create', 'update', 'transition']);
+const INBOUND_ARRIVAL_EFFECTS = ['create', 'update', 'transition'] as const;
+const SERVE_ARRIVAL_EFFECTS = ['list', 'read', 'create', 'update', 'remove'] as const;
 
 export interface Ns5IntegrationGateIssue {
   severity: 'error' | 'warning';
@@ -121,41 +124,31 @@ export function validateNs5Integration(
   }
 
   // An arrival reports a change that already happened outside. It does not rewrite that record.
+  // A list or a read of that entity is not a rewrite.
   inbound.forEach((item, index) => {
-    if (item.effect === 'transition') return;
-    for (const entityId of item.writes || []) {
-      const entity = entityById.get(entityId);
-      if (!entity?.externalConnectionId) continue;
-      error(
-        issues,
-        'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL',
-        `${entity.entityId} lives outside the module on '${entity.externalConnectionId}'. The module does not store a row of it. An arrival says it already changed out there; the module does not rewrite it.`,
-        `inbound[${index}].writes`,
-      );
-    }
+    const path = Array.isArray(item.entityEffects) ? `inbound[${index}].entityEffects` : `inbound[${index}].writes`;
+    refuseArrivalWrite(ns5ArrivalEffects(item, 'inbound'), entityById, issues, path);
   });
   connections.forEach((connection, index) => {
     if (connection.direction !== 'serve') return;
-    if (connection.effect !== 'create' && connection.effect !== 'update') return;
-    for (const entityId of connection.entityRefs || []) {
-      const entity = entityById.get(entityId);
-      if (!entity?.externalConnectionId) continue;
-      error(
-        issues,
-        'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL',
-        `${entity.entityId} lives outside the module on '${entity.externalConnectionId}'. The module does not store a row of it. An arrival says it already changed out there; the module does not rewrite it.`,
-        `connections[${index}].entityRefs`,
-      );
-    }
+    const path = Array.isArray(connection.entityEffects)
+      ? `connections[${index}].entityEffects`
+      : `connections[${index}].entityRefs`;
+    refuseArrivalWrite(ns5ArrivalEffects(connection, 'serve'), entityById, issues, path);
   });
 
   for (const entity of context.entities) {
     if (entity.writer !== 'inbound' || !entity.entityId) continue;
-    const coveredByInbound = inbound.some(item => (item.writes || []).includes(entity.entityId));
+    const coveredByInbound = inbound.some(item => ns5ArrivalEffects(item, 'inbound').some(entry => (
+      entry.entityId === entity.entityId
+      && entry.effects.some(effect => effect === 'create' || effect === 'update' || effect === 'transition')
+    )));
     const coveredByServe = connections.some(connection => (
       connection.direction === 'serve'
-      && (connection.effect === 'create' || connection.effect === 'update')
-      && (connection.entityRefs || []).includes(entity.entityId)
+      && ns5ArrivalEffects(connection, 'serve').some(entry => (
+        entry.entityId === entity.entityId
+        && (entry.effects.includes('create') || entry.effects.includes('update'))
+      ))
     ));
     if (coveredByInbound || coveredByServe) continue;
     error(
@@ -206,29 +199,50 @@ function validateInbound(
       `${path}.from`,
     );
   }
-  const hasWrites = (item.writes || []).length > 0;
-  if (item.effect) {
-    if (!EFFECTS.has(item.effect)) {
+  if (Array.isArray(item.entityEffects)) {
+    validateArrivalEntries(item.entityEffects, path, INBOUND_ARRIVAL_EFFECTS, ctx.entityIds, ctx.issues);
+    const transitioning = item.entityEffects.filter(entry => entry.effects.includes('transition'));
+    if (transitioning.length === 1) {
+      const entityId = transitioning[0].entityId;
+      if (!item.transitionRef) {
+        error(ctx.issues, 'NS5_INTEGRATION_TRANSITION_REF', 'Inbound effect transition names transitionRef.', `${path}.transitionRef`);
+      } else {
+        const entity = ctx.entityById.get(entityId);
+        if (entity?.transitions && !entity.transitions.some(row => row.transitionId === item.transitionRef)) {
+          error(
+            ctx.issues,
+            'NS5_INTEGRATION_TRANSITION_UNKNOWN',
+            `Unknown transition ${entityId}.${item.transitionRef}.`,
+            `${path}.transitionRef`,
+          );
+        }
+      }
+    }
+  } else {
+    const hasWrites = (item.writes || []).length > 0;
+    if (item.effect) {
+      if (!EFFECTS.has(item.effect)) {
+        error(ctx.issues, 'NS5_INTEGRATION_EFFECT', "Inbound effect must be 'create', 'update' or 'transition'.", `${path}.effect`);
+      }
+    } else if (hasWrites) {
       error(ctx.issues, 'NS5_INTEGRATION_EFFECT', "Inbound effect must be 'create', 'update' or 'transition'.", `${path}.effect`);
     }
-  } else if (hasWrites) {
-    error(ctx.issues, 'NS5_INTEGRATION_EFFECT', "Inbound effect must be 'create', 'update' or 'transition'.", `${path}.effect`);
-  }
-  if (item.effect === 'transition' && !item.transitionRef) {
-    error(ctx.issues, 'NS5_INTEGRATION_TRANSITION_REF', 'Inbound effect transition names transitionRef.', `${path}.transitionRef`);
-  }
-  if (item.effect === 'transition' && item.transitionRef && item.writes?.[0]) {
-    const entity = ctx.entityById.get(item.writes[0]);
-    if (entity?.transitions && !entity.transitions.some(row => row.transitionId === item.transitionRef)) {
-      error(
-        ctx.issues,
-        'NS5_INTEGRATION_TRANSITION_UNKNOWN',
-        `Unknown transition ${item.writes[0]}.${item.transitionRef}.`,
-        `${path}.transitionRef`,
-      );
+    if (item.effect === 'transition' && !item.transitionRef) {
+      error(ctx.issues, 'NS5_INTEGRATION_TRANSITION_REF', 'Inbound effect transition names transitionRef.', `${path}.transitionRef`);
     }
+    if (item.effect === 'transition' && item.transitionRef && item.writes?.[0]) {
+      const entity = ctx.entityById.get(item.writes[0]);
+      if (entity?.transitions && !entity.transitions.some(row => row.transitionId === item.transitionRef)) {
+        error(
+          ctx.issues,
+          'NS5_INTEGRATION_TRANSITION_UNKNOWN',
+          `Unknown transition ${item.writes[0]}.${item.transitionRef}.`,
+          `${path}.transitionRef`,
+        );
+      }
+    }
+    validateEntityRefs(item.writes || [], `${path}.writes`, ctx.entityIds, ctx.issues);
   }
-  validateEntityRefs(item.writes || [], `${path}.writes`, ctx.entityIds, ctx.issues);
   if (item.from === 'organization') {
     const eventId = inboundEventId(item);
     if (eventId && ctx.platformEventIds.length && !ctx.platformEventIds.includes(eventId)) {
@@ -418,25 +432,29 @@ function validateConnection(
     );
   }
   if (connection.connectionId && connection.operationId) ctx.connectionPairs.add(pair);
-  const entityRefs = connection.entityRefs || [];
-  if ((entityRefs.length > 0) !== Boolean(connection.effect)) {
-    error(
-      issues,
-      'NS5_INTEGRATION_CONNECTION_EFFECT',
-      'entityRefs and effect are named together.',
-      path,
-    );
-  }
-  entityRefs.forEach((entityId, position) => {
-    if (!ctx.entityIds.has(entityId)) {
+  if (connection.direction === 'serve' && Array.isArray(connection.entityEffects)) {
+    validateArrivalEntries(connection.entityEffects, path, SERVE_ARRIVAL_EFFECTS, ctx.entityIds, issues);
+  } else {
+    const entityRefs = connection.entityRefs || [];
+    if ((entityRefs.length > 0) !== Boolean(connection.effect)) {
       error(
         issues,
-        'NS5_INTEGRATION_CONNECTION_ENTITY',
-        `Unknown entity ${entityId}.`,
-        `${path}.entityRefs[${position}]`,
+        'NS5_INTEGRATION_CONNECTION_EFFECT',
+        'entityRefs and effect are named together.',
+        path,
       );
     }
-  });
+    entityRefs.forEach((entityId, position) => {
+      if (!ctx.entityIds.has(entityId)) {
+        error(
+          issues,
+          'NS5_INTEGRATION_CONNECTION_ENTITY',
+          `Unknown entity ${entityId}.`,
+          `${path}.entityRefs[${position}]`,
+        );
+      }
+    });
+  }
   if (connection.direction !== 'call') return;
   if (!connection.usedBy.length) {
     error(issues, 'NS5_INTEGRATION_CONNECTION_USED_BY', 'call connections name usedBy as a journey.step or process.task.', `${path}.usedBy`);
@@ -549,6 +567,85 @@ function validateEntityRefs(
       error(issues, 'NS5_INTEGRATION_ENTITY_UNKNOWN', `Unknown entity ${entityId}.`, refPath);
     }
   });
+}
+
+function refuseArrivalWrite(
+  entries: ReturnType<typeof ns5ArrivalEffects>,
+  entityById: Map<string, Ns5IntegrationEntityView>,
+  issues: Ns5IntegrationGateIssue[],
+  path: string,
+): void {
+  for (const entry of entries) {
+    if (!ns5ArrivalWriteEffects(entry).length) continue;
+    const entity = entityById.get(entry.entityId);
+    if (!entity?.externalConnectionId) continue;
+    error(
+      issues,
+      'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL',
+      `${entity.entityId} lives outside the module on '${entity.externalConnectionId}'. The module does not store a row of it. An arrival says it already changed out there; the module does not rewrite it.`,
+      path,
+    );
+  }
+}
+
+function validateArrivalEntries(
+  entries: ReadonlyArray<{ entityId: string; effects: readonly string[] }>,
+  path: string,
+  vocabulary: readonly string[],
+  entityIds: Set<string>,
+  issues: Ns5IntegrationGateIssue[],
+): void {
+  const allowed = new Set<string>(vocabulary);
+  const accepted = vocabulary.join(', ');
+  const seen = new Set<string>();
+  let transitions = 0;
+  entries.forEach((entry, index) => {
+    const entryPath = `${path}.entityEffects[${index}]`;
+    if (!entry.entityId || !ENTITY_ID.test(entry.entityId) || !entityIds.has(entry.entityId)) {
+      error(
+        issues,
+        'NS5_INTEGRATION_ARRIVAL_ENTRY',
+        `Unknown entity ${entry.entityId || '(missing)'}. Accepted effects: ${accepted}.`,
+        entryPath,
+      );
+    }
+    if (entry.entityId && seen.has(entry.entityId)) {
+      error(
+        issues,
+        'NS5_INTEGRATION_ARRIVAL_ENTRY',
+        `Entity ${entry.entityId} is repeated. An arrival names each entity once. Accepted effects: ${accepted}.`,
+        entryPath,
+      );
+    }
+    if (entry.entityId) seen.add(entry.entityId);
+    if (!entry.effects.length) {
+      error(
+        issues,
+        'NS5_INTEGRATION_ARRIVAL_ENTRY',
+        `Entry ${entry.entityId || '(missing)'} names no effect. Accepted effects: ${accepted}.`,
+        `${entryPath}.effects`,
+      );
+    }
+    for (const effect of entry.effects) {
+      if (!allowed.has(effect)) {
+        error(
+          issues,
+          'NS5_INTEGRATION_ARRIVAL_ENTRY',
+          `Effect '${effect}' is outside the arrival vocabulary. Accepted effects: ${accepted}.`,
+          `${entryPath}.effects`,
+        );
+      }
+    }
+    if (entry.effects.includes('transition')) transitions += 1;
+  });
+  if (transitions > 1) {
+    error(
+      issues,
+      'NS5_INTEGRATION_TRANSITION_REF',
+      'An arrival transitions at most one entity. More than one entry names transition.',
+      `${path}.entityEffects`,
+    );
+  }
 }
 
 function error(issues: Ns5IntegrationGateIssue[], code: string, message: string, path?: string): void {

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
+import { isNs5IntegrationSchemaVersion, type Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 import {
   buildNs5IntegrationArtifact,
   ns5IntegrationSchemaVersion,
@@ -164,6 +164,18 @@ void test('the version is one function of the content', () => {
   assert.equal(ns5IntegrationSchemaVersion([]), '2026-11-17-ns5-integration-v3');
   assert.equal(ns5IntegrationSchemaVersion(undefined), '2026-11-17-ns5-integration-v3');
   assert.equal(ns5IntegrationSchemaVersion([OWN]), '2026-11-19-ns5-integration-v4');
+  assert.equal(ns5IntegrationSchemaVersion([OWN], {
+    connections: [{ direction: 'call', entityEffects: [] }],
+  }), '2026-11-19-ns5-integration-v4');
+  assert.equal(ns5IntegrationSchemaVersion([], {
+    inbound: [{ entityEffects: [] }],
+  }), '2026-11-20-ns5-integration-v5');
+  assert.equal(ns5IntegrationSchemaVersion([], {
+    connections: [{ direction: 'serve', entityEffects: [{ entityId: 'Item', effects: ['list'] }] }],
+  }), '2026-11-20-ns5-integration-v5');
+  assert.equal(isNs5IntegrationSchemaVersion('2026-11-20-ns5-integration-v5'), true);
+  assert.equal(isNs5IntegrationSchemaVersion('2026-11-17-ns5-integration-v3'), true);
+  assert.equal(isNs5IntegrationSchemaVersion('nope'), false);
 });
 
 void test('l4_p4_123: a system with a serve operation needs a secret setting', () => {
@@ -349,4 +361,143 @@ void test('l4_p4_130 s3b: an arrival with no writes has no effect', () => {
 
   const refused = validateNs5Integration([{ ...bare, writes: ['LocalTable'] }], [], [], context);
   assert.equal(refused.issues.some(item => item.code === 'NS5_INTEGRATION_EFFECT' && item.path === 'inbound[0].effect'), true);
+});
+
+void test('entityEffects names each entity, and a list of an outside entity is not a write', () => {
+  const host: Ns5IntegrationExternalSystem = {
+    id: 'remote',
+    title: 'Remote host',
+    description: 'A system outside the module.',
+    settings: [{ id: 'accessKey', title: 'Access key', description: 'Checks what arrives.', secret: true }],
+    operations: [
+      { operationId: 'changed', direction: 'serve', description: 'Something changed.' },
+      { operationId: 'ask', direction: 'call', description: 'Asks the host.' },
+    ],
+  };
+  const entities = [
+    { entityId: 'Item', transitions: [{ transitionId: 'close' }] },
+    { entityId: 'Local' },
+    { entityId: 'Remote', externalConnectionId: 'remote' },
+    { entityId: 'Left' },
+    { entityId: 'Right' },
+  ];
+  const context = {
+    actors: [],
+    entities,
+    registryModuleNames: [],
+    sourcePrompt: 'a local note',
+    journeySteps: [{ journeyId: 'keep', stepIds: ['saveRow'] }],
+  };
+  const notice = {
+    id: 'arrived',
+    kind: 'event',
+    from: 'organization',
+    description: 'An item arrived.',
+  };
+
+  const mixed = normalizeNs5IntegrationPayload({
+    externalSystems: [host],
+    inbound: [{
+      ...notice,
+      writes: ['Item'],
+      effect: 'create',
+      entityEffects: [{ entityId: 'Item', effects: ['update', 'create', 'update', 'list'] }],
+    }],
+    connections: [{
+      connectionId: 'remote',
+      operationId: 'changed',
+      usedBy: ['What the arrival does.'],
+      description: 'A notice arrived.',
+      entityRefs: ['Local'],
+      effect: 'create',
+      entityEffects: [
+        { entityId: 'Item', effects: ['list'] },
+        { entityId: 'Local', effects: ['list'] },
+      ],
+    }, {
+      connectionId: 'remote',
+      operationId: 'ask',
+      usedBy: ['keep.saveRow'],
+      description: 'Asks the host.',
+      entityEffects: [],
+      entityRefs: ['Item'],
+      effect: 'read',
+    }],
+  });
+  assert.equal(mixed.inbound[0].writes, undefined);
+  assert.equal(mixed.inbound[0].effect, undefined);
+  assert.deepEqual(mixed.inbound[0].entityEffects, [{ entityId: 'Item', effects: ['update', 'create'] }]);
+  assert.equal(mixed.connections[0].entityRefs, undefined);
+  assert.equal(mixed.connections[0].effect, undefined);
+  assert.deepEqual(mixed.connections[0].entityEffects, [
+    { entityId: 'Item', effects: ['list'] },
+    { entityId: 'Local', effects: ['list'] },
+  ]);
+  assert.equal(mixed.connections[1].entityEffects, undefined);
+  assert.deepEqual(mixed.connections[1].entityRefs, ['Item']);
+  assert.equal(mixed.connections[1].effect, 'read');
+  assert.equal(mixed.normalizations.filter(item => item.kind === 'dropArrivalLegacyFields').length, 2);
+
+  const listed = validateNs5Integration(mixed.inbound, [], [], context, mixed.connections, mixed.externalSystems);
+  assert.equal(listed.issues.some(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL'), false);
+  assert.equal(listed.ok, true, listed.issues.map(item => item.message).join('\n'));
+
+  const twoCreates = validateNs5Integration([{
+    ...notice,
+    entityRefs: [],
+    entityEffects: [
+      { entityId: 'Left', effects: ['create'] },
+      { entityId: 'Right', effects: ['create'] },
+    ],
+  }], [], [], context, [], [host]);
+  assert.equal(twoCreates.ok, true, twoCreates.issues.map(item => item.message).join('\n'));
+
+  const readOutside = validateNs5Integration([], [], [], context, [{
+    connectionId: 'remote',
+    operationId: 'changed',
+    direction: 'serve',
+    usedBy: ['What the arrival does.'],
+    description: 'A notice arrived.',
+    entityEffects: [{ entityId: 'Remote', effects: ['list'] }],
+  }], [host]);
+  assert.equal(readOutside.issues.some(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL'), false);
+  assert.equal(readOutside.ok, true, readOutside.issues.map(item => item.message).join('\n'));
+
+  const writeOutside = validateNs5Integration([], [], [], context, [{
+    connectionId: 'remote',
+    operationId: 'changed',
+    direction: 'serve',
+    usedBy: ['What the arrival does.'],
+    description: 'A notice arrived.',
+    entityEffects: [{ entityId: 'Remote', effects: ['update'] }],
+  }], [host]);
+  assert.equal(writeOutside.issues.some(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL'), true);
+
+  const twoTransitions = validateNs5Integration([{
+    ...notice,
+    id: 'moved',
+    description: 'Both moved.',
+    entityRefs: [],
+    transitionRef: 'close',
+    entityEffects: [
+      { entityId: 'Item', effects: ['transition'] },
+      { entityId: 'Local', effects: ['transition'] },
+    ],
+  }], [], [], context);
+  const transitionIssue = twoTransitions.issues.find(item => item.code === 'NS5_INTEGRATION_TRANSITION_REF');
+  assert.match(transitionIssue?.message || '', /at most one/i);
+
+  const empty = normalizeNs5IntegrationPayload({ inbound: [{ ...notice, entityEffects: [] }] });
+  const v5 = buildNs5IntegrationArtifact('orders', empty.inbound, [], []);
+  assert.equal(v5.schemaVersion, '2026-11-20-ns5-integration-v5');
+  assert.deepEqual(v5.inbound[0].entityEffects, []);
+  assert.equal(v5.inbound[0].writes, undefined);
+  const v3 = buildNs5IntegrationArtifact('orders', [{
+    ...notice,
+    entityRefs: [],
+    writes: ['Item'],
+    effect: 'create',
+  }], [], []);
+  assert.equal(v3.schemaVersion, '2026-11-17-ns5-integration-v3');
+  assert.equal('entityEffects' in v3.inbound[0], false);
 });

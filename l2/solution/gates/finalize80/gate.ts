@@ -280,6 +280,11 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
     for (const entityId of item.entityRefs) {
       if (entityId && !entityIds.has(entityId)) error('I1', `${path}.entityRefs`, `Unknown entity ${entityId}.`);
     }
+    for (const entry of item.entityEffects || []) {
+      if (entry.entityId && !entityIds.has(entry.entityId)) {
+        error('I1', `${path}.entityEffects`, `Unknown entity ${entry.entityId}.`);
+      }
+    }
   }
 }
 
@@ -720,6 +725,11 @@ function checkI12(sources: Ns5OracleSources, error: IssueFn): void {
     (connection.entityRefs || []).forEach((entityId, refIndex) => {
       if (!entityById.has(entityId)) {
         error('I12', `${base}.entityRefs[${refIndex}]`, `Unknown entity ${entityId}.`);
+      }
+    });
+    (connection.entityEffects || []).forEach((entry, refIndex) => {
+      if (entry.entityId && !entityById.has(entry.entityId)) {
+        error('I12', `${base}.entityEffects[${refIndex}]`, `Unknown entity ${entry.entityId}.`);
       }
     });
     if (connection.direction !== 'call') return;

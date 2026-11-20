@@ -149,7 +149,7 @@ void test('a process stage without act resolves process when outside is passed, 
 
 void test('inbound.writes and serve create resolve inbound with outside', () => {
   const inboundOutside = ns5WrittenOutsideJourneys({
-    integration: { inbound: [{ id: 'arrived', writes: ['Record'] }] },
+    integration: { inbound: [{ id: 'arrived', writes: ['Record'], effect: 'create' }] },
   });
   assert.deepEqual(
     ns5ResolveEntityWriter({ entityId: 'Record', kind: 'core' }, undefined, [], inboundOutside),
@@ -198,7 +198,7 @@ void test('ns5WrittenOutsideJourneys prefers inbound then serve then process; sk
       }],
     },
     integration: {
-      inbound: [{ id: 'in', writes: ['Shared'] }],
+      inbound: [{ id: 'in', writes: ['Shared'], effect: 'create' }],
       connections: [
         { connectionId: 'cm', operationId: 'open', direction: 'serve', effect: 'create', entityRefs: ['Shared'] },
         { connectionId: 'cm', operationId: 'drop', direction: 'serve', effect: 'remove', entityRefs: ['Dropped'] },
@@ -225,6 +225,46 @@ void test('ns5WrittenOutsideJourneys prefers inbound then serve then process; sk
     },
   });
   assert.deepEqual(serveThenProcess.get('Later'), { source: 'serve', ref: 'cm.open' });
+});
+
+void test('entityEffects counts a write and skips a list', () => {
+  const map = ns5WrittenOutsideJourneys({
+    integration: {
+      inbound: [{
+        id: 'arrived',
+        entityEffects: [
+          { entityId: 'Item', effects: ['create', 'update'] },
+          { entityId: 'Local', effects: ['list'] },
+        ],
+      }],
+      connections: [
+        {
+          connectionId: 'remote',
+          operationId: 'changed',
+          direction: 'serve',
+          entityEffects: [
+            { entityId: 'Remote', effects: ['list'] },
+            { entityId: 'Note', effects: ['create'] },
+          ],
+        },
+        {
+          connectionId: 'remote',
+          operationId: 'opened',
+          direction: 'serve',
+          entityEffects: [
+            { entityId: 'Left', effects: ['create'] },
+            { entityId: 'Right', effects: ['create'] },
+          ],
+        },
+      ],
+    },
+  });
+  assert.deepEqual(map.get('Item'), { source: 'inbound', ref: 'arrived' });
+  assert.equal(map.has('Local'), false);
+  assert.equal(map.has('Remote'), false);
+  assert.deepEqual(map.get('Note'), { source: 'serve', ref: 'remote.changed' });
+  assert.deepEqual(map.get('Left'), { source: 'serve', ref: 'remote.opened' });
+  assert.deepEqual(map.get('Right'), { source: 'serve', ref: 'remote.opened' });
 });
 
 void test('I10 passes a process-only entity and still fails inbound without an arrival', () => {

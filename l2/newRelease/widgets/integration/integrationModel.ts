@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/widgets/integration/integrationModel.ts" enhancement="_blank" />
 
+import type { Ns5ArrivalEntityEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 import type {
   Ns5IntegrationArtifact,
   Ns5IntegrationConnection,
@@ -18,7 +19,7 @@ export const INTEGRATION_ITEM_LABELS = {
   to: 'integration.to', event: 'integration.event', writes: 'integration.writes',
   effect: 'integration.effect', transitionRef: 'integration.transition',
   on: 'integration.on', description: 'integration.itemDescription',
-  entityRefs: 'integration.entities',
+  entityRefs: 'integration.entities', entityEffects: 'integration.entityEffects',
 } as const satisfies Record<keyof Ns5IntegrationItem, string>;
 
 export interface IntegrationPluginView {
@@ -56,6 +57,7 @@ function strings(value: unknown): string[] {
 
 function itemOf(value: unknown): Ns5IntegrationItem {
   const item = record(value);
+  const entityEffects = entityEffectsOf(item.entityEffects);
   return {
     id: String(item.id || ''),
     kind: ['moduleEndpoint', 'event', 'external'].includes(String(item.kind || ''))
@@ -70,12 +72,24 @@ function itemOf(value: unknown): Ns5IntegrationItem {
     ...(typeof item.on === 'string' ? { on: item.on } : {}),
     description: String(item.description || ''),
     entityRefs: strings(item.entityRefs),
+    ...(entityEffects ? { entityEffects } : {}),
   };
+}
+
+function entityEffectsOf(value: unknown): Ns5ArrivalEntityEffects[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.map(entry => {
+    const row = record(entry);
+    return {
+      entityId: String(row.entityId || ''),
+      effects: strings(row.effects) as Ns5ArrivalEntityEffects['effects'],
+    };
+  });
 }
 
 export function integrationSchemaKind(value: unknown): IntegrationSchemaKind {
   const version = String(record(value).schemaVersion || '');
-  if (version.includes('integration-v4') || version.includes('integration-v3') || version.includes('integration-v2')) return 'v2';
+  if (version.includes('integration-v5') || version.includes('integration-v4') || version.includes('integration-v3') || version.includes('integration-v2')) return 'v2';
   if (version.includes('integration-v1')) return 'v1';
   return 'unknown';
 }
@@ -107,6 +121,7 @@ export function normalizeIntegration(value: unknown): IntegrationView {
         usedBy: strings(item.usedBy),
         ...(Array.isArray(item.entityRefs) ? {entityRefs: strings(item.entityRefs)} : {}),
         ...(typeof item.effect === 'string' ? {effect: item.effect as Ns5IntegrationConnection['effect']} : {}),
+        ...(entityEffectsOf(item.entityEffects) ? {entityEffects: entityEffectsOf(item.entityEffects)} : {}),
         description: String(item.description || ''),
       };
     }) : [],

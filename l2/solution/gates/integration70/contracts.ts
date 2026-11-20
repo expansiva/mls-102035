@@ -1,11 +1,13 @@
 /// <mls fileReference="_102035_/l2/solution/gates/integration70/contracts.ts" enhancement="_blank"/>
 
+import { ns5ArrivalEffects, type Ns5ArrivalEffect, type Ns5ArrivalEntityEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import type { Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import { ns5ConnectionCatalogs, ns5ConnectionOperation, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
   NS5_INTEGRATION_SCHEMA_VERSION,
   NS5_INTEGRATION_SCHEMA_VERSION_V4,
+  NS5_INTEGRATION_SCHEMA_VERSION_V5,
   type Ns5IntegrationArtifact,
   type Ns5IntegrationConnection,
   type Ns5IntegrationExternalSystem,
@@ -43,10 +45,14 @@ export const NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE = 'inboundMergedIntoServe
 
 export const NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES = 'dropEffectWithoutWrites' as const;
 
+/** The arrival named `entityEffects` and also the older pair. The older pair is not stored. */
+export const NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS = 'dropArrivalLegacyFields' as const;
+
 export interface Ns5IntegrationFormNormalization {
   kind: typeof NS5_INTEGRATION_DROP_TRANSITION_REF
     | typeof NS5_INTEGRATION_INBOUND_MERGED_INTO_SERVE
-    | typeof NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES;
+    | typeof NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES
+    | typeof NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS;
   inboundId: string;
   detail: string;
 }
@@ -115,7 +121,7 @@ export function normalizeNs5IntegrationPayload(
   const normalizations: Ns5IntegrationFormNormalization[] = [];
   const externalSystems = list(root.externalSystems).map(normalizeExternalSystem);
   const systems = [...externalSystems, ...siblingSystems];
-  const connections = list(root.connections).map(row => normalizeConnection(row, systems)).filter(item => item.connectionId || item.operationId || item.description);
+  const connections = list(root.connections).map(row => normalizeConnection(row, systems, normalizations)).filter(item => item.connectionId || item.operationId || item.description);
   const inbound = list(root.inbound)
     .map(item => normalizeInbound(item, normalizations))
     .filter(item => item.id || item.description);
@@ -148,12 +154,16 @@ function mergeInboundIntoServe(
 ): Ns5IntegrationItem[] {
   return inbound.filter(item => {
     if (item.kind !== 'external' || !item.from || !isNs5ConnectionId(item.from)) return true;
-    if (item.effect !== 'create' && item.effect !== 'update') return true;
-    const writes = item.writes || [];
+    const writes = ns5ArrivalEffects(item, 'inbound')
+      .filter(entry => entry.effects.includes('create') || entry.effects.includes('update'))
+      .map(entry => entry.entityId);
+    if (!writes.length) return true;
     const serve = connections.find(row => row.direction === 'serve'
       && row.connectionId === item.from
-      && (row.effect === 'create' || row.effect === 'update')
-      && (row.entityRefs || []).some(entity => writes.includes(entity)));
+      && ns5ArrivalEffects(row, 'serve').some(entry => (
+        (entry.effects.includes('create') || entry.effects.includes('update'))
+        && writes.includes(entry.entityId)
+      )));
     if (!serve) return true;
     if (!serve.description.trim() && item.description.trim()) serve.description = item.description;
     normalizations.push({
@@ -166,12 +176,20 @@ function mergeInboundIntoServe(
 }
 
 /**
- * The schema version of an integration artifact is a function of its content, computed here and nowhere else:
- * a declared system makes it v4, otherwise it stays v3, byte for byte. Any writer of the artifact uses this.
+ * The schema version of an integration artifact is a function of its content, computed here and nowhere else.
+ * An arrival that carries `entityEffects` (even `[]`) makes it v5. Otherwise a declared system makes it v4,
+ * and the rest stays v3, byte for byte. Any writer of the artifact uses this.
  */
 export function ns5IntegrationSchemaVersion(
   externalSystems: readonly Ns5IntegrationExternalSystem[] | undefined,
-): typeof NS5_INTEGRATION_SCHEMA_VERSION | typeof NS5_INTEGRATION_SCHEMA_VERSION_V4 {
+  arrivals?: {
+    inbound?: readonly { entityEffects?: readonly unknown[] }[];
+    connections?: readonly { direction?: string; entityEffects?: readonly unknown[] }[];
+  },
+): typeof NS5_INTEGRATION_SCHEMA_VERSION | typeof NS5_INTEGRATION_SCHEMA_VERSION_V4 | typeof NS5_INTEGRATION_SCHEMA_VERSION_V5 {
+  const inboundHas = (arrivals?.inbound || []).some(item => Array.isArray(item.entityEffects));
+  const serveHas = (arrivals?.connections || []).some(row => row.direction === 'serve' && Array.isArray(row.entityEffects));
+  if (inboundHas || serveHas) return NS5_INTEGRATION_SCHEMA_VERSION_V5;
   return externalSystems?.length ? NS5_INTEGRATION_SCHEMA_VERSION_V4 : NS5_INTEGRATION_SCHEMA_VERSION;
 }
 
@@ -184,7 +202,7 @@ export function buildNs5IntegrationArtifact(
   externalSystems: Ns5IntegrationExternalSystem[] = [],
 ): Ns5IntegrationArtifact {
   return {
-    schemaVersion: ns5IntegrationSchemaVersion(externalSystems),
+    schemaVersion: ns5IntegrationSchemaVersion(externalSystems, { inbound, connections }),
     moduleName,
     inbound,
     outbound,
@@ -299,9 +317,11 @@ export function collectNs5InboundPending(
     const key = `${from}|${eventId}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const entries = ns5ArrivalEffects(item, 'inbound');
+    const first = entries.find(entry => entry.effects.length);
     const suggestion = item.transitionRef
-      || (item.writes?.[0] && item.effect ? `${item.writes[0]}.${item.effect}` : undefined);
-    const entityRefs = unique([...(item.writes || []), ...item.entityRefs]);
+      || (first ? `${first.entityId}.${first.effects[0]}` : undefined);
+    const entityRefs = unique([...entries.map(entry => entry.entityId), ...item.entityRefs]);
     const sibling = siblingByName.get(from);
     if (sibling) {
       if (sibling.events.some(event => event.eventId === eventId)) continue;
@@ -340,15 +360,38 @@ function normalizeInbound(value: unknown, normalizations: Ns5IntegrationFormNorm
   const rawEffect = EFFECTS.has(effect) ? effect as Ns5IntegrationEffect : '';
   const rawTransitionRef = memberId(text(source.transitionRef), '');
   const id = memberId(text(source.id) || text(source.itemId), '');
-  const base = {
+  const identity = {
     id,
     kind: ITEM_KINDS.has(kind) ? kind as Ns5IntegrationItemKind : 'event' as const,
     ...(from ? { from } : {}),
     ...(event ? { event } : {}),
-    writes: resolvedWrites,
     description: text(source.description),
     entityRefs: [] as string[],
   };
+  const entityEffects = readEntityEffects(source, EFFECTS);
+  if (entityEffects) {
+    if (resolvedWrites.length || rawEffect) {
+      normalizations.push({
+        kind: NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS,
+        inboundId: id,
+        detail: 'writes and effect dropped; entityEffects kept.',
+      });
+    }
+    const transitions = entityEffects.some(entry => entry.effects.includes('transition'));
+    if (rawTransitionRef && !transitions) {
+      normalizations.push({
+        kind: NS5_INTEGRATION_DROP_TRANSITION_REF,
+        inboundId: id,
+        detail: `transitionRef ${rawTransitionRef} dropped; no entry transitions.`,
+      });
+    }
+    return {
+      ...identity,
+      entityEffects,
+      ...(transitions && rawTransitionRef ? { transitionRef: rawTransitionRef } : {}),
+    };
+  }
+  const base = { ...identity, writes: resolvedWrites };
   if (!resolvedWrites.length) {
     normalizations.push({
       kind: NS5_INTEGRATION_DROP_EFFECT_WITHOUT_WRITES,
@@ -413,23 +456,68 @@ function normalizeExternalSystem(value: unknown): Ns5IntegrationExternalSystem {
   };
 }
 
-function normalizeConnection(value: unknown, systems: readonly Ns5IntegrationExternalSystem[]): Ns5IntegrationConnection {
+function normalizeConnection(
+  value: unknown,
+  systems: readonly Ns5IntegrationExternalSystem[],
+  normalizations: Ns5IntegrationFormNormalization[],
+): Ns5IntegrationConnection {
   const source = record(value);
   const connectionId = text(source.connectionId);
   const operationId = text(source.operationId);
   const operation = ns5ConnectionOperation(connectionId, operationId, systems);
+  const direction = operation?.direction ?? 'call';
   const effect = text(source.effect);
   const entityRefs = unique(strings(source.entityRefs).map(item => entityId(item)).filter(Boolean));
-  return {
+  const entityEffects = readEntityEffects(source, CONNECTION_EFFECTS);
+  const base = {
     connectionId,
     operationId,
-    direction: operation?.direction ?? 'call',
+    direction,
     // call names a journey.step or process.task; serve is prose of what the arrival does.
-    usedBy: unique(strings(source.usedBy).filter(item => (operation?.direction ?? 'call') === 'serve' || USED_BY.test(item))),
-    ...(entityRefs.length ? { entityRefs } : {}),
-    ...(CONNECTION_EFFECTS.has(effect) ? { effect: effect as Ns5IntegrationConnection['effect'] } : {}),
+    usedBy: unique(strings(source.usedBy).filter(item => direction === 'serve' || USED_BY.test(item))),
     description: text(source.description),
   };
+  const legacyEffect = CONNECTION_EFFECTS.has(effect) ? effect as Ns5IntegrationConnection['effect'] : undefined;
+  if (direction === 'call' || !entityEffects) {
+    if (direction === 'call' && entityEffects && entityEffects.length) {
+      normalizations.push({
+        kind: NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS,
+        inboundId: `${connectionId}.${operationId}`,
+        detail: 'entityEffects dropped; a call keeps entityRefs and effect.',
+      });
+    }
+    return {
+      ...base,
+      ...(entityRefs.length ? { entityRefs } : {}),
+      ...(legacyEffect ? { effect: legacyEffect } : {}),
+    };
+  }
+  if (entityRefs.length || legacyEffect) {
+    normalizations.push({
+      kind: NS5_INTEGRATION_DROP_ARRIVAL_LEGACY_FIELDS,
+      inboundId: `${connectionId}.${operationId}`,
+      detail: 'entityRefs and effect dropped; entityEffects kept.',
+    });
+  }
+  return { ...base, entityEffects };
+}
+
+function readEntityEffects(
+  source: Record<string, unknown>,
+  vocabulary: ReadonlySet<string>,
+): Ns5ArrivalEntityEffects[] | undefined {
+  if (!Array.isArray(source.entityEffects)) return undefined;
+  return source.entityEffects.map(item => {
+    const row = record(item);
+    const seen = new Set<string>();
+    const effects: Ns5ArrivalEffect[] = [];
+    for (const effect of strings(row.effects)) {
+      if (!vocabulary.has(effect) || seen.has(effect)) continue;
+      seen.add(effect);
+      effects.push(effect as Ns5ArrivalEffect);
+    }
+    return { entityId: entityId(text(row.entityId)), effects };
+  }).filter(entry => entry.entityId);
 }
 
 function normalizePlugin(value: unknown): Ns5IntegrationPlugin {
