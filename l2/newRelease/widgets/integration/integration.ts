@@ -364,6 +364,14 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
   }
   private present() {
     const view = this.view();
+    const connectionNode = ({ connectionId, operationId, description }: Ns5IntegrationConnection) => ({
+      id: `connection:${connectionId}:${operationId}`,
+      label: `${connectionId}.${operationId}`,
+      value: '',
+      searchText: `${connectionId} ${operationId} ${description}`,
+      changed: hasConnectionDiff(this.data?.diffs || [], connectionId, operationId),
+      children: [],
+    });
     const presentation: NewReleaseTabPresentation = {
       detail: !!this.selected, back: () => this.back(), select: id => { if (id.includes(':')) this.select(id); },
       nodes: [
@@ -371,11 +379,11 @@ export class NewReleaseIntegration102035 extends StateLitElement implements NewR
         {id: 'systems', label: this.t('integration.externalSystems'), value: '', children: view.externalSystems.map(system => ({id: `system:${system.id}`, label: system.title || system.id, value: system.description, searchText: `${system.id} ${system.title} ${system.description}`, changed: this.changedSystem(system.id), children: [
           {id: `settings:${system.id}`, label: this.t('integration.settings'), value: '', children: system.settings.map(setting => ({id: `setting:${system.id}:${setting.id}`, label: setting.title || setting.id, value: '', searchText: setting.description, changed: this.changedSystem(system.id), children: []}))},
           {id: `operations:${system.id}`, label: this.t('integration.operations'), value: '', children: system.operations.map(operation => {
-            const connections = this.systemConnections(system, operation.operationId).map(connection => ({id: `connection:${connection.connectionId}:${connection.operationId}`, label: connection.connectionId, value: '', searchText: connection.description, changed: hasConnectionDiff(this.data?.diffs || [], connection.connectionId, connection.operationId), children: []}));
+            const connections = this.systemConnections(system, operation.operationId).map(connectionNode);
             return {id: `operation:${system.id}:${operation.operationId}`, label: operation.operationId, value: connections.length ? operation.description : '', searchText: operation.description, changed: this.changedSystem(system.id), children: connections};
           })},
         ]}))},
-        {id: 'otherConnections', label: this.t('integration.otherConnections'), value: '', children: this.otherConnections().map(connection => ({id: `connection:${connection.connectionId}:${connection.operationId}`, label: connection.connectionId, value: '', searchText: connection.description, changed: hasConnectionDiff(this.data?.diffs || [], connection.connectionId, connection.operationId), children: []}))},
+        {id: 'otherConnections', label: this.t('integration.otherConnections'), value: '', children: this.otherConnections().map(connectionNode)},
       ],
     };
     this.dispatchEvent(new CustomEvent('nr-view-state', {bubbles: true, composed: true, detail: presentation}));
