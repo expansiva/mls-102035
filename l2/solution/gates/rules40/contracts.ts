@@ -12,6 +12,7 @@ import {
 } from '/_102035_/l2/solution/types.js';
 
 const MEMBER_ID = /^[a-z][A-Za-z0-9]*$/;
+const ENTITY_ID = /^[A-Z][A-Za-z0-9]*$/;
 
 export interface Ns5RulesNormalization {
   /** The catalog in the artifact form: `ruleId` to the one sentence. */
@@ -30,6 +31,11 @@ export interface Ns5RulesNormalization {
    * duplicate check to keep (`NS5_RULES_ID_DUPLICATE`), so the evidence has to survive the conversion.
    */
   duplicateRuleIds: string[];
+  /**
+   * ruleId → the ontology entity this new rule governs, from `entityId` on a list item or
+   * `root.governs` on a map payload. Not written into `rules.defs.ts`.
+   */
+  governs: Record<string, string>;
 }
 
 export interface Ns5RulesRefCatalog {
@@ -106,6 +112,8 @@ export function normalizeNs5RulesPayload(
   const rules: Record<string, string> = {};
   const duplicateRuleIds: string[] = [];
   const normalizations: Ns5PipelineNormalization[] = [];
+  const itemGoverns: Record<string, string> = {};
+  const fromList = Array.isArray(root.rules);
   for (const rule of rulePairs(root.rules)) {
     if (!rule.ruleId && !rule.description) continue;
     let ruleId = rule.ruleId;
@@ -123,8 +131,21 @@ export function normalizeNs5RulesPayload(
       if (!duplicateRuleIds.includes(ruleId)) duplicateRuleIds.push(ruleId);
     }
     rules[ruleId] = rule.description;
+    if (fromList && rule.entityId && ENTITY_ID.test(rule.entityId)) itemGoverns[ruleId] = rule.entityId;
   }
-  return { rules, duplicateRuleIds, normalizations };
+  const governs: Record<string, string> = {};
+  if (fromList) {
+    for (const ruleId of Object.keys(rules)) {
+      if (itemGoverns[ruleId]) governs[ruleId] = itemGoverns[ruleId];
+    }
+  } else {
+    const map = record(root.governs);
+    for (const ruleId of Object.keys(rules)) {
+      const entityId = text(map[ruleId]);
+      if (entityId && ENTITY_ID.test(entityId)) governs[ruleId] = entityId;
+    }
+  }
+  return { rules, duplicateRuleIds, normalizations, governs };
 }
 
 function foldRuleId(id: string): string {
@@ -137,9 +158,15 @@ function foldRuleId(id: string): string {
  * shows the previous draft and then asks the model to submit it again with the fix, so what it is shown
  * has to be submittable — since ns5_45 the draft on disk is the artifact, i.e. a map.
  */
-export function ns5RulesToolPayload(draft: unknown): { rules: Ns5Rule[] } {
-  const { rules } = normalizeNs5RulesPayload(draft);
-  return { rules: Object.entries(rules).map(([ruleId, description]) => ({ ruleId, description })) };
+export function ns5RulesToolPayload(draft: unknown): { rules: Array<Ns5Rule & { entityId: string }> } {
+  const { rules, governs } = normalizeNs5RulesPayload(draft);
+  return {
+    rules: Object.entries(rules).map(([ruleId, description]) => ({
+      ruleId,
+      description,
+      entityId: governs[ruleId] || '',
+    })),
+  };
 }
 
 /**
@@ -229,19 +256,21 @@ export function splitTransitionRef(ref: string): { entityId: string; transitionI
 }
 
 /** The payload's rules as ordered pairs, whether it came as an array of items or already as a map. */
-function rulePairs(value: unknown): Ns5Rule[] {
+function rulePairs(value: unknown): Array<Ns5Rule & { entityId: string }> {
   if (Array.isArray(value)) return value.map(normalizeRule);
   return Object.entries(record(value)).map(([ruleId, description]) => ({
     ruleId: memberId(text(ruleId), ''),
     description: text(description),
+    entityId: '',
   }));
 }
 
-function normalizeRule(value: unknown): Ns5Rule {
+function normalizeRule(value: unknown): Ns5Rule & { entityId: string } {
   const source = record(value);
   return {
     ruleId: memberId(text(source.ruleId) || text(source.id), ''),
     description: text(source.description),
+    entityId: text(source.entityId),
   };
 }
 

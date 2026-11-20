@@ -17,10 +17,11 @@
     "rule": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ruleId", "description"],
+      "required": ["ruleId", "description", "entityId"],
       "properties": {
         "ruleId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-        "description": { "type": "string", "minLength": 1 }
+        "description": { "type": "string", "minLength": 1 },
+        "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
       }
     }
   }

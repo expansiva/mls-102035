@@ -14,11 +14,23 @@ import {
   loadNs5FixtureJson,
   NS5_REAL_MODULES,
 } from '/_102035_/l2/solution/testing/ns5RealFixtures.test.js';
-import type { Ns5JourneyArtifact, Ns5OntologyEntityArtifact, Ns5Rule } from '/_102035_/l2/solution/types.js';
-import { buildNs5RulesHumanPrompt, buildNs5RulesTool } from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
+import {
+  NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+  type Ns5JourneyArtifact,
+  type Ns5OntologyEntityArtifact,
+  type Ns5OntologyEntityV3,
+  type Ns5Rule,
+} from '/_102035_/l2/solution/types.js';
+import {
+  buildNs5RulesHumanPrompt,
+  buildNs5RulesTool,
+  citeNs5NewRulesOnV3Entities,
+} from '/_102035_/l2/agentNewSolution5/steps/rules40/agentNs5Rules.js';
+import { collectNs5CitedRulesV3 } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
+  ns5RulesToolPayload,
   partitionCitedRules,
 } from '/_102035_/l2/solution/gates/rules40/contracts.js';
 import {
@@ -279,7 +291,7 @@ void test('the repair prompt shows the saved draft in the shape the tool takes b
   const block = human.slice(human.indexOf('## Current draft'));
   const shown = JSON.parse(block.slice(block.indexOf('{'))) as { rules: unknown };
   assert.ok(Array.isArray(shown.rules), 'the draft is shown as a list, like the tool asks for');
-  assert.deepEqual(shown, { rules: [validRule()] });
+  assert.deepEqual(shown, { rules: [{ ...validRule(), entityId: '' }] });
   assert.doesNotMatch(block, /schemaVersion/);
   // And what is shown normalizes straight back to what was saved.
   assert.deepEqual(normalizeNs5RulesPayload(shown).rules, saved.rules);
@@ -293,6 +305,7 @@ void test('rules40 prompt has no domain examples and no appliesTo/title', () => 
   assert.doesNotMatch(prompt, /appliesTo/);
   assert.doesNotMatch(prompt, /title is a short label/);
   assert.match(prompt, /Do not invent a rule that has no basis/);
+  assert.match(prompt, /`entityId` is the ontology entity this rule governs/);
   assert.match(prompt, /Platform rules already defined by the platform — cite them, never restate or rename them/);
   assert.doesNotMatch(prompt, /comanda|garcom|waiter|stock|quantity|descuento|presupuesto/i);
 });
@@ -453,3 +466,110 @@ void test('ns5_67: recorded v2 rule drafts do not restate a platform rule', () =
     );
   }
 });
+
+function tableV3(overrides: Partial<Ns5OntologyEntityV3> = {}): Ns5OntologyEntityV3 {
+  return {
+    schemaVersion: NS5_ONTOLOGY_SCHEMA_VERSION_V3,
+    moduleName: 'probe',
+    entityId: 'Comanda',
+    title: 'Comanda',
+    description: 'Open table order.',
+    kind: 'entity',
+    class: 'core',
+    storage: { target: 'moduleDatabase', table: 'probe_comanda' },
+    displayField: 'status',
+    record: { fields: { id: { type: 'uuid', required: true, title: 'Id' } } },
+    relationships: {},
+    capabilities: {},
+    rules: [],
+    ...overrides,
+  } as Ns5OntologyEntityV3;
+}
+
+void test('l4_p4_136 s1a (a): a new rule with entityId of a v3 entity is appended to that entity.rules', () => {
+  const entity = tableV3({ rules: ['fecharComandaAposQuitacao'] });
+  const { rules, governs } = normalizeNs5RulesPayload({
+    rules: [{
+      ruleId: 'discountWithinTotal',
+      description: 'The optional discount cannot exceed the total of active items.',
+      entityId: 'Comanda',
+    }],
+  });
+  const cited = collectNs5CitedRulesV3([entity]);
+  const rewritten = citeNs5NewRulesOnV3Entities([entity], governs, cited);
+  assert.equal(rules.discountWithinTotal.length > 0, true);
+  assert.deepEqual(governs, { discountWithinTotal: 'Comanda' });
+  assert.equal(rewritten.length, 1);
+  assert.deepEqual(rewritten[0].rules, ['fecharComandaAposQuitacao', 'discountWithinTotal']);
+  const persist = readFileSync(path.join(HERE, 'agentNs5Rules.ts'), 'utf8');
+  const body = persist.slice(persist.indexOf('async function persistArtifacts'));
+  assert.match(body, /citeNs5NewRulesOnV3Entities/);
+  assert.match(body, /writeDefs\(\s*ontologyEntityFile\(moduleName, entity\.entityId\)/);
+  assert.match(body, /Ns5OntologyEntityV3/);
+});
+
+void test('l4_p4_136 s1a (b): a new rule without entityId or with an unknown entity is NS5_RULES_ENTITY', () => {
+  const entity = tableV3();
+  const cited = collectNs5CitedRulesV3([entity]);
+  const missing = normalizeNs5RulesPayload({
+    rules: [{ ruleId: 'discountWithinTotal', description: 'The discount cannot exceed the total.' }],
+  });
+  const missingGate = validateNs5Rules(missing.rules, {
+    entityIds: ['Comanda'],
+    governs: missing.governs,
+    citedRuleIds: cited,
+  });
+  assert.equal(missingGate.ok, false);
+  assert.ok(missingGate.issues.some(issue => issue.code === 'NS5_RULES_ENTITY'));
+  assert.match(formatNs5RulesGate(missingGate.issues), /NS5_RULES_ENTITY/);
+
+  const unknown = normalizeNs5RulesPayload({
+    rules: [{
+      ruleId: 'discountWithinTotal',
+      description: 'The discount cannot exceed the total.',
+      entityId: 'Ghost',
+    }],
+  });
+  const unknownGate = validateNs5Rules(unknown.rules, {
+    entityIds: ['Comanda'],
+    governs: unknown.governs,
+    citedRuleIds: cited,
+  });
+  assert.equal(unknownGate.ok, false);
+  assert.ok(unknownGate.issues.some(issue => issue.code === 'NS5_RULES_ENTITY'));
+});
+
+void test('l4_p4_136 s1a (c): a rule already cited by an entity is not recited', () => {
+  const entity = tableV3({ rules: ['discountWithinTotal'] });
+  const cited = collectNs5CitedRulesV3([entity]);
+  const { rules, governs } = normalizeNs5RulesPayload({
+    rules: [{
+      ruleId: 'discountWithinTotal',
+      description: 'The optional discount cannot exceed the total of active items.',
+      entityId: 'Other',
+    }],
+  });
+  const gate = validateNs5Rules(rules, {
+    entityIds: ['Comanda'],
+    governs,
+    citedRuleIds: cited,
+  });
+  assert.equal(gate.ok, true, gate.issues.map(issue => issue.message).join('\n'));
+  const rewritten = citeNs5NewRulesOnV3Entities([entity], governs, cited);
+  assert.deepEqual(rewritten, []);
+  assert.deepEqual(entity.rules, ['discountWithinTotal']);
+});
+
+void test('l4_p4_136 s1a: map-form draft restores entityId via governs', () => {
+  const payload = ns5RulesToolPayload({
+    schemaVersion: '2026-09-16-ns5-rules-v2',
+    rules: { discountWithinTotal: 'The discount cannot exceed the total.' },
+    governs: { discountWithinTotal: 'Comanda' },
+  });
+  assert.deepEqual(payload.rules, [{
+    ruleId: 'discountWithinTotal',
+    description: 'The discount cannot exceed the total.',
+    entityId: 'Comanda',
+  }]);
+});
+

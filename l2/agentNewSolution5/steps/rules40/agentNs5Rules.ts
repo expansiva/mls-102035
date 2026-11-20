@@ -38,15 +38,18 @@ import {
   type Ns5OntologyAnyIndex,
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
-import type {
-  Ns5CompileRecord,
-  Ns5JourneyArtifact,
-  Ns5JourneyIndexArtifact,
-  Ns5ModuleArtifact,
-  Ns5OntologyAnyEntity,
-  Ns5PipelineNormalization,
-  Ns5PipelineState,
+import {
+  isNs5OntologyEntityV3,
+  type Ns5CompileRecord,
+  type Ns5JourneyArtifact,
+  type Ns5JourneyIndexArtifact,
+  type Ns5ModuleArtifact,
+  type Ns5OntologyAnyEntity,
+  type Ns5OntologyEntityV3,
+  type Ns5PipelineNormalization,
+  type Ns5PipelineState,
 } from '/_102035_/l2/solution/types.js';
+import { collectNs5CitedRulesV3 } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 import {
   buildNs5RulesArtifactV2,
   normalizeNs5RulesPayload,
@@ -64,7 +67,7 @@ export function buildNs5RulesTool(
 ): mls.msg.LLMTool {
   return createTool(
     'submitNs5Rules',
-    'Submit the module business-rule catalog: ruleId and description.',
+    'Submit the module business-rule catalog: ruleId, description and the entityId each rule governs.',
     schema,
   );
 }
@@ -195,7 +198,7 @@ export async function afterNs5RulesPromptStep(
     // ns5_56: the ids ontology30 cited are read BEFORE the normalize — an id this step received
     // cited is the citator's, so a payload that only changed its case adopts the cited spelling.
     let pipeline = await requirePipeline(moduleName);
-    const { rules, duplicateRuleIds, normalizations } = normalizeNs5RulesPayload(
+    const { rules, duplicateRuleIds, normalizations, governs } = normalizeNs5RulesPayload(
       payload,
       pipeline.steps.ontology30?.citedRules || [],
     );
@@ -203,8 +206,16 @@ export async function afterNs5RulesPromptStep(
       status: 'running',
       updatedAt: new Date().toISOString(),
     });
-    const draftPath = await writeJson(draftFile(moduleName, 'rules40'), { rules });
-    const gate = validateNs5Rules(rules, { moduleName, duplicateRuleIds });
+    const entities = await readRawEntities(moduleName);
+    const v3 = entities.filter(isNs5OntologyEntityV3);
+    const citedRuleIds = collectNs5CitedRulesV3(v3);
+    const entityIds = v3.map(entity => entity.entityId);
+    const draftPath = await writeJson(draftFile(moduleName, 'rules40'), { rules, governs });
+    const gate = validateNs5Rules(rules, {
+      moduleName,
+      duplicateRuleIds,
+      ...(v3.length ? { entityIds, governs, citedRuleIds } : {}),
+    });
     if (!gate.ok) {
       const feedback = formatNs5RulesGate(gate.issues);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -222,7 +233,15 @@ export async function afterNs5RulesPromptStep(
       throw new Error(feedback);
     }
 
-    const { artifactPath, compile } = await persistArtifacts(moduleName, rules, pipeline, normalizations);
+    const { artifactPath, compile } = await persistArtifacts(
+      moduleName,
+      rules,
+      pipeline,
+      normalizations,
+      governs,
+      entities,
+      citedRuleIds,
+    );
     if (compile.status === 'errors') {
       const feedback = formatNs5CompileFeedback(compile);
       if (parsed.repairAttempt < MAX_REPAIRS) {
@@ -247,21 +266,56 @@ export async function afterNs5RulesPromptStep(
   }
 }
 
+/** Append uncited new rules onto the v3 entity they govern. v2 entities are left untouched. */
+export function citeNs5NewRulesOnV3Entities(
+  entities: readonly Ns5OntologyAnyEntity[],
+  governs: Readonly<Record<string, string>>,
+  citedRuleIds: readonly string[],
+): Ns5OntologyEntityV3[] {
+  const cited = new Set(citedRuleIds);
+  const byId = new Map<string, Ns5OntologyAnyEntity>();
+  for (const entity of entities) byId.set(entity.entityId, entity);
+  const changed = new Map<string, Ns5OntologyEntityV3>();
+  for (const [ruleId, entityId] of Object.entries(governs)) {
+    if (cited.has(ruleId)) continue;
+    const entity = changed.get(entityId) || byId.get(entityId);
+    if (!entity || !isNs5OntologyEntityV3(entity)) continue;
+    if (entity.rules.includes(ruleId)) continue;
+    const next = { ...entity, rules: [...entity.rules, ruleId] };
+    changed.set(entityId, next);
+    byId.set(entityId, next);
+  }
+  return [...changed.values()];
+}
+
 async function persistArtifacts(
   moduleName: string,
   rules: Record<string, string>,
   pipeline: Ns5PipelineState,
   normalizations: readonly Ns5PipelineNormalization[],
+  governs: Record<string, string>,
+  entities: readonly Ns5OntologyAnyEntity[],
+  citedRuleIds: readonly string[],
 ): Promise<{ artifactPath: string; compile: Ns5CompileRecord }> {
   const artifact = buildNs5RulesArtifactV2(moduleName, rules);
   const artifactPath = await writeDefs(rulesFile(moduleName), `${moduleName}Rules`, artifact, 'Ns5RulesArtifactV2');
-  await writeJson(draftFile(moduleName, 'rules40'), artifact);
+  await writeJson(draftFile(moduleName, 'rules40'), { ...artifact, governs });
+  const rewritten = citeNs5NewRulesOnV3Entities(entities, governs, citedRuleIds);
+  const entityPaths: string[] = [];
+  for (const entity of rewritten) {
+    entityPaths.push(await writeDefs(
+      ontologyEntityFile(moduleName, entity.entityId),
+      `${moduleName}Entity${entity.entityId}`,
+      entity,
+      'Ns5OntologyEntityV3',
+    ));
+  }
   // p4_20: the compiler is the last gate; errors go back to this step's repair, never approved.
-  const compile = await compileNs5Defs([rulesFile(moduleName)]);
+  const compile = await compileNs5Defs([rulesFile(moduleName), ...rewritten.map(entity => ontologyEntityFile(moduleName, entity.entityId))]);
   await writeStepState(pipeline, {
     status: compile.status === 'errors' ? 'running' : 'approved',
     updatedAt: new Date().toISOString(),
-    artifactPaths: [artifactPath],
+    artifactPaths: [artifactPath, ...entityPaths],
     compile,
     ...(normalizations.length ? { normalizations: [...normalizations] } : {}),
     ...(pipeline.invocation.fast ? { autoReason: 'fast' } : {}),
@@ -291,15 +345,22 @@ async function readJourneys(moduleName: string): Promise<Ns5JourneyArtifact[]> {
   return journeys;
 }
 
-async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {
+async function readRawEntities(moduleName: string): Promise<Ns5OntologyAnyEntity[]> {
   const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
-  if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
+  if (!index) return [];
   const entities: Ns5OntologyAnyEntity[] = [];
   for (const entityId of ns5OntologyEntityIds(index)) {
     const artifact = await readDefsJson<Ns5OntologyAnyEntity>(ontologyEntityFile(moduleName, entityId));
     if (!artifact) throw new Error(`ontology/${entityId}.defs.ts is missing for ${moduleName}.`);
     entities.push(artifact);
   }
+  return entities;
+}
+
+async function readEntities(moduleName: string): Promise<Ns5OntologyEntityViewItem[]> {
+  const index = await readDefsJson<Ns5OntologyAnyIndex>(ontologyIndexFile(moduleName));
+  if (!index) throw new Error(`ontology/index.defs.ts is missing for ${moduleName}; ontology30 must run first.`);
+  const entities = await readRawEntities(moduleName);
   return ns5OntologyEntityViews(entities);
 }
 

@@ -1,5 +1,12 @@
 # rules40
 
+## 2026-11-20 (l4_p4_136 s1a)
+
+- Each tool item carries a required `entityId` (the entity the rule governs). `normalizeNs5RulesPayload`
+  returns `governs`; the gate `NS5_RULES_ENTITY` refuses an uncited rule whose `entityId` is missing or
+  not in the ontology (absent context = no check). After the gate, the step appends the id onto that
+  v3 entity's `rules` and rewrites only those files. `rules.defs.ts` stays the map of id → sentence.
+
 ## 2026-11-19 (l4_p4_126)
 
 - `prompt`: the same sentence in every step that writes a journey, an entity, a field, a rule, a permission or a process: what an administrator gives to connect the module to a system outside the app is none of them; the platform keeps it and has the screen. Intent only, no gate. `integration70` declares it in `externalSystems.settings`; `module10` and `judge35` write none of those and do not carry it.

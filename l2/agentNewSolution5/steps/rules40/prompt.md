@@ -10,10 +10,12 @@ Call the tool `submitNs5Rules` once with every rule. Do not write Markdown aroun
 
 ## What a rule is
 
-Write `rules` as a LIST of `{ "ruleId", "description" }`; the artifact keeps it as one entry per
-`ruleId`. `ruleId` is the stable lowerCamel id that transitions,
+Write `rules` as a LIST of `{ "ruleId", "description", "entityId" }`; the artifact keeps it as one
+entry per `ruleId`. `ruleId` is the stable lowerCamel id that transitions,
 later screens and endpoints cite. `description` is one precise, technology-neutral business
-sentence. There is no title and no list of whom the rule applies to: who uses a rule cites it.
+sentence. `entityId` is the ontology entity this rule governs (PascalCase, an id already in the
+ontology). A process rule names the entity the process changes. Never an entity that is not in the
+ontology. There is no title and no list of whom the rule applies to: who uses a rule cites it.
 
 ## When to write a rule
 

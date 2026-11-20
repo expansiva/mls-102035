@@ -22,6 +22,15 @@ export interface Ns5RulesGateContext {
    * catalog read straight off `rules.defs.ts` never passed through the normalize and has none to give.
    */
   duplicateRuleIds?: readonly string[];
+  /**
+   * Ontology entity ids (v3). ABSENT MEANS "NO EVIDENCE": a catalog off disk, a replay, or a host
+   * without ontology files does not run the NS5_RULES_ENTITY check.
+   */
+  entityIds?: readonly string[];
+  /** ruleId → entityId the payload named. Same absence rule as `entityIds`. */
+  governs?: Readonly<Record<string, string>>;
+  /** Rule ids some v3 entity already cites (`entity.rules` or `transitions[].ruleRefs`). */
+  citedRuleIds?: readonly string[];
 }
 
 /** The catalog in the artifact form: `ruleId` to the one business sentence. */
@@ -43,6 +52,23 @@ export function validateNs5Rules(
 
   for (const ruleId of context.duplicateRuleIds || []) {
     error(issues, 'NS5_RULES_ID_DUPLICATE', `Duplicate ruleId ${ruleId}.`, `rules.${ruleId}.ruleId`);
+  }
+
+  if (context.entityIds && context.governs && context.citedRuleIds) {
+    const known = new Set(context.entityIds);
+    const cited = new Set(context.citedRuleIds);
+    const listed = context.entityIds.join(', ');
+    for (const ruleId of Object.keys(rules)) {
+      if (cited.has(ruleId)) continue;
+      const entityId = context.governs[ruleId];
+      if (entityId && known.has(entityId)) continue;
+      error(
+        issues,
+        'NS5_RULES_ENTITY',
+        `rule ${ruleId} must name the entity it governs, one of: ${listed}`,
+        `rules.${ruleId}.entityId`,
+      );
+    }
   }
 
   return { ok: !issues.some(issue => issue.severity === 'error'), issues };
