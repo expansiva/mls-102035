@@ -1,5 +1,9 @@
 # integration70
 
+## 2026-11-20 (l4_p4_130 s2)
+
+- `NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL`: an `inbound.writes` entry, or a `connections` row with `direction: serve` and `effect` `create` or `update`, that names an ontology entity `external`. The record lives on that connection; the module does not store a row of it, and an arrival does not rewrite it. `direction: call` and `effect: transition` are not checked. No new sentence in `prompt.md`.
+
 ## 2026-11-20 (l4_p4_127 s2)
 
 - An ontology entity `external` that cites a `connectionId` outside the platform catalog and outside the systems a sibling declares is a signal (`externalEntitySystem`). The human prompt lists those ids under `## Systems the ontology cites`. The gate requires that id in `externalSystems` (`NS5_INTEGRATION_ENTITY_SYSTEM_MISSING`). A catalog connection and a sibling system do not require a declaration.

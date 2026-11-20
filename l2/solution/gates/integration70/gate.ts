@@ -120,6 +120,35 @@ export function validateNs5Integration(
     );
   }
 
+  // An arrival reports a change that already happened outside. It does not rewrite that record.
+  inbound.forEach((item, index) => {
+    if (item.effect === 'transition') return;
+    for (const entityId of item.writes || []) {
+      const entity = entityById.get(entityId);
+      if (!entity?.externalConnectionId) continue;
+      error(
+        issues,
+        'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL',
+        `${entity.entityId} lives outside the module on '${entity.externalConnectionId}'. The module does not store a row of it. An arrival says it already changed out there; the module does not rewrite it.`,
+        `inbound[${index}].writes`,
+      );
+    }
+  });
+  connections.forEach((connection, index) => {
+    if (connection.direction !== 'serve') return;
+    if (connection.effect !== 'create' && connection.effect !== 'update') return;
+    for (const entityId of connection.entityRefs || []) {
+      const entity = entityById.get(entityId);
+      if (!entity?.externalConnectionId) continue;
+      error(
+        issues,
+        'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL',
+        `${entity.entityId} lives outside the module on '${entity.externalConnectionId}'. The module does not store a row of it. An arrival says it already changed out there; the module does not rewrite it.`,
+        `connections[${index}].entityRefs`,
+      );
+    }
+  });
+
   for (const entity of context.entities) {
     if (entity.writer !== 'inbound' || !entity.entityId) continue;
     const coveredByInbound = inbound.some(item => (item.writes || []).includes(entity.entityId));

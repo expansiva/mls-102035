@@ -55,6 +55,7 @@ not a signal and is not an integration item.
 - An external system: `id`, `settings[].id` and `operations[].operationId` are lowerCamel and unique at their level; `direction` is `call` or `serve`; `title` and `description` are not empty; `secret` is a boolean; `id` repeats neither a platform catalog connection nor a sibling's system (`NS5_INTEGRATION_SYSTEM_*`). The model no longer writes `inbound`/`outbound` with `kind: external`; the gate still accepts what already exists.
 - A language model or any AI service is never an `externalSystems` entry: the prompt sends the module to the catalog connection that offers AI (`cm`). Intent only, no gate (l4_p4_120); if a live run declares one anyway, it goes back to the planner.
 - A system with a `serve` operation needs at least one setting with `secret: true`, else `NS5_INTEGRATION_SYSTEM_SERVE_SECRET` (an arrival from outside is refused unless it can be checked; l4_p4_123).
+- `inbound.writes` and a `serve` row with `effect` `create` or `update` name a table or a role of the module. Naming an entity `external` is `NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL` (the record lives outside; the arrival does not rewrite it; l4_p4_130). A `call` row and `effect: 'transition'` are unchanged.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
   the registry and l5, and marks the pipeline complete.

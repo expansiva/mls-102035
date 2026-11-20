@@ -222,3 +222,79 @@ void test('l4_p4_127 s2: an ontology connectionId is declared, refused, or alrea
   assert.equal(catalogOnly.some(signal => signal.kind === 'externalEntitySystem'), false);
   assert.ok(missing.issues.some(item => item.code === 'NS5_INTEGRATION_SIGNAL_WITHOUT_ITEM'));
 });
+
+void test('l4_p4_130 s2: an arrival does not write an entity that lives outside', () => {
+  const remoteHost: Ns5IntegrationExternalSystem = {
+    id: 'remoteHost',
+    title: 'Remote host',
+    description: 'A system outside the module.',
+    settings: [{ id: 'accessKey', title: 'Access key', description: 'Checks what arrives.', secret: true }],
+    operations: [
+      { operationId: 'noteChanged', direction: 'serve', description: 'A note changed.' },
+      { operationId: 'writeNote', direction: 'call', description: 'Asks the host to write a note.' },
+    ],
+  };
+  const entities = [
+    { entityId: 'RemoteNote', externalConnectionId: 'remoteHost' },
+    { entityId: 'LocalTable' },
+    { entityId: 'LocalRole' },
+  ];
+  const context = {
+    actors: [],
+    entities,
+    registryModuleNames: [],
+    sourcePrompt: 'a local note',
+    journeySteps: [{ journeyId: 'keepLocal', stepIds: ['saveRow'] }],
+  };
+  const inbound = (writes: string[]) => ({
+    id: 'noteArrived',
+    kind: 'event' as const,
+    from: 'organization',
+    effect: 'update' as const,
+    writes,
+    description: 'A notice arrived.',
+    entityRefs: [] as string[],
+  });
+  const serve = (entityRefs: string[], effect: 'update' | 'create') => ({
+    connectionId: 'remoteHost',
+    operationId: 'noteChanged',
+    direction: 'serve' as const,
+    usedBy: ['What the arrival does.'],
+    entityRefs,
+    effect,
+    description: 'A notice arrived.',
+  });
+
+  const refusedInbound = validateNs5Integration([inbound(['RemoteNote'])], [], [], context, [], [remoteHost]);
+  const inboundIssue = refusedInbound.issues.find(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL');
+  assert.equal(inboundIssue?.path, 'inbound[0].writes');
+  assert.match(inboundIssue?.message || '', /RemoteNote/);
+  assert.match(inboundIssue?.message || '', /remoteHost/);
+
+  const refusedServe = validateNs5Integration([], [], [], context, [serve(['RemoteNote'], 'update')], [remoteHost]);
+  const serveIssue = refusedServe.issues.find(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL');
+  assert.equal(serveIssue?.path, 'connections[0].entityRefs');
+
+  const accepted = validateNs5Integration(
+    [inbound(['LocalTable'])],
+    [],
+    [],
+    context,
+    [serve(['LocalRole'], 'create')],
+    [remoteHost],
+  );
+  assert.equal(accepted.issues.some(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL'), false);
+  assert.equal(accepted.ok, true, accepted.issues.map(item => item.message).join('\n'));
+
+  const call = validateNs5Integration([], [], [], context, [{
+    connectionId: 'remoteHost',
+    operationId: 'writeNote',
+    direction: 'call',
+    usedBy: ['keepLocal.saveRow'],
+    entityRefs: ['RemoteNote'],
+    effect: 'update',
+    description: 'Asks the host to write a note.',
+  }], [remoteHost]);
+  assert.equal(call.issues.some(item => item.code === 'NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL'), false);
+  assert.equal(call.ok, true, call.issues.map(item => item.message).join('\n'));
+});
