@@ -3,8 +3,8 @@
 One LLM call with tool `submitNs5Integration` **only when a structural signal exists**. Writes
 `l4/<mod>/integration.defs.ts`. Clarification is reserved and has no screen; `/fast` auto-approves.
 
-v2 form (ns5_31). A module talks to another by event (`outbound.on` = `Entity.transitionId` or
-`Entity.create`; inbound `writes` + `effect` is a writer), module endpoint, external system, or
+v2 form (ns5_31), and v5 when an arrival carries `entityEffects`. A module talks to another by event (`outbound.on` = `Entity.transitionId` or
+`Entity.create`; an inbound arrival writes by `entityEffects`, or by `writes` + `effect` on an older artifact), module endpoint, external system, or
 platform plugin (`usedBy` = `journey.step` or `process.task`).
 
 ## Input
@@ -18,8 +18,8 @@ platform plugin (`usedBy` = `journey.step` or `process.task`).
 
 ## Output
 
-`Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`, `connections[]` when the module names an operation (omitted when empty), and `externalSystems[]` when the module declares a system outside the app (omitted when empty; the artifact is then `...-integration-v4`, otherwise v3). Inbound is
-`{ id, kind, from, event?, writes[], effect?, transitionRef?, description }`. `effect` and `transitionRef` are omitted when `writes` is empty: an arrival that writes nothing has no effect. Outbound is
+`Ns5IntegrationArtifact`: `inbound[]`, `outbound[]`, `plugins[]`, `connections[]` when the module names an operation (omitted when empty), and `externalSystems[]` when the module declares a system outside the app (omitted when empty; the artifact is then `...-integration-v4`, otherwise v3; `...-integration-v5` when any arrival has `entityEffects`). The tool asks the model for inbound
+`{ id, kind, from, event?, entityEffects, transitionRef?, description }`. Each entry is `{ entityId, effects[] }`; effects may be more than one (`create` and `update`). `entityEffects: []` is an arrival that only informs. An older artifact is still `{ id, kind, from, event?, writes[], effect?, transitionRef?, description }`, with `effect` omitted when `writes` is empty. Outbound is
 `{ id, kind, to, event, on, entityRefs[], description }`. A plugin is
 `{ pluginId, usedBy[], description }`. An external system is `{ id, title, description, settings[{ id, title, description, secret }], operations[{ operationId, direction, description }] }`: intent only, never address, method, header, format, authentication or input/output types. Empty lists are valid when there is no signal; the step
 then writes that artifact **without** an LLM call and records `noIntegrationSignal` on the pipeline
@@ -42,7 +42,7 @@ not a signal and is not an integration item.
 
 - Ids are unique lowerCamel across inbound and outbound. Plugin ids are unique.
 - Inbound items name `from`. Outbound items name `to`.
-- `writes` / `entityRefs` exist in the ontology when set. `transitionRef` only with
+- `entityEffects` entries (and, on an older artifact, `writes` / serve `entityRefs`) exist in the ontology when set. `transitionRef` only with
   `effect: 'transition'`; leftover refs are dropped (`dropTransitionRef` on
   `normalizations[]`). `effect: 'transition'` without `transitionRef` is
   `NS5_INTEGRATION_TRANSITION_REF`; a named id that does not exist is
@@ -55,7 +55,7 @@ not a signal and is not an integration item.
 - An external system: `id`, `settings[].id` and `operations[].operationId` are lowerCamel and unique at their level; `direction` is `call` or `serve`; `title` and `description` are not empty; `secret` is a boolean; `id` repeats neither a platform catalog connection nor a sibling's system (`NS5_INTEGRATION_SYSTEM_*`). The model no longer writes `inbound`/`outbound` with `kind: external`; the gate still accepts what already exists.
 - A language model or any AI service is never an `externalSystems` entry: the prompt sends the module to the catalog connection that offers AI (`cm`). Intent only, no gate (l4_p4_120); if a live run declares one anyway, it goes back to the planner.
 - A system with a `serve` operation needs at least one setting with `secret: true`, else `NS5_INTEGRATION_SYSTEM_SERVE_SECRET` (an arrival from outside is refused unless it can be checked; l4_p4_123).
-- `inbound.writes` and a `serve` row with `effect` `create` or `update` name a table or a role of the module. Naming an entity `external` is `NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL` (the record lives outside; the arrival does not rewrite it; l4_p4_130). A `call` row and `effect: 'transition'` are unchanged.
+- An inbound entry, and a `serve` entry, with a write effect (`create`, `update`, `remove` or `transition`) name a table or a role of the module. Naming an entity `external` is `NS5_INTEGRATION_ARRIVAL_WRITES_EXTERNAL` (the record lives outside; the arrival does not rewrite it). A `call` row is unchanged: it still sends `entityRefs` and `effect`, and `entityEffects: []`.
 - Gate repair is bounded (2). After that the pipeline step is `failed`.
 - Success emits the `integration70-done` result. `finalize80` then runs the oracle, writes
   the registry and l5, and marks the pipeline complete.

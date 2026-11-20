@@ -23,10 +23,12 @@ or create. The receiving module maps that record in the inbound `description` (c
 
 ## Inbound
 
-Each inbound row is `{ id, kind, from, event?, writes[], effect, transitionRef?, description }`.
-`id` is lowerCamel. `writes` are UpperCamel entity ids of **this** module that the arrival
-creates or updates. `effect` is `create`, `update` or `transition` (required). `transitionRef` only
-with `effect: transition`.
+Each inbound row is `{ id, kind, from, event?, entityEffects, transitionRef?, description }`.
+`id` is lowerCamel. `entityEffects` names each entity of **this** module that the arrival touches,
+with the effects of that entity. One entity may have more than one effect, for example create and
+update. Effects here are `create`, `update` or `transition`. `transitionRef` only when one entry
+has `transition` (at most one such entry). An arrival that only informs and writes nothing has
+`entityEffects: []`. An entity that lives outside this module is not written by an arrival.
 
 - `kind: event` — a named event this module receives. `from` is a sibling folder, `organization`
   (platform catalog events listed in the human prompt), or a predicted sibling not yet in the
@@ -35,8 +37,9 @@ with `effect: transition`.
 - `kind: external` — do not write it. Anything exchanged with a system outside the app is an entry of
   `externalSystems` plus rows of `connections` (see below).
 
-An entity listed in the human prompt as `writer=inbound` **must** appear in some `inbound.writes`, or in the
-`entityRefs` of a `serve` row of `connections` whose `effect` is `create` or `update`.
+An entity listed in the human prompt as `writer=inbound` **must** appear in some inbound
+`entityEffects` entry whose effects include `create` or `update`, or in the `entityEffects` of a
+`serve` row of `connections` whose effects include `create` or `update`.
 
 An arrival from a connection (the platform catalog `## Connection catalog` or a system declared in
 `externalSystems`) is **never** an inbound row: it is a `serve` row of `connections`. Do not write an `inbound` of
@@ -85,14 +88,19 @@ When a sibling already declares the system (`## External systems the sibling mod
 A connection row is one operation of one connection: from the platform catalog in the human prompt
 (`## Connection catalog`), from a system this module declares in `externalSystems`, or from a system a sibling
 declares. Everything exchanged with a system outside the app is a row here.
-Each row is `{ connectionId, operationId, usedBy, entityRefs, effect?, description }`. Do not send
-`direction` or `kind`; they come from the operation. Do not invent a connection or an operation.
+Each row is `{ connectionId, operationId, usedBy, entityRefs, effect?, entityEffects, description }`.
+Do not send `direction` or `kind`; they come from the operation. Do not invent a connection or an operation.
 
-On a `call`, `usedBy` is `journeyId.stepId` or `processId.taskId` from the human prompt. On a `serve`,
-`usedBy` is a short sentence of what the arrival does.
+On a `call`, `usedBy` is `journeyId.stepId` or `processId.taskId` from the human prompt. Send
+`entityRefs` and `effect` (`list`, `read`, `create`, `update` or `remove`) only when the operation
+reads or writes an entity of this module. Send both, or neither. Leave `entityRefs` empty when it
+does not. `entityEffects` is `[]`.
 
-Send `entityRefs` and `effect` (`list`, `read`, `create`, `update` or `remove`) only when the operation
-reads or writes an entity of this module. Send both, or neither. Leave `entityRefs` empty when it does not.
+On a `serve`, `usedBy` is a short sentence of what the arrival does. Each entity the arrival touches
+comes in `entityEffects` with the effects of that entity (`list`, `read`, `create`, `update` or
+`remove`). One entity may have more than one effect, for example create and update. `entityRefs` is
+`[]`. Do not send `effect`. An arrival that only informs and writes nothing has `entityEffects: []`.
+An entity that lives outside this module is not written by an arrival.
 
 ## Plugins
 

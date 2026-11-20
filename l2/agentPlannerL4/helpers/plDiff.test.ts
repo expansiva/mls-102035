@@ -1196,3 +1196,80 @@ void test('l4_p4_130 s3b: a missing effect against a present effect is an inboun
   assert.deepEqual(items.map(item => `${item.kind} ${item.op}`), ['inbound changed']);
   assert.equal(isTextOnlyChange(items[0]), false);
 });
+
+void test('p4_133: entityEffects on an arrival is a changed inbound or connection item', () => {
+  const empty = { entities: [], rules: null, access: null, workflows: null };
+  const inbound = (effects: Array<'create' | 'update'>): Ns5IntegrationArtifact => ({
+    schemaVersion: '2026-11-20-ns5-integration-v5',
+    moduleName: 'localModule',
+    inbound: [{
+      id: 'itemArrived',
+      kind: 'event',
+      from: 'organization',
+      description: 'An item arrived.',
+      entityRefs: [],
+      entityEffects: [{ entityId: 'Item', effects }],
+    }],
+    outbound: [],
+    plugins: [],
+  });
+  const changedEffects = diffL4Snapshots(
+    snapshotFromParsed({ ...empty, integration: inbound(['create']) }),
+    snapshotFromParsed({ ...empty, integration: inbound(['create', 'update']) }),
+  );
+  assert.deepEqual(changedEffects.map(item => `${item.kind} ${item.op}`), ['inbound changed']);
+  assert.equal(isTextOnlyChange(changedEffects[0]), false);
+  const beforeInbound = changedEffects[0].before as { entityEffects?: unknown };
+  const afterInbound = changedEffects[0].after as { entityEffects?: unknown };
+  assert.deepEqual(beforeInbound.entityEffects, [{ entityId: 'Item', effects: ['create'] }]);
+  assert.deepEqual(afterInbound.entityEffects, [{ entityId: 'Item', effects: ['create', 'update'] }]);
+
+  const legacy: Ns5IntegrationArtifact = {
+    schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
+    moduleName: 'localModule',
+    inbound: [{
+      id: 'itemArrived',
+      kind: 'event',
+      from: 'organization',
+      writes: ['Item'],
+      effect: 'create',
+      description: 'An item arrived.',
+      entityRefs: [],
+    }],
+    outbound: [],
+    plugins: [],
+  };
+  const replaced = diffL4Snapshots(
+    snapshotFromParsed({ ...empty, integration: legacy }),
+    snapshotFromParsed({ ...empty, integration: inbound(['create']) }),
+  );
+  assert.deepEqual(replaced.map(item => `${item.kind} ${item.op}`), ['inbound changed']);
+  assert.equal(isTextOnlyChange(replaced[0]), false);
+
+  const connection = (effects: Array<'create' | 'update'>): Ns5IntegrationArtifact => ({
+    schemaVersion: '2026-11-20-ns5-integration-v5',
+    moduleName: 'localModule',
+    inbound: [],
+    outbound: [],
+    plugins: [],
+    connections: [{
+      connectionId: 'remote',
+      operationId: 'itemArrived',
+      direction: 'serve',
+      usedBy: ['A notice arrived.'],
+      description: 'An item arrived.',
+      entityRefs: [],
+      entityEffects: [{ entityId: 'Item', effects }],
+    }],
+  });
+  const changedConnection = diffL4Snapshots(
+    snapshotFromParsed({ ...empty, integration: connection(['create']) }),
+    snapshotFromParsed({ ...empty, integration: connection(['create', 'update']) }),
+  );
+  assert.deepEqual(changedConnection.map(item => `${item.kind} ${item.op}`), ['connection changed']);
+  assert.equal(isTextOnlyChange(changedConnection[0]), false);
+  const beforeConnection = changedConnection[0].before as { entityEffects?: unknown };
+  const afterConnection = changedConnection[0].after as { entityEffects?: unknown };
+  assert.deepEqual(beforeConnection.entityEffects, [{ entityId: 'Item', effects: ['create'] }]);
+  assert.deepEqual(afterConnection.entityEffects, [{ entityId: 'Item', effects: ['create', 'update'] }]);
+});

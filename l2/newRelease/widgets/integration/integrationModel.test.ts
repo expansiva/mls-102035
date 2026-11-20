@@ -18,6 +18,26 @@ import {
   requestExportName,
 } from './integrationModel.js';
 
+test('keeps entityEffects when normalizing an arrival', () => {
+  const view = normalizeIntegration({
+    schemaVersion: '2026-11-20-ns5-integration-v5',
+    moduleName: 'localModule',
+    inbound: [{
+      id: 'itemArrived', kind: 'event', from: 'organization', description: 'An item arrived.',
+      entityEffects: [{ entityId: 'Item', effects: ['create', 'update'] }],
+    }],
+    outbound: [],
+    plugins: [],
+    connections: [
+      { connectionId: 'remote', operationId: 'notify', direction: 'call', usedBy: ['review.pick'], description: 'A notice.', entityRefs: [], entityEffects: [] },
+      { connectionId: 'remote', operationId: 'itemArrived', direction: 'serve', usedBy: ['A notice arrived.'], description: 'An item arrived.', entityEffects: [{ entityId: 'Item', effects: ['list'] }] },
+    ],
+  });
+  assert.deepEqual(view.inbound[0].entityEffects, [{ entityId: 'Item', effects: ['create', 'update'] }]);
+  assert.deepEqual(view.connections[0].entityEffects, []);
+  assert.deepEqual(view.connections[1].entityEffects, [{ entityId: 'Item', effects: ['list'] }]);
+});
+
 test('normalizes v1 integration plugin entity refs without presenting them as v2 usedBy', () => {
   const view = normalizeIntegration({
     schemaVersion: '2026-09-10-ns5-integration-v1', moduleName: 'legacy', inbound: [], outbound: [],
@@ -125,7 +145,7 @@ test('system, setting and operation patches preserve identities, sibling lists a
 });
 
 test('only recognized current versions expose their raw artifact', () => {
-  for (const version of ['2026-09-12-ns5-integration-v2', '2026-11-17-ns5-integration-v3']) {
+  for (const version of ['2026-09-12-ns5-integration-v2', '2026-11-17-ns5-integration-v3', '2026-11-19-ns5-integration-v4', '2026-11-20-ns5-integration-v5']) {
     const artifact = { schemaVersion: version, moduleName: 'orders', inbound: [], outbound: [], plugins: [] };
     assert.strictEqual(integrationArtifactFromView(normalizeIntegration(artifact)), artifact);
   }
