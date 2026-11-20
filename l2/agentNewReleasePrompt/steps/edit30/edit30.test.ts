@@ -12,6 +12,7 @@ import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/help
 import { applyNrpMechanical, nrpModelKinds } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import {
   NRP_EDIT_SYSTEM_PROMPT,
+  NRP_INTEGRATION_SHAPE,
   NRP_JOURNEY_RULES,
   NRP_JOURNEY_SHAPE,
   NRP_NEW_SIGNATURE_RULE,
@@ -40,6 +41,11 @@ import { pipelineJsonFileForProject } from '/_102035_/l2/solution/fs.js';
 import type { Ns5FileInfo } from '/_102035_/l2/solution/types.js';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
+import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
+import {
+  NS5_INTEGRATION_SCHEMA_VERSION,
+  NS5_INTEGRATION_SCHEMA_VERSION_V5,
+} from '/_102035_/l2/solution/types.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
@@ -765,4 +771,141 @@ void test('what the provider lets through in an edit (empty file, long values, t
       assert.ok(error.message.length > 20, `${label}: the refusal says why: ${error.message}`);
     }
   }
+});
+
+const V2 = '2026-09-12-ns5-integration-v2';
+
+function integrationScope(artifact: Record<string, unknown>): NrpFileScope {
+  return { present: ['integration'], creates: [], files: [{ id: 'integration', artifact }] };
+}
+
+function integrationOp(partial: Record<string, string>): Record<string, string> {
+  return { file: 'integration', op: 'set', pointer: '/inbound/0/description', expectedJson: '"Arrived."', valueJson: '"Noted."', reason: 'wording', ...partial };
+}
+
+void test('an integration edit prompt states the arrival shape; rules, access and workflows do not', () => {
+  const file = { id: 'integration', artifact: { inbound: [], outbound: [] } };
+  const integration = buildNrpEditHumanPrompt('Change what arrives.', triage, 'integration', [file]);
+  assert.equal(integration.includes(NRP_INTEGRATION_SHAPE), true);
+  assert.equal(/tarefas/i.test(NRP_INTEGRATION_SHAPE), false);
+  for (const kind of ['rules', 'access', 'workflows'] as const) {
+    const prompt = buildNrpEditHumanPrompt('Change a line.', triage, kind, [{ id: kind, artifact: {} }]);
+    assert.equal(prompt.includes(NRP_INTEGRATION_SHAPE), false, kind);
+  }
+});
+
+void test('replacing the old arrival pair with entityEffects writes schema version v5', () => {
+  const before = {
+    schemaVersion: V2,
+    moduleName: 'sample',
+    inbound: [{
+      id: 'arrived',
+      kind: 'event',
+      from: 'organization',
+      description: 'An item arrived.',
+      writes: ['Item'],
+      effect: 'create',
+      entityRefs: [],
+    }],
+    outbound: [],
+  };
+  const edited = normalizeNrpEdit('integration', {
+    operations: [
+      integrationOp({ op: 'remove', pointer: '/inbound/0/writes', expectedJson: '["Item"]', valueJson: '', reason: 'arrival names effects' }),
+      integrationOp({ op: 'remove', pointer: '/inbound/0/effect', expectedJson: '"create"', valueJson: '', reason: 'arrival names effects' }),
+      integrationOp({
+        op: 'add',
+        pointer: '/inbound/0/entityEffects',
+        expectedJson: '',
+        valueJson: '[{"entityId":"Item","effects":["create","update"]},{"entityId":"Remote","effects":["create"]}]',
+        reason: 'arrival names effects',
+      }),
+    ],
+  }, integrationScope(before));
+  const artifact = edited.files[0].artifact as {
+    schemaVersion: string;
+    inbound: Array<{ writes?: unknown; effect?: unknown; entityEffects?: unknown }>;
+  };
+  assert.equal(artifact.schemaVersion, NS5_INTEGRATION_SCHEMA_VERSION_V5);
+  assert.equal(artifact.inbound[0].writes, undefined);
+  assert.equal(artifact.inbound[0].effect, undefined);
+  assert.deepEqual(artifact.inbound[0].entityEffects, [
+    { entityId: 'Item', effects: ['create', 'update'] },
+    { entityId: 'Remote', effects: ['create'] },
+  ]);
+  const accepted = validateNs5Integration(artifact.inbound as never, [], [], {
+    actors: [],
+    entities: [{ entityId: 'Item' }, { entityId: 'Remote' }],
+    registryModuleNames: [],
+    sourcePrompt: 'a local note',
+  });
+  assert.equal(accepted.ok, true, accepted.issues.map(item => item.message).join('\n'));
+});
+
+void test('a call description edit and an old file with no new arrival keep their schema version', () => {
+  const callFile = {
+    schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
+    moduleName: 'sample',
+    inbound: [],
+    outbound: [],
+    connections: [{
+      connectionId: 'remote',
+      operationId: 'ask',
+      direction: 'call',
+      usedBy: ['keep.saveRow'],
+      description: 'Asks.',
+      entityRefs: ['Item'],
+      effect: 'read',
+    }],
+  };
+  const callEdit = normalizeNrpEdit('integration', {
+    operations: [integrationOp({
+      pointer: '/connections/0/description',
+      expectedJson: '"Asks."',
+      valueJson: '"Asks once."',
+      reason: 'wording',
+    })],
+  }, integrationScope(callFile));
+  const callArtifact = callEdit.files[0].artifact as { schemaVersion: string; connections: Array<{ description: string }> };
+  assert.equal(callArtifact.schemaVersion, NS5_INTEGRATION_SCHEMA_VERSION);
+  assert.equal(callArtifact.connections[0].description, 'Asks once.');
+
+  const oldFile = {
+    schemaVersion: V2,
+    moduleName: 'sample',
+    inbound: [{
+      id: 'arrived',
+      kind: 'event',
+      from: 'organization',
+      description: 'Arrived.',
+      writes: ['Item'],
+      effect: 'create',
+      entityRefs: [],
+    }],
+    outbound: [],
+  };
+  const wording = normalizeNrpEdit('integration', { operations: [integrationOp({})] }, integrationScope(oldFile));
+  assert.equal((wording.files[0].artifact as { schemaVersion: string }).schemaVersion, V2);
+  const untouched = normalizeNrpEdit('integration', { operations: [] }, integrationScope(oldFile));
+  assert.deepEqual(untouched.files, []);
+});
+
+void test('set on schemaVersion is still refused', () => {
+  const file = {
+    schemaVersion: NS5_INTEGRATION_SCHEMA_VERSION,
+    moduleName: 'sample',
+    inbound: [],
+    outbound: [],
+  };
+  assert.throws(
+    () => normalizeNrpEdit('integration', {
+      operations: [integrationOp({
+        pointer: '/schemaVersion',
+        expectedJson: JSON.stringify(NS5_INTEGRATION_SCHEMA_VERSION),
+        valueJson: JSON.stringify(NS5_INTEGRATION_SCHEMA_VERSION_V5),
+        reason: 'version',
+      })],
+    }, integrationScope(file)),
+    /schemaVersion/,
+  );
 });

@@ -6,6 +6,13 @@ import { applyNrpMechanical, nrpFreeTextHits, nrpModelKinds, type NrpTextMark } 
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import type { NrpAppliedEdit } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
 import { pipelineJsonFileForProject, setModuleRoot } from '/_102035_/l2/solution/fs.js';
+import { ns5IntegrationSchemaVersion } from '/_102035_/l2/solution/gates/integration70/contracts.js';
+import {
+  NS5_INTEGRATION_SCHEMA_VERSION,
+  NS5_INTEGRATION_SCHEMA_VERSION_V4,
+  NS5_INTEGRATION_SCHEMA_VERSION_V5,
+  type Ns5IntegrationExternalSystem,
+} from '/_102035_/l2/solution/types.js';
 import { createNs4FlexibleWorkerTool, unwrapNs4FlexibleWorkerPayload } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import {
   NRP_ARTIFACT_KINDS,
@@ -40,6 +47,8 @@ export const NRP_JOURNEY_SHAPE = 'The new file has the same shape as the sibling
 export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the sibling (schemaVersion, moduleName, entityId, and the same sections the sibling uses).';
 /** Step kinds the journey gate accepts, and the twin rule it enforces. The gate constant is not exported. */
 export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. When a journey of that actor already does what the request asks for, extend that journey with what the request adds (a filter, a column, an action) and do not create another one. Make a separate journey only when the request is about a different actor, entity, or operations. Do not invent a step kind. If the request does not say who acts, ask; do not pick an actor.';
+/** Arrival shape for an integration edit. The model sees the current file, which may still use the old pair. */
+export const NRP_INTEGRATION_SHAPE = 'An arrival is an inbound row or a connections row with direction serve. It says what it does to each entity in entityEffects: a list of { entityId, effects }, one entry per entity, an entity may have several effects (inbound: create, update, transition; serve: list, read, create, update, remove). When the request changes what an arrival does, write entityEffects and remove the old writes and effect (inbound) or entityRefs and effect (serve) of that row. An arrival that only informs and writes nothing has entityEffects []. An entity that lives outside the module is not written by an arrival. call rows keep entityRefs and effect.';
 /** Shown with the signatures the code already measured for the actor. */
 export const NRP_NEW_SIGNATURE_RULE = 'a jornada nova precisa de uma assinatura que não esteja na lista';
 
@@ -128,6 +137,7 @@ export function buildNrpEditHumanPrompt(
     lines.push(NRP_JOURNEY_RULES);
     lines.push(nrpOccupiedSignatureBlock(occupied ?? files));
   }
+  if (kind === 'integration') lines.push(NRP_INTEGRATION_SHAPE);
   if (creates.length && reference) {
     const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
     lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);
@@ -381,6 +391,7 @@ export function normalizeNrpEdit(kind: NrpArtifactKind, value: unknown, scope: N
     for (const [id, item] of working) {
       const before = scope.files.find(file => file.id === id);
       if (!item.created && before && sameJson(before.artifact, item.artifact)) continue;
+      if (kind === 'integration' && isRecord(item.artifact)) refreshIntegrationSchemaVersion(item.artifact);
       assertFile(kind, id, item.artifact);
       files.push({ id, artifact: item.artifact });
     }
@@ -492,6 +503,30 @@ function assertMutable(tokens: readonly string[]): void {
   if (tokens.some(token => FROZEN_TOKENS.has(token))) {
     throw new Error('set and remove cannot change schemaVersion, moduleName, or the file id.');
   }
+}
+
+/**
+ * The model cannot write schemaVersion. After an integration edit, the version is the same
+ * function the integration step uses. A recorded v2 file is not a version that function emits,
+ * so an edit that adds no entityEffects leaves it; v5 is written whenever an arrival carries entityEffects.
+ */
+function refreshIntegrationSchemaVersion(artifact: Record<string, unknown>): void {
+  const externalSystems = Array.isArray(artifact.externalSystems)
+    ? artifact.externalSystems as Ns5IntegrationExternalSystem[]
+    : [];
+  const inbound = Array.isArray(artifact.inbound)
+    ? artifact.inbound as { entityEffects?: readonly unknown[] }[]
+    : [];
+  const connections = Array.isArray(artifact.connections)
+    ? artifact.connections as { direction?: string; entityEffects?: readonly unknown[] }[]
+    : [];
+  const next = ns5IntegrationSchemaVersion(externalSystems, { inbound, connections });
+  if (artifact.schemaVersion === next) return;
+  const current = artifact.schemaVersion;
+  const managed = current === NS5_INTEGRATION_SCHEMA_VERSION
+    || current === NS5_INTEGRATION_SCHEMA_VERSION_V4
+    || current === NS5_INTEGRATION_SCHEMA_VERSION_V5;
+  if (next === NS5_INTEGRATION_SCHEMA_VERSION_V5 || managed) artifact.schemaVersion = next;
 }
 
 function pointerTokens(pointer: string): string[] {
