@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { Ns5IntegrationArtifact } from '../../../solution/types.js';
+import type { Ns5IntegrationArtifact, Ns5IntegrationConnection } from '../../../solution/types.js';
 import { loadNewReleaseMessages } from '../../helpers/i18n.js';
 import { comprasIntegration } from '../fixtures/compras-integration.defs.js';
 import {
@@ -11,6 +11,7 @@ import {
   integrationOracleIssues,
   normalizeIntegration,
   patchIntegrationItem,
+  patchServeConnectionEntityEffects,
   patchExternalSystem,
   patchExternalSetting,
   patchExternalOperation,
@@ -36,6 +37,35 @@ test('keeps entityEffects when normalizing an arrival', () => {
   assert.deepEqual(view.inbound[0].entityEffects, [{ entityId: 'Item', effects: ['create', 'update'] }]);
   assert.deepEqual(view.connections[0].entityEffects, []);
   assert.deepEqual(view.connections[1].entityEffects, [{ entityId: 'Item', effects: ['list'] }]);
+});
+
+test('patches the existing v5 serve by both IDs and preserves sibling connections', () => {
+  const serve: Ns5IntegrationConnection = {connectionId: 'mail', operationId: 'receive', direction: 'serve', usedBy: ['Arrival'],
+    description: 'Receive', entityEffects: [{entityId: 'Message', effects: ['read']}]};
+  const connections: Ns5IntegrationConnection[] = [serve, {...serve, operationId: 'receiveReply'}, {...serve, connectionId: 'chat'},
+    {connectionId: 'mail', operationId: 'send', direction: 'call', usedBy: [], description: 'Send'},
+    {connectionId: 'mail', operationId: 'receiveLegacy', direction: 'serve', usedBy: [],
+      description: 'Legacy arrival', entityRefs: ['Message'], effect: 'read'}];
+  const artifact = {
+    schemaVersion: '2026-11-20-ns5-integration-v5', moduleName: 'messages', inbound: [], outbound: [], plugins: [],
+    connections,
+  } satisfies Ns5IntegrationArtifact;
+  const snapshot = structuredClone(artifact);
+  const changed = patchServeConnectionEntityEffects(artifact, 'mail', 'receive', [
+    {entityId: 'Message', effects: ['read', 'update']},
+    {entityId: 'Receipt', effects: ['create']},
+  ]);
+  assert.deepEqual(changed.connections?.[0], {...serve, entityEffects: [
+    {entityId: 'Message', effects: ['read', 'update']},
+    {entityId: 'Receipt', effects: ['create']},
+  ]});
+  assert.equal(changed.connections?.length, connections.length);
+  connections.slice(1).forEach((sibling, index) => assert.strictEqual(changed.connections?.[index + 1], sibling));
+  assert.deepEqual(artifact, snapshot);
+
+  for (const operationId of ['send', 'receiveLegacy', 'missing']) {
+    assert.strictEqual(patchServeConnectionEntityEffects(artifact, 'mail', operationId, []), artifact);
+  }
 });
 
 test('normalizes v1 integration plugin entity refs without presenting them as v2 usedBy', () => {

@@ -191,6 +191,22 @@ export function patchIntegrationItem(
     : item)};
 }
 
+export function patchServeConnectionEntityEffects(
+  artifact: Ns5IntegrationArtifact,
+  connectionId: string,
+  operationId: string,
+  entityEffects: Ns5ArrivalEntityEffects[],
+): Ns5IntegrationArtifact {
+  if (!artifact.connections) return artifact;
+  const index = artifact.connections.findIndex(connection => connection.connectionId === connectionId
+    && connection.operationId === operationId && connection.direction === 'serve'
+    && Array.isArray(connection.entityEffects));
+  if (index === -1) return artifact;
+  return {...artifact, connections: artifact.connections.map((connection, position) => position === index
+    ? {...connection, entityEffects}
+    : connection)};
+}
+
 type Setting = Ns5IntegrationExternalSystem['settings'][number];
 type Operation = Ns5IntegrationExternalSystem['operations'][number];
 
