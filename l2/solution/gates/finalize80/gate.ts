@@ -53,6 +53,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { checkEntityGrants, ENTITY_WITHOUT_GRANT } from '/_102035_/l2/solution/gates/accessEntity/contracts.js';
 import { checkExternalEntities, parseCatalogOutputFields, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
 import {
   buildNs5FinalizeReport,
@@ -407,6 +408,16 @@ function checkI3(sources: Ns5OracleSources, error: IssueFn): void {
       error('I3', `access.actors.${actor.actorId}`, `Actor ${actor.actorId} has no grant.`);
     }
   }
+  // l4_p4_140 s2b: an actor that reads or acts on an entity in a journey needs a grant that covers it.
+  const steps = sources.journeys.flatMap(journey => journey.business.steps.map(step => ({
+    journeyId: journey.journeyId,
+    stepId: step.stepId,
+    kind: step.kind,
+    actorId: journey.business.actorRef || '',
+    entityId: step.entity || '',
+  })));
+  const grants = sources.access.grants.map(grant => ({ grantId: grant.grantId, actorId: grant.actorRef, entityRefs: grant.entityRefs }));
+  for (const issue of checkEntityGrants(steps, grants)) error('I3', issue.path, issue.message, ENTITY_WITHOUT_GRANT);
 }
 
 function checkI4(sources: Ns5OracleSources, error: IssueFn): void {

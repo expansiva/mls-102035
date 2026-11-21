@@ -38,7 +38,8 @@ export type Ns5OracleIssueCode =
   | typeof NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED
   | typeof NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING
   | 'EXTERNAL_FIELD_NOT_DELIVERED'
-  | 'EXTERNAL_FIELDS_NOT_CHECKED';
+  | 'EXTERNAL_FIELDS_NOT_CHECKED'
+  | 'ENTITY_WITHOUT_GRANT';
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;
