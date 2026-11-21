@@ -46,7 +46,8 @@ export const agentsIntegration = {
         "virtualEmployeeCreation.reviewDraft"
       ],
       "entityRefs": [
-        "Agent"
+        "Agent",
+        "PersonalConduct"
       ],
       "effect": "read",
       "description": "Reads one agent from the cm: what it is, its behavior, whether it is on, who is responsible, its limits and the version read."
@@ -102,6 +103,9 @@ export const agentsIntegration = {
         "simulateAgentByRole.simulateWhatItUnderstands",
         "simulateAsMyself.seeWhatItCanForMe",
         "simulateAsMyself.seeWhatItUnderstandsForMe"
+      ],
+      "entityRefs": [
+        "AgentSimulation"
       ],
       "description": "Simulates an agent in the cm at the levels \"what it can\" and \"what it understands\"; nothing is saved."
     },

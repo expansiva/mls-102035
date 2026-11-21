@@ -423,6 +423,13 @@ void test('an uncited rule is owned by ontology and the repair sees every entity
   assert.equal(nrpIssueOwner(issue), 'ontology');
   const other: NrpGateIssue = { kind: 'coherence', code: 'NS5_FINALIZE_I4', path: 'rules.other', message: 'Unknown rule other.' };
   assert.equal(nrpIssueOwner(other), 'rules');
+  const external: NrpGateIssue = {
+    kind: 'coherence',
+    code: 'NS5_FINALIZE_I14',
+    path: 'ontology.PersonalConduct',
+    message: 'External entity PersonalConduct on connection cm is cited by no call operation.',
+  };
+  assert.equal(nrpIssueOwner(external), 'integration');
   const catalog = [
     { id: 'index', artifact: { entities: ['Agent', 'Tool'] } },
     { id: 'Agent', artifact: { entityId: 'Agent', rules: [] } },

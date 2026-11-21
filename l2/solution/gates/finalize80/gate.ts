@@ -1,7 +1,7 @@
 /// <mls fileReference="_102035_/l2/solution/gates/finalize80/gate.ts" enhancement="_blank"/>
 
 /**
- * Integrity oracle across the six NS5 sources. One code per check (I1–I13).
+ * Integrity oracle across the six NS5 sources. One code per check (I1–I14).
  * Errors fail the run; warnings do not.
  *
  * I2 checks `effect: 'transition'` + `transitionRef` against ontology (actor in `by`,
@@ -52,6 +52,8 @@ import {
   splitNs5EntityRef,
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
+import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { checkExternalEntities, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
 import {
   buildNs5FinalizeReport,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
@@ -98,6 +100,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI11(sources, warning);
   checkI12(sources, error);
   checkI13(sources, warning);
+  checkI14(sources, error);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.access.actors.length,
@@ -785,6 +788,43 @@ function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {
       `custom grant ${grant.grantId || index} for actor ${grant.actorRef || '(missing)'}; the backend does not apply custom.`,
     );
   });
+}
+
+/** An external entity of a platform catalog needs a call operation that cites it. Field mismatches stay warnings and are not emitted here. */
+function checkI14(sources: Ns5OracleSources, error: IssueFn): void {
+  const catalogs: Record<string, { operations: Array<{ operationId: string; outputType?: string }>; fieldsByType: Record<string, string[]> }> = {};
+  for (const catalog of ns5ConnectionCatalogs()) {
+    catalogs[catalog.connectionId] = {
+      operations: catalog.operations.map(operation => ({
+        operationId: operation.operationId,
+        outputType: operation.outputType,
+      })),
+      fieldsByType: {},
+    };
+  }
+  const entities: ExternalEntityRow[] = [];
+  for (const view of sources.entities) {
+    const source = view.source;
+    if (!isNs5OntologyV3Entity(source) || source.kind !== 'external') continue;
+    const requiredFields: string[] = [];
+    for (const [name, field] of Object.entries(source.record.fields)) {
+      if (field.required === true) requiredFields.push(name);
+    }
+    entities.push({
+      entityId: source.entityId,
+      kind: source.kind,
+      connectionId: source.connectionId,
+      requiredFields,
+    });
+  }
+  const connections = (sources.integration.connections || []).map(row => ({
+    connectionId: row.connectionId,
+    operationId: row.operationId,
+    direction: row.direction,
+    entityRefs: row.entityRefs ? [...row.entityRefs] : [],
+  }));
+  const result = checkExternalEntities({ entities, connections, catalogs });
+  for (const issue of result.errors) error('I14', issue.path, issue.message);
 }
 
 function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | undefined, indexIds: string[], error: IssueFn): void {

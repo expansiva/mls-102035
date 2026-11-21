@@ -1578,7 +1578,7 @@ function tarefasDefs<T>(name: string): T {
   return loadNs5Defs<T>('fixtures/finalize80/tarefas', name);
 }
 
-void test('tarefas passa no workflows50 e no finalize80 (I1–I13) sem erro', () => {
+void test('tarefas passa no workflows50 e no finalize80 (I1–I14) sem erro', () => {
   const journeyIndex = tarefasDefs<Ns5JourneyIndexArtifact>('journeys/index.defs.ts');
   const journeys = journeyIndex.journeys.map(entry =>
     tarefasDefs<Ns5JourneyArtifact>(`journeys/${entry.journeyId}.defs.ts`),
@@ -1618,7 +1618,7 @@ void test('tarefas passa no workflows50 e no finalize80 (I1–I13) sem erro', ()
   const report = runNs5Oracle(sources);
   assert.equal(report.errors.length, 0, report.errors.map(issue => `${issue.checkId} ${issue.path}: ${issue.message}`).join('\n'));
   assert.equal(report.finalStatus, 'passed');
-  for (const checkId of ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13']) {
+  for (const checkId of ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14']) {
     assert.equal(report.checks.find(check => check.checkId === checkId)?.status, 'passed', checkId);
   }
 });
@@ -1741,4 +1741,31 @@ void test('l4_p4_110: every act and inspect on an external entity names a call r
   const act = i1(without('changeMyConduct.changeConduct'));
   assert.equal(act.length, 1);
   assert.match(act[0], /^journeys\.changeMyConduct\.steps\[\d+\]\.entity$/);
+});
+
+void test('l4_p4_140: I14 charges an external catalog entity with no call, and skips a connection the module declares', () => {
+  const sources = agentsSources('fixtures/finalize80/agents3');
+  const i14 = (candidate: Ns5OracleSources) => runNs5Oracle(candidate).errors.filter(issue => issue.checkId === 'I14');
+  assert.deepEqual(i14(sources).map(issue => issue.path), []);
+
+  const orphan = clone(sources);
+  for (const row of orphan.integration.connections || []) {
+    if (row.direction !== 'call' || !row.entityRefs) continue;
+    row.entityRefs = row.entityRefs.filter(id => id !== 'AgentSimulation');
+  }
+  const charged = i14(orphan);
+  assert.equal(charged.length, 1);
+  assert.equal(charged[0]?.code, 'NS5_FINALIZE_I14');
+  assert.equal(charged[0]?.path, 'ontology.AgentSimulation');
+  assert.match(charged[0]?.message || '', /cm/);
+
+  const declared = clone(sources);
+  for (const view of declared.entities) {
+    const source = view.source;
+    if (isNs5OntologyV3Entity(source) && source.kind === 'external') source.connectionId = 'repoHost';
+  }
+  for (const row of declared.integration.connections || []) {
+    if (row.direction === 'call') row.entityRefs = [];
+  }
+  assert.deepEqual(i14(declared), []);
 });

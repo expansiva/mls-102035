@@ -32,6 +32,10 @@ export interface CmReadAgentOutput {
 export interface CmChild extends CmAgentCard {
   extra: string;
 }
+
+export interface CmListAgentsOutput {
+  agents: CmAgentCard[];
+}
 `;
 
 test('parseCatalogOutputFields reads top-level interface properties', () => {
@@ -51,6 +55,9 @@ test('parseCatalogOutputFields reads top-level interface properties', () => {
   assert.deepEqual(fields.CmAgentLimits, []);
   assert.equal(fields.CmChild.includes('name'), true);
   assert.equal(fields.CmChild.includes('extra'), true);
+  assert.equal(fields.CmListAgentsOutput.includes('agents'), true);
+  assert.equal(fields.CmListAgentsOutput.includes('name'), true);
+  assert.equal(fields.CmListAgentsOutput.includes('role'), false);
 });
 
 test('external entity with no call operation is an error', () => {

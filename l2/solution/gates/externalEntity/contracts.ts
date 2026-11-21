@@ -37,9 +37,14 @@ export interface ExternalEntityCheckResult {
   warnings: ExternalEntityIssue[];
 }
 
+interface ParsedField {
+  name: string;
+  typeText: string;
+}
+
 interface ParsedInterface {
   parents: string[];
-  fields: string[];
+  fields: ParsedField[];
 }
 
 export function parseCatalogOutputFields(sourceText: string): Record<string, string[]> {
@@ -71,7 +76,7 @@ export function parseCatalogOutputFields(sourceText: string): Record<string, str
   }
 
   const fieldsByType: Record<string, string[]> = {};
-  for (const name of interfaces.keys()) fieldsByType[name] = resolveFields(name, interfaces, new Set());
+  for (const name of interfaces.keys()) fieldsByType[name] = resolveFields(name, interfaces, new Set(), true);
   for (const name of typeNames) {
     if (fieldsByType[name] === undefined) fieldsByType[name] = [];
   }
@@ -133,16 +138,36 @@ function unwrapOutputType(outputType: string): string {
   return name;
 }
 
-function resolveFields(name: string, interfaces: Map<string, ParsedInterface>, seen: Set<string>): string[] {
+function resolveFields(
+  name: string,
+  interfaces: Map<string, ParsedInterface>,
+  seen: Set<string>,
+  followRefs: boolean,
+): string[] {
   const item = interfaces.get(name);
   if (!item || seen.has(name)) return [];
   seen.add(name);
   const names: string[] = [];
   for (const parent of item.parents) {
-    for (const field of resolveFields(parent, interfaces, seen)) pushUnique(names, field);
+    for (const field of resolveFields(parent, interfaces, seen, followRefs)) pushUnique(names, field);
   }
-  for (const field of item.fields) pushUnique(names, field);
+  for (const field of item.fields) {
+    pushUnique(names, field.name);
+    if (!followRefs) continue;
+    const ref = referencedType(field.typeText);
+    if (!ref || ref === name) continue;
+    for (const nested of resolveFields(ref, interfaces, new Set(), false)) pushUnique(names, nested);
+  }
   return names;
+}
+
+/** `X` or `X[]` (one or more). Anything else, including an object literal, is not a type in this text. */
+function referencedType(typeText: string): string {
+  let name = typeText.trim();
+  if (name.endsWith(';') || name.endsWith(',')) name = name.slice(0, -1).trim();
+  name = name.replace(/\[\]/g, '').trim();
+  if (!/^[A-Za-z_$][\w$]*$/u.test(name)) return '';
+  return name;
 }
 
 function pushUnique(names: string[], field: string): void {
@@ -285,8 +310,8 @@ class SourceScanner {
     }
   }
 
-  readInterfaceFields(): string[] {
-    const fields: string[] = [];
+  readInterfaceFields(): ParsedField[] {
+    const fields: ParsedField[] = [];
     let depth = 1;
     while (!this.done && depth > 0) {
       this.skipTrivia();
@@ -329,14 +354,19 @@ class SourceScanner {
         this.skipTrivia();
       }
       if (this.peek() === ':') {
-        fields.push(name);
         this.advance();
-        this.skipMemberType();
+        fields.push({ name, typeText: this.takeMemberType() });
         continue;
       }
       if (this.peek() === '(') this.skipMemberTail();
     }
     return fields;
+  }
+
+  private takeMemberType(): string {
+    const start = this.index;
+    this.skipMemberType();
+    return this.source.slice(start, this.index);
   }
 
   private skipMemberType(): void {

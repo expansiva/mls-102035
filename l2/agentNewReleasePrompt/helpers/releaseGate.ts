@@ -102,8 +102,14 @@ function nrpUncitedRule(issue: NrpGateIssue): boolean {
     && issue.message.includes(NS5_RULE_CITED_BY_NO_ENTITY);
 }
 
+/** An external entity with no call operation is fixed on the integration file (cite it in `entityRefs`). */
+function nrpExternalWithoutOperation(issue: NrpGateIssue): boolean {
+  return issue.kind === 'coherence' && issue.code === 'NS5_FINALIZE_I14';
+}
+
 export function nrpIssueOwner(issue: NrpGateIssue): NrpArtifactKind | null {
   if (nrpUncitedRule(issue)) return 'ontology';
+  if (nrpExternalWithoutOperation(issue)) return 'integration';
   if (issue.kind !== 'coherence') return issue.kind;
   const head = issue.path.split(/[./[]/u)[0];
   return PATH_OWNER[head] || null;
