@@ -53,7 +53,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
-import { checkExternalEntities, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
+import { checkExternalEntities, parseCatalogOutputFields, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
 import {
   buildNs5FinalizeReport,
   NS5_FINALIZE_I2_ACT_WITHOUT_TRANSITION,
@@ -100,7 +100,7 @@ export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   checkI11(sources, warning);
   checkI12(sources, error);
   checkI13(sources, warning);
-  checkI14(sources, error);
+  checkI14(sources, error, warning);
 
   return buildNs5FinalizeReport(sources.module.moduleName, errors, warnings, {
     actors: sources.access.actors.length,
@@ -790,16 +790,17 @@ function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {
   });
 }
 
-/** An external entity of a platform catalog needs a call operation that cites it. Field mismatches stay warnings and are not emitted here. */
-function checkI14(sources: Ns5OracleSources, error: IssueFn): void {
+/** An external entity of a platform catalog needs a call operation that cites it. Missing delivered fields are warnings. */
+function checkI14(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): void {
   const catalogs: Record<string, { operations: Array<{ operationId: string; outputType?: string }>; fieldsByType: Record<string, string[]> }> = {};
   for (const catalog of ns5ConnectionCatalogs()) {
+    const text = sources.connectionSources?.[catalog.connectionId];
     catalogs[catalog.connectionId] = {
       operations: catalog.operations.map(operation => ({
         operationId: operation.operationId,
         outputType: operation.outputType,
       })),
-      fieldsByType: {},
+      fieldsByType: text ? parseCatalogOutputFields(text) : {},
     };
   }
   const entities: ExternalEntityRow[] = [];
@@ -825,6 +826,18 @@ function checkI14(sources: Ns5OracleSources, error: IssueFn): void {
   }));
   const result = checkExternalEntities({ entities, connections, catalogs });
   for (const issue of result.errors) error('I14', issue.path, issue.message);
+  for (const issue of result.warnings) warning('I14', issue.path, issue.message, 'EXTERNAL_FIELD_NOT_DELIVERED');
+  for (const entity of entities) {
+    const connectionId = entity.connectionId;
+    if (!connectionId || catalogs[connectionId] === undefined) continue;
+    if (sources.connectionSources?.[connectionId]) continue;
+    warning(
+      'I14',
+      `ontology.${entity.entityId}`,
+      `fields of ${entity.entityId} not checked: catalog ${connectionId} not read`,
+      'EXTERNAL_FIELDS_NOT_CHECKED',
+    );
+  }
 }
 
 function reportOrphans(kind: 'journeys' | 'ontology', diskFiles: string[] | undefined, indexIds: string[], error: IssueFn): void {

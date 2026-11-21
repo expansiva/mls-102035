@@ -1769,3 +1769,46 @@ void test('l4_p4_140: I14 charges an external catalog entity with no call, and s
   }
   assert.deepEqual(i14(declared), []);
 });
+
+const CATALOG_WITH_NAME = `
+  export interface CmListAgentsOutput { agents: CmAgentCard[]; }
+  export interface CmAgentCard { name: string; situation: string; }
+`;
+
+void test('l4_p4_140 s1d1: a missing delivered field warns, an unread catalog warns once, a declared connection stays quiet', () => {
+  const sources = agentsSources('fixtures/finalize80/agents3');
+  const withText = runNs5Oracle({ ...sources, connectionSources: { cm: CATALOG_WITH_NAME } });
+  const prompt = withText.warnings.filter(issue => issue.code === 'EXTERNAL_FIELD_NOT_DELIVERED' && issue.path === 'ontology.AgentDraft.prompt');
+  assert.equal(prompt.length, 1);
+  assert.match(prompt[0]?.message || '', /cm/);
+  assert.equal(withText.errors.some(issue => issue.path === 'ontology.AgentDraft.prompt'), false);
+  assert.equal(withText.warnings.some(issue => issue.code === 'EXTERNAL_FIELDS_NOT_CHECKED'), false);
+
+  const unread = runNs5Oracle(sources);
+  const externalIds = sources.entities
+    .filter(view => isNs5OntologyV3Entity(view.source) && view.source.kind === 'external' && view.source.connectionId === 'cm')
+    .map(view => `ontology.${view.source.entityId}`)
+    .sort();
+  const unchecked = unread.warnings.filter(issue => issue.code === 'EXTERNAL_FIELDS_NOT_CHECKED');
+  assert.deepEqual(unchecked.map(issue => issue.path).sort(), externalIds);
+  assert.ok(externalIds.length > 0);
+  assert.match(unchecked[0]?.message || '', /^fields of .+ not checked: catalog cm not read$/);
+
+  const declared = clone(sources);
+  for (const view of declared.entities) {
+    const source = view.source;
+    if (isNs5OntologyV3Entity(source) && source.kind === 'external') source.connectionId = 'repoHost';
+  }
+  assert.equal(runNs5Oracle(declared).warnings.filter(issue => issue.checkId === 'I14').length, 0);
+
+  const orphan = clone(sources);
+  orphan.connectionSources = { cm: CATALOG_WITH_NAME };
+  for (const row of orphan.integration.connections || []) {
+    if (row.direction !== 'call' || !row.entityRefs) continue;
+    row.entityRefs = row.entityRefs.filter(id => id !== 'AgentSimulation');
+  }
+  const charged = runNs5Oracle(orphan).errors.filter(issue => issue.checkId === 'I14');
+  assert.equal(charged.length, 1);
+  assert.equal(charged[0]?.code, 'NS5_FINALIZE_I14');
+  assert.match(charged[0]?.message || '', /cm/);
+});

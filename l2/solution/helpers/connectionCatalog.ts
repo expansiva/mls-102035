@@ -2,6 +2,7 @@
 
 import cmCatalog from '/_102034_/l2/shared/contracts/connections/cm.js';
 import platformCatalog from '/_102034_/l2/shared/contracts/connections/platform.js';
+import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
 import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
 
 export interface Ns5ConnectionCatalog {
@@ -28,6 +29,39 @@ export interface Ns5ConnectionOperation {
   /** The operation is served by the platform, not by a module (e.g. `cm.ensureAgentMember`). */
   servedBy?: 'platform';
   expectsVersion?: true;
+}
+
+/**
+ * Source text of each platform catalog named in `connectionIds` (`cm`, `platform`).
+ * An id the platform does not publish is skipped. A file that cannot be read, or that comes back empty,
+ * is left out of the map; the caller warns for the catalogs it asked for and did not receive.
+ */
+const PLATFORM_CATALOG_PROJECT = 102034;
+
+export async function readNs5ConnectionSources(connectionIds: readonly string[]): Promise<Record<string, string>> {
+  const known = new Set(ns5ConnectionCatalogs().map(item => item.connectionId));
+  const sources: Record<string, string> = {};
+  for (const connectionId of connectionIds) {
+    if (!known.has(connectionId) || sources[connectionId] !== undefined) continue;
+    const fileInfo: Ns5FileInfo = {
+      project: PLATFORM_CATALOG_PROJECT,
+      level: 2,
+      folder: 'shared/contracts/connections',
+      shortName: connectionId,
+      extension: '.ts',
+    };
+    let text = '';
+    try {
+      text = await readSourceText(fileInfo);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[connectionCatalog] catalog ${connectionId} not read: ${message}`);
+      continue;
+    }
+    if (!text.trim()) continue;
+    sources[connectionId] = text;
+  }
+  return sources;
 }
 
 /**

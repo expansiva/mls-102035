@@ -36,7 +36,9 @@ export type Ns5OracleIssueCode =
   | typeof NS5_FINALIZE_I2_POSSIBLE_MISSING_TRANSITION_REF
   | typeof NS5_FINALIZE_I8_LOGIN_PERSON_WITHOUT_REGISTRATION
   | typeof NS5_FINALIZE_I6_SYSTEM_TRANSITION_UNOWNED
-  | typeof NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING;
+  | typeof NS5_FINALIZE_I11_INBOUND_PENDING_IN_SIBLING
+  | 'EXTERNAL_FIELD_NOT_DELIVERED'
+  | 'EXTERNAL_FIELDS_NOT_CHECKED';
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;
@@ -64,6 +66,11 @@ export interface Ns5OracleSources {
   siblings?: Ns5SiblingModule[];
   /** Platform catalog event ids. `inbound.from: organization`. */
   platformEventIds?: string[];
+  /**
+   * Source text of platform connection catalogs, keyed by `connectionId`.
+   * Absent or missing entry: I14 warns that the external entity's fields were not checked.
+   */
+  connectionSources?: Record<string, string>;
 }
 
 export interface Ns5OracleIssue {

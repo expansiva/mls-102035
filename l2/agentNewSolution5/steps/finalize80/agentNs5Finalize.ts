@@ -14,6 +14,7 @@ import {
   updateStatus,
 } from '/_102035_/l2/agentNewSolution5/helpers/ns5Dispatch.js';
 import { NS5_DEFS_WRITING_STEPS, ns5CompileBlockers } from '/_102035_/l2/agentNewSolution5/helpers/ns5Compile.js';
+import { ns5ConnectionCatalogs, readNs5ConnectionSources } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { ns5PlatformEventIds, readNs5Siblings } from '/_102035_/l2/solution/ns5Siblings.js';
 import {
   collectNs5InboundPending,
@@ -252,7 +253,19 @@ async function loadSources(moduleName: string): Promise<Ns5OracleSources> {
     liftedAggregateEntities: pipeline?.steps.ontology30?.liftedAggregateEntities || [],
     siblings: await readNs5Siblings(moduleName),
     platformEventIds: ns5PlatformEventIds(),
+    connectionSources: await readNs5ConnectionSources(externalCatalogConnectionIds(entities)),
   };
+}
+
+function externalCatalogConnectionIds(entities: readonly Ns5OntologyAnyEntity[]): string[] {
+  const known = new Set(ns5ConnectionCatalogs().map(item => item.connectionId));
+  const ids: string[] = [];
+  for (const entity of entities) {
+    if (!isNs5OntologyV3Entity(entity) || entity.kind !== 'external') continue;
+    if (!known.has(entity.connectionId) || ids.includes(entity.connectionId)) continue;
+    ids.push(entity.connectionId);
+  }
+  return ids;
 }
 
 /** `roleTag` as the v3 ontology wrote it, or the v2 `storage.mdmType`. */
