@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/workflows50/agentNs5Workflows.ts" enhancement="_blank"/>
 
+import { withNs5WorkflowReceivesForm } from '/_102035_/l2/solution/helpers/workflowReceivesForm.js';
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { readNs5Actors } from '/_102035_/l2/agentNewSolution5/helpers/ns5Actors.js';
@@ -182,7 +183,7 @@ export async function beforeNs5WorkflowsPromptStep(
       ];
     }
     const [prompt, schema, previous] = await Promise.all([
-      readAgentText('steps/workflows50', 'prompt', '.md'),
+      readAgentText('steps/workflows50', 'prompt', '.md').then(withNs5WorkflowReceivesForm),
       readAgentJson<Record<string, unknown>>('schemas', 'workflows.schema', '.json'),
       moduleName ? readJson(draftFile(moduleName, 'workflows50')) : Promise.resolve(null),
     ]);

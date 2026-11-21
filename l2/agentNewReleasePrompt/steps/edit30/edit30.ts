@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.ts" enhancement="_blank" />
 
+import { NS5_WORKFLOW_RECEIVES_FORM } from '/_102035_/l2/solution/helpers/workflowReceivesForm.js';
 import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import { NS5_STEP_WRITES_FORM } from '/_102035_/l2/solution/helpers/journeyStepForm.js';
 import { NRP_AGENT_NAME, NRP_CANDIDATE_REL, parseNrpInvocation } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
@@ -146,6 +147,7 @@ export function buildNrpEditHumanPrompt(
   if (kind === 'integration') lines.push(NRP_INTEGRATION_SHAPE);
   if (kind === 'ontology') lines.push(`${NRP_LIFECYCLE_INTRO}\n${NS5_LIFECYCLE_FORM}`);
   if (kind === 'journeys') lines.push(NS5_STEP_WRITES_FORM);
+  if (kind === 'workflows') lines.push(NS5_WORKFLOW_RECEIVES_FORM);
   if (creates.length && reference) {
     const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
     lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);

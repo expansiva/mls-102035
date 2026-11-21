@@ -42,7 +42,8 @@ export type Ns5OracleIssueCode =
   | 'ENTITY_WITHOUT_GRANT'
   | 'ENTITY_WITHOUT_WRITER'
   | 'NS5_INITIAL_STATE'
-  | 'OWN_ENTITY_READ_BY_CALL';
+  | 'OWN_ENTITY_READ_BY_CALL'
+  | 'WORKFLOW_RECEIVES';
 
 export interface Ns5OracleSources {
   module: Ns5ModuleArtifact;

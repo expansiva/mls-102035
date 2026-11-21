@@ -69,6 +69,8 @@ The description says who calls, what it validates, what it writes, who it notifi
 returns, and what happens when the call is repeated. Do not repeat the entity operations of the
 journeys.
 
+{{ns5WorkflowReceivesForm}}
+
 ## When a journey is in a process
 
 For every journey in the human prompt, write one `journeyDecisions` row: `{ journeyId, inProcess,

@@ -356,7 +356,8 @@ function normalizeProcess(
   if (Array.isArray(source.functions)) {
     process.functions = list(source.functions).map(item => {
       const fn = record(item);
-      return { functionId: text(fn.functionId), description: text(fn.description) };
+      const receives = text(fn.receives);
+      return { functionId: text(fn.functionId), description: text(fn.description), ...(receives ? { receives } : {}) };
     });
   }
   return process;

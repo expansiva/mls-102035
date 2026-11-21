@@ -674,6 +674,8 @@ export interface Ns5WorkflowTask {
 export interface Ns5WorkflowFunction {
   /** lowerCamel; unique within the module. */
   functionId: string;
+  /** `<connectionId>.<operationId>` of the `serve` row of the integration this function answers; at most one function per operation. */
+  receives?: string;
   /** Prose: who calls it (screen, harness, schedule), what it validates, writes, notifies and returns, and what happens on a repeated call. */
   description: string;
 }

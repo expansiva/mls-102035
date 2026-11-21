@@ -54,6 +54,7 @@ import {
 } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { ns5InitialState, ns5InitialStateIssues } from '/_102035_/l2/solution/lifecycleInitial.js';
+import { checkWorkflowReceives, WORKFLOW_RECEIVES } from '/_102035_/l2/solution/gates/workflowReceives/contracts.js';
 import { checkOwnEntityReads, OWN_ENTITY_READ_BY_CALL } from '/_102035_/l2/solution/gates/ownEntityRead/contracts.js';
 import { checkEntityGrants, ENTITY_WITHOUT_GRANT } from '/_102035_/l2/solution/gates/accessEntity/contracts.js';
 import { checkExternalEntities, parseCatalogOutputFields, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
@@ -830,6 +831,17 @@ function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {
 
 /** An external entity of a platform catalog needs a call operation that cites it. Missing delivered fields are warnings. */
 function checkI14(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): void {
+  // l4_p4_140 s3f: a process function that says which arrival of a connection it answers.
+  const receivesRows = sources.workflows.processes.flatMap(process => (process.functions || []).map(fn => ({
+    processId: process.processId,
+    functionId: fn.functionId,
+    ...(fn.receives ? { receives: fn.receives } : {}),
+    processHasWait: process.tasks.some(task => task.kind === 'wait'),
+  })));
+  const serveOperations = (sources.integration.connections || [])
+    .filter(row => row.direction === 'serve')
+    .map(row => `${row.connectionId}.${row.operationId}`);
+  for (const issue of checkWorkflowReceives(receivesRows, serveOperations)) error('I14', issue.path, issue.message, WORKFLOW_RECEIVES);
   // l4_p4_140 s3d: the module reads its own table; a call to the outside reads what lives outside.
   const readSteps = sources.journeys.flatMap(journey => journey.business.steps.map(step => ({
     journeyId: journey.journeyId, stepId: step.stepId, kind: step.kind, entityId: step.entity || '',

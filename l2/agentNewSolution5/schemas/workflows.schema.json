@@ -44,7 +44,8 @@
             "required": ["functionId", "description"],
             "properties": {
               "functionId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-              "description": { "type": "string", "minLength": 1 }
+              "description": { "type": "string", "minLength": 1 },
+              "receives": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*$" }
             }
           }
         },
