@@ -30,6 +30,7 @@ import type {
 import { sha256Tobe, tobeDiff, type NewReleaseDiffEntry } from '/_102035_/l2/solution/candidate/tobeDiff.js';
 import { validateNs5Overlay } from '/_102035_/l2/solution/candidate/overlayValidation.js';
 import type { Ns4SolutionRegistryArtifact } from '/_102035_/l2/solution/helpers/organizationTypes.js';
+import { ns5ConnectionCatalogs, readNs5ConnectionSources } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { readNs5SiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import { siblingsFromRegistry } from '/_102035_/l2/newRelease/integrationRequests.js';
 import {
@@ -508,9 +509,10 @@ export async function readNs5Overlay(
   }
   errors.push(...siblingRead.errors);
   const siblingSystems = siblingRead.groups.flatMap(group => group.systems);
+  const connectionSources = await readNs5ConnectionSources(ns5ConnectionCatalogs().map(catalog => catalog.connectionId));
   return { sources, manifest, sealedRevision, changeId: active?.changeId ?? null, revisionId: active?.activeRevisionId ?? null,
     confirmedRound: historicalRelease?.confirmedRound, stalePaths, diffs,
-    validation: await validateNs5Overlay(sources, { ...context, siblingSystems, ontologyPlan }, baseline), errors };
+    validation: await validateNs5Overlay(sources, { ...context, siblingSystems, ontologyPlan, connectionSources }, baseline), errors };
 }
 
 /** Retire only the successfully applied revision, keeping its immutable history. */

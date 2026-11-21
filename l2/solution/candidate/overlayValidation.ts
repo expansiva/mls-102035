@@ -53,6 +53,7 @@ export async function validateNs5Overlay(
     registryModuleNames?: string[];
     ontologyPlan?: Ns5OntologyV3PlanDraft | null;
     siblingSystems: readonly Ns5IntegrationExternalSystem[];
+    connectionSources?: Record<string, string>;
   },
   base?: NewReleaseOverlaySources,
 ): Promise<NewReleaseOverlayValidation> {
@@ -63,6 +64,7 @@ export async function validateNs5Overlay(
   if (isNs5OntologyV3(ontologyIndex)) {
     return validateV3Candidate(sources, {
       mdm, tdm, ddm, ontologyPlan: context.ontologyPlan, registryModuleNames: context.registryModuleNames, siblingSystems: context.siblingSystems,
+      ...(context.connectionSources ? { connectionSources: context.connectionSources } : {}),
     }, base);
   }
   const issues: NewReleaseValidationIssue[] = [];
@@ -134,10 +136,11 @@ export async function validateNs5Overlay(
 
   if (module && journeyIndex && ontologyIndex && rules && workflows && access && integration
     && journeys.length === sources.journeys.length && entities.length === sources.entities.length) {
-    const extras: Pick<Ns5OracleSources, 'journeyDiskFiles' | 'ontologyDiskFiles' | 'liftedAggregateEntities'> = {
+    const extras: Pick<Ns5OracleSources, 'journeyDiskFiles' | 'ontologyDiskFiles' | 'liftedAggregateEntities' | 'connectionSources'> = {
       journeyDiskFiles: ['index', ...sources.journeys.map(item => pathParts(item.path).shortName)],
       ontologyDiskFiles: ['index', ...sources.entities.map(item => pathParts(item.path).shortName)],
       liftedAggregateEntities: context?.pipeline?.steps.ontology30?.liftedAggregateEntities,
+      ...(context.connectionSources ? { connectionSources: context.connectionSources } : {}),
     };
     const candidate: CandidateModule = {
       module, journeyIndex, journeys, ontologyIndex, entities, rules, workflows, access, integration,

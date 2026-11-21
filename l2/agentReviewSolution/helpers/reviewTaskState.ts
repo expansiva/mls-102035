@@ -13,6 +13,7 @@ import {
   readPipelineForProject,
   readSolutionRegistry,
 } from '/_102035_/l2/solution/fs.js';
+import { ns5ConnectionCatalogs, readNs5ConnectionSources } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { ns5SiblingsFromRegistry, readSiblingSystems, type Ns5SiblingModule } from '/_102035_/l2/solution/ns5Siblings.js';
 import type {
   Validate40Context,
@@ -135,6 +136,7 @@ async function readRealValidationContext(project: number, moduleName: string): P
   } finally {
     mls.actualProject = previousProject;
   }
+  const connectionSources = await readNs5ConnectionSources(ns5ConnectionCatalogs().map(catalog => catalog.connectionId));
   return {
     v3: {
       ...(mdm ? { mdm: mdm as MdmOntology } : {}),
@@ -143,8 +145,9 @@ async function readRealValidationContext(project: number, moduleName: string): P
       ontologyPlan,
       registryModuleNames,
       siblingSystems,
+      connectionSources,
     },
-    v2: { pipeline, registryModuleNames, siblingSystems },
+    v2: { pipeline, registryModuleNames, siblingSystems, connectionSources },
   };
 }
 

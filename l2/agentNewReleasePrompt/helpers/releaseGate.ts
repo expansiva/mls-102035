@@ -6,6 +6,7 @@ import {
   assembleCandidateModule,
   classifyCandidateIssues,
   verifyCandidateModule,
+  type CandidateOracleExtras,
 } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { promptHoldSummary, promptTwinSummary } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
@@ -60,8 +61,9 @@ export function checkNrpGates(
   artifacts: NrpModuleArtifacts,
   kinds: readonly NrpArtifactKind[],
   siblingSystems: readonly Ns5IntegrationExternalSystem[],
+  extras?: CandidateOracleExtras,
 ): NrpGateIssue[] {
-  return verifyCandidateModule(artifacts, kinds, siblingSystems);
+  return verifyCandidateModule(artifacts, kinds, siblingSystems, extras);
 }
 
 export function nrpIssueKey(issue: NrpGateIssue): string {

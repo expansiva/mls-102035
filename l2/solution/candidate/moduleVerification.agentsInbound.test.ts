@@ -104,6 +104,24 @@ test('a new agents rule with no entity blocks publication until an entity cites 
   assert.equal(candidateCanPublish(cited, ['oracle']), true);
 });
 
+const CATALOG_WITHOUT_PROMPT = `
+  export interface CmListAgentsOutput { agents: CmAgentCard[]; }
+  export interface CmAgentCard { name: string; situation: string; }
+`;
+
+test('agents-d9a7a597 surfaces an unread AgentDraft field as an oracle warning', () => {
+  const validation = validateV3Candidate(agentsOverlay(), {
+    siblingSystems: [],
+    connectionSources: { cm: CATALOG_WITHOUT_PROMPT },
+  });
+  const prompt = validation.issues.filter(issue => issue.code === 'EXTERNAL_FIELD_NOT_DELIVERED' && issue.path === 'ontology.AgentDraft.prompt');
+  assert.equal(prompt.length, 1);
+  assert.equal(prompt[0]?.severity, 'warning');
+  assert.equal(prompt[0]?.source, 'oracle');
+  assert.equal(prompt[0]?.baseline, undefined);
+  assert.equal(validation.issues.some(issue => issue.severity === 'error' && issue.path === 'ontology.AgentDraft.prompt'), false);
+});
+
 test('agents L4 at d9a7a597 has no inbound-writer error; dropping cm.record charges ExecutionSummary', () => {
   const artifacts = agentsModule();
   assert.deepEqual(inboundWriter(artifacts), []);

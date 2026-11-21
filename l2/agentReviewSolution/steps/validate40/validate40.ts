@@ -36,7 +36,7 @@ export interface Validate40CorrectionState {
 
 export interface Validate40Context {
   v3?: CandidateV3Context;
-  v2?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[]; siblingSystems: readonly Ns5IntegrationExternalSystem[] };
+  v2?: { pipeline?: Ns5PipelineState | null; registryModuleNames?: string[]; siblingSystems: readonly Ns5IntegrationExternalSystem[]; connectionSources?: Record<string, string> };
 }
 
 export interface Validate40Input {

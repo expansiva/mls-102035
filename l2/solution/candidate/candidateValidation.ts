@@ -28,6 +28,8 @@ export interface CandidateV3Context {
   ontologyPlan?: Ns5OntologyV3PlanDraft | null;
   registryModuleNames?: string[];
   siblingSystems: readonly Ns5IntegrationExternalSystem[];
+  /** Platform catalog source, keyed by connectionId. Absent means the field check was not run. */
+  connectionSources?: Record<string, string>;
 }
 
 const AREAS: CandidateArea[] = ['module', 'journeys', 'ontologyAssembly', 'ontologyEntities', 'rules', 'workflows', 'access', 'integration', 'oracle'];
@@ -208,7 +210,7 @@ function validateV3CandidateRun(
     coverage.oracle = { status: 'error', reason: 'Oracle context is missing.' };
     issue('oracle', 'module.defs.ts', 'NR_ORACLE_CONTEXT', 'Module, journeys, ontology, rules, workflows, access or integration is missing.', '$', 'oracle');
   } else {
-    const result = runCandidateOracle(oracleModule);
+    const result = runCandidateOracle(oracleModule, context.connectionSources ? { connectionSources: context.connectionSources } : undefined);
     oracle = result.report;
     for (const item of result.issues) {
       issue('oracle', artifactForOraclePath(item.path), item.code, item.message, item.path, 'oracle');

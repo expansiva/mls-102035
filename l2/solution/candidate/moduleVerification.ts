@@ -111,7 +111,7 @@ export function freshCandidateIssues(issues: readonly CandidateGateIssue[]): Can
 }
 
 export type CandidateOracleExtras = Pick<Ns5OracleSources,
-  'journeyDiskFiles' | 'ontologyDiskFiles' | 'liftedAggregateEntities' | 'siblings' | 'platformEventIds'>;
+  'journeyDiskFiles' | 'ontologyDiskFiles' | 'liftedAggregateEntities' | 'siblings' | 'platformEventIds' | 'connectionSources'>;
 
 export function runCandidateOracle(artifacts: CandidateModule, extras?: CandidateOracleExtras): CandidateOracleResult {
   try {
