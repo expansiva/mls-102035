@@ -10,12 +10,14 @@ import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import type { Ns5FinalizeReport, Ns5OracleSources } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import { isNs5OntologyV3Entity, ns5OntologyEdges, ns5OntologyEntityViews, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
 import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
+import { NS5_STEP_WRITES_FORM } from '/_102035_/l2/solution/helpers/journeyStepForm.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import type {
   Ns5AccessArtifact,
   Ns5IntegrationArtifact,
   Ns5IntegrationExternalSystem,
   Ns5JourneyArtifact,
+  Ns5JourneyStep,
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
@@ -88,7 +90,7 @@ export function verifyCandidateModule(
   siblingSystems: readonly Ns5IntegrationExternalSystem[],
   extras?: CandidateOracleExtras,
 ): CandidateGateIssue[] {
-  const shape = malformedEntityShapeIssues(artifacts.entities);
+  const shape = [...malformedEntityShapeIssues(artifacts.entities), ...unknownJourneyStepKeyIssues(artifacts.journeys)];
   if (shape.length) return shape;
   const issues: CandidateGateIssue[] = [];
   for (const kind of kinds) {
@@ -105,6 +107,33 @@ const ENTITY_V3_KEYS = [
   'lifecycleStates', 'transitions', 'relationships', 'capabilities', 'rules', 'writer',
   'kind', 'subtype', 'roleTag', 'source', 'class', 'storage', 'initialData', 'connectionId',
 ] as const satisfies readonly (keyof Ns5OntologyRoleV3 | keyof Ns5OntologyTableV3 | keyof Ns5OntologyExternalV3)[];
+
+/** Every property a journey step can carry. A key outside this list is read by no gate and no generator. */
+const JOURNEY_STEP_KEYS = [
+  'stepId', 'kind', 'entity', 'affects', 'effect', 'transitionRef', 'title', 'description', 'handoffTo', 'icon', 'decisionRef',
+] as const satisfies readonly (keyof Ns5JourneyStep)[];
+
+/** A key old model answers carry on a step and the journeys normalizer already drops; refusing it would only add friction. */
+const JOURNEY_STEP_TOLERATED_KEYS = ['actorRef'] as const;
+
+/** A step property no gate reads (a second write written under an invented name, for one) is refused with the right form. */
+export function unknownJourneyStepKeyIssues(journeys: readonly Ns5JourneyArtifact[]): CandidateGateIssue[] {
+  const allowed: readonly string[] = [...JOURNEY_STEP_KEYS, ...JOURNEY_STEP_TOLERATED_KEYS];
+  const issues: CandidateGateIssue[] = [];
+  for (const journey of journeys) {
+    (journey.business?.steps || []).forEach((step, index) => {
+      for (const key of Object.keys(step).filter(item => !allowed.includes(item))) {
+        issues.push({
+          kind: 'journeys',
+          code: 'NRP_GATE_FAILED',
+          message: `${key} is not a property of a step of ${journey.journeyId}; no gate reads it. Allowed: ${JOURNEY_STEP_KEYS.join(', ')}. ${NS5_STEP_WRITES_FORM}`,
+          path: `journeys.${journey.journeyId}.steps[${index}].${key}`,
+        });
+      }
+    });
+  }
+  return issues;
+}
 
 const ENTITY_ARRAY_FIELDS = ['uniqueKeys', 'lifecycleStates', 'transitions'] as const;
 

@@ -15,6 +15,7 @@ import type {
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
 import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
+import { NS5_STEP_WRITES_FORM } from '/_102035_/l2/solution/helpers/journeyStepForm.js';
 import {
   CANDIDATE_GATE_KINDS,
   assembleCandidateModule,
@@ -80,6 +81,17 @@ test('a property no gate reads, like a nested lifecycle block, is an ontology is
   assert.equal(issues[0].kind, 'ontology');
   assert.equal(issues[0].path, `ontology.${String(first.entityId)}.lifecycle`);
   assert.ok(issues[0].message.includes(NS5_LIFECYCLE_FORM), 'the message carries the shared lifecycle form');
+});
+
+test('a step property no gate reads, like alsoWrites, is a journeys issue that teaches affects', () => {
+  const artifacts = tarefasModule();
+  const journeys = structuredClone(artifacts.journeys);
+  (journeys[0].business.steps[0] as unknown as Record<string, unknown>).alsoWrites = [{ entity: 'X' }];
+  const issues = verifyCandidateModule({ ...artifacts, journeys }, CANDIDATE_GATE_KINDS, []);
+  assert.equal(issues.length, 1, issues.map(issue => issue.path).join(','));
+  assert.equal(issues[0].kind, 'journeys');
+  assert.match(issues[0].path, /^journeys\.[A-Za-z0-9]+\.steps\[0\]\.alsoWrites$/);
+  assert.ok(issues[0].message.includes(NS5_STEP_WRITES_FORM));
 });
 
 test('a new rules error blocks and an error already on the module does not', () => {

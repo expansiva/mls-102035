@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.test.ts" enhancement="_blank" />
 
 import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
+import { NS5_STEP_WRITES_FORM } from '/_102035_/l2/solution/helpers/journeyStepForm.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -113,6 +114,9 @@ void test('an ontology edit carries the shared lifecycle form; other kinds do no
   assert.match(ontology, /There is no `lifecycle` block/);
   const rules = buildNrpEditHumanPrompt('Add a rule.', triage, 'rules', [{ id: 'rules', artifact: { rules: [] } }]);
   assert.equal(rules.includes(NS5_LIFECYCLE_FORM), false);
+  const journeys = buildNrpEditHumanPrompt('Record the change.', triage, 'journeys', [{ id: 'changeMyConduct', artifact: { journeyId: 'changeMyConduct' } }]);
+  assert.ok(journeys.includes(NS5_STEP_WRITES_FORM), 'a journeys edit learns affects');
+  assert.equal(ontology.includes(NS5_STEP_WRITES_FORM), false);
 });
 
 void test('a recorded edit response applies one operation to the current file', () => {
