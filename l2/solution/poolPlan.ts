@@ -125,7 +125,7 @@ export interface PoolMenuFile {
 export const POOL_NEEDS_SCHEMA_VERSION = '2026-09-21-p2-needs-v1' as const;
 export const POOL_NEEDS_OPERATIONS = ['create', 'update', 'transition', 'delete'] as const;
 export type PoolNeedsOperation = typeof POOL_NEEDS_OPERATIONS[number];
-export const POOL_NEEDS_SCOPES = ['own', 'related', 'organization'] as const;
+export const POOL_NEEDS_SCOPES = ['own', 'assigned', 'related', 'organization', 'public', 'custom'] as const;
 export type PoolNeedsScope = typeof POOL_NEEDS_SCOPES[number];
 export const POOL_NEEDS_FAMILIES = ['mdm', 'ddm', 'tdm'] as const;
 export type PoolNeedsFamily = typeof POOL_NEEDS_FAMILIES[number];
