@@ -17,6 +17,7 @@ import type {
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import { NS5_LIFECYCLE_ON_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { verifyCandidateModule, type CandidateModule } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { candidateCanPublish, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
@@ -130,4 +131,17 @@ test('agents L4 at d9a7a597 has no inbound-writer error; dropping cm.record char
   integration.connections = (integration.connections || []).filter(row => !(row.connectionId === 'cm' && row.operationId === 'record'));
   const charged = inboundWriter({ ...artifacts, integration });
   assert.ok(charged.some(message => message.includes('ExecutionSummary')), charged.join('\n'));
+});
+
+test('a draft that moves out of external with a decide and no lifecycle charges the entity, not the journey', () => {
+  const artifacts = agentsModule();
+  const draft = structuredClone(artifacts.entities.find(entity => entity.entityId === 'AgentDraft')) as unknown as Record<string, unknown>;
+  draft.kind = 'entity';
+  delete draft.connectionId;
+  const entities = artifacts.entities.map(entity => entity.entityId === 'AgentDraft' ? draft as unknown as Ns5OntologyAnyEntity : entity);
+  const issues = verifyCandidateModule({ ...artifacts, entities }, ['journeys', 'integration'], [])
+    .filter(issue => issue.code === 'NS5_FINALIZE_I2' || issue.code === 'NS5_FINALIZE_I1');
+  const decide = issues.filter(issue => issue.message.includes('needs at least two transitions'));
+  assert.equal(decide.length, 1, issues.map(issue => `${issue.code} ${issue.path} ${issue.message}`).join('\n'));
+  assert.ok((decide[0]?.message ?? '').endsWith(NS5_LIFECYCLE_ON_ENTITY), decide[0]?.message);
 });

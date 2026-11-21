@@ -12,7 +12,7 @@ import { promptHoldSummary, promptTwinSummary } from '/_102035_/l2/agentNewRelea
 import { createNs4FlexibleWorkerTool } from '/_102035_/l2/solution/helpers/ns4WorkerTools.js';
 import { NRP_EDIT_SCHEMA, NRP_EDIT_TOOL, NRP_JOURNEY_RULES, nrpOccupiedSignatureBlock } from '/_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.js';
 import type { Ns5IntegrationExternalSystem } from '/_102035_/l2/solution/types.js';
-import { NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
+import { NS5_LIFECYCLE_ON_ENTITY, NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 
 export type NrpGateKind = NrpArtifactKind | 'coherence';
 
@@ -109,8 +109,15 @@ function nrpExternalWithoutOperation(issue: NrpGateIssue): boolean {
   return issue.kind === 'coherence' && issue.code === 'NS5_FINALIZE_I14';
 }
 
+/** A transition or a branching origin the journey needs and the entity does not declare: the repair edits the entity file. */
+function nrpLifecycleOnEntity(issue: NrpGateIssue): boolean {
+  return issue.kind === 'coherence'
+    && (issue.code === 'NS5_FINALIZE_I1' || issue.code === 'NS5_FINALIZE_I2')
+    && issue.message.includes(NS5_LIFECYCLE_ON_ENTITY);
+}
+
 export function nrpIssueOwner(issue: NrpGateIssue): NrpArtifactKind | null {
-  if (nrpUncitedRule(issue)) return 'ontology';
+  if (nrpUncitedRule(issue) || nrpLifecycleOnEntity(issue)) return 'ontology';
   if (nrpExternalWithoutOperation(issue)) return 'integration';
   if (issue.kind !== 'coherence') return issue.kind;
   const head = issue.path.split(/[./[]/u)[0];
@@ -328,7 +335,7 @@ export function nrpRepairPromptFiles(
   const chosen: NrpRepairFile[] = [];
   const index = catalog.find(file => file.id === 'index');
   const owned = nrpFreshIssues(issues).filter(issue => nrpIssueOwner(issue) === kind);
-  if (kind === 'ontology' && owned.some(nrpUncitedRule)) {
+  if (kind === 'ontology' && owned.some(issue => nrpUncitedRule(issue) || nrpLifecycleOnEntity(issue))) {
     if (index) chosen.push(index);
     for (const file of catalog) if (file.id !== 'index') chosen.push(file);
     return chosen;

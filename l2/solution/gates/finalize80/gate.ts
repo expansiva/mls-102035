@@ -72,6 +72,10 @@ import {
 export const NS5_RULE_CITED_BY_NO_ENTITY =
   'is cited by no entity. Cite the rule id in `rules` of the entity it governs; do not delete the rule';
 
+/** Suffix of an I1/I2 error whose cause is a missing lifecycle on the entity. The New Release repair matches this text. */
+export const NS5_LIFECYCLE_ON_ENTITY =
+  'Declare it on the entity file (`transitions`, with its states in `lifecycleStates`); keep the journey step as it is.';
+
 export function runNs5Oracle(sources: Ns5OracleSources): Ns5FinalizeReport {
   const errors: Ns5OracleIssue[] = [];
   const warnings: Ns5OracleIssue[] = [];
@@ -172,7 +176,7 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
             error('I1', `${path}.transitionRef`, `${step.entity} is external: ${step.transitionRef} needs a \`call\` row of integration.connections whose usedBy is ${journey.journeyId}.${step.stepId}.`);
           }
         } else if (!ids.has(step.transitionRef)) {
-          error('I1', `${path}.transitionRef`, `Unknown transition ${step.transitionRef}.`);
+          error('I1', `${path}.transitionRef`, `Unknown transition ${step.transitionRef} on ${step.entity}. ${NS5_LIFECYCLE_ON_ENTITY}`);
         }
       }
     });
@@ -316,7 +320,7 @@ function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): v
           error(
             'I2',
             path,
-            `decide ${step.stepId} on ${step.entity} needs at least two transitions from the same origin state.`,
+            `decide ${step.stepId} on ${step.entity} needs at least two transitions from the same origin state. ${NS5_LIFECYCLE_ON_ENTITY}`,
           );
         }
         return;

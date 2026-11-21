@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
-import { NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
+import { NS5_LIFECYCLE_ON_ENTITY, NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { applyNrpMechanical } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import {
   buildNrpRepairHumanPrompt,
@@ -441,6 +441,35 @@ void test('an uncited rule is owned by ontology and the repair sees every entity
   assert.match(human, /Cite the rule id in `rules` of the entity it governs/);
   assert.match(human, /"entityId":"Agent"/);
   assert.match(human, /"entityId":"Tool"/);
+});
+
+void test('a decide on an entity with no lifecycle is owned by ontology and the repair sees every entity', () => {
+  const decide: NrpGateIssue = {
+    kind: 'coherence',
+    code: 'NS5_FINALIZE_I2',
+    path: 'journeys.reviewAndActivateDraft.steps[4]',
+    message: `decide chooseDraftOutcome on AgentDraft needs at least two transitions from the same origin state. ${NS5_LIFECYCLE_ON_ENTITY}`,
+  };
+  const unknown: NrpGateIssue = {
+    kind: 'coherence',
+    code: 'NS5_FINALIZE_I1',
+    path: 'journeys.reviewAndActivateDraft.steps[5].transitionRef',
+    message: `Unknown transition activate on AgentDraft. ${NS5_LIFECYCLE_ON_ENTITY}`,
+  };
+  assert.equal(nrpIssueOwner(decide), 'ontology');
+  assert.equal(nrpIssueOwner(unknown), 'ontology');
+  const sameCodeOtherCause: NrpGateIssue = {
+    kind: 'coherence', code: 'NS5_FINALIZE_I1', path: 'journeys.x.steps[0].entity', message: 'Unknown entity Foo.',
+  };
+  assert.equal(nrpIssueOwner(sameCodeOtherCause), 'journeys');
+  const catalog = [
+    { id: 'index', artifact: { entities: ['AgentDraft', 'Tool'] } },
+    { id: 'AgentDraft', artifact: { entityId: 'AgentDraft' } },
+    { id: 'Tool', artifact: { entityId: 'Tool' } },
+  ];
+  assert.deepEqual(nrpRepairPromptFiles('ontology', [decide], catalog).map(file => file.id), ['index', 'AgentDraft', 'Tool']);
+  assert.equal(nrpIssueLines([decide, unknown], 'journeys').length, 0);
+  assert.equal(nrpIssueLines([decide, unknown], 'ontology').length, 2);
 });
 
 function applyJourneyOps(
