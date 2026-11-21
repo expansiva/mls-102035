@@ -95,7 +95,7 @@ void test('rewritten defs text matches the gated value for remove, replace and a
       mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
     },
     artifacts: {
-      module: { sourcePrompt: 'As tarefas usam etiquetas no detalhe.' },
+      module: { sourcePrompt: 'A entidade Tarefa usa etiquetas no detalhe.' },
     } as unknown as NrpModuleArtifacts,
     applied: [], issues: [], allowWrite: true, modelCalls: 1,
   }, { written: true, reason: null, files: [] });
@@ -130,7 +130,7 @@ void test('removing a details field touches only that field line, and a leftover
 
   const pending = nrpPendingTextMarks({
     entities: [],
-    journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ description: 'Grava a tarefa com etiquetas.' }] } }],
+    journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ entity: 'Tarefa', description: 'Grava a tarefa com etiquetas.' }] } }],
   } as unknown as NrpModuleArtifacts, {
     valid: true, reason: null, clarification: null, artifacts: ['ontology', 'journeys'], targets: ['Tarefa'],
     intent: 'Drop labels.', mechanicalOnly: false, assumptions: [],
@@ -147,7 +147,7 @@ void test('removing a details field touches only that field line, and a leftover
       mechanical: [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }],
     },
     artifacts: {
-      journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ description: 'Grava a tarefa com etiquetas.' }] } }],
+      journeys: [{ journeyId: 'criarTarefa', business: { steps: [{ entity: 'Tarefa', description: 'Grava a tarefa com etiquetas.' }] } }],
     } as unknown as NrpModuleArtifacts,
     applied: [{ mode: 'model', kind: 'journeys', artifact: { files: [] } }],
     issues: [], allowWrite: true, modelCalls: 2,

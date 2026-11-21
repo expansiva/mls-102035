@@ -244,7 +244,7 @@ export function nrpUnresolvedTextMarks(
     if (!file) continue;
     const artifact = byId.get(file);
     if (artifact === undefined) continue;
-    for (const hit of nrpFreeTextHits(artifact, [mark.item])) {
+    for (const hit of nrpFreeTextHits(artifact, [mark.item], mark.scope)) {
       const key = `${file}\n${hit.path}\n${hit.term}`;
       if (seen.has(key)) continue;
       seen.add(key);

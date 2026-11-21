@@ -11,7 +11,7 @@ import {
   type NrpGateKind,
   type NrpRepairRound,
 } from '/_102035_/l2/agentNewReleasePrompt/helpers/releaseGate.js';
-import { nrpFreeTextHits } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
+import { nrpFieldTerms, nrpFreeTextHits } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import type { NrpTriage } from '/_102035_/l2/agentNewReleasePrompt/steps/triage20/triage20.js';
 import {
   accessFile,
@@ -941,7 +941,7 @@ export function nrpReport(payload: NrpWritePayload, planned: NrpPersistPlan, sum
     written: planned.written,
     reason: planned.reason,
     summary,
-    notEdited: nrpFreeTextHits(payload.artifacts.module, removedFieldTerms(payload.triage)).map(hit => ({
+    notEdited: removedTermHits(payload.artifacts.module, payload.triage).map(hit => ({
       kind: 'module',
       path: hit.path,
       text: hit.text,
@@ -957,11 +957,9 @@ export function nrpPendingTextMarks(
   artifacts: NrpModuleArtifacts,
   triage: NrpTriage,
 ): Array<{ file: string; path: string; term: string; text: string }> {
-  const terms = citationTerms(triage);
-  if (!terms.length) return [];
   const rows: Array<{ file: string; path: string; term: string; text: string }> = [];
   const push = (file: string, value: unknown): void => {
-    for (const hit of nrpFreeTextHits(value, terms)) rows.push({ file, path: hit.path, term: hit.term, text: hit.text });
+    for (const hit of removedTermHits(value, triage)) rows.push({ file, path: hit.path, term: hit.term, text: hit.text });
   };
   for (const entity of artifacts.entities || []) push(entity.entityId, entity);
   push('ontology/index', artifacts.ontologyIndex);
@@ -974,24 +972,21 @@ export function nrpPendingTextMarks(
   return rows;
 }
 
-function citationTerms(triage: NrpTriage): string[] {
-  const terms = new Set<string>(removedFieldTerms(triage));
+/** A removed field counts by its bare name only where it belongs to its entity; a removed item counts by its id. */
+function removedTermHits(value: unknown, triage: NrpTriage): Array<{ path: string; text: string; term: string }> {
+  const hits: Array<{ path: string; text: string; term: string }> = [];
+  const itemTerms: string[] = [];
   for (const mark of triage.mechanical) {
-    if (mark.op === 'remove' && !mark.fieldId && mark.targetId) terms.add(mark.targetId);
+    if (mark.op !== 'remove') continue;
+    if (!mark.fieldId) {
+      if (mark.targetId) itemTerms.push(mark.targetId);
+      continue;
+    }
+    const { terms, scope } = nrpFieldTerms(mark.targetId, mark.fieldId);
+    hits.push(...nrpFreeTextHits(value, terms, scope));
   }
-  return [...terms];
-}
-
-function removedFieldTerms(triage: NrpTriage): string[] {
-  const terms = new Set<string>();
-  for (const mark of triage.mechanical) {
-    if (mark.op !== 'remove' || !mark.fieldId) continue;
-    const leaf = mark.fieldId.slice(mark.fieldId.lastIndexOf('.') + 1);
-    if (leaf) terms.add(leaf);
-    terms.add(mark.fieldId);
-    if (mark.targetId) terms.add(`${mark.targetId}.${mark.fieldId}`);
-  }
-  return [...terms];
+  if (itemTerms.length) hits.push(...nrpFreeTextHits(value, itemTerms));
+  return hits;
 }
 
 function readPayload(prompt: unknown): NrpWritePayload {

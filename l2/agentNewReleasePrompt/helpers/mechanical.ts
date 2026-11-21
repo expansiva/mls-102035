@@ -9,6 +9,44 @@ export interface NrpTextMark {
   path: string;
   text: string;
   item: string;
+  /** Set for a removed field: where its bare name counts (see `NrpTermScope`). */
+  scope?: NrpTermScope;
+}
+
+/**
+ * Where the bare name of a removed field counts. A field name is often a common word (summary, name, status),
+ * so the bare name only names the field inside what belongs to its entity: the entity's own artifact, a record
+ * that refers to the entity (`entity`, `entityId`, `entityRefs`, `entities`), or a text that also says the entity id.
+ * Elsewhere only the qualified `Entity.field` counts.
+ */
+export interface NrpTermScope {
+  entityId: string;
+  qualified: readonly string[];
+}
+
+const ENTITY_REF_KEYS = ['entity', 'entityId'] as const;
+const ENTITY_LIST_KEYS = ['entityRefs', 'entities'] as const;
+
+function refersToEntity(node: Record<string, unknown>, entityId: string): boolean {
+  if (ENTITY_REF_KEYS.some(key => node[key] === entityId)) return true;
+  return ENTITY_LIST_KEYS.some(key => {
+    const list = node[key];
+    return Array.isArray(list) && list.includes(entityId);
+  });
+}
+
+/** The terms of a removed field and the scope in which its bare name counts. */
+export function nrpFieldTerms(entityId: string, fieldId: string): { terms: string[]; scope: NrpTermScope } {
+  const qualified = `${entityId}.${fieldId}`;
+  const leaf = fieldId.slice(fieldId.lastIndexOf('.') + 1);
+  const terms = [...new Set([leaf, fieldId, qualified].filter(term => term.length > 0))];
+  return { terms, scope: { entityId, qualified: [qualified] } };
+}
+
+/** The terms that apply to a text: all of them where the field belongs, only the qualified one elsewhere. */
+function applicableTerms(text: string, terms: readonly string[], scope: NrpTermScope | undefined, inEntity: boolean): readonly string[] {
+  if (!scope || inEntity || mentions(text, scope.entityId)) return terms;
+  return terms.filter(term => scope.qualified.includes(term));
 }
 
 export interface NrpMechanicalResult {
@@ -190,11 +228,10 @@ function removeField(
   });
   if (!found) throw new Error(`Field ${entityId}.${fieldId} was not found.`);
   const structural = [fieldId, `${entityId}.${fieldId}`];
-  const leaf = fieldId.slice(fieldId.lastIndexOf('.') + 1);
-  const terms = [...new Set([leaf, ...structural].filter(term => term.length > 0))];
+  const { terms, scope } = nrpFieldTerms(entityId, fieldId);
   const pruned: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(next)) {
-    pruned[key] = pruneFieldCitations(child, structural, terms, `$.${key}`, SECTION_KIND[key] ?? null, textMarks);
+    pruned[key] = pruneFieldCitations(child, structural, terms, `$.${key}`, SECTION_KIND[key] ?? null, textMarks, scope, false);
   }
   return pruned as unknown as NrpModuleArtifacts;
 }
@@ -235,49 +272,58 @@ function pruneFieldCitations(
   path: string,
   kind: NrpArtifactKind | null,
   textMarks: NrpTextMark[],
+  scope: NrpTermScope,
+  inEntity: boolean,
 ): unknown {
   if (typeof value === 'string') {
-    if (structural.includes(value)) return undefined;
+    // The bare field id is removed only where it belongs to the entity; `Entity.field` is removed anywhere.
+    if (structural.includes(value) && (inEntity || scope.qualified.includes(value))) return undefined;
     if (kind) {
-      const item = longestTerm(value, terms);
-      if (item) textMarks.push({ kind, path, text: value, item });
+      const item = longestTerm(value, applicableTerms(value, terms, scope, inEntity));
+      if (item) textMarks.push({ kind, path, text: value, item, scope });
     }
     return value;
   }
   if (Array.isArray(value)) {
     const kept: unknown[] = [];
     value.forEach((item, index) => {
-      const pruned = pruneFieldCitations(item, structural, terms, `${path}[${index}]`, kind, textMarks);
+      const pruned = pruneFieldCitations(item, structural, terms, `${path}[${index}]`, kind, textMarks, scope, inEntity);
       if (pruned !== undefined) kept.push(pruned);
     });
     return kept;
   }
   if (!isRecord(value)) return value;
+  const here = inEntity || refersToEntity(value, scope.entityId);
   const next: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    const pruned = pruneFieldCitations(child, structural, terms, `${path}.${key}`, kind, textMarks);
+    const pruned = pruneFieldCitations(child, structural, terms, `${path}.${key}`, kind, textMarks, scope, here);
     if (pruned !== undefined) next[key] = pruned;
   }
   return next;
 }
 
-/** Free text that names a removed field. `module` is reported and not edited. */
-export function nrpFreeTextHits(value: unknown, terms: readonly string[]): Array<{ path: string; text: string; term: string }> {
+/** Free text that names a removed field. `module` is reported and not edited. A `scope` limits the bare name. */
+export function nrpFreeTextHits(
+  value: unknown,
+  terms: readonly string[],
+  scope?: NrpTermScope,
+): Array<{ path: string; text: string; term: string }> {
   const hits: Array<{ path: string; text: string; term: string }> = [];
-  const visitHit = (node: unknown, path: string): void => {
+  const visitHit = (node: unknown, path: string, inEntity: boolean): void => {
     if (typeof node === 'string') {
-      const term = longestTerm(node, terms);
+      const term = longestTerm(node, applicableTerms(node, terms, scope, inEntity));
       if (term) hits.push({ path, text: node, term });
       return;
     }
     if (Array.isArray(node)) {
-      node.forEach((item, index) => visitHit(item, `${path}[${index}]`));
+      node.forEach((item, index) => visitHit(item, `${path}[${index}]`, inEntity));
       return;
     }
     if (!isRecord(node)) return;
-    for (const [key, child] of Object.entries(node)) visitHit(child, `${path}.${key}`);
+    const here = inEntity || (scope !== undefined && refersToEntity(node, scope.entityId));
+    for (const [key, child] of Object.entries(node)) visitHit(child, `${path}.${key}`, here);
   };
-  visitHit(value, '$');
+  visitHit(value, '$', false);
   return hits;
 }
 

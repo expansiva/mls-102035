@@ -470,15 +470,17 @@ void test('remove of a details field keeps the entity and drops only that field'
   const citedJourney = cited.journeys.find(item => item.journeyId === 'criarTarefa') as unknown as {
     business: { steps: Array<{ description: string }> };
   };
-  citedJourney.business.steps[0].description = 'Grava a tarefa com etiquetas.';
+  citedJourney.business.steps[0].description = 'Grava a Tarefa com etiquetas.';
   (cited.rules as { rules: Record<string, string> }).rules = {
-    edicaoNaoMudaSituacao: 'A edição não mexe em etiquetas.',
+    edicaoNaoMudaSituacao: 'A edição da Tarefa não mexe em etiquetas.',
     outra: 'etiquetario permanece.',
+    deOutraEntidade: 'A Nota guarda etiquetas próprias.',
   };
   const marked = applyNrpMechanical(cited, [{ op: 'remove', targetId: 'Tarefa', fieldId: 'details.etiquetas', value: '' }]);
   assert.equal(marked.textMarks.some(mark => mark.kind === 'journeys' && mark.item === 'etiquetas' && mark.text.includes('etiquetas')), true);
   assert.equal(marked.textMarks.some(mark => mark.kind === 'rules' && mark.text.includes('edicao') === false && mark.item === 'etiquetas'), true);
   assert.equal(marked.textMarks.some(mark => mark.text.includes('etiquetario')), false);
+  assert.equal(marked.textMarks.some(mark => mark.text.includes('A Nota guarda')), false, 'a text of another entity that only says the bare name is not marked');
   const orders = planNrpEditOrders(cited, {
     valid: true, reason: null, clarification: null, artifacts: ['ontology'], targets: ['Tarefa'],
     intent: 'Drop labels.', mechanicalOnly: true, assumptions: [],
