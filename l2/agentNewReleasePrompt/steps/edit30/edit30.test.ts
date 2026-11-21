@@ -225,8 +225,8 @@ void test('an ontology edit prompt sends the target file, not the whole kind', (
   ]);
   const oneBytes = new TextEncoder().encode(one).length;
   const wholeBytes = new TextEncoder().encode(whole).length;
-  assert.equal(oneBytes, 4199);
-  assert.equal(wholeBytes, 5463);
+  assert.equal(oneBytes, 4424);
+  assert.equal(wholeBytes, 5688);
   assert.ok(oneBytes < wholeBytes);
   assert.equal(one.includes('Tarefa'), true);
   assert.equal(one.includes('"entityId":"Lista"') || one.includes('"entityId": "Lista"'), false);

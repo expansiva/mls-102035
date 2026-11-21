@@ -471,6 +471,7 @@ export function normalizeNs5OntologyEntityV3(
     .map(item => list(Array.isArray(item) ? item : record(item).fields).map(text).filter(Boolean))
     .filter(item => item.length > 0);
   const lifecycleStates = normalizeLifecycleStates(raw.lifecycleStates);
+  const initialState = typeof raw.initialState === 'string' ? raw.initialState.trim() : '';
   const transitions = applyCitedTransitionOwners(
     normalizeTransitions(raw.transitions, entityId, normalizations),
     entityId,
@@ -504,6 +505,7 @@ export function normalizeNs5OntologyEntityV3(
       ...(frozen.initialData ? { initialData: frozen.initialData } : {}),
       ...(uniqueKeys.length ? { uniqueKeys } : {}),
       ...(lifecycleStates.length ? { lifecycleStates } : {}),
+      ...(initialState ? { initialState } : {}),
       ...(transitions.length ? { transitions } : {}),
     };
   resolveBareDisplayField(built, frozen.displayField, normalizations);

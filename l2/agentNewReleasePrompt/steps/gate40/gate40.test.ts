@@ -472,6 +472,14 @@ void test('a decide on an entity with no lifecycle is owned by ontology and the 
   assert.equal(nrpIssueLines([decide, unknown], 'ontology').length, 2);
 });
 
+void test('an initialState error is owned by ontology', () => {
+  const issue: NrpGateIssue = {
+    kind: 'coherence', code: 'NS5_INITIAL_STATE', path: 'ontology.AgentDraft.initialState',
+    message: 'AgentDraft has 3 states no transition enters (preparing, ready, refused); say which one a new record starts in with initialState.',
+  };
+  assert.equal(nrpIssueOwner(issue), 'ontology');
+});
+
 void test('a table no step writes is owned by journeys and the repair sees every journey', () => {
   const issue: NrpGateIssue = {
     kind: 'coherence',

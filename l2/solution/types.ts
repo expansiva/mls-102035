@@ -467,6 +467,8 @@ export interface Ns5OntologyEntityV3Base<Cap extends string = string, Rule exten
   uniqueKeys?: readonly (readonly string[])[];
   /** ns5_47: only what somebody moves. A condition over data is a `derived` field of the row. */
   lifecycleStates?: readonly { state: string; reachedBy: 'actor' | 'command' }[];
+  /** The state a new record is written in. Required when more than one state has no entering transition; read by `ns5InitialState`. */
+  initialState?: string;
   transitions?: readonly {
     transitionId: string;
     from: readonly string[];

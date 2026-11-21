@@ -182,6 +182,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     record: { reader: 'steps/ontology30/gateV3.ts (column index, uniqueKeys), solution/ontologyPaths.ts, 102034 resolveMdmEntity.ts, DDL', since: '2026-09-16' },
     uniqueKeys: { reader: 'steps/ontology30/gateV3.ts, finalize80 I9, DDL/upsert', since: '2026-09-16' },
     lifecycleStates: { reader: 'steps/ontology30/gateV3.ts assembly, finalize80', since: '2026-09-16' },
+    initialState: { reader: 'solution/lifecycleInitial.ts (ns5InitialState), finalize80', since: '2026-11-21' },
     transitions: { reader: 'steps/ontology30/gateV3.ts assembly, finalize80 I2, backend', since: '2026-09-16' },
     relationships: { reader: 'steps/ontology30/gateV3.ts (cardinality vs index), 102034 resolveMdmEntity.ts, ontology screen', since: '2026-09-16' },
     capabilities: { reader: 'steps/ontology30/gateV3.ts, pipeline citedCapabilities, 102034 resolveMdmEntity.ts', since: '2026-09-16' },

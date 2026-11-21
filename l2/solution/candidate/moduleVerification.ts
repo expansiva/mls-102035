@@ -104,7 +104,7 @@ export function verifyCandidateModule(
 /** Every top-level property a v3 entity can carry (the three kinds together). A key outside this list is read by no gate. */
 const ENTITY_V3_KEYS = [
   'schemaVersion', 'moduleName', 'entityId', 'title', 'description', 'displayField', 'record', 'uniqueKeys',
-  'lifecycleStates', 'transitions', 'relationships', 'capabilities', 'rules', 'writer',
+  'lifecycleStates', 'transitions', 'initialState', 'relationships', 'capabilities', 'rules', 'writer',
   'kind', 'subtype', 'roleTag', 'source', 'class', 'storage', 'initialData', 'connectionId',
 ] as const satisfies readonly (keyof Ns5OntologyRoleV3 | keyof Ns5OntologyTableV3 | keyof Ns5OntologyExternalV3)[];
 

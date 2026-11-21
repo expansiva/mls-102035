@@ -94,6 +94,18 @@ test('a step property no gate reads, like alsoWrites, is a journeys issue that t
   assert.ok(issues[0].message.includes(NS5_STEP_WRITES_FORM));
 });
 
+test('an initialState that is no lifecycle state is an oracle error on the entity, owned by ontology', () => {
+  const artifacts = tarefasModule();
+  const index = artifacts.entities.findIndex(entity => (entity as unknown as { lifecycleStates?: unknown[] }).lifecycleStates?.length);
+  assert.ok(index >= 0, 'the fixture has an entity with a lifecycle');
+  const entity = artifacts.entities[index] as unknown as Record<string, unknown>;
+  const entities = artifacts.entities.map((item, at) => at === index ? { ...entity, initialState: 'noSuchState' } as unknown as Ns5OntologyAnyEntity : item);
+  const issues = verifyCandidateModule({ ...artifacts, entities }, CANDIDATE_GATE_KINDS, []).filter(issue => issue.code === 'NS5_INITIAL_STATE');
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].path, `ontology.${String(entity.entityId)}.initialState`);
+  assert.equal(issues[0].kind, 'coherence');
+});
+
 test('a new rules error blocks and an error already on the module does not', () => {
   const artifacts = tarefasModule();
   const baseline = verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []);

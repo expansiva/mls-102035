@@ -53,6 +53,7 @@ import {
   type Ns5OntologyEntityViewItem,
 } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
+import { ns5InitialState, ns5InitialStateIssues } from '/_102035_/l2/solution/lifecycleInitial.js';
 import { checkEntityGrants, ENTITY_WITHOUT_GRANT } from '/_102035_/l2/solution/gates/accessEntity/contracts.js';
 import { checkExternalEntities, parseCatalogOutputFields, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
 import {
@@ -72,6 +73,9 @@ import {
 /** Suffix of an I4 error whose rule has no entity reader. The New Release repair matches this text. */
 export const NS5_RULE_CITED_BY_NO_ENTITY =
   'is cited by no entity. Cite the rule id in `rules` of the entity it governs; do not delete the rule';
+
+/** Code of the I2 error for a missing or unknown `initialState`. The New Release repair sends it to the entity file. */
+export const NS5_INITIAL_STATE = 'NS5_INITIAL_STATE' as const;
 
 /** Code of the I10 error for a table of the module that no step writes. The New Release repair matches this code. */
 export const ENTITY_WITHOUT_WRITER = 'ENTITY_WITHOUT_WRITER' as const;
@@ -305,6 +309,8 @@ function checkI1(sources: Ns5OracleSources, error: IssueFn): void {
 }
 
 function checkI2(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): void {
+  // l4_p4_140 s3c: the state a new record starts in is said once on the entity, or derived when it is unambiguous.
+  for (const issue of ns5InitialStateIssues(sources.entities)) error('I2', issue.path, issue.message, NS5_INITIAL_STATE);
   const entityById = entityMap(sources);
   const reachableByEntity = new Map<string, Set<string> | null>();
   for (const entity of sources.entities) {
@@ -894,6 +900,9 @@ function entityHasLifecycle(entity: Ns5OntologyEntityViewItem | undefined): bool
 }
 
 function reachableFromBirths(entity: Ns5OntologyEntityViewItem): Set<string> | null {
+  // l4_p4_140 s3c: an explicit initial state is the birth; the sources of the transitions would guess it.
+  const initial = ns5InitialState(entity);
+  if (initial.source === 'explicit' && initial.state) return ns5ReachableStates([initial.state], entity.transitions);
   const time = new Set(entity.lifecycleStates.filter(entry => entry.reachedBy === 'time').map(entry => entry.state));
   const roots = ns5SourceSccStates(entity.transitions).filter(state => !time.has(state));
   if (roots.length) return ns5ReachableStates(roots, entity.transitions);

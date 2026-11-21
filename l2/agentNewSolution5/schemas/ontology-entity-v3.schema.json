@@ -16,6 +16,7 @@
     },
     "uniqueKeys": { "type": "array", "items": { "$ref": "#/$defs/uniqueKey" } },
     "lifecycleStates": { "type": "array", "items": { "$ref": "#/$defs/lifecycleState" } },
+    "initialState": { "type": "string" },
     "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
     "derived": { "type": "array", "items": { "$ref": "#/$defs/derivedField" } },
     "relationships": { "type": "array", "items": { "$ref": "#/$defs/link" } },

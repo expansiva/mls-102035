@@ -85,6 +85,8 @@ export interface Ns5OntologyEntityViewItem {
    */
   uniqueKeys: string[][];
   lifecycleStates: Array<{ state: string; reachedBy: 'actor' | 'command' | 'time' }>;
+  /** v3 `initialState`; the reader is `ns5InitialState`. */
+  initialState?: string;
   transitions: Array<{
     transitionId: string;
     from: string[];
@@ -265,6 +267,7 @@ function viewOfV3(entity: Ns5OntologyEntityV3): Ns5OntologyEntityViewItem {
     storage: { idField: 'id' },
     uniqueKeys: copyKeys(entity.uniqueKeys),
     lifecycleStates: [...(entity.lifecycleStates || [])],
+    ...(entity.initialState ? { initialState: entity.initialState } : {}),
     transitions: copyTransitions(entity.transitions),
     fieldRefs: resolvableFieldPaths(entity),
     columnIds: Object.keys(entity.record.fields).filter(id => id !== 'details'),
