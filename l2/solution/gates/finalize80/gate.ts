@@ -73,6 +73,9 @@ import {
 export const NS5_RULE_CITED_BY_NO_ENTITY =
   'is cited by no entity. Cite the rule id in `rules` of the entity it governs; do not delete the rule';
 
+/** Code of the I10 error for a table of the module that no step writes. The New Release repair matches this code. */
+export const ENTITY_WITHOUT_WRITER = 'ENTITY_WITHOUT_WRITER' as const;
+
 /** Suffix of an I1/I2 error whose cause is a missing lifecycle on the entity. The New Release repair matches this text. */
 export const NS5_LIFECYCLE_ON_ENTITY =
   'Declare it on the entity file (`transitions`, with its states in `lifecycleStates`); keep the journey step as it is.';
@@ -664,6 +667,19 @@ function checkI10(sources: Ns5OracleSources, error: IssueFn): void {
         `${path}.writer`,
         `Entity ${entity.entityId} has written fields but no writer: it must be the entity of an act step or listed in an act's affects, or declare writer: 'crud' (a reference catalog with no lifecycle), or writer: 'inbound' (created by an integration event).`,
       );
+    }
+    // l4_p4_140 s2f: a table of the module whose only "writer" is a parent from the MDM (a role with crud) is written by
+    // nobody: the MDM record being there does not create the child. A step must name the child (entity or affects).
+    if (resolved.kind === 'parent' && entity.kind === 'entity' && !writtenOutsideJourneys && ns5EntityHasWrittenFields(writtenFieldsView(entity))) {
+      const parent = sources.entities.find(item => item.entityId === resolved.via?.entityId);
+      if (parent?.kind === 'role') {
+        error(
+          'I10',
+          `${path}.writer`,
+          `Entity ${entity.entityId} is related only to ${parent.entityId} from the MDM, which creates no ${entity.entityId}: no step writes it. Name it in an act step (as its entity or in affects) of the journey that records it.`,
+          ENTITY_WITHOUT_WRITER,
+        );
+      }
     }
     const arrival = outside.get(entity.entityId);
     if (inbound && (!arrival || arrival.source === 'process')) {

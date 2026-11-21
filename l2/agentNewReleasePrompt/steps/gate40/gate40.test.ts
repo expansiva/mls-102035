@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
-import { NS5_LIFECYCLE_ON_ENTITY, NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
+import { ENTITY_WITHOUT_WRITER, NS5_LIFECYCLE_ON_ENTITY, NS5_RULE_CITED_BY_NO_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { applyNrpMechanical } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
 import {
   buildNrpRepairHumanPrompt,
@@ -470,6 +470,23 @@ void test('a decide on an entity with no lifecycle is owned by ontology and the 
   assert.deepEqual(nrpRepairPromptFiles('ontology', [decide], catalog).map(file => file.id), ['index', 'AgentDraft', 'Tool']);
   assert.equal(nrpIssueLines([decide, unknown], 'journeys').length, 0);
   assert.equal(nrpIssueLines([decide, unknown], 'ontology').length, 2);
+});
+
+void test('a table no step writes is owned by journeys and the repair sees every journey', () => {
+  const issue: NrpGateIssue = {
+    kind: 'coherence',
+    code: ENTITY_WITHOUT_WRITER,
+    path: 'ontology.ConductChange.writer',
+    message: 'Entity ConductChange is related only to OrganizationUser from the MDM, which creates no ConductChange: no step writes it.',
+  };
+  assert.equal(nrpIssueOwner(issue), 'journeys');
+  const catalog = [
+    { id: 'index', artifact: { journeys: ['changeMyConduct', 'createVirtualEmployee'] } },
+    { id: 'changeMyConduct', artifact: { journeyId: 'changeMyConduct' } },
+    { id: 'createVirtualEmployee', artifact: { journeyId: 'createVirtualEmployee' } },
+  ];
+  assert.deepEqual(nrpRepairPromptFiles('journeys', [issue], catalog).map(file => file.id), ['index', 'changeMyConduct', 'createVirtualEmployee']);
+  assert.equal(nrpIssueLines([issue], 'ontology').length, 0);
 });
 
 function applyJourneyOps(

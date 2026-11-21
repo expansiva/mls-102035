@@ -17,7 +17,7 @@ import type {
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
-import { NS5_LIFECYCLE_ON_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
+import { ENTITY_WITHOUT_WRITER, NS5_LIFECYCLE_ON_ENTITY } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import { verifyCandidateModule, type CandidateModule } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { candidateCanPublish, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
 import type { NewReleaseArtifact, NewReleaseOverlaySources, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
@@ -144,4 +144,36 @@ test('a draft that moves out of external with a decide and no lifecycle charges 
   const decide = issues.filter(issue => issue.message.includes('needs at least two transitions'));
   assert.equal(decide.length, 1, issues.map(issue => `${issue.code} ${issue.path} ${issue.message}`).join('\n'));
   assert.ok((decide[0]?.message ?? '').endsWith(NS5_LIFECYCLE_ON_ENTITY), decide[0]?.message);
+});
+
+function withConductChange(artifacts: CandidateModule, affectsStep: boolean): CandidateModule {
+  const source = readFileSync(path.join(path.dirname(FIXTURE), 'conductChange', 'ConductChange.defs.ts'), 'utf8');
+  const json = extractNs4ClassicJsonObject(source);
+  if (!json) throw new Error('no JSON object in ConductChange.defs.ts');
+  const entity = JSON.parse(json) as Ns5OntologyAnyEntity;
+  const index = structuredClone(artifacts.ontologyIndex) as unknown as { entities: unknown[]; relationships: unknown[] };
+  index.entities.push({ entityId: 'ConductChange', kind: 'entity', class: 'event' });
+  index.relationships.push({
+    relationshipId: 'conductChangePerson', from: 'ConductChange', to: 'OrganizationUser', type: 'manyToOne',
+    required: true, mode: 'fk', description: 'Each conduct change was made by one member.', field: 'ConductChange.personId',
+  });
+  const journeys = structuredClone(artifacts.journeys);
+  if (affectsStep) {
+    const journey = journeys.find(item => item.journeyId === 'changeMyConduct');
+    const step = journey?.business.steps.find(item => item.stepId === 'changeConduct') as { affects?: string[] } | undefined;
+    if (!step) throw new Error('changeMyConduct.changeConduct not found in the fixture');
+    step.affects = ['ConductChange'];
+  }
+  return { ...artifacts, ontologyIndex: index as unknown as CandidateModule['ontologyIndex'], entities: [...artifacts.entities, entity], journeys };
+}
+
+test('a table related only to an MDM role, written by no step, is an I10 writer error; naming it in affects clears it', () => {
+  const artifacts = agentsModule();
+  const writerCodes = (module: CandidateModule) => verifyCandidateModule(module, [], [])
+    .filter(issue => issue.code === ENTITY_WITHOUT_WRITER);
+  assert.deepEqual(writerCodes(artifacts), []);
+  const without = writerCodes(withConductChange(artifacts, false));
+  assert.equal(without.length, 1, JSON.stringify(without));
+  assert.equal(without[0]?.path, 'ontology.ConductChange.writer');
+  assert.deepEqual(writerCodes(withConductChange(artifacts, true)), []);
 });
