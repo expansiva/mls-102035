@@ -46,6 +46,11 @@ function loadCatalog(connectionId: string): ExternalEntityCatalog {
   };
 }
 
+function optionalFieldsOf(entity: { record?: { fields?: Record<string, { required?: boolean }> } }): string[] {
+  const fields = entity.record?.fields ?? {};
+  return Object.entries(fields).filter(([, field]) => field.required !== true).map(([name]) => name);
+}
+
 function requiredFieldsOf(entity: { record?: { fields?: Record<string, { required?: boolean }> } }): string[] {
   const fields = entity.record?.fields ?? {};
   return Object.entries(fields).filter(([, field]) => field.required === true).map(([name]) => name);
@@ -81,6 +86,7 @@ function main(): void {
         kind: entity.kind,
         connectionId: entity.connectionId,
         requiredFields: requiredFieldsOf(entity),
+        optionalFields: optionalFieldsOf(entity),
       };
     });
     const integrationPath = join(l4Root, moduleName, 'integration.defs.ts');

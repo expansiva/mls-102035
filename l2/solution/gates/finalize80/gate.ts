@@ -855,14 +855,17 @@ function checkI14(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): 
     const source = view.source;
     if (!isNs5OntologyV3Entity(source) || source.kind !== 'external') continue;
     const requiredFields: string[] = [];
+    const optionalFields: string[] = [];
     for (const [name, field] of Object.entries(source.record.fields)) {
       if (field.required === true) requiredFields.push(name);
+      else optionalFields.push(name);
     }
     entities.push({
       entityId: source.entityId,
       kind: source.kind,
       connectionId: source.connectionId,
       requiredFields,
+      optionalFields,
     });
   }
   const connections = (sources.integration.connections || []).map(row => ({

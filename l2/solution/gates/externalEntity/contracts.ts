@@ -11,6 +11,8 @@ export interface ExternalEntityRow {
   kind: string;
   connectionId?: string;
   requiredFields: string[];
+  /** Fields the entity declares without `required`; a field the connection does not deliver is still a gap, as a warning. */
+  optionalFields?: string[];
 }
 
 export interface ExternalEntityConnectionRow {
@@ -103,7 +105,11 @@ export function checkExternalEntities(input: ExternalEntityCheckInput): External
         message: `External entity ${entity.entityId} on connection ${connectionId} is cited by no call operation.`,
       });
     }
-    for (const field of entity.requiredFields) {
+    const fieldsToCheck = [
+      ...entity.requiredFields.map(field => ({ field, label: 'Required' })),
+      ...(entity.optionalFields ?? []).map(field => ({ field, label: 'Optional' })),
+    ];
+    for (const { field, label } of fieldsToCheck) {
       const considered: string[] = [];
       let delivered = false;
       for (const row of cited) {
@@ -120,7 +126,7 @@ export function checkExternalEntities(input: ExternalEntityCheckInput): External
         code: 'EXTERNAL_FIELD_NOT_DELIVERED',
         entityId: entity.entityId,
         path: `ontology.${entity.entityId}.${field}`,
-        message: `Required field ${field} of external entity ${entity.entityId} is not in the output of connection ${connectionId} (operations: ${considered.join(', ')}).`,
+        message: `${label} field ${field} of external entity ${entity.entityId} is not in the output of connection ${connectionId} (operations: ${considered.join(', ')}).`,
       });
     }
   }

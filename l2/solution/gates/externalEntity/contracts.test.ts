@@ -143,3 +143,14 @@ test('an unresolved output type produces no field warning', () => {
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.warnings, []);
 });
+
+test('an optional field the connection does not deliver is a warning, never an error', () => {
+  const result = checkExternalEntities({
+    entities: [{ entityId: 'Agent', kind: 'external', connectionId: 'cm', requiredFields: ['name'], optionalFields: ['talksTo', 'definition'] }],
+    connections: [{ connectionId: 'cm', operationId: 'readAgent', direction: 'call', entityRefs: ['Agent'] }],
+    catalogs: { cm: { operations: [{ operationId: 'readAgent', outputType: 'ReadOut' }], fieldsByType: { ReadOut: ['name', 'definition'] } } },
+  });
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.warnings.map(item => `${item.code} ${item.path}`), ['EXTERNAL_FIELD_NOT_DELIVERED ontology.Agent.talksTo']);
+  assert.match(result.warnings[0].message, /^Optional field talksTo/);
+});
