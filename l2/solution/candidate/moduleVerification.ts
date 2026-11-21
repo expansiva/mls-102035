@@ -84,12 +84,53 @@ export function verifyCandidateModule(
   siblingSystems: readonly Ns5IntegrationExternalSystem[],
   extras?: CandidateOracleExtras,
 ): CandidateGateIssue[] {
+  const shape = malformedEntityShapeIssues(artifacts.entities);
+  if (shape.length) return shape;
   const issues: CandidateGateIssue[] = [];
   for (const kind of kinds) {
     if (kind === 'ontology') continue;
     issues.push(...gateIssuesForKind(artifacts, kind, siblingSystems));
   }
   issues.push(...runCandidateOracle(artifacts, extras).issues);
+  return issues;
+}
+
+const ENTITY_ARRAY_FIELDS = ['uniqueKeys', 'lifecycleStates', 'transitions'] as const;
+
+/**
+ * The ontology view copies these lists, so a value that is not an array would throw there with no entity named.
+ * Report it as an ontology issue on the entity, which sends the repair to that entity file.
+ */
+export function malformedEntityShapeIssues(entities: readonly Ns5OntologyAnyEntity[]): CandidateGateIssue[] {
+  const issues: CandidateGateIssue[] = [];
+  for (const entity of entities) {
+    const source = entity as unknown as Record<string, unknown>;
+    for (const field of ENTITY_ARRAY_FIELDS) {
+      const value = source[field];
+      if (value !== undefined && !Array.isArray(value)) {
+        issues.push({
+          kind: 'ontology',
+          code: 'NRP_GATE_FAILED',
+          message: `${field} of ${entity.entityId} must be an array, found ${value === null ? 'null' : typeof value}.`,
+          path: `ontology.${entity.entityId}.${field}`,
+        });
+      }
+    }
+    const transitions = source.transitions;
+    if (Array.isArray(transitions)) {
+      transitions.forEach((transition, index) => {
+        const row = transition as { from?: unknown } | null;
+        if (!row || !Array.isArray(row.from)) {
+          issues.push({
+            kind: 'ontology',
+            code: 'NRP_GATE_FAILED',
+            message: `transitions[${index}].from of ${entity.entityId} must be an array of states.`,
+            path: `ontology.${entity.entityId}.transitions[${index}].from`,
+          });
+        }
+      });
+    }
+  }
   return issues;
 }
 

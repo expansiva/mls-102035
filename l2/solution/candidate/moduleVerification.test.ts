@@ -51,6 +51,22 @@ test('tarefas v3 has no fresh gate error', () => {
   assert.equal(baseline.filter(issue => issue.kind === 'coherence').length, 0);
 });
 
+test('lifecycleStates that is not an array is an ontology issue naming the entity, not a thrown error', () => {
+  const artifacts = tarefasModule();
+  const first = artifacts.entities[0] as unknown as Record<string, unknown>;
+  const broken: CandidateModule = {
+    ...artifacts,
+    entities: [{ ...first, lifecycleStates: { available: 'command' } } as unknown as Ns5OntologyAnyEntity, ...artifacts.entities.slice(1)],
+  };
+  const issues = verifyCandidateModule(broken, CANDIDATE_GATE_KINDS, []);
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].kind, 'ontology');
+  assert.equal(issues[0].code, 'NRP_GATE_FAILED');
+  assert.equal(issues[0].path, `ontology.${String(first.entityId)}.lifecycleStates`);
+  assert.match(issues[0].message, new RegExp(`lifecycleStates of ${String(first.entityId)} must be an array`));
+  assert.deepEqual(verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []).filter(issue => issue.code === 'NRP_GATE_FAILED'), []);
+});
+
 test('a new rules error blocks and an error already on the module does not', () => {
   const artifacts = tarefasModule();
   const baseline = verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []);
