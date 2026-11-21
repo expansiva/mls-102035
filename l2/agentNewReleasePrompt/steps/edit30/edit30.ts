@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.ts" enhancement="_blank" />
 
+import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import { NRP_AGENT_NAME, NRP_CANDIDATE_REL, parseNrpInvocation } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
 import { loadNrpArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/artifacts.js';
 import { applyNrpMechanical, nrpFreeTextHits, nrpModelKinds, type NrpTextMark } from '/_102035_/l2/agentNewReleasePrompt/helpers/mechanical.js';
@@ -51,6 +52,8 @@ export const NRP_ONTOLOGY_SHAPE = 'The new file has the same shape as the siblin
 export const NRP_JOURNEY_RULES = 'A journey step kind is locate, inspect, act, decide, or handoff. A new journey cannot share the same actor and the same set of operations (kind plus entity) as another journey. When a journey of that actor already does what the request asks for, extend that journey with what the request adds (a filter, a column, an action) and do not create another one. Make a separate journey only when the request is about a different actor, entity, or operations. Do not invent a step kind. If the request does not say who acts, ask; do not pick an actor.';
 /** Arrival shape for an integration edit. The model sees the current file, which may still use the old pair. */
 export const NRP_INTEGRATION_SHAPE = 'An arrival is an inbound row or a connections row with direction serve. It says what it does to each entity in entityEffects: a list of { entityId, effects }, one entry per entity, an entity may have several effects (inbound: create, update, transition; serve: list, read, create, update, remove). When the request changes what an arrival does, write entityEffects and remove the old writes and effect (inbound) or entityRefs and effect (serve) of that row. An arrival that only informs and writes nothing has entityEffects []. An entity that lives outside the module is not written by an arrival. call rows keep entityRefs and effect.';
+/** Introduces the shared lifecycle text. The text itself is `NS5_LIFECYCLE_FORM`, the one the ontology30 prompt uses. */
+export const NRP_LIFECYCLE_INTRO = 'How an entity declares a lifecycle: `lifecycleStates` and `transitions` are properties at the top of the entity file, next to `record`. There is no `lifecycle` block.';
 /** Shown with the signatures the code already measured for the actor. */
 export const NRP_NEW_SIGNATURE_RULE = 'a jornada nova precisa de uma assinatura que não esteja na lista';
 
@@ -140,6 +143,7 @@ export function buildNrpEditHumanPrompt(
     lines.push(nrpOccupiedSignatureBlock(occupied ?? files));
   }
   if (kind === 'integration') lines.push(NRP_INTEGRATION_SHAPE);
+  if (kind === 'ontology') lines.push(`${NRP_LIFECYCLE_INTRO}\n${NS5_LIFECYCLE_FORM}`);
   if (creates.length && reference) {
     const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
     lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);

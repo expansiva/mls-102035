@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewReleasePrompt/steps/edit30/edit30.test.ts" enhancement="_blank" />
 
+import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -103,6 +104,15 @@ void test('edit schema is strict and the prompt names no sample module', () => {
   const human = buildNrpEditHumanPrompt('Add a rule.', triage, 'rules', [{ id: 'rules', artifact: { rules: [] } }]);
   assert.match(human, /Kind: rules/);
   assert.match(human, /Add a rule\./);
+});
+
+void test('an ontology edit carries the shared lifecycle form; other kinds do not', () => {
+  const files = [{ id: 'AgentDraft', artifact: { entityId: 'AgentDraft' } }];
+  const ontology = buildNrpEditHumanPrompt('Give the draft a lifecycle.', triage, 'ontology', files);
+  assert.ok(ontology.includes(NS5_LIFECYCLE_FORM), 'the same text the ontology30 prompt uses');
+  assert.match(ontology, /There is no `lifecycle` block/);
+  const rules = buildNrpEditHumanPrompt('Add a rule.', triage, 'rules', [{ id: 'rules', artifact: { rules: [] } }]);
+  assert.equal(rules.includes(NS5_LIFECYCLE_FORM), false);
 });
 
 void test('a recorded edit response applies one operation to the current file', () => {
@@ -211,8 +221,8 @@ void test('an ontology edit prompt sends the target file, not the whole kind', (
   ]);
   const oneBytes = new TextEncoder().encode(one).length;
   const wholeBytes = new TextEncoder().encode(whole).length;
-  assert.equal(oneBytes, 2934);
-  assert.equal(wholeBytes, 4198);
+  assert.equal(oneBytes, 4199);
+  assert.equal(wholeBytes, 5463);
   assert.ok(oneBytes < wholeBytes);
   assert.equal(one.includes('Tarefa'), true);
   assert.equal(one.includes('"entityId":"Lista"') || one.includes('"entityId": "Lista"'), false);

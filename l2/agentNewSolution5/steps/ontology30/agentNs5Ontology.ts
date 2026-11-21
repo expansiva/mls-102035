@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/ontology30/agentNs5Ontology.ts" enhancement="_blank"/>
 
+import { withNs5LifecycleForm } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import { IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { ddm } from '/_102034_/l4/ontology/ddm.defs.js';
@@ -394,7 +395,7 @@ async function buildEntityPrompt(
     readModule(parsed.moduleName),
     readJourneys(parsed.moduleName),
     readWorkflows(parsed.moduleName),
-    readAgentText('steps/ontology30', 'promptEntity', '.md'),
+    readAgentText('steps/ontology30', 'promptEntity', '.md').then(withNs5LifecycleForm),
     readAgentJson<Record<string, unknown>>('schemas', 'ontology-entity-v3.schema', '.json'),
     readJson(entityDraftFile(parsed.moduleName, entityId)),
   ]);

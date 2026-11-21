@@ -62,17 +62,7 @@ else goes inside `details`, as a tree, however deep the business needs.
 - `uniqueKeys` names columns only.
 - `id` and `version` are written for you; do not declare them.
 
-A lifecycle is for what somebody moves AND the system reacts to (a rule forbids or requires something
-while in the state, a process fires, another entity's derived value changes) or that has a duration
-people ask about; a switch with no such consequence is a field, not a state. Each state is
-`{ state, reachedBy }` (`actor` or `command`); an entity with a lifecycle carries an indexed `status`
-column whose `values` cover the states, and `status` holds only what an actor or a command writes. Transitions are
-`{ transitionId, from, to, by, description, payload?, ruleRefs? }`; `payload` is the explicit list of
-record paths consumed by the transition command (empty when it consumes only identity); `by` is a list of actor ids of the module, and
-is **empty** when the move belongs to a process and to no person. Every `transitionRef` an `act` cites
-on this entity is required, with that journey's actor in `by`; a `decide` cited on this entity requires
-at least two transitions leaving the same state — one per outcome — with the deciding actor in `by`.
-The human prompt lists the citations.
+{{ns5LifecycleForm}}
 The processes were written before this step: every `entityRef` and `transitionRef` a `mechanical` or
 `llm` stage cites on this entity is required too, and a transition only a stage cites has `by: []` —
 the process moves it, no person does. `## Process stages that touch this entity` lists them.

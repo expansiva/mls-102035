@@ -8,6 +8,7 @@
  *  - a v3 check never fires on a v2 artifact: the eleven recorded modules stay untouched until ns5_44.
  */
 
+import { withNs5LifecycleForm } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -669,7 +670,7 @@ void test('the plan prompt teaches the two kinds and the four modes, with no bus
 });
 
 void test('the entity prompt teaches copy-and-tighten, the column rule and the empty namespace', () => {
-  const prompt = readFileSync(path.join(HERE, 'promptEntity.md'), 'utf8');
+  const prompt = withNs5LifecycleForm(readFileSync(path.join(HERE, 'promptEntity.md'), 'utf8'));
   assert.match(prompt, /## Starting point \(platform record for <Subtype>\)/);
   assert.match(prompt, /\*\*Only tighten\*\*/);
   assert.match(prompt, /A column with no index is refused/);
@@ -1322,7 +1323,7 @@ void test('ns5_57: without journeys in the context the check is silent (the v2 r
 });
 
 void test('ns5_57: the entity system prompt states what a cited decide requires', () => {
-  const source = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'promptEntity.md'), 'utf8');
+  const source = withNs5LifecycleForm(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'promptEntity.md'), 'utf8'));
   assert.match(source, /a `decide` cited on this entity requires/);
   assert.match(source, /at least two transitions leaving the same state — one per outcome — with the deciding actor in `by`/);
 });

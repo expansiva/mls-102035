@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentNewSolution5/steps/judge35/agentNs5Judge.test.ts" enhancement="_blank"/>
 
+import { withNs5LifecycleForm } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -365,7 +366,7 @@ void test('coveredByAct: locacao Devolucao passes; create-without-transitionRef 
 });
 
 void test('promptEntity states the switch criterion in place of lifecycle-only-for-what-somebody-moves', () => {
-  const source = readFileSync(path.join(HERE, '../ontology30/promptEntity.md'), 'utf8');
+  const source = withNs5LifecycleForm(readFileSync(path.join(HERE, '../ontology30/promptEntity.md'), 'utf8'));
   assert.match(source, /A lifecycle is for what somebody moves AND the system reacts to/);
   assert.match(source, /a switch with no such consequence is a field, not a state/);
   assert.doesNotMatch(source, /A lifecycle is only for what \*\*somebody moves\*\*/);

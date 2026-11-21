@@ -14,6 +14,7 @@ import type {
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
+import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import {
   CANDIDATE_GATE_KINDS,
   assembleCandidateModule,
@@ -65,6 +66,20 @@ test('lifecycleStates that is not an array is an ontology issue naming the entit
   assert.equal(issues[0].path, `ontology.${String(first.entityId)}.lifecycleStates`);
   assert.match(issues[0].message, new RegExp(`lifecycleStates of ${String(first.entityId)} must be an array`));
   assert.deepEqual(verifyCandidateModule(artifacts, CANDIDATE_GATE_KINDS, []).filter(issue => issue.code === 'NRP_GATE_FAILED'), []);
+});
+
+test('a property no gate reads, like a nested lifecycle block, is an ontology issue with the right form in the message', () => {
+  const artifacts = tarefasModule();
+  const first = artifacts.entities[0] as unknown as Record<string, unknown>;
+  const broken: CandidateModule = {
+    ...artifacts,
+    entities: [{ ...first, lifecycle: { states: ['a', 'b'] } } as unknown as Ns5OntologyAnyEntity, ...artifacts.entities.slice(1)],
+  };
+  const issues = verifyCandidateModule(broken, CANDIDATE_GATE_KINDS, []);
+  assert.equal(issues.length, 1, issues.map(issue => issue.path).join(','));
+  assert.equal(issues[0].kind, 'ontology');
+  assert.equal(issues[0].path, `ontology.${String(first.entityId)}.lifecycle`);
+  assert.ok(issues[0].message.includes(NS5_LIFECYCLE_FORM), 'the message carries the shared lifecycle form');
 });
 
 test('a new rules error blocks and an error already on the module does not', () => {

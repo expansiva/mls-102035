@@ -8,7 +8,8 @@ import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js'
 import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration70/gate.js';
 import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import type { Ns5FinalizeReport, Ns5OracleSources } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
-import { ns5OntologyEdges, ns5OntologyEntityViews, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
+import { isNs5OntologyV3Entity, ns5OntologyEdges, ns5OntologyEntityViews, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
+import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
 import type {
   Ns5AccessArtifact,
@@ -18,6 +19,9 @@ import type {
   Ns5JourneyIndexArtifact,
   Ns5ModuleArtifact,
   Ns5OntologyAnyEntity,
+  Ns5OntologyExternalV3,
+  Ns5OntologyRoleV3,
+  Ns5OntologyTableV3,
   Ns5RulesAny,
   Ns5WorkflowsArtifact,
 } from '/_102035_/l2/solution/types.js';
@@ -95,6 +99,13 @@ export function verifyCandidateModule(
   return issues;
 }
 
+/** Every top-level property a v3 entity can carry (the three kinds together). A key outside this list is read by no gate. */
+const ENTITY_V3_KEYS = [
+  'schemaVersion', 'moduleName', 'entityId', 'title', 'description', 'displayField', 'record', 'uniqueKeys',
+  'lifecycleStates', 'transitions', 'relationships', 'capabilities', 'rules', 'writer',
+  'kind', 'subtype', 'roleTag', 'source', 'class', 'storage', 'initialData', 'connectionId',
+] as const satisfies readonly (keyof Ns5OntologyRoleV3 | keyof Ns5OntologyTableV3 | keyof Ns5OntologyExternalV3)[];
+
 const ENTITY_ARRAY_FIELDS = ['uniqueKeys', 'lifecycleStates', 'transitions'] as const;
 
 /**
@@ -105,6 +116,17 @@ export function malformedEntityShapeIssues(entities: readonly Ns5OntologyAnyEnti
   const issues: CandidateGateIssue[] = [];
   for (const entity of entities) {
     const source = entity as unknown as Record<string, unknown>;
+    if (isNs5OntologyV3Entity(entity)) {
+      const allowed: readonly string[] = ENTITY_V3_KEYS;
+      for (const key of Object.keys(source).filter(item => !allowed.includes(item))) {
+        issues.push({
+          kind: 'ontology',
+          code: 'NRP_GATE_FAILED',
+          message: `${key} is not a property of the entity ${entity.entityId}; no gate reads it. Allowed: ${allowed.join(', ')}.${key === 'lifecycle' ? ` ${NS5_LIFECYCLE_FORM}` : ''}`,
+          path: `ontology.${entity.entityId}.${key}`,
+        });
+      }
+    }
     for (const field of ENTITY_ARRAY_FIELDS) {
       const value = source[field];
       if (value !== undefined && !Array.isArray(value)) {
