@@ -54,6 +54,7 @@ import {
 } from '/_102035_/l2/solution/ontologyView.js';
 import { ns5ConnectionCatalogs } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import { ns5InitialState, ns5InitialStateIssues } from '/_102035_/l2/solution/lifecycleInitial.js';
+import { checkOwnEntityReads, OWN_ENTITY_READ_BY_CALL } from '/_102035_/l2/solution/gates/ownEntityRead/contracts.js';
 import { checkEntityGrants, ENTITY_WITHOUT_GRANT } from '/_102035_/l2/solution/gates/accessEntity/contracts.js';
 import { checkExternalEntities, parseCatalogOutputFields, type ExternalEntityRow } from '/_102035_/l2/solution/gates/externalEntity/contracts.js';
 import {
@@ -829,6 +830,15 @@ function checkI13(sources: Ns5OracleSources, warning: IssueFn): void {
 
 /** An external entity of a platform catalog needs a call operation that cites it. Missing delivered fields are warnings. */
 function checkI14(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): void {
+  // l4_p4_140 s3d: the module reads its own table; a call to the outside reads what lives outside.
+  const readSteps = sources.journeys.flatMap(journey => journey.business.steps.map(step => ({
+    journeyId: journey.journeyId, stepId: step.stepId, kind: step.kind, entityId: step.entity || '',
+  })));
+  const ownEntities = sources.entities.map(entity => ({ entityId: entity.entityId, kind: entity.kind, ...(entity.writer ? { writer: entity.writer } : {}) }));
+  const callRows = (sources.integration.connections || []).map(row => ({
+    connectionId: row.connectionId, operationId: row.operationId, direction: row.direction, effect: row.effect, usedBy: row.usedBy || [],
+  }));
+  for (const issue of checkOwnEntityReads(readSteps, ownEntities, callRows)) error('I14', issue.path, issue.message, OWN_ENTITY_READ_BY_CALL);
   const catalogs: Record<string, { operations: Array<{ operationId: string; outputType?: string }>; fieldsByType: Record<string, string[]> }> = {};
   for (const catalog of ns5ConnectionCatalogs()) {
     const text = sources.connectionSources?.[catalog.connectionId];

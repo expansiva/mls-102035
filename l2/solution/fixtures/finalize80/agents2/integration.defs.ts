@@ -75,9 +75,6 @@ export const agentsIntegration = {
       "direction": "call",
       "usedBy": [
         "createVirtualEmployee.openAgentList",
-        "createVirtualEmployee.followDraftSituation",
-        "reviewAndActivateDraft.openReadyDraft",
-        "reviewRefusedDraft.openRefusedDraft",
         "browseAgents.openAgents",
         "changeAgentBehavior.findAgent",
         "adjustAgentTools.findAgentForTools",
@@ -102,9 +99,7 @@ export const agentsIntegration = {
         "browseAgents.readOverview",
         "changeAgentBehavior.readBehavior",
         "configureAgent.readConfiguration",
-        "changeMyConduct.readMyConduct",
-        "reviewAndActivateDraft.reviewDraft",
-        "reviewRefusedDraft.readRefusalReason"
+        "changeMyConduct.readMyConduct"
       ],
       "entityRefs": [
         "Agent"
