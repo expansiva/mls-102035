@@ -510,8 +510,10 @@ function indexIdSet(kind: NrpArtifactKind, index: unknown): Set<string> {
 
 const FROZEN_TOKENS = new Set(['schemaVersion', 'moduleName', 'entityId', 'journeyId']);
 
+// Only the file's own identity is frozen: the token at the root of the pointer. The same name deeper down
+// is a field of the data (an entity field called moduleName, entityId in entityEffects) and stays editable.
 function assertMutable(tokens: readonly string[]): void {
-  if (tokens.some(token => FROZEN_TOKENS.has(token))) {
+  if (tokens.length > 0 && FROZEN_TOKENS.has(tokens[0])) {
     throw new Error('set and remove cannot change schemaVersion, moduleName, or the file id.');
   }
 }

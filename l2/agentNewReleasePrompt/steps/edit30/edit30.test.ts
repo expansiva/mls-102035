@@ -141,6 +141,22 @@ void test('a recorded edit response applies one operation to the current file', 
   }, { present: ['WorkItem'], creates: [], files: [{ id: 'WorkItem', artifact: { entityId: 'WorkItem', title: 'x' } }] }), /not a target/);
 });
 
+void test('a field called moduleName inside an entity is editable; the identity of the file is not', () => {
+  const scope = {
+    present: ['Tool'],
+    creates: [],
+    files: [{ id: 'Tool', artifact: { schemaVersion: 'v', entityId: 'Tool', moduleName: 'agents', record: { fields: { moduleName: { type: 'string', maxLength: 100 } } } } }],
+  } as unknown as NrpFileScope;
+  const op = (pointer: string, expectedJson: string) => ({
+    operations: [{ file: 'Tool', op: 'remove', pointer, expectedJson, valueJson: '', reason: 'no own limit' }],
+  });
+  const edited = normalizeNrpEdit('ontology', op('/record/fields/moduleName/maxLength', '100'), scope);
+  const fields = (edited.files[0].artifact as { record: { fields: { moduleName: Record<string, unknown> } } }).record.fields;
+  assert.equal('maxLength' in fields.moduleName, false);
+  assert.throws(() => normalizeNrpEdit('ontology', op('/moduleName', '"agents"'), scope), /cannot change/);
+  assert.throws(() => normalizeNrpEdit('ontology', op('/schemaVersion', '"v"'), scope), /cannot change/);
+});
+
 void test('mechanical marks change the artifact and leave the other kind to the model', () => {
   const artifacts = sample();
   const edited = applyNrpMechanical(artifacts, [
