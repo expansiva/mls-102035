@@ -6,6 +6,8 @@ export interface WorkflowReceivesFunctionRow {
   receives?: string;
   /** True when the process of the function has a `wait` task. */
   processHasWait: boolean;
+  /** The `trigger.event` of the process, when it starts on an event. */
+  processTriggerEvent?: string;
 }
 
 export interface WorkflowReceivesIssue {
@@ -13,10 +15,10 @@ export interface WorkflowReceivesIssue {
   message: string;
 }
 
-/** Code of the error for a `receives` that names no serve operation, repeats an operation, or sits in a process without a wait. */
+/** Code of the error for a `receives` that names no serve operation, repeats an operation, or sits in a process that neither waits for it nor starts on it. */
 export const WORKFLOW_RECEIVES = 'WORKFLOW_RECEIVES';
 
-/** `receives` names a `serve` operation of the integration, at most one function per operation, in a process that waits. */
+/** `receives` names a `serve` operation of the integration, at most one function per operation, in a process that waits for the arrival (a `wait` task) or starts on it (`trigger.event` is that operation). */
 export function checkWorkflowReceives(
   functions: readonly WorkflowReceivesFunctionRow[],
   serveOperations: readonly string[],
@@ -37,8 +39,8 @@ export function checkWorkflowReceives(
       continue;
     }
     seen.set(fn.receives, fn.functionId);
-    if (!fn.processHasWait) {
-      issues.push({ path, message: `${fn.functionId} receives ${fn.receives} but process ${fn.processId} has no wait task for the occurrence to wait in.` });
+    if (!fn.processHasWait && fn.processTriggerEvent !== fn.receives) {
+      issues.push({ path, message: `${fn.functionId} receives ${fn.receives} but process ${fn.processId} has no wait task for the occurrence to wait in and does not start on ${fn.receives} (its trigger.event).` });
     }
   }
   return issues;

@@ -7,7 +7,7 @@
 export const NS5_WORKFLOW_RECEIVES_PLACEHOLDER = '{{ns5WorkflowReceivesForm}}';
 
 export const NS5_WORKFLOW_RECEIVES_FORM =
-  'A function that answers an arrival of a connection (the cm tells the module something) says so in `receives`, as `<connectionId>.<operationId>` of a `serve` row of the integration, for example `"receives": "cm.agentDraftReady"`. At most one function receives a given operation, and the function belongs to a process that has a `wait` task, which is where the occurrence waits for that arrival.';
+  'A function that answers an arrival of a connection (the cm tells the module something) says so in `receives`, as `<connectionId>.<operationId>` of a `serve` row of the integration, for example `"receives": "cm.agentDraftReady"`. At most one function receives a given operation. The arrival is either waited for or the start of the process: the function belongs to a process that has a `wait` task, which is where the occurrence waits for that arrival, or to a process whose `trigger.event` is that same operation (the function is then the entry of the process, and no `wait` is needed). Do not add a `wait` task only to receive an arrival that starts the process.';
 
 /** Fills the placeholder of a prompt file with the shared text. */
 export function withNs5WorkflowReceivesForm(prompt: string): string {

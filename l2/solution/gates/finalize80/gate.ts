@@ -837,6 +837,7 @@ function checkI14(sources: Ns5OracleSources, error: IssueFn, warning: IssueFn): 
     functionId: fn.functionId,
     ...(fn.receives ? { receives: fn.receives } : {}),
     processHasWait: process.tasks.some(task => task.kind === 'wait'),
+    ...(process.trigger.kind === 'event' ? { processTriggerEvent: process.trigger.event } : {}),
   })));
   const serveOperations = (sources.integration.connections || [])
     .filter(row => row.direction === 'serve')
