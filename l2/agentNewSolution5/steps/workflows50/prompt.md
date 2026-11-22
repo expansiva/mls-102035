@@ -46,6 +46,9 @@ automatically when that arrival comes. Do not invent an arrival.
   (`create` | `update` | `transition`). `transitionRef` is required iff `effect` is `transition`.
 - `kind: llm` — a model decides or drafts on an entity. Same `entityRef` / `effect` /
   `transitionRef` shape as mechanical.
+- When one `effect` does not say what a `mechanical` or `llm` stage does (it creates the record the first time and updates it the next), add
+  `entityEffects`: `[{ "entityId": "<Entity>", "effects": ["create", "update"] }]`. The first entry is the entity of the stage: `entityRef` and
+  `effect` agree with it (`effect` is one of its effects). Leave it out when one effect is enough.
 - `kind: wait` — a pause (time or an event). The pause is prose in `description`. A cycle in
   `next` is allowed only when it goes through a `wait` task. `wake` says whether the process routine asks to be told periodically while this stage waits (`periodic` with `every`, an ISO 8601 duration such as `PT1H`), or not (`none`); the routine decides what to do, and being woken is not a message to a person.
 - An `entityRef` / `transitionRef` you name on a `mechanical` or `llm` stage is a **declaration**,

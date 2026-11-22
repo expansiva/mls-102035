@@ -59,6 +59,9 @@ export const NRP_LIFECYCLE_INTRO = 'How an entity declares a lifecycle: `lifecyc
 /** Shown with the signatures the code already measured for the actor. */
 export const NRP_NEW_SIGNATURE_RULE = 'a jornada nova precisa de uma assinatura que não esteja na lista';
 
+/** A workflow task that does more than one thing to an entity says so in entityEffects, beside entityRef and effect. */
+export const NRP_WORKFLOW_EFFECTS_SHAPE = 'A mechanical or llm task says what it does in entityRef and effect. When it does more than one thing to an entity (it creates the record the first time and updates it afterwards), it also carries entityEffects: a list of { entityId, effects } whose first entry is the entity of entityRef and whose effects include effect. Add entityEffects with an add operation and keep entityRef and effect.';
+
 export const NRP_EDIT_OPS = ['set', 'add', 'remove', 'create'] as const;
 export type NrpEditOp = typeof NRP_EDIT_OPS[number];
 
@@ -147,7 +150,7 @@ export function buildNrpEditHumanPrompt(
   if (kind === 'integration') lines.push(NRP_INTEGRATION_SHAPE);
   if (kind === 'ontology') lines.push(`${NRP_LIFECYCLE_INTRO}\n${NS5_LIFECYCLE_FORM}`);
   if (kind === 'journeys') lines.push(NS5_STEP_WRITES_FORM);
-  if (kind === 'workflows') lines.push(NS5_WORKFLOW_RECEIVES_FORM);
+  if (kind === 'workflows') lines.push(NS5_WORKFLOW_RECEIVES_FORM, NRP_WORKFLOW_EFFECTS_SHAPE);
   if (creates.length && reference) {
     const rule = kind === 'journeys' ? NRP_JOURNEY_SHAPE : NRP_ONTOLOGY_SHAPE;
     lines.push(`${rule}\nSibling ${reference.id} (reference only; do not edit it unless it is an allowed file):\n${JSON.stringify(reference.artifact)}`);

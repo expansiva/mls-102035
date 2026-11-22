@@ -283,6 +283,49 @@ void test('normalize keeps the process functions and omits the key when the mode
   assert.equal('functions' in without.processes[0], false);
 });
 
+function effectsProcess(task: Record<string, unknown>): Record<string, unknown> {
+  return validProcess({
+    tasks: [
+      humanTask('receive', 'recepcionista', 'abrirOrdenServicio', ['record'], 'Reception opens the order.'),
+      { taskId: 'record', kind: 'mechanical', next: [], description: 'The system records the order.', ...task },
+    ] as unknown as Ns5WorkflowProcess['tasks'],
+  });
+}
+
+void test('a mechanical task says what it does to each entity in entityEffects; entityRef and effect come from the first entry', () => {
+  const normalized = drafts({ processes: [effectsProcess({ entityEffects: [{ entityId: 'ServiceOrder', effects: ['create', 'update'] }] })] });
+  const task = normalized.processes[0].tasks[1];
+  assert.deepEqual(task.entityEffects, [{ entityId: 'ServiceOrder', effects: ['create', 'update'] }]);
+  assert.equal(task.entityRef, 'ServiceOrder');
+  assert.equal(task.effect, 'create');
+  const gate = gateOf(normalized.processes, ORDEN_JOURNEYS.slice(0, 1));
+  assert.equal(gate.issues.some(issue => /entityEffects|ENTITY|EFFECT/.test(issue.code)), false, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+  const kept = drafts({ processes: [effectsProcess({ entityRef: 'ServiceOrder', effect: 'update', entityEffects: [{ entityId: 'ServiceOrder', effects: ['create', 'update'] }] })] });
+  assert.equal(kept.processes[0].tasks[1].effect, 'update');
+  assert.equal(gateOf(kept.processes, ORDEN_JOURNEYS.slice(0, 1)).issues.some(issue => issue.code === 'NS5_WORKFLOWS_EFFECT'), false);
+});
+
+void test('a task without entityEffects stays as it was', () => {
+  const normalized = drafts({ processes: [effectsProcess({ entityRef: 'ServiceOrder', effect: 'update' })] });
+  assert.equal('entityEffects' in normalized.processes[0].tasks[1], false);
+});
+
+void test('the gate refuses entityEffects that name an unknown entity, an effect outside the task form, or disagree with entityRef and effect', () => {
+  const codes = (task: Record<string, unknown>) => gateOf(drafts({ processes: [effectsProcess(task)] }).processes, ORDEN_JOURNEYS.slice(0, 1)).issues.map(issue => issue.code);
+  assert.ok(codes({ entityEffects: [{ entityId: 'Ghost', effects: ['create'] }] }).includes('NS5_WORKFLOWS_ENTITY_UNKNOWN'));
+  assert.ok(codes({ entityEffects: [{ entityId: 'ServiceOrder', effects: ['list'] }] }).includes('NS5_WORKFLOWS_EFFECT'));
+  assert.ok(codes({ entityEffects: [] }).includes('NS5_WORKFLOWS_EFFECT'));
+  assert.ok(codes({ entityRef: 'ServiceOrder', effect: 'update', entityEffects: [{ entityId: 'ServiceOrder', effects: ['create'] }] }).includes('NS5_WORKFLOWS_EFFECT'));
+  assert.ok(codes({ entityRef: 'Other', effect: 'create', entityEffects: [{ entityId: 'ServiceOrder', effects: ['create'] }] }).includes('NS5_WORKFLOWS_EFFECT'));
+  assert.ok(codes({ entityEffects: [{ entityId: 'ServiceOrder', effects: ['transition'] }] }).includes('NS5_WORKFLOWS_TRANSITION'));
+});
+
+void test('the tool schema of workflows50 lets a mechanical task carry entityEffects', () => {
+  const schema = loadSchema() as { $defs: { task: { oneOf: Array<{ properties: Record<string, unknown> }> } } };
+  const mechanical = schema.$defs.task.oneOf.find(item => 'entityRef' in item.properties);
+  assert.ok(mechanical && 'entityEffects' in mechanical.properties);
+});
+
 void test('empty catalog is invalid when a handoff exists', () => {
   const gate = gateOf([]);
   assert.equal(gate.ok, false);

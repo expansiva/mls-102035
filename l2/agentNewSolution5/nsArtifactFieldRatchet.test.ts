@@ -282,6 +282,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     entityRef: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I2, backend job, executor LLM', since: '2026-09-12' },
     effect: { reader: 'steps/workflows50/gate.ts, finalize80 I2, backend job', since: '2026-09-12' },
     transitionRef: { reader: 'steps/workflows50/gate.ts, finalize80 I1 I2', since: '2026-09-12' },
+    entityEffects: { reader: 'steps/workflows50/gate.ts, solution/arrivalEffects.ts, agentPlannerL4/helpers/plDiff.ts, L1 taskEffects (How)', since: '2026-11-22' },
     next: { reader: 'steps/workflows50/gate.ts', since: '2026-09-10' },
     description: { reader: 'steps/workflows50/gate.ts, executor LLM', since: '2026-09-10' },
     icon: { reader: 'solution/poolPlan.ts (L4_TEXT_ATTRIBUTES), newRelease screen', since: '2026-10-27' },

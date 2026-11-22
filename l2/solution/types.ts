@@ -657,6 +657,12 @@ export interface Ns5WorkflowTask {
   effect?: 'create' | 'update' | 'transition';
   /** Required iff effect === 'transition'. Ontology transitionId; by is system or the actor. */
   transitionRef?: string;
+  /**
+   * mechanical|llm: what the stage does to each entity, when one `effect` is not enough (the first write of a
+   * choice creates, the next ones update). Read by `ns5ArrivalEffects`, like an arrival. The first entry is the entity of
+   * the record: `entityRef` and `effect` are derived from it when absent and must agree with it when present.
+   */
+  entityEffects?: Ns5ArrivalEntityEffects[];
   /** Acyclic unless a wait is on the cycle. */
   next: string[];
   /** Planner / UI. Wait: the pause (time or event) in prose. */

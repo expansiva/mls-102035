@@ -319,6 +319,39 @@ function validateTask(
     } else if (task.effect === 'transition') {
       validateTransitionRef(task, path, ctx);
     }
+    if (task.entityEffects !== undefined) validateTaskEntityEffects(task, path, ctx.hasOntology, ctx.entityById, issues);
+  }
+}
+
+/** The v5-style list on a mechanical or llm task: every entry names a known entity and effects of the task form; the first entry is the record's entity. */
+function validateTaskEntityEffects(
+  task: Ns5WorkflowTask,
+  path: string,
+  hasOntology: boolean,
+  entityById: Map<string, Ns5WorkflowsEntityView>,
+  issues: Ns5WorkflowsGateIssue[],
+): void {
+  const entries = task.entityEffects ?? [];
+  if (!entries.length) {
+    error(issues, 'NS5_WORKFLOWS_EFFECT', 'entityEffects names at least one entity.', `${path}.entityEffects`);
+    return;
+  }
+  entries.forEach((entry, index) => {
+    const entryPath = `${path}.entityEffects[${index}]`;
+    if (!entry.entityId || !ENTITY_ID.test(entry.entityId)) {
+      error(issues, 'NS5_WORKFLOWS_ENTITY', 'An entityEffects entry names entityId.', `${entryPath}.entityId`);
+    } else if (hasOntology && !entityById.has(entry.entityId)) {
+      error(issues, 'NS5_WORKFLOWS_ENTITY_UNKNOWN', `Unknown entityId ${entry.entityId}.`, `${entryPath}.entityId`);
+    }
+    if (!entry.effects.length || entry.effects.some(effect => !EFFECTS.has(effect))) {
+      error(issues, 'NS5_WORKFLOWS_EFFECT', 'An entityEffects entry names effects, each create, update or transition.', `${entryPath}.effects`);
+    }
+    if (entry.effects.includes('transition') && !task.transitionRef) {
+      error(issues, 'NS5_WORKFLOWS_TRANSITION', 'effect transition names transitionRef.', `${path}.transitionRef`);
+    }
+  });
+  if (task.entityRef !== entries[0].entityId || !task.effect || !entries[0].effects.includes(task.effect)) {
+    error(issues, 'NS5_WORKFLOWS_EFFECT', 'entityRef and effect agree with the first entityEffects entry.', `${path}.entityEffects[0]`);
   }
 }
 

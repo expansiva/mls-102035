@@ -2,6 +2,7 @@
 
 import { normalizeModuleName } from '/_102035_/l2/solution/fs.js';
 import { isLucideIcon } from '/_102035_/l2/solution/lucideIcons.js';
+import { ns5ArrivalEffects } from '/_102035_/l2/solution/arrivalEffects.js';
 import { splitNs5EntityRef } from '/_102035_/l2/solution/ontologyView.js';
 import {
   NS5_WORKFLOWS_SCHEMA_VERSION,
@@ -383,8 +384,14 @@ function normalizeTask(
   const resolved = TASK_KINDS.has(kind) ? kind as Ns5WorkflowTask['kind'] : 'human';
   const actorRef = memberId(text(source.actorRef), '');
   const journeyRef = memberId(text(source.journeyRef), '');
-  const entityRef = entityId(text(source.entityRef));
-  const effect = text(source.effect);
+  const acts = resolved === 'mechanical' || resolved === 'llm';
+  // `entityEffects` (read by the same ns5ArrivalEffects an arrival uses): the first entry is the record's entity; entityRef and effect come from it when absent.
+  const entityEffects = acts && Array.isArray(source.entityEffects)
+    ? ns5ArrivalEffects({ entityEffects: list(source.entityEffects).map(item => ({ entityId: entityId(text(record(item).entityId)), effects: strings(record(item).effects) })) }, 'serve')
+    : undefined;
+  const firstEntry = entityEffects?.[0];
+  const entityRef = entityId(text(source.entityRef)) || (firstEntry ? firstEntry.entityId : '');
+  const effect = text(source.effect) || (firstEntry?.effects.find(item => EFFECTS.has(item)) ?? '');
   const transitionRef = memberId(text(source.transitionRef), '');
   const taskId = memberId(text(source.taskId) || text(source.id), '');
   const icon = optionalIcon(source.icon, processId, taskId, normalizations);
@@ -402,6 +409,7 @@ function normalizeTask(
       ? { effect: effect as NonNullable<Ns5WorkflowTask['effect']> }
       : {}),
     ...((resolved === 'mechanical' || resolved === 'llm') && transitionRef ? { transitionRef } : {}),
+    ...(entityEffects ? { entityEffects } : {}),
     next: unique(strings(source.next).map(item => memberId(item, '')).filter(Boolean)),
     description: text(source.description),
     ...(icon ? { icon } : {}),

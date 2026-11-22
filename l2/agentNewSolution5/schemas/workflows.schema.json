@@ -113,6 +113,19 @@
             "entityRef": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
             "effect": { "type": "string", "enum": ["create", "update", "transition"] },
             "transitionRef": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+            "entityEffects": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["entityId", "effects"],
+                "properties": {
+                  "entityId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+                  "effects": { "type": "array", "minItems": 1, "items": { "type": "string", "enum": ["create", "update", "transition"] } }
+                }
+              }
+            },
             "next": {
               "type": "array",
               "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" }
