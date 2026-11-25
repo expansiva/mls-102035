@@ -9,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { extractNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import type { NrpModuleArtifacts } from '/_102035_/l2/agentNewReleasePrompt/helpers/compactIndex.js';
 import type { NrpWritePayload } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
-import { persistNrp, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral, changedNrpPaths, candidateRelative, operationStamp, type NrpOperationRecord } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
+import { persistNrp, persistNrpWithChange, defsSourceFromSibling, nrpDefsRoundTripError, nrpFileStates, nrpPendingTextMarks, nrpReport, replaceDefsJsonLiteral, changedNrpPaths, candidateRelative, operationStamp, type NrpOperationRecord } from '/_102035_/l2/agentNewReleasePrompt/steps/write50/write50.js';
 import { setModuleRoot, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
-import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
+import { L4_REVISION_SCHEMA, originalL4FileInfo, promoteL4Revision, readSealedL4Candidate, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { sealModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { tobeArtifactFileInfo, type Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 
@@ -384,7 +384,7 @@ function installRemovalFixture() {
     applied: [], issues: [], allowWrite: true, modelCalls: 1,
   } as unknown as NrpWritePayload;
   return {
-    contents, canonical, edited, oldSource, payload,
+    contents, files, keyOf, add, sources, canonical, edited, oldSource, payload,
     restore: () => { setModuleRoot(moduleName, null); (globalThis as any).mls = previous; },
   };
 }
@@ -581,3 +581,78 @@ void test('l4_p4_162: items that leave a list by sequence still write valid JSON
     assert.equal(nrpDefsRoundTripError(atEnd, { title: 't', items: keep.map(index => items[index]) }), null, `list at the end: ${name}`);
   }
 });
+
+// l4_p4_163: asked in text with no screen, the agent prepares the change and leaves the revision sealed.
+function installTextOnlyFixture() {
+  const fixture = installRemovalFixture();
+  const drop = (predicate: (key: string) => boolean) => {
+    for (const key of [...fixture.contents.keys()].filter(predicate)) { fixture.contents.delete(key); delete fixture.files[key]; }
+  };
+  // The screen did nothing: no base captured, no change, no edited version. Only the module as it is now.
+  drop(key => key.includes(`${moduleName}/pipeline/`) || key.includes(`${moduleName}/tobe/`));
+  for (const item of fixture.sources) fixture.add(tobeArtifactFileInfo(project, moduleName, item.path as Ns5TobeArtifactPath, 'asis'), item.source);
+  fixture.add(tobeArtifactFileInfo(project, moduleName, 'journeys/oldJourney.defs.ts', 'asis'), fixture.oldSource);
+  return fixture;
+}
+
+void test('l4_p4_163: a request in text with no screen leaves the base, the change and a sealed revision, like the screen', async () => {
+  const fixture = installTextOnlyFixture();
+  try {
+    const before = Object.fromEntries(fixture.sources.map(item => [item.path, item.source]));
+    const result = await persistNrpWithChange(fixture.payload, 'task1');
+    assert.equal(result.reason, null);
+    assert.ok(result.changeId && result.revisionId);
+    // the change is the active one, with the sealed revision as its active revision
+    const active = JSON.parse(fixture.contents.get(`${project}:4:${moduleName}/pipeline/changes:active.json`) || '{}');
+    assert.equal(active.changeId, result.changeId);
+    const change = JSON.parse(fixture.contents.get(`${project}:4:${moduleName}/pipeline/changes/${result.changeId}:change.json`) || '{}');
+    assert.equal(change.activeRevisionId, result.revisionId);
+    // the captured base is the module as it was, file by file
+    const baseId = change.baseId as string;
+    for (const [path, source] of Object.entries(before)) {
+      assert.equal(fixture.contents.get(keyOfOriginal(baseId, path)), source, `base ${path}`);
+    }
+    assert.equal(fixture.contents.get(keyOfOriginal(baseId, 'journeys/oldJourney.defs.ts')), fixture.oldSource);
+    // the sealed revision is the candidate: the old journey is gone, and it is sealed as removed
+    const sealed = await readSealedL4Candidate(project, moduleName, result.changeId!, result.revisionId!);
+    assert.equal(sealed?.manifest.fileStates?.['journeys/oldJourney.defs.ts'], 'removed');
+    // the request text is recorded with the change
+    assert.match(Array.from(fixture.contents.entries()).filter(([key]) => key.includes('/requests:request-')).map(([, value]) => value).join(' '), /Remove a jornada antiga/);
+    // the canonical module is untouched until someone applies the revision
+    assert.equal(fixture.contents.get(fixture.canonical), fixture.oldSource);
+  } finally { fixture.restore(); }
+});
+
+void test('l4_p4_163: a request with a change already active (the screen prepared it) writes as before, with no second seal', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    const result = await persistNrpWithChange(fixture.payload, 'task2');
+    assert.equal(result.reason, null);
+    assert.equal(result.changeId, undefined);
+    assert.equal(JSON.parse(fixture.contents.get(`${project}:4:${moduleName}/pipeline/changes/change1:change.json`) || '{}').activeRevisionId, 'rev1');
+  } finally { fixture.restore(); }
+});
+
+void test('l4_p4_163: a request that fails in the middle leaves no change and no edited version', async () => {
+  const fixture = installTextOnlyFixture();
+  try {
+    const original = (globalThis as any).mls.stor.localStor.deleteFile;
+    let failed = false;
+    // the disk fails once, in the delete the request asks for; the cleanup that follows works
+    (globalThis as any).mls.stor.localStor.deleteFile = async (file: Ns5FileInfo) => {
+      if (!failed) { failed = true; throw new Error('disk full'); }
+      return original(file);
+    };
+    const result = await persistNrpWithChange(fixture.payload, 'task3');
+    assert.match(result.reason || '', /Could not delete journeys\/oldJourney\.defs\.ts/);
+    assert.deepEqual(result.files, []);
+    const active = JSON.parse(fixture.contents.get(`${project}:4:${moduleName}/pipeline/changes:active.json`) || '{}');
+    assert.equal(active.changeId || '', '');
+    assert.equal([...fixture.contents.keys()].some(key => key.includes(`${moduleName}/tobe/plan`)), false, 'no edited version left');
+  } finally { fixture.restore(); }
+});
+
+function keyOfOriginal(baseId: string, path: string): string {
+  const info = originalL4FileInfo(project, moduleName, baseId, path as Ns5TobeArtifactPath);
+  return `${info.project}:${info.level}:${info.folder || ''}:${info.shortName}${info.extension}`;
+}

@@ -23,6 +23,7 @@ import {
   fileExists,
   indexedFile,
   pipelineJsonFileForProject,
+  preserveModuleRoots,
   readSourceText,
   rulesFile,
   setModuleRoot,
@@ -34,6 +35,7 @@ import {
 import { scanNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds } from '/_102035_/l2/solution/ontologyView.js';
 import { tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
+import { deactivateL4Change, editL4Candidate, prepareL4Change, readActiveL4Change, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { promptAssumptionsLine, promptChangeSummary, promptNothingChangedSummary, type PromptSummaryFile } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 
 export interface NrpWritePayload {
@@ -63,6 +65,9 @@ export interface NrpPersistPlan {
 }
 
 export interface NrpPersistResult {
+  /** The change and the sealed revision this request left, when it prepared them (no screen). */
+  changeId?: string;
+  revisionId?: string;
   files: string[];
   fileStates: NrpFileState[];
   reason: string | null;
@@ -128,7 +133,7 @@ export async function beforeNrpWriteStep(
     const payload = readPayload(step.prompt);
     const planned = planNrpPersistence(payload.allowWrite, fileNames(payload));
     const persisted = planned.written
-      ? await persistNrp(payload, context.task?.PK || '')
+      ? await persistNrpWithChange(payload, context.task?.PK || '')
       : { files: [] as string[], fileStates: [] as NrpFileState[], reason: planned.reason, summary: '' };
     const written = persisted.files.length > 0;
     const outcome = { written, reason: persisted.reason, files: persisted.files };
@@ -141,6 +146,7 @@ export async function beforeNrpWriteStep(
           result: JSON.stringify({
             written, reason: outcome.reason, files: persisted.files, fileStates: persisted.fileStates,
             summary: persisted.summary, report: nrpReport(payload, outcome, persisted.summary),
+            ...(persisted.changeId ? { changeId: persisted.changeId, revisionId: persisted.revisionId } : {}),
           }),
           planning: { planId: 'write50-done', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
         } as mls.msg.AIResultStep,
@@ -159,6 +165,49 @@ export async function beforeNrpWriteStep(
       traceMsg: error instanceof Error ? error.message : String(error),
     }];
   }
+}
+
+class NrpNothingWritten extends Error {
+  constructor(readonly persisted: NrpPersistResult) { super(persisted.reason || 'nothing written'); }
+}
+
+/**
+ * l4_p4_163: the screen prepares the change (the captured base, the record of the change) and seals the revision
+ * around this agent. Asked in text with no screen, nobody does: this step prepares the change, writes inside the
+ * module writer lock and leaves the revision sealed, with the same API the screen uses. When a change is already
+ * active the screen prepared it and seals after the agent (a second seal here would leave its expected revision
+ * stale), so the write is the same as before. A request that leaves nothing written discards what it prepared.
+ */
+export async function persistNrpWithChange(payload: NrpWritePayload, taskId = ''): Promise<NrpPersistResult> {
+  const { project, moduleName } = payload;
+  if (await readActiveL4Change(project, moduleName)) return persistNrp(payload, taskId);
+  const prepared = await prepareL4Change(project, moduleName);
+  try {
+    const first = await sealL4Revision(project, moduleName, prepared.change.activeRevisionId, payload.request);
+    const { value, revision } = await editL4Candidate(project, moduleName, first.revisionId, prepared.change.changeId, async () => {
+      const persisted = await preserveModuleRoots(() => persistNrp(payload, taskId));
+      if (!persisted.files.length) throw new NrpNothingWritten(persisted);
+      return persisted;
+    });
+    return { ...value, changeId: prepared.change.changeId, revisionId: revision.revisionId };
+  } catch (error) {
+    await discardPreparedChange(project, moduleName);
+    if (error instanceof NrpNothingWritten) return error.persisted;
+    throw error;
+  }
+}
+
+/** What the screen's "Cancel changes" does to the edited version: the change goes inactive and its files are deleted. */
+async function discardPreparedChange(project: number, moduleName: string): Promise<void> {
+  await deactivateL4Change(project, moduleName, async () => {
+    const { deleteFile } = await import('/_102027_/l2/libStor.js');
+    const folders = ['plan', 'candidate', 'operations'].map(name => `${moduleName}/tobe/${name}`);
+    const files = mls.stor.files as Record<string, mls.stor.IFileInfo | undefined>;
+    for (const file of Object.values(files)) {
+      if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted') continue;
+      if (folders.some(folder => file.folder === folder || file.folder?.startsWith(`${folder}/`))) await deleteFile(file);
+    }
+  });
 }
 
 export async function persistNrp(payload: NrpWritePayload, taskId = ''): Promise<NrpPersistResult> {
