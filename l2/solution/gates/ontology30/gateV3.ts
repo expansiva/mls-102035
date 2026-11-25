@@ -960,17 +960,48 @@ function checkTableRecord(
       }
     }
   }
-  // One error, at the first place the key shows up. Timescale refuses a unique index without the time column,
-  // and the time column is the platform's: a series only adds rows.
-  if (entity.kind === 'entity' && entity.storage?.kind === 'timeSeries') {
-    const uniqueFields = Object.entries(fields).filter(([, field]) => field.unique).map(([id]) => id);
-    if (entity.uniqueKeys?.length || uniqueFields.length) {
+  // l4_p4_158 (replaces the l4_p4_154 rule): Timescale accepts a unique index that includes the time column. For the
+  // key to refuse a repeated fact the time must be the time of the fact (`timeField`), the same in both deliveries.
+  if (entity.kind === 'entity') {
+    const timeField = entity.storage?.timeField;
+    const isSeries = entity.storage?.kind === 'timeSeries';
+    if (timeField !== undefined && !isSeries) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_TIMEFIELD_NOT_TIMESERIES',
+        message: `${entity.entityId} names timeField '${timeField}' but is not a timeSeries table. Take it out.`,
+        path: `${path}.timeField`,
+      });
+    }
+    if (isSeries && timeField !== undefined) {
+      const field = fields[timeField];
+      if (!field || timeField === 'details' || field.type !== 'timestamp' || !field.required) {
+        issues.push({
+          severity: 'error',
+          code: 'NS5_ONTOLOGY_TIMEFIELD_INVALID',
+          message: `timeField '${timeField}' of ${entity.entityId} must be one of its own top-level fields, required, of type timestamp: the time of the fact each row records.`,
+          path: `${path}.timeField`,
+        });
+      }
+    }
+    if (isSeries && entity.uniqueKeys?.length && (timeField === undefined || entity.uniqueKeys.some(key => !key.includes(timeField)))) {
       issues.push({
         severity: 'error',
         code: 'NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY',
-        message: `${entity.entityId} is a timeSeries table: it only adds rows and has no unique key and no unique field (${entity.uniqueKeys?.length ? 'uniqueKeys' : `unique on ${uniqueFields.join(', ')}`}). Take it out; whoever writes the rows avoids writing the same thing twice.`,
-        path: entity.uniqueKeys?.length ? `${path}.uniqueKeys` : `${path}.record.fields.${uniqueFields[0]}`,
+        message: `${entity.entityId} is a timeSeries table: a unique key needs timeField (the time of the fact, a required timestamp field) and every key includes it. Either declare timeField and put it in each key, or take the key out.`,
+        path: `${path}.uniqueKeys`,
       });
+    }
+    if (isSeries) {
+      const uniqueFields = Object.entries(fields).filter(([, field]) => field.unique).map(([id]) => id);
+      if (uniqueFields.length) {
+        issues.push({
+          severity: 'error',
+          code: 'NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY',
+          message: `${entity.entityId} is a timeSeries table and a field alone cannot be unique (unique on ${uniqueFields.join(', ')}): use uniqueKeys that include timeField.`,
+          path: `${path}.record.fields.${uniqueFields[0]}`,
+        });
+      }
     }
   }
   if (!fields.details || fields.details.type !== 'object') {

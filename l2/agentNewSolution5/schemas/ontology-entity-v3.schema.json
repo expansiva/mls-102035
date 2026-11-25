@@ -15,6 +15,10 @@
       }
     },
     "uniqueKeys": { "type": "array", "items": { "$ref": "#/$defs/uniqueKey" } },
+    "timeField": {
+      "type": "string",
+      "description": "Only on a timeSeries table: the id of one of its own required timestamp fields, the time of the fact each row records (given by whoever writes the row). Required for uniqueKeys on a timeSeries table; every key includes it. Absent = the time the row was written."
+    },
     "lifecycleStates": { "type": "array", "items": { "$ref": "#/$defs/lifecycleState" } },
     "initialState": { "type": "string" },
     "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },

@@ -734,6 +734,33 @@ void test('p4_152: retentionDays from absent to 90 is one entity item; the same 
   assert.deepEqual(diffL4Snapshots(keptTable(90), keptTable(90)), []);
 });
 
+// l4_p4_158 s4: `storage.timeField` and `uniqueKeys` of a series are read by the diff as they are.
+function timed(timeField?: string, uniqueKeys?: string[][]): L4DiffSnapshot {
+  const entity = {
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Log',
+    kind: 'entity',
+    storage: { target: 'moduleDatabase', table: 'm_log', kind: 'timeSeries', ...(timeField !== undefined ? { timeField } : {}) },
+    record: { fields: {} },
+    transitions: [],
+    ...(uniqueKeys ? { uniqueKeys } : {}),
+  } as unknown as Ns5OntologyAnyEntity;
+  return snapshotFromParsed({
+    entities: [{ entity, source: 'ontology/Log.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+}
+
+void test('p4_158: timeField and uniqueKeys of a series are each one entity item; the same on both sides is none', () => {
+  const byTime = diffL4Snapshots(timed(), timed('writtenAt'));
+  assert.equal(byTime.length, 1);
+  assert.equal(byTime[0].kind, 'entity');
+  assert.equal(byTime[0].op, 'changed');
+  const byKey = diffL4Snapshots(timed('writtenAt'), timed('writtenAt', [['code', 'writtenAt']]));
+  assert.equal(byKey.length, 1);
+  assert.deepEqual(diffL4Snapshots(timed('writtenAt'), timed('writtenAt')), []);
+});
+
 // l4_p4_127 s3: an entity that lives outside, as the diff sees it. Table to external, another connection and
 // fields of the record are each an item; the diff reads `kind`, `connectionId` and `record.fields` as they are.
 function outside(patch: { kind?: string; connectionId?: string; fields?: Record<string, unknown> } = {}): L4DiffSnapshot {

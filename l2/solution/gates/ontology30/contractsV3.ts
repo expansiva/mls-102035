@@ -148,7 +148,7 @@ export interface Ns5OntologyV3PlanEntity {
    * On a table: `target` and `table` are derived, `kind` is what the plan declared (`relational` by
    * default). A role and an `external` have no storage of their own.
    */
-  storage?: { target: 'moduleDatabase'; table: string; kind: Exclude<Ns5OntologyV3StorageKind, 'platform'>; retentionDays?: number };
+  storage?: { target: 'moduleDatabase'; table: string; kind: Exclude<Ns5OntologyV3StorageKind, 'platform'>; retentionDays?: number; timeField?: string };
 }
 
 export interface Ns5OntologyV3PlanRelationship {
@@ -507,7 +507,11 @@ export function normalizeNs5OntologyEntityV3(
       ...common,
       kind: 'entity',
       class: frozen.class ?? 'core',
-      storage: frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' },
+      storage: {
+        ...(frozen.storage ?? { target: 'moduleDatabase', table: `${context.moduleName}_${entityId.toLowerCase()}`, kind: 'relational' }),
+        // The entity step names the field that is the time of the fact (l4_p4_158); kept as written so the gate can judge it.
+        ...(text(raw.timeField) ? { timeField: text(raw.timeField) } : {}),
+      },
       record: { fields: normalizeTableRecord(raw.record, entityId, family, normalizations, derivedItems) },
       ...(frozen.initialData ? { initialData: frozen.initialData } : {}),
       ...(uniqueKeys.length ? { uniqueKeys } : {}),

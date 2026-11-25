@@ -1728,6 +1728,38 @@ void test('l4_p4_157: a written timeSeries table keeps writer journey in the art
   assert.equal(gate('timeSeries', 'tdm').includes('NS5_ONTOLOGY_RETENTION_ON_DERIVED'), false);
 });
 
+void test('l4_p4_158: timeField lands in storage; a unique key on a series needs it and every key includes it', () => {
+  const planOf = (storageKind: string) => normalizeNs5OntologyPlanV3({
+    businessDomain: 'Tasks',
+    entities: [{ entityId: 'Log', kind: 'entity', class: 'event', storageKind, title: 'Log', description: 'x', displayField: 'code', writer: 'journey' }],
+    relationships: [],
+  } as never, 'tarefas');
+  const build = (storageKind: string, raw: Record<string, unknown>, fieldPatch: Record<string, unknown> = {}) => {
+    const plan = planOf(storageKind);
+    const built = normalizeNs5OntologyEntityV3({
+      record: { fields: [
+        { id: 'code', type: 'string', title: 'Code', indexed: true },
+        { id: 'writtenAt', type: 'timestamp', title: 'Written at', required: true, indexed: true, ...fieldPatch },
+      ] },
+      relationships: [], capabilities: [], rules: [], ...raw,
+    } as never, 'Log', { moduleName: 'tarefas', mdm, plan }, [])!;
+    return { built, issues: codes(validateNs5OntologyEntityV3(built, plan, { moduleName: 'tarefas', mdm, tdm, ddm }).issues) };
+  };
+  const KEY = 'NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY';
+  const stored = build('timeSeries', { timeField: 'writtenAt' }).built;
+  assert.equal(stored.kind === 'entity' && stored.storage.timeField, 'writtenAt');
+  const plain = build('timeSeries', {}).built;
+  assert.equal(plain.kind === 'entity' && 'timeField' in plain.storage, false);
+  assert.equal(build('timeSeries', { timeField: 'writtenAt', uniqueKeys: [['code', 'writtenAt']] }).issues.some(code => code.includes('TIMESERIES') || code.includes('TIMEFIELD')), false);
+  assert.ok(build('timeSeries', { uniqueKeys: [['code']] }).issues.includes(KEY));
+  assert.ok(build('timeSeries', { timeField: 'writtenAt', uniqueKeys: [['code']] }).issues.includes(KEY));
+  assert.ok(build('timeSeries', { timeField: 'writtenAt' }, { required: false }).issues.includes('NS5_ONTOLOGY_TIMEFIELD_INVALID'));
+  assert.ok(build('timeSeries', { timeField: 'writtenAt' }, { type: 'date' }).issues.includes('NS5_ONTOLOGY_TIMEFIELD_INVALID'));
+  assert.ok(build('timeSeries', { timeField: 'missing' }).issues.includes('NS5_ONTOLOGY_TIMEFIELD_INVALID'));
+  assert.ok(build('relational', { timeField: 'writtenAt' }).issues.includes('NS5_ONTOLOGY_TIMEFIELD_NOT_TIMESERIES'));
+  assert.ok(build('timeSeries', { timeField: 'writtenAt' }, { unique: true }).issues.includes(KEY));
+});
+
 void test('l4_p4_154: a timeSeries table has no unique key and no unique field; the same keys on a relational table are not accused', () => {
   const planOf = (storageKind: string) => normalizeNs5OntologyPlanV3({
     businessDomain: 'Tasks',

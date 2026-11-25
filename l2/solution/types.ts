@@ -523,6 +523,8 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
     kind?: 'relational' | 'timeSeries';
     /** Days a row is kept after it is written; absent = kept forever. */
     retentionDays?: number;
+    /** Field of this entity that holds the time of the fact each row records; the series is ordered, keyed and expired by it. Absent = the time the row was written. */
+    timeField?: string;
   };
   /** What the table starts with in every database, in one sentence (e.g. 'all ISO 3166-1 countries'); absent = no initial data. Test data is not initialData. */
   initialData?: string;

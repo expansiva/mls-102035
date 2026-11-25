@@ -300,3 +300,7 @@
 ## 2026-11-25 (l4_p4_157)
 
 - A `timeSeries` table of family `tdm` keeps `writer` in the artifact even when it is `journey` (the L1 generator reads "series with a writer" as "series someone writes"; a recalculated one has none). `relational` tables keep omitting `journey`. Gate code `NS5_ONTOLOGY_RETENTION_ON_DERIVED`: `retentionDays` on a `ddm` table.
+
+## 2026-11-25 (l4_p4_158)
+
+- `timeField` (entity step, `storage.timeField`): on a `timeSeries` table, one of its own required timestamp fields, the time of the fact. `uniqueKeys` on a series are accepted only with `timeField` and every key includes it; a unique field stays refused. Replaces the l4_p4_154 sentence and rule. Gate codes `NS5_ONTOLOGY_TIMEFIELD_NOT_TIMESERIES`, `NS5_ONTOLOGY_TIMEFIELD_INVALID`; `NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY` now means a key without the time.
