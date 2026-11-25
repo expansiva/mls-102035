@@ -529,3 +529,55 @@ void test('l4_p4_102: an edit that changes no artifact writes nothing and tells 
     assert.deepEqual([...fixture.contents.keys()].sort(), keysBefore, 'no file, not even the report, is created');
   } finally { fixture.restore(); }
 });
+
+// l4_p4_162: members that leave a container are cut by sequence; the result always parses and keeps the right ones.
+function defsOf(value: unknown): string {
+  return `/// <mls fileReference="_102035_/l2/x/x.defs.ts" enhancement="_blank"/>\n\nexport const x = ${JSON.stringify(value, null, 2)} as const;\n\nexport default x;\n`;
+}
+
+function keepKeys(keys: string[], keep: string[]): Record<string, unknown> {
+  return Object.fromEntries(keep.map(key => [key, { id: key, list: [1, 2] }]));
+}
+
+void test('l4_p4_162: keys that leave an object by sequence still write valid JSON', () => {
+  const keys = ['a', 'b', 'c', 'd', 'e'];
+  const current = keepKeys(keys, keys);
+  const cases: Record<string, string[]> = {
+    'the last two': ['a', 'b', 'c'],
+    'the last three': ['a', 'b'],
+    'all of them': [],
+    'one in the middle and the last': ['a', 'c', 'd'],
+    'two neighbors in the middle': ['a', 'd', 'e'],
+    'the first two': ['c', 'd', 'e'],
+    'the last one': ['a', 'b', 'c', 'd'],
+    'the first and the last': ['b', 'c', 'd'],
+  };
+  for (const [name, keep] of Object.entries(cases)) {
+    const next = keepKeys(keys, keep);
+    const text = replaceDefsJsonLiteral(defsOf(current), next);
+    assert.equal(nrpDefsRoundTripError(text, next), null, name);
+    assert.deepEqual(Object.keys(JSON.parse(/export const x = ([\s\S]*?) as const;/u.exec(text)![1])), keep, name);
+  }
+});
+
+void test('l4_p4_162: items that leave a list by sequence still write valid JSON', () => {
+  const items = [0, 1, 2, 3, 4].map(n => ({ id: `i${n}` }));
+  const cases: Record<string, number[]> = {
+    'the last two': [0, 1, 2],
+    'the last three': [0, 1],
+    'all of them': [],
+    'one in the middle and the last': [0, 2, 3],
+    'two neighbors in the middle': [0, 3, 4],
+    'the last one': [0, 1, 2, 3],
+    'the first two': [2, 3, 4],
+  };
+  for (const [name, keep] of Object.entries(cases)) {
+    const current = { title: 't', items, after: { ok: true } };
+    const next = { title: 't', items: keep.map(index => items[index]), after: { ok: true } };
+    const text = replaceDefsJsonLiteral(defsOf(current), next);
+    assert.equal(nrpDefsRoundTripError(text, next), null, `list: ${name}`);
+    const tail = { items: [...items], title: 't' };
+    const atEnd = replaceDefsJsonLiteral(defsOf({ title: 't', items }), { title: 't', items: keep.map(index => tail.items[index]) });
+    assert.equal(nrpDefsRoundTripError(atEnd, { title: 't', items: keep.map(index => items[index]) }), null, `list at the end: ${name}`);
+  }
+});

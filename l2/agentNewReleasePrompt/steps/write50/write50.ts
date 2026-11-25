@@ -486,7 +486,7 @@ function patchObject(source: string, current: Record<string, unknown>, next: Rec
   let working = source;
   let currentNow = current;
   if (dropped.length) {
-    working = omitSpans(source, dropped.map(entry => removalSpan(source, entry.keyStart, entry.valueEnd)));
+    working = omitSpans(source, removalSpans(source, entries.map(entry => ({ start: entry.keyStart, end: entry.valueEnd })), new Set(dropped.map(entry => entries.indexOf(entry)))));
     currentNow = {};
     for (const key of Object.keys(current)) {
       if (Object.prototype.hasOwnProperty.call(next, key)) currentNow[key] = current[key];
@@ -542,7 +542,7 @@ function patchArray(source: string, current: unknown[], next: unknown[]): string
     const drop = current.length > next.length ? pureDrops(current, next) : null;
     if (drop) {
       const items = arrayItems(source);
-      return omitSpans(source, drop.map(index => removalSpan(source, items[index].start, items[index].end)));
+      return omitSpans(source, removalSpans(source, items, new Set(drop)));
     }
     const added = next.length > current.length ? pureAdds(current, next) : null;
     if (added) return insertArrayItems(source, next, added);
@@ -739,16 +739,35 @@ function pureDrops(current: unknown[], next: unknown[]): number[] | null {
   return matched === next.length ? drop : null;
 }
 
-/** Deletes one property or list item: its own lines, and the neighbor comma when it was last. */
-function removalSpan(source: string, valueStart: number, valueEnd: number): [number, number] {
-  const lineBreak = source.lastIndexOf('\n', valueStart - 1);
-  const startOfLine = lineBreak >= 0 ? lineBreak : valueStart;
-  const after = skipSpace(source, valueEnd);
-  if (source[after] === ',') return [startOfLine, after + 1];
-  let probe = startOfLine;
-  while (probe > 0 && /\s/u.test(source[probe - 1])) probe -= 1;
-  const start = probe > 0 && source[probe - 1] === ',' ? probe - 1 : startOfLine;
-  return [start, valueEnd];
+/**
+ * What to cut for the members that leave a container, by sequence and not one by one (l4_p4_162): neighbors that
+ * leave form one run. A run that is followed by a comma takes that comma; a run that reaches the end of the
+ * container has no comma after it and takes the one before it. Each run owns its own lines.
+ */
+function removalSpans(
+  source: string,
+  all: ReadonlyArray<{ start: number; end: number }>,
+  drop: ReadonlySet<number>,
+): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  let index = 0;
+  while (index < all.length) {
+    if (!drop.has(index)) { index += 1; continue; }
+    let last = index;
+    while (last + 1 < all.length && drop.has(last + 1)) last += 1;
+    const first = all[index];
+    const lineBreak = source.lastIndexOf('\n', first.start - 1);
+    const startOfLine = lineBreak >= 0 ? lineBreak : first.start;
+    const after = skipSpace(source, all[last].end);
+    if (source[after] === ',') spans.push([startOfLine, after + 1]);
+    else {
+      let probe = startOfLine;
+      while (probe > 0 && /\s/u.test(source[probe - 1])) probe -= 1;
+      spans.push([probe > 0 && source[probe - 1] === ',' ? probe - 1 : startOfLine, all[last].end]);
+    }
+    index = last + 1;
+  }
+  return spans;
 }
 
 function omitSpans(source: string, spans: Array<[number, number]>): string {
