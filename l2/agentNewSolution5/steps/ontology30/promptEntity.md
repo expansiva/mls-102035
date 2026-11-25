@@ -58,6 +58,7 @@ else goes inside `details`, as a tree, however deep the business needs.
   and embedded lists live inside it. A child embedded by `composition` is an object with
   `collection: true` inside `details`, never a separate entity.
 - `uniqueKeys` names columns only.
+- A `timeSeries` table has no unique key and no unique field: its rows are only added, and whoever writes them avoids writing the same thing twice.
 - `id` and `version` are written for you; do not declare them.
 
 {{ns5LifecycleForm}}

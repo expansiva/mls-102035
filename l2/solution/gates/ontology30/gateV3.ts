@@ -952,6 +952,19 @@ function checkTableRecord(
       }
     }
   }
+  // One error, at the first place the key shows up. Timescale refuses a unique index without the time column,
+  // and the time column is the platform's: a series only adds rows.
+  if (entity.kind === 'entity' && entity.storage?.kind === 'timeSeries') {
+    const uniqueFields = Object.entries(fields).filter(([, field]) => field.unique).map(([id]) => id);
+    if (entity.uniqueKeys?.length || uniqueFields.length) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY',
+        message: `${entity.entityId} is a timeSeries table: it only adds rows and has no unique key and no unique field (${entity.uniqueKeys?.length ? 'uniqueKeys' : `unique on ${uniqueFields.join(', ')}`}). Take it out; whoever writes the rows avoids writing the same thing twice.`,
+        path: entity.uniqueKeys?.length ? `${path}.uniqueKeys` : `${path}.record.fields.${uniqueFields[0]}`,
+      });
+    }
+  }
   if (!fields.details || fields.details.type !== 'object') {
     issues.push({
       severity: 'error',

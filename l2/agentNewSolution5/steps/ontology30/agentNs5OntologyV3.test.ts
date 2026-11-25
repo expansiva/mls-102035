@@ -1706,6 +1706,28 @@ void test('l4_p4_152: retentionDays lands in storage of a table, is absent when 
   assert.ok(gate({ kind: 'external', connectionId: 'cm', retentionDays: 90 }).includes('NS5_ONTOLOGY_EXTERNAL_RETENTION'));
 });
 
+void test('l4_p4_154: a timeSeries table has no unique key and no unique field; the same keys on a relational table are not accused', () => {
+  const planOf = (storageKind: string) => normalizeNs5OntologyPlanV3({
+    businessDomain: 'Tasks',
+    entities: [{ entityId: 'Log', kind: 'entity', class: 'event', storageKind, title: 'Log', description: 'x', displayField: 'code', writer: 'journey' }],
+    relationships: [],
+  } as never, 'tarefas');
+  const issuesOf = (storageKind: string, raw: Record<string, unknown>, fieldPatch: Record<string, unknown> = {}) => {
+    const plan = planOf(storageKind);
+    const built = normalizeNs5OntologyEntityV3({
+      record: { fields: [{ id: 'code', type: 'string', title: 'Code', indexed: true, ...fieldPatch }] },
+      relationships: [], capabilities: [], rules: [], ...raw,
+    } as never, 'Log', { moduleName: 'tarefas', mdm, plan }, [])!;
+    return codes(validateNs5OntologyEntityV3(built, plan, { moduleName: 'tarefas', mdm, tdm, ddm }).issues);
+  };
+  const CODE = 'NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY';
+  assert.ok(issuesOf('timeSeries', { uniqueKeys: [['code']] }).includes(CODE));
+  assert.ok(issuesOf('timeSeries', {}, { unique: true }).includes(CODE));
+  assert.equal(issuesOf('timeSeries', {}).includes(CODE), false);
+  assert.equal(issuesOf('relational', { uniqueKeys: [['code']] }).includes(CODE), false);
+  assert.equal(issuesOf('relational', {}, { unique: true }).includes(CODE), false);
+});
+
 void test('l4_p4_47: a column displayField is left as the bare id', () => {
   const normalizations: Ns5OntologyV3Normalization[] = [];
   const built = ns5_47Normalize('numero', [

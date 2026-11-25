@@ -292,3 +292,7 @@
 ## 2026-11-25 (l4_p4_152)
 
 - `prompt`: one sentence after `storageKind`: `retentionDays` only when the request says the rows of a table are kept for a number of days and then erased; leave it out otherwise. Plan property `retentionDays` (integer, optional like `initialData`), `storage.retentionDays` in the artifact, `retentionDays` is valid only on a `timeSeries` table (runtime rt316). Gate codes `NS5_ONTOLOGY_RETENTION_NOT_TIMESERIES`, `NS5_ONTOLOGY_RETENTION_ON_ROLE`, `NS5_ONTOLOGY_RETENTION_RANGE`, `NS5_ONTOLOGY_EXTERNAL_RETENTION`.
+
+## 2026-11-25 (l4_p4_154)
+
+- `promptEntity`: one line where the unique key is asked for: a `timeSeries` table has no unique key and no unique field. Gate code `NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY` (entity gate, one error at the first place the key appears); Timescale refuses a unique index without the time column (How, l1_d1_294).
