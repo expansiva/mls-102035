@@ -34,7 +34,10 @@ and l2 with no fresh work and `pool/l4` with no pendency. The l4 pipeline record
 @@agentPlannerL4 <lowerCamel> /fast
 @@agentPlannerL4 <lowerCamel> /candidate
 @@agentPlannerL4 <lowerCamel> /candidate pipeline/changes/<id>/revisions/<rev>/l4
+@@agentPlannerL4 <lowerCamel> /apply
 ```
+
+- `/apply` is the "Apply" button of the New Release screen without the screen (`solution/candidate/moduleApply.ts`): with the sealed, active revision of the module and a current effort that is not blocked, it seals the application and the layers, promotes the revision and accepts it, and completes the change when the effort has no L2/L1 phase left. Same refusals as the button, no way to force; it never plans, wipes the pool or runs an L2/L1 agent. The answer is `applied: {…}` or `refused: <why>`.
 
 - Module must already exist in `l4/`. Canonical and manual roots need `pipeline.status: complete`.
   A sealed revision root (`pipeline/changes/<changeId>/revisions/<revisionId>/l4`) is gated by

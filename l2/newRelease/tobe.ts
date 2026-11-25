@@ -50,6 +50,7 @@ import {
 } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { historicalReleaseId, NEW_RELEASE_TOBE_UPDATED_EVENT, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import { clearChangeOrigins, recordManualChangeOrigin } from '/_102035_/l2/newRelease/helpers/changeOrigins.js';
+import { completeL4Implementation, deleteInventory, listedCandidateFiles, listedPlanFiles, listedTobeFolder } from '/_102035_/l2/solution/candidate/tobeCompletion.js';
 import { captureConfirmedL4Release, deactivateL4Change, editL4Candidate, originalL4FileInfo, prepareL4Change, readActiveL4Change, readL4Release, readSealedL4Candidate, revertL4CandidatePath, withModuleWriter, type L4ReleaseManifest, type L4SealedCandidateSnapshot } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
@@ -210,34 +211,10 @@ export async function saveTobeArtifact(
   return manifest;
 }
 
-function listedPlanFiles(project: number, moduleName: string): mls.stor.IFileInfo[] {
-  return listedTobeFolder(project, `${moduleName}/tobe/plan`);
-}
-
-function listedCandidateFiles(project: number, moduleName: string): mls.stor.IFileInfo[] {
-  return listedTobeFolder(project, `${moduleName}/tobe/candidate`);
-}
-
-function listedTobeFolder(project: number, folder: string): mls.stor.IFileInfo[] {
-  const files = mls.stor.files as FileRecord;
-  const keys = new Set<string>();
-  for (const [key, file] of Object.entries(files)) {
-    if (!file || file.project !== project || file.level !== 4 || file.status === 'deleted') continue;
-    if (file.folder === folder || file.folder?.startsWith(`${folder}/`)) keys.add(key);
-  }
-  return [...keys].map(key => files[key]).filter((file): file is mls.stor.IFileInfo => !!file && file.status !== 'deleted');
-}
-
 function relativePlanPath(file: Pick<mls.stor.IFileInfo, 'folder' | 'shortName' | 'extension'>, moduleName: string): string {
   const root = `${moduleName}/tobe/plan`;
   const suffix = String(file.folder || '').slice(root.length).replace(/^\//u, '');
   return `${suffix ? `${suffix}/` : ''}${file.shortName}${file.extension}`;
-}
-
-async function deleteInventory(files: mls.stor.IFileInfo[]): Promise<void> {
-  if (!files.length) return;
-  const { deleteFile } = await import('/_102027_/l2/libStor.js');
-  for (const file of files) await deleteFile(file);
 }
 
 export async function discardTobe(
@@ -517,18 +494,6 @@ export async function readNs5Overlay(
 
 /** Retire only the successfully applied revision, keeping its immutable history. */
 export async function completeTobeImplementation(project: number, moduleName: string, changeId: string, revisionId: string, confirmedBy = ''): Promise<void> {
-  await deactivateL4Change(project, moduleName, async () => {
-    const active = await readActiveL4Change(project, moduleName);
-    if (active?.changeId !== changeId || active.activeRevisionId !== revisionId || active.promotedRevisionId !== revisionId) {
-      throw new Error('l4.implementation_conflict');
-    }
-    const record = await readL4Implementation(project, moduleName);
-    if (!record || record.revisionId !== revisionId || !implementationCommands(record, project, moduleName).every((_, index) => record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'))) throw new Error('implementation.not_complete');
-    const confirmedAt = new Date().toISOString();
-    await captureConfirmedL4Release(project, moduleName, changeId, revisionId, active.baseId, confirmedAt, confirmedBy);
-    await deleteInventory([...listedPlanFiles(project, moduleName), ...listedCandidateFiles(project, moduleName), ...listedTobeFolder(project, `${moduleName}/tobe/operations`)]);
-    await writeJson({ project, level: 4, folder: `${moduleName}/pipeline/changes/${changeId}`, shortName: 'confirmation', extension: '.json' },
-      { changeId, revisionId, confirmedAt, confirmedBy });
-  });
+  await completeL4Implementation(project, moduleName, changeId, revisionId, confirmedBy);
   announceTobeUpdated(project, moduleName, 'asis');
 }

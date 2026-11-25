@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentPlannerL4/agentPlannerL4.ts" enhancement="_102027_/l2/enhancementAgent"/>
 
 import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
+import { plApplyText } from '/_102035_/l2/agentPlannerL4/helpers/plApply.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import {
   PL_AGENT_NAME,
@@ -42,6 +43,7 @@ async function beforePromptImplicit(
   userPrompt: string,
 ): Promise<mls.msg.AgentIntent[]> {
   const invocation = parsePlInvocation(userPrompt || '');
+  if (invocation.apply) return statusTask(agent, context, await plApplyText(invocation.module));
   setModuleRoot(invocation.module, invocation.candidate || null);
   const facts = await gatherPlEntryFacts(invocation.module);
   const refusal = plEntryRefusal(invocation, facts);

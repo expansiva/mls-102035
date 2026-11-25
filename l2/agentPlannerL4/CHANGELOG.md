@@ -1,5 +1,9 @@
 # agentPlannerL4
 
+## 2026-11-25 (l4_p4_164)
+
+- `/apply`: the "Apply" button of the New Release screen without the screen. Handled in `beforePromptImplicit` before any step is planned (`entry10` wipes the pool). `helpers/plApply.ts` calls `solution/candidate/moduleApply.ts` and answers `applied: {…}` or `refused: <why>`.
+
 ## 2026-09-29 (p4_17)
 
 - `runPlDispatch` writes only the `l4→l2` pool message and its `delivered` trace. `pool/l1` is

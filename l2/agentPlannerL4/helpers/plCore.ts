@@ -71,11 +71,14 @@ export const PL_STEP_DEPENDS_ON: Record<PlStepId, readonly string[]> = {
 
 const FAST_RE = /(^|\s)\/fast(?=\s|$)/i;
 const ESTIMATE_RE = /(^|\s)\/estimate(?=\s|$)/i;
+const APPLY_RE = /(^|\s)\/apply(?=\s|$)/i;
 const CANDIDATE_RE = /(^|\s)\/candidate(?:\s+(?!\/)(\S+))?(?=\s|$)/i;
 
 export interface PlParsedInvocation {
   fast: boolean;
   estimate: boolean;
+  /** `/apply`: apply the sealed, active revision of the module (the "Apply" button, with no screen). Plans nothing. */
+  apply: boolean;
   module: string;
   /** Resolved `l4/` folder when `/candidate` is present; otherwise `''`. */
   candidate: string;
@@ -216,19 +219,21 @@ export function parsePlInvocation(value: string): PlParsedInvocation {
   const raw = String(value || '').replace(/^@@agentPlannerL4\b/i, ' ').trim();
   const fast = FAST_RE.test(raw);
   const estimate = ESTIMATE_RE.test(raw);
+  const apply = APPLY_RE.test(raw);
   const candidateMatch = CANDIDATE_RE.exec(raw);
   const hasCandidate = !!candidateMatch;
   const candidateRel = candidateMatch?.[2] || '';
   const stripped = raw
     .replace(new RegExp(FAST_RE.source, 'gi'), ' ')
     .replace(new RegExp(ESTIMATE_RE.source, 'gi'), ' ')
+    .replace(new RegExp(APPLY_RE.source, 'gi'), ' ')
     .replace(new RegExp(CANDIDATE_RE.source, 'gi'), ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const token = stripped.split(' ')[0] || '';
   const module = moduleTokenOk(token) ? token : normalizeModuleName(token, '');
   const candidate = hasCandidate && module ? resolveCandidateFolder(module, candidateRel) : '';
-  return { fast, estimate, module, candidate };
+  return { fast, estimate, apply, module, candidate };
 }
 
 export function existingModuleName(moduleName: string): string {
