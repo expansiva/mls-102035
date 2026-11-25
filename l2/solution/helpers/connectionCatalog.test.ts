@@ -16,7 +16,7 @@ test('ns5ConnectionCatalogs lists the example cm catalog', () => {
   assert.equal(catalogs.length, 2);
   assert.equal(catalogs[0].schemaVersion, 'connection-catalog-v1');
   assert.equal(catalogs[0].connectionId, 'cm');
-  assert.equal(catalogs[0].operations.length, 14);
+  assert.equal(catalogs[0].operations.length, 19);
 });
 
 test('ns5ConnectionOperation returns an existing operation', () => {
