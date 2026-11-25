@@ -34,8 +34,13 @@ and l2 with no fresh work and `pool/l4` with no pendency. The l4 pipeline record
 @@agentPlannerL4 <lowerCamel> /fast
 @@agentPlannerL4 <lowerCamel> /candidate
 @@agentPlannerL4 <lowerCamel> /candidate pipeline/changes/<id>/revisions/<rev>/l4
+@@agentPlannerL4 <lowerCamel> /adopt
 @@agentPlannerL4 <lowerCamel> /apply
 ```
+
+**The chain with no screen, in order** (each step starts when the previous answered ok): (1) `@@agentNewReleasePrompt {"moduleName":"<m>","request":"…"}` writes the edited version and leaves the change and a sealed revision; (2) `@@agentReviewSolution <m>` reviews the sealed, active revision (no model when the candidate is already edited) and writes the output revision, whose root it answers (`pipeline/changes/<change>/revisions/<review-…>/l4`); (3) `@@agentPlannerL4 <m> /candidate <that root>` calculates the effort on the output; (4) `@@agentPlannerL4 <m> /adopt` makes the output the active, result revision; (5) `@@agentPlannerL4 <m> /apply` applies it.
+
+- `/adopt` is the adoption the screen does when the review run is ready (`solution/candidate/moduleAdopt.ts`), reading the result the review marked in the local candidate store instead of the central run. Same refusals (`l4.implementation_conflict`, `l4.implementation_not_ready`, `l4.result_stale`), plus `l4.adopt_no_active_change` and `l4.adopt_no_result`. It plans nothing. The answer is `adopted: {…}` or `refused: <why>`.
 
 - `/apply` is the "Apply" button of the New Release screen without the screen (`solution/candidate/moduleApply.ts`): with the sealed, active revision of the module and a current effort that is not blocked, it seals the application and the layers, promotes the revision and accepts it, and completes the change when the effort has no L2/L1 phase left. Same refusals as the button, no way to force; it never plans, wipes the pool or runs an L2/L1 agent. The answer is `applied: {…}` or `refused: <why>`.
 

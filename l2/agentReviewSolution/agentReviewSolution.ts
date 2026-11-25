@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/agentReviewSolution.ts" enhancement="_102027_/l2/enhancementAgent" />
 
+import { reviewInvocationForModule, reviewModuleToken } from '/_102035_/l2/agentReviewSolution/helpers/reviewByModule.js';
 import type { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { parseReviewInvocation, serializeReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 import { readReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
@@ -33,6 +34,12 @@ export async function beforePromptImplicit(
 ): Promise<mls.msg.AgentIntent[]> {
   try {
     const project = mls.actualProject || 0;
+    const moduleOnly = reviewModuleToken(userPrompt);
+    if (moduleOnly) {
+      // l4_p4_165: `@@agentReviewSolution <module>` reviews the sealed, active revision, like the screen does on "Calculate".
+      const userId = (context.message?.senderId || context.task?.owner || '').trim();
+      userPrompt = await reviewInvocationForModule(project, moduleOnly, userId);
+    }
     const invocation = parseReviewInvocation(userPrompt, project);
     const snapshot = await readReviewEntrySnapshot(invocation);
     const reviewPrivateState = await captureReviewTaskState(snapshot);

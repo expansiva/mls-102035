@@ -1,5 +1,9 @@
 # agentPlannerL4
 
+## 2026-11-25 (l4_p4_165)
+
+- `/adopt`: adopts the output of the review as the active, result revision (`helpers/plAdopt.ts` → `solution/candidate/moduleAdopt.ts`); handled before any step is planned, like `/apply`. README lists the five commands of the chain with no screen in order.
+
 ## 2026-11-25 (l4_p4_164)
 
 - `/apply`: the "Apply" button of the New Release screen without the screen. Handled in `beforePromptImplicit` before any step is planned (`entry10` wipes the pool). `helpers/plApply.ts` calls `solution/candidate/moduleApply.ts` and answers `applied: {…}` or `refused: <why>`.

@@ -601,7 +601,7 @@ function successfulFinalizeIntents(
       planning: { planId: 'finalize50-private-result', dependsOn: [], executionMode: 'manual_later', executionHost: 'client' },
     } as mls.msg.AIResultStep),
     status(context, parentStep, step, hookSequential, 'completed',
-      'finalize50 conditionally published the exact deterministic output snapshot.'),
+      `finalize50 conditionally published the exact deterministic output snapshot. Output revision (the root \`/candidate\` takes): pipeline/changes/${privateResult.changeId}/revisions/${privateResult.outputRevisionId}/l4`),
   ];
 }
 
