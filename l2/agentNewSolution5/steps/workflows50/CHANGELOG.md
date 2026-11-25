@@ -104,3 +104,7 @@
 ## 2026-11-25 (l4_p4_160)
 
 - `prompt`: one sentence by the `scheduled` trigger: erasing rows after a keeping period is never a process, a stage or a transition; the platform erases them and the ontology step states the period on the table. No gate (one measured failure, telegram first round).
+
+## 2026-11-25 (l4_p4_161)
+
+- The list `## Arrivals from connections` also carries what the systems declared by sibling modules deliver; the prompt says a reaction that is more than recording is a process triggered by the arrival, and that a system this module itself connects to is named `<system>.<operation>`, which the integration step must declare. The gate already accepted a `<system>.<operation>` that is not a catalog connection.

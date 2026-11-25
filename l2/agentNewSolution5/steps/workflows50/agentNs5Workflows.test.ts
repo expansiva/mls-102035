@@ -1204,6 +1204,30 @@ void test('l4_p4_109: the human prompt lists the arrivals the catalog connection
   assert.doesNotMatch(human, /- cm\.listAgents · /);
 });
 
+void test('l4_p4_161: the human prompt lists what the systems of the siblings deliver, and a new <system>.<operation> trigger is accepted', () => {
+  const human = buildNs5WorkflowsHumanPrompt({
+    sourcePrompt: 'when a payment is confirmed the module issues the invoice.',
+    userLanguage: 'en',
+    actorIds: ORDEN_ACTORS,
+    journeys: [],
+    entities: [],
+    siblingSystems: [{
+      id: 'payGate', title: 'Payment gate', description: 'Confirms payments.', settings: [],
+      operations: [
+        { operationId: 'paymentConfirmed', direction: 'serve', description: 'A payment was confirmed.' },
+        { operationId: 'charge', direction: 'call', description: 'Charges a card.' },
+      ],
+    }] as never,
+  });
+  assert.match(human, /- payGate\.paymentConfirmed · A payment was confirmed\./);
+  assert.doesNotMatch(human, /- payGate\.charge · /);
+  const triggerIssues = (event: string) => gateOf([arrivalProcess(event)]).issues
+    .filter(issue => issue.code === 'NS5_WORKFLOWS_TRIGGER_EVENT');
+  assert.deepEqual(triggerIssues('payGate.paymentConfirmed'), []);
+  assert.deepEqual(triggerIssues('thisModuleSystem.messageArrived'), []);
+  assert.equal(triggerIssues('cm.noSuchOperation').length, 1);
+});
+
 void test('l4_p4_109 s2b: the step also asks the model when the request names a catalog connection, whatever the language', () => {
   assert.equal(ns5WorkflowsNeedsLlm([], [], []), false);
   assert.equal(ns5WorkflowsNeedsLlm([], [], [{ term: 'cm' }]), true);

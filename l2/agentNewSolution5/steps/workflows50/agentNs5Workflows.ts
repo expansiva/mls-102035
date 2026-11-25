@@ -47,8 +47,10 @@ import type {
   Ns5OntologyAnyEntity,
   Ns5PipelineState,
   Ns5SystemDecision,
+  Ns5IntegrationExternalSystem,
   Ns5WorkflowProcess,
 } from '/_102035_/l2/solution/types.js';
+import { readNs5Siblings, readSiblingSystems } from '/_102035_/l2/solution/ns5Siblings.js';
 import { promptMentionsTerm } from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import { ns5ConnectionArrivals, ns5ConnectionSignalHits } from '/_102035_/l2/solution/helpers/connectionCatalog.js';
 import {
@@ -92,6 +94,8 @@ export function buildNs5WorkflowsHumanPrompt(input: {
   actorIds: string[];
   journeys: Ns5JourneyArtifact[];
   entities: Ns5OntologyEntityViewItem[];
+  /** `externalSystems` the sibling modules declare in their own L4: what they deliver is an arrival a process may wait for. */
+  siblingSystems?: readonly Ns5IntegrationExternalSystem[];
   gateFeedback?: string;
   previousDraft?: unknown;
 }): string {
@@ -126,7 +130,7 @@ export function buildNs5WorkflowsHumanPrompt(input: {
       : '(none — this call should not run)',
     '',
     '## Arrivals from connections (trigger.event = <connectionId>.<operationId>)',
-    ns5ConnectionArrivals().map(item => `- ${item.ref} · ${item.description}`).join('\n') || '(none)',
+    ns5ConnectionArrivals(input.siblingSystems).map(item => `- ${item.ref} · ${item.description}`).join('\n') || '(none)',
     '',
     '## Valid reference ids',
     JSON.stringify({
@@ -162,6 +166,7 @@ export async function beforeNs5WorkflowsPromptStep(
     ]);
     const actorIds = actors.map(actor => actor.actorId).filter(Boolean);
     const sourcePrompt = await readSourcePrompt(context, moduleName, moduleArtifact);
+    const siblingSystems = (await readSiblingSystems(await readNs5Siblings(moduleName))).flatMap(group => group.systems);
     const signals = collectNs5ProcessSignals(journeys, entities);
     const phrases = collectNs5TimeEventPhrases(sourcePrompt);
     const connectionHits = ns5ConnectionSignalHits(sourcePrompt, promptMentionsTerm);
@@ -194,6 +199,7 @@ export async function beforeNs5WorkflowsPromptStep(
       actorIds,
       journeys,
       entities,
+      siblingSystems,
       gateFeedback: parsed.gateFeedback,
       previousDraft: previous,
     });

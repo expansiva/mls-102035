@@ -92,6 +92,8 @@ export interface Ns5IntegrationJourneyView {
 export interface Ns5IntegrationProcessView {
   processId: string;
   taskIds: string[];
+  /** The trigger of the process. An `event` that is `<system>.<operation>` is an arrival the module must declare (l4_p4_161). */
+  trigger?: { kind: string; event?: string };
 }
 
 export interface Ns5IntegrationSignal {

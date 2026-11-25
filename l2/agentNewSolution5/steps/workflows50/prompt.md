@@ -31,11 +31,13 @@ Every process has a trigger:
   already tells (overdue, expired, below minimum) is not an event: it is a derived field of the row,
   and what somebody does about it on a schedule is a `scheduled` process with an `alert` stage.
   Erasing rows after a keeping period is never a process, a stage or a transition: when the request says some records are kept for a number of days and then erased, the platform erases them, and the ontology step states the period on the table.
+  When the request says the module must do something as soon as a system outside the app tells it something (a message arrived, a payment was confirmed, a file changed) and that something is more than recording it — calling another system, telling the cm, moving a record of another entity — write a process triggered by that arrival. For a system this module itself will connect to, name the trigger `<system>.<operation>` in lowerCamel; the integration step must then declare that system with that arrival.
 - `kind: manual` — a person starts it; `actorRef` is required.
 
-An `event` trigger can also be an arrival from a connection: `<connectionId>.<operationId>`, only one listed under
-`## Arrivals from connections` in the human prompt. Use it when the request says something must happen
-automatically when that arrival comes. Do not invent an arrival.
+An `event` trigger can also be an arrival from a connection: `<connectionId>.<operationId>`, one listed under
+`## Arrivals from connections` in the human prompt (or, for a system this module itself will connect to, the name
+described above). Use it when the request says something must happen automatically when that arrival comes. Do not
+invent an arrival of a connection of the catalog.
 
 ## Stages
 

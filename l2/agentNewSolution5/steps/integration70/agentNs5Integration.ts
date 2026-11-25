@@ -58,6 +58,7 @@ import {
   NS5_PLUGIN_CATALOG,
   buildNs5IntegrationArtifact,
   collectNs5IntegrationSignals,
+  parseNs5InboundEventRef,
   normalizeNs5IntegrationPayload,
 } from '/_102035_/l2/solution/gates/integration70/contracts.js';
 import {
@@ -99,8 +100,9 @@ interface IntegrationArgs {
  * Every ref `usedBy` may name. The gate refuses anything else (`NS5_INTEGRATION_USED_BY`), and the prompt
  * used to promise this list without anyone building it — so the model invented plausible names.
  */
-async function readUsedByRefs(moduleName: string): Promise<{ refs: string[]; texts: Record<string, string> }> {
+async function readUsedByRefs(moduleName: string): Promise<{ refs: string[]; texts: Record<string, string>; arrivals: string[] }> {
   const refs: string[] = [];
+  const arrivals: string[] = [];
   const texts: Record<string, string> = {};
   const index = await readDefsJson<Ns5JourneyIndexArtifact>(journeyIndexFile(moduleName));
   for (const entry of index?.journeys || []) {
@@ -113,13 +115,16 @@ async function readUsedByRefs(moduleName: string): Promise<{ refs: string[]; tex
   }
   const workflows = await readDefsJson<Ns5WorkflowsArtifact>(workflowsFile(moduleName));
   for (const process of workflows?.processes || []) {
+    if (process.trigger?.kind === 'event' && process.trigger.event && parseNs5InboundEventRef(process.trigger.event)) {
+      arrivals.push(`${process.processId} · ${process.trigger.event}`);
+    }
     for (const task of process.tasks || []) {
       const ref = `${process.processId}.${task.taskId}`;
       refs.push(ref);
       texts[ref] = clipUsedByText(`${task.kind}: ${task.description}`);
     }
   }
-  return { refs, texts };
+  return { refs, texts, arrivals };
 }
 
 export function buildNs5IntegrationHumanPrompt(input: {
@@ -131,6 +136,8 @@ export function buildNs5IntegrationHumanPrompt(input: {
   usedByRefs: readonly string[];
   /** Text of each ref (`title: description` or `kind: description`), already clipped. Absent keeps the id-only list. */
   usedByTexts?: Readonly<Record<string, string>>;
+  /** `processId · <system>.<operation>` of every process an arrival triggers: the module has to declare what delivers each one. */
+  processArrivals?: readonly string[];
   siblings: readonly Ns5SiblingModule[];
   /** `externalSystems` the sibling modules declare in their own L4. A row of `connections` may name them. */
   siblingSystems?: ReadonlyArray<{ moduleName: string; systems: readonly Ns5IntegrationExternalSystem[] }>;
@@ -165,6 +172,9 @@ export function buildNs5IntegrationHumanPrompt(input: {
     '',
     '## Ontology entities (writer inbound must appear in an inbound entityEffects entry that creates or updates it, or in a serve row of connections that creates or updates it)',
     entityLines,
+    '',
+    '## Arrivals the processes wait for (declare the system that delivers each one: externalSystems with that operation as serve, and its row of connections; a catalog connection or a sibling system that already delivers it needs no declaration)',
+    input.processArrivals?.length ? input.processArrivals.map(item => `- ${item}`).join('\n') : '(none)',
     '',
     '## usedBy — the only refs that exist (journeyId.stepId and processId.taskId)',
     input.usedByRefs.length
@@ -259,6 +269,7 @@ export async function beforeNs5IntegrationPromptStep(
       siblingSystems,
       usedByRefs: usedBy.refs,
       usedByTexts: usedBy.texts,
+      processArrivals: usedBy.arrivals,
       inboundWriters: entities.filter(entity => entity.writer === 'inbound').map(entity => entity.entityId),
       platformEventIds: ns5PlatformEventIds(),
       gateFeedback: parsed.gateFeedback,
@@ -479,6 +490,7 @@ async function readCoverage(moduleName: string): Promise<{
   const processTasks = (workflows?.processes || []).map(process => ({
     processId: process.processId,
     taskIds: process.tasks.map(task => task.taskId).filter(Boolean),
+    trigger: { kind: process.trigger.kind, ...(process.trigger.event ? { event: process.trigger.event } : {}) },
   }));
   return { journeySteps, processTasks };
 }

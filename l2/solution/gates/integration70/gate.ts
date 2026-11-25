@@ -9,6 +9,7 @@ import {
   inboundEventId,
   isNs5ConnectionId,
   isNs5PluginId,
+  parseNs5InboundEventRef,
   parseNs5OutboundOn,
   parseNs5UsedBy,
   type Ns5IntegrationActorView,
@@ -121,6 +122,27 @@ export function validateNs5Integration(
       `${entity.entityId} cites '${id}', which is not a connection of the platform catalog, not a system a sibling module declares, and not declared here. Declare a system with this id in externalSystems, or use a system that exists.`,
       'externalSystems',
     );
+  }
+
+  // l4_p4_161: a process triggered by `<system>.<operation>` reacts to something a system outside the app tells the
+  // module, so that system has to deliver it: the platform catalog, a sibling, this module's own `externalSystems`,
+  // a `serve` row of `connections` or an `inbound` row. Otherwise the reaction waits for something nobody sends.
+  for (const process of context.processTasks || []) {
+    const event = process.trigger?.kind === 'event' ? process.trigger.event?.trim() || '' : '';
+    const ref = event ? parseNs5InboundEventRef(event) : null;
+    if (!ref) continue;
+    const delivers = ns5ConnectionOperation(ref.moduleName, ref.eventId, systems)?.direction === 'serve'
+      || systems.some(system => system.id === ref.moduleName && system.operations.some(operation => operation.operationId === ref.eventId && operation.direction === 'serve'))
+      || connections.some(connection => connection.direction === 'serve' && connection.connectionId === ref.moduleName && connection.operationId === ref.eventId)
+      || inbound.some(item => (item.from || '') === ref.moduleName && inboundEventId(item) === ref.eventId);
+    if (!delivers) {
+      error(
+        issues,
+        'NS5_INTEGRATION_PROCESS_ARRIVAL_NOT_DECLARED',
+        `The process ${process.processId} is triggered by ${event}, and no system delivers it. Declare the system '${ref.moduleName}' in externalSystems with the operation '${ref.eventId}' (direction serve) and a row of connections for it, or use an arrival that exists.`,
+        'externalSystems',
+      );
+    }
   }
 
   // An arrival reports a change that already happened outside. It does not rewrite that record.

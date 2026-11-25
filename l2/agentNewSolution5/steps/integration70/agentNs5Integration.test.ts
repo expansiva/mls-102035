@@ -914,3 +914,28 @@ void test('readSiblingSystems reads the systems from the L4 of each sibling: one
     mls.actualProject = before.project;
   }
 });
+
+// l4_p4_161: a process triggered by an arrival needs a system that delivers it.
+void test('l4_p4_161: a process triggered by <system>.<operation> needs a system that delivers it', () => {
+  const system = (operations: Array<{ operationId: string; direction: 'call' | 'serve' }>) => ({
+    id: 'payGate', title: 'Payment gate', description: 'Confirms payments.', settings: [],
+    operations: operations.map(operation => ({ ...operation, description: 'x' })),
+  });
+  const run = (event: string, externalSystems: ReturnType<typeof system>[] = [], siblingSystems: ReturnType<typeof system>[] = []) => validateNs5Integration([], [], [], {
+    actors: CE11_ACTORS,
+    entities: CE11_ENTITIES,
+    registryModuleNames: CE11_REGISTRY,
+    sourcePrompt: CE11_PROMPT,
+    processTasks: [{ processId: 'onPaid', taskIds: ['issue'], trigger: { kind: 'event', event } }],
+    siblingSystems,
+  }, [], externalSystems as never).issues.map(issue => issue.code);
+  const CODE = 'NS5_INTEGRATION_PROCESS_ARRIVAL_NOT_DECLARED';
+  assert.equal(run('payGate.paymentConfirmed', [system([{ operationId: 'paymentConfirmed', direction: 'serve' }])]).includes(CODE), false);
+  assert.ok(run('payGate.paymentConfirmed').includes(CODE));
+  assert.ok(run('payGate.paymentConfirmed', [system([{ operationId: 'paymentConfirmed', direction: 'call' }])]).includes(CODE));
+  assert.ok(run('payGate.paymentConfirmed', [system([{ operationId: 'other', direction: 'serve' }])]).includes(CODE));
+  assert.equal(run('payGate.paymentConfirmed', [], [system([{ operationId: 'paymentConfirmed', direction: 'serve' }])]).includes(CODE), false);
+  assert.equal(run('cm.sendChannelMessage').includes(CODE), false);
+  assert.ok(run('cm.noSuchOperation').includes(CODE));
+  assert.equal(run('Produto.approve').includes(CODE), false);
+});

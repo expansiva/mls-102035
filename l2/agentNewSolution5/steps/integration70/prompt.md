@@ -92,6 +92,8 @@ Each row is `{ connectionId, operationId, usedBy, entityRefs, effect?, entityEff
 Do not send `direction` or `kind`; they come from the operation. Do not invent a connection or an operation.
 
 On a `call`, `usedBy` is `journeyId.stepId` or `processId.taskId` from the human prompt. A step or stage that goes over the records of an entity that lives outside the module (for each ..., every ...) is in `usedBy` of the `call` that lists or reads that entity; read the text of each ref in the human prompt before you choose who uses a call. Send
+A `call` made because an arrival came is used by a stage of the process that arrival triggers (`processId.taskId`), never by a stage of another process.
+
 `entityRefs` and `effect` (`list`, `read`, `create`, `update` or `remove`) only when the operation
 reads or writes an entity of this module. Send both, or neither. Leave `entityRefs` empty when it
 does not. `entityEffects` is `[]`.

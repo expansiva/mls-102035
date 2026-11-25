@@ -75,3 +75,7 @@
   empty lists with `noIntegrationSignal` and no LLM call. Gate: refs, plugin catalog,
   `moduleEndpoint` unknownModule as a warning. v1 form, minimum; align with the production
   harness before any executor. A run then stops at `awaitingStep: finalize80`.
+
+## 2026-11-25 (l4_p4_161)
+
+- Gate `NS5_INTEGRATION_PROCESS_ARRIVAL_NOT_DECLARED`: a process triggered by `<system>.<operation>` needs a system that delivers it (catalog, sibling, this module's `externalSystems` with the operation as `serve`, a `serve` row of `connections`, or an `inbound` row). The prompt receives the list `## Arrivals the processes wait for` and the rule that a `call` made because of an arrival is used by a stage of the process it triggers.
