@@ -170,6 +170,14 @@ export function validateNs5OntologyPlanV3(
         path: `${path}.retentionDays`,
       });
     }
+    if (entity.kind === 'entity' && entity.retentionDays !== undefined && family === 'ddm') {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_RETENTION_ON_DERIVED',
+        message: `${entity.entityId} is derived data: nobody writes its rows, so there is no row to keep for a number of days. Take retentionDays out, or make it a 'tdm' table that something writes.`,
+        path: `${path}.retentionDays`,
+      });
+    }
     if (entity.kind === 'entity' && entity.retentionDays !== undefined && (entity.storage?.kind ?? planStorageKind(entity)) !== 'timeSeries') {
       issues.push({
         severity: 'error',

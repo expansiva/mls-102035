@@ -296,3 +296,7 @@
 ## 2026-11-25 (l4_p4_154)
 
 - `promptEntity`: one line where the unique key is asked for: a `timeSeries` table has no unique key and no unique field. Gate code `NS5_ONTOLOGY_TIMESERIES_UNIQUE_KEY` (entity gate, one error at the first place the key appears); Timescale refuses a unique index without the time column (How, l1_d1_294).
+
+## 2026-11-25 (l4_p4_157)
+
+- A `timeSeries` table of family `tdm` keeps `writer` in the artifact even when it is `journey` (the L1 generator reads "series with a writer" as "series someone writes"; a recalculated one has none). `relational` tables keep omitting `journey`. Gate code `NS5_ONTOLOGY_RETENTION_ON_DERIVED`: `retentionDays` on a `ddm` table.

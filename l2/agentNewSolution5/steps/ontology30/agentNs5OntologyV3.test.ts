@@ -1706,6 +1706,28 @@ void test('l4_p4_152: retentionDays lands in storage of a table, is absent when 
   assert.ok(gate({ kind: 'external', connectionId: 'cm', retentionDays: 90 }).includes('NS5_ONTOLOGY_EXTERNAL_RETENTION'));
 });
 
+void test('l4_p4_157: a written timeSeries table keeps writer journey in the artifact; relational and ddm do not; retentionDays is refused on ddm', () => {
+  const planOf = (storageKind: string, family: string, extra: Record<string, unknown> = {}) => normalizeNs5OntologyPlanV3({
+    businessDomain: 'Tasks',
+    entities: [{ entityId: 'Log', kind: 'entity', class: 'event', family, storageKind, title: 'Log', description: 'x', displayField: 'code', writer: family === 'ddm' ? undefined : 'journey', ...extra }],
+    relationships: [],
+  } as never, 'tarefas');
+  const artifactOf = (storageKind: string, family: string) => {
+    const plan = planOf(storageKind, family);
+    return normalizeNs5OntologyEntityV3({
+      record: { fields: [{ id: 'code', type: 'string', title: 'Code', indexed: true }] },
+      relationships: [], capabilities: [], rules: [],
+    } as never, 'Log', { moduleName: 'tarefas', mdm, plan }, [])!;
+  };
+  assert.equal(artifactOf('timeSeries', 'tdm').writer, 'journey');
+  assert.equal('writer' in artifactOf('relational', 'tdm'), false);
+  assert.equal('writer' in artifactOf('timeSeries', 'ddm'), false);
+  const gate = (storageKind: string, family: string) => codes(validateNs5OntologyPlanV3(
+    planOf(storageKind, family, { retentionDays: 90 }), { moduleName: 'tarefas', mdm, tdm, ddm }).issues);
+  assert.ok(gate('timeSeries', 'ddm').includes('NS5_ONTOLOGY_RETENTION_ON_DERIVED'));
+  assert.equal(gate('timeSeries', 'tdm').includes('NS5_ONTOLOGY_RETENTION_ON_DERIVED'), false);
+});
+
 void test('l4_p4_154: a timeSeries table has no unique key and no unique field; the same keys on a relational table are not accused', () => {
   const planOf = (storageKind: string) => normalizeNs5OntologyPlanV3({
     businessDomain: 'Tasks',

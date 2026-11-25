@@ -309,7 +309,9 @@ function normalizePlanEntity(
     displayField: text(raw.displayField),
   };
   const writer = optionalOneOf(raw.writer, NS5_ONTOLOGY_V3_WRITERS);
-  if (writer && writer !== 'journey') base.writer = writer;
+  // `journey` is the default and stays out of the artifact, except on a series someone writes: there it says "this series has a writer", which is what tells it from a recalculated one (l4_p4_157).
+  const writtenSeries = kind === 'entity' && family === 'tdm' && text(raw.storageKind) === 'timeSeries';
+  if (writer && (writer !== 'journey' || writtenSeries)) base.writer = writer;
   // Kept as written so the gate can refuse it on a role, an external or out of range; only a positive integer reaches `storage`.
   if (typeof raw.retentionDays === 'number' && Number.isFinite(raw.retentionDays)) base.retentionDays = raw.retentionDays;
   if (kind === 'external') {
