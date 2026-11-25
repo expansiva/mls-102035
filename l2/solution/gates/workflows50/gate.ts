@@ -457,8 +457,14 @@ function validateJourneyDecisions(
   });
 }
 
+/**
+ * `by` is `'system'`/`'time'` in a v1/v2 artifact and `[]` in a v3 one (the normalize writes a transition that belongs to
+ * no person as the empty list, ns5_47): both are the system. A stage with an `actorRef` acts for that actor, so it still
+ * needs the actor in the list (l4_p4_167).
+ */
 function transitionByAllows(by: string[] | 'system' | 'time', actorRef?: string): boolean {
   if (by === 'system' || by === 'time') return true;
+  if (Array.isArray(by) && by.length === 0) return !actorRef;
   return Boolean(actorRef && Array.isArray(by) && by.includes(actorRef));
 }
 

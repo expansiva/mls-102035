@@ -195,7 +195,9 @@ export function collectNs5ProcessSignals(
   for (const entity of entities) {
     const byActors = new Set<string>();
     for (const transition of entity.transitions) {
-      if (transition.by === 'system' && transition.transitionId) {
+      // v3 writes a transition that belongs to no person as `by: []`: the system (l4_p4_167).
+      const noPerson = Array.isArray(transition.by) && transition.by.length === 0;
+      if ((transition.by === 'system' || noPerson) && transition.transitionId) {
         add({ kind: 'systemBy', entityId: entity.entityId, transitionId: transition.transitionId });
       } else if (transition.by === 'time' && transition.transitionId) {
         add({ kind: 'timeBy', entityId: entity.entityId, transitionId: transition.transitionId });
@@ -207,7 +209,7 @@ export function collectNs5ProcessSignals(
     }
     if (byActors.size < 2) continue;
     for (const transition of entity.transitions) {
-      if (!Array.isArray(transition.by) || !transition.transitionId) continue;
+      if (!Array.isArray(transition.by) || !transition.by.length || !transition.transitionId) continue;
       add({ kind: 'foreignBy', entityId: entity.entityId, transitionId: transition.transitionId });
     }
   }

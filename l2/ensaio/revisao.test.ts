@@ -438,7 +438,8 @@ test(outcome === 'corrupted' ? 'mr_26 s3: real ready result is not adopted with 
 test('mr_24 s3: base with an empty transition by fails publicly without publishing', async () => {
   const originalSources = new Map<string, string>();
   await withReviewScenario(() => installMlsStub({ actualProject: PROJECT }), async ({ before, context, replay, progress, fetchCalls }) => {
-    const errorCode = 'review.not_publishable:invalid:NS5_WORKFLOWS_TRANSITION_BY,NS5_FINALIZE_I1,NS5_FINALIZE_I1';
+    // l4_p4_167: an empty `by` is the system in v3, so the workflows gate no longer refuses it; the base still fails on the two I1 errors.
+    const errorCode = 'review.not_publishable:invalid:NS5_FINALIZE_I1,NS5_FINALIZE_I1';
     assert.equal(context.task?.status, 'failed');
     const terminalLog = context.task?.last_update_log;
     assert.match(terminalLog ?? '', /^Task failed at \d{4}-\d{2}-\d{2}T[\d:.]+Z \| reason: /);
@@ -482,7 +483,7 @@ test('mr_24 s3: base with an empty transition by fails publicly without publishi
       }
       assert.equal(review.reviewRunErrorKey(progress.errorCode!), 'review.run.error.notPublishable');
       assert.deepEqual(JSON.parse(presentation.tReviewRunError(progress.errorCode!)), {
-        key: 'review.run.error.notPublishable', status: 'invalid', codes: 'NS5_WORKFLOWS_TRANSITION_BY,NS5_FINALIZE_I1,NS5_FINALIZE_I1',
+        key: 'review.run.error.notPublishable', status: 'invalid', codes: 'NS5_FINALIZE_I1,NS5_FINALIZE_I1',
       });
       for (const code of [errorCode + ':texto livre', errorCode + ',texto livre',
         'review.not_publishable:invalid:A,B,C,D,E,F']) {

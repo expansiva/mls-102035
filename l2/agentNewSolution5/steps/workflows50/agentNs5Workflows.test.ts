@@ -566,6 +566,41 @@ void test('evento waitlist is event plus mechanical transition', () => {
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
 });
 
+void test('l4_p4_167: a stage with no actor may apply a v3 transition of the system (by: []); a stage with an actor still needs the actor in the list', () => {
+  const entities = [{ entityId: 'Pedido', transitions: [
+    { transitionId: 'blockByProcess', by: [] as string[] },
+    { transitionId: 'approve', by: ['recepcionista'] },
+    { transitionId: 'legacySystem', by: 'system' as const },
+  ] }] as unknown as typeof ORDEN_ENTITIES;
+  const noHandoff = ORDEN_JOURNEYS.map(item => ({
+    ...item,
+    business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
+  }));
+  const codesOf = (transitionRef: string, extra: Record<string, unknown> = {}) => gateOf(drafts({
+    processes: [validProcess({
+      trigger: { kind: 'manual', actorRef: 'recepcionista' },
+      tasks: [{ taskId: 'auto', kind: 'mechanical', entityRef: 'Pedido', effect: 'transition', transitionRef, next: [], description: 'Automatic.', ...extra }],
+    })],
+  }).processes, noHandoff, entities).issues.map(issue => issue.code);
+  const BY = 'NS5_WORKFLOWS_TRANSITION_BY';
+  assert.equal(codesOf('blockByProcess').includes(BY), false);
+  assert.equal(codesOf('legacySystem').includes(BY), false);
+  assert.ok(codesOf('blockByProcess', { actorRef: 'tecnico' }).includes(BY));
+  assert.ok(codesOf('approve').includes(BY));
+  assert.equal(codesOf('approve', { actorRef: 'recepcionista' }).includes(BY), false);
+});
+
+void test('l4_p4_167: a v3 transition of the system is a systemBy signal and never a foreignBy one', () => {
+  const entities = [{ entityId: 'Pedido', transitions: [
+    { transitionId: 'blockByProcess', by: [] as string[] },
+    { transitionId: 'approve', by: ['recepcionista'] },
+    { transitionId: 'close', by: ['tecnico'] },
+  ] }] as unknown as Ns5WorkflowsEntityView[];
+  const signals = collectNs5ProcessSignals([], entities);
+  assert.ok(signals.some(signal => signal.kind === 'systemBy' && signal.transitionId === 'blockByProcess'));
+  assert.equal(signals.some(signal => signal.kind === 'foreignBy' && signal.transitionId === 'blockByProcess'), false);
+});
+
 void test('l4_p4_156: a stage with no actor does not name a transition a journey step already moves', () => {
   const moved = collectNs5JourneyTransitionRefs(ORDEN_JOURNEYS);
   assert.ok(moved.length > 0);
