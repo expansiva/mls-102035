@@ -8,7 +8,7 @@ import {
   type CandidateScope,
   type CandidateSnapshot,
 } from '/_102035_/l2/solution/candidate/candidateGateway.js';
-import { IndexedDbCandidateDraftStore } from './candidateDraftStore.js';
+import { selectCandidateDraftStore } from './candidateStorDraftStore.js';
 import {
   CandidateRepository,
   CandidateRepositoryError,
@@ -96,12 +96,14 @@ export class StudioCandidateAdapter {
   readonly #legacy: StudioLegacyCandidateReader;
   readonly #checks: StudioCandidateChecks | null;
   readonly #repository: CandidateRepository;
+  readonly #store: CandidateDraftStore & { dispose?: () => Promise<void> };
 
   constructor(scope: CandidateScope, options: StudioCandidateAdapterOptions = {}) {
     this.#scope = frozenClone(scope);
     this.#legacy = options.legacy ?? productionLegacyReader;
     this.#checks = options.checks ?? null;
-    const store = options.store ?? new IndexedDbCandidateDraftStore(options.indexedDb);
+    const store = options.store ?? selectCandidateDraftStore(this.#scope, options.indexedDb).store;
+    this.#store = store;
     this.#repository = new CandidateRepository(this.#scope, {
       store,
       ...(options.transport ? { transport: options.transport } : {}),
@@ -126,12 +128,19 @@ export class StudioCandidateAdapter {
   }
 
   /** Retries an already-submitted durable draft before any authoritative pointer gate. */
-  replaySubmitted(input: StudioCandidateSubmittedReplayInput): Promise<CandidatePublishResult | null> {
-    return this.#repository.replaySubmitted(frozenClone(input));
+  async replaySubmitted(input: StudioCandidateSubmittedReplayInput): Promise<CandidatePublishResult | null> {
+    try { return await this.#repository.replaySubmitted(frozenClone(input)); }
+    finally { await this.#store.dispose?.(); }
   }
 
   /** Publishes only through a fresh, authoritative and still-current completed-result permit. */
   async publishWithPermit(input: StudioCandidatePublishInput): Promise<CandidatePublishResult> {
+    try { return await this.#publishWithPermit(input); }
+    // A store that lives in the work area removes its drafts when the publication ends, with success or with failure.
+    finally { await this.#store.dispose?.(); }
+  }
+
+  async #publishWithPermit(input: StudioCandidatePublishInput): Promise<CandidatePublishResult> {
     const fixed = frozenClone(input);
     const wire: CandidateRepositoryPermittedPublishInput = {
       expectedRevisionId: fixed.permit.inputRevisionId,
