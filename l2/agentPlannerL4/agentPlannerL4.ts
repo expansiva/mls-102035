@@ -43,7 +43,7 @@ async function beforePromptImplicit(
   userPrompt: string,
 ): Promise<mls.msg.AgentIntent[]> {
   const invocation = parsePlInvocation(userPrompt || '');
-  if (invocation.apply) return statusTask(agent, context, await plApplyText(invocation.module));
+  if (invocation.apply) return statusTask(agent, context, await plApplyText(invocation.module, { ownerId: context.message?.senderId || context.task?.owner || '' }));
   setModuleRoot(invocation.module, invocation.candidate || null);
   const facts = await gatherPlEntryFacts(invocation.module);
   const refusal = plEntryRefusal(invocation, facts);
