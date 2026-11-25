@@ -12,6 +12,7 @@ import {
 import { isNs5OntologyEntityV3, type Ns5OntologyEntityV3, type Ns5OntologyIndexV3 } from '/_102035_/l2/solution/types.js';
 import type { NewReleaseArtifact, NewReleaseOverlaySources, NewReleaseOverlayValidation, NewReleaseValidationIssue, Ns5TobeArtifactPath } from '/_102035_/l2/solution/candidate/tobePaths.js';
 import { applyScreenBaseline, candidateCanPublish, unavailableCandidateCoverage, validateV3Candidate } from '/_102035_/l2/solution/candidate/candidateValidation.js';
+import { malformedEntityShapeIssues } from '/_102035_/l2/solution/candidate/moduleVerification.js';
 import { deriveOntologyPlan } from '/_102035_/l2/solution/candidate/ontologyPlanDerive.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
 
@@ -227,4 +228,41 @@ test('edited ontology index still runs entity gates, and a real content error is
   const withFamily = validateV3Candidate(actualV3(), { ...context, ontologyPlan: frozen });
   const kept = withFamily.issues.some(issue => issue.code === 'NS5_ONTOLOGY_DDM_HAS_STATE' || issue.code === 'NS5_ONTOLOGY_DDM_UNIQUE_KEY');
   assert.equal(kept, true);
+});
+
+function withStorageUniqueKeys(sources: NewReleaseOverlaySources): string {
+  const donor = sources.entities.find(item => item.value && 'kind' in item.value && item.value.kind === 'entity');
+  assert.ok(donor?.value);
+  const entity = donor.value as unknown as { entityId: string; storage?: Record<string, unknown> };
+  entity.storage = { ...(entity.storage || {}), uniqueKeys: [['x']] };
+  return entity.entityId;
+}
+
+test('an entity with uniqueKeys inside storage is an error in ontologyEntities, and it is baseline when the base already has it', () => {
+  const broken = actualV3();
+  const entityId = withStorageUniqueKeys(broken);
+  const result = validateV3Candidate(broken, context, actualV3());
+  assert.equal(result.coverage.ontologyEntities.status, 'error');
+  const found = result.issues.find(issue => issue.code === 'NR_ONTOLOGY_ENTITY_SHAPE');
+  assert.ok(found && found.severity === 'error' && !found.baseline);
+  assert.equal(found.path, `entities.${entityId}.storage.uniqueKeys`);
+  assert.equal(candidateCanPublish(result, ['ontologyEntities']), false);
+
+  const base = actualV3();
+  withStorageUniqueKeys(base);
+  const same = validateV3Candidate(structuredClone(base), context, base);
+  const old = same.issues.find(issue => issue.code === 'NR_ONTOLOGY_ENTITY_SHAPE');
+  assert.ok(old && old.baseline === true);
+  assert.equal(candidateCanPublish(same, ['ontologyEntities']), true);
+});
+
+test('the text-request gate reports the shape deviation as an ontology issue on the entity', () => {
+  const sources = actualV3();
+  const entityId = withStorageUniqueKeys(sources);
+  const entities = sources.entities.map(item => item.value).filter((value): value is NonNullable<typeof value> => !!value);
+  const issues = malformedEntityShapeIssues(entities);
+  const found = issues.find(issue => issue.path === `ontology.${entityId}.storage.uniqueKeys`);
+  assert.ok(found);
+  assert.equal(found.kind, 'ontology');
+  assert.equal(found.code, 'NRP_GATE_FAILED');
 });

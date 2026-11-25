@@ -9,6 +9,7 @@ import { validateNs5Integration } from '/_102035_/l2/solution/gates/integration7
 import { runNs5Oracle } from '/_102035_/l2/solution/gates/finalize80/gate.js';
 import type { Ns5FinalizeReport, Ns5OracleSources } from '/_102035_/l2/solution/gates/finalize80/contracts.js';
 import { isNs5OntologyV3Entity, ns5OntologyEdges, ns5OntologyEntityViews, type Ns5OntologyAnyIndex } from '/_102035_/l2/solution/ontologyView.js';
+import { entityShapeIssuesV3 } from '/_102035_/l2/solution/gates/ontology30/entityShapeV3.js';
 import { NS5_LIFECYCLE_FORM } from '/_102035_/l2/solution/helpers/ontologyLifecycleForm.js';
 import { NS5_STEP_WRITES_FORM } from '/_102035_/l2/solution/helpers/journeyStepForm.js';
 import { ns5RuleRecord } from '/_102035_/l2/solution/rulesView.js';
@@ -101,13 +102,6 @@ export function verifyCandidateModule(
   return issues;
 }
 
-/** Every top-level property a v3 entity can carry (the three kinds together). A key outside this list is read by no gate. */
-const ENTITY_V3_KEYS = [
-  'schemaVersion', 'moduleName', 'entityId', 'title', 'description', 'displayField', 'record', 'uniqueKeys',
-  'lifecycleStates', 'transitions', 'initialState', 'relationships', 'capabilities', 'rules', 'writer',
-  'kind', 'subtype', 'roleTag', 'source', 'class', 'storage', 'initialData', 'connectionId',
-] as const satisfies readonly (keyof Ns5OntologyRoleV3 | keyof Ns5OntologyTableV3 | keyof Ns5OntologyExternalV3)[];
-
 /** Every property a journey step can carry. A key outside this list is read by no gate and no generator. */
 const JOURNEY_STEP_KEYS = [
   'stepId', 'kind', 'entity', 'affects', 'effect', 'transitionRef', 'title', 'description', 'handoffTo', 'icon', 'decisionRef',
@@ -146,13 +140,12 @@ export function malformedEntityShapeIssues(entities: readonly Ns5OntologyAnyEnti
   for (const entity of entities) {
     const source = entity as unknown as Record<string, unknown>;
     if (isNs5OntologyV3Entity(entity)) {
-      const allowed: readonly string[] = ENTITY_V3_KEYS;
-      for (const key of Object.keys(source).filter(item => !allowed.includes(item))) {
+      for (const found of entityShapeIssuesV3(entity)) {
         issues.push({
           kind: 'ontology',
           code: 'NRP_GATE_FAILED',
-          message: `${key} is not a property of the entity ${entity.entityId}; no gate reads it. Allowed: ${allowed.join(', ')}.${key === 'lifecycle' ? ` ${NS5_LIFECYCLE_FORM}` : ''}`,
-          path: `ontology.${entity.entityId}.${key}`,
+          message: `${found.message}${found.path === 'lifecycle' ? ` ${NS5_LIFECYCLE_FORM}` : ''}`,
+          path: `ontology.${entity.entityId}.${found.path}`,
         });
       }
     }

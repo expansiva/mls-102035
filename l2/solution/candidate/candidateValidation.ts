@@ -6,6 +6,7 @@ import { validateNs5ModuleArtifact } from '/_102035_/l2/solution/gates/module10/
 import { validateNs5Journeys } from '/_102035_/l2/solution/gates/journeys20/gate.js';
 import { validateNs5OntologyAssemblyV3, validateNs5OntologyEntityV3 } from '/_102035_/l2/solution/gates/ontology30/gateV3.js';
 import type { Ns5OntologyV3PlanDraft } from '/_102035_/l2/solution/gates/ontology30/contractsV3.js';
+import { entityShapeIssuesV3 } from '/_102035_/l2/solution/gates/ontology30/entityShapeV3.js';
 import { validateNs5Rules } from '/_102035_/l2/solution/gates/rules40/gate.js';
 import { validateNs5Workflows } from '/_102035_/l2/solution/gates/workflows50/gate.js';
 import { validateNs5Access } from '/_102035_/l2/solution/gates/access60/gate.js';
@@ -162,11 +163,14 @@ function validateV3CandidateRun(
       return found;
     });
     const plan = deriveOntologyPlan(v3Index, v3Entities, context.ontologyPlan);
-    check('ontologyEntities', 'ontology/index.defs.ts', () => v3Entities.flatMap(entity => validateNs5OntologyEntityV3(entity, plan, {
+    check('ontologyEntities', 'ontology/index.defs.ts', () => v3Entities.flatMap(entity => [...entityShapeIssuesV3(entity).map(found => ({
+      severity: 'error' as const, code: 'NR_ONTOLOGY_ENTITY_SHAPE',
+      message: found.message, path: `entities.${entity.entityId}.${found.path}`,
+    })), ...validateNs5OntologyEntityV3(entity, plan, {
       moduleName: v3Index.moduleName, mdm: context.mdm!, tdm: context.tdm!, ddm: context.ddm!,
       journeys, workflows, evidenceText: [module?.sourcePrompt || '', ...journeys.map(journey => JSON.stringify(journey.business))].join('\n'),
       actors: access?.actors.map(actor => actor.actorId) || [],
-    }).issues), path => {
+    }).issues]), path => {
       const match = /^entities\.([A-Z][A-Za-z0-9]*)/u.exec(path);
       return match ? `ontology/${match[1]}.defs.ts` : 'ontology/index.defs.ts';
     });
