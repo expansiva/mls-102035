@@ -73,3 +73,7 @@
   inferred external actors without an exclusive step. Tool `submitNs5Journeys`, gate, repair <= 2,
   persist `journeys/*.defs.ts` and `journeys/index.defs.ts`. A run then stops at
   `awaitingStep: ontology30`.
+
+## 2026-11-25 (l4_p4_151)
+
+- `prompt`: removed the sentence that forbade the access key of an outside system as data of the module; where the key lives is the module prompt's choice (owner, 2026-11-25).

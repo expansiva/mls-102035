@@ -21,8 +21,6 @@ is, in one sentence.
 
 `room` is where the conversation of an occurrence happens by default: `exclusive` (one room per occurrence, open to whoever takes part), `person` (the room of the person who owns the occurrence; only that person enters) or `group` (only the members of one group enter). When more than one person acts in the process, choose `exclusive` or `group`, never `person`.
 
-What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey, an entity, a field, a rule, a permission or a process of the module: the platform keeps it and has the screen for it.
-
 ## Trigger
 
 Every process has a trigger:

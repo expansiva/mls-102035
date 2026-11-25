@@ -6,26 +6,24 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-// l4_p4_126: one sentence, the same text, in every step that writes a journey, an entity, a field, a rule, a
-// permission or a process. A step that writes none of them (module10, judge35) or that declares the data where it
-// belongs (integration70, in `externalSystems.settings`) does not carry it.
+// l4_p4_151 (reverses l4_p4_126): no step text forbids the access key of an outside system as data of the module;
+// where the key lives is the module prompt's choice. `integration70` still describes `externalSystems.settings`.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SENTENCE = 'What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey, an entity, a field, a rule, a permission or a process of the module: the platform keeps it and has the screen for it.';
+const FORBIDDEN = 'the platform keeps it and has the screen';
 const WITH = ['journeys20/prompt.md', 'ontology30/prompt.md', 'ontology30/promptEntity.md', 'rules40/prompt.md', 'workflows50/prompt.md', 'access60/prompt.md'];
 const WITHOUT = ['module10/prompt.md', 'judge35/prompt.md', 'integration70/prompt.md'];
 
-void test('every step that writes what the sentence forbids carries the same sentence', () => {
-  for (const file of WITH) {
+void test('no step text forbids the access key of an outside system as data of the module', () => {
+  for (const file of [...WITH, ...WITHOUT]) {
     const text = readFileSync(path.join(HERE, 'steps', file), 'utf8');
-    assert.equal(text.split(SENTENCE).length - 1, 1, `${file} carries the sentence once`);
+    assert.equal(text.includes(FORBIDDEN), false, file);
   }
 });
 
-void test('the steps that write none of them do not carry it', () => {
-  for (const file of WITHOUT) {
-    const text = readFileSync(path.join(HERE, 'steps', file), 'utf8');
-    assert.equal(text.includes('the platform keeps it and has the screen'), false, file);
-  }
+void test('integration70 still describes the settings of an outside system', () => {
+  const text = readFileSync(path.join(HERE, 'steps', 'integration70/prompt.md'), 'utf8');
+  assert.equal(text.includes('externalSystems'), true);
+  assert.equal(text.includes('secret'), true);
 });
 
 void test('no step with a prompt is left out of the table', () => {

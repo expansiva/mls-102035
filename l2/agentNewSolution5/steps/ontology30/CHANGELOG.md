@@ -284,3 +284,7 @@
   n15 relationship rules; drops projection/derivation/general/sourceRefs. Repair <= 2. Persist
   `ontology/<Entity>.defs.ts` and `ontology/index.defs.ts`. A run then stops at
   `awaitingStep: rules40`.
+
+## 2026-11-25 (l4_p4_151)
+
+- `prompt`: removed the sentence that forbade the access key of an outside system as data of the module; where the key lives is the module prompt's choice (owner, 2026-11-25).

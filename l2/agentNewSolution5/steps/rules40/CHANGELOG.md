@@ -71,3 +71,7 @@
   (entities, fields including `details.<name>`, transitions, journeys). Tool `submitNs5Rules`,
   gate, repair <= 2, persist `rules.defs.ts`. Time transitions without a citing rule fail
   `NS5_RULES_TIME_WITHOUT_RULE`. A run then stops at `awaitingStep: workflows50`.
+
+## 2026-11-25 (l4_p4_151)
+
+- `prompt`: removed the sentence that forbade the access key of an outside system as data of the module; where the key lives is the module prompt's choice (owner, 2026-11-25).

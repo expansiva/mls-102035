@@ -37,8 +37,6 @@ Three kinds, and only three.
   `displayField` is a field of the view this module has of the record. Never send `source`: it is derived
   from `connectionId`.
 
-What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey, an entity, a field, a rule, a permission or a process of the module: the platform keeps it and has the screen for it.
-
 ## The family of the data, and where its rows live
 
 `family` says what the data IS, and it is a decision of the whole plan, not of one entity: it is the

@@ -14,8 +14,6 @@ English lowerCamel or the platform's own codes.
 `record.fields` and every nested `fields` is a **list**, each item carrying its own `id`. It becomes a
 tree: a field of `type: object` holds its children in `fields`.
 
-What an administrator gives to connect the module to a system outside the app (where it is, the key that gives access, a secret agreed with it) is not a journey, an entity, a field, a rule, a permission or a process of the module: the platform keeps it and has the screen for it.
-
 ## When the entity is a `role`
 
 The human prompt gives you `## Starting point (platform record for <Subtype>)`: the whole platform

@@ -79,3 +79,7 @@
   `anchorEntity` for `own` / `assigned` / `related`. Tool `submitNs5Access`, gate, repair <= 2,
   persist `access.defs.ts`. Path is `anchorPath()`, tested, not stored. A run then stops at
   `awaitingStep: finalize80`.
+
+## 2026-11-25 (l4_p4_151)
+
+- `prompt`: removed the sentence that forbade the access key of an outside system as data of the module; where the key lives is the module prompt's choice (owner, 2026-11-25).
