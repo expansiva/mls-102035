@@ -100,3 +100,7 @@
 ## 2026-11-25 (l4_p4_156)
 
 - `prompt` and gate: a `mechanical` or `llm` stage with no `actorRef` that names a transition a journey step of a person already moves is refused (`NS5_WORKFLOWS_TASK_REUSES_PERSON_TRANSITION`); the process names its own transition, which the ontology writes with `by: []`. Without it the whole run died at `finalize80` I2, which has no repair (telegram, first round).
+
+## 2026-11-25 (l4_p4_160)
+
+- `prompt`: one sentence by the `scheduled` trigger: erasing rows after a keeping period is never a process, a stage or a transition; the platform erases them and the ontology step states the period on the table. No gate (one measured failure, telegram first round).
