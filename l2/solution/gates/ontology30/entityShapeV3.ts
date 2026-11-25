@@ -101,7 +101,7 @@ export function entityShapeIssuesV3(entity: unknown): EntityShapeIssueV3[] {
       if (!Array.isArray(key) || key.some(id => typeof id !== 'string')) {
         out.push({
           path: `uniqueKeys[${index}]`,
-          message: `A unique key of ${entityId} is a plain list of field ids, like ["botId", "writtenAt"], with no other property; found ${JSON.stringify(key)}.`,
+          message: `A unique key of ${entityId} is a plain list of field ids, like ["<fieldId>", "<fieldId>"], with no other property; found ${JSON.stringify(key)}.`,
         });
       }
     });
