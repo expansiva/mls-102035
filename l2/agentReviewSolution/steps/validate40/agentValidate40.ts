@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/validate40/agentValidate40.ts" enhancement="_blank" />
 
+import { reviewByCommand, reviewCommandRefusal } from '/_102035_/l2/agentReviewSolution/helpers/commandMode.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { parseReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 import { reviewSnapshotFromContext, type ReviewEntrySnapshot } from '/_102035_/l2/agentReviewSolution/helpers/entrySnapshot.js';
@@ -130,6 +131,10 @@ export async function beforeValidate40Step(
         String(step.prompt || ''),
         privateState.correctionState.correctionAttemptsUsed + 1,
       )));
+    } else if (privateState.status === 'clarification' && reviewByCommand(context)) {
+      return [...intents, ...reviewCommandRefusal(context, parentStep, step, hookSequential, 'validate40', 'clarification', validate40Diagnostic(privateState))];
+    } else if (privateState.status === 'invalid' && !privateState.mayCorrect && reviewByCommand(context)) {
+      return [...intents, ...reviewCommandRefusal(context, parentStep, step, hookSequential, 'validate40', 'invalid', validate40Diagnostic(privateState))];
     } else if (privateState.status === 'clarification') {
       intents.push(addStep(context, parentStep, {
         type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],
@@ -154,6 +159,14 @@ export async function beforeValidate40Step(
   } catch (error) {
     return [status(context, parentStep, step, hookSequential, 'failed', errorMessage(error))];
   }
+}
+
+/** What is wrong, by area and path, for a person who reads it without the screen. */
+function validate40Diagnostic(state: Pick<Validate40PrivateState, 'reasons' | 'affectedAreas' | 'unsupportedPaths' | 'validation'>): string {
+  const lines = [`areas: ${JSON.stringify(state.affectedAreas)}`];
+  if (state.unsupportedPaths.length) lines.push(`unsupported paths: ${state.unsupportedPaths.join(', ')}`);
+  lines.push(...state.reasons.map(reason => `- ${reason}`));
+  return lines.join('\n');
 }
 
 export function reviewNotPublishableCode(state: Pick<Validate40PrivateState, 'status' | 'reasons'>): string {

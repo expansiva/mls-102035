@@ -207,3 +207,19 @@ test('review20 rejects an oversized private prompt before calling the model', as
   assert.equal(intents[0].type, 'update-status');
   assert.match(String((intents[0] as mls.msg.AgentIntentUpdateStatus).traceMsg), /size limit/u);
 }));
+
+test('l4_p4_166: by command, a review20 clarification ends the task refused with the question and no step waits for a person', async () => withProject(async () => {
+  const response = {
+    type: 'flexible', result: {
+      schemaVersion: REVIEW20_SCHEMA_VERSION, decision: 'clarification',
+      clarification: 'Should the title be changed for every journey?', operations: [],
+    },
+  };
+  const ctx = await context();
+  (ctx.task as any).iaCompressed.longMemory.reviewByCommand = 'true';
+  const intents = await afterReview20PromptStep(ctx, parent(), step(response), 9, runtime());
+  const added = intents.filter(intent => intent.type === 'add-step').map(intent => (intent as mls.msg.AgentIntentAddStep).step);
+  assert.equal(added.some(item => item.type === 'clarification' || item.status === 'waiting_human_input'), false);
+  assert.match(String((added[0] as mls.msg.AIResultStep).result), /^refused: review20: clarification\nShould the title be changed/u);
+  assert.equal((intents[intents.length - 1] as mls.msg.AgentIntentUpdateStatus).status, 'completed');
+}));

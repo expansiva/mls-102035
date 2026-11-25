@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/review20/agentReview20.ts" enhancement="_blank" />
 
+import { reviewByCommand, reviewCommandRefusal } from '/_102035_/l2/agentReviewSolution/helpers/commandMode.js';
 import { createStrictArtifactTool, unwrapArtifactPayload } from '/_102035_/l2/solution/lib.js';
 import { readSourceText } from '/_102035_/l2/solution/fs.js';
 import { parseReviewInvocation, serializeReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
@@ -137,6 +138,7 @@ export async function afterReview20PromptStep(
     const response = unwrapArtifactPayload(step.interaction?.payload?.[0]);
     const staged = await stageOrRecordRefusal(inventories, response);
     if (staged.status === 'clarification') {
+      if (reviewByCommand(context)) return reviewCommandRefusal(context, parentStep, step, hookSequential, 'review20', 'clarification', staged.clarification);
       return [
         addStep(context, parentStep, {
           type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],

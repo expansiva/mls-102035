@@ -349,3 +349,37 @@ test('mr_24 s1 correction45 without safe correction fails with the last gate cod
   assert.deepEqual(saved.draft, draft);
   assert.equal(intents.length, 2);
 }));
+
+test('l4_p4_166: by command, validate40 invalid (no correction left) ends the task refused with the areas and the reasons, no step waits for a person', async () => withProject(async () => {
+  const three = await taskState(3);
+  const atLimit = result(three, 'attempt-limit', 'error');
+  atLimit.mayCorrect = false;
+  const ctx = context(three);
+  (ctx.task as any).iaCompressed.longMemory.reviewByCommand = 'true';
+  const intents = await beforeValidate40Step(ctx, parent(), step(), 44, runtime(atLimit));
+  const added = intents.filter(intent => intent.type === 'add-step').map(intent => (intent as mls.msg.AgentIntentAddStep).step);
+  assert.equal(added.some(item => item.type === 'clarification' || item.status === 'waiting_human_input'), false);
+  const refused = added.find(item => item.planning?.planId === 'validate40-refused') as mls.msg.AIResultStep;
+  assert.match(String(refused.result), /^refused: validate40: invalid\n/u);
+  assert.match(String(refused.result), /areas: \["module"\]/u);
+  assert.match(String(refused.result), /- Module is error\./u);
+  const last = intents[intents.length - 1] as mls.msg.AgentIntentUpdateStatus;
+  assert.equal(last.status, 'completed');
+  // the screen keeps the failed step it has today
+  const screen = await beforeValidate40Step(context(three), parent(), step(), 45, runtime(atLimit));
+  assert.equal((screen[screen.length - 1] as mls.msg.AgentIntentUpdateStatus).status, 'failed');
+}));
+
+test('l4_p4_166: by command, validate40 clarification ends the task refused with the reasons; the screen keeps the waiting step', async () => withProject(async () => {
+  const task = await taskState(0);
+  const unclear = result(task, 'draft', 'checked');
+  const ctx = context(task);
+  (ctx.task as any).iaCompressed.longMemory.reviewByCommand = 'true';
+  const intents = await beforeValidate40Step(ctx, parent(), step(), 46, runtime(unclear));
+  const added = intents.filter(intent => intent.type === 'add-step').map(intent => (intent as mls.msg.AgentIntentAddStep).step);
+  assert.equal(added.some(item => item.type === 'clarification' || item.status === 'waiting_human_input'), false);
+  assert.match(String((added.find(item => item.planning?.planId === 'validate40-refused') as mls.msg.AIResultStep).result), /^refused: validate40: clarification\n/u);
+  const screen = await beforeValidate40Step(context(task), parent(), step(), 47, runtime(unclear));
+  const waiting = screen.filter(intent => intent.type === 'add-step').map(intent => (intent as mls.msg.AgentIntentAddStep).step).find(item => item.type === 'clarification');
+  assert.equal(waiting?.status, 'waiting_human_input');
+}));

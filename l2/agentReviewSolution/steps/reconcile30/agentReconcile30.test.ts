@@ -256,3 +256,16 @@ test('reconcile30 records unsupported as a terminal private result without mutat
   assert.equal(terminal.planning?.planId, 'reconcile30-private-terminal');
   assert.equal(parseReconcile30PrivateState(terminal.result).status, 'unsupported');
 }));
+
+// l4_p4_166: by command nobody can answer, so a question ends the task; the screen keeps its waiting step (tests above).
+test('l4_p4_166: by command, reconcile30 clarification ends the task refused with the diagnostic and no step waits for a person', async () => withProject(async () => {
+  const ctx = await context();
+  (ctx.task as any).iaCompressed.longMemory.reviewByCommand = 'true';
+  const intents = await beforeReconcile30Step(ctx, parent(), step(), 36, runtime(await result('clarification')));
+  const steps = intents.filter(intent => intent.type === 'add-step').map(intent => (intent as mls.msg.AgentIntentAddStep).step);
+  assert.equal(steps.some(item => item.type === 'clarification' || item.status === 'waiting_human_input'), false);
+  const refused = steps.find(item => item.planning?.planId === 'reconcile30-refused') as mls.msg.AIResultStep;
+  assert.match(String(refused.result), /^refused: reconcile30: clarification\n/u);
+  assert.match(String(refused.result), /referenced artifact is unavailable/u);
+  assert.equal((intents[intents.length - 1] as mls.msg.AgentIntentUpdateStatus).status, 'completed');
+}));

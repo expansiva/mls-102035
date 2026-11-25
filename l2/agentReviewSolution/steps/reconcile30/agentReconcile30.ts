@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/steps/reconcile30/agentReconcile30.ts" enhancement="_blank" />
 
+import { reviewByCommand, reviewCommandRefusal } from '/_102035_/l2/agentReviewSolution/helpers/commandMode.js';
 import { getAllSteps } from '/_102027_/l2/aiAgentHelper.js';
 import { parseReviewInvocation, type ReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
 import {
@@ -87,14 +88,18 @@ export async function beforeReconcile30Step(
     }
     parseReconcile30PrivateState(serialized);
     const terminal = reconciled.status !== 'ready';
-    const intents: mls.msg.AgentIntent[] = [addStep(context, parentStep, {
+    const privateResult = addStep(context, parentStep, {
       type: 'result', stepId: 0, status: 'completed', interaction: null, nextSteps: [],
       stepTitle: terminal ? 'Private reconcile diagnostic' : 'Private reconciled draft', result: serialized,
       planning: {
         planId: terminal ? 'reconcile30-private-terminal' : 'reconcile30-private-result',
         dependsOn: [], executionMode: 'manual_later', executionHost: 'client',
       },
-    } as mls.msg.AIResultStep)];
+    } as mls.msg.AIResultStep);
+    if (reconciled.status === 'clarification' && reviewByCommand(context)) {
+      return [privateResult, ...reviewCommandRefusal(context, parentStep, step, hookSequential, 'reconcile30', 'clarification', reconciled.clarification)];
+    }
+    const intents: mls.msg.AgentIntent[] = [privateResult];
     if (reconciled.status === 'clarification') {
       intents.push(addStep(context, parentStep, {
         type: 'clarification', stepId: 0, status: 'waiting_human_input', interaction: null, nextSteps: [],

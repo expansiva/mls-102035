@@ -1,5 +1,6 @@
 /// <mls fileReference="_102035_/l2/agentReviewSolution/agentReviewSolution.ts" enhancement="_102027_/l2/enhancementAgent" />
 
+import { REVIEW_BY_COMMAND_KEY } from '/_102035_/l2/agentReviewSolution/helpers/commandMode.js';
 import { reviewInvocationForModule, reviewModuleToken } from '/_102035_/l2/agentReviewSolution/helpers/reviewByModule.js';
 import type { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { parseReviewInvocation, serializeReviewInvocation } from '/_102035_/l2/agentReviewSolution/helpers/invocation.js';
@@ -35,6 +36,7 @@ export async function beforePromptImplicit(
   try {
     const project = mls.actualProject || 0;
     const moduleOnly = reviewModuleToken(userPrompt);
+    const byCommand = !!moduleOnly;
     if (moduleOnly) {
       // l4_p4_165: `@@agentReviewSolution <module>` reviews the sealed, active revision, like the screen does on "Calculate".
       const userId = (context.message?.senderId || context.task?.owner || '').trim();
@@ -56,6 +58,7 @@ export async function beforePromptImplicit(
         userMessage: context.message.content,
         longTermMemory: {
           flowName: REVIEW_AGENT_NAME,
+          ...(byCommand ? { [REVIEW_BY_COMMAND_KEY]: 'true' } : {}),
           entrySnapshot: JSON.stringify(snapshot),
           reviewPrivateState: JSON.stringify(reviewPrivateState),
         },
