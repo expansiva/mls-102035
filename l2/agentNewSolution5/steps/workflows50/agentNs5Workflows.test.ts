@@ -25,6 +25,7 @@ import { buildNs5WorkflowsHumanPrompt, buildNs5WorkflowsTool } from '/_102035_/l
 import {
   buildNs5WorkflowsArtifact,
   buildNs5WorkflowsArtifactV3,
+  collectNs5JourneyTransitionRefs,
   collectNs5ProcessSignals,
   collectNs5TimeEventPhrases,
   collectNs5WorkflowsRefCatalog,
@@ -563,6 +564,26 @@ void test('evento waitlist is event plus mechanical transition', () => {
     journeyDecisions: normalized.journeyDecisions,
   });
   assert.equal(gate.ok, true, gate.issues.map(issue => `${issue.code}: ${issue.message}`).join('\n'));
+});
+
+void test('l4_p4_156: a stage with no actor does not name a transition a journey step already moves', () => {
+  const moved = collectNs5JourneyTransitionRefs(ORDEN_JOURNEYS);
+  assert.ok(moved.length > 0);
+  const [entityRef, transitionRef] = moved[0].split('.');
+  const noHandoff = ORDEN_JOURNEYS.map(item => ({
+    ...item,
+    business: { ...item.business, steps: item.business.steps.filter(step => step.kind !== 'handoff') },
+  }));
+  const stage = (ref: string, extra: Record<string, unknown> = {}) => drafts({
+    processes: [validProcess({
+      trigger: { kind: 'manual', actorRef: 'recepcionista' },
+      tasks: [{ taskId: 'auto', kind: 'mechanical', entityRef, effect: 'transition', transitionRef: ref, next: [], description: 'Automatic.', ...extra }],
+    })],
+  }).processes;
+  const codesOf = (processes: Ns5WorkflowProcess[]) => gateOf(processes, noHandoff, []).issues.map(issue => issue.code);
+  assert.ok(codesOf(stage(transitionRef)).includes('NS5_WORKFLOWS_TASK_REUSES_PERSON_TRANSITION'));
+  assert.equal(codesOf(stage(`${transitionRef}ByProcess`)).includes('NS5_WORKFLOWS_TASK_REUSES_PERSON_TRANSITION'), false);
+  assert.equal(codesOf(stage(transitionRef, { actorRef: 'recepcionista' })).includes('NS5_WORKFLOWS_TASK_REUSES_PERSON_TRANSITION'), false);
 });
 
 void test('mechanical transitionRef must exist with by system or the actor', () => {

@@ -99,7 +99,7 @@ export function validateNs5Workflows(
     const taskIds = new Set<string>();
     process.tasks.forEach((task, taskIndex) => {
       const path = `${base}.tasks[${taskIndex}]`;
-      validateTask(task, path, { hasOntology, actorIds, journeyById, entityById, taskIds, coveredHandoffs, issues });
+      validateTask(task, path, { hasOntology, actorIds, journeyById, entityById, journeyTransitionRefs, taskIds, coveredHandoffs, issues });
     });
 
     process.tasks.forEach((task, taskIndex) => {
@@ -254,6 +254,7 @@ function validateTask(
     actorIds: Set<string>;
     journeyById: Map<string, Ns5WorkflowsJourneyView>;
     entityById: Map<string, Ns5WorkflowsEntityView>;
+    journeyTransitionRefs: Set<string>;
     taskIds: Set<string>;
     coveredHandoffs: Set<string>;
     issues: Ns5WorkflowsGateIssue[];
@@ -318,6 +319,17 @@ function validateTask(
       error(issues, 'NS5_WORKFLOWS_EFFECT', 'A mechanical or llm task names effect.', `${path}.effect`);
     } else if (task.effect === 'transition') {
       validateTransitionRef(task, path, ctx);
+      // l4_p4_156: `by` is the list of people and empty is the system, so one transition cannot be both a
+      // person's step and a process's. A stage with no actor gets a transition of its own.
+      const ref = `${task.entityRef}.${task.transitionRef}`;
+      if (!task.actorRef && task.transitionRef && ctx.journeyTransitionRefs.has(ref)) {
+        error(
+          issues,
+          'NS5_WORKFLOWS_TASK_REUSES_PERSON_TRANSITION',
+          `${ref} is moved by a journey step of a person, and this ${task.kind} stage has no actor. Name a transition of its own for the process (for example ${task.transitionRef}ByProcess): the ontology step writes it with by: [] and the person keeps ${task.transitionRef}.`,
+          `${path}.transitionRef`,
+        );
+      }
     }
     if (task.entityEffects !== undefined) validateTaskEntityEffects(task, path, ctx.hasOntology, ctx.entityById, issues);
   }

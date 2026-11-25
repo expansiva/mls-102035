@@ -53,6 +53,7 @@ automatically when that arrival comes. Do not invent an arrival.
   not a lookup: the ontology is written after this step and will declare that entity and that
   transition, with this stage as its owner. Use the ids listed under `## Valid reference ids` when
   one fits; name a new one only when the work needs it, in the same UpperCamel / lowerCamel shape.
+  A `mechanical` or `llm` stage never names a transition that a journey step of a person already moves: when a person and a process make the same change, the process has its own transition (for example `blockByProcess`), and the ontology step writes it with `by: []`.
 - `kind: alert` — a recurring duty of a person: the schedule is on `trigger.schedule`, the
   instruction is the `description`, and when that person usually runs a listed journey, name that
   journey in the description. Requires `actorRef`. It carries no `journeyRef` and no `entityRef`.

@@ -96,3 +96,7 @@
 ## 2026-11-25 (l4_p4_151)
 
 - `prompt`: removed the sentence that forbade the access key of an outside system as data of the module; where the key lives is the module prompt's choice (owner, 2026-11-25).
+
+## 2026-11-25 (l4_p4_156)
+
+- `prompt` and gate: a `mechanical` or `llm` stage with no `actorRef` that names a transition a journey step of a person already moves is refused (`NS5_WORKFLOWS_TASK_REUSES_PERSON_TRANSITION`); the process names its own transition, which the ontology writes with `by: []`. Without it the whole run died at `finalize80` I2, which has no repair (telegram, first round).
