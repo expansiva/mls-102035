@@ -162,6 +162,31 @@ export function validateNs5OntologyPlanV3(
         path: `${path}.initialData`,
       });
     }
+    if (entity.kind === 'role' && entity.retentionDays !== undefined) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_RETENTION_ON_ROLE',
+        message: `${entity.entityId} is a role: a keeping period belongs to a table of the module, not to a master record.`,
+        path: `${path}.retentionDays`,
+      });
+    }
+    if (entity.kind === 'entity' && entity.retentionDays !== undefined && (entity.storage?.kind ?? planStorageKind(entity)) !== 'timeSeries') {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_RETENTION_NOT_TIMESERIES',
+        message: `${entity.entityId} declares retentionDays on a table that is not timeSeries: only a series chunked by time erases rows after a number of days.`,
+        path: `${path}.retentionDays`,
+      });
+    }
+    if (entity.kind === 'entity' && entity.retentionDays !== undefined
+      && !(Number.isInteger(entity.retentionDays) && entity.retentionDays >= 1 && entity.retentionDays <= 3650)) {
+      issues.push({
+        severity: 'error',
+        code: 'NS5_ONTOLOGY_RETENTION_RANGE',
+        message: `${entity.entityId} declares retentionDays ${entity.retentionDays}: it is a whole number of days from 1 to 3650.`,
+        path: `${path}.retentionDays`,
+      });
+    }
     if (entity.kind === 'role') {
       if (!entity.subtype || !subtypes.has(entity.subtype)) {
         issues.push({
@@ -378,6 +403,14 @@ function checkExternalPlan(entity: Ns5OntologyV3PlanEntity, path: string): Ns5On
       code: 'NS5_ONTOLOGY_EXTERNAL_INITIAL_DATA',
       message: `${entity.entityId} is external and declares initial data. The rows live in the connection.`,
       path: `${path}.initialData`,
+    });
+  }
+  if (entity.retentionDays !== undefined) {
+    issues.push({
+      severity: 'error',
+      code: 'NS5_ONTOLOGY_EXTERNAL_RETENTION',
+      message: `${entity.entityId} is external and declares retentionDays. The rows live in the connection.`,
+      path: `${path}.retentionDays`,
     });
   }
   const storageKind = planStorageKind(entity);

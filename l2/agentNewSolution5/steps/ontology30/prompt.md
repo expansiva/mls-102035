@@ -54,6 +54,8 @@ catalog the next pass copies from, and the catalog its capabilities are checked 
 series chunked by time, read by period and never updated; `external` on an `external` entity, because
 the rows live in the connection.
 
+`retentionDays` only when the request says the rows of a table are kept for a number of days and then erased (a log, an audit, a history with a keeping period): the number of days, and that table is `timeSeries`. Leave it out otherwise.
+
 Every journey `steps[].entity` and every `affects` entry must match an `entityId` exactly. Entity ids
 are PascalCase nouns; never a page, a form, a menu or a journey action. A total, a count or a current
 position is not an entity — the entity pass puts it inside `details`.

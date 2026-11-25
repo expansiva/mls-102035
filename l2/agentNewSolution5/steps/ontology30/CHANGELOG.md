@@ -288,3 +288,7 @@
 ## 2026-11-25 (l4_p4_151)
 
 - `prompt`: removed the sentence that forbade the access key of an outside system as data of the module; where the key lives is the module prompt's choice (owner, 2026-11-25).
+
+## 2026-11-25 (l4_p4_152)
+
+- `prompt`: one sentence after `storageKind`: `retentionDays` only when the request says the rows of a table are kept for a number of days and then erased; leave it out otherwise. Plan property `retentionDays` (integer, optional like `initialData`), `storage.retentionDays` in the artifact, `retentionDays` is valid only on a `timeSeries` table (runtime rt316). Gate codes `NS5_ONTOLOGY_RETENTION_NOT_TIMESERIES`, `NS5_ONTOLOGY_RETENTION_ON_ROLE`, `NS5_ONTOLOGY_RETENTION_RANGE`, `NS5_ONTOLOGY_EXTERNAL_RETENTION`.

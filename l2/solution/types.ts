@@ -517,7 +517,13 @@ export interface Ns5OntologyTableV3<Cap extends string = string, Rule extends st
    * `timeSeries` a series chunked by time. Optional because the hand-written v3 form predates it and a
    * table without it is read as `relational`.
    */
-  storage: { target: 'moduleDatabase'; table: string; kind?: 'relational' | 'timeSeries' };
+  storage: {
+    target: 'moduleDatabase';
+    table: string;
+    kind?: 'relational' | 'timeSeries';
+    /** Days a row is kept after it is written; absent = kept forever. */
+    retentionDays?: number;
+  };
   /** What the table starts with in every database, in one sentence (e.g. 'all ISO 3166-1 countries'); absent = no initial data. Test data is not initialData. */
   initialData?: string;
 }

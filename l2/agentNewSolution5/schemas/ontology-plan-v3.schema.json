@@ -38,7 +38,11 @@
         "description": { "type": "string" },
         "displayField": { "type": "string" },
         "writer": { "type": "string", "enum": ["journey", "crud", "inbound"] },
-        "initialData": { "type": "string" }
+        "initialData": { "type": "string" },
+        "retentionDays": {
+          "type": "integer",
+          "description": "Days a row of this table is kept after it is written, then erased. Only on a `timeSeries` table, and only when the request says so; absent = kept forever."
+        }
       }
     },
     "relationship": {

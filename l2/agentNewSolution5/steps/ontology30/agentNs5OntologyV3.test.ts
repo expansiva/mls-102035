@@ -1680,6 +1680,32 @@ void test('l4_p4_57: initialData lands on a table, is absent when unset, and a r
   assert.ok(codes(validateNs5OntologyPlanV3(plan, { moduleName: 'tarefas', mdm, tdm, ddm }).issues).includes('INITIAL_DATA_ON_ROLE'));
 });
 
+void test('l4_p4_152: retentionDays lands in storage of a table, is absent when unset, and the gate refuses the other cases', () => {
+  const entities = [
+    { entityId: 'Log', kind: 'entity', class: 'event', storageKind: 'timeSeries', title: 'Log', description: 'x', displayField: 'code', writer: 'journey', retentionDays: 90 },
+    { entityId: 'Tarefa', kind: 'entity', class: 'core', title: 'Tarefa', description: 'x', displayField: 'title', writer: 'journey' },
+  ];
+  const plan = normalizeNs5OntologyPlanV3({ businessDomain: 'Tasks', entities, relationships: [] } as never, 'tarefas');
+  const context = { moduleName: 'tarefas', mdm, plan };
+  const empty = { relationships: [], capabilities: [], rules: [] };
+  const build = (id: string) => normalizeNs5OntologyEntityV3({ record: { fields: [{ id: 'code', type: 'text', title: 'Code' }] }, ...empty }, id, context, [])!;
+  const log = build('Log');
+  const tarefa = build('Tarefa');
+  assert.equal(log.kind === 'entity' && log.storage.retentionDays, 90);
+  assert.equal(log.kind === 'entity' && log.storage.kind, 'timeSeries');
+  assert.equal(tarefa.kind === 'entity' && 'retentionDays' in tarefa.storage, false);
+  const gate = (patch: Record<string, unknown>, extra: Record<string, unknown> = {}) => codes(validateNs5OntologyPlanV3(
+    normalizeNs5OntologyPlanV3({ businessDomain: 'Tasks', entities: [{ ...entities[1], ...patch, ...extra }], relationships: [] } as never, 'tarefas'),
+    { moduleName: 'tarefas', mdm, tdm, ddm }).issues);
+  assert.ok(gate({ retentionDays: 90 }).includes('NS5_ONTOLOGY_RETENTION_NOT_TIMESERIES'));
+  assert.ok(gate({ storageKind: 'timeSeries', retentionDays: 0 }).includes('NS5_ONTOLOGY_RETENTION_RANGE'));
+  assert.ok(gate({ storageKind: 'timeSeries', retentionDays: 5000 }).includes('NS5_ONTOLOGY_RETENTION_RANGE'));
+  assert.ok(gate({ storageKind: 'timeSeries', retentionDays: 1.5 }).includes('NS5_ONTOLOGY_RETENTION_RANGE'));
+  assert.equal(gate({ storageKind: 'timeSeries', retentionDays: 90 }).some(code => code.includes('RETENTION')), false);
+  assert.ok(gate({ kind: 'role', subtype: 'Person', displayField: 'details.identification.name', retentionDays: 90 }).includes('NS5_ONTOLOGY_RETENTION_ON_ROLE'));
+  assert.ok(gate({ kind: 'external', connectionId: 'cm', retentionDays: 90 }).includes('NS5_ONTOLOGY_EXTERNAL_RETENTION'));
+});
+
 void test('l4_p4_47: a column displayField is left as the bare id', () => {
   const normalizations: Ns5OntologyV3Normalization[] = [];
   const built = ns5_47Normalize('numero', [

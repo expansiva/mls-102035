@@ -708,6 +708,32 @@ void test('p4_57: initialData from empty to a sentence is one entity item', () =
   assert.equal(items[0].entity, 'Country');
 });
 
+// l4_p4_152 s4: the keeping period of a table is `storage.retentionDays`; the diff sees it with no change in plDiff.ts.
+function keptTable(retentionDays?: number): L4DiffSnapshot {
+  const entity = {
+    schemaVersion: '2026-09-17-ns5-ontology-v3.1',
+    entityId: 'Log',
+    kind: 'entity',
+    storage: { target: 'moduleDatabase', table: 'm_log', kind: 'timeSeries', ...(retentionDays !== undefined ? { retentionDays } : {}) },
+    record: { fields: {} },
+    transitions: [],
+  } as unknown as Ns5OntologyAnyEntity;
+  return snapshotFromParsed({
+    entities: [{ entity, source: 'ontology/Log.defs.ts' }],
+    rules: null, access: null, workflows: null, integration: null,
+  });
+}
+
+void test('p4_152: retentionDays from absent to 90 is one entity item; the same on both sides is none', () => {
+  const items = diffL4Snapshots(keptTable(), keptTable(90));
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'entity');
+  assert.equal(items[0].op, 'changed');
+  assert.equal(items[0].entity, 'Log');
+  assert.deepEqual(diffL4Snapshots(keptTable(), keptTable()), []);
+  assert.deepEqual(diffL4Snapshots(keptTable(90), keptTable(90)), []);
+});
+
 // l4_p4_127 s3: an entity that lives outside, as the diff sees it. Table to external, another connection and
 // fields of the record are each an item; the diff reads `kind`, `connectionId` and `record.fields` as they are.
 function outside(patch: { kind?: string; connectionId?: string; fields?: Record<string, unknown> } = {}): L4DiffSnapshot {

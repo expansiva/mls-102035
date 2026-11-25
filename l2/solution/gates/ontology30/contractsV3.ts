@@ -136,6 +136,8 @@ export interface Ns5OntologyV3PlanEntity {
   writer?: typeof NS5_ONTOLOGY_V3_WRITERS[number];
   /** Sentence of what a table starts with. Absent means no initial data. A role never carries it. */
   initialData?: string;
+  /** Days a row of a `timeSeries` table is kept after it is written; absent = kept forever. Never on a role, an external or a relational table. */
+  retentionDays?: number;
   /** Derived: `<moduleName>.<entityId>` on a role. */
   roleTag?: string;
   /** Derived: the platform ontology a role copies from. Never the connection of an `external`. */
@@ -146,7 +148,7 @@ export interface Ns5OntologyV3PlanEntity {
    * On a table: `target` and `table` are derived, `kind` is what the plan declared (`relational` by
    * default). A role and an `external` have no storage of their own.
    */
-  storage?: { target: 'moduleDatabase'; table: string; kind: Exclude<Ns5OntologyV3StorageKind, 'platform'> };
+  storage?: { target: 'moduleDatabase'; table: string; kind: Exclude<Ns5OntologyV3StorageKind, 'platform'>; retentionDays?: number };
 }
 
 export interface Ns5OntologyV3PlanRelationship {
@@ -308,6 +310,8 @@ function normalizePlanEntity(
   };
   const writer = optionalOneOf(raw.writer, NS5_ONTOLOGY_V3_WRITERS);
   if (writer && writer !== 'journey') base.writer = writer;
+  // Kept as written so the gate can refuse it on a role, an external or out of range; only a positive integer reaches `storage`.
+  if (typeof raw.retentionDays === 'number' && Number.isFinite(raw.retentionDays)) base.retentionDays = raw.retentionDays;
   if (kind === 'external') {
     const connectionId = text(raw.connectionId);
     if (MEMBER_ID.test(connectionId)) {
@@ -335,6 +339,7 @@ function normalizePlanEntity(
     table: `${moduleName}_${entityId.toLowerCase()}`,
     // `platform` is the neutral value of a role; on a table it means nothing was said.
     kind: storageKind === 'platform' ? 'relational' : storageKind,
+    ...(Number.isInteger(base.retentionDays) && (base.retentionDays as number) > 0 ? { retentionDays: base.retentionDays as number } : {}),
   };
   normalizations.push({
     kind: 'derivedFromPlatform',
