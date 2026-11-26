@@ -87,3 +87,27 @@ void test('a new field on an entity with no fieldsOnly grant needs nothing', () 
   const outcome = fieldsOnlyFix(base, withStatus(null), 'pt');
   assert.deepEqual(outcome.notes, []);
 });
+
+void test('a fieldsOnly grant defined only by deniedFields shows a new field already: no allowedFields is created and no note', () => {
+  const denied = (fields: Record<string, unknown>): NrpModuleArtifacts => {
+    const built = moduleWith(fields, ['x']);
+    built.access.grants[0].disclosure = { mode: 'fieldsOnly', description: '', deniedFields: ['Mesa.code'] };
+    return built;
+  };
+  const merged = denied({ ...baseFields, details: { type: 'object', fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } } } });
+  const outcome = fieldsOnlyFix(denied(baseFields), merged, 'pt');
+  assert.deepEqual(outcome.notes, []);
+  assert.equal(outcome.access, merged.access);
+  assert.equal(outcome.access.grants[0].disclosure.allowedFields, undefined);
+});
+
+void test('a grant with both lists still gets the new field in allowedFields (the allowed list governs)', () => {
+  const both = (fields: Record<string, unknown>): NrpModuleArtifacts => {
+    const built = moduleWith(fields, ['Mesa.code', 'Mesa.details.disponivel']);
+    built.access.grants[0].disclosure.deniedFields = ['Mesa.code'];
+    return built;
+  };
+  const merged = both({ ...baseFields, details: { type: 'object', fields: { disponivel: { type: 'boolean' }, statusAtendimento: { type: 'string' } } } });
+  const outcome = fieldsOnlyFix(both(baseFields), merged, 'pt');
+  assert.deepEqual(outcome.access.grants[0].disclosure.allowedFields, ['Mesa.code', 'Mesa.details.disponivel', 'Mesa.details.statusAtendimento']);
+});

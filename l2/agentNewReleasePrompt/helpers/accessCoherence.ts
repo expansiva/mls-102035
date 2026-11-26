@@ -22,7 +22,8 @@ export interface FieldsOnlyOutcome {
 }
 
 /**
- * A new entity field is invisible to an actor whose grant is `fieldsOnly` on that entity and does not list it.
+ * A new entity field is invisible to an actor whose grant is `fieldsOnly` on that entity with a list of allowed fields that
+ * does not include it. A grant with no allowed list (defined only by `deniedFields`) shows everything it does not deny.
  * When a journey of that actor works on the entity, the field is included in the grant. Otherwise the field stays
  * out of the grant (the actor does not see it) and the notes say so.
  */
@@ -77,6 +78,8 @@ function fieldsOnlyGaps(base: NrpModuleArtifacts, merged: NrpModuleArtifacts): F
     for (const grant of merged.access.grants || []) {
       if (grant.disclosure?.mode !== 'fieldsOnly') continue;
       if (!(grant.entityRefs || []).includes(entityId)) continue;
+      // Without a list of allowed fields the grant is defined by what it denies: a new field is already visible.
+      if (!(grant.disclosure.allowedFields || []).length) continue;
       const allowed = new Set(grant.disclosure.allowedFields || []);
       for (const path of added) {
         if (allowed.has(`${entityId}.${path}`)) continue;
