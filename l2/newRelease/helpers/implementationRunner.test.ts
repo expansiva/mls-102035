@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createImplementationRunner } from './implementationRunner.js';
-import { acceptL4Implementation, readL4Implementation, readLatestCompletedL4Implementation, recordL4ImplementationPhase, readInitialImplementationPlan, INITIAL_PLAN_PATHS } from '../../solution/candidate/moduleImplementation.js';
+import { acceptL4Implementation, readL4Implementation, recordL4ImplementationPhase, readInitialImplementationPlan, INITIAL_PLAN_PATHS } from '../../solution/candidate/moduleImplementation.js';
 import type { Ns5FileInfo } from '../../solution/fs.js';
 import type { ExecutionContext, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { mergeChangeEffort } from '../../solution/gates/changeEffort/gate.js';
@@ -587,68 +587,49 @@ for (const [agent, path, index] of [
 }
 
 
-function allowMenuDelete(f: { first: { stor: { localStor: { deleteFile?: (file: { status: string }) => void } }; events?: { fireFileAction: () => void } } }): void {
-  f.first.stor.localStor.deleteFile = file => { file.status = 'deleted'; };
-  f.first.events = { fireFileAction() {} };
-}
+// l4_p4_178 (Wagner, 26/11): concluding a change no longer removes pool/l2/web/menu.json. The pool menu is not a second copy of
+// the navigation in l5/config.json: it keeps the organisms of each page, the authorities and the menuSchema, which agentDefsL2 and
+// agentDefsL1 read as input, so the next adjustment needs it. (l4_p4_79 removed it at the end of the chain.)
+const menuInfo: Ns5FileInfo = { project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' };
 
-test('p4_79 s1: a finished initial chain removes pool menu.json and a later load does not require it', async () => {
+test('l4_p4_178: a finished initial chain keeps pool menu.json, and a later load still works', async () => {
   const f = await initialRunnerFixture();
   try {
-    allowMenuDelete(f);
     const runner = createImplementationRunner(f.dependencies);
     for (let i = 0; i < 4; i++) await runner.runNext(project, moduleName);
     const record = await runner.runNext(project, moduleName);
-    const menu = f.first.stor.files[f.key({ project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' })];
-    assert.equal(menu.status, 'deleted');
-    assert.match(record.phases.at(-1)?.report ?? '', /menu\.json removed/u);
+    assert.equal(f.first.stor.files[f.key(menuInfo)].status, 'new');
+    assert.doesNotMatch(record.phases.at(-1)?.report ?? '', /menu\.json/u);
     const again = await runner.runNext(project, moduleName);
-    assert.match(again.phases.at(-1)?.report ?? '', /menu\.json removed/u);
-    assert.equal((await readLatestCompletedL4Implementation(project, moduleName))?.phases.at(-1)?.report?.includes('menu.json removed'), true);
+    assert.doesNotMatch(again.phases.at(-1)?.report ?? '', /menu\.json/u);
+    assert.equal(f.first.stor.files[f.key(menuInfo)].status, 'new');
   } finally { f.restore(); }
 });
 
-test('p4_79 s1: an L1 barrier failure keeps pool menu.json', async () => {
+test('l4_p4_178: an L1 barrier failure leaves pool menu.json and the record says nothing about it', async () => {
   const f = await initialRunnerFixture();
   try {
-    allowMenuDelete(f);
     f.defect('materialize-l1');
     const runner = createImplementationRunner(f.dependencies);
     for (let i = 0; i < 5; i++) await runner.runNext(project, moduleName);
-    const menu = f.first.stor.files[f.key({ project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' })];
-    assert.equal(menu.status, 'new');
+    assert.equal(f.first.stor.files[f.key(menuInfo)].status, 'new');
     const record = await readL4Implementation(project, moduleName);
-    assert.equal(record?.phases.some(phase => phase.report?.includes('menu.json removed')), false);
+    assert.equal(record?.phases.some(phase => phase.report?.includes('menu.json')), false);
   } finally { f.restore(); }
 });
 
-test('p4_79 s1: a finished maintenance chain removes pool menu.json', async () => {
+test('l4_p4_178: a finished maintenance chain keeps pool menu.json', async () => {
   const f = fixture('materialize');
   try {
-    allowMenuDelete(f);
-    const info: Ns5FileInfo = { project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' };
-    f.first.add(info);
-    f.contents.set(f.key(info), JSON.stringify({ moduleName }));
+    f.first.add(menuInfo);
+    f.contents.set(f.key(menuInfo), JSON.stringify({ moduleName }));
     await f.accept();
     const runner = createImplementationRunner(f.dependencies);
     let record = await readL4Implementation(project, moduleName);
     for (let i = 0; i < 5; i++) record = await runner.runNext(project, moduleName);
-    assert.equal(f.first.stor.files[f.key(info)].status, 'deleted');
-    assert.match(record?.phases.at(-1)?.report ?? '', /menu\.json removed/u);
+    assert.equal(f.first.stor.files[f.key(menuInfo)].status, 'new');
+    assert.doesNotMatch(record?.phases.at(-1)?.report ?? '', /menu\.json/u);
     await runner.runNext(project, moduleName);
-  } finally { f.restore(); }
-});
-
-test('p4_79 s1: a delete failure stays on the implementation record', async () => {
-  const f = await initialRunnerFixture();
-  try {
-    f.first.stor.localStor.deleteFile = () => { throw new Error('disk full'); };
-    const runner = createImplementationRunner(f.dependencies);
-    for (let i = 0; i < 4; i++) await runner.runNext(project, moduleName);
-    const record = await runner.runNext(project, moduleName);
-    assert.match(record.phases.at(-1)?.report ?? '', /menu\.json kept: disk full/u);
-    const menu = f.first.stor.files[f.key({ project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' })];
-    assert.equal(menu.status, 'new');
   } finally { f.restore(); }
 });
 

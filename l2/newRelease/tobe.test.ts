@@ -519,16 +519,19 @@ test('l4_p4_177: /implemented records the pending commands of an applied change,
     phases: [],
   });
   const confirmation = fixture.keyOf({ project, level: 4, folder: `${moduleName}/pipeline/changes/${saved.changeId}`, shortName: 'confirmation', extension: '.json' });
+  plantJson(fixture, { project, folder: `${moduleName}/pool/l2/web`, shortName: 'menu' }, { moduleName });
+  const menuKey = fixture.keyOf({ project, level: 4, folder: `${moduleName}/pool/l2/web`, shortName: 'menu', extension: '.json' });
   const { plImplementedText } = await import('/_102035_/l2/agentPlannerL4/helpers/plImplemented.js');
   (mls as { actualProject?: number }).actualProject = project;
   const listed = await plImplementedText(moduleName, false, { project, ownerId: 'operator' });
   assert.match(listed, /^pending: .*"index":0.*"index":1/s);
   assert.equal(fixture.contents.has(confirmation), false);
   await assert.rejects(saveChangeRequest(project, moduleName, 'Too early', saved.changeId!, saved.revisionId!), /application_active/);
-  const answer = await plImplementedText(moduleName, true, { project, ownerId: 'operator', diff: async () => [], compact: async () => undefined, retireMenu: async () => undefined });
+  const answer = await plImplementedText(moduleName, true, { project, ownerId: 'operator', diff: async () => [], compact: async () => undefined });
   assert.match(answer, /^implemented: .*"recorded":\[0,1\].*"completed":true/);
   assert.equal(JSON.parse(fixture.contents.get(confirmation) || '{}').confirmedBy, 'operator');
   assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/')), false);
+  assert.equal(fixture.contents.has(menuKey), true, 'l4_p4_178: the pool menu stays after the change is completed');
   assert.equal(await readActiveL4Change(project, moduleName), null);
   const next = await saveChangeRequest(project, moduleName, 'Next update', null, null);
   assert.notEqual(next.changeId, saved.changeId);

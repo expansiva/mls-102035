@@ -1,5 +1,9 @@
 # agentPlannerL4
 
+## 2026-11-26 (l4_p4_178)
+
+- `/implemented /confirm` no longer retires `pool/l2/web/menu.json` (nor does the New Release screen): the pool menu keeps the organisms, authorities and menuSchema that `agentDefsL2` and `agentDefsL1` read, so the next adjustment needs it. `solution/candidate/poolMenuRetire.ts` was removed; `barrier`/`initialFile` went back into `newRelease/helpers/implementationRunner.ts`.
+
 ## 2026-11-26 (l4_p4_177)
 
 - `/implemented` and `/implemented /confirm`: complete an applied change with pending L2/L1 commands without the screen (`helpers/plImplemented.ts`); `retirePoolMenu` moved to `solution/candidate/poolMenuRetire.ts` so both sides share it. `agentNewReleasePrompt` (`entry10`, `write50`) now refuses a new request while an accepted implementation owns the change (`assertNewReleaseEditable`, moved to `moduleImplementation.ts`).

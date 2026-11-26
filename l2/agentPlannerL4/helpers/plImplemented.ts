@@ -7,7 +7,6 @@ import {
 } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { compactModuleApplication, diffModuleLayers } from '/_102035_/l2/solution/candidate/moduleLayers.js';
 import { readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
-import { retirePoolMenu } from '/_102035_/l2/solution/candidate/poolMenuRetire.js';
 import { completeL4Implementation } from '/_102035_/l2/solution/candidate/tobeCompletion.js';
 import { existingModuleName } from '/_102035_/l2/agentPlannerL4/helpers/plCore.js';
 
@@ -22,7 +21,6 @@ export interface PlImplementedDependencies {
   write?: typeof withL4ImplementationWriter;
   active?: typeof readActiveL4Change;
   diff?: typeof diffModuleLayers;
-  retireMenu?: typeof retirePoolMenu;
   compact?: typeof compactModuleApplication;
   complete?: typeof completeL4Implementation;
 }
@@ -43,7 +41,7 @@ function pendingIndexes(record: L4ImplementationRecord, commandCount: number): n
 /**
  * `/implemented`: what the New Release screen does when the agents of an applied change have finished, with no screen.
  * Without `/confirm` it only lists the commands still pending. With `/confirm` it records each pending command as a phase
- * done by the operator (a declaration: no task is observed), retires the pool menu, compacts the application and completes
+ * done by the operator (a declaration: no task is observed), compacts the application and completes
  * the change, in the order the screen does. It runs no agent: the operator runs the commands first.
  */
 export async function plImplementedText(moduleToken: string, confirm: boolean, dependencies: PlImplementedDependencies = {}): Promise<string> {
@@ -69,7 +67,7 @@ export async function plImplementedText(moduleToken: string, confirm: boolean, d
     if (!change || change.changeId !== record.changeId) return 'refused: l4.implemented_no_applied_change';
     const changedDefs = record.initial ? undefined
       : (await (dependencies.diff ?? diffModuleLayers)(project, moduleName, change.baseId)).map(({ path, status, level }) => ({ path, status, level }));
-    await (dependencies.write ?? withL4ImplementationWriter)(project, moduleName, async (current, save) => {
+    await (dependencies.write ?? withL4ImplementationWriter)(project, moduleName, async (_current, save) => {
       for (const index of pending) {
         const time = now();
         const phase: L4ImplementationPhase = {
@@ -80,7 +78,6 @@ export async function plImplementedText(moduleToken: string, confirm: boolean, d
         };
         await save(phase);
       }
-      await (dependencies.retireMenu ?? retirePoolMenu)(project, moduleName, current, commands, save);
     });
     await (dependencies.compact ?? compactModuleApplication)(project, moduleName, record.changeId, record.revisionId);
     await (dependencies.complete ?? completeL4Implementation)(project, moduleName, record.changeId, record.revisionId, by);

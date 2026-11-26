@@ -29,7 +29,6 @@ function deps(current: L4ImplementationRecord | null, calls: string[]): PlImplem
     diff: async () => [{ path: 'l1/x', status: 'changed', level: 1 }] as never,
     write: (async (_p: number, _m: string, work: (rec: L4ImplementationRecord, save: (phase: L4ImplementationPhase) => Promise<void>) => Promise<unknown>) =>
       work(current!, async phase => { calls.push(`save:${phase.name}:${phase.status}:${phase.report}`); current!.phases.push(phase); })) as never,
-    retireMenu: (async () => { calls.push('menu'); }) as never,
     compact: (async () => { calls.push('compact'); }) as never,
     complete: (async (_p: number, _m: string, _c: string, _r: string, by: string) => { calls.push(`complete:${by}`); }) as never,
   };
@@ -54,7 +53,7 @@ void test('l4_p4_177: without /confirm it lists the pending commands and writes 
   assert.deepEqual(calls, []);
 }));
 
-void test('l4_p4_177: /confirm records each pending command as done by the operator, then menu, compact, complete, in the screen order', () => withModule(async () => {
+void test('l4_p4_177: /confirm records each pending command as done by the operator, then compact, complete, in the screen order', () => withModule(async () => {
   const calls: string[] = [];
   const current = record([done(0)]);
   const text = await plImplementedText('telegram', true, deps(current, calls));
@@ -62,8 +61,8 @@ void test('l4_p4_177: /confirm records each pending command as done by the opera
   const saves = calls.filter(call => call.startsWith('save:'));
   assert.equal(saves.length, 4);
   assert.match(saves[0], /^save:runAgents:1:done:recorded by command \(dono\)/);
-  assert.deepEqual(calls.filter(call => !call.startsWith('save:')), ['menu', 'compact', 'complete:dono']);
-  assert.ok(calls.indexOf('menu') > calls.lastIndexOf(saves[saves.length - 1]));
+  assert.deepEqual(calls.filter(call => !call.startsWith('save:')), ['compact', 'complete:dono']);
+  assert.ok(calls.indexOf('compact') > calls.lastIndexOf(saves[saves.length - 1]));
   assert.deepEqual(current.phases.find(phase => phase.name === 'runAgents:1')?.changedDefs, [{ path: 'l1/x', status: 'changed', level: 1 }]);
 }));
 

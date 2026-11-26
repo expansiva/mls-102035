@@ -6,7 +6,6 @@ import { environment } from '/_102036_/l2/environmentContract.js';
 import { msgGetMessage, msgGetTaskUpdate } from '/_102036_/l2/shared/api.js';
 import type { ExecutionContext, Message, TaskData } from '/_102036_/l2/shared/interfaces.js';
 import { getTemporaryContext, ensureUserId } from '/_102025_/l2/collabMessagesHelper.js';
-import { barrier, initialFile, retirePoolMenu } from '/_102035_/l2/solution/candidate/poolMenuRetire.js';
 import { implementationCommands, implementationPhaseCommand, withL4ImplementationWriter, readInitialImplementationPlan, INITIAL_PLAN_PATHS, type InitialImplementationPlan, type L4ImplementationRecord, type L4ImplementationPhase } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { readActiveL4Change } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { readSourceText, type Ns5FileInfo } from '/_102035_/l2/solution/fs.js';
@@ -39,6 +38,17 @@ interface InitialDefsReport {
   snapshotHash?: string; artifactPaths?: string[];
 }
 
+function barrier(condition: unknown, path: string, reason: string): asserts condition {
+  if (!condition) throw new Error(`implementation.barrier:${path}:${reason}`);
+}
+function initialFile(project: number, path: string, earliest?: number): Ns5FileInfo {
+  const slash = path.lastIndexOf('/');
+  const info: Ns5FileInfo = { project, level: Number(path[1]), folder: path.slice(3, slash), shortName: path.slice(slash + 1, -5), extension: '.json' };
+  const file = mls.stor.files[mls.stor.getKeyToFile(info)];
+  barrier(file && file.status !== 'deleted', path, 'missing');
+  if (earliest !== undefined) barrier(Number.isFinite(Date.parse(file.updatedAt ?? '')) && Date.parse(file.updatedAt!) >= earliest, path, 'stale');
+  return info;
+}
 async function initialJson<T>(project: number, path: string, earliest?: number): Promise<T> {
   return JSON.parse(await readSourceText(initialFile(project, path, earliest))) as T;
 }
@@ -246,7 +256,6 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
         const commands = implementationCommands(record, project, moduleName);
         const index = commands.findIndex((_, index) => !record.phases.some(phase => phase.name === `runAgents:${index}` && phase.status === 'done'));
         if (index < 0) {
-          await retirePoolMenu(project, moduleName, record, commands, save);
           return record;
         }
         const name = `runAgents:${index}`;
@@ -262,7 +271,6 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
             phase = { ...phase, taskId: taskId(found.taskId) };
           }
           await save(await observed(project, moduleName, phase, await task(user, phase.taskId, phase.messageId), record));
-          await retirePoolMenu(project, moduleName, record, commands, save);
           return record;
         }
         const structural = commands.length > record.merged.runAgents.length;
@@ -275,7 +283,6 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
           }
         }
         await dispatch(project, moduleName, name, command, 1, record, save);
-        await retirePoolMenu(project, moduleName, record, commands, save);
         return record;
       });
     },
@@ -291,7 +298,6 @@ export function createImplementationRunner(dependencies: ImplementationRunnerDep
         if (!phase || phase.status !== 'failed' || phase.attempt !== 1 || phase.error === 'review.implementation.error.missingCommand') throw new Error('implementation.retry_not_allowed');
         const { previousAttempts, ...previous } = phase;
         await dispatch(project, moduleName, name, command, 2, record, save, [...(previousAttempts ?? []), previous]);
-        await retirePoolMenu(project, moduleName, record, commands, save);
         return record;
       });
     },
