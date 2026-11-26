@@ -496,6 +496,44 @@ test('p4_83 s3c discard and completed apply remove tobe/candidate and leave the 
   assert.equal((await readActiveL4Change(project, moduleName))?.baseId, frozen?.baseId);
 });
 
+test('l4_p4_177: /implemented records the pending commands of an applied change, completes it, and a new request opens a new change', async () => {
+  const project = 102047;
+  const moduleName = 'ordenServicio5';
+  const fixture = installStorFixture(project, moduleName);
+  const saved = await saveTobeArtifact(project, moduleName, 'module.defs.ts', { ...fixture.source.module, title: 'Applied title' }, {
+    author: 'tester@example.com', expectedRevisionId: null,
+  });
+  const active = await readActiveL4Change(project, moduleName);
+  assert.ok(active && saved.changeId);
+  const applied = await readSealedL4Candidate(project, moduleName, saved.changeId!, saved.revisionId!);
+  assert.ok(applied);
+  for (const item of applied.sources) fixture.contents.set(fixture.keyOf(tobeArtifactFileInfo(project, moduleName, item.path, 'asis')), item.source);
+  plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${saved.changeId}`, shortName: 'change' }, {
+    ...active, activeRevisionId: saved.revisionId, promotedRevisionId: saved.revisionId,
+  });
+  plantJson(fixture, { project, folder: `${moduleName}/pipeline/changes/${saved.changeId}`, shortName: 'implementation' }, {
+    schemaVersion: '2026-10-08-nr-module-implementation-v1', changeId: saved.changeId, revisionId: saved.revisionId,
+    acceptedBy: 'reviewer', acceptedAt: '2026-11-05T10:00:00.000Z', hashes: {},
+    merged: { create: [], regenerateDefs: [], remove: [], materialize: [], abend: [],
+      runAgents: [{ agent: 'agentOne', command: '@@agentOne ordenServicio5' }, { agent: 'agentTwo', command: '@@agentTwo ordenServicio5' }] },
+    phases: [],
+  });
+  const confirmation = fixture.keyOf({ project, level: 4, folder: `${moduleName}/pipeline/changes/${saved.changeId}`, shortName: 'confirmation', extension: '.json' });
+  const { plImplementedText } = await import('/_102035_/l2/agentPlannerL4/helpers/plImplemented.js');
+  (mls as { actualProject?: number }).actualProject = project;
+  const listed = await plImplementedText(moduleName, false, { project, ownerId: 'operator' });
+  assert.match(listed, /^pending: .*"index":0.*"index":1/s);
+  assert.equal(fixture.contents.has(confirmation), false);
+  await assert.rejects(saveChangeRequest(project, moduleName, 'Too early', saved.changeId!, saved.revisionId!), /application_active/);
+  const answer = await plImplementedText(moduleName, true, { project, ownerId: 'operator', diff: async () => [], compact: async () => undefined, retireMenu: async () => undefined });
+  assert.match(answer, /^implemented: .*"recorded":\[0,1\].*"completed":true/);
+  assert.equal(JSON.parse(fixture.contents.get(confirmation) || '{}').confirmedBy, 'operator');
+  assert.equal(Object.values(fixture.files).some((file: any) => String(file.folder).includes('/tobe/')), false);
+  assert.equal(await readActiveL4Change(project, moduleName), null);
+  const next = await saveChangeRequest(project, moduleName, 'Next update', null, null);
+  assert.notEqual(next.changeId, saved.changeId);
+});
+
 test('base snapshot is complete, byte-stable and separate from the temporary candidate', async () => {
   const project = 102047;
   const moduleName = 'ordenServicio5';

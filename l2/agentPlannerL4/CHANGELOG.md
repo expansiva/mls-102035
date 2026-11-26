@@ -1,5 +1,9 @@
 # agentPlannerL4
 
+## 2026-11-26 (l4_p4_177)
+
+- `/implemented` and `/implemented /confirm`: complete an applied change with pending L2/L1 commands without the screen (`helpers/plImplemented.ts`); `retirePoolMenu` moved to `solution/candidate/poolMenuRetire.ts` so both sides share it. `agentNewReleasePrompt` (`entry10`, `write50`) now refuses a new request while an accepted implementation owns the change (`assertNewReleaseEditable`, moved to `moduleImplementation.ts`).
+
 ## 2026-11-25 (l4_p4_165)
 
 - `/adopt`: adopts the output of the review as the active, result revision (`helpers/plAdopt.ts` → `solution/candidate/moduleAdopt.ts`); handled before any step is planned, like `/apply`. README lists the five commands of the chain with no screen in order.

@@ -1,6 +1,7 @@
 /// <mls fileReference="_102035_/l2/agentNewReleasePrompt/steps/entry10/entry10.ts" enhancement="_blank" />
 
 import { parseNrpInvocation, serializeNrpInvocation } from '/_102035_/l2/agentNewReleasePrompt/helpers/invocation.js';
+import { assertNewReleaseEditable } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { ensureEditRoot } from '/_102035_/l2/agentNewReleasePrompt/helpers/artifacts.js';
 
 export function createIndex10Step(prompt: string): mls.msg.AIAgentStep {
@@ -31,6 +32,7 @@ export async function beforeNrpEntryStep(
   try {
     const project = mls.actualProject || 0;
     const invocation = parseNrpInvocation(String(step.prompt || ''), project);
+    await assertNewReleaseEditable(project, invocation.moduleName);
     const prepared = await ensureEditRoot(invocation);
     const prompt = serializeNrpInvocation(invocation);
     return [

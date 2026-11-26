@@ -200,6 +200,11 @@ export async function readL4Implementation(project: number, moduleName: string):
   return change ? readJson<L4ImplementationRecord>(implementationInfo(project, moduleName, change.changeId)) : null;
 }
 
+/** An accepted implementation owns the active change until its successful cleanup: no new edit starts, by screen or by command. */
+export async function assertNewReleaseEditable(project: number, moduleName: string): Promise<void> {
+  if (await readL4Implementation(project, moduleName)) throw new Error('new-release.application_active');
+}
+
 /** Keeps the fresh read, reservation and canonical task identity in the same module writer. */
 export async function withL4ImplementationWriter<T>(project: number, moduleName: string,
   work: (record: L4ImplementationRecord, save: (phase: L4ImplementationPhase) => Promise<void>) => Promise<T>,

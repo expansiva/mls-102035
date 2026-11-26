@@ -656,3 +656,15 @@ function keyOfOriginal(baseId: string, path: string): string {
   const info = originalL4FileInfo(project, moduleName, baseId, path as Ns5TobeArtifactPath);
   return `${info.project}:${info.level}:${info.folder || ''}:${info.shortName}${info.extension}`;
 }
+
+void test('l4_p4_177: a request while an accepted implementation owns the active change is refused, as the screen does, and writes nothing', async () => {
+  const fixture = installRemovalFixture();
+  try {
+    const { writeJson } = await import('/_102035_/l2/solution/fs.js');
+    await writeJson({ project, level: 4, folder: `${moduleName}/pipeline/changes/change1`, shortName: 'implementation', extension: '.json' },
+      { changeId: 'change1', revisionId: 'rev1', acceptedAt: 'now', phases: [] });
+    const before = [...fixture.contents.entries()];
+    await assert.rejects(persistNrpWithChange(fixture.payload, 'task3'), /new-release\.application_active/);
+    assert.deepEqual([...fixture.contents.entries()], before);
+  } finally { fixture.restore(); }
+});

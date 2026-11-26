@@ -1,6 +1,6 @@
 /// <mls fileReference="_102035_/l2/newRelease/helpers/revisionSelection.ts" enhancement="_blank" />
 
-import { readL4Implementation } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
+import { assertNewReleaseEditable, readL4Implementation } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { readJson, readSourceText, writeSourceText } from '/_102035_/l2/solution/fs.js';
 import { historicalReleaseId, type NewReleaseVersion } from '/_102035_/l2/newRelease/helpers/context.js';
 import {
@@ -90,11 +90,7 @@ export async function listReleaseChoices(project: number, moduleName: string): P
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.baseId.localeCompare(b.baseId));
 }
 
-/** An accepted implementation owns the active change until its successful cleanup. */
-export async function assertNewReleaseEditable(project: number, moduleName: string): Promise<void> {
-  const implementation = await readL4Implementation(project, moduleName);
-  if (implementation) throw new Error('new-release.application_active');
-}
+export { assertNewReleaseEditable };
 
 /** Bind values already edited in the UI; never ask the prompt agent to repeat them. */
 export async function bindStructuredEditsRequest(project: number, moduleName: string,

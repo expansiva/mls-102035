@@ -73,6 +73,8 @@ const FAST_RE = /(^|\s)\/fast(?=\s|$)/i;
 const ESTIMATE_RE = /(^|\s)\/estimate(?=\s|$)/i;
 const ADOPT_RE = /(^|\s)\/adopt(?=\s|$)/i;
 const APPLY_RE = /(^|\s)\/apply(?=\s|$)/i;
+const IMPLEMENTED_RE = /(^|\s)\/implemented(?=\s|$)/i;
+const CONFIRM_RE = /(^|\s)\/confirm(?=\s|$)/i;
 const CANDIDATE_RE = /(^|\s)\/candidate(?:\s+(?!\/)(\S+))?(?=\s|$)/i;
 
 export interface PlParsedInvocation {
@@ -82,6 +84,10 @@ export interface PlParsedInvocation {
   adopt: boolean;
   /** `/apply`: apply the sealed, active revision of the module (the "Apply" button, with no screen). Plans nothing. */
   apply: boolean;
+  /** `/implemented`: the screen's completion of an applied change, with no screen. Lists the pending commands; with `/confirm` records them and completes. Plans nothing. */
+  implemented: boolean;
+  /** `/confirm`: only meaningful with `/implemented`. */
+  confirm: boolean;
   module: string;
   /** Resolved `l4/` folder when `/candidate` is present; otherwise `''`. */
   candidate: string;
@@ -224,6 +230,8 @@ export function parsePlInvocation(value: string): PlParsedInvocation {
   const estimate = ESTIMATE_RE.test(raw);
   const apply = APPLY_RE.test(raw);
   const adopt = ADOPT_RE.test(raw);
+  const implemented = IMPLEMENTED_RE.test(raw);
+  const confirm = CONFIRM_RE.test(raw);
   const candidateMatch = CANDIDATE_RE.exec(raw);
   const hasCandidate = !!candidateMatch;
   const candidateRel = candidateMatch?.[2] || '';
@@ -232,13 +240,15 @@ export function parsePlInvocation(value: string): PlParsedInvocation {
     .replace(new RegExp(ESTIMATE_RE.source, 'gi'), ' ')
     .replace(new RegExp(APPLY_RE.source, 'gi'), ' ')
     .replace(new RegExp(ADOPT_RE.source, 'gi'), ' ')
+    .replace(new RegExp(IMPLEMENTED_RE.source, 'gi'), ' ')
+    .replace(new RegExp(CONFIRM_RE.source, 'gi'), ' ')
     .replace(new RegExp(CANDIDATE_RE.source, 'gi'), ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const token = stripped.split(' ')[0] || '';
   const module = moduleTokenOk(token) ? token : normalizeModuleName(token, '');
   const candidate = hasCandidate && module ? resolveCandidateFolder(module, candidateRel) : '';
-  return { fast, estimate, apply, adopt, module, candidate };
+  return { fast, estimate, apply, adopt, implemented, confirm, module, candidate };
 }
 
 export function existingModuleName(moduleName: string): string {

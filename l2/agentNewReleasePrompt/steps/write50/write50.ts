@@ -35,6 +35,7 @@ import {
 import { scanNs4ClassicJsonObject } from '/_102035_/l2/solution/helpers/ns4ClassicDefs.js';
 import { ns5OntologyEntityIds } from '/_102035_/l2/solution/ontologyView.js';
 import { tobeDiff } from '/_102035_/l2/solution/candidate/tobeDiff.js';
+import { assertNewReleaseEditable } from '/_102035_/l2/solution/candidate/moduleImplementation.js';
 import { deactivateL4Change, editL4Candidate, prepareL4Change, readActiveL4Change, sealL4Revision } from '/_102035_/l2/solution/candidate/moduleRevision.js';
 import { promptAssumptionsLine, promptChangeSummary, promptNothingChangedSummary, type PromptSummaryFile } from '/_102035_/l2/agentNewReleasePrompt/helpers/promptSummary.js';
 
@@ -180,6 +181,7 @@ class NrpNothingWritten extends Error {
  */
 export async function persistNrpWithChange(payload: NrpWritePayload, taskId = ''): Promise<NrpPersistResult> {
   const { project, moduleName } = payload;
+  await assertNewReleaseEditable(project, moduleName);
   if (await readActiveL4Change(project, moduleName)) return persistNrp(payload, taskId);
   const prepared = await prepareL4Change(project, moduleName);
   try {
