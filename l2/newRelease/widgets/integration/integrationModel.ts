@@ -134,7 +134,7 @@ export function normalizeIntegration(value: unknown): IntegrationView {
         settings: Array.isArray(system.settings) ? system.settings.map(value => {
           const setting = record(value);
           return {id: String(setting.id || ''), title: String(setting.title || ''),
-            description: String(setting.description || ''), secret: setting.secret === true};
+            description: String(setting.description || ''), secret: setting.secret === true, ...(setting.generated === true ? {generated: true as const} : {})};
         }) : [],
         operations: Array.isArray(system.operations) ? system.operations.map(value => {
           const operation = record(value);

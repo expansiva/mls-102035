@@ -863,6 +863,8 @@ export interface Ns5IntegrationExternalSystem {
     description: string;
     /** true: never shown again after it is saved (an access key). */
     secret: boolean;
+    /** Only with `secret: true`: the platform makes the value the first time it is needed and keeps it; nobody types it (l4_p4_198). Absent = the admin gives it. */
+    generated?: true;
   }>;
   /** What the module asks of the system (call) and what the system tells the module (serve). */
   operations: Array<{

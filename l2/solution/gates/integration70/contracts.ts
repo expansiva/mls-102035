@@ -503,7 +503,7 @@ function normalizeExternalSystem(value: unknown): Ns5IntegrationExternalSystem {
     description: text(source.description),
     settings: list(source.settings).map(item => {
       const setting = record(item);
-      return { id: text(setting.id), title: text(setting.title), description: text(setting.description), secret: setting.secret as boolean };  // not coerced: the gate refuses a missing flag
+      return { id: text(setting.id), title: text(setting.title), description: text(setting.description), secret: setting.secret as boolean, ...(setting.generated === true ? { generated: true as const } : {}) };  // not coerced: the gate refuses a missing flag
     }),
     operations: list(source.operations).map(item => {
       const operation = record(item);

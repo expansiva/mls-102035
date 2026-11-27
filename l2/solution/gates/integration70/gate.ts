@@ -546,6 +546,10 @@ function validateExternalSystems(
       if (typeof setting.secret !== 'boolean') {
         error(issues, 'NS5_INTEGRATION_SYSTEM_SETTING', 'A setting says whether it is secret (true or false).', `${settingPath}.secret`);
       }
+      // l4_p4_198: the platform makes a generated value, so it is a secret and nobody types it.
+      if (setting.generated !== undefined && (setting.generated !== true || setting.secret !== true)) {
+        error(issues, 'NS5_INTEGRATION_SYSTEM_SETTING', 'A setting is `generated: true` only when it is also `secret: true`.', `${settingPath}.generated`);
+      }
     });
     // A notice from outside enters only if it can be checked: a system that serves needs a secret the admin gives (M12).
     if (system.operations.some(operation => operation.direction === 'serve') && !system.settings.some(setting => setting.secret === true)) {
