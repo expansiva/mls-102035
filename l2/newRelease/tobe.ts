@@ -332,40 +332,7 @@ export function moduleLanguageBaseline(base: unknown, candidate: unknown, publis
     ? { ...base, productLanguages: published.productLanguages, defaultLanguage: published.defaultLanguage } : base;
 }
 
-export async function saveDirectLanguageMetadata(project: number, moduleName: string,
-  languages: Pick<Ns5ModuleArtifact, 'productLanguages' | 'defaultLanguage'>,
-  expected: { changeId: string | null; revisionId: string | null }): Promise<string | null> {
-  await assertNewReleaseEditable(project, moduleName);
-  if (!languages.productLanguages.length || new Set(languages.productLanguages).size !== languages.productLanguages.length
-    || !languages.productLanguages.includes(languages.defaultLanguage)) throw new Error('general.languagesInvalid');
-  const write = async () => {
-    await assertNewReleaseEditable(project, moduleName);
-    const publishedInfo = tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'asis');
-    const published = await readDefsJson<Ns5ModuleArtifact>(publishedInfo);
-    if (!published) throw new Error('general.languagesInvalid');
-    const plannedInfo = tobeArtifactFileInfo(project, moduleName, 'module.defs.ts', 'tobe');
-    const planned = fileExists(plannedInfo) ? await readDefsJson<Ns5ModuleArtifact>(plannedInfo) : null;
-    if (fileExists(plannedInfo) && !planned) throw new Error('general.languagesInvalid');
-    const manifest = await readManifest(project, moduleName);
-    if (manifest?.base['module.defs.ts'] && manifest.base['module.defs.ts'] !== await sha256Tobe(published)) throw new Error('general.languagesConflict');
-    const next = { ...published, ...languages };
-    if (planned) await writeDefs(plannedInfo, `${moduleName}Module`, { ...planned, ...languages }, 'Ns5ModuleArtifact');
-    await writeDefs(publishedInfo, `${moduleName}Module`, next, 'Ns5ModuleArtifact');
-    if (manifest?.base['module.defs.ts']) {
-      manifest.base['module.defs.ts'] = await sha256Tobe(next);
-      await writeJson(tobeManifestFileInfo(project, moduleName), manifest);
-    }
-  };
-  if (expected.changeId) {
-    const result = await editL4Candidate(project, moduleName, expected.revisionId, expected.changeId, write);
-    return result.revision.revisionId;
-  }
-  return withModuleWriter(project, moduleName, async () => {
-    if (await readActiveL4Change(project, moduleName)) throw new Error('general.languagesConflict');
-    await write();
-    return null;
-  });
-}
+export { saveDirectLanguageMetadata } from '/_102035_/l2/solution/candidate/moduleLanguages.js';
 
 async function overlayDiffs(
   project: number,
