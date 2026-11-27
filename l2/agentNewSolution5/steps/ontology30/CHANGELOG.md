@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-27 (l4_p4_187 s2, second sentence)
+
+- `promptEntity`: the secret paragraph adds that the mask belongs to the screen and is not a rule: no rule or derived field saying the key is never shown again (decision 64; measured on the bench, the model had written `accessKeyNeverShown` and `hasAccessKey`).
+
 ## 2026-11-27 (l4_p4_187 s2)
 
 - `promptEntity`: a paragraph in the table section says when a field is `secret: true` (the module keeps a password, an access key or a token as data of a record) and when it is not (a count that only contains the word, a value anybody may see, a secret shared with an outside system, which stays a setting). Reader of the key: the gate `checkSecretFields` and, later, the screen and the connection declaration.
