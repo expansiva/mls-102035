@@ -4,6 +4,7 @@ import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
 import { plAdoptText } from '/_102035_/l2/agentPlannerL4/helpers/plAdopt.js';
 import { plImplementedText } from '/_102035_/l2/agentPlannerL4/helpers/plImplemented.js';
 import { plApplyText } from '/_102035_/l2/agentPlannerL4/helpers/plApply.js';
+import { plSealText } from '/_102035_/l2/agentPlannerL4/helpers/plSeal.js';
 import { plLanguagesText } from '/_102035_/l2/agentPlannerL4/helpers/plLanguages.js';
 import { setModuleRoot } from '/_102035_/l2/solution/fs.js';
 import {
@@ -48,6 +49,7 @@ async function beforePromptImplicit(
   const invocation = parsePlInvocation(userPrompt || '');
   if (invocation.adopt) return statusTask(agent, context, await plAdoptText(invocation.module));
   if (invocation.apply) return statusTask(agent, context, await plApplyText(invocation.module, { ownerId: context.message?.senderId || context.task?.owner || '' }));
+  if (invocation.seal) return statusTask(agent, context, await plSealText(invocation.module));
   if (invocation.languages) return statusTask(agent, context, await plLanguagesText(invocation.module, invocation.languages.codes, invocation.languages.defaultLanguage));
   if (invocation.implemented) return statusTask(agent, context, await plImplementedText(invocation.module, invocation.confirm, { ownerId: context.message?.senderId || context.task?.owner || '' }));
   setModuleRoot(invocation.module, invocation.candidate || null);

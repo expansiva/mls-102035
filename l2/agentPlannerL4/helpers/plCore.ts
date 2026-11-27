@@ -75,6 +75,7 @@ const ADOPT_RE = /(^|\s)\/adopt(?=\s|$)/i;
 const APPLY_RE = /(^|\s)\/apply(?=\s|$)/i;
 const IMPLEMENTED_RE = /(^|\s)\/implemented(?=\s|$)/i;
 const CONFIRM_RE = /(^|\s)\/confirm(?=\s|$)/i;
+const SEAL_RE = /(^|\s)\/seal(?=\s|$)/i;
 const LANGUAGES_RE = /(^|\s)\/languages(?:\s+(?!\/)([A-Za-z0-9,-]+))?(?:\s+default=([A-Za-z0-9-]+))?(?=\s|$)/i;
 const CANDIDATE_RE = /(^|\s)\/candidate(?:\s+(?!\/)(\S+))?(?=\s|$)/i;
 
@@ -89,6 +90,8 @@ export interface PlParsedInvocation {
   implemented: boolean;
   /** `/confirm`: only meaningful with `/implemented`. */
   confirm: boolean;
+  /** `/seal`: the screen's "save" of the edits made to the candidate since the last seal (a second `@@agentNewReleasePrompt` on the same change leaves them unsealed). Plans nothing. */
+  seal: boolean;
   /** `/languages <code,code> [default=<code>]`: the screen's direct language save (`saveDirectLanguageMetadata`), with no screen. Null when the command is absent. Plans nothing. */
   languages: { codes: string[]; defaultLanguage: string } | null;
   module: string;
@@ -235,6 +238,7 @@ export function parsePlInvocation(value: string): PlParsedInvocation {
   const adopt = ADOPT_RE.test(raw);
   const implemented = IMPLEMENTED_RE.test(raw);
   const confirm = CONFIRM_RE.test(raw);
+  const seal = SEAL_RE.test(raw);
   const languagesMatch = LANGUAGES_RE.exec(raw);
   const languages = languagesMatch ? { codes: (languagesMatch[2] || '').split(',').map(code => code.trim()).filter(Boolean), defaultLanguage: languagesMatch[3] || '' } : null;
   const candidateMatch = CANDIDATE_RE.exec(raw);
@@ -248,13 +252,14 @@ export function parsePlInvocation(value: string): PlParsedInvocation {
     .replace(new RegExp(IMPLEMENTED_RE.source, 'gi'), ' ')
     .replace(new RegExp(CONFIRM_RE.source, 'gi'), ' ')
     .replace(new RegExp(LANGUAGES_RE.source, 'gi'), ' ')
+    .replace(new RegExp(SEAL_RE.source, 'gi'), ' ')
     .replace(new RegExp(CANDIDATE_RE.source, 'gi'), ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const token = stripped.split(' ')[0] || '';
   const module = moduleTokenOk(token) ? token : normalizeModuleName(token, '');
   const candidate = hasCandidate && module ? resolveCandidateFolder(module, candidateRel) : '';
-  return { fast, estimate, apply, adopt, implemented, confirm, languages, module, candidate };
+  return { fast, estimate, apply, adopt, implemented, confirm, languages, seal, module, candidate };
 }
 
 export function existingModuleName(moduleName: string): string {
