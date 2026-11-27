@@ -4,7 +4,7 @@ import type { OntologyNode, OntologyTreeView } from '/_102034_/l2/mdm/resolveMdm
 import { isOntologyV3Entity } from './ontologyV3Model.js';
 export const ONTOLOGY_V3_FIELD_TYPES: Ns5OntologyFieldV3['type'][] = ['string','text','integer','number','money','boolean','date','timestamp','uuid','enum','object','record'];
 export interface OntologyPanelField { entityId: string; path: string; parent: string; title: string; type: string; readOnly: boolean; value: Ns5OntologyFieldV3 | Ns5OntologyField; }
-export interface OntologyPanelPatch { title?: string; description?: string; type?: Ns5OntologyFieldV3['type'] | Ns5OntologyField['type']; required?: boolean; nullable?: boolean; collection?: boolean; unique?: boolean; indexed?: boolean; min?: number; max?: number; maxLength?: number; }
+export interface OntologyPanelPatch { title?: string; description?: string; type?: Ns5OntologyFieldV3['type'] | Ns5OntologyField['type']; required?: boolean; nullable?: boolean; collection?: boolean; unique?: boolean; indexed?: boolean; secret?: boolean; min?: number; max?: number; maxLength?: number; }
 export function ontologyPanelFields(entity: Ns5OntologyAnyEntity, view?: OntologyTreeView): OntologyPanelField[] {
  const out: OntologyPanelField[] = [];
  if (!isOntologyV3Entity(entity)) return [...(entity.fieldsBase || []), ...entity.fields].map(field => ({entityId: entity.entityId, path: field.fieldId, parent: '', title: field.title || field.fieldId, type: field.type, readOnly: !!entity.fieldsBase?.includes(field), value: field}));
@@ -27,7 +27,7 @@ export function patchOntologyPanelField(entity: Ns5OntologyAnyEntity,path: strin
   const field=fields[keys.at(-1)!];
   if(patch.type && ONTOLOGY_V3_FIELD_TYPES.includes(patch.type as Ns5OntologyFieldV3['type'])) field.type=patch.type as Ns5OntologyFieldV3['type'];
   for(const key of ['title','description','min','max','maxLength'] as const) if(key in patch) Object.assign(field,{[key]:patch[key]});
-  for(const key of ['required','nullable','collection','unique','indexed'] as const) if(key in patch){if(patch[key]) field[key]=true;else delete field[key];}
+  for(const key of ['required','nullable','collection','unique','indexed','secret'] as const) if(key in patch){if(patch[key]) field[key]=true;else delete field[key];}
  } else { const field=next.fields.find(field=>field.fieldId===path);if(!field)return entity;
   for(const key of ['title','description','required','unique'] as const) if(key in patch)Object.assign(field,{[key]:patch[key]});
   if(patch.type && ['uuid','string','text','number','integer','boolean','money','date','datetime','json'].includes(patch.type))field.type=patch.type as Ns5OntologyField['type'];

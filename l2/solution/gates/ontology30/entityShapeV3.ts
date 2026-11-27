@@ -39,7 +39,7 @@ const recordKeysComplete: Complete<Ns5OntologyEntityV3Base['record'], typeof REC
 
 export const FIELD_V3_KEYS = [
   'type', 'required', 'nullable', 'collection', 'of', 'to', 'values', 'fields', 'maxLength', 'pattern', 'min', 'max', 'default',
-  'unique', 'indexed', 'derived', 'writePrecondition', 'title', 'description', 'owner', 'open',
+  'unique', 'indexed', 'derived', 'writePrecondition', 'title', 'description', 'owner', 'open', 'secret',
 ] as const satisfies readonly (keyof Ns5OntologyFieldV3)[];
 const fieldKeysComplete: Complete<Ns5OntologyFieldV3, typeof FIELD_V3_KEYS> = true;
 

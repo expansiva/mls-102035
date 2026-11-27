@@ -48,6 +48,7 @@
         "indexed": { "type": "boolean" },
         "unique": { "type": "boolean" },
         "derived": { "type": "boolean" },
+        "secret": { "type": "boolean" },
         "of": { "type": "string", "enum": ["Address", "GeoPoint", "PrivacyConsent", "ContactSummary"] },
         "to": { "type": "array", "items": { "type": "string" } },
         "values": { "type": "array", "items": { "$ref": "#/$defs/value" } },

@@ -415,6 +415,11 @@ export interface Ns5OntologyFieldV3 extends Omit<MdmDefField, 'to' | 'values' | 
   owner?: 'platform' | 'organization' | 'module';
   /** Only on a branch: the key set is not closed here (declared elsewhere). */
   open?: true;
+  /**
+   * The module keeps a password, an access key or a token in this field (l4_p4_187). The screen shows it masked with a
+   * button to show it; who the access lets read the field keeps reading it. Absent = not a secret. Never on the id or a derived field.
+   */
+  secret?: true;
 }
 
 export type Ns5OntologyFieldsV3 = Readonly<Record<string, Ns5OntologyFieldV3>>;

@@ -207,6 +207,7 @@ const KEYS: Record<string, Record<string, KeyEntry>> = {
     fields: { reader: 'solution/ontologyPaths.ts, 102034 resolveMdmEntity.ts, DDL of the document', since: '2026-09-16' },
     owner: { reader: '102034 resolveMdmEntity.ts (platform / organization / module), ontology screen', since: '2026-09-16' },
     open: { reader: '102034 resolveMdmEntity.ts, ontology screen', since: '2026-09-16' },
+    secret: { reader: '102035 gateV3.ts checkSecretFields (refuses it on the id, a derived field and a record that stores nothing); the screen mask (102020) and the connection inputSecrets (102021) come with the How', since: '2026-11-27' },
   },
   Ns5OntologyRelationshipV3: {
     relationshipId: { reader: 'steps/ontology30/gateV3.ts, index cross-check', since: '2026-09-16' },

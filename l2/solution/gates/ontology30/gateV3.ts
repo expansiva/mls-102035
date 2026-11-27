@@ -577,7 +577,40 @@ export function validateNs5OntologyEntityV3(
     issues.push(...checkTableRecord(entity, plan, path));
     if (family === 'ddm') issues.push(...checkDerivedTable(entity, path));
   }
+  issues.push(...checkSecretFields(entity, path));
   return ok(issues);
+}
+
+/**
+ * l4_p4_187: `secret` marks a field the module itself keeps (a password, an access key, a token). It is a field of a table of
+ * the module or a branch of its `details`; never the id, `version` or a derived field (the engine writes those), and never a field of
+ * an outside record or a role (the module stores nothing there).
+ */
+function checkSecretFields(entity: Ns5OntologyEntityV3, path: string): Ns5OntologyV3Issue[] {
+  const issues: Ns5OntologyV3Issue[] = [];
+  const walk = (fields: Ns5OntologyFieldsV3 | undefined, where: string, top: boolean): void => {
+    for (const [id, field] of Object.entries(fields ?? {})) {
+      const here = `${where}.${id}`;
+      if (field.secret === true) {
+        const reason = entity.kind !== 'entity'
+          ? `${entity.entityId} is not a table of this module: it stores nothing`
+          : field.derived === true || (top && (id === 'id' || id === 'version'))
+            ? `'${id}' is written by the engine`
+            : '';
+        if (reason) {
+          issues.push({
+            severity: 'error',
+            code: 'NS5_ONTOLOGY_SECRET_FIELD',
+            message: `${here} is marked secret, but ${reason}. Take secret out; it marks a password, access key or token the module keeps in a field of its own table.`,
+            path: `${here}.secret`,
+          });
+        }
+      }
+      if (field.fields) walk(field.fields, `${here}.fields`, false);
+    }
+  };
+  walk(entity.record.fields, `${path}.record.fields`, true);
+  return issues;
 }
 
 /** An outside record keeps the fields the module sees. It is not a table. Its connectionId is lowerCamel and matches the plan; integration checks the origin. */

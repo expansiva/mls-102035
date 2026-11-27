@@ -1782,6 +1782,45 @@ void test('l4_p4_154: a timeSeries table has no unique key and no unique field; 
   assert.equal(issuesOf('relational', {}, { unique: true }).includes(CODE), false);
 });
 
+void test('l4_p4_187: a field marked secret is kept; the gate refuses it on the id, a derived field or a table that stores nothing; no mark, no change', () => {
+  const planOf = (kind: 'entity' | 'external') => normalizeNs5OntologyPlanV3({
+    businessDomain: 'Bots',
+    entities: [{ entityId: 'Bot', kind, class: 'core', storageKind: 'relational', title: 'Bot', description: 'x', displayField: 'code', writer: 'journey' }],
+    relationships: [],
+  } as never, 'tarefas');
+  const build = (fields: Record<string, unknown>[]) => {
+    const plan = planOf('entity');
+    const built = normalizeNs5OntologyEntityV3({
+      record: { fields: [{ id: 'code', type: 'string', title: 'Code', indexed: true }, ...fields] },
+      relationships: [], capabilities: [], rules: [], entityId: 'Bot',
+    } as never, 'Bot', { moduleName: 'tarefas', mdm, plan }, [])!;
+    return { built, plan, issues: (entity: typeof built) => codes(validateNs5OntologyEntityV3(entity, plan, { moduleName: 'tarefas', mdm, tdm, ddm }).issues) };
+  };
+  const SECRET = 'NS5_ONTOLOGY_SECRET_FIELD';
+  // marked: kept by the normalizer, accepted by the gate
+  const marked = build([{ id: 'accessKey', type: 'string', title: 'Key', secret: true }]);
+  assert.equal(marked.built.record.fields.accessKey?.secret, true);
+  assert.equal(marked.issues(marked.built).includes(SECRET), false);
+  // false or absent: nothing is written, so a module without a secret is the same artifact as before
+  const plain = build([{ id: 'accessKey', type: 'string', title: 'Key' }]);
+  const falsy = build([{ id: 'accessKey', type: 'string', title: 'Key', secret: false }]);
+  assert.equal('secret' in plain.built.record.fields.accessKey!, false);
+  assert.deepEqual(falsy.built, plain.built);
+  // nested: a field inside a branch of details
+  const nested = structuredClone(marked.built);
+  nested.record.fields.details = { type: 'object', required: true, fields: { tarefas: { type: 'object', fields: { token: { type: 'string', secret: true } } } } };
+  assert.equal(marked.issues(nested).includes(SECRET), false);
+  // refused: the id, a derived field, a field of a record that stores nothing
+  const onId = structuredClone(marked.built);
+  onId.record.fields.id = { ...onId.record.fields.id!, secret: true };
+  assert.ok(marked.issues(onId).includes(SECRET));
+  const onDerived = structuredClone(marked.built);
+  onDerived.record.fields.accessKey = { ...onDerived.record.fields.accessKey!, derived: true };
+  assert.ok(marked.issues(onDerived).includes(SECRET));
+  const external = { ...structuredClone(marked.built), kind: 'external' } as unknown as typeof marked.built;
+  assert.ok(codes(validateNs5OntologyEntityV3(external, planOf('external'), { moduleName: 'tarefas', mdm, tdm, ddm }).issues).includes(SECRET));
+});
+
 void test('l4_p4_47: a column displayField is left as the bare id', () => {
   const normalizations: Ns5OntologyV3Normalization[] = [];
   const built = ns5_47Normalize('numero', [

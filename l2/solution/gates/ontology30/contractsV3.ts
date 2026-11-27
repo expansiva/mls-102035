@@ -971,6 +971,7 @@ function normalizeField(value: unknown): Ns5OntologyFieldV3 {
   if (bool(raw.indexed)) out.indexed = true;
   if (bool(raw.derived)) out.derived = true;
   if (bool(raw.open)) out.open = true;
+  if (bool(raw.secret)) out.secret = true;
   const of = text(raw.of);
   if (of) out.of = of as Ns5OntologyFieldV3['of'];
   const to = list(raw.to).map(text).filter(Boolean);
