@@ -1,5 +1,9 @@
 # ontology30
 
+## 2026-11-27 (l4_p4_187 s2)
+
+- `promptEntity`: a paragraph in the table section says when a field is `secret: true` (the module keeps a password, an access key or a token as data of a record) and when it is not (a count that only contains the word, a value anybody may see, a secret shared with an outside system, which stays a setting). Reader of the key: the gate `checkSecretFields` and, later, the screen and the connection declaration.
+
 ## 2026-11-20 (l4_p4_131 s2)
 
 - `ns5ResolveEntityWriter` prefers the best N:1 parent (`journey`/`affects` over `crud`) and, when `outside` is passed, a process/inbound/serve writer over a parent. Ontology30 still calls it without `outside`.

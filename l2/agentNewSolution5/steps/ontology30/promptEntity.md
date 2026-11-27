@@ -61,6 +61,8 @@ else goes inside `details`, as a tree, however deep the business needs.
 - A `timeSeries` table may name `timeField`: one of its own required timestamp fields, the time of the fact each row records (when the message was written, when the reading was taken), given by whoever writes the row. Only with `timeField` may it have `uniqueKeys`, and every key includes that field: the same fact delivered twice has the same time and is refused. It never has a unique field.
 - `id` and `version` are written for you; do not declare them.
 
+A field is `secret: true` when the request says this module itself keeps a password, an access key or a token as data of a record (the access key of a bot, the password of an account the module signs in to). It is a column or a field inside `details`, never `id`, `version` or a `derived` field. The screen shows it masked, and whoever the access lets read it still reads it. Leave `secret` out of everything else: a count or a name that only contains the word (the tokens an answer used), a value anybody may see, and a secret the module and an outside system agree on for all its calls: the platform keeps that one as a setting, and it is not a field of any table.
+
 {{ns5LifecycleForm}}
 The processes were written before this step: every `entityRef` and `transitionRef` a `mechanical` or
 `llm` stage cites on this entity is required too, and a transition only a stage cites has `by: []` —

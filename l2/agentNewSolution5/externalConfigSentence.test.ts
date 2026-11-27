@@ -33,3 +33,14 @@ void test('no step with a prompt is left out of the table', () => {
     assert.equal(known, true, `${step} is in the table`);
   }
 });
+
+// l4_p4_187 s2: only the table section of the entity prompt tells the model when a field is `secret: true`; no other step text carries the mark (integration70 has its own `secret: true`, the one of a connection setting).
+void test('l4_p4_187: the secret mark is described once, in the ontology entity prompt, with what it is not', () => {
+  const entity = readFileSync(path.join(HERE, 'steps/ontology30/promptEntity.md'), 'utf8');
+  assert.equal(entity.split('`secret: true`').length - 1, 1);
+  assert.ok(entity.includes('a password, an access key or a token as data of a record'));
+  assert.ok(entity.includes('the platform keeps that one as a setting'));
+  for (const other of ['journeys20/prompt.md', 'ontology30/prompt.md', 'rules40/prompt.md', 'access60/prompt.md', 'workflows50/prompt.md']) {
+    assert.equal(readFileSync(path.join(HERE, 'steps', other), 'utf8').includes('secret: true'), false, other);
+  }
+});
